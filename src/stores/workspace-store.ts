@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 
 type WorkspaceState = {
   sidebarCollapsed: boolean
+  sidebarPinned: boolean
   fileExplorerCollapsed: boolean
   chatFocusMode: boolean
   /** Currently active sub-page route (e.g. '/skills', '/channels') — null means chat-only */
@@ -17,6 +18,7 @@ type WorkspaceState = {
   mobileComposerFocused: boolean
   toggleSidebar: () => void
   setSidebarCollapsed: (collapsed: boolean) => void
+  toggleSidebarPinned: () => void
   toggleFileExplorer: () => void
   setFileExplorerCollapsed: (collapsed: boolean) => void
   toggleChatFocusMode: () => void
@@ -34,6 +36,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set) => ({
       sidebarCollapsed: false,
+      sidebarPinned: false,
       fileExplorerCollapsed: true,
       chatFocusMode: false,
       activeSubPage: null,
@@ -45,6 +48,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       toggleSidebar: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+      toggleSidebarPinned: () =>
+        set((s) => ({
+          sidebarPinned: !s.sidebarPinned,
+          sidebarCollapsed: s.sidebarPinned ? true : false,
+        })),
       toggleFileExplorer: () =>
         set((s) => ({ fileExplorerCollapsed: !s.fileExplorerCollapsed })),
       setFileExplorerCollapsed: (collapsed) =>
@@ -65,6 +73,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       name: 'hermes-workspace-v1',
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,
+        sidebarPinned: state.sidebarPinned,
         fileExplorerCollapsed: state.fileExplorerCollapsed,
         chatPanelOpen: state.chatPanelOpen,
         chatPanelSessionKey: state.chatPanelSessionKey,

@@ -1,11 +1,8 @@
 import path from 'node:path'
-import os from 'node:os'
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import { isAuthenticated } from '../../server/auth-middleware'
-
-const HERMES_HOME =
-  process.env.HERMES_HOME || path.join(os.homedir(), '.hermes')
+import { resolveHermesHomeFromBackend } from '../../server/hermes-home'
 
 export const Route = createFileRoute('/api/paths')({
   server: {
@@ -14,11 +11,12 @@ export const Route = createFileRoute('/api/paths')({
         if (!isAuthenticated(request)) {
           return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
         }
+        const hermesHome = await resolveHermesHomeFromBackend()
         return json({
           ok: true,
-          hermesHome: HERMES_HOME,
-          memoriesDir: path.join(HERMES_HOME, 'memories'),
-          skillsDir: path.join(HERMES_HOME, 'skills'),
+          hermesHome,
+          memoriesDir: path.join(hermesHome, 'memories'),
+          skillsDir: path.join(hermesHome, 'skills'),
         })
       },
     },

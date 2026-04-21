@@ -1,6 +1,7 @@
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
 import path from 'node:path'
+
+import { resolveWorkspaceAppStateRoot } from './workspace-root'
 
 export type PersistedRunToolCall = {
   id: string
@@ -33,35 +34,38 @@ export type PersistedRunState = {
   errorMessage?: string
 }
 
-const RUNS_ROOT = path.join(homedir(), '.hermes', 'webui-mvp', 'runs')
-
 function encodeSessionKey(sessionKey: string): string {
   return encodeURIComponent(sessionKey || 'main')
 }
 
-function sessionDir(sessionKey: string): string {
-  return path.join(RUNS_ROOT, encodeSessionKey(sessionKey))
+function runsRoot(workspaceRoot: string): string {
+  return path.join(resolveWorkspaceAppStateRoot(workspaceRoot), 'runs')
 }
 
-function runPath(sessionKey: string, runId: string): string {
-  return path.join(sessionDir(sessionKey), `${runId}.json`)
+function sessionDir(workspaceRoot: string, sessionKey: string): string {
+  return path.join(runsRoot(workspaceRoot), encodeSessionKey(sessionKey))
+}
+
+function runPath(workspaceRoot: string, sessionKey: string, runId: string): string {
+  return path.join(sessionDir(workspaceRoot, sessionKey), `${runId}.json`)
 }
 
 async function ensureDir(dir: string): Promise<void> {
   await mkdir(dir, { recursive: true })
 }
 
-async function writeRun(run: PersistedRunState): Promise<void> {
-  const dir = sessionDir(run.sessionKey)
+async function writeRun(workspaceRoot: string, run: PersistedRunState): Promise<void> {
+  const dir = sessionDir(workspaceRoot, run.sessionKey)
   await ensureDir(dir)
   await writeFile(
-    runPath(run.sessionKey, run.runId),
+    runPath(workspaceRoot, run.sessionKey, run.runId),
     `${JSON.stringify(run, null, 2)}\n`,
     'utf8',
   )
 }
 
 export async function createPersistedRun(input: {
+  workspaceRoot: string
   runId: string
   sessionKey: string
   friendlyId?: string
@@ -80,16 +84,17 @@ export async function createPersistedRun(input: {
     toolCalls: [],
     lifecycleEvents: [],
   }
-  await writeRun(run)
+  await writeRun(input.workspaceRoot, run)
   return run
 }
 
 export async function getPersistedRun(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
 ): Promise<PersistedRunState | null> {
   try {
-    const raw = await readFile(runPath(sessionKey, runId), 'utf8')
+    const raw = await readFile(runPath(workspaceRoot, sessionKey, runId), 'utf8')
     return JSON.parse(raw) as PersistedRunState
   } catch {
     return null
@@ -97,25 +102,27 @@ export async function getPersistedRun(
 }
 
 export async function updatePersistedRun(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
   updater: (run: PersistedRunState) => PersistedRunState,
 ): Promise<PersistedRunState | null> {
-  const current = await getPersistedRun(sessionKey, runId)
+  const current = await getPersistedRun(workspaceRoot, sessionKey, runId)
   if (!current) return null
   const next = updater(current)
   next.updatedAt = Date.now()
-  await writeRun(next)
+  await writeRun(workspaceRoot, next)
   return next
 }
 
 export async function appendRunText(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
   text: string,
   options?: { replace?: boolean },
 ): Promise<PersistedRunState | null> {
-  return updatePersistedRun(sessionKey, runId, (run) => ({
+  return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => ({
     ...run,
     status: 'active',
     lastEventAt: Date.now(),
@@ -124,11 +131,12 @@ export async function appendRunText(
 }
 
 export async function setRunThinking(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
   thinkingText: string,
 ): Promise<PersistedRunState | null> {
-  return updatePersistedRun(sessionKey, runId, (run) => ({
+  return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => ({
     ...run,
     status: 'active',
     lastEventAt: Date.now(),
@@ -137,11 +145,12 @@ export async function setRunThinking(
 }
 
 export async function upsertRunToolCall(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
   toolCall: PersistedRunToolCall,
 ): Promise<PersistedRunState | null> {
-  return updatePersistedRun(sessionKey, runId, (run) => {
+  return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => {
     const nextToolCalls = [...run.toolCalls]
     const idx = nextToolCalls.findIndex((entry) => entry.id === toolCall.id)
     if (idx >= 0) nextToolCalls[idx] = { ...nextToolCalls[idx], ...toolCall }
@@ -159,11 +168,12 @@ export async function upsertRunToolCall(
 }
 
 export async function addRunLifecycleEvent(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
   event: PersistedRunLifecycleEvent,
 ): Promise<PersistedRunState | null> {
-  return updatePersistedRun(sessionKey, runId, (run) => ({
+  return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => ({
     ...run,
     lastEventAt: Date.now(),
     lifecycleEvents: [...run.lifecycleEvents, event].slice(-40),
@@ -171,12 +181,13 @@ export async function addRunLifecycleEvent(
 }
 
 export async function markRunStatus(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
   status: PersistedRunState['status'],
   errorMessage?: string,
 ): Promise<PersistedRunState | null> {
-  return updatePersistedRun(sessionKey, runId, (run) => ({
+  return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => ({
     ...run,
     status,
     lastEventAt: Date.now(),
@@ -185,10 +196,11 @@ export async function markRunStatus(
 }
 
 export async function getActiveRunForSession(
+  workspaceRoot: string,
   sessionKey: string,
 ): Promise<PersistedRunState | null> {
   try {
-    const dir = sessionDir(sessionKey)
+    const dir = sessionDir(workspaceRoot, sessionKey)
     const files = (await readdir(dir)).filter((name) => name.endsWith('.json'))
     if (files.length === 0) return null
     const runs = await Promise.all(

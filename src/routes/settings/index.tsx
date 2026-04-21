@@ -1257,7 +1257,7 @@ function HermesConfigSection({
 
       <SettingsSection
         title="API Keys"
-        description="Manage provider API keys stored in ~/.hermes/.env"
+        description="Manage provider API keys stored in the active Hermes home .env"
         icon={CloudIcon}
       >
         {data.providers

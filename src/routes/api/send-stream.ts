@@ -10,6 +10,7 @@ import {
 import { getChatMode } from '../../server/gateway-capabilities'
 import { ensureLocalSession, appendLocalMessage, getLocalMessages, touchLocalSession } from '../../server/local-session-store'
 import { getLocalProviderDef, getDiscoveredModels } from '../../server/local-provider-discovery'
+import { resolveActiveWorkspaceRoot } from '../../server/workspace-root'
 import {
   
   
@@ -277,6 +278,7 @@ export const Route = createFileRoute('/api/send-stream')({
         const csrfCheck = requireJsonContentType(request)
         if (csrfCheck) return csrfCheck
         await ensureGatewayProbed()
+        const activeWorkspace = await resolveActiveWorkspaceRoot(request.headers)
 
         // Read body manually to handle large payloads (image attachments
         // can push the JSON body above the default ~1MB parse limit).
@@ -404,7 +406,7 @@ export const Route = createFileRoute('/api/send-stream')({
                 const portableSessionKey = sessionKey
 
                 // Ensure session exists (user message appended after building history)
-                ensureLocalSession(portableSessionKey, typeof body.model === 'string' ? body.model : undefined)
+                ensureLocalSession(activeWorkspace.path, portableSessionKey, typeof body.model === 'string' ? body.model : undefined)
                 const portableFriendlyId =
                   resolvedFriendlyId ||
                   requestedFriendlyId ||
@@ -438,13 +440,13 @@ export const Route = createFileRoute('/api/send-stream')({
                     ? [{ role: 'system', content: `Respond in ${locale === 'es' ? 'Spanish' : locale === 'fr' ? 'French' : locale === 'zh' ? 'Chinese' : locale === 'de' ? 'German' : locale === 'ja' ? 'Japanese' : locale === 'ko' ? 'Korean' : locale === 'pt' ? 'Portuguese' : locale === 'ru' ? 'Russian' : locale === 'ar' ? 'Arabic' : 'English'}. The user's interface is set to this language.` }]
                     : []
                   // Load persisted history for this session, then append user message
-                  const persistedMessages = getLocalMessages(portableSessionKey)
+                  const persistedMessages = getLocalMessages(activeWorkspace.path, portableSessionKey)
                   const persistedHistory = persistedMessages.map(m => ({
                     role: m.role as 'user' | 'assistant' | 'system',
                     content: m.content,
                   }))
                   // Persist user message AFTER reading history to avoid duplication
-                  appendLocalMessage(portableSessionKey, {
+                  appendLocalMessage(activeWorkspace.path, portableSessionKey, {
                     id: crypto.randomUUID(),
                     role: 'user',
                     content: typeof body.message === 'string' ? body.message : '',
@@ -504,13 +506,13 @@ export const Route = createFileRoute('/api/send-stream')({
                   }
 
                   // Persist assistant response to local session store
-                  appendLocalMessage(portableSessionKey, {
+                  appendLocalMessage(activeWorkspace.path, portableSessionKey, {
                     id: crypto.randomUUID(),
                     role: 'assistant',
                     content: accumulated,
                     timestamp: Date.now(),
                   })
-                  touchLocalSession(portableSessionKey)
+                  touchLocalSession(activeWorkspace.path, portableSessionKey)
 
                   sendEvent('done', {
                     state: 'complete',

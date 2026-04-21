@@ -3,8 +3,6 @@
  * plus whether Hermes gateway enhancements are available.
  */
 import fs from 'node:fs'
-import path from 'node:path'
-import os from 'node:os'
 import { createFileRoute } from '@tanstack/react-router'
 import YAML from 'yaml'
 import {
@@ -14,13 +12,12 @@ import {
   getGatewayMode,
   getGatewayModeLabel,
 } from '../../server/gateway-capabilities'
+import { resolveHermesConfigPathFromBackend } from '../../server/hermes-home'
 import { isAuthenticated } from '../../server/auth-middleware'
 
-const CONFIG_PATH = path.join(os.homedir(), '.hermes', 'config.yaml')
-
-function readActiveModel(): string {
+function readActiveModel(configPath: string): string {
   try {
-    const raw = fs.readFileSync(CONFIG_PATH, 'utf-8')
+    const raw = fs.readFileSync(configPath, 'utf-8')
     const config = (YAML.parse(raw) as Record<string, unknown>) || {}
     const modelField = config.model
     if (typeof modelField === 'string') return modelField
@@ -58,7 +55,8 @@ export const Route = createFileRoute('/api/connection-status')({
 
         const caps = await ensureGatewayProbed()
         const gatewayMode = getGatewayMode()
-        const activeModel = readActiveModel()
+        const configPath = await resolveHermesConfigPathFromBackend()
+        const activeModel = readActiveModel(configPath)
         const modelConfigured = Boolean(activeModel)
 
         const chatReady = caps.chatCompletions

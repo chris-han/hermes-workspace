@@ -15,6 +15,7 @@ import {
 } from '../../server/hermes-api'
 import { createCapabilityUnavailablePayload } from '@/lib/feature-gates'
 import { listLocalSessions } from '../../server/local-session-store'
+import { resolveActiveWorkspaceRoot } from '../../server/workspace-root'
 
 export const Route = createFileRoute('/api/sessions')({
   server: {
@@ -35,11 +36,12 @@ export const Route = createFileRoute('/api/sessions')({
         }
 
         try {
+          const activeWorkspace = await resolveActiveWorkspaceRoot(request.headers)
           const sessions = await listSessions(50, 0)
           const gatewaySessions = sessions.map(toSessionSummary)
 
           // Merge local portable sessions (Ollama, Atomic Chat, etc.)
-          const localSessions = listLocalSessions()
+          const localSessions = listLocalSessions(activeWorkspace.path)
           const gatewayIds = new Set(gatewaySessions.map((s: any) => s.key || s.id))
           for (const ls of localSessions) {
             if (!gatewayIds.has(ls.id)) {

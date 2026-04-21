@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import { isAuthenticated } from '../../../server/auth-middleware'
 import { getActiveRunForSession } from '../../../server/run-store'
+import { resolveActiveWorkspaceRoot } from '../../../server/workspace-root'
 
 export const Route = createFileRoute('/api/sessions/$sessionKey/active-run')({
   server: {
@@ -20,7 +21,8 @@ export const Route = createFileRoute('/api/sessions/$sessionKey/active-run')({
         }
 
         try {
-          const run = await getActiveRunForSession(sessionKey)
+          const activeWorkspace = await resolveActiveWorkspaceRoot(request.headers)
+          const run = await getActiveRunForSession(activeWorkspace.path, sessionKey)
           return json({ ok: true, run })
         } catch (err) {
           return json(

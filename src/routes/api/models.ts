@@ -1,6 +1,4 @@
 import fs from 'node:fs'
-import path from 'node:path'
-import os from 'node:os'
 import { json } from '@tanstack/react-start'
 import { createFileRoute } from '@tanstack/react-router'
 import { isAuthenticated } from '../../server/auth-middleware'
@@ -14,6 +12,10 @@ import {
   getDiscoveredModels,
   ensureProviderInConfig,
 } from '../../server/local-provider-discovery'
+import {
+  resolveHermesConfigPathFromBackend,
+  resolveHermesPathFromBackend,
+} from '../../server/hermes-home'
 
 type ModelEntry = {
   provider?: string
@@ -62,12 +64,11 @@ function normalizeModel(entry: unknown): ModelEntry | null {
 }
 
 /**
- * Read user-configured models from ~/.hermes/models.json.
+ * Read user-configured models from the active Hermes home models.json.
  * This is the curated list the user manages via the Hermes CLI or UI.
  * Each entry has: { id, name, provider, model, baseUrl, createdAt }
  */
-function readHermesModelsJson(): Array<ModelEntry> {
-  const modelsPath = path.join(os.homedir(), '.hermes', 'models.json')
+function readHermesModelsJson(modelsPath: string): Array<ModelEntry> {
   try {
     if (!fs.existsSync(modelsPath)) return []
     const raw = fs.readFileSync(modelsPath, 'utf-8')
@@ -91,11 +92,10 @@ function readHermesModelsJson(): Array<ModelEntry> {
 }
 
 /**
- * Read the default model from ~/.hermes/config.yaml without a YAML parser.
+ * Read the default model from the active Hermes config.yaml without a YAML parser.
  * Looks for "default: <model-id>" under the "model:" section.
  */
-function readHermesDefaultModel(): ModelEntry | null {
-  const configPath = path.join(os.homedir(), '.hermes', 'config.yaml')
+function readHermesDefaultModel(configPath: string): ModelEntry | null {
   try {
     if (!fs.existsSync(configPath)) return null
     const raw = fs.readFileSync(configPath, 'utf-8')
@@ -140,12 +140,15 @@ export const Route = createFileRoute('/api/models')({
         await ensureGatewayProbed()
 
         try {
-          // Primary: read user-configured models from ~/.hermes/models.json
-          let models = readHermesModelsJson()
+          const modelsPath = await resolveHermesPathFromBackend('models.json')
+          const configPath = await resolveHermesConfigPathFromBackend()
+
+          // Primary: read user-configured models from the active Hermes home.
+          let models = readHermesModelsJson(modelsPath)
           let source = 'models.json'
 
           // Ensure the default model from config.yaml is always included
-          const defaultModel = readHermesDefaultModel()
+          const defaultModel = readHermesDefaultModel(configPath)
           if (defaultModel) {
             const hasDefault = models.some((m) => m.id === defaultModel.id)
             if (!hasDefault) {

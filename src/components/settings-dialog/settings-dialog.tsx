@@ -675,7 +675,7 @@ function HermesContent() {
               '—'}
           </span>
           <span style={mutedStyle}>Config</span>
-          <span className="font-mono font-medium">~/.hermes/config.yaml</span>
+          <span className="font-mono font-medium">active Hermes config.yaml</span>
         </div>
       </div>
     </div>

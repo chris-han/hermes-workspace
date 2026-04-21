@@ -11,6 +11,7 @@ import {
 import { resolveSessionKey } from '../../server/session-utils'
 import { isAuthenticated } from '@/server/auth-middleware'
 import { getLocalSession, getLocalMessages } from '../../server/local-session-store'
+import { resolveActiveWorkspaceRoot } from '../../server/workspace-root'
 
 export const Route = createFileRoute('/api/history')({
   server: {
@@ -30,6 +31,7 @@ export const Route = createFileRoute('/api/history')({
           })
         }
         try {
+          const activeWorkspace = await resolveActiveWorkspaceRoot(request.headers)
           const url = new URL(request.url)
           const limit = Number(url.searchParams.get('limit') || '200')
           const rawSessionKey = url.searchParams.get('sessionKey')?.trim()
@@ -73,9 +75,9 @@ export const Route = createFileRoute('/api/history')({
 
           // Fallback to local session store for portable/local model sessions
           if (messages.length === 0) {
-            const localSession = getLocalSession(sessionKey)
+            const localSession = getLocalSession(activeWorkspace.path, sessionKey)
             if (localSession) {
-              const localMessages = getLocalMessages(sessionKey)
+              const localMessages = getLocalMessages(activeWorkspace.path, sessionKey)
               return json({
                 sessionKey,
                 sessionId: sessionKey,

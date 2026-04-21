@@ -10,26 +10,25 @@ import { isAuthenticated } from '../../server/auth-middleware'
 import { BEARER_TOKEN, HERMES_API } from '../../server/gateway-capabilities'
 import fs from 'node:fs'
 import path from 'node:path'
-import os from 'node:os'
 import YAML from 'yaml'
+import {
+  resolveHermesConfigPathFromBackend,
+  resolveHermesProfilesPathFromBackend,
+} from '../../server/hermes-home'
 
-const HERMES_HOME = process.env.HERMES_HOME ?? path.join(os.homedir(), '.hermes')
-const CONFIG_PATH = path.join(HERMES_HOME, 'config.yaml')
-const PROFILES_PATH = path.join(os.homedir(), '.hermes', 'profiles')
-
-function readConfig(): Record<string, unknown> {
+function readConfig(configPath: string): Record<string, unknown> {
   try {
-    return (YAML.parse(fs.readFileSync(CONFIG_PATH, 'utf-8')) as Record<string, unknown>) ?? {}
+    return (YAML.parse(fs.readFileSync(configPath, 'utf-8')) as Record<string, unknown>) ?? {}
   } catch {
     return {}
   }
 }
 
-function getProfileNames(): string[] {
+function getProfileNames(profilesPath: string): string[] {
   try {
-    return fs.readdirSync(PROFILES_PATH).filter(name => {
+    return fs.readdirSync(profilesPath).filter(name => {
       try {
-        return fs.statSync(path.join(PROFILES_PATH, name)).isDirectory()
+        return fs.statSync(path.join(profilesPath, name)).isDirectory()
       } catch {
         return false
       }
@@ -68,10 +67,12 @@ export const Route = createFileRoute('/api/hermes-tasks-assignees')({
         }
 
         // Fall back: derive from profile directories + config
-        const config = readConfig()
+        const configPath = await resolveHermesConfigPathFromBackend()
+        const profilesPath = await resolveHermesProfilesPathFromBackend()
+        const config = readConfig(configPath)
         const tasksConfig = (config.tasks ?? {}) as Record<string, unknown>
         const humanReviewer = (tasksConfig.human_reviewer as string) || null
-        const profiles = getProfileNames()
+        const profiles = getProfileNames(profilesPath)
 
         const assignees = profiles.map(id => ({ id, label: id, isHuman: id === humanReviewer }))
         if (humanReviewer && !profiles.includes(humanReviewer)) {

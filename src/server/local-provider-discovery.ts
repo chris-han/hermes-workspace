@@ -6,12 +6,12 @@
  *
  * - Probes on first request + re-probes every 30s
  * - Merges discovered models into /api/models response
- * - Auto-writes custom_providers to ~/.hermes/config.yaml if not already configured
+ * - Reads custom_providers from the active Hermes config.yaml
  */
 
 import fs from 'node:fs'
 import path from 'node:path'
-import os from 'node:os'
+import { resolveHermesConfigPath } from './hermes-home'
 
 // -------------------------------------------------------------------
 // Well-known local providers
@@ -243,7 +243,7 @@ void ensureDiscovery()
 // Config auto-writer
 // -------------------------------------------------------------------
 
-const CONFIG_PATH = path.join(os.homedir(), '.hermes', 'config.yaml')
+const CONFIG_PATH = resolveHermesConfigPath()
 
 /**
  * Check if a provider is already in custom_providers config.

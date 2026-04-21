@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const DATA_DIR = join(process.cwd(), '.runtime')
-const SESSIONS_FILE = join(DATA_DIR, 'local-sessions.json')
+import { resolveWorkspaceAppStateRoot } from './workspace-root'
+
 const MAX_MESSAGES_PER_SESSION = 500
 
 export type LocalSession = {
@@ -29,12 +29,22 @@ type StoreData = {
   messages: Record<string, Array<LocalMessage>>
 }
 
-let store: StoreData = { sessions: {}, messages: {} }
+const storeCache = new Map<string, StoreData>()
+const saveTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
-function loadFromDisk(): void {
+function getSessionsFile(workspaceRoot: string): string {
+  return join(resolveWorkspaceAppStateRoot(workspaceRoot), 'local-sessions.json')
+}
+
+function loadFromDisk(workspaceRoot: string): StoreData {
+  const cached = storeCache.get(workspaceRoot)
+  if (cached) return cached
+
+  let store: StoreData = { sessions: {}, messages: {} }
   try {
-    if (existsSync(SESSIONS_FILE)) {
-      const raw = readFileSync(SESSIONS_FILE, 'utf-8')
+    const sessionsFile = getSessionsFile(workspaceRoot)
+    if (existsSync(sessionsFile)) {
+      const raw = readFileSync(sessionsFile, 'utf-8')
       const parsed = JSON.parse(raw) as StoreData
       if (parsed.sessions && parsed.messages) {
         store = parsed
@@ -43,31 +53,41 @@ function loadFromDisk(): void {
   } catch {
     // ignore corrupt local cache
   }
+  storeCache.set(workspaceRoot, store)
+  return store
 }
 
-function saveToDisk(): void {
+function saveToDisk(workspaceRoot: string): void {
   try {
-    if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-    writeFileSync(SESSIONS_FILE, JSON.stringify(store, null, 2))
+    const dataDir = resolveWorkspaceAppStateRoot(workspaceRoot)
+    const sessionsFile = getSessionsFile(workspaceRoot)
+    if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true })
+    const store = loadFromDisk(workspaceRoot)
+    writeFileSync(sessionsFile, JSON.stringify(store, null, 2))
   } catch {
     // ignore cache write failures
   }
 }
 
-loadFromDisk()
-
-export function listLocalSessions(): Array<LocalSession> {
+export function listLocalSessions(workspaceRoot: string): Array<LocalSession> {
+  const store = loadFromDisk(workspaceRoot)
   return Object.values(store.sessions).sort((a, b) => b.updatedAt - a.updatedAt)
 }
 
-export function getLocalSession(sessionId: string): LocalSession | null {
+export function getLocalSession(
+  workspaceRoot: string,
+  sessionId: string,
+): LocalSession | null {
+  const store = loadFromDisk(workspaceRoot)
   return store.sessions[sessionId] ?? null
 }
 
 export function ensureLocalSession(
+  workspaceRoot: string,
   sessionId: string,
   model?: string,
 ): LocalSession {
+  const store = loadFromDisk(workspaceRoot)
   if (!store.sessions[sessionId]) {
     store.sessions[sessionId] = {
       id: sessionId,
@@ -78,43 +98,53 @@ export function ensureLocalSession(
       messageCount: 0,
     }
     store.messages[sessionId] = []
-    saveToDisk()
+    saveToDisk(workspaceRoot)
   }
   return store.sessions[sessionId]
 }
 
 export function updateLocalSessionTitle(
+  workspaceRoot: string,
   sessionId: string,
   title: string,
 ): void {
+  const store = loadFromDisk(workspaceRoot)
   const session = store.sessions[sessionId]
   if (session) {
     session.title = title
     session.updatedAt = Date.now()
-    saveToDisk()
+    saveToDisk(workspaceRoot)
   }
 }
 
-export function touchLocalSession(sessionId: string): void {
+export function touchLocalSession(workspaceRoot: string, sessionId: string): void {
+  const store = loadFromDisk(workspaceRoot)
   const session = store.sessions[sessionId]
   if (session) session.updatedAt = Date.now()
 }
 
-export function deleteLocalSession(sessionId: string): void {
+export function deleteLocalSession(workspaceRoot: string, sessionId: string): void {
+  const store = loadFromDisk(workspaceRoot)
   delete store.sessions[sessionId]
   delete store.messages[sessionId]
-  saveToDisk()
+  saveToDisk(workspaceRoot)
 }
 
-export function getLocalMessages(sessionId: string): Array<LocalMessage> {
+export function getLocalMessages(
+  workspaceRoot: string,
+  sessionId: string,
+): Array<LocalMessage> {
+  const store = loadFromDisk(workspaceRoot)
   return store.messages[sessionId] ?? []
 }
 
 export function appendLocalMessage(
+  workspaceRoot: string,
   sessionId: string,
   message: LocalMessage,
 ): void {
-  ensureLocalSession(sessionId)
+  const store = loadFromDisk(workspaceRoot)
+  ensureLocalSession(workspaceRoot, sessionId)
   if (!store.messages[sessionId]) store.messages[sessionId] = []
   store.messages[sessionId].push(message)
   if (store.messages[sessionId].length > MAX_MESSAGES_PER_SESSION) {
@@ -127,14 +157,15 @@ export function appendLocalMessage(
     session.messageCount = store.messages[sessionId].length
     session.updatedAt = Date.now()
   }
-  scheduleSave()
+  scheduleSave(workspaceRoot)
 }
 
-let saveTimer: ReturnType<typeof setTimeout> | null = null
-function scheduleSave(): void {
-  if (saveTimer) return
-  saveTimer = setTimeout(() => {
-    saveTimer = null
-    saveToDisk()
+function scheduleSave(workspaceRoot: string): void {
+  const existing = saveTimers.get(workspaceRoot)
+  if (existing) return
+  const timer = setTimeout(() => {
+    saveTimers.delete(workspaceRoot)
+    saveToDisk(workspaceRoot)
   }, 2000)
+  saveTimers.set(workspaceRoot, timer)
 }

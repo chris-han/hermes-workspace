@@ -13,8 +13,9 @@ import {
   MessageMultiple01Icon,
   Moon02Icon,
   PencilEdit02Icon,
+  PinIcon,
+  PinOffIcon,
   PuzzleIcon,
-
   Rocket01Icon,
   Search01Icon, Settings01Icon, Sun02Icon, UserGroupIcon, UserMultipleIcon
 } from '@hugeicons/core-free-icons'
@@ -52,6 +53,7 @@ import {
   selectChatProfileDisplayName,
   useChatSettingsStore,
 } from '@/hooks/use-chat-settings'
+import { useWorkspaceStore } from '@/stores/workspace-store'
 import { StatusDot } from '@/components/status-indicator'
 import {
   MenuContent,
@@ -621,6 +623,8 @@ function ChatSidebarComponent({
   const [isMobile, setIsMobile] = useState(false)
   const [isHoverExpanded, setIsHoverExpanded] = useState(false)
   const [vibeAuthActionPending, setVibeAuthActionPending] = useState(false)
+  const sidebarPinned = useWorkspaceStore((s) => s.sidebarPinned)
+  const toggleSidebarPinned = useWorkspaceStore((s) => s.toggleSidebarPinned)
   const sidebarRef = useRef<HTMLElement | null>(null)
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
 
@@ -880,7 +884,7 @@ function ChatSidebarComponent({
         if (!isMobile && isCollapsed) setIsHoverExpanded(true)
       }}
       onMouseLeave={() => {
-        if (!isMobile) setIsHoverExpanded(false)
+        if (!isMobile && !sidebarPinned) setIsHoverExpanded(false)
       }}
       aria-hidden={isMobile && isCollapsed ? true : undefined}
       {...(isMobile && isCollapsed ? { inert: true } : {})}
@@ -912,6 +916,33 @@ function ChatSidebarComponent({
             </motion.div>
           ) : null}
         </AnimatePresence>
+        {!isVisuallyCollapsed && (
+          <TooltipProvider>
+            <TooltipRoot>
+              <TooltipTrigger
+                onClick={toggleSidebarPinned}
+                render={
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={sidebarPinned ? 'Unpin Sidebar' : 'Pin Sidebar'}
+                    className="absolute right-10 top-1/2 shrink-0 -translate-y-1/2 opacity-80 hover:opacity-100"
+                    data-tour="sidebar-pin-toggle"
+                  >
+                    <HugeiconsIcon
+                      icon={sidebarPinned ? PinIcon : PinOffIcon}
+                      size={18}
+                      strokeWidth={1.75}
+                    />
+                  </Button>
+                }
+              />
+              <TooltipContent side="right">
+                {sidebarPinned ? 'Unpin Sidebar' : 'Pin Sidebar'}
+              </TooltipContent>
+            </TooltipRoot>
+          </TooltipProvider>
+        )}
         <TooltipProvider>
           <TooltipRoot>
             <TooltipTrigger

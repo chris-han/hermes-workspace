@@ -19,6 +19,7 @@ import {
   getLocalMessages,
   getLocalSession,
 } from '../../server/local-session-store'
+import { resolveActiveWorkspaceRoot } from '../../server/workspace-root'
 
 export const Route = createFileRoute('/api/session-history')({
   server: {
@@ -38,10 +39,11 @@ export const Route = createFileRoute('/api/session-history')({
         if (!key) {
           return json({ ok: false, messages: [], error: 'key is required' })
         }
+        const activeWorkspace = await resolveActiveWorkspaceRoot(request.headers)
         // Try local store first (in-memory sessions)
-        const local = getLocalSession(key)
+        const local = getLocalSession(activeWorkspace.path, key)
         if (local) {
-          const messages = getLocalMessages(key).slice(-limit)
+          const messages = getLocalMessages(activeWorkspace.path, key).slice(-limit)
           return json({ ok: true, messages, sessionKey: key, source: 'local' })
         }
         if (!getGatewayCapabilities().sessions) {

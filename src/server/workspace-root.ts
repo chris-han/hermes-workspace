@@ -22,12 +22,21 @@ type BackendWorkspacePathsPayload = {
   currentWorkspaceRoot?: unknown
 }
 
+type BackendAuthMePayload = {
+  authenticated?: unknown
+  workspace_slug?: unknown
+  user?: {
+    user_id?: unknown
+    workspace_slug?: unknown
+  } | null
+}
+
 export type ActiveWorkspaceRoot = {
   authenticated: boolean
   workspaceId: string
   workspaceSlug: string
   path: string
-  source: 'backend' | 'fallback'
+  source: 'backend' | 'auth-fallback' | 'fallback'
 }
 
 const workspaceRootCache = new Map<
@@ -63,12 +72,14 @@ function cacheKeyFromHeaders(headers?: HeadersInit | Headers): string {
 async function fetchWorkspaceRootFromBackend(
   requestHeaders?: HeadersInit | Headers,
 ): Promise<ActiveWorkspaceRoot | null> {
+  const headers = buildSemantierAgentProxyHeaders(requestHeaders ?? {}, {
+    authHeaders: semantierAgentAuthHeaders(),
+    forwardBrowserCookies: true,
+    allowedCookieNames: [SEMANTIER_AGENT_AUTH_COOKIE],
+  })
+
   const response = await fetch(withSemantierAgentBase('/system/paths'), {
-    headers: buildSemantierAgentProxyHeaders(requestHeaders ?? {}, {
-      authHeaders: semantierAgentAuthHeaders(),
-      forwardBrowserCookies: true,
-      allowedCookieNames: [SEMANTIER_AGENT_AUTH_COOKIE],
-    }),
+    headers,
     signal: AbortSignal.timeout(2_000),
   })
   if (!response.ok) return null
@@ -80,20 +91,66 @@ async function fetchWorkspaceRootFromBackend(
       : ''
   if (!workspaceRoot) return null
 
+  const isAuthenticated = payload.authenticated === true
+  const workspaceId =
+    typeof payload.currentWorkspaceId === 'string' &&
+    payload.currentWorkspaceId.trim()
+      ? payload.currentWorkspaceId.trim()
+      : 'public'
+  const workspaceSlug =
+    typeof payload.currentWorkspaceSlug === 'string' &&
+    payload.currentWorkspaceSlug.trim()
+      ? payload.currentWorkspaceSlug.trim()
+      : 'public'
+
+  if (!isAuthenticated && workspaceId === 'public') {
+    const authFallback = await fetchAuthenticatedWorkspaceRoot(headers)
+    if (authFallback) {
+      return authFallback
+    }
+  }
+
   return {
-    authenticated: payload.authenticated === true,
-    workspaceId:
-      typeof payload.currentWorkspaceId === 'string' &&
-      payload.currentWorkspaceId.trim()
-        ? payload.currentWorkspaceId.trim()
-        : 'public',
-    workspaceSlug:
-      typeof payload.currentWorkspaceSlug === 'string' &&
-      payload.currentWorkspaceSlug.trim()
-        ? payload.currentWorkspaceSlug.trim()
-        : 'public',
+    authenticated: isAuthenticated,
+    workspaceId,
+    workspaceSlug,
     path: normalizeWorkspaceRoot(workspaceRoot),
     source: 'backend',
+  }
+}
+
+async function fetchAuthenticatedWorkspaceRoot(
+  headers: Headers,
+): Promise<ActiveWorkspaceRoot | null> {
+  const response = await fetch(withSemantierAgentBase('/auth/me'), {
+    headers,
+    signal: AbortSignal.timeout(2_000),
+  })
+  if (!response.ok) return null
+
+  const payload = (await response.json()) as BackendAuthMePayload
+  if (payload.authenticated !== true) return null
+
+  const userId =
+    typeof payload.user?.user_id === 'string' && payload.user.user_id.trim()
+      ? payload.user.user_id.trim()
+      : ''
+  if (!userId) return null
+
+  const workspaceSlug =
+    typeof payload.user?.workspace_slug === 'string' &&
+    payload.user.workspace_slug.trim()
+      ? payload.user.workspace_slug.trim()
+      : typeof payload.workspace_slug === 'string' && payload.workspace_slug.trim()
+        ? payload.workspace_slug.trim()
+        : userId
+
+  return {
+    authenticated: true,
+    workspaceId: userId,
+    workspaceSlug,
+    path: normalizeWorkspaceRoot(path.join(REPO_ROOT, 'workspaces', userId)),
+    source: 'auth-fallback',
   }
 }
 

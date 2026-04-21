@@ -108,4 +108,59 @@ describe('resolveActiveWorkspaceRoot', () => {
     expect(result.workspaceSlug).toBe('public')
     expect(result.path.endsWith('/workspaces/public')).toBe(true)
   })
+
+  it('falls back to auth/me when system paths resolve to public for an authenticated user', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          authenticated: false,
+          currentWorkspaceId: 'public',
+          currentWorkspaceSlug: 'public',
+          currentWorkspaceRoot:
+            '/home/chris/repo/Vibe-Trading/workspaces/public',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          authenticated: true,
+          workspace_slug: 'alice_zhang',
+          user: {
+            user_id: 'bb685f18514b4dc89018900bbb4687eb',
+            workspace_slug: 'alice_zhang',
+          },
+        }),
+      })
+    globalThis.fetch = fetchMock as typeof fetch
+
+    const result = await resolveActiveWorkspaceRoot({
+      cookie:
+        'hermes-auth=workspace-session; vt_session=semantier-user-session-fallback',
+    })
+
+    expect(result.authenticated).toBe(true)
+    expect(result.workspaceId).toBe('bb685f18514b4dc89018900bbb4687eb')
+    expect(result.workspaceSlug).toBe('alice_zhang')
+    expect(result.path).toBe(
+      path.resolve(
+        '/home/chris/repo/Vibe-Trading/workspaces/bb685f18514b4dc89018900bbb4687eb',
+      ),
+    )
+    expect(result.source).toBe('auth-fallback')
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'http://127.0.0.1:8899/system/paths',
+    )
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8899/auth/me',
+    )
+
+    const headers = new Headers(fetchMock.mock.calls[1]?.[1]?.headers)
+    expect(headers.get('cookie')).toBe(
+      'vt_session=semantier-user-session-fallback',
+    )
+  })
 })

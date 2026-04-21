@@ -5,6 +5,7 @@ import { isAuthenticated } from '@/server/auth-middleware'
 import { resolveSessionKey } from '../../server/session-utils'
 import {
   getVibeSessionMessages,
+  isVibeSessionNotFoundError,
   listVibeSessions,
   toVibeChatMessage,
 } from '../../server/vibe-session-api'
@@ -40,11 +41,15 @@ export const Route = createFileRoute('/api/history')({
             sessionKey = sessions[0].session_id
           }
 
-          const messages = await getVibeSessionMessages(
-            request.headers,
-            sessionKey,
-            limit,
-          )
+          let messages
+          try {
+            messages = await getVibeSessionMessages(request.headers, sessionKey, limit)
+          } catch (error) {
+            if (isVibeSessionNotFoundError(error)) {
+              return json({ sessionKey: 'new', sessionId: 'new', messages: [] })
+            }
+            throw error
+          }
           const boundedMessages = limit > 0 ? messages.slice(-limit) : messages
 
           return json({

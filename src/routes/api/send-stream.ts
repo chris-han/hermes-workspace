@@ -5,6 +5,7 @@ import { requireJsonContentType } from '../../server/rate-limit'
 import { resolveSessionKey } from '../../server/session-utils'
 import {
   createVibeSession,
+  isVibeSessionNotFoundError,
   openVibeSessionEvents,
   sendVibeSessionMessage,
 } from '../../server/vibe-session-api'
@@ -100,11 +101,25 @@ export const Route = createFileRoute('/api/send-stream')({
             sessionKey = session.session_id
           }
 
-          const sendResult = await sendVibeSessionMessage(
-            request.headers,
-            sessionKey,
-            message,
-          )
+          let sendResult
+          try {
+            sendResult = await sendVibeSessionMessage(
+              request.headers,
+              sessionKey,
+              message,
+            )
+          } catch (error) {
+            if (!isVibeSessionNotFoundError(error)) {
+              throw error
+            }
+            const session = await createVibeSession(request.headers)
+            sessionKey = session.session_id
+            sendResult = await sendVibeSessionMessage(
+              request.headers,
+              sessionKey,
+              message,
+            )
+          }
           const runId = sendResult.attempt_id || sendResult.message_id
 
           const encoder = new TextEncoder()

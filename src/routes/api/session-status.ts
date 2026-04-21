@@ -5,8 +5,23 @@ import { isAuthenticated } from '@/server/auth-middleware'
 import { isSyntheticSessionKey } from '../../server/session-utils'
 import {
   getVibeSession,
+  isVibeSessionNotFoundError,
   listVibeSessions,
 } from '../../server/vibe-session-api'
+
+function buildIdlePayload() {
+  return {
+    status: 'idle',
+    sessionKey: 'new',
+    sessionLabel: '',
+    model: '',
+    modelProvider: '',
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+    sessions: [],
+  }
+}
 
 export const Route = createFileRoute('/api/session-status')({
   server: {
@@ -27,17 +42,7 @@ export const Route = createFileRoute('/api/session-status')({
           if (sessionKey === 'new') {
             return json({
               ok: true,
-              payload: {
-                status: 'idle',
-                sessionKey: 'new',
-                sessionLabel: '',
-                model: '',
-                modelProvider: '',
-                inputTokens: 0,
-                outputTokens: 0,
-                totalTokens: 0,
-                sessions: [],
-              },
+              payload: buildIdlePayload(),
             })
           }
 
@@ -46,23 +51,24 @@ export const Route = createFileRoute('/api/session-status')({
             if (sessions.length === 0) {
               return json({
                 ok: true,
-                payload: {
-                  status: 'idle',
-                  sessionKey: 'new',
-                  sessionLabel: '',
-                  model: '',
-                  modelProvider: '',
-                  inputTokens: 0,
-                  outputTokens: 0,
-                  totalTokens: 0,
-                  sessions: [],
-                },
+                payload: buildIdlePayload(),
               })
             }
             sessionKey = sessions[0].session_id
           }
 
-          const session = await getVibeSession(request.headers, sessionKey)
+          let session
+          try {
+            session = await getVibeSession(request.headers, sessionKey)
+          } catch (error) {
+            if (isVibeSessionNotFoundError(error)) {
+              return json({
+                ok: true,
+                payload: buildIdlePayload(),
+              })
+            }
+            throw error
+          }
           const updatedAt =
             (session.updated_at ? Date.parse(session.updated_at) : undefined) ??
             (session.created_at ? Date.parse(session.created_at) : undefined) ??

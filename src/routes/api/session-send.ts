@@ -5,6 +5,7 @@ import { isAuthenticated } from '../../server/auth-middleware'
 import { requireJsonContentType } from '../../server/rate-limit'
 import {
   createVibeSession,
+  isVibeSessionNotFoundError,
   sendVibeSessionMessage,
 } from '../../server/vibe-session-api'
 
@@ -39,7 +40,17 @@ export const Route = createFileRoute('/api/session-send')({
             sessionKey = session.session_id
           }
 
-          const result = await sendVibeSessionMessage(request.headers, sessionKey, message)
+          let result
+          try {
+            result = await sendVibeSessionMessage(request.headers, sessionKey, message)
+          } catch (error) {
+            if (!isVibeSessionNotFoundError(error)) {
+              throw error
+            }
+            const session = await createVibeSession(request.headers)
+            sessionKey = session.session_id
+            result = await sendVibeSessionMessage(request.headers, sessionKey, message)
+          }
           return json({
             ok: true,
             sessionKey,

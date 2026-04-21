@@ -5,6 +5,18 @@ import {
 
 const AUTH_COOKIE_NAMES = ['vt_session']
 
+export class VibeSessionApiError extends Error {
+  status: number
+  path: string
+
+  constructor(path: string, status: number, message: string) {
+    super(`Vibe sessions ${path}: ${message}`)
+    this.name = 'VibeSessionApiError'
+    this.status = status
+    this.path = path
+  }
+}
+
 export type VibeSession = {
   session_id: string
   title?: string
@@ -65,9 +77,19 @@ async function vibeJson<T>(
     headers,
   })
   if (!response.ok) {
-    throw new Error(`Vibe sessions ${path}: ${await readError(response)}`)
+    throw new VibeSessionApiError(path, response.status, await readError(response))
   }
   return response.json() as Promise<T>
+}
+
+export function isVibeSessionNotFoundError(error: unknown): boolean {
+  if (error instanceof VibeSessionApiError) {
+    return error.status === 404
+  }
+  if (!(error instanceof Error)) {
+    return false
+  }
+  return /\bnot found\b/i.test(error.message)
 }
 
 function toMillis(value: string | undefined): number | undefined {
@@ -239,7 +261,7 @@ export async function openVibeSessionEvents(
     signal: options?.signal,
   })
   if (!response.ok) {
-    throw new Error(`Vibe sessions ${path}: ${await readError(response)}`)
+    throw new VibeSessionApiError(path, response.status, await readError(response))
   }
   return response
 }

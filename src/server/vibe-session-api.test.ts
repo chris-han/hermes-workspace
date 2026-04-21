@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  VibeSessionApiError,
+  isVibeSessionNotFoundError,
   toVibeChatMessage,
   toVibeSessionSummary,
 } from './vibe-session-api'
@@ -48,5 +50,27 @@ describe('toVibeChatMessage', () => {
       __historyIndex: 3,
     })
     expect(message.content).toEqual([{ type: 'text', text: 'Hello' }])
+  })
+})
+
+describe('isVibeSessionNotFoundError', () => {
+  it('matches typed 404 errors from the agent session API', () => {
+    const error = new VibeSessionApiError(
+      '/sessions/sess-123/messages',
+      404,
+      'Session sess-123 not found',
+    )
+
+    expect(isVibeSessionNotFoundError(error)).toBe(true)
+  })
+
+  it('ignores non-404 API errors', () => {
+    const error = new VibeSessionApiError(
+      '/sessions/sess-123/messages',
+      500,
+      'Internal server error',
+    )
+
+    expect(isVibeSessionNotFoundError(error)).toBe(false)
   })
 })

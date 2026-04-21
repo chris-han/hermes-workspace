@@ -55,7 +55,9 @@ export const Route = createFileRoute('/api/connection-status')({
 
         const caps = await ensureGatewayProbed()
         const gatewayMode = getGatewayMode()
-        const configPath = await resolveHermesConfigPathFromBackend()
+        const configPath = await resolveHermesConfigPathFromBackend(
+          request.headers,
+        )
         const activeModel = readActiveModel(configPath)
         const modelConfigured = Boolean(activeModel)
 

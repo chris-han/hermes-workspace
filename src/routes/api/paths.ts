@@ -11,7 +11,7 @@ export const Route = createFileRoute('/api/paths')({
         if (!isAuthenticated(request)) {
           return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
         }
-        const hermesHome = await resolveHermesHomeFromBackend()
+        const hermesHome = await resolveHermesHomeFromBackend(request.headers)
         return json({
           ok: true,
           hermesHome,

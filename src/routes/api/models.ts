@@ -140,8 +140,13 @@ export const Route = createFileRoute('/api/models')({
         await ensureGatewayProbed()
 
         try {
-          const modelsPath = await resolveHermesPathFromBackend('models.json')
-          const configPath = await resolveHermesConfigPathFromBackend()
+          const modelsPath = await resolveHermesPathFromBackend(
+            request.headers,
+            'models.json',
+          )
+          const configPath = await resolveHermesConfigPathFromBackend(
+            request.headers,
+          )
 
           // Primary: read user-configured models from the active Hermes home.
           let models = readHermesModelsJson(modelsPath)

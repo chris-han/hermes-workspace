@@ -227,6 +227,12 @@ export async function dashboardFetch(
       !requestPath.endsWith('/api/dashboard/plugins') &&
       !requestPath.endsWith('/api/dashboard/plugins/rescan')
 
+    if (isProtected && !activeWorkspaceHermesHome) {
+      throw new Error(
+        `Workspace Hermes home is required for dashboard request: ${path}`,
+      )
+    }
+
     if (isProtected && !headers.has('Authorization')) {
       const auth = await dashboardAuthHeaders({ force: forceToken })
       for (const [key, value] of Object.entries(auth)) {

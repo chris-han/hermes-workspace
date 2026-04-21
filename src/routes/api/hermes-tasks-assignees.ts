@@ -74,8 +74,12 @@ export const Route = createFileRoute('/api/hermes-tasks-assignees')({
         }
 
         // Fall back: derive from profile directories + config
-        const configPath = await resolveHermesConfigPathFromBackend()
-        const profilesPath = await resolveHermesProfilesPathFromBackend()
+        const configPath = await resolveHermesConfigPathFromBackend(
+          request.headers,
+        )
+        const profilesPath = await resolveHermesProfilesPathFromBackend(
+          request.headers,
+        )
         const config = readConfig(configPath)
         const tasksConfig = (config.tasks ?? {}) as Record<string, unknown>
         const humanReviewer = (tasksConfig.human_reviewer as string) || null

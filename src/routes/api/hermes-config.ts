@@ -150,9 +150,12 @@ async function checkAuthStore(providerId: string): Promise<{
   hasToken: boolean
   source: string
   maskedKey?: string
-}> {
-  const hermesAuthStorePath =
-    await resolveHermesPathFromBackend('auth-profiles.json')
+}, requestHeaders?: HeadersInit | Headers
+> {
+  const hermesAuthStorePath = await resolveHermesPathFromBackend(
+    requestHeaders,
+    'auth-profiles.json',
+  )
   // Check Hermes auth store
   for (const storePath of [
     hermesAuthStorePath,
@@ -193,7 +196,7 @@ export const Route = createFileRoute('/api/hermes-config')({
         const authResult = isAuthenticated(request) as AuthResult
         if (authResult !== true) return authResult
         await ensureGatewayProbed()
-        const hermesHome = await resolveHermesHomeFromBackend()
+        const hermesHome = await resolveHermesHomeFromBackend(request.headers)
         if (!getCapabilities().config) {
           return Response.json({
             ...createCapabilityUnavailablePayload('config'),
@@ -205,8 +208,10 @@ export const Route = createFileRoute('/api/hermes-config')({
           })
         }
 
-        const configPath = await resolveHermesConfigPathFromBackend()
-        const envPath = await resolveHermesEnvPathFromBackend()
+        const configPath = await resolveHermesConfigPathFromBackend(
+          request.headers,
+        )
+        const envPath = await resolveHermesEnvPathFromBackend(request.headers)
 
         const config = readConfig(configPath)
         const env = readEnv(envPath)
@@ -216,7 +221,10 @@ export const Route = createFileRoute('/api/hermes-config')({
           PROVIDERS.map(async (p) => {
             const hasEnvKey =
               p.envKeys.length === 0 || p.envKeys.some((k) => !!env[k])
-            const authStoreCheck = await checkAuthStore(p.id)
+            const authStoreCheck = await checkAuthStore(
+              p.id,
+              request.headers,
+            )
             const hasKey =
               hasEnvKey || authStoreCheck.hasToken || p.authType === 'none'
             const maskedKeys: Record<string, string> = {}
@@ -280,9 +288,11 @@ export const Route = createFileRoute('/api/hermes-config')({
         }
 
         const body = (await request.json()) as Record<string, unknown>
-        const hermesHome = await resolveHermesHomeFromBackend()
-        const configPath = await resolveHermesConfigPathFromBackend()
-        const envPath = await resolveHermesEnvPathFromBackend()
+        const hermesHome = await resolveHermesHomeFromBackend(request.headers)
+        const configPath = await resolveHermesConfigPathFromBackend(
+          request.headers,
+        )
+        const envPath = await resolveHermesEnvPathFromBackend(request.headers)
 
         // Handle config updates
         if (body.config && typeof body.config === 'object') {

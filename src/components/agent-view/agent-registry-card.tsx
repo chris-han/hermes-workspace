@@ -257,7 +257,7 @@ export function AgentRegistryCard({
               void onSpawn(agent)
             }}
             disabled={isSpawning}
-            className="rounded-xl bg-white/60 dark:bg-neutral-900/30 backdrop-blur px-2 py-2 text-[11px] font-medium text-neutral-800 dark:text-neutral-100 shadow-sm border border-white/30 dark:border-white/10 active:scale-[0.97] transition disabled:opacity-60"
+            className="rounded-xl bg-white/60 dark:bg-neutral-900/30 backdrop-blur px-2 py-2 text-[11px] font-medium text-neutral-800 dark:text-neutral-100 shadow-sm border border-border active:scale-[0.97] transition disabled:opacity-60"
           >
             {isSpawning ? '...' : 'Spawn'}
           </button>

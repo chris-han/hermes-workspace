@@ -4,12 +4,12 @@ import { isAuthenticated } from '../../server/auth-middleware'
 import {
   HERMES_API,
   HERMES_DASHBOARD_URL,
-  getConfiguredGatewayMode,
-  getGatewayModeLabel,
-  getGatewayModeSource,
   ensureGatewayProbed,
   getCapabilities,
+  getConfiguredGatewayMode,
   getGatewayMode,
+  getGatewayModeLabel,
+  getGatewayModeSource,
 } from '../../server/gateway-capabilities'
 
 export const Route = createFileRoute('/api/gateway-status')({

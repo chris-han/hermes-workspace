@@ -23,6 +23,7 @@ import type { AccentColor, SettingsThemeMode } from '@/hooks/use-settings'
 import type { LoaderStyle } from '@/hooks/use-chat-settings'
 import type { BrailleSpinnerPreset } from '@/components/ui/braille-spinner'
 import type { ThemeId } from '@/lib/theme'
+import type {LocaleId} from '@/lib/i18n';
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { applyTheme, useSettings } from '@/hooks/use-settings'
@@ -55,6 +56,10 @@ import {
   DialogRoot,
   DialogTitle,
 } from '@/components/ui/dialog'
+
+// ── Language ────────────────────────────────────────────────────────────
+
+import { LOCALE_LABELS,  getLocale, setLocale } from '@/lib/i18n'
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -186,7 +191,12 @@ const PROVIDER_CARDS: Array<{
     id: 'nous',
     name: 'Nous Portal',
     logo: '/providers/nous.png',
-    models: ['xiaomi/mimo-v2-pro', 'xiaomi/mimo-v2-omni', 'hermes-3-llama-3.1-405b', 'hermes-3-llama-3.1-70b'],
+    models: [
+      'xiaomi/mimo-v2-pro',
+      'xiaomi/mimo-v2-omni',
+      'hermes-3-llama-3.1-405b',
+      'hermes-3-llama-3.1-70b',
+    ],
     authType: 'oauth',
   },
   {
@@ -254,39 +264,51 @@ function HermesContent() {
   const [memEnabled, setMemEnabled] = useState(true)
   const [userProfileEnabled, setUserProfileEnabled] = useState(true)
   const [localDiscovery, setLocalDiscovery] = useState<{
-    providers: Array<{ id: string; name: string; online: boolean; modelCount: number; configured: boolean; needsRestart: boolean }>
+    providers: Array<{
+      id: string
+      name: string
+      online: boolean
+      modelCount: number
+      configured: boolean
+      needsRestart: boolean
+    }>
     models: Array<{ id: string; name: string; provider: string }>
   } | null>(null)
 
-  const fetchModelsForProvider = useCallback((providerId: string) => {
-    // For local providers, prefer auto-discovered models first
-    if (localDiscovery) {
-      const discovered = localDiscovery.models
-        .filter((m) => m.provider === providerId)
-        .map((m) => m.id)
-      if (discovered.length > 0) {
-        setAvailableModels(discovered)
-        return
+  const fetchModelsForProvider = useCallback(
+    (providerId: string) => {
+      // For local providers, prefer auto-discovered models first
+      if (localDiscovery) {
+        const discovered = localDiscovery.models
+          .filter((m) => m.provider === providerId)
+          .map((m) => m.id)
+        if (discovered.length > 0) {
+          setAvailableModels(discovered)
+          return
+        }
       }
-    }
-    fetch(
-      `/api/hermes-proxy/api/available-models?provider=${encodeURIComponent(providerId)}`,
-    )
-      .then((r) => r.json())
-      .then((d: { models?: Array<{ id: string }> }) => {
-        setAvailableModels((d.models || []).map((m) => m.id))
-      })
-      .catch(() => {
-        // Fall back to hardcoded
-        const card = PROVIDER_CARDS.find((p) => p.id === providerId)
-        setAvailableModels(card?.models || [])
-      })
-  }, [localDiscovery])
+      fetch(
+        `/api/hermes-proxy/api/available-models?provider=${encodeURIComponent(providerId)}`,
+      )
+        .then((r) => r.json())
+        .then((d: { models?: Array<{ id: string }> }) => {
+          setAvailableModels((d.models || []).map((m) => m.id))
+        })
+        .catch(() => {
+          // Fall back to hardcoded
+          const card = PROVIDER_CARDS.find((p) => p.id === providerId)
+          setAvailableModels(card?.models || [])
+        })
+    },
+    [localDiscovery],
+  )
 
   useEffect(() => {
     fetch('/api/local-providers')
       .then((r) => r.json())
-      .then((d: any) => { if (d.ok) setLocalDiscovery(d) })
+      .then((d: any) => {
+        if (d.ok) setLocalDiscovery(d)
+      })
       .catch(() => {})
   }, [])
 
@@ -434,7 +456,9 @@ function HermesContent() {
                 <span className="text-xs font-semibold mt-1">{p.name}</span>
                 <span className="text-[9px]" style={mutedStyle}>
                   {(() => {
-                    const disc = localDiscovery?.providers.find((lp) => lp.id === p.id)
+                    const disc = localDiscovery?.providers.find(
+                      (lp) => lp.id === p.id,
+                    )
                     if (disc?.online) return '🟢 Detected'
                     if (p.authType === 'oauth') return 'OAuth'
                     if (p.authType === 'none') return 'Local'
@@ -464,7 +488,10 @@ function HermesContent() {
                 .filter((m) => m.provider === activeProvider)
                 .map((m) => m.id)
               if (discovered && discovered.length > 0) return discovered
-              return PROVIDER_CARDS.find((p) => p.id === activeProvider)?.models || []
+              return (
+                PROVIDER_CARDS.find((p) => p.id === activeProvider)?.models ||
+                []
+              )
             })().map((model) => (
               <button
                 key={model}
@@ -486,11 +513,17 @@ function HermesContent() {
       )}
 
       {(() => {
-        const disc = localDiscovery?.providers.find((lp) => lp.id === activeProvider)
+        const disc = localDiscovery?.providers.find(
+          (lp) => lp.id === activeProvider,
+        )
         if (!disc || !disc.needsRestart) return null
         return (
           <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-200">
-            ⚠️ Gateway restart needed to use {disc.name}. Run <code className="rounded bg-black/30 px-1">hermes gateway restart</code> in your terminal.
+            ⚠️ Gateway restart needed to use {disc.name}. Run{' '}
+            <code className="rounded bg-black/30 px-1">
+              hermes gateway restart
+            </code>{' '}
+            in your terminal.
           </div>
         )
       })()}
@@ -675,7 +708,9 @@ function HermesContent() {
               '—'}
           </span>
           <span style={mutedStyle}>Config</span>
-          <span className="font-mono font-medium">active Hermes config.yaml</span>
+          <span className="font-mono font-medium">
+            active Hermes config.yaml
+          </span>
         </div>
       </div>
     </div>
@@ -936,69 +971,69 @@ const ENTERPRISE_THEMES = THEMES.map((theme) => ({
             accent: '#2557B7',
             text: '#16315F',
           }
-      : theme.id === 'hermes-official'
-      ? {
-          bg: '#0A0E1A',
-          panel: '#11182A',
-          border: '#24304A',
-          accent: '#6366F1',
-          text: '#E6EAF2',
-        }
-      : theme.id === 'hermes-official-light'
-        ? {
-            bg: '#F7F7F1',
-            panel: '#FAFBF6',
-            border: '#CDD5DA',
-            accent: '#2557B7',
-            text: '#16315F',
-          }
-        : theme.id === 'hermes-classic'
+        : theme.id === 'hermes-official'
           ? {
-              bg: '#0d0f12',
-              panel: '#1a1f26',
-              border: '#2a313b',
-              accent: '#b98a44',
-              text: '#eceff4',
+              bg: '#0A0E1A',
+              panel: '#11182A',
+              border: '#24304A',
+              accent: '#6366F1',
+              text: '#E6EAF2',
             }
-          : theme.id === 'hermes-classic-light'
+          : theme.id === 'hermes-official-light'
             ? {
-                bg: '#F5F2ED',
-                panel: '#FCFAF7',
-                border: '#D8CCBC',
-                accent: '#b98a44',
-                text: '#1a1f26',
+                bg: '#F7F7F1',
+                panel: '#FAFBF6',
+                border: '#CDD5DA',
+                accent: '#2557B7',
+                text: '#16315F',
               }
-            : theme.id === 'hermes-slate'
+            : theme.id === 'hermes-classic'
               ? {
-                  bg: '#0d1117',
-                  panel: '#1c2128',
-                  border: '#30363d',
-                  accent: '#7eb8f6',
-                  text: '#c9d1d9',
+                  bg: '#0d0f12',
+                  panel: '#1a1f26',
+                  border: '#2a313b',
+                  accent: '#b98a44',
+                  text: '#eceff4',
                 }
-              : theme.id === 'semantier'
+              : theme.id === 'hermes-classic-light'
                 ? {
-                    bg: '#0e0f0c',
-                    panel: '#181916',
-                    border: '#2a2b28',
-                    accent: '#9fe870',
-                    text: '#f0f0ec',
+                    bg: '#F5F2ED',
+                    panel: '#FCFAF7',
+                    border: '#D8CCBC',
+                    accent: '#b98a44',
+                    text: '#1a1f26',
                   }
-                : theme.id === 'semantier-light'
+                : theme.id === 'hermes-slate'
                   ? {
-                      bg: '#f5f5f0',
-                      panel: '#ffffff',
-                      border: '#d5d6d1',
-                      accent: '#163300',
-                      text: '#0e0f0c',
+                      bg: '#0d1117',
+                      panel: '#1c2128',
+                      border: '#30363d',
+                      accent: '#7eb8f6',
+                      text: '#c9d1d9',
                     }
-                  : {
-                      bg: '#F6F8FA',
-                      panel: '#FFFFFF',
-                      border: '#D0D7DE',
-                      accent: '#3b82f6',
-                      text: '#24292f',
-                    },
+                  : theme.id === 'semantier'
+                    ? {
+                        bg: '#0e0f0c',
+                        panel: '#181916',
+                        border: '#2a2b28',
+                        accent: '#9fe870',
+                        text: '#f0f0ec',
+                      }
+                    : theme.id === 'semantier-light'
+                      ? {
+                          bg: '#f5f5f0',
+                          panel: '#ffffff',
+                          border: '#d5d6d1',
+                          accent: '#163300',
+                          text: '#0e0f0c',
+                        }
+                      : {
+                          bg: '#F6F8FA',
+                          panel: '#FFFFFF',
+                          border: '#D0D7DE',
+                          accent: '#3b82f6',
+                          text: '#24292f',
+                        },
 }))
 
 function ThemeSwatch({
@@ -1855,10 +1890,6 @@ function DisplayContent() {
   )
 }
 
-// ── Language ────────────────────────────────────────────────────────────
-
-import { getLocale, setLocale, LOCALE_LABELS, type LocaleId } from '@/lib/i18n'
-
 function LanguageContent() {
   return (
     <div className="space-y-4">
@@ -1866,7 +1897,10 @@ function LanguageContent() {
         title="Language"
         description="Choose the display language for the workspace UI."
       />
-      <Row label="Interface Language" description="Translates navigation, labels, and buttons.">
+      <Row
+        label="Interface Language"
+        description="Translates navigation, labels, and buttons."
+      >
         <select
           value={getLocale()}
           onChange={(e) => {
@@ -1875,9 +1909,13 @@ function LanguageContent() {
           }}
           className="h-9 w-full rounded-lg border border-primary-200 dark:border-neutral-700 bg-primary-50 dark:bg-neutral-800 px-3 text-sm text-primary-900 dark:text-neutral-100 outline-none md:max-w-xs"
         >
-          {(Object.entries(LOCALE_LABELS) as Array<[LocaleId, string]>).map(([id, label]) => (
-            <option key={id} value={id}>{label}</option>
-          ))}
+          {(Object.entries(LOCALE_LABELS) as Array<[LocaleId, string]>).map(
+            ([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ),
+          )}
         </select>
       </Row>
     </div>

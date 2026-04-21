@@ -20,6 +20,12 @@ import {
   useRef,
   useState,
 } from 'react'
+import { setLocalModelOverride } from '../chat-screen'
+import {
+  MODEL_SWITCH_BLOCKED_TOAST,
+  getZeroForkModelInfoFlags,
+  shouldBlockZeroForkModelSwitch,
+} from './chat-composer-model-switch'
 import type { CSSProperties, Ref } from 'react'
 
 import type { ModelCatalogEntry, ModelSwitchResponse } from '@/lib/model-types'
@@ -44,11 +50,7 @@ import { cn } from '@/lib/utils'
 import { useVoiceInput } from '@/hooks/use-voice-input'
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder'
 import { toast } from '@/components/ui/toast'
-import {
-  getZeroForkModelInfoFlags,
-  MODEL_SWITCH_BLOCKED_TOAST,
-  shouldBlockZeroForkModelSwitch,
-} from './chat-composer-model-switch'
+
 
 type ChatComposerAttachment = {
   id: string
@@ -264,8 +266,6 @@ async function fetchModelsForProvider(
     provider: normalizedProvider,
   }))
 }
-
-import { setLocalModelOverride } from '../chat-screen'
 
 const LOCAL_PROVIDERS_SET = new Set(['ollama', 'atomic-chat'])
 
@@ -2218,8 +2218,9 @@ function ChatComposerComponent({
                             const LOCAL_PROVIDER_IDS = ['ollama', 'atomic-chat']
                             const isLocal =
                               (typeof m !== 'string' &&
-                              (m as Record<string, unknown>).description ===
-                                'local') || LOCAL_PROVIDER_IDS.includes(mProvider)
+                                (m as Record<string, unknown>).description ===
+                                  'local') ||
+                              LOCAL_PROVIDER_IDS.includes(mProvider)
                             return {
                               id: mId,
                               name: mName,

@@ -33,7 +33,9 @@ export const Route = createFileRoute('/api/terminal-stream')({
           string,
           unknown
         >
-        const activeWorkspace = await resolveActiveWorkspaceRoot(request.headers)
+        const activeWorkspace = await resolveActiveWorkspaceRoot(
+          request.headers,
+        )
         const cwd =
           typeof body.cwd === 'string' && body.cwd.trim().length > 0
             ? body.cwd.trim()

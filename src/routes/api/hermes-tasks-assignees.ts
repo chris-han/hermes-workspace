@@ -5,12 +5,12 @@
  * Falls back to profile directory listing if the gateway doesn't have
  * a /api/tasks/assignees endpoint.
  */
-import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
-import { BEARER_TOKEN, HERMES_API } from '../../server/gateway-capabilities'
 import fs from 'node:fs'
 import path from 'node:path'
+import { createFileRoute } from '@tanstack/react-router'
 import YAML from 'yaml'
+import { isAuthenticated } from '../../server/auth-middleware'
+import { BEARER_TOKEN, HERMES_API } from '../../server/gateway-capabilities'
 import {
   resolveHermesConfigPathFromBackend,
   resolveHermesProfilesPathFromBackend,
@@ -18,15 +18,20 @@ import {
 
 function readConfig(configPath: string): Record<string, unknown> {
   try {
-    return (YAML.parse(fs.readFileSync(configPath, 'utf-8')) as Record<string, unknown>) ?? {}
+    return (
+      (YAML.parse(fs.readFileSync(configPath, 'utf-8')) as Record<
+        string,
+        unknown
+      >) ?? {}
+    )
   } catch {
     return {}
   }
 }
 
-function getProfileNames(profilesPath: string): string[] {
+function getProfileNames(profilesPath: string): Array<string> {
   try {
-    return fs.readdirSync(profilesPath).filter(name => {
+    return fs.readdirSync(profilesPath).filter((name) => {
       try {
         return fs.statSync(path.join(profilesPath, name)).isDirectory()
       } catch {
@@ -47,7 +52,9 @@ export const Route = createFileRoute('/api/hermes-tasks-assignees')({
     handlers: {
       GET: async ({ request }) => {
         if (!isAuthenticated(request)) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+          })
         }
 
         // Try gateway first — it may have a richer endpoint
@@ -74,15 +81,23 @@ export const Route = createFileRoute('/api/hermes-tasks-assignees')({
         const humanReviewer = (tasksConfig.human_reviewer as string) || null
         const profiles = getProfileNames(profilesPath)
 
-        const assignees = profiles.map(id => ({ id, label: id, isHuman: id === humanReviewer }))
+        const assignees = profiles.map((id) => ({
+          id,
+          label: id,
+          isHuman: id === humanReviewer,
+        }))
         if (humanReviewer && !profiles.includes(humanReviewer)) {
-          assignees.unshift({ id: humanReviewer, label: humanReviewer, isHuman: true })
+          assignees.unshift({
+            id: humanReviewer,
+            label: humanReviewer,
+            isHuman: true,
+          })
         }
 
-        return new Response(
-          JSON.stringify({ assignees, humanReviewer }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        )
+        return new Response(JSON.stringify({ assignees, humanReviewer }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
       },
     },
   },

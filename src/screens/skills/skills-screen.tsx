@@ -270,8 +270,7 @@ export function SkillsScreen() {
           icon:
             skill.source === 'github'
               ? '🐙'
-              : skill.source === 'official' ||
-                  skill.trust_level === 'builtin'
+              : skill.source === 'official' || skill.trust_level === 'builtin'
                 ? '✅'
                 : skill.source === 'skills-sh'
                   ? '📦'
@@ -288,7 +287,10 @@ export function SkillsScreen() {
             .filter(Boolean)
             .join('\n\n'),
           fileCount: 0,
-          sourcePath: skill.identifier || (typeof homepage === 'string' ? homepage : '') || skill.source,
+          sourcePath:
+            skill.identifier ||
+            (typeof homepage === 'string' ? homepage : '') ||
+            skill.source,
           installed: skill.installed,
           enabled: skill.installed,
           featuredGroup: undefined,
@@ -480,7 +482,6 @@ export function SkillsScreen() {
                 >
                   Marketplace
                 </TabsTab>
-
               </TabsList>
 
               {tab !== 'marketplace' ? (

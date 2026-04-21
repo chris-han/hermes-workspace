@@ -1,4 +1,7 @@
-import { SEMANTIER_AGENT_API, semantierAgentAuthHeaders } from './semantier-agent-api'
+import {
+  SEMANTIER_AGENT_API,
+  semantierAgentAuthHeaders,
+} from './semantier-agent-api'
 import { resolveActiveWorkspaceRoot } from './workspace-root'
 
 /**
@@ -61,8 +64,7 @@ export type SemantierCapabilities = {
 }
 
 /** Full capabilities — backward compat with existing code */
-export type GatewayCapabilities =
-  CoreCapabilities &
+export type GatewayCapabilities = CoreCapabilities &
   EnhancedCapabilities &
   DashboardCapabilities &
   SemantierCapabilities
@@ -122,7 +124,9 @@ let lastLoggedSummary = ''
 let dashboardTokenPromise: Promise<string> | null = null
 let dashboardTokenCache = ''
 
-function normalizeGatewayModeOverride(value: string | undefined): GatewayMode | null {
+function normalizeGatewayModeOverride(
+  value: string | undefined,
+): GatewayMode | null {
   const normalized = value?.trim().toLowerCase()
   if (!normalized) return null
   if (normalized === 'semantier-native') return 'semantier-unicell'
@@ -206,7 +210,9 @@ export async function dashboardFetch(
   const method = (init.method || 'GET').toUpperCase()
   let activeWorkspaceHermesHome: string | null = null
   if (options?.requestHeaders) {
-    const activeWorkspace = await resolveActiveWorkspaceRoot(options.requestHeaders)
+    const activeWorkspace = await resolveActiveWorkspaceRoot(
+      options.requestHeaders,
+    )
     activeWorkspaceHermesHome = `${activeWorkspace.path}/.hermes`
   }
   const doFetch = async (forceToken = false) => {
@@ -387,7 +393,9 @@ async function autoDetectGatewayUrl(): Promise<void> {
     }
   }
 
-  console.warn('[gateway] Could not reach Hermes gateway on 8645, 8642, or 8643')
+  console.warn(
+    '[gateway] Could not reach Hermes gateway on 8645, 8642, or 8643',
+  )
 }
 
 async function autoDetectDashboardUrl(): Promise<void> {
@@ -544,7 +552,9 @@ export function getChatMode(): ChatMode {
 
 export function getConnectionStatus(): ConnectionStatus {
   if (capabilities.semantier.available) {
-    return capabilities.health || capabilities.chatCompletions ? 'enhanced' : 'partial'
+    return capabilities.health || capabilities.chatCompletions
+      ? 'enhanced'
+      : 'partial'
   }
   if (!capabilities.health && !capabilities.chatCompletions) {
     return capabilities.dashboard.available ? 'partial' : 'disconnected'
@@ -559,13 +569,25 @@ export function getConnectionStatus(): ConnectionStatus {
 }
 
 export function isHermesConnected(): boolean {
-  return capabilities.health || capabilities.dashboard.available || capabilities.semantier.available
+  return (
+    capabilities.health ||
+    capabilities.dashboard.available ||
+    capabilities.semantier.available
+  )
 }
 
 void ensureGatewayProbed()
 
 export function deriveGatewayModeFromCapabilities(
-  next: Pick<GatewayCapabilities, 'dashboard' | 'semantier' | 'chatCompletions' | 'sessions' | 'enhancedChat' | 'health'>,
+  next: Pick<
+    GatewayCapabilities,
+    | 'dashboard'
+    | 'semantier'
+    | 'chatCompletions'
+    | 'sessions'
+    | 'enhancedChat'
+    | 'health'
+  >,
 ): GatewayMode {
   if (next.semantier.available) {
     return 'semantier-unicell'

@@ -151,9 +151,8 @@ async function checkAuthStore(providerId: string): Promise<{
   source: string
   maskedKey?: string
 }> {
-  const hermesAuthStorePath = await resolveHermesPathFromBackend(
-    'auth-profiles.json',
-  )
+  const hermesAuthStorePath =
+    await resolveHermesPathFromBackend('auth-profiles.json')
   // Check Hermes auth store
   for (const storePath of [
     hermesAuthStorePath,
@@ -213,30 +212,32 @@ export const Route = createFileRoute('/api/hermes-config')({
         const env = readEnv(envPath)
 
         // Build provider status
-        const providerStatus = await Promise.all(PROVIDERS.map(async (p) => {
-          const hasEnvKey =
-            p.envKeys.length === 0 || p.envKeys.some((k) => !!env[k])
-          const authStoreCheck = await checkAuthStore(p.id)
-          const hasKey =
-            hasEnvKey || authStoreCheck.hasToken || p.authType === 'none'
-          const maskedKeys: Record<string, string> = {}
-          for (const k of p.envKeys) {
-            if (env[k]) maskedKeys[k] = maskKey(env[k])
-          }
-          if (authStoreCheck.hasToken && authStoreCheck.maskedKey) {
-            maskedKeys['auth-store'] = authStoreCheck.maskedKey
-          }
-          return {
-            ...p,
-            configured: hasKey,
-            authSource: authStoreCheck.hasToken
-              ? authStoreCheck.source
-              : hasEnvKey
-                ? 'env'
-                : 'none',
-            maskedKeys,
-          }
-        }))
+        const providerStatus = await Promise.all(
+          PROVIDERS.map(async (p) => {
+            const hasEnvKey =
+              p.envKeys.length === 0 || p.envKeys.some((k) => !!env[k])
+            const authStoreCheck = await checkAuthStore(p.id)
+            const hasKey =
+              hasEnvKey || authStoreCheck.hasToken || p.authType === 'none'
+            const maskedKeys: Record<string, string> = {}
+            for (const k of p.envKeys) {
+              if (env[k]) maskedKeys[k] = maskKey(env[k])
+            }
+            if (authStoreCheck.hasToken && authStoreCheck.maskedKey) {
+              maskedKeys['auth-store'] = authStoreCheck.maskedKey
+            }
+            return {
+              ...p,
+              configured: hasKey,
+              authSource: authStoreCheck.hasToken
+                ? authStoreCheck.source
+                : hasEnvKey
+                  ? 'env'
+                  : 'none',
+              maskedKeys,
+            }
+          }),
+        )
 
         // Get active provider/model from config
         // Support both flat keys (model: "gpt-5.4", provider: "openai-codex")

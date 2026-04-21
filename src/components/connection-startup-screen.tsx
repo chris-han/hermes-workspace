@@ -218,8 +218,8 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
               Welcome! Let&apos;s connect your backend
             </p>
             <p className="mt-2 text-sm leading-6 text-white/60">
-              Semantier works with any OpenAI-compatible backend. Hermes
-              gateway APIs unlock enhanced features automatically when they are
+              Semantier works with any OpenAI-compatible backend. Hermes gateway
+              APIs unlock enhanced features automatically when they are
               available.
             </p>
 

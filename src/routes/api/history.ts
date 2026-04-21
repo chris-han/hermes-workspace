@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 
-import { isAuthenticated } from '@/server/auth-middleware'
 import { resolveSessionKey } from '../../server/session-utils'
 import {
   getSemantierSessionMessages,
@@ -9,6 +8,7 @@ import {
   listSemantierSessions,
   toSemantierChatMessage,
 } from '../../server/semantier-session-api'
+import { isAuthenticated } from '@/server/auth-middleware'
 
 export const Route = createFileRoute('/api/history')({
   server: {
@@ -43,7 +43,11 @@ export const Route = createFileRoute('/api/history')({
 
           let messages
           try {
-            messages = await getSemantierSessionMessages(request.headers, sessionKey, limit)
+            messages = await getSemantierSessionMessages(
+              request.headers,
+              sessionKey,
+              limit,
+            )
           } catch (error) {
             if (isSemantierSessionNotFoundError(error)) {
               return json({ sessionKey: 'new', sessionId: 'new', messages: [] })

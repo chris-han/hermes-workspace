@@ -21,8 +21,13 @@ export const Route = createFileRoute('/api/sessions/$sessionKey/active-run')({
         }
 
         try {
-          const activeWorkspace = await resolveActiveWorkspaceRoot(request.headers)
-          const run = await getActiveRunForSession(activeWorkspace.path, sessionKey)
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
+          const run = await getActiveRunForSession(
+            activeWorkspace.path,
+            sessionKey,
+          )
           return json({ ok: true, run })
         } catch (err) {
           return json(

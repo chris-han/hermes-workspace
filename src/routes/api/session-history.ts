@@ -1,13 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 
-import { isAuthenticated } from '@/server/auth-middleware'
 import { resolveSessionKey } from '../../server/session-utils'
 import {
   getSemantierSessionMessages,
   isSemantierSessionNotFoundError,
   toSemantierChatMessage,
 } from '../../server/semantier-session-api'
+import { isAuthenticated } from '@/server/auth-middleware'
 
 export const Route = createFileRoute('/api/session-history')({
   server: {
@@ -54,7 +54,9 @@ export const Route = createFileRoute('/api/session-history')({
           const trimmed = rows.slice(-limit)
           return json({
             ok: true,
-            messages: trimmed.map((row, index) => toSemantierChatMessage(row, index)),
+            messages: trimmed.map((row, index) =>
+              toSemantierChatMessage(row, index),
+            ),
             sessionKey: resolved.sessionKey,
             source: 'semantier',
           })
@@ -65,7 +67,9 @@ export const Route = createFileRoute('/api/session-history')({
               messages: [],
               sessionKey: key,
               error:
-                error instanceof Error ? error.message : 'Failed to load history',
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to load history',
             },
             { status: 500 },
           )

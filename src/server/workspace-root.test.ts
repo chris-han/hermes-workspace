@@ -27,16 +27,19 @@ describe('ensureWorkspacePathWithinRoot', () => {
 describe('toWorkspaceRelativePath', () => {
   it('returns an empty string for the workspace root itself', () => {
     expect(
-      toWorkspaceRelativePath('/repo/workspaces/public', '/repo/workspaces/public'),
+      toWorkspaceRelativePath(
+        '/repo/workspaces/public',
+        '/repo/workspaces/public',
+      ),
     ).toBe('')
   })
 })
 
 describe('workspace app state helpers', () => {
   it('places local workspace state under the active workspace root', () => {
-    expect(
-      resolveWorkspaceAppStateRoot('/repo/workspaces/public'),
-    ).toBe(path.resolve('/repo/workspaces/public/.hermes-workspace'))
+    expect(resolveWorkspaceAppStateRoot('/repo/workspaces/public')).toBe(
+      path.resolve('/repo/workspaces/public/.hermes-workspace'),
+    )
   })
 
   it('maps terminal home to the workspace root', () => {
@@ -77,7 +80,8 @@ describe('resolveActiveWorkspaceRoot', () => {
     globalThis.fetch = fetchMock as typeof fetch
 
     const result = await resolveActiveWorkspaceRoot({
-      cookie: 'hermes-auth=workspace-session; vt_session=semantier-user-session',
+      cookie:
+        'hermes-auth=workspace-session; vt_session=semantier-user-session',
     })
 
     expect(result.authenticated).toBe(true)
@@ -94,7 +98,9 @@ describe('resolveActiveWorkspaceRoot', () => {
   })
 
   it('falls back to the public workspace when the backend is unavailable', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('offline')) as typeof fetch
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(new Error('offline')) as typeof fetch
 
     const result = await resolveActiveWorkspaceRoot()
 

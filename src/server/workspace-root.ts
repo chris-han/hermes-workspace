@@ -30,8 +30,14 @@ export type ActiveWorkspaceRoot = {
   source: 'backend' | 'fallback'
 }
 
-let workspaceRootCache = new Map<string, { value: ActiveWorkspaceRoot; fetchedAt: number }>()
-let workspaceRootPromises = new Map<string, Promise<ActiveWorkspaceRoot | null>>()
+const workspaceRootCache = new Map<
+  string,
+  { value: ActiveWorkspaceRoot; fetchedAt: number }
+>()
+const workspaceRootPromises = new Map<
+  string,
+  Promise<ActiveWorkspaceRoot | null>
+>()
 
 function normalizeWorkspaceRoot(input: string): string {
   return path.resolve(input)
@@ -110,7 +116,10 @@ export function ensureWorkspacePathWithinRoot(
 }
 
 export function resolveWorkspaceAppStateRoot(workspaceRoot: string): string {
-  return path.join(normalizeWorkspaceRoot(workspaceRoot), WORKSPACE_APP_STATE_DIRNAME)
+  return path.join(
+    normalizeWorkspaceRoot(workspaceRoot),
+    WORKSPACE_APP_STATE_DIRNAME,
+  )
 }
 
 export function resolveWorkspaceCwd(
@@ -135,7 +144,9 @@ export function formatWorkspaceCwdLabel(
   const normalizedRoot = normalizeWorkspaceRoot(workspaceRoot)
   const normalizedCwd = normalizeWorkspaceRoot(resolvedCwd)
   if (normalizedCwd === normalizedRoot) return '~'
-  const relative = path.relative(normalizedRoot, normalizedCwd).replace(/\\/g, '/')
+  const relative = path
+    .relative(normalizedRoot, normalizedCwd)
+    .replace(/\\/g, '/')
   if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
     return '~'
   }
@@ -146,7 +157,10 @@ export function toWorkspaceRelativePath(
   workspaceRoot: string,
   resolvedPath: string,
 ): string {
-  const relative = path.relative(normalizeWorkspaceRoot(workspaceRoot), resolvedPath)
+  const relative = path.relative(
+    normalizeWorkspaceRoot(workspaceRoot),
+    resolvedPath,
+  )
   return relative || ''
 }
 

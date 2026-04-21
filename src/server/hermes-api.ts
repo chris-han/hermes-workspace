@@ -149,9 +149,11 @@ export async function getSession(
   requestHeaders?: HeadersInit | Headers,
 ): Promise<HermesSession> {
   if (getCapabilities().dashboard.available) {
-    return (requestHeaders
-      ? getDashboardSessionForRequest(requestHeaders, sessionId)
-      : getDashboardSession(sessionId)) as Promise<HermesSession>
+    return (
+      requestHeaders
+        ? getDashboardSessionForRequest(requestHeaders, sessionId)
+        : getDashboardSession(sessionId)
+    ) as Promise<HermesSession>
   }
   const resp = await hermesGet<{ session: HermesSession }>(
     `/api/sessions/${sessionId}`,
@@ -229,9 +231,11 @@ export async function getConfig(
   requestHeaders?: HeadersInit | Headers,
 ): Promise<HermesConfig> {
   if (getCapabilities().dashboard.available) {
-    return (requestHeaders
-      ? await getConfigForRequest(requestHeaders)
-      : await dashboardFetch('/api/config').then((res) => res.json())) as HermesConfig
+    return (
+      requestHeaders
+        ? await getConfigForRequest(requestHeaders)
+        : await dashboardFetch('/api/config').then((res) => res.json())
+    ) as HermesConfig
   }
   return hermesGet('/api/config')
 }

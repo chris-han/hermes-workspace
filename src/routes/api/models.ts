@@ -9,8 +9,8 @@ import {
 import { BEARER_TOKEN, HERMES_API } from '../../server/gateway-capabilities'
 import {
   ensureDiscovery,
-  getDiscoveredModels,
   ensureProviderInConfig,
+  getDiscoveredModels,
 } from '../../server/local-provider-discovery'
 import {
   resolveHermesConfigPathFromBackend,

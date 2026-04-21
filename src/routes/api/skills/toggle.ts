@@ -41,17 +41,23 @@ export const Route = createFileRoute('/api/skills/toggle')({
 
           const capabilities = await ensureGatewayProbed()
           const response = capabilities.dashboard.available
-            ? await dashboardFetch('/api/skills/toggle', {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
+            ? await dashboardFetch(
+                '/api/skills/toggle',
+                {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    name,
+                    enabled: body.enabled,
+                  }),
+                  signal: AbortSignal.timeout(15_000),
                 },
-                body: JSON.stringify({
-                  name,
-                  enabled: body.enabled,
-                }),
-                signal: AbortSignal.timeout(15_000),
-              })
+                {
+                  requestHeaders: request.headers,
+                },
+              )
             : await fetch(`${HERMES_API}/api/skills/toggle`, {
                 method: 'POST',
                 headers: {

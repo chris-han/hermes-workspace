@@ -46,7 +46,11 @@ function sessionDir(workspaceRoot: string, sessionKey: string): string {
   return path.join(runsRoot(workspaceRoot), encodeSessionKey(sessionKey))
 }
 
-function runPath(workspaceRoot: string, sessionKey: string, runId: string): string {
+function runPath(
+  workspaceRoot: string,
+  sessionKey: string,
+  runId: string,
+): string {
   return path.join(sessionDir(workspaceRoot, sessionKey), `${runId}.json`)
 }
 
@@ -54,7 +58,10 @@ async function ensureDir(dir: string): Promise<void> {
   await mkdir(dir, { recursive: true })
 }
 
-async function writeRun(workspaceRoot: string, run: PersistedRunState): Promise<void> {
+async function writeRun(
+  workspaceRoot: string,
+  run: PersistedRunState,
+): Promise<void> {
   const dir = sessionDir(workspaceRoot, run.sessionKey)
   await ensureDir(dir)
   await writeFile(
@@ -94,7 +101,10 @@ export async function getPersistedRun(
   runId: string,
 ): Promise<PersistedRunState | null> {
   try {
-    const raw = await readFile(runPath(workspaceRoot, sessionKey, runId), 'utf8')
+    const raw = await readFile(
+      runPath(workspaceRoot, sessionKey, runId),
+      'utf8',
+    )
     return JSON.parse(raw) as PersistedRunState
   } catch {
     return null

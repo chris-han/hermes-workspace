@@ -119,23 +119,27 @@ export async function startHermesAgent(): Promise<StartHermesAgentResult> {
       const useGatewayRun = existsSync(resolve(agentDir, 'gateway', 'run.py'))
       const commandArgs = useGatewayRun
         ? ['-m', 'gateway.run']
-        : ['-m', 'uvicorn', 'webapi.app:app', '--host', '0.0.0.0', '--port', String(HERMES_START_PORT)]
+        : [
+            '-m',
+            'uvicorn',
+            'webapi.app:app',
+            '--host',
+            '0.0.0.0',
+            '--port',
+            String(HERMES_START_PORT),
+          ]
 
-      const child = spawn(
-        python,
-        commandArgs,
-        {
-          cwd: agentDir,
-          detached: true,
-          stdio: 'ignore',
-          env: {
-            ...process.env,
-            ...hermesEnv,
-            API_SERVER_ENABLED: 'true',
-            PATH: `${resolve(agentDir, '.venv', 'bin')}:${resolve(agentDir, 'venv', 'bin')}:${process.env.PATH || ''}`,
-          },
+      const child = spawn(python, commandArgs, {
+        cwd: agentDir,
+        detached: true,
+        stdio: 'ignore',
+        env: {
+          ...process.env,
+          ...hermesEnv,
+          API_SERVER_ENABLED: 'true',
+          PATH: `${resolve(agentDir, '.venv', 'bin')}:${resolve(agentDir, 'venv', 'bin')}:${process.env.PATH || ''}`,
         },
-      )
+      })
 
       child.unref()
 

@@ -4,6 +4,7 @@ import { isAuthenticated } from '../../../server/auth-middleware'
 import {
   BEARER_TOKEN,
   HERMES_API,
+  dashboardFetch,
   ensureGatewayProbed,
 } from '../../../server/gateway-capabilities'
 
@@ -25,8 +26,7 @@ export const Route = createFileRoute('/api/skills/install')({
             category?: string
             force?: boolean
           }
-          const identifier =
-            (body.identifier || body.skillId || '').trim()
+          const identifier = (body.identifier || body.skillId || '').trim()
           if (!identifier) {
             return json(
               { ok: false, error: 'identifier or skillId required' },
@@ -35,30 +35,38 @@ export const Route = createFileRoute('/api/skills/install')({
           }
 
           const capabilities = await ensureGatewayProbed()
-          if (capabilities.dashboard.available) {
-            return json(
-              {
-                ok: false,
-                error:
-                  'Skill install is only available on the legacy enhanced fork right now.',
-              },
-              { status: 501 },
-            )
-          }
-
-          const response = await fetch(`${HERMES_API}/api/skills/install`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders(),
-            },
-            body: JSON.stringify({
-              identifier,
-              category: body.category || '',
-              force: Boolean(body.force),
-            }),
-            signal: AbortSignal.timeout(120_000),
-          })
+          const response = capabilities.dashboard.available
+            ? await dashboardFetch(
+                '/api/skills/install',
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    identifier,
+                    category: body.category || '',
+                    force: Boolean(body.force),
+                  }),
+                  signal: AbortSignal.timeout(120_000),
+                },
+                {
+                  requestHeaders: request.headers,
+                },
+              )
+            : await fetch(`${HERMES_API}/api/skills/install`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...authHeaders(),
+                },
+                body: JSON.stringify({
+                  identifier,
+                  category: body.category || '',
+                  force: Boolean(body.force),
+                }),
+                signal: AbortSignal.timeout(120_000),
+              })
 
           const result = await response.json()
           return json(result, { status: response.status })

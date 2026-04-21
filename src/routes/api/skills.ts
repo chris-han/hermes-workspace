@@ -187,13 +187,15 @@ function normalizeSkill(value: unknown): SkillSummary | null {
   }
 }
 
-async function fetchHermesSkills(): Promise<Array<SkillSummary>> {
+async function fetchHermesSkills(
+  requestHeaders?: HeadersInit | Headers,
+): Promise<Array<SkillSummary>> {
   const capabilities = getCapabilities()
   const headers: Record<string, string> = {}
   if (BEARER_TOKEN) headers['Authorization'] = `Bearer ${BEARER_TOKEN}`
 
   const response = capabilities.dashboard.available
-    ? await dashboardFetch('/api/skills')
+    ? await dashboardFetch('/api/skills', undefined, { requestHeaders })
     : await fetch(`${HERMES_API}/api/skills`, { headers })
   if (!response.ok) {
     const body = await response.text().catch(() => '')
@@ -283,7 +285,7 @@ export const Route = createFileRoute('/api/skills')({
             Math.max(1, Number(url.searchParams.get('limit') || '30')),
           )
 
-          const sourceItems = await fetchHermesSkills()
+          const sourceItems = await fetchHermesSkills(request.headers)
           const installedLookup = new Set(
             sourceItems
               .filter((skill) => skill.installed)
@@ -386,22 +388,13 @@ export const Route = createFileRoute('/api/skills')({
           }
 
           if (capabilities.dashboard.available) {
-            if (action !== 'toggle') {
-              return json(
-                {
-                  ok: false,
-                  error:
-                    'Skill install/uninstall is only available on the legacy enhanced fork right now. Zero-fork mode supports listing and toggling installed skills.',
-                },
-                { status: 501 },
-              )
-            }
-
-            const response = await dashboardFetch('/api/skills/toggle', {
-              method: 'PUT',
+            const response = await dashboardFetch(endpoint, {
+              method: action === 'toggle' ? 'PUT' : 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload),
-              signal: AbortSignal.timeout(30_000),
+              signal: AbortSignal.timeout(action === 'toggle' ? 30_000 : 120_000),
+            }, {
+              requestHeaders: request.headers,
             })
 
             const result = await response.json()

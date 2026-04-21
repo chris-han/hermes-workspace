@@ -1051,12 +1051,16 @@ export function FilesScreen() {
         signal: controller.signal,
       })
       if (!res.ok)
-        throw new Error(`HTTP ${res.status} — could not resolve the active workspace`)
+        throw new Error(
+          `HTTP ${res.status} — could not resolve the active workspace`,
+        )
       const data = (await res.json()) as FilesListResponse
       setEntries(Array.isArray(data.entries) ? data.entries : [])
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        setTreeError('Could not load files — request timed out while resolving the active workspace.')
+        setTreeError(
+          'Could not load files — request timed out while resolving the active workspace.',
+        )
       } else {
         setTreeError(err instanceof Error ? err.message : String(err))
       }

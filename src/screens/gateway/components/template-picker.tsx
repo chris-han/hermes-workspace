@@ -1,21 +1,23 @@
-import { useState, useMemo } from 'react'
-import { cn } from '@/lib/utils'
+import { useMemo, useState } from 'react'
 import {
-  type WorkflowTemplate,
-  getAllTemplates,
+  
   deleteTemplate,
+  getAllTemplates
 } from '../lib/workflow-templates'
+import type {WorkflowTemplate} from '../lib/workflow-templates';
+import { cn } from '@/lib/utils'
 
 type TemplatePickerProps = {
   onSelect: (template: WorkflowTemplate) => void
   onClose: () => void
 }
 
-const DEMO_TEMPLATES: WorkflowTemplate[] = [
+const DEMO_TEMPLATES: Array<WorkflowTemplate> = [
   {
     id: 'tpl-code-review',
     name: 'Code Review',
-    description: 'Review codebase for bugs, performance issues, and code quality',
+    description:
+      'Review codebase for bugs, performance issues, and code quality',
     icon: '🔍',
     goal: 'Review the codebase for bugs, performance issues, and code quality',
     tasks: [
@@ -66,9 +68,10 @@ export function TemplatePicker({ onSelect, onClose }: TemplatePickerProps) {
   const templates = useMemo(() => {
     void refreshKey // Force re-read on delete
     const allTemplates = [...DEMO_TEMPLATES, ...getAllTemplates()]
-    return allTemplates.filter((template, index, list) => (
-      list.findIndex((candidate) => candidate.id === template.id) === index
-    ))
+    return allTemplates.filter(
+      (template, index, list) =>
+        list.findIndex((candidate) => candidate.id === template.id) === index,
+    )
   }, [refreshKey])
 
   const filtered = useMemo(() => {

@@ -2,7 +2,10 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { semantierAgentAuthHeaders, withSemantierAgentBase } from './semantier-agent-api'
+import {
+  semantierAgentAuthHeaders,
+  withSemantierAgentBase,
+} from './semantier-agent-api'
 
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(SERVER_DIR, '..', '..', '..')
@@ -51,7 +54,7 @@ export function resolveHermesHome(
   return path.resolve(homeDir, '.hermes')
 }
 
-export function resolveHermesPath(...segments: string[]): string {
+export function resolveHermesPath(...segments: Array<string>): string {
   return path.join(resolveHermesHome(), ...segments)
 }
 
@@ -96,7 +99,7 @@ export async function resolveHermesHomeFromBackend(): Promise<string> {
 }
 
 export async function resolveHermesPathFromBackend(
-  ...segments: string[]
+  ...segments: Array<string>
 ): Promise<string> {
   return path.join(await resolveHermesHomeFromBackend(), ...segments)
 }

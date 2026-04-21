@@ -28,7 +28,7 @@ export type CrewMember = {
 }
 
 export type CrewStatus = {
-  crew: CrewMember[]
+  crew: Array<CrewMember>
   fetchedAt: number
 }
 
@@ -68,7 +68,8 @@ export function useCrewStatus() {
       }
     }
     document.addEventListener('visibilitychange', handleVisibility)
-    return () => document.removeEventListener('visibilitychange', handleVisibility)
+    return () =>
+      document.removeEventListener('visibilitychange', handleVisibility)
   }, [queryClient])
 
   return {

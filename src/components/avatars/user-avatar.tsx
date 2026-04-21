@@ -36,7 +36,7 @@ function UserAvatarComponent({
     <div
       className={cn(
         'shrink-0 rounded-full border border-border/70 bg-transparent flex items-center justify-center',
-        className
+        className,
       )}
       style={{ width: size, height: size }}
     >

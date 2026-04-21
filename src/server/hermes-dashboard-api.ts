@@ -1,7 +1,4 @@
-import {
-  dashboardFetch,
-  HERMES_DASHBOARD_URL,
-} from './gateway-capabilities'
+import { HERMES_DASHBOARD_URL, dashboardFetch } from './gateway-capabilities'
 
 export type DashboardSession = {
   id: string
@@ -67,7 +64,7 @@ export type EnvVarInfo = {
   url?: string | null
   category?: string
   is_password?: boolean
-  tools?: string[]
+  tools?: Array<string>
   advanced?: boolean
 }
 
@@ -91,7 +88,7 @@ export type ToolsetInfo = {
   description: string
   enabled: boolean
   configured: boolean
-  tools: string[]
+  tools: Array<string>
 }
 
 export type DashboardStatus = {
@@ -119,8 +116,11 @@ async function dashboardJson<T>(
   return res.json() as Promise<T>
 }
 
-export async function listSessions(limit = 50, offset = 0): Promise<{
-  sessions: DashboardSession[]
+export async function listSessions(
+  limit = 50,
+  offset = 0,
+): Promise<{
+  sessions: Array<DashboardSession>
   total: number
   limit: number
   offset: number
@@ -137,7 +137,7 @@ export async function listSessionsForRequest(
   limit = 50,
   offset = 0,
 ): Promise<{
-  sessions: DashboardSession[]
+  sessions: Array<DashboardSession>
   total: number
   limit: number
   offset: number
@@ -157,11 +157,15 @@ export async function getSessionForRequest(
   requestHeaders: HeadersInit | Headers,
   id: string,
 ): Promise<DashboardSession> {
-  return dashboardJson(`/api/sessions/${encodeURIComponent(id)}`, undefined, requestHeaders)
+  return dashboardJson(
+    `/api/sessions/${encodeURIComponent(id)}`,
+    undefined,
+    requestHeaders,
+  )
 }
 
 export async function getSessionMessages(id: string): Promise<{
-  messages: DashboardMessage[]
+  messages: Array<DashboardMessage>
   session_started?: number
   model?: string
 }> {
@@ -172,7 +176,7 @@ export async function getSessionMessagesForRequest(
   requestHeaders: HeadersInit | Headers,
   id: string,
 ): Promise<{
-  messages: DashboardMessage[]
+  messages: Array<DashboardMessage>
   session_started?: number
   model?: string
 }> {
@@ -183,7 +187,9 @@ export async function getSessionMessagesForRequest(
   )
 }
 
-export async function searchSessions(q: string): Promise<SessionSearchResponse> {
+export async function searchSessions(
+  q: string,
+): Promise<SessionSearchResponse> {
   return dashboardJson(`/api/sessions/search?q=${encodeURIComponent(q)}`)
 }
 
@@ -206,7 +212,7 @@ export async function deleteSessionForRequest(
   )
 }
 
-export async function getSkills(): Promise<SkillInfo[]> {
+export async function getSkills(): Promise<Array<SkillInfo>> {
   return dashboardJson('/api/skills')
 }
 
@@ -233,7 +239,7 @@ export async function getConfigForRequest(
 
 export async function getConfigSchema(): Promise<{
   fields: Record<string, unknown>
-  category_order: string[]
+  category_order: Array<string>
 }> {
   return dashboardJson('/api/config/schema')
 }
@@ -285,7 +291,7 @@ export async function deleteEnvVar(key: string): Promise<{ ok: boolean }> {
   })
 }
 
-export async function getCronJobs(): Promise<CronJob[]> {
+export async function getCronJobs(): Promise<Array<CronJob>> {
   return dashboardJson('/api/cron/jobs')
 }
 
@@ -334,7 +340,7 @@ export async function getModelInfo(): Promise<Record<string, unknown>> {
   return dashboardJson('/api/model/info')
 }
 
-export async function getToolsets(): Promise<ToolsetInfo[]> {
+export async function getToolsets(): Promise<Array<ToolsetInfo>> {
   return dashboardJson('/api/tools/toolsets')
 }
 

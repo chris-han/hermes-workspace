@@ -5,7 +5,11 @@ import { translateSemantierSessionStreamEvent } from './semantier-session-stream
 describe('translateSemantierSessionStreamEvent', () => {
   it('maps agent text deltas into workspace chunk frames', () => {
     expect(
-      translateSemantierSessionStreamEvent('text_delta', { content: 'hello' }, 'run-1'),
+      translateSemantierSessionStreamEvent(
+        'text_delta',
+        { content: 'hello' },
+        'run-1',
+      ),
     ).toEqual([{ event: 'chunk', data: { delta: 'hello' } }])
   })
 
@@ -33,7 +37,13 @@ describe('translateSemantierSessionStreamEvent', () => {
 
   it('maps failed attempts into terminal done events', () => {
     expect(
-      translateSemantierSessionStreamEvent('attempt.failed', { error: 'boom' }, 'run-1'),
-    ).toEqual([{ event: 'done', data: { state: 'error', errorMessage: 'boom' } }])
+      translateSemantierSessionStreamEvent(
+        'attempt.failed',
+        { error: 'boom' },
+        'run-1',
+      ),
+    ).toEqual([
+      { event: 'done', data: { state: 'error', errorMessage: 'boom' } },
+    ])
   })
 })

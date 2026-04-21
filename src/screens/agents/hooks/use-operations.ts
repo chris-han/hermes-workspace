@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { CronJob } from '@/components/cron-manager/cron-types'
+import type {GatewaySession} from '@/lib/gateway-api';
 import { toast } from '@/components/ui/toast'
 import { fetchCronJobs } from '@/lib/cron-api'
-import { fetchSessions, type GatewaySession } from '@/lib/gateway-api'
-import { formatModelName, formatRelativeTime } from '@/screens/dashboard/lib/formatters'
+import {  fetchSessions } from '@/lib/gateway-api'
+import {
+  formatModelName,
+  formatRelativeTime,
+} from '@/screens/dashboard/lib/formatters'
 
 // Hermes-Workspace adapter: Operations is backed by Hermes profiles
 // (each profile = one persistent agent). Profiles live at ~/.hermes/profiles/<name>/
@@ -59,15 +63,15 @@ export type OperationsAgent = GatewayConfigAgent & {
   shortModel: string
   status: OperationsAgentStatus
   sessionKey: string
-  sessions: GatewaySession[]
+  sessions: Array<GatewaySession>
   latestSession: GatewaySession | null
-  jobs: CronJob[]
+  jobs: Array<CronJob>
   nextRunAt: number | null
   lastActivityAt: number | null
   activityLabel: string
   progressValue: number
   progressStatus: 'running' | 'queued' | 'failed' | 'complete' | 'thinking'
-  recentOutputs: OperationsOutputItem[]
+  recentOutputs: Array<OperationsOutputItem>
 }
 
 type ConfigPayload = {
@@ -76,7 +80,7 @@ type ConfigPayload = {
   payload?: {
     parsed?: {
       agents?: {
-        list?: unknown[]
+        list?: Array<unknown>
       }
       defaultModel?: string
       [key: string]: unknown
@@ -86,7 +90,7 @@ type ConfigPayload = {
   }
   parsed?: {
     agents?: {
-      list?: unknown[]
+      list?: Array<unknown>
     }
     defaultModel?: string
     [key: string]: unknown
@@ -118,7 +122,9 @@ function hashString(value: string): number {
 }
 
 function createFallbackColor(agentId: string): string {
-  return COLOR_PALETTE[hashString(agentId) % COLOR_PALETTE.length]?.body ?? '#3b82f6'
+  return (
+    COLOR_PALETTE[hashString(agentId) % COLOR_PALETTE.length]?.body ?? '#3b82f6'
+  )
 }
 
 function createFallbackEmoji(agentId: string): string {
@@ -179,10 +185,10 @@ function truncate(text: string, maxLength = 120): string {
   return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`
 }
 
-function normalizeAgentList(input: unknown): GatewayConfigAgent[] {
+function normalizeAgentList(input: unknown): Array<GatewayConfigAgent> {
   if (!Array.isArray(input)) return []
 
-  const agents: GatewayConfigAgent[] = []
+  const agents: Array<GatewayConfigAgent> = []
 
   for (const entry of input) {
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
@@ -212,14 +218,14 @@ function parseConfigPayload(payload: ConfigPayload): ConfigPayload {
   return payload
 }
 
-async function fetchHermesProfiles(): Promise<HermesProfileSummary[]> {
+async function fetchHermesProfiles(): Promise<Array<HermesProfileSummary>> {
   const response = await fetch('/api/profiles/list')
   const contentType = response.headers.get('content-type') || ''
   if (!contentType.includes('json')) {
     throw new Error('/api/profiles/list returned non-JSON')
   }
   const payload = (await response.json().catch(() => ({}))) as {
-    profiles?: HermesProfileSummary[]
+    profiles?: Array<HermesProfileSummary>
     error?: string
   }
   if (!response.ok || payload.error) {
@@ -266,11 +272,16 @@ async function createHermesProfile(input: {
     error?: string
   }
   if (!response.ok || payload.ok === false) {
-    throw new Error(payload.error || `Failed to create profile (${response.status})`)
+    throw new Error(
+      payload.error || `Failed to create profile (${response.status})`,
+    )
   }
 }
 
-async function updateHermesProfile(name: string, patch: Record<string, unknown>) {
+async function updateHermesProfile(
+  name: string,
+  patch: Record<string, unknown>,
+) {
   const response = await fetch('/api/profiles/update', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -281,7 +292,9 @@ async function updateHermesProfile(name: string, patch: Record<string, unknown>)
     error?: string
   }
   if (!response.ok || payload.ok === false) {
-    throw new Error(payload.error || `Failed to update profile (${response.status})`)
+    throw new Error(
+      payload.error || `Failed to update profile (${response.status})`,
+    )
   }
 }
 
@@ -296,7 +309,9 @@ async function deleteHermesProfile(name: string) {
     error?: string
   }
   if (!response.ok || payload.ok === false) {
-    throw new Error(payload.error || `Failed to delete profile (${response.status})`)
+    throw new Error(
+      payload.error || `Failed to delete profile (${response.status})`,
+    )
   }
 }
 
@@ -387,13 +402,14 @@ function persistSettings(settings: OperationsSettings) {
   window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
 }
 
-
-
-function getAgentJobs(agentId: string, jobs: CronJob[]): CronJob[] {
+function getAgentJobs(agentId: string, jobs: Array<CronJob>): Array<CronJob> {
   return jobs.filter((job) => job.name?.startsWith(`ops:${agentId}:`))
 }
 
-function getAgentSessions(agentId: string, sessions: GatewaySession[]): GatewaySession[] {
+function getAgentSessions(
+  agentId: string,
+  sessions: Array<GatewaySession>,
+): Array<GatewaySession> {
   return [...sessions]
     .filter((session) => {
       const label = readString(session.label)
@@ -407,7 +423,9 @@ function getAgentSessions(agentId: string, sessions: GatewaySession[]): GatewayS
     })
 }
 
-function getAgentStatus(latestSession: GatewaySession | null): OperationsAgentStatus {
+function getAgentStatus(
+  latestSession: GatewaySession | null,
+): OperationsAgentStatus {
   if (!latestSession) return 'idle'
 
   const status = readString(latestSession.status).toLowerCase()
@@ -465,7 +483,10 @@ function slugifyJobLabel(value: string): string {
   return normalizeAgentId(value) || 'scheduled-run'
 }
 
-function buildCronOutput(job: CronJob, agentId: string): OperationsOutputItem | null {
+function buildCronOutput(
+  job: CronJob,
+  agentId: string,
+): OperationsOutputItem | null {
   const startedAt = readTimestamp(job.lastRun?.startedAt)
   const summary = truncate(
     readString(job.lastRun?.deliverySummary) ||
@@ -488,7 +509,8 @@ function buildSessionOutput(
   session: GatewaySession,
   agentId: string,
 ): OperationsOutputItem | null {
-  const timestamp = readTimestamp(session.updatedAt) ?? readTimestamp(session.createdAt)
+  const timestamp =
+    readTimestamp(session.updatedAt) ?? readTimestamp(session.createdAt)
   const summary = truncate(extractSessionText(session))
   if (!timestamp || !summary) return null
 
@@ -508,7 +530,9 @@ export function getOperationsSessionKey(agentId: string): string {
 export function useOperations() {
   const queryClient = useQueryClient()
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
-  const [settings, setSettings] = useState<OperationsSettings>(() => loadSettings())
+  const [settings, setSettings] = useState<OperationsSettings>(() =>
+    loadSettings(),
+  )
   const [metaVersion, setMetaVersion] = useState(0)
 
   const configQuery = useQuery({
@@ -536,7 +560,12 @@ export function useOperations() {
     const parsed = configQuery.data?.parsed
     const allAgents = normalizeAgentList(parsed?.agents?.list)
     // Filter out system/internal agents — only show operations agents
-    const HIDDEN_AGENTS = new Set(['main', 'pc1-coder', 'pc1-planner', 'pc1-critic'])
+    const HIDDEN_AGENTS = new Set([
+      'main',
+      'pc1-coder',
+      'pc1-planner',
+      'pc1-critic',
+    ])
     const configAgents = allAgents.filter((a) => !HIDDEN_AGENTS.has(a.id))
     const sessions = sessionsQuery.data ?? []
     const cronJobs = cronJobsQuery.data ?? []
@@ -546,11 +575,12 @@ export function useOperations() {
       const agentSessions = getAgentSessions(agent.id, sessions)
       const latestSession = agentSessions[0] ?? null
       const jobs = getAgentJobs(agent.id, cronJobs)
-      const nextRunAt = jobs
-        .filter((job) => job.enabled)
-        .map((job) => readTimestamp(job.nextRunAt))
-        .filter((value): value is number => value !== null)
-        .sort((left, right) => left - right)[0] ?? null
+      const nextRunAt =
+        jobs
+          .filter((job) => job.enabled)
+          .map((job) => readTimestamp(job.nextRunAt))
+          .filter((value): value is number => value !== null)
+          .sort((left, right) => left - right)[0] ?? null
       const lastActivityAt =
         readTimestamp(latestSession?.updatedAt) ??
         jobs
@@ -560,7 +590,9 @@ export function useOperations() {
         null
       const status = getAgentStatus(latestSession)
       const recentOutputs = [
-        ...agentSessions.map((session) => buildSessionOutput(session, agent.id)),
+        ...agentSessions.map((session) =>
+          buildSessionOutput(session, agent.id),
+        ),
         ...jobs.map((job) => buildCronOutput(job, agent.id)),
       ]
         .filter((item): item is OperationsOutputItem => Boolean(item))
@@ -588,14 +620,10 @@ export function useOperations() {
         recentOutputs,
       } satisfies OperationsAgent
     })
-  }, [
-    configQuery.data,
-    sessionsQuery.data,
-    cronJobsQuery.data,
-    metaVersion,
-  ])
+  }, [configQuery.data, sessionsQuery.data, cronJobsQuery.data, metaVersion])
 
-  const selectedAgent = agents.find((agent) => agent.id === selectedAgentId) ?? null
+  const selectedAgent =
+    agents.find((agent) => agent.id === selectedAgentId) ?? null
 
   const recentActivity = useMemo(() => {
     return agents
@@ -617,7 +645,9 @@ export function useOperations() {
       if (id === 'default') {
         throw new Error('"default" is reserved — pick another name')
       }
-      const currentAgents = normalizeAgentList(configQuery.data?.parsed?.agents?.list)
+      const currentAgents = normalizeAgentList(
+        configQuery.data?.parsed?.agents?.list,
+      )
       if (currentAgents.some((agent) => agent.id === id)) {
         throw new Error('A profile with this name already exists')
       }
@@ -645,7 +675,9 @@ export function useOperations() {
       setSelectedAgentId(id)
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['operations', 'config'] })
+      await queryClient.invalidateQueries({
+        queryKey: ['operations', 'config'],
+      })
       toast('Agent created', { type: 'success' })
     },
     onError: (error) => {
@@ -667,7 +699,8 @@ export function useOperations() {
       // survive across machines / clients.
       const patch: Record<string, unknown> = {}
       if (input.model.trim()) patch.model = input.model.trim()
-      if (input.systemPrompt.trim()) patch.system_prompt = input.systemPrompt.trim()
+      if (input.systemPrompt.trim())
+        patch.system_prompt = input.systemPrompt.trim()
       if (Object.keys(patch).length > 0) {
         await updateHermesProfile(input.agentId, patch)
       }
@@ -680,7 +713,9 @@ export function useOperations() {
       setMetaVersion((value) => value + 1)
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['operations', 'config'] })
+      await queryClient.invalidateQueries({
+        queryKey: ['operations', 'config'],
+      })
       toast('Agent settings saved', { type: 'success' })
     },
     onError: (error) => {
@@ -701,8 +736,12 @@ export function useOperations() {
       setSelectedAgentId((current) => (current === agentId ? null : current))
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['operations', 'config'] })
-      await queryClient.invalidateQueries({ queryKey: ['operations', 'sessions'] })
+      await queryClient.invalidateQueries({
+        queryKey: ['operations', 'config'],
+      })
+      await queryClient.invalidateQueries({
+        queryKey: ['operations', 'sessions'],
+      })
       toast('Agent deleted', { type: 'success' })
     },
     onError: (error) => {
@@ -712,7 +751,10 @@ export function useOperations() {
     },
   })
 
-  function saveAgentMeta(agentId: string, partial: Partial<OperationsAgentMeta>) {
+  function saveAgentMeta(
+    agentId: string,
+    partial: Partial<OperationsAgentMeta>,
+  ) {
     const nextMeta = { ...loadAgentMeta(agentId), ...partial }
     persistAgentMeta(agentId, nextMeta)
     setMetaVersion((value) => value + 1)
@@ -736,7 +778,8 @@ export function useOperations() {
     settings,
     saveSettings,
     defaultModel:
-      readString(configQuery.data?.parsed?.defaultModel) || settings.defaultModel,
+      readString(configQuery.data?.parsed?.defaultModel) ||
+      settings.defaultModel,
     createAgent: createAgentMutation.mutateAsync,
     isCreatingAgent: createAgentMutation.isPending,
     saveAgent: saveAgentMutation.mutateAsync,

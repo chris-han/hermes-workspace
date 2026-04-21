@@ -16,7 +16,10 @@ export const Route = createFileRoute('/api/conductor-stop')({
 
         try {
           await ensureGatewayProbed()
-          const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+          const body = (await request.json().catch(() => ({}))) as Record<
+            string,
+            unknown
+          >
           const sessionKeys = Array.isArray(body.sessionKeys)
             ? body.sessionKeys.filter(
                 (value): value is string =>

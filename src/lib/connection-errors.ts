@@ -12,7 +12,7 @@ export function classifyConnectionError(
   error?: string | Error | null,
   status?: number | null,
 ): ConnectionErrorKind {
-  const msg = typeof error === 'string' ? error : error?.message ?? ''
+  const msg = typeof error === 'string' ? error : (error?.message ?? '')
   const lower = msg.toLowerCase()
   if (!lower && !status) return 'gateway_unreachable'
   if (status === 401) return 'clawsuite_auth_required'
@@ -73,29 +73,29 @@ export function getConnectionErrorMessage(
     case 'gateway_auth_rejected':
       return {
         title: 'Authentication required',
-        description:
-          'The gateway rejected this connection.',
+        description: 'The gateway rejected this connection.',
         action: 'Update your gateway token in Settings and try again.',
       }
     case 'gateway_pairing_required':
       return {
         title: 'Pair this device first',
-        description:
-          'This device is not paired with the gateway yet.',
+        description: 'This device is not paired with the gateway yet.',
         action: 'Run `openclaw pair` on the gateway machine, then reconnect.',
       }
     case 'gateway_unreachable':
       return {
         title: 'Gateway unreachable',
         description: 'ClawSuite cannot reach the configured OpenClaw gateway.',
-        action: 'Check that OpenClaw is running and the gateway URL is correct.',
+        action:
+          'Check that OpenClaw is running and the gateway URL is correct.',
       }
     case 'handshake_failed':
       return {
         title: 'Connection could not be verified',
         description:
           'The gateway responded, but the secure connection handshake did not complete.',
-        action: 'Try reconnecting. If it keeps failing, check gateway pairing and auth.',
+        action:
+          'Try reconnecting. If it keeps failing, check gateway pairing and auth.',
       }
     case 'handshake_timeout':
       return {
@@ -125,9 +125,7 @@ export function getConnectionErrorInfo(
   const kind = classifyConnectionError(error, status)
   const base = getConnectionErrorMessage(kind)
   const details =
-    typeof error === 'string'
-      ? error.trim()
-      : error?.message?.trim() ?? ''
+    typeof error === 'string' ? error.trim() : (error?.message?.trim() ?? '')
 
   const showDetails =
     details.length > 0 &&

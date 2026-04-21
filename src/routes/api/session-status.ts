@@ -1,13 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 
-import { isAuthenticated } from '@/server/auth-middleware'
 import { isSyntheticSessionKey } from '../../server/session-utils'
 import {
   getSemantierSession,
   isSemantierSessionNotFoundError,
   listSemantierSessions,
 } from '../../server/semantier-session-api'
+import { isAuthenticated } from '@/server/auth-middleware'
 
 function buildIdlePayload() {
   return {

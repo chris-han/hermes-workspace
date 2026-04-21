@@ -29,7 +29,7 @@ export type LocalProviderDef = {
   apiMode: string
 }
 
-const LOCAL_PROVIDERS: LocalProviderDef[] = [
+const LOCAL_PROVIDERS: Array<LocalProviderDef> = [
   {
     id: 'ollama',
     name: 'Ollama',
@@ -65,7 +65,7 @@ export type DiscoveredModel = {
 export type DiscoveredProvider = {
   def: LocalProviderDef
   online: boolean
-  models: DiscoveredModel[]
+  models: Array<DiscoveredModel>
   lastProbe: number
 }
 
@@ -76,7 +76,7 @@ export type DiscoveredProvider = {
 const PROBE_TTL_MS = 30_000 // re-probe every 30s
 const PROBE_TIMEOUT_MS = 800 // 800ms timeout per probe — local servers respond fast
 
-let discoveryState: Map<string, DiscoveredProvider> = new Map()
+const discoveryState: Map<string, DiscoveredProvider> = new Map()
 let lastProbeAll = 0
 let probePromise: Promise<void> | null = null
 
@@ -108,7 +108,7 @@ async function probeProvider(
         ? payload.models
         : []
 
-    const models: DiscoveredModel[] = rawModels
+    const models: Array<DiscoveredModel> = rawModels
       .map((entry: Record<string, unknown>) => {
         const id =
           typeof entry.id === 'string'
@@ -188,8 +188,8 @@ export async function forceDiscovery(): Promise<void> {
 /**
  * Get all discovered models across all local providers.
  */
-export function getDiscoveredModels(): DiscoveredModel[] {
-  const models: DiscoveredModel[] = []
+export function getDiscoveredModels(): Array<DiscoveredModel> {
+  const models: Array<DiscoveredModel> = []
   for (const provider of discoveryState.values()) {
     if (provider.online) {
       models.push(...provider.models)
@@ -225,9 +225,7 @@ export function getDiscoveryStatus(): Array<{
 /**
  * Get the provider definition for a given ID.
  */
-export function getLocalProviderDef(
-  id: string,
-): LocalProviderDef | undefined {
+export function getLocalProviderDef(id: string): LocalProviderDef | undefined {
   return LOCAL_PROVIDERS.find((def) => def.id === id)
 }
 

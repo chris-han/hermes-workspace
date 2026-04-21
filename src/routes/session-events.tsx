@@ -80,21 +80,23 @@ async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T> {
 
   if (!contentType.toLowerCase().includes('application/json')) {
     const bodyPreview = (await response.text()).slice(0, 120)
-    if (bodyPreview.startsWith('<!DOCTYPE') || bodyPreview.startsWith('<html')) {
+    if (
+      bodyPreview.startsWith('<!DOCTYPE') ||
+      bodyPreview.startsWith('<html')
+    ) {
       throw new Error(
         'Session Events API returned HTML instead of JSON. Restart the Hermes Workspace dev server so the new /api/semantier-proxy route is loaded.',
       )
     }
-    throw new Error(`Expected JSON from ${path}, received ${contentType || 'unknown content type'}`)
+    throw new Error(
+      `Expected JSON from ${path}, received ${contentType || 'unknown content type'}`,
+    )
   }
 
   return (await response.json()) as T
 }
 
-async function requestJson<T>(
-  path: string,
-  options?: RequestInit,
-): Promise<T> {
+async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     headers: {
       Accept: 'application/json',
@@ -120,12 +122,17 @@ async function requestJson<T>(
 
   if (!contentType.toLowerCase().includes('application/json')) {
     const bodyPreview = (await response.text()).slice(0, 120)
-    if (bodyPreview.startsWith('<!DOCTYPE') || bodyPreview.startsWith('<html')) {
+    if (
+      bodyPreview.startsWith('<!DOCTYPE') ||
+      bodyPreview.startsWith('<html')
+    ) {
       throw new Error(
         'Session Events API returned HTML instead of JSON. Restart the Hermes Workspace dev server so the new /api/semantier-proxy route is loaded.',
       )
     }
-    throw new Error(`Expected JSON from ${path}, received ${contentType || 'unknown content type'}`)
+    throw new Error(
+      `Expected JSON from ${path}, received ${contentType || 'unknown content type'}`,
+    )
   }
 
   const text = await response.text()
@@ -163,8 +170,9 @@ function SessionEventsRoute() {
   const [sessions, setSessions] = useState<Array<SessionSummary>>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [events, setEvents] = useState<Array<SessionEventItem>>([])
-  const [trajectory, setTrajectory] =
-    useState<SessionTrajectoryExport | null>(null)
+  const [trajectory, setTrajectory] = useState<SessionTrajectoryExport | null>(
+    null,
+  )
   const [selectedSessionIds, setSelectedSessionIds] = useState<Array<string>>(
     [],
   )
@@ -210,15 +218,15 @@ function SessionEventsRoute() {
     const controller = new AbortController()
     setSessionsLoading(true)
 
-    fetchJson<Array<SessionSummary>>('/api/semantier-proxy/sessions', controller.signal)
+    fetchJson<Array<SessionSummary>>(
+      '/api/semantier-proxy/sessions',
+      controller.signal,
+    )
       .then((items) => {
         setSessions(items)
       })
       .catch((nextError: unknown) => {
-        if (
-          nextError instanceof Error &&
-          nextError.name === 'AbortError'
-        ) {
+        if (nextError instanceof Error && nextError.name === 'AbortError') {
           return
         }
         setSessions([])
@@ -290,10 +298,7 @@ function SessionEventsRoute() {
         setTrajectory(exportData)
       })
       .catch((nextError: unknown) => {
-        if (
-          nextError instanceof Error &&
-          nextError.name === 'AbortError'
-        ) {
+        if (nextError instanceof Error && nextError.name === 'AbortError') {
           return
         }
         setEvents([])
@@ -508,11 +513,7 @@ function SessionEventsRoute() {
                 disabled={!sessionId || loading}
                 className="inline-flex items-center gap-2 rounded-lg border border-primary-200 px-3 py-2 text-sm font-medium text-primary-800 transition-colors hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
               >
-                <HugeiconsIcon
-                  icon={RefreshIcon}
-                  size={18}
-                  strokeWidth={1.5}
-                />
+                <HugeiconsIcon icon={RefreshIcon} size={18} strokeWidth={1.5} />
                 Refresh
               </button>
             </div>
@@ -588,7 +589,11 @@ function SessionEventsRoute() {
                   aria-label="Delete selected"
                   className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40"
                 >
-                  <HugeiconsIcon icon={Delete01Icon} size={18} strokeWidth={1.5} />
+                  <HugeiconsIcon
+                    icon={Delete01Icon}
+                    size={18}
+                    strokeWidth={1.5}
+                  />
                 </button>
                 <button
                   type="button"
@@ -600,7 +605,11 @@ function SessionEventsRoute() {
                   aria-label="Export events"
                   className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-primary-200 bg-primary-50/70 text-primary-800 transition-colors hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
                 >
-                  <HugeiconsIcon icon={File01Icon} size={18} strokeWidth={1.5} />
+                  <HugeiconsIcon
+                    icon={File01Icon}
+                    size={18}
+                    strokeWidth={1.5}
+                  />
                 </button>
                 <button
                   type="button"
@@ -612,7 +621,11 @@ function SessionEventsRoute() {
                   aria-label="Export Atropos JSONL"
                   className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-primary-200 bg-primary-50/70 text-primary-800 transition-colors hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
                 >
-                  <HugeiconsIcon icon={Download01Icon} size={18} strokeWidth={1.5} />
+                  <HugeiconsIcon
+                    icon={Download01Icon}
+                    size={18}
+                    strokeWidth={1.5}
+                  />
                 </button>
               </div>
             </div>
@@ -865,8 +878,8 @@ function SessionEventsRoute() {
                 </h2>
                 <p className="text-sm text-primary-500 dark:text-neutral-500">
                   Delete {selectedSessionIds.length} selected session
-                  {selectedSessionIds.length === 1 ? '' : 's'}? This removes
-                  the session records and canonical events.jsonl data.
+                  {selectedSessionIds.length === 1 ? '' : 's'}? This removes the
+                  session records and canonical events.jsonl data.
                 </p>
               </div>
               <div className="mt-5 flex justify-end gap-2">

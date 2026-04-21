@@ -73,7 +73,8 @@ export const Route = createFileRoute('/api/connection-status')({
         if (caps.semantier.available && !caps.health && !chatReady) {
           status = 'partial'
           label = 'Partial'
-          detail = 'Semantier Unicell backend is available. Hermes chat APIs are not connected yet.'
+          detail =
+            'Semantier Unicell backend is available. Hermes chat APIs are not connected yet.'
         } else if (!caps.health && !chatReady) {
           status = 'disconnected'
           label = 'Disconnected'

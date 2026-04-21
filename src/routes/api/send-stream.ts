@@ -10,9 +10,10 @@ import {
   sendSemantierSessionMessage,
 } from '../../server/semantier-session-api'
 import {
-  translateSemantierSessionStreamEvent,
-  type WorkspaceStreamEvent,
+  
+  translateSemantierSessionStreamEvent
 } from '../../server/semantier-session-stream'
+import type {WorkspaceStreamEvent} from '../../server/semantier-session-stream';
 
 const SESSION_BOOTSTRAP_KEYS = new Set(['main', 'new'])
 
@@ -73,7 +74,8 @@ export const Route = createFileRoute('/api/send-stream')({
           body = {}
         }
 
-        const message = typeof body.message === 'string' ? body.message.trim() : ''
+        const message =
+          typeof body.message === 'string' ? body.message.trim() : ''
         const requestedFriendlyId =
           typeof body.friendlyId === 'string' ? body.friendlyId.trim() : ''
         const rawSessionKey =
@@ -140,10 +142,14 @@ export const Route = createFileRoute('/api/send-stream')({
               })
 
               try {
-                const upstream = await openSemantierSessionEvents(request.headers, sessionKey, {
-                  replayExisting: true,
-                  signal: abortController.signal,
-                })
+                const upstream = await openSemantierSessionEvents(
+                  request.headers,
+                  sessionKey,
+                  {
+                    replayExisting: true,
+                    signal: abortController.signal,
+                  },
+                )
                 const reader = upstream.body?.getReader()
                 if (!reader) {
                   throw new Error('No response body')

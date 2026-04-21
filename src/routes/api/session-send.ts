@@ -29,10 +29,16 @@ export const Route = createFileRoute('/api/session-send')({
           let sessionKey = (body.sessionKey || '').trim()
           const message = (body.message || '').trim()
           if (!sessionKey) {
-            return json({ ok: false, error: 'sessionKey is required' }, { status: 400 })
+            return json(
+              { ok: false, error: 'sessionKey is required' },
+              { status: 400 },
+            )
           }
           if (!message) {
-            return json({ ok: false, error: 'message is required' }, { status: 400 })
+            return json(
+              { ok: false, error: 'message is required' },
+              { status: 400 },
+            )
           }
 
           if (SESSION_BOOTSTRAP_KEYS.has(sessionKey)) {
@@ -42,14 +48,22 @@ export const Route = createFileRoute('/api/session-send')({
 
           let result
           try {
-            result = await sendSemantierSessionMessage(request.headers, sessionKey, message)
+            result = await sendSemantierSessionMessage(
+              request.headers,
+              sessionKey,
+              message,
+            )
           } catch (error) {
             if (!isSemantierSessionNotFoundError(error)) {
               throw error
             }
             const session = await createSemantierSession(request.headers)
             sessionKey = session.session_id
-            result = await sendSemantierSessionMessage(request.headers, sessionKey, message)
+            result = await sendSemantierSessionMessage(
+              request.headers,
+              sessionKey,
+              message,
+            )
           }
           return json({
             ok: true,
@@ -62,7 +76,9 @@ export const Route = createFileRoute('/api/session-send')({
             {
               ok: false,
               error:
-                error instanceof Error ? error.message : 'Failed to queue message',
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to queue message',
             },
             { status: 500 },
           )

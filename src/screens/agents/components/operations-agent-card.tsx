@@ -9,6 +9,12 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { AnimatePresence, motion } from 'motion/react'
+import {
+  
+  useAgentChat
+} from '../hooks/use-agent-chat'
+import type {OperationsChatMessage} from '../hooks/use-agent-chat';
+import type { OperationsAgent } from '../hooks/use-operations'
 import { Button } from '@/components/ui/button'
 import { AgentProgress } from '@/components/agent-view/agent-progress'
 import { PixelAvatar } from '@/components/agent-swarm/pixel-avatar'
@@ -16,8 +22,6 @@ import { Markdown } from '@/components/prompt-kit/markdown'
 import { toast } from '@/components/ui/toast'
 import { runCronJob, toggleCronJob } from '@/lib/cron-api'
 import { cn } from '@/lib/utils'
-import { useAgentChat, type OperationsChatMessage } from '../hooks/use-agent-chat'
-import type { OperationsAgent } from '../hooks/use-operations'
 
 function getStatusStyles(status: OperationsAgent['status']) {
   if (status === 'error') {
@@ -72,7 +76,7 @@ export function OperationsInlineChat({
   error,
 }: {
   agentName: string
-  messages: OperationsChatMessage[]
+  messages: Array<OperationsChatMessage>
   sendMessage: (message: string) => Promise<unknown>
   isSending: boolean
   error: string | null
@@ -108,7 +112,10 @@ export function OperationsInlineChat({
               return (
                 <div
                   key={message.id}
-                  className={cn('flex', isUser ? 'justify-end' : 'justify-start')}
+                  className={cn(
+                    'flex',
+                    isUser ? 'justify-end' : 'justify-start',
+                  )}
                 >
                   <div
                     className={cn(
@@ -158,7 +165,11 @@ export function OperationsInlineChat({
             disabled={!draft.trim() || isSending}
             aria-label={isSending ? 'Sending message' : 'Send message'}
           >
-            <HugeiconsIcon icon={ArrowRight01Icon} size={15} strokeWidth={1.8} />
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
+              size={15}
+              strokeWidth={1.8}
+            />
           </Button>
         </div>
       </div>
@@ -178,7 +189,9 @@ export function OperationsAgentCard({
   const displayName = stripEmojiPrefix(agent.name)
   const [showCronPanel, setShowCronPanel] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
-  const { messages, sendMessage, isSending, error } = useAgentChat(agent.sessionKey)
+  const { messages, sendMessage, isSending, error } = useAgentChat(
+    agent.sessionKey,
+  )
   const cronJobCount = agent.jobs.length
   const isActive = agent.status === 'active' && !isPaused
 
@@ -206,7 +219,9 @@ export function OperationsAgentCard({
     },
     onError: (mutationError) => {
       toast(
-        mutationError instanceof Error ? mutationError.message : 'Failed to run cron job',
+        mutationError instanceof Error
+          ? mutationError.message
+          : 'Failed to run cron job',
         { type: 'error' },
       )
     },
@@ -250,25 +265,27 @@ export function OperationsAgentCard({
 
         <div className="flex w-full justify-center px-20">
           <h3 className="min-w-0 text-center text-sm font-semibold text-[var(--theme-text)]">
-          <span className="inline-flex max-w-full items-center justify-center gap-2">
-            <span className="truncate">{displayName}</span>
-            <span
-              className={cn(
-                'h-2 w-2 shrink-0 rounded-full',
-                agent.status === 'active' && !isPaused && 'animate-pulse',
-                status.dot,
-              )}
-              aria-label={status.label}
-              title={status.label}
-            />
-          </span>
+            <span className="inline-flex max-w-full items-center justify-center gap-2">
+              <span className="truncate">{displayName}</span>
+              <span
+                className={cn(
+                  'h-2 w-2 shrink-0 rounded-full',
+                  agent.status === 'active' && !isPaused && 'animate-pulse',
+                  status.dot,
+                )}
+                aria-label={status.label}
+                title={status.label}
+              />
+            </span>
           </h3>
         </div>
 
         <div className="absolute right-0 flex items-center gap-1">
           <button
             type="button"
-            aria-label={isActive ? `Pause ${displayName}` : `Run ${displayName} now`}
+            aria-label={
+              isActive ? `Pause ${displayName}` : `Run ${displayName} now`
+            }
             onClick={() => void handlePlayPause()}
             disabled={isSending && !isActive}
             className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-bg)] hover:text-[var(--theme-text)] disabled:cursor-not-allowed disabled:opacity-60"
@@ -320,7 +337,9 @@ export function OperationsAgentCard({
           {agent.meta.description || 'No description'}
         </p>
         <p className="w-full truncate text-[10px] text-[var(--theme-muted)]/80">
-          {agent.jobs.length > 0 ? `${agent.jobs.length} scheduled job${agent.jobs.length === 1 ? '' : 's'}` : 'Manual only'}
+          {agent.jobs.length > 0
+            ? `${agent.jobs.length} scheduled job${agent.jobs.length === 1 ? '' : 's'}`
+            : 'Manual only'}
         </p>
       </div>
 
@@ -354,7 +373,9 @@ export function OperationsAgentCard({
                               })
                             }
                             className="peer sr-only"
-                            aria-label={job.enabled ? 'Disable job' : 'Enable job'}
+                            aria-label={
+                              job.enabled ? 'Disable job' : 'Enable job'
+                            }
                           />
                           <span className="h-5 w-9 rounded-full bg-primary-200 transition-colors peer-checked:bg-[var(--theme-accent)]" />
                           <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-[var(--theme-card)] shadow-sm transition-transform peer-checked:translate-x-4" />
@@ -374,7 +395,11 @@ export function OperationsAgentCard({
                           onClick={() => runCronMutation.mutate(job.id)}
                           aria-label={`Run ${displayJobName(job.name, agent.id)} now`}
                         >
-                          <HugeiconsIcon icon={PlayIcon} size={14} strokeWidth={1.9} />
+                          <HugeiconsIcon
+                            icon={PlayIcon}
+                            size={14}
+                            strokeWidth={1.9}
+                          />
                         </Button>
                       </div>
                     ))}

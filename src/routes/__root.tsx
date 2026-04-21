@@ -7,6 +7,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import appCss from '../styles.css?url'
+import { getRootSurfaceState } from './-root-layout-state'
 import { SearchModal } from '@/components/search/search-modal'
 import { TerminalShortcutListener } from '@/components/terminal-shortcut-listener'
 import { GlobalShortcutListener } from '@/components/global-shortcut-listener'
@@ -22,8 +23,6 @@ import {
   ONBOARDING_KEY,
 } from '@/components/onboarding/hermes-onboarding'
 import { ErrorBoundary } from '@/components/error-boundary'
-import { getRootSurfaceState } from './-root-layout-state'
-
 
 const APP_CSP = [
   "default-src 'self'",
@@ -209,7 +208,9 @@ export const Route = createRootRoute({
 
 const queryClient = new QueryClient()
 
-export function getRootLayoutMode(onboardingComplete: string | null): 'onboarding' | 'workspace' {
+export function getRootLayoutMode(
+  onboardingComplete: string | null,
+): 'onboarding' | 'workspace' {
   return onboardingComplete === 'true' ? 'workspace' : 'onboarding'
 }
 
@@ -218,7 +219,9 @@ export function wrapInlineScript(source: string): string {
 }
 
 type ServiceWorkerLike = {
-  getRegistrations: () => Promise<Array<{ unregister: () => void | Promise<void> }>>
+  getRegistrations: () => Promise<
+    Array<{ unregister: () => void | Promise<void> }>
+  >
 }
 
 type CachesLike = {
@@ -244,7 +247,9 @@ export async function unregisterServiceWorkers({
 
   await cachesApi
     ?.keys()
-    .then((names) => Promise.allSettled(names.map((name) => cachesApi.delete(name))))
+    .then((names) =>
+      Promise.allSettled(names.map((name) => cachesApi.delete(name))),
+    )
     .catch(() => undefined)
 }
 
@@ -286,7 +291,8 @@ function RootLayout() {
     )
 
     void unregisterServiceWorkers({
-      serviceWorker: 'serviceWorker' in navigator ? navigator.serviceWorker : undefined,
+      serviceWorker:
+        'serviceWorker' in navigator ? navigator.serviceWorker : undefined,
       cachesApi: 'caches' in window ? caches : undefined,
     })
 
@@ -351,10 +357,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         `),
           }}
         />
-        <script dangerouslySetInnerHTML={{ __html: wrapInlineScript(themeScript) }} />
+        <script
+          dangerouslySetInnerHTML={{ __html: wrapInlineScript(themeScript) }}
+        />
         <HeadContent />
         <script
-          dangerouslySetInnerHTML={{ __html: wrapInlineScript(themeColorScript) }}
+          dangerouslySetInnerHTML={{
+            __html: wrapInlineScript(themeColorScript),
+          }}
         />
       </head>
       <body>

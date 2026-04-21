@@ -32,7 +32,9 @@ async function proxyRequest(request: Request, splat: string) {
 
   const upstream = await fetch(targetUrl, init)
   const body = await upstream.text()
-  const responseHeaders = buildSemantierAgentProxyResponseHeaders(upstream.headers)
+  const responseHeaders = buildSemantierAgentProxyResponseHeaders(
+    upstream.headers,
+  )
 
   return new Response(body, {
     status: upstream.status,

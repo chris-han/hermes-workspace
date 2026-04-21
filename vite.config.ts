@@ -18,7 +18,10 @@ import viteTsConfigPaths from 'vite-tsconfig-paths'
 // Local service auto-start helpers
 // ---------------------------------------------------------------------------
 
-function normalizeServiceUrl(rawValue: string | undefined, fallback: string): string {
+function normalizeServiceUrl(
+  rawValue: string | undefined,
+  fallback: string,
+): string {
   return rawValue?.trim() || fallback
 }
 
@@ -182,25 +185,29 @@ const config = defineConfig(({ mode, command }) => {
     const gatewayPort = String(getServicePort(hermesApiUrl, 8642))
     const commandArgs = useGatewayRun
       ? ['-m', 'gateway.run']
-      : ['-m', 'uvicorn', 'webapi.app:app', '--host', '0.0.0.0', '--port', gatewayPort]
+      : [
+          '-m',
+          'uvicorn',
+          'webapi.app:app',
+          '--host',
+          '0.0.0.0',
+          '--port',
+          gatewayPort,
+        ]
 
     console.log(
       `${localServiceLabel('hermes-gateway')} Starting from ${agentDir} using ${python} (${useGatewayRun ? 'gateway.run' : `uvicorn :${gatewayPort}`})`,
     )
 
-    const child = spawn(
-      python,
-      commandArgs,
-      {
-        cwd: agentDir,
-        detached: false, // keep tied to vite process — stops when dev server stops
-        stdio: 'pipe',
-        env: {
-          ...process.env,
-          PATH: `${resolve(agentDir, '.venv', 'bin')}:${resolve(agentDir, 'venv', 'bin')}:${process.env.PATH || ''}`,
-        },
+    const child = spawn(python, commandArgs, {
+      cwd: agentDir,
+      detached: false, // keep tied to vite process — stops when dev server stops
+      stdio: 'pipe',
+      env: {
+        ...process.env,
+        PATH: `${resolve(agentDir, '.venv', 'bin')}:${resolve(agentDir, 'venv', 'bin')}:${process.env.PATH || ''}`,
       },
-    )
+    })
 
     hermesGatewayChild = child
     hermesGatewayStarted = true
@@ -218,7 +225,9 @@ const config = defineConfig(({ mode, command }) => {
       hermesGatewayChild = null
       hermesGatewayStarted = false
       if (code !== 0 && code !== null) {
-        console.warn(`${localServiceLabel('hermes-gateway')} Exited with code ${code}`)
+        console.warn(
+          `${localServiceLabel('hermes-gateway')} Exited with code ${code}`,
+        )
       }
     })
 
@@ -226,7 +235,9 @@ const config = defineConfig(({ mode, command }) => {
     for (let i = 0; i < 15; i++) {
       await new Promise((r) => setTimeout(r, 1000))
       if (await isHealthyEndpoint(hermesApiUrl, '/health')) {
-        console.log(`${localServiceLabel('hermes-gateway')} ✓ Ready on ${hermesApiUrl}`)
+        console.log(
+          `${localServiceLabel('hermes-gateway')} ✓ Ready on ${hermesApiUrl}`,
+        )
         return
       }
     }
@@ -267,15 +278,19 @@ const config = defineConfig(({ mode, command }) => {
       `${localServiceLabel('semantier-backend')} Starting from ${agentDir} using ${python} (api_server.py :${backendPort})`,
     )
 
-    const child = spawn(python, ['api_server.py', '--host', '0.0.0.0', '--port', backendPort], {
-      cwd: agentDir,
-      detached: false,
-      stdio: 'pipe',
-      env: {
-        ...process.env,
-        PATH: `${resolve(agentDir, '.venv', 'bin')}:${resolve(agentDir, 'venv', 'bin')}:${process.env.PATH || ''}`,
+    const child = spawn(
+      python,
+      ['api_server.py', '--host', '0.0.0.0', '--port', backendPort],
+      {
+        cwd: agentDir,
+        detached: false,
+        stdio: 'pipe',
+        env: {
+          ...process.env,
+          PATH: `${resolve(agentDir, '.venv', 'bin')}:${resolve(agentDir, 'venv', 'bin')}:${process.env.PATH || ''}`,
+        },
       },
-    })
+    )
 
     semantierBackendChild = child
     semantierBackendStarted = true
@@ -293,14 +308,18 @@ const config = defineConfig(({ mode, command }) => {
       semantierBackendChild = null
       semantierBackendStarted = false
       if (code !== 0 && code !== null) {
-        console.warn(`${localServiceLabel('semantier-backend')} Exited with code ${code}`)
+        console.warn(
+          `${localServiceLabel('semantier-backend')} Exited with code ${code}`,
+        )
       }
     })
 
     for (let i = 0; i < 15; i++) {
       await new Promise((r) => setTimeout(r, 1000))
       if (await isHealthyEndpoint(semantierAgentUrl, '/health')) {
-        console.log(`${localServiceLabel('semantier-backend')} ✓ Ready on ${semantierAgentUrl}`)
+        console.log(
+          `${localServiceLabel('semantier-backend')} ✓ Ready on ${semantierAgentUrl}`,
+        )
         return
       }
     }
@@ -344,7 +363,17 @@ const config = defineConfig(({ mode, command }) => {
 
     const child = spawn(
       python,
-      ['-m', 'uvicorn', 'hermes_dashboard_wrapper:app', '--host', '0.0.0.0', '--port', dashboardPort, '--log-level', 'warning'],
+      [
+        '-m',
+        'uvicorn',
+        'hermes_dashboard_wrapper:app',
+        '--host',
+        '0.0.0.0',
+        '--port',
+        dashboardPort,
+        '--log-level',
+        'warning',
+      ],
       {
         cwd: agentDir,
         detached: false,
@@ -372,14 +401,18 @@ const config = defineConfig(({ mode, command }) => {
       hermesDashboardChild = null
       hermesDashboardStarted = false
       if (code !== 0 && code !== null) {
-        console.warn(`${localServiceLabel('hermes-dashboard')} Exited with code ${code}`)
+        console.warn(
+          `${localServiceLabel('hermes-dashboard')} Exited with code ${code}`,
+        )
       }
     })
 
     for (let i = 0; i < 15; i++) {
       await new Promise((r) => setTimeout(r, 1000))
       if (await isHealthyEndpoint(hermesDashboardUrl, '/api/status')) {
-        console.log(`${localServiceLabel('hermes-dashboard')} ✓ Ready on ${hermesDashboardUrl}`)
+        console.log(
+          `${localServiceLabel('hermes-dashboard')} ✓ Ready on ${hermesDashboardUrl}`,
+        )
         return
       }
     }
@@ -647,7 +680,7 @@ const config = defineConfig(({ mode, command }) => {
           ws: true,
           rewrite: (path) => path.replace(/^\/ws-hermes/, ''),
         },
-// REST API proxy: API proxy for Hermes backend
+        // REST API proxy: API proxy for Hermes backend
         '/api/hermes-proxy': {
           target: proxyTarget,
           changeOrigin: true,
@@ -810,13 +843,17 @@ const config = defineConfig(({ mode, command }) => {
           // Shutdown managed child processes when dev server stops.
           server.httpServer?.on('close', () => {
             if (semantierBackendChild) {
-              console.log(`${localServiceLabel('semantier-backend')} Stopping...`)
+              console.log(
+                `${localServiceLabel('semantier-backend')} Stopping...`,
+              )
               semantierBackendChild.kill('SIGTERM')
               semantierBackendChild = null
               semantierBackendStarted = false
             }
             if (hermesDashboardChild) {
-              console.log(`${localServiceLabel('hermes-dashboard')} Stopping...`)
+              console.log(
+                `${localServiceLabel('hermes-dashboard')} Stopping...`,
+              )
               hermesDashboardChild.kill('SIGTERM')
               hermesDashboardChild = null
               hermesDashboardStarted = false

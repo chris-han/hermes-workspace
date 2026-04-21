@@ -81,7 +81,9 @@ function ArtifactsTab() {
         >
           <div className="flex items-center justify-between gap-2">
             <span className="font-medium">{artifact.text}</span>
-            <span style={{ color: 'var(--theme-accent)' }}>{artifact.time}</span>
+            <span style={{ color: 'var(--theme-accent)' }}>
+              {artifact.time}
+            </span>
           </div>
         </div>
       ))}

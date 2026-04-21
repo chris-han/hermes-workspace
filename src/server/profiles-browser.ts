@@ -180,8 +180,7 @@ export function listProfiles(): Array<ProfileSummary> {
     active: activeProfile === 'default',
     exists: true,
     model: typeof config.model === 'string' ? config.model : undefined,
-    provider:
-      typeof config.provider === 'string' ? config.provider : undefined,
+    provider: typeof config.provider === 'string' ? config.provider : undefined,
     skillCount: countFilesRecursive(
       path.join(root, 'skills'),
       (full) => path.basename(full) === 'SKILL.md',

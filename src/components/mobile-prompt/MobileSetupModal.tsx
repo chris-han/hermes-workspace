@@ -220,11 +220,7 @@ export function MobileSetupModal({ isOpen, onClose }: MobileSetupModalProps) {
         </button>
 
         <div className="mb-4 flex items-center gap-3 pr-10">
-          <img
-            src="/logo.svg"
-            alt="Semantier"
-            className="size-9 rounded-xl"
-          />
+          <img src="/logo.svg" alt="Semantier" className="size-9 rounded-xl" />
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-white">Mobile Setup</h2>
             <div className="mt-1 flex items-center gap-1.5">

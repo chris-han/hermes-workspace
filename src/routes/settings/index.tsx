@@ -18,11 +18,12 @@ import type * as React from 'react'
 import type { LoaderStyle } from '@/hooks/use-chat-settings'
 import type { BrailleSpinnerPreset } from '@/components/ui/braille-spinner'
 import type { ThemeId } from '@/lib/theme'
+import type {LocaleId} from '@/lib/i18n';
 import { usePageTitle } from '@/hooks/use-page-title'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useSettings } from '@/hooks/use-settings'
-import { getLocale, setLocale, LOCALE_LABELS, type LocaleId } from '@/lib/i18n'
+import { LOCALE_LABELS,  getLocale, setLocale } from '@/lib/i18n'
 import { THEMES, getTheme, isDarkTheme, setTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import {
@@ -147,7 +148,7 @@ const THEME_PREVIEWS: Record<
     accent: '#3b82f6',
     text: '#1F2328',
   },
-  'semantier': {
+  semantier: {
     bg: '#0e0f0c',
     panel: '#181916',
     border: '#2a2b28',
@@ -524,8 +525,12 @@ function SettingsRoute() {
                   }}
                   className="h-9 w-full rounded-lg border border-primary-200 dark:border-gray-600 bg-primary-50 dark:bg-gray-800 px-3 text-sm text-primary-900 dark:text-gray-100 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 md:max-w-xs"
                 >
-                  {(Object.entries(LOCALE_LABELS) as Array<[LocaleId, string]>).map(([id, label]) => (
-                    <option key={id} value={id}>{label}</option>
+                  {(
+                    Object.entries(LOCALE_LABELS) as Array<[LocaleId, string]>
+                  ).map(([id, label]) => (
+                    <option key={id} value={id}>
+                      {label}
+                    </option>
                   ))}
                 </select>
               </SettingsRow>

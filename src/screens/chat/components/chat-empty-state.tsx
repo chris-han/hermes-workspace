@@ -151,9 +151,7 @@ export function ChatEmptyState({
   }, [])
 
   const visibleCategories =
-    isShortViewport && !showAllCategories
-      ? CATEGORIES.slice(0, 2)
-      : CATEGORIES
+    isShortViewport && !showAllCategories ? CATEGORIES.slice(0, 2) : CATEGORIES
 
   return (
     <motion.div
@@ -176,10 +174,7 @@ export function ChatEmptyState({
           />
         </div>
 
-        <p
-          className="micro-label mb-2"
-          style={{ color: 'var(--theme-muted)' }}
-        >
+        <p className="micro-label mb-2" style={{ color: 'var(--theme-muted)' }}>
           Semantier
         </p>
 
@@ -202,7 +197,8 @@ export function ChatEmptyState({
                   key={chip}
                   className="rounded-full px-2.5 py-0.5 text-[11px]"
                   style={{
-                    background: 'color-mix(in srgb, var(--theme-card2) 72%, transparent)',
+                    background:
+                      'color-mix(in srgb, var(--theme-card2) 72%, transparent)',
                     border: '1px solid var(--theme-border)',
                     color: 'var(--theme-muted)',
                   }}
@@ -254,7 +250,8 @@ export function ChatEmptyState({
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.background = 'var(--theme-card)'
-                        e.currentTarget.style.borderColor = 'var(--theme-border)'
+                        e.currentTarget.style.borderColor =
+                          'var(--theme-border)'
                       }}
                     >
                       <span

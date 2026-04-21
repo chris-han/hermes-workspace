@@ -7,12 +7,9 @@ import { spawn } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import EventEmitter from 'node:events'
+import { formatWorkspaceCwdLabel, resolveWorkspaceCwd } from './workspace-root'
 import type { ChildProcess } from 'node:child_process'
 
-import {
-  formatWorkspaceCwdLabel,
-  resolveWorkspaceCwd,
-} from './workspace-root'
 
 export type TerminalSessionEvent = {
   event: string

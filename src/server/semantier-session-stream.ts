@@ -11,7 +11,8 @@ function buildToolCallId(
   payload: Record<string, unknown>,
   runId?: string,
 ): string | undefined {
-  const explicit = readString(payload.toolCallId) || readString(payload.tool_call_id)
+  const explicit =
+    readString(payload.toolCallId) || readString(payload.tool_call_id)
   if (explicit) return explicit
 
   const toolName = readString(payload.tool) || 'tool'
@@ -70,7 +71,8 @@ export function translateSemantierSessionStreamEvent(
     case 'tool_result': {
       const name = readString(data.tool) || 'tool'
       const preview = readString(data.preview)
-      const isError = data.is_error === true || readString(data.status) === 'error'
+      const isError =
+        data.is_error === true || readString(data.status) === 'error'
       return [
         {
           event: 'tool',

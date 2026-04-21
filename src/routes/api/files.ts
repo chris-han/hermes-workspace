@@ -231,7 +231,9 @@ export const Route = createFileRoute('/api/files')({
           return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
         }
         try {
-          const activeWorkspace = await resolveActiveWorkspaceRoot(request.headers)
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
           const workspaceRoot = activeWorkspace.path
           const url = new URL(request.url)
           const action = url.searchParams.get('action') || 'list'
@@ -242,7 +244,10 @@ export const Route = createFileRoute('/api/files')({
           )
 
           if (action === 'list' && hasGlob(inputPath)) {
-            const globListing = await readGlobDirectory(workspaceRoot, inputPath)
+            const globListing = await readGlobDirectory(
+              workspaceRoot,
+              inputPath,
+            )
             return json({
               root: globListing.root,
               base: workspaceRoot,
@@ -309,7 +314,9 @@ export const Route = createFileRoute('/api/files')({
         }
 
         try {
-          const activeWorkspace = await resolveActiveWorkspaceRoot(request.headers)
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
           const workspaceRoot = activeWorkspace.path
           const contentType = request.headers.get('content-type') || ''
           if (!contentType.includes('multipart/form-data')) {
@@ -327,7 +334,10 @@ export const Route = createFileRoute('/api/files')({
             if (!(file instanceof File)) {
               return json({ error: 'Missing file' }, { status: 400 })
             }
-            const resolvedTarget = ensureWorkspacePath(workspaceRoot, targetPath)
+            const resolvedTarget = ensureWorkspacePath(
+              workspaceRoot,
+              targetPath,
+            )
             const isDir = (await fs.stat(resolvedTarget)).isDirectory()
             const destination = isDir
               ? path.join(resolvedTarget, file.name)
@@ -335,7 +345,10 @@ export const Route = createFileRoute('/api/files')({
             await fs.mkdir(path.dirname(destination), { recursive: true })
             const buffer = Buffer.from(await file.arrayBuffer())
             await fs.writeFile(destination, buffer)
-            return json({ ok: true, path: toRelative(workspaceRoot, destination) })
+            return json({
+              ok: true,
+              path: toRelative(workspaceRoot, destination),
+            })
           }
 
           const body = (await request.json().catch(() => ({}))) as Record<
@@ -358,7 +371,10 @@ export const Route = createFileRoute('/api/files')({
               workspaceRoot,
               String(body.from || ''),
             )
-            const toPath = ensureWorkspacePath(workspaceRoot, String(body.to || ''))
+            const toPath = ensureWorkspacePath(
+              workspaceRoot,
+              String(body.to || ''),
+            )
             await fs.mkdir(path.dirname(toPath), { recursive: true })
             await fs.rename(fromPath, toPath)
             return json({ ok: true, path: toRelative(workspaceRoot, toPath) })

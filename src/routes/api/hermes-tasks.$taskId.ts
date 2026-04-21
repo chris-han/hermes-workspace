@@ -1,6 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { isAuthenticated } from '../../server/auth-middleware'
-import { deleteTask, getTask, moveTask, updateTask } from '../../server/tasks-store'
+import {
+  deleteTask,
+  getTask,
+  moveTask,
+  updateTask,
+} from '../../server/tasks-store'
 import type { TaskColumn } from '../../server/tasks-store'
 
 function jsonResponse(data: unknown, status = 200) {
@@ -32,13 +37,28 @@ export const Route = createFileRoute('/api/hermes-tasks/$taskId')({
           const body = (await request.json()) as Record<string, unknown>
           const task = updateTask(params.taskId, {
             title: typeof body.title === 'string' ? body.title : undefined,
-            description: typeof body.description === 'string' ? body.description : undefined,
+            description:
+              typeof body.description === 'string'
+                ? body.description
+                : undefined,
             column: typeof body.column === 'string' ? body.column : undefined,
-            priority: typeof body.priority === 'string' ? body.priority : undefined,
-            assignee: body.assignee === null || typeof body.assignee === 'string' ? body.assignee : undefined,
-            tags: Array.isArray(body.tags) ? body.tags.filter((tag): tag is string => typeof tag === 'string') : undefined,
-            due_date: body.due_date === null || typeof body.due_date === 'string' ? body.due_date : undefined,
-            position: typeof body.position === 'number' ? body.position : undefined,
+            priority:
+              typeof body.priority === 'string' ? body.priority : undefined,
+            assignee:
+              body.assignee === null || typeof body.assignee === 'string'
+                ? body.assignee
+                : undefined,
+            tags: Array.isArray(body.tags)
+              ? body.tags.filter(
+                  (tag): tag is string => typeof tag === 'string',
+                )
+              : undefined,
+            due_date:
+              body.due_date === null || typeof body.due_date === 'string'
+                ? body.due_date
+                : undefined,
+            position:
+              typeof body.position === 'number' ? body.position : undefined,
           })
 
           if (!task) return jsonResponse({ error: 'Task not found' }, 404)

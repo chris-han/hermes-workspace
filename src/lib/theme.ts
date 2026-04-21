@@ -19,7 +19,8 @@ export const THEMES: Array<{
   {
     id: 'hermes-nous',
     label: 'Hermes Nous',
-    description: 'Deep teal background, cream accent — matches Nous Research chrome',
+    description:
+      'Deep teal background, cream accent — matches Nous Research chrome',
     icon: '◱',
   },
   {
@@ -89,7 +90,7 @@ const LIGHT_THEME_MAP: Record<
   'hermes-official': 'hermes-official-light',
   'hermes-classic': 'hermes-classic-light',
   'hermes-slate': 'hermes-slate-light',
-  'semantier': 'semantier-light',
+  semantier: 'semantier-light',
 }
 const DARK_THEME_MAP: Record<
   Extract<ThemeId, `${string}-light`>,

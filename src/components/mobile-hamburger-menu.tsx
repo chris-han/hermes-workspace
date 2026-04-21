@@ -129,7 +129,8 @@ export function MobileHamburgerMenu() {
   const profileAvatarUrl = useResolvedAvatarUrl()
   const semantierAuthQuery = useSemantierAuthStatus()
   const semantierAuth = semantierAuthQuery.data
-  const [semantierAuthActionPending, setSemantierAuthActionPending] = useState(false)
+  const [semantierAuthActionPending, setSemantierAuthActionPending] =
+    useState(false)
   const isChatRoute =
     pathname.startsWith('/chat') || pathname === '/new' || pathname === '/'
 

@@ -40,8 +40,10 @@ async function proxyAuthRequest(request: Request, splat: string) {
 export const Route = createFileRoute('/auth/$')({
   server: {
     handlers: {
-      GET: async ({ request, params }) => proxyAuthRequest(request, params._splat || ''),
-      POST: async ({ request, params }) => proxyAuthRequest(request, params._splat || ''),
+      GET: async ({ request, params }) =>
+        proxyAuthRequest(request, params._splat || ''),
+      POST: async ({ request, params }) =>
+        proxyAuthRequest(request, params._splat || ''),
     },
   },
 })

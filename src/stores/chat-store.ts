@@ -133,10 +133,7 @@ type ChatState = {
 
   /** Sessions currently waiting for a response — survives component unmount */
   waitingSessionKeys: Set<string>
-  waitingSessionMeta: Record<
-    string,
-    { since: number; runId: string | null }
-  >
+  waitingSessionMeta: Record<string, { since: number; runId: string | null }>
   /** Mark a session as waiting for a response */
   setSessionWaiting: (sessionKey: string, runId?: string | null) => void
   /** Clear waiting state for a session */
@@ -984,7 +981,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
             timestamp: getMessageEventTime(cleanedMessage) ?? now,
             __receiveTime: now,
             __realtimeSequence: realtimeMessageSequence++,
-            __streamingStatus: (event.state === 'interrupted' ? 'interrupted' : 'complete') as any,
+            __streamingStatus: (event.state === 'interrupted'
+              ? 'interrupted'
+              : 'complete') as any,
             ...(streamToolCallsToEmbed
               ? { __streamToolCalls: streamToolCallsToEmbed }
               : {}),

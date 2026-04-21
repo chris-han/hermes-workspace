@@ -40,11 +40,7 @@ export function LoginScreen() {
           {/* Logo */}
           <div className="mb-8 flex justify-center">
             <div className="flex items-center gap-2.5">
-              <img
-                src="/logo.svg"
-                alt=""
-                className="size-8 rounded-lg"
-              />
+              <img src="/logo.svg" alt="" className="size-8 rounded-lg" />
               <h1 className="text-2xl font-bold tracking-tight text-primary-900">
                 Semantier
               </h1>

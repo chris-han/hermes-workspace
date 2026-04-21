@@ -79,7 +79,10 @@ export async function createTask(input: CreateTaskInput): Promise<HermesTask> {
   return (await res.json()).task
 }
 
-export async function updateTask(taskId: string, input: UpdateTaskInput): Promise<HermesTask> {
+export async function updateTask(
+  taskId: string,
+  input: UpdateTaskInput,
+): Promise<HermesTask> {
   const res = await fetch(`${BASE}/${taskId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -94,7 +97,11 @@ export async function deleteTask(taskId: string): Promise<void> {
   if (!res.ok) throw new Error(`Failed to delete task: ${res.status}`)
 }
 
-export async function moveTask(taskId: string, column: TaskColumn, movedBy = 'user'): Promise<HermesTask> {
+export async function moveTask(
+  taskId: string,
+  column: TaskColumn,
+  movedBy = 'user',
+): Promise<HermesTask> {
   const res = await fetch(`${BASE}/${taskId}?action=move`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -115,7 +122,13 @@ export const COLUMN_LABELS: Record<TaskColumn, string> = {
   done: 'Done',
 }
 
-export const COLUMN_ORDER: Array<TaskColumn> = ['backlog', 'todo', 'in_progress', 'review', 'done']
+export const COLUMN_ORDER: Array<TaskColumn> = [
+  'backlog',
+  'todo',
+  'in_progress',
+  'review',
+  'done',
+]
 
 export const PRIORITY_COLORS: Record<TaskPriority, string> = {
   high: '#ef4444',

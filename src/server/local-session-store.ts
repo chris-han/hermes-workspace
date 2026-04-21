@@ -33,7 +33,10 @@ const storeCache = new Map<string, StoreData>()
 const saveTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 function getSessionsFile(workspaceRoot: string): string {
-  return join(resolveWorkspaceAppStateRoot(workspaceRoot), 'local-sessions.json')
+  return join(
+    resolveWorkspaceAppStateRoot(workspaceRoot),
+    'local-sessions.json',
+  )
 }
 
 function loadFromDisk(workspaceRoot: string): StoreData {
@@ -117,13 +120,19 @@ export function updateLocalSessionTitle(
   }
 }
 
-export function touchLocalSession(workspaceRoot: string, sessionId: string): void {
+export function touchLocalSession(
+  workspaceRoot: string,
+  sessionId: string,
+): void {
   const store = loadFromDisk(workspaceRoot)
   const session = store.sessions[sessionId]
   if (session) session.updatedAt = Date.now()
 }
 
-export function deleteLocalSession(workspaceRoot: string, sessionId: string): void {
+export function deleteLocalSession(
+  workspaceRoot: string,
+  sessionId: string,
+): void {
   const store = loadFromDisk(workspaceRoot)
   delete store.sessions[sessionId]
   delete store.messages[sessionId]

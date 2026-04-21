@@ -3,7 +3,17 @@
  * Add new languages by adding a locale map below.
  */
 
-export type LocaleId = 'en' | 'es' | 'fr' | 'de' | 'zh' | 'ja' | 'ko' | 'pt' | 'ru' | 'ar'
+export type LocaleId =
+  | 'en'
+  | 'es'
+  | 'fr'
+  | 'de'
+  | 'zh'
+  | 'ja'
+  | 'ko'
+  | 'pt'
+  | 'ru'
+  | 'ar'
 
 export type TranslationKey = keyof typeof EN
 
@@ -80,7 +90,8 @@ const ES: typeof EN = {
   'jobs.newJob': 'Nuevo Trabajo',
   'settings.title': 'Configuración',
   'settings.language': 'Idioma',
-  'settings.languageDesc': 'Elige el idioma de la interfaz del espacio de trabajo.',
+  'settings.languageDesc':
+    'Elige el idioma de la interfaz del espacio de trabajo.',
   'common.save': 'Guardar',
   'common.cancel': 'Cancelar',
   'common.delete': 'Eliminar',
@@ -118,7 +129,8 @@ const FR: typeof EN = {
   'jobs.newJob': 'Nouvelle tâche',
   'settings.title': 'Paramètres',
   'settings.language': 'Langue',
-  'settings.languageDesc': "Choisissez la langue d'affichage de l'espace de travail.",
+  'settings.languageDesc':
+    "Choisissez la langue d'affichage de l'espace de travail.",
   'common.save': 'Enregistrer',
   'common.cancel': 'Annuler',
   'common.delete': 'Supprimer',
@@ -167,7 +179,16 @@ const ZH: typeof EN = {
 }
 
 const LOCALES: Record<LocaleId, typeof EN> = {
-  en: EN, es: ES, fr: FR, de: EN, zh: ZH, ja: EN, ko: EN, pt: EN, ru: EN, ar: EN,
+  en: EN,
+  es: ES,
+  fr: FR,
+  de: EN,
+  zh: ZH,
+  ja: EN,
+  ko: EN,
+  pt: EN,
+  ru: EN,
+  ar: EN,
 }
 
 export const LOCALE_LABELS: Record<LocaleId, string> = {

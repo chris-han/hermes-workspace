@@ -77,7 +77,11 @@ async function semantierJson<T>(
     headers,
   })
   if (!response.ok) {
-    throw new SemantierSessionApiError(path, response.status, await readError(response))
+    throw new SemantierSessionApiError(
+      path,
+      response.status,
+      await readError(response),
+    )
   }
   return response.json() as Promise<T>
 }
@@ -131,7 +135,9 @@ export function toSemantierChatMessage(
     sessionKey: message.session_id,
     linkedAttemptId: message.linked_attempt_id,
     metadata: message.metadata,
-    ...(typeof historyIndex === 'number' ? { __historyIndex: historyIndex } : {}),
+    ...(typeof historyIndex === 'number'
+      ? { __historyIndex: historyIndex }
+      : {}),
   }
 }
 
@@ -194,8 +200,12 @@ export async function updateSemantierSession(
 export async function deleteSemantierSession(
   requestHeaders: HeadersInit | Headers | undefined,
   sessionId: string,
-): Promise<{ status: string; deleted: string[]; missing: string[] }> {
-  return semantierJson<{ status: string; deleted: string[]; missing: string[] }>(
+): Promise<{ status: string; deleted: Array<string>; missing: Array<string> }> {
+  return semantierJson<{
+    status: string
+    deleted: Array<string>
+    missing: Array<string>
+  }>(
     '/sessions/batch-delete',
     {
       method: 'POST',
@@ -261,7 +271,11 @@ export async function openSemantierSessionEvents(
     signal: options?.signal,
   })
   if (!response.ok) {
-    throw new SemantierSessionApiError(path, response.status, await readError(response))
+    throw new SemantierSessionApiError(
+      path,
+      response.status,
+      await readError(response),
+    )
   }
   return response
 }

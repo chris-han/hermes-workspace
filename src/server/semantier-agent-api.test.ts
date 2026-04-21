@@ -9,7 +9,8 @@ describe('buildSemantierAgentProxyHeaders', () => {
   it('strips browser cookies by default so guest traffic stays on the public workspace', () => {
     const headers = buildSemantierAgentProxyHeaders(
       new Headers({
-        cookie: 'hermes-auth=workspace-session; vt_session=semantier-user-session',
+        cookie:
+          'hermes-auth=workspace-session; vt_session=semantier-user-session',
         host: 'localhost:3000',
         'content-length': '42',
         'x-trace-id': 'trace-123',

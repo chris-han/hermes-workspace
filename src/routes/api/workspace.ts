@@ -37,7 +37,10 @@ async function detectWorkspace(
   if (savedPath) {
     let resolvedSavedPath = ''
     try {
-      resolvedSavedPath = ensureWorkspacePathWithinRoot(workspaceRoot, savedPath)
+      resolvedSavedPath = ensureWorkspacePathWithinRoot(
+        workspaceRoot,
+        savedPath,
+      )
     } catch {
       resolvedSavedPath = ''
     }
@@ -82,7 +85,9 @@ export const Route = createFileRoute('/api/workspace')({
         try {
           const url = new URL(request.url)
           const savedPath = url.searchParams.get('saved') || undefined
-          const activeWorkspace = await resolveActiveWorkspaceRoot(request.headers)
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
 
           const result = await detectWorkspace(activeWorkspace.path, savedPath)
 

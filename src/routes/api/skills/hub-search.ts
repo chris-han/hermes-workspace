@@ -21,9 +21,7 @@ export const Route = createFileRoute('/api/skills/hub-search')({
             50,
             Math.max(1, Number(url.searchParams.get('limit') || '20')),
           )
-          const source = (
-            url.searchParams.get('source') || 'all'
-          ).trim()
+          const source = (url.searchParams.get('source') || 'all').trim()
 
           if (!query) {
             return json({ results: [], source: 'idle' })

@@ -37,9 +37,15 @@ export const Route = createFileRoute('/api/sessions')({
         if (csrfCheck) return csrfCheck
 
         try {
-          const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+          const body = (await request.json().catch(() => ({}))) as Record<
+            string,
+            unknown
+          >
           const label = typeof body.label === 'string' ? body.label.trim() : ''
-          const session = await createSemantierSession(request.headers, label || undefined)
+          const session = await createSemantierSession(
+            request.headers,
+            label || undefined,
+          )
 
           return json({
             ok: true,
@@ -66,14 +72,23 @@ export const Route = createFileRoute('/api/sessions')({
         if (csrfCheck) return csrfCheck
 
         try {
-          const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
-          const rawSessionKey = typeof body.sessionKey === 'string' ? body.sessionKey.trim() : ''
-          const rawFriendlyId = typeof body.friendlyId === 'string' ? body.friendlyId.trim() : ''
-          const label = typeof body.label === 'string' ? body.label.trim() : undefined
+          const body = (await request.json().catch(() => ({}))) as Record<
+            string,
+            unknown
+          >
+          const rawSessionKey =
+            typeof body.sessionKey === 'string' ? body.sessionKey.trim() : ''
+          const rawFriendlyId =
+            typeof body.friendlyId === 'string' ? body.friendlyId.trim() : ''
+          const label =
+            typeof body.label === 'string' ? body.label.trim() : undefined
           const sessionKey = rawSessionKey || rawFriendlyId
 
           if (!sessionKey) {
-            return json({ ok: false, error: 'sessionKey required' }, { status: 400 })
+            return json(
+              { ok: false, error: 'sessionKey required' },
+              { status: 400 },
+            )
           }
 
           await updateSemantierSession(request.headers, sessionKey, label)
@@ -112,7 +127,10 @@ export const Route = createFileRoute('/api/sessions')({
           const sessionKey = rawSessionKey.trim() || rawFriendlyId.trim()
 
           if (!sessionKey) {
-            return json({ ok: false, error: 'sessionKey required' }, { status: 400 })
+            return json(
+              { ok: false, error: 'sessionKey required' },
+              { status: 400 },
+            )
           }
 
           await deleteSemantierSession(request.headers, sessionKey)

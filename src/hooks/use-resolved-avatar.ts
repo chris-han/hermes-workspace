@@ -1,8 +1,8 @@
 import {
+  DEFAULT_CHAT_DISPLAY_NAME,
   selectChatProfileAvatarDataUrl,
   selectChatProfileDisplayName,
   useChatSettingsStore,
-  DEFAULT_CHAT_DISPLAY_NAME,
 } from '@/hooks/use-chat-settings'
 import { useSemantierAuthStatus } from '@/lib/semantier-auth'
 

@@ -1,13 +1,10 @@
-export let SEMANTIER_AGENT_API =
-  process.env.SEMANTIER_AGENT_API_URL ||
-  'http://127.0.0.1:8899'
+export const SEMANTIER_AGENT_API =
+  process.env.SEMANTIER_AGENT_API_URL || 'http://127.0.0.1:8899'
 
 export const SEMANTIER_AGENT_AUTH_COOKIE = 'vt_session'
 
 export const SEMANTIER_AGENT_API_KEY =
-  process.env.SEMANTIER_AGENT_API_KEY ||
-  process.env.API_AUTH_KEY ||
-  ''
+  process.env.SEMANTIER_AGENT_API_KEY || process.env.API_AUTH_KEY || ''
 
 function filterCookieHeader(
   cookieHeader: string | null,
@@ -15,7 +12,9 @@ function filterCookieHeader(
 ): string | null {
   if (!cookieHeader) return null
 
-  const allowed = new Set(allowedCookieNames.map((name) => name.trim()).filter(Boolean))
+  const allowed = new Set(
+    allowedCookieNames.map((name) => name.trim()).filter(Boolean),
+  )
   if (allowed.size === 0) return null
 
   const filtered = cookieHeader
@@ -23,7 +22,8 @@ function filterCookieHeader(
     .map((cookie) => cookie.trim())
     .filter((cookie) => {
       const separatorIndex = cookie.indexOf('=')
-      const name = separatorIndex >= 0 ? cookie.slice(0, separatorIndex).trim() : cookie
+      const name =
+        separatorIndex >= 0 ? cookie.slice(0, separatorIndex).trim() : cookie
       return allowed.has(name)
     })
 

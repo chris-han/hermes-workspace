@@ -193,9 +193,9 @@ export function AgentStreamPanel({ sessionKey, agentName, agentColor, onClose }:
   return (
     <>
       <button type="button" aria-label="Close live stream panel" className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
-      <aside className="fixed inset-x-0 bottom-0 z-50 h-[70vh] rounded-t-2xl border-t border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 md:right-0 md:bottom-0 md:left-auto md:top-[var(--titlebar-h,0px)] md:h-auto md:w-[400px] md:rounded-none md:border-t-0 md:border-l">
+      <aside className="fixed inset-x-0 bottom-0 z-50 h-[70vh] rounded-t-2xl border-t border-[var(--theme-border)] bg-[var(--theme-panel)] shadow-2xl md:right-0 md:bottom-0 md:left-auto md:top-[var(--titlebar-h,0px)] md:h-auto md:w-[400px] md:rounded-none md:border-t-0 md:border-l">
         <div className="flex h-full min-h-0 flex-col">
-          <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95">
+          <div className="sticky top-0 z-10 border-b border-[var(--theme-border)] bg-[var(--theme-panel)]/95 backdrop-blur">
             <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-neutral-300 dark:bg-neutral-700 md:hidden" />
             <div className="flex items-start justify-between gap-3 px-4 py-3">
               <div className="min-w-0">
@@ -216,18 +216,18 @@ export function AgentStreamPanel({ sessionKey, agentName, agentColor, onClose }:
           </div>
           <div ref={streamRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-3">
             {messages.length === 0 ? <p className="text-xs text-neutral-500 dark:text-neutral-400">Waiting for messages...</p> : messages.map((message) => (
-              <div key={message.id} className="rounded-lg border border-neutral-200 bg-white p-2 dark:border-neutral-800 dark:bg-neutral-900/40">
+              <div key={message.id} className="rounded-lg border border-[var(--theme-border)] bg-[var(--theme-card)] p-2">
                 <div className="mb-1 flex items-center justify-between gap-2"><span className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${ROLE_BADGE_CLASS[message.role] ?? ROLE_BADGE_CLASS.assistant}`}>{message.role}</span><span className="text-[10px] text-neutral-500 dark:text-neutral-400">{formatAgo(message.timestamp)}</span></div>
                 <p className={`whitespace-pre-wrap text-xs text-neutral-800 dark:text-neutral-200 ${message.role === 'tool' ? 'font-mono' : ''}`}>{message.text}</p>
               </div>
             ))}
           </div>
-          <div className="sticky bottom-0 border-t border-neutral-200 bg-white/95 px-3 py-3 backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95">
+          <div className="sticky bottom-0 border-t border-[var(--theme-border)] bg-[var(--theme-panel)]/95 px-3 py-3 backdrop-blur">
             <div className="grid grid-cols-3 gap-2">
-              <button type="button" onClick={() => setSteerOpen(true)} className="rounded-lg border border-neutral-200 px-2 py-2 text-xs font-medium text-neutral-800 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800">Steer</button>
+              <button type="button" onClick={() => setSteerOpen(true)} className="rounded-lg border border-[var(--theme-border)] px-2 py-2 text-xs font-medium text-neutral-800 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-neutral-800">Steer</button>
               <div className="relative">
-                {menuOpen ? <div className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"><button type="button" onClick={() => void onPauseToggle()} disabled={pausePending} className="flex w-full rounded-md px-2 py-1.5 text-left text-xs text-neutral-700 hover:bg-neutral-100 disabled:opacity-60 dark:text-neutral-200 dark:hover:bg-neutral-800">{pausePending ? 'Updating...' : isPaused ? 'Resume' : 'Pause'}</button><button type="button" onClick={() => void onKill()} disabled={killPending} className="flex w-full rounded-md px-2 py-1.5 text-left text-xs text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-300 dark:hover:bg-red-950/40">{killPending ? 'Terminating...' : 'Kill'}</button></div> : null}
-                <button type="button" onClick={() => setMenuOpen((open) => !open)} className="w-full rounded-lg border border-neutral-200 px-2 py-2 text-xs font-medium text-neutral-800 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800">Pause/Kill</button>
+                {menuOpen ? <div className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-card)] p-1 shadow-lg"><button type="button" onClick={() => void onPauseToggle()} disabled={pausePending} className="flex w-full rounded-md px-2 py-1.5 text-left text-xs text-neutral-700 hover:bg-neutral-100 disabled:opacity-60 dark:text-neutral-200 dark:hover:bg-neutral-800">{pausePending ? 'Updating...' : isPaused ? 'Resume' : 'Pause'}</button><button type="button" onClick={() => void onKill()} disabled={killPending} className="flex w-full rounded-md px-2 py-1.5 text-left text-xs text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-300 dark:hover:bg-red-950/40">{killPending ? 'Terminating...' : 'Kill'}</button></div> : null}
+                <button type="button" onClick={() => setMenuOpen((open) => !open)} className="w-full rounded-lg border border-[var(--theme-border)] px-2 py-2 text-xs font-medium text-neutral-800 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-neutral-800">Pause/Kill</button>
               </div>
               <button type="button" onClick={() => { onClose(); void navigate({ to: '/chat/$sessionKey', params: { sessionKey } }) }} className="rounded-lg bg-accent-500 px-2 py-2 text-xs font-medium text-white hover:bg-accent-600">Open Chat</button>
             </div>

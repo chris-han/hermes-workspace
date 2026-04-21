@@ -213,7 +213,7 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
               : 'max-h-0 translate-y-2 opacity-0',
           ].join(' ')}
         >
-          <div className="w-full rounded-3xl border border-white/10 bg-white/5 p-5 text-left shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+          <div className="w-full rounded-3xl border border-[var(--theme-border-subtle)] bg-white/5 p-5 text-left shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-sm">
             <p className="text-base font-medium text-white">
               Welcome! Let&apos;s connect your backend
             </p>
@@ -287,7 +287,7 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
                 {steps.map((step, idx) => (
                   <div
                     key={idx}
-                    className="rounded-xl border border-white/8 bg-black/20 p-4"
+                    className="rounded-xl border border-[var(--theme-border-subtle)] bg-black/20 p-4"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
@@ -301,7 +301,7 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
                       <button
                         type="button"
                         onClick={() => handleCopy(step.command, idx)}
-                        className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/60 transition hover:bg-white/10 hover:text-white/80"
+                        className="shrink-0 rounded-lg border border-[var(--theme-border-subtle)] bg-white/5 px-2.5 py-1 text-xs font-medium text-white/60 transition hover:bg-white/10 hover:text-white/80"
                       >
                         {copiedIdx === idx ? '✓ Copied' : 'Copy'}
                       </button>
@@ -317,7 +317,7 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
               </div>
 
               {/* Env var hint */}
-              <div className="mt-4 rounded-xl border border-white/6 bg-white/3 p-3">
+              <div className="mt-4 rounded-xl border border-[var(--theme-border-subtle)] bg-white/3 p-3">
                 <p className="text-xs font-medium text-white/50">
                   Point{' '}
                   <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-white/70">

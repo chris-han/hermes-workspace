@@ -1,8 +1,9 @@
 /**
- * Hermes FastAPI Client
+ * Hermes Gateway Client
  *
- * HTTP client for the Hermes FastAPI backend (default: http://127.0.0.1:8642).
- * Replaces legacy WebSocket connection for the Hermes Workspace fork.
+ * HTTP client for the Hermes gateway transport API.
+ * The workspace uses the separate dashboard API for sessions/config and the
+ * Vibe backend for Semantier-owned workspace services.
  */
 
 import {
@@ -16,16 +17,21 @@ import {
 } from './gateway-capabilities'
 import {
   deleteSession as deleteDashboardSession,
+  deleteSessionForRequest as deleteDashboardSessionForRequest,
+  getConfigForRequest,
   getSession as getDashboardSession,
+  getSessionForRequest as getDashboardSessionForRequest,
   getSessionMessages as getDashboardSessionMessages,
+  getSessionMessagesForRequest as getDashboardSessionMessagesForRequest,
   listSessions as listDashboardSessions,
+  listSessionsForRequest as listDashboardSessionsForRequest,
   searchSessions as searchDashboardSessions,
 } from './hermes-dashboard-api'
 
 const _authHeaders = (): Record<string, string> =>
   BEARER_TOKEN ? { Authorization: `Bearer ${BEARER_TOKEN}` } : {}
 
-console.log(`[hermes-api] Configured API: ${HERMES_API}`)
+console.log(`[hermes-api] Configured gateway API: ${HERMES_API}`)
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -124,9 +130,12 @@ export async function checkHealth(): Promise<{ status: string }> {
 export async function listSessions(
   limit = 50,
   offset = 0,
+  requestHeaders?: HeadersInit | Headers,
 ): Promise<Array<HermesSession>> {
   if (getCapabilities().dashboard.available) {
-    const resp = await listDashboardSessions(limit, offset)
+    const resp = requestHeaders
+      ? await listDashboardSessionsForRequest(requestHeaders, limit, offset)
+      : await listDashboardSessions(limit, offset)
     return resp.sessions as Array<HermesSession>
   }
   const resp = await hermesGet<{ items: Array<HermesSession>; total: number }>(
@@ -135,9 +144,14 @@ export async function listSessions(
   return resp.items
 }
 
-export async function getSession(sessionId: string): Promise<HermesSession> {
+export async function getSession(
+  sessionId: string,
+  requestHeaders?: HeadersInit | Headers,
+): Promise<HermesSession> {
   if (getCapabilities().dashboard.available) {
-    return getDashboardSession(sessionId) as Promise<HermesSession>
+    return (requestHeaders
+      ? getDashboardSessionForRequest(requestHeaders, sessionId)
+      : getDashboardSession(sessionId)) as Promise<HermesSession>
   }
   const resp = await hermesGet<{ session: HermesSession }>(
     `/api/sessions/${sessionId}`,
@@ -168,8 +182,15 @@ export async function updateSession(
   return resp.session
 }
 
-export async function deleteSession(sessionId: string): Promise<void> {
+export async function deleteSession(
+  sessionId: string,
+  requestHeaders?: HeadersInit | Headers,
+): Promise<void> {
   if (getCapabilities().dashboard.available) {
+    if (requestHeaders) {
+      await deleteDashboardSessionForRequest(requestHeaders, sessionId)
+      return
+    }
     await deleteDashboardSession(sessionId)
     return
   }
@@ -178,9 +199,12 @@ export async function deleteSession(sessionId: string): Promise<void> {
 
 export async function getMessages(
   sessionId: string,
+  requestHeaders?: HeadersInit | Headers,
 ): Promise<Array<HermesMessage>> {
   if (getCapabilities().dashboard.available) {
-    const resp = await getDashboardSessionMessages(sessionId)
+    const resp = requestHeaders
+      ? await getDashboardSessionMessagesForRequest(requestHeaders, sessionId)
+      : await getDashboardSessionMessages(sessionId)
     return resp.messages as Array<HermesMessage>
   }
   const resp = await hermesGet<{ items: Array<HermesMessage>; total: number }>(
@@ -199,6 +223,17 @@ export async function searchSessions(
   return hermesGet(
     `/api/sessions/search?q=${encodeURIComponent(query)}&limit=${limit}`,
   )
+}
+
+export async function getConfig(
+  requestHeaders?: HeadersInit | Headers,
+): Promise<HermesConfig> {
+  if (getCapabilities().dashboard.available) {
+    return (requestHeaders
+      ? await getConfigForRequest(requestHeaders)
+      : await dashboardFetch('/api/config').then((res) => res.json())) as HermesConfig
+  }
+  return hermesGet('/api/config')
 }
 
 export async function forkSession(
@@ -426,12 +461,6 @@ export async function getSkill(name: string): Promise<unknown> {
 
 export async function getSkillCategories(): Promise<unknown> {
   return hermesGet('/api/skills/categories')
-}
-
-// ── Config ───────────────────────────────────────────────────────
-
-export async function getConfig(): Promise<HermesConfig> {
-  return hermesGet<HermesConfig>('/api/config')
 }
 
 export async function patchConfig(

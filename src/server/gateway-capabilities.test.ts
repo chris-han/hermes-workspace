@@ -1,9 +1,17 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  dashboardFetch,
   deriveGatewayModeFromCapabilities,
   getGatewayModeLabel,
 } from './gateway-capabilities'
+
+const originalFetch = globalThis.fetch
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  globalThis.fetch = originalFetch
+})
 
 describe('deriveGatewayModeFromCapabilities', () => {
   it('prefers semantier-unicell when the Vibe backend is available', () => {
@@ -69,5 +77,41 @@ describe('deriveGatewayModeFromCapabilities', () => {
 
   it('maps semantier-unicell to a human-readable label', () => {
     expect(getGatewayModeLabel('semantier-unicell')).toBe('Semantier Unicell')
+  })
+})
+
+describe('dashboardFetch', () => {
+  it('forwards the active workspace hermes home on dashboard requests', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          authenticated: true,
+          currentWorkspaceId: 'tenant-123',
+          currentWorkspaceSlug: 'alice',
+          currentWorkspaceRoot: '/repo/workspaces/tenant-123',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => '',
+      })
+    globalThis.fetch = fetchMock as typeof fetch
+
+    await dashboardFetch(
+      '/api/sessions',
+      { headers: { Authorization: 'Bearer test-dashboard-token' } },
+      {
+        requestHeaders: { cookie: 'vt_session=session-123' },
+      },
+    )
+
+    const [, dashboardInit] = fetchMock.mock.calls[1]
+    const headers = new Headers(dashboardInit?.headers)
+    expect(headers.get('X-Hermes-Home')).toBe(
+      '/repo/workspaces/tenant-123/.hermes',
+    )
   })
 })

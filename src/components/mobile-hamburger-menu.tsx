@@ -19,14 +19,15 @@ import { cn } from '@/lib/utils'
 import { hapticTap } from '@/lib/haptics'
 import { getTheme, getThemeVariant, isDarkTheme, setTheme } from '@/lib/theme'
 import {
-  selectChatProfileDisplayName,
-  useChatSettingsStore,
-} from '@/hooks/use-chat-settings'
-import {
   logoutVibeAuth,
   useVibeAuthStatus,
   vibeAuthQueryKey,
 } from '@/lib/vibe-auth'
+import { UserAvatar } from '@/components/avatars'
+import {
+  useResolvedAvatarUrl,
+  useResolvedDisplayName,
+} from '@/hooks/use-resolved-avatar'
 
 const NAV_ITEMS = [
   {
@@ -124,7 +125,8 @@ export function MobileHamburgerMenu() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const profileDisplayName = useChatSettingsStore(selectChatProfileDisplayName)
+  const profileDisplayName = useResolvedDisplayName()
+  const profileAvatarUrl = useResolvedAvatarUrl()
   const vibeAuthQuery = useVibeAuthStatus()
   const vibeAuth = vibeAuthQuery.data
   const [vibeAuthActionPending, setVibeAuthActionPending] = useState(false)
@@ -265,27 +267,11 @@ export function MobileHamburgerMenu() {
         >
           <div className="flex items-center gap-3 px-2">
             {/* User avatar + name + status dot */}
-            <div
-              className="size-9 rounded-xl shrink-0 flex items-center justify-center"
-              style={{
-                background: 'var(--color-accent-muted, rgba(99,102,241,0.15))',
-              }}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ color: 'var(--color-accent, #6366f1)' }}
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </div>
+            <UserAvatar
+              size={36}
+              src={profileAvatarUrl}
+              alt={profileDisplayName}
+            />
             <span
               className="text-[15px] font-semibold truncate"
               style={{ color: 'var(--color-ink, #111)' }}

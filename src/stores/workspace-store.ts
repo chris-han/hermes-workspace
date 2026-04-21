@@ -46,8 +46,19 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       mobileKeyboardInset: 0,
       mobileComposerFocused: false,
       toggleSidebar: () =>
-        set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
-      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+        set((s) => {
+          if (s.sidebarPinned) {
+            return { sidebarPinned: false, sidebarCollapsed: true }
+          }
+          return { sidebarCollapsed: !s.sidebarCollapsed }
+        }),
+      setSidebarCollapsed: (collapsed) =>
+        set((s) => {
+          if (collapsed && s.sidebarPinned) {
+            return { sidebarPinned: false, sidebarCollapsed: true }
+          }
+          return { sidebarCollapsed: collapsed }
+        }),
       toggleSidebarPinned: () =>
         set((s) => ({
           sidebarPinned: !s.sidebarPinned,
@@ -71,6 +82,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }),
     {
       name: 'hermes-workspace-v1',
+      merge: (persistedState: any, currentState) => {
+        const merged = { ...currentState, ...(persistedState || {}) }
+        if (merged.sidebarPinned) {
+          merged.sidebarCollapsed = false
+        }
+        return merged
+      },
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,
         sidebarPinned: state.sidebarPinned,

@@ -20,10 +20,9 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import {
-  selectChatProfileAvatarDataUrl,
-  selectChatProfileDisplayName,
-  useChatSettingsStore,
-} from '@/hooks/use-chat-settings'
+  useResolvedAvatarUrl,
+  useResolvedDisplayName,
+} from '@/hooks/use-resolved-avatar'
 import { cn } from '@/lib/utils'
 
 const WORDS_PER_TICK = 4
@@ -1618,10 +1617,8 @@ function MessageItemComponent({
   isLastAssistant = false,
 }: MessageItemProps) {
   const role = message.role || 'assistant'
-  const profileDisplayName = useChatSettingsStore(selectChatProfileDisplayName)
-  const profileAvatarDataUrl = useChatSettingsStore(
-    selectChatProfileAvatarDataUrl,
-  )
+  const profileDisplayName = useResolvedDisplayName()
+  const profileAvatarUrl = useResolvedAvatarUrl()
 
   const messageStreamingText =
     typeof message.__streamingText === 'string'
@@ -2207,7 +2204,7 @@ function MessageItemComponent({
             <UserAvatar
               size={24}
               className="mt-0.5"
-              src={profileAvatarDataUrl}
+              src={profileAvatarUrl}
               alt={profileDisplayName}
             />
           ) : (

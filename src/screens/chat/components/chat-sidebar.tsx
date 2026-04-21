@@ -48,11 +48,11 @@ import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { UserAvatar } from '@/components/avatars'
 import { SEARCH_MODAL_EVENTS, useSearchModal } from '@/hooks/use-search-modal'
+import { useChatSettingsStore } from '@/hooks/use-chat-settings'
 import {
-  selectChatProfileAvatarDataUrl,
-  selectChatProfileDisplayName,
-  useChatSettingsStore,
-} from '@/hooks/use-chat-settings'
+  useResolvedAvatarUrl,
+  useResolvedDisplayName,
+} from '@/hooks/use-resolved-avatar'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { StatusDot } from '@/components/status-indicator'
 import {
@@ -519,10 +519,8 @@ function ChatSidebarComponent({
     setSettingsOpen,
     handleOpenSettings,
   } = useSidebarSettings()
-  const profileDisplayName = useChatSettingsStore(selectChatProfileDisplayName)
-  const profileAvatarDataUrl = useChatSettingsStore(
-    selectChatProfileAvatarDataUrl,
-  )
+  const profileDisplayName = useResolvedDisplayName()
+  const profileAvatarUrl = useResolvedAvatarUrl()
   const { deleteSession } = useDeleteSession()
   const { renameSession } = useRenameSession()
   const openSearchModal = useSearchModal((state) => state.openModal)
@@ -1125,7 +1123,7 @@ function ChatSidebarComponent({
             >
               <UserAvatar
                 size={28}
-                src={profileAvatarDataUrl}
+                src={profileAvatarUrl}
                 alt={profileDisplayName}
               />
               <AnimatePresence initial={false} mode="wait">

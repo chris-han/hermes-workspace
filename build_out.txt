@@ -349,7 +349,7 @@ dist/client/assets/main-C3p9uDB4.js                        1,822.85 kB │ gzip:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 9.55s
+✓ built in 11.35s
 vite v7.3.1 building ssr environment for production...
 transforming...
 ✓ 420 modules transformed.
@@ -392,4 +392,4 @@ dist/server/assets/operations-B3xEmCI5.js                    132.41 kB
 dist/server/server.js                                        136.42 kB
 dist/server/assets/conductor-DL9DRYME.js                     222.25 kB
 dist/server/assets/router-BoulhaQ5.js                      1,357.40 kB
-✓ built in 3.79s
+✓ built in 4.50s

@@ -1,4 +1,5 @@
 import { VIBE_AGENT_API, vibeAgentAuthHeaders } from './vibe-agent-api'
+import { resolveActiveWorkspaceRoot } from './workspace-root'
 
 /**
  * Probes Hermes services to detect which API groups are available.
@@ -197,9 +198,17 @@ function withDashboardBase(path: string): string {
 export async function dashboardFetch(
   path: string,
   init: RequestInit = {},
+  options?: {
+    requestHeaders?: HeadersInit | Headers
+  },
 ): Promise<Response> {
   const requestPath = withDashboardBase(path)
   const method = (init.method || 'GET').toUpperCase()
+  let activeWorkspaceHermesHome: string | null = null
+  if (options?.requestHeaders) {
+    const activeWorkspace = await resolveActiveWorkspaceRoot(options.requestHeaders)
+    activeWorkspaceHermesHome = `${activeWorkspace.path}/.hermes`
+  }
   const doFetch = async (forceToken = false) => {
     const headers = new Headers(init.headers)
     const isProtected =
@@ -217,6 +226,9 @@ export async function dashboardFetch(
       for (const [key, value] of Object.entries(auth)) {
         headers.set(key, value)
       }
+    }
+    if (activeWorkspaceHermesHome && !headers.has('X-Hermes-Home')) {
+      headers.set('X-Hermes-Home', activeWorkspaceHermesHome)
     }
 
     return fetch(requestPath, {

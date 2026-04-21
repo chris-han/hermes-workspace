@@ -796,7 +796,7 @@ export function DashboardScreen() {
         <img
           src="/logo.svg"
           alt="Semantier"
-          className="size-12 md:size-14 rounded-md border border-[var(--theme-border)]"
+          className="size-12 md:size-14 rounded-xl ]"
           style={{ padding: '3px', background: 'var(--theme-card)' }}
         />
         <p className="micro-label" style={{ color: 'var(--theme-muted)' }}>

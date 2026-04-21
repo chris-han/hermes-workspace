@@ -27,7 +27,7 @@ export const Route = createFileRoute('/api/conductor-stop')({
           let deleted = 0
           for (const sessionKey of sessionKeys) {
             try {
-              await deleteSession(sessionKey)
+              await deleteSession(sessionKey, request.headers)
               deleted += 1
             } catch {
               // Ignore per-session delete errors so one bad key doesn't block the rest.

@@ -144,16 +144,50 @@ const SOURCE_FILTERS: Array<SkillSourceFilter> = [
   'Built-in',
 ]
 
+function resolveSourceTier(
+  item: {
+    sourceTier?: string
+    sourceLabel?: string
+    sourcePath?: string
+    builtin?: boolean
+    canEdit?: boolean
+    canUninstall?: boolean
+    canModify?: boolean
+  },
+): string | undefined {
+  if (item.sourceTier) return item.sourceTier
+  if (item.builtin) return 'builtin'
+  if (item.canEdit || item.canUninstall || item.canModify) return 'workspace'
+
+  const sourceLabel = item.sourceLabel?.toLowerCase()
+  if (sourceLabel === 'workspace') return 'workspace'
+  if (sourceLabel === 'application shared') return 'application'
+  if (sourceLabel === 'hermes built-in') return 'builtin'
+
+  const sourcePath = item.sourcePath?.replaceAll('\\', '/')
+  if (sourcePath?.includes('/.hermes/skills/')) return 'workspace'
+
+  return undefined
+}
+
 function matchesSourceFilter(
-  item: { sourceTier?: string },
+  item: {
+    sourceTier?: string
+    sourceLabel?: string
+    sourcePath?: string
+    builtin?: boolean
+    canEdit?: boolean
+    canUninstall?: boolean
+    canModify?: boolean
+  },
   filter: SkillSourceFilter,
 ): boolean {
+  const sourceTier = resolveSourceTier(item)
+
   if (filter === 'All') return true
-  if (filter === 'Workspace') return item.sourceTier === 'workspace'
-  if (filter === 'Built-in') return item.sourceTier === 'builtin'
-  return (
-    item.sourceTier === 'application' || item.sourceTier === 'external'
-  )
+  if (filter === 'Workspace') return sourceTier === 'workspace'
+  if (filter === 'Built-in') return sourceTier === 'builtin'
+  return sourceTier === 'application' || sourceTier === 'external'
 }
 
 function matchesToolsetSearch(toolset: ToolsetSummary, rawSearch: string): boolean {
@@ -356,7 +390,7 @@ export function SkillsScreen() {
 
   const marketplaceSkills = useMemo<Array<SkillSummary>>(
     function resolveMarketplaceSkills() {
-      const sourceSkills = (hubQuery.data?.results || []).map(function mapHubSkill(skill) {
+      const sourceSkills: Array<SkillSummary> = (hubQuery.data?.results || []).map(function mapHubSkill(skill) {
         // Gateway returns: name, description, source, identifier, trust_level, repo, path, tags, extra, installed
         const skillId = skill.id || skill.name
         const author =

@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
-import { chatQueryKeys, fetchHistory } from '../chat-queries'
+import {
+  chatQueryKeys,
+  fetchHistory,
+  NEW_CHAT_FRIENDLY_ID,
+  NEW_CHAT_SESSION_KEY,
+} from '../chat-queries'
 import { getMessageTimestamp, textFromMessage } from '../utils'
 import {
   cleanupExpiredPendingSends,
@@ -56,6 +61,24 @@ function readPortableHistory(): HistoryResponse {
   } catch {
     return { sessionKey: 'main', messages: [] }
   }
+}
+
+function emptyHistoryResponse(sessionKey: string): HistoryResponse {
+  return {
+    sessionKey: sessionKey || 'main',
+    messages: [],
+  }
+}
+
+export function getNewChatHistorySnapshot(
+  queryClient: QueryClient,
+  historyKey: readonly unknown[],
+  sessionKey: string,
+): HistoryResponse {
+  return (
+    queryClient.getQueryData<HistoryResponse>(historyKey) ??
+    emptyHistoryResponse(sessionKey)
+  )
 }
 
 type ExecNotification = {
@@ -292,6 +315,14 @@ export function useChatHistory({
         return readPortableHistory()
       }
 
+      if (isNewChat) {
+        return getNewChatHistorySnapshot(
+          queryClient,
+          historyKey,
+          effectiveSessionKeyForHistory,
+        )
+      }
+
       const cached = queryClient.getQueryData(historyKey)
       const optimisticMessages = Array.isArray((cached as any)?.messages)
         ? (cached as any).messages.filter((message: any) => {
@@ -325,6 +356,13 @@ export function useChatHistory({
             sessionKey: 'main',
             messages: [],
           }
+        )
+      }
+      if (isNewChat) {
+        return getNewChatHistorySnapshot(
+          queryClient,
+          historyKey,
+          effectiveSessionKeyForHistory,
         )
       }
       return queryClient.getQueryData<HistoryResponse>(historyKey)
@@ -530,6 +568,7 @@ export function useChatHistory({
   const historyError =
     historyQuery.error instanceof Error ? historyQuery.error.message : null
   const resolvedSessionKey = useMemo(() => {
+    if (isNewChat) return NEW_CHAT_SESSION_KEY
     if (normalizedForcedSessionKey) return normalizedForcedSessionKey
     const key = historyQuery.data?.sessionKey
     if (typeof key === 'string' && key.trim().length > 0) {
@@ -541,6 +580,7 @@ export function useChatHistory({
   }, [
     explicitRouteSessionKey,
     historyQuery.data?.sessionKey,
+    isNewChat,
     normalizedActiveSessionKey,
     normalizedForcedSessionKey,
   ])

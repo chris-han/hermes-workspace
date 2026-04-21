@@ -10,6 +10,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { extractRawText } from 'mammoth'
 import {
   memo,
   useCallback,
@@ -329,6 +330,12 @@ const IMAGE_QUALITY = 0.85
 /** Safe image attachment limit after processing (1MB). */
 const MAX_TRANSPORT_IMAGE_SIZE = 1 * 1024 * 1024
 
+const DOCX_MIME_TYPE =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+const ATTACHMENT_ACCEPT =
+  'image/*,.md,.txt,.json,.csv,.ts,.tsx,.js,.py,.docx'
+
 const IMAGE_EXTENSION_TO_MIME: Record<string, string> = {
   png: 'image/png',
   jpg: 'image/jpeg',
@@ -353,6 +360,7 @@ const TEXT_EXTENSION_TO_MIME: Record<string, string> = {
   tsx: 'text/plain',
   js: 'text/plain',
   py: 'text/plain',
+  docx: DOCX_MIME_TYPE,
 }
 
 function normalizeMimeType(value: string): string {
@@ -378,7 +386,11 @@ function inferTextMimeTypeFromFileName(name: string): string {
 
 function isTextMimeType(value: string): boolean {
   const normalized = normalizeMimeType(value)
-  return normalized.startsWith('text/') || normalized === 'application/json'
+  return (
+    normalized.startsWith('text/') ||
+    normalized === 'application/json' ||
+    normalized === DOCX_MIME_TYPE
+  )
 }
 
 function isImageFile(file: File): boolean {
@@ -469,6 +481,16 @@ async function readFileAsText(file: File): Promise<string | null> {
     reader.onerror = () => resolve(null)
     reader.readAsText(file)
   })
+}
+
+async function readDocxAsText(file: File): Promise<string | null> {
+  try {
+    const arrayBuffer = await file.arrayBuffer()
+    const result = await extractRawText({ arrayBuffer })
+    return result.value.trim()
+  } catch {
+    return null
+  }
 }
 
 function readText(value: unknown): string {
@@ -1205,7 +1227,13 @@ function ChatComposerComponent({
             }
 
             if (textFile) {
-              const textContent = await readFileAsText(file)
+              const inferredMimeType = inferTextMimeTypeFromFileName(file.name)
+              const normalizedMimeType = normalizeMimeType(file.type)
+              const textContent =
+                normalizedMimeType === DOCX_MIME_TYPE ||
+                inferredMimeType === DOCX_MIME_TYPE
+                  ? await readDocxAsText(file)
+                  : await readFileAsText(file)
               if (textContent === null) return null
               const name =
                 file.name && file.name.trim().length > 0
@@ -1216,10 +1244,8 @@ function ChatComposerComponent({
                 id: crypto.randomUUID(),
                 name,
                 contentType:
-                  (isTextMimeType(file.type)
-                    ? normalizeMimeType(file.type)
-                    : '') ||
-                  inferTextMimeTypeFromFileName(name) ||
+                  (isTextMimeType(file.type) ? normalizedMimeType : '') ||
+                  inferredMimeType ||
                   'text/plain',
                 size: textBytes,
                 dataUrl: textContent,
@@ -1795,7 +1821,7 @@ function ChatComposerComponent({
       <input
         ref={attachmentInputRef}
         type="file"
-        accept="image/*,.md,.txt,.json,.csv,.ts,.tsx,.js,.py"
+        accept={ATTACHMENT_ACCEPT}
         multiple
         className="hidden"
         onChange={handleAttachmentInputChange}

@@ -3,6 +3,8 @@ import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   moveHistoryMessages,
+  NEW_CHAT_FRIENDLY_ID,
+  NEW_CHAT_SESSION_KEY,
   resetNewChatHistory,
 } from '../../screens/chat/chat-queries'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -87,7 +89,11 @@ function ChatRoute() {
       sessionKey: string
     }) {
       const sourceFriendlyId = activeFriendlyId
-      const sourceSessionKey = forcedSessionKey ?? activeFriendlyId
+      const sourceSessionKey =
+        forcedSessionKey ??
+        (activeFriendlyId === NEW_CHAT_FRIENDLY_ID
+          ? NEW_CHAT_SESSION_KEY
+          : activeFriendlyId)
       moveHistoryMessages(
         queryClient,
         sourceFriendlyId,

@@ -86,6 +86,7 @@ const DARK_ENTERPRISE_THEMES = new Set<ThemeId>([
   'hermes-official',
   'hermes-classic',
   'hermes-slate',
+  'semantier',
 ])
 
 function _isDarkEnterpriseTheme(theme: string | null): theme is ThemeId {
@@ -912,6 +913,7 @@ const ENTERPRISE_THEME_FAMILIES: Array<ThemeId> = [
   'hermes-official',
   'hermes-classic',
   'hermes-slate',
+  'semantier',
 ]
 
 const ENTERPRISE_THEMES = THEMES.map((theme) => ({
@@ -974,13 +976,29 @@ const ENTERPRISE_THEMES = THEMES.map((theme) => ({
                   accent: '#7eb8f6',
                   text: '#c9d1d9',
                 }
-              : {
-                  bg: '#F6F8FA',
-                  panel: '#FFFFFF',
-                  border: '#D0D7DE',
-                  accent: '#3b82f6',
-                  text: '#24292f',
-                },
+              : theme.id === 'semantier'
+                ? {
+                    bg: '#0e0f0c',
+                    panel: '#181916',
+                    border: '#2a2b28',
+                    accent: '#9fe870',
+                    text: '#f0f0ec',
+                  }
+                : theme.id === 'semantier-light'
+                  ? {
+                      bg: '#f5f5f0',
+                      panel: '#ffffff',
+                      border: '#d5d6d1',
+                      accent: '#163300',
+                      text: '#0e0f0c',
+                    }
+                  : {
+                      bg: '#F6F8FA',
+                      panel: '#FFFFFF',
+                      border: '#D0D7DE',
+                      accent: '#3b82f6',
+                      text: '#24292f',
+                    },
 }))
 
 function ThemeSwatch({

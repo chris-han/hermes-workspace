@@ -773,6 +773,8 @@ export function DashboardScreen() {
               'hermes-classic-light': 'hermes-classic',
               'hermes-slate': 'hermes-slate-light',
               'hermes-slate-light': 'hermes-slate',
+              'semantier': 'semantier-light',
+              'semantier-light': 'semantier',
             }
             const cur = document.documentElement.getAttribute('data-theme') || 'hermes-official'
             const nextDataTheme = LIGHT_DARK_PAIRS[cur] || (isDark ? 'hermes-official-light' : 'hermes-official')

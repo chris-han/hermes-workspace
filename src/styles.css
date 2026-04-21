@@ -1,11 +1,101 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=EB+Garamond:opsz,wght@8..120,400..800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=EB+Garamond:opsz,wght@8..120,400..800&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600&display=swap');
 @import 'tailwindcss';
+
+/* ═══════════════════════════════════════════════════════════════
+   Tailwind v4 — shadcn/ui semantic token registration
+   Mirrors the frontend token vocabulary so components can be
+   copied between frontend ↔ hermes-workspace without change.
+   ═══════════════════════════════════════════════════════════════ */
+@theme inline {
+  /* Core surfaces */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--theme-input);
+
+  /* Actions */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  /* Semantic states */
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  /* Frontend brand palette — Wise & Pinterest */
+  --color-near-black: var(--near-black);
+  --color-wise-green: var(--wise-green);
+  --color-dark-green: var(--dark-green);
+  --color-light-mint: var(--light-mint);
+  --color-pastel-green: var(--pastel-green);
+  --color-warm-dark: var(--warm-dark);
+  --color-warm-gray: var(--warm-gray);
+  --color-light-surface: var(--light-surface);
+  --color-focus-blue: var(--focus-blue);
+
+  /* Radius scale (matches frontend) */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-button: 16px;
+  --radius-card: 20px;
+  --radius-section: 32px;
+  --radius-hero: 40px;
+}
+
+/* ── Semantier Brand Fonts ──
+   Matches frontend exactly: only AutautGrotesk-Regular (weight 400) is loaded.
+   font-medium (500), font-semibold (600), font-bold (700) are browser-synthesized.
+   Monument Grotesk files exist in public/font/ but are unused.
+   AutautGrotesk-VF.woff2 exists but is not loaded.
+   ═══════════════════════════════════════════════════════════════ */
+@font-face {
+  font-family: 'Autaut Grotesk';
+  src: url('/font/AutautGrotesk-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* Tailwind v4 — enable dark: variant on .dark class (set by __root.tsx) */
 @variant dark (&:where(.dark, .dark *));
 
 :root {
   --tabbar-h: 0px;
+}
+
+/* ── shadcn/ui semantic token bridge ─────────────────────────────
+   Maps the existing --theme-* variables to the standard
+   --background / --foreground / --card / --primary vocabulary
+   used by the frontend components.
+   ═══════════════════════════════════════════════════════════════ */
+[data-theme] {
+  --background: var(--theme-bg);
+  --foreground: var(--theme-text);
+  --card: var(--theme-card);
+  --card-foreground: var(--theme-text);
+  --muted: var(--theme-panel);
+  --muted-foreground: var(--theme-muted);
+  --border: var(--theme-border);
+  --destructive: var(--theme-danger);
+  --destructive-foreground: var(--theme-text);
+  --success: var(--theme-success);
+  --danger: var(--theme-danger);
+  --warning: var(--theme-warning);
+  --info: var(--theme-focus);
+  --radius: 1rem;
+
+  /* Default primary fallback */
+  --primary: var(--theme-accent);
+  --primary-foreground: var(--theme-text);
 }
 
 /* Hide scrollbars until scroll (cross-browser) */
@@ -101,6 +191,185 @@
   box-shadow: var(--theme-shadow-3) !important;
 }
 
+/* ── Frontend border-radius utilities ── */
+.rounded-button { border-radius: 16px; }
+.rounded-card { border-radius: 20px; }
+.rounded-comfortable { border-radius: 20px; }
+.rounded-section { border-radius: 32px; }
+.rounded-hero { border-radius: 40px; }
+
+/* ── Frontend ring-shadow utilities (Wise design system) ── */
+.ring-shadow {
+  box-shadow: rgba(14, 15, 12, 0.12) 0px 0px 0px 1px;
+}
+.ring-shadow-dark {
+  box-shadow: rgba(245, 245, 240, 0.12) 0px 0px 0px 1px;
+}
+
+/* ── Semantier shadow override (warm near-black tint, not blue) ── */
+[data-theme='semantier-light'] .shadow-lg,
+[data-theme='semantier-light'] .shadow-xl,
+[data-theme='semantier-light'] .shadow-2xl {
+  box-shadow:
+    0 1px 0 rgba(14, 15, 12, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+}
+[data-theme='semantier-light'] .shadow-md {
+  box-shadow: 0 1px 0 rgba(14, 15, 12, 0.04) !important;
+}
+[data-theme='semantier-light'] .shadow-sm,
+[data-theme='semantier-light'] .shadow-xs {
+  box-shadow: none !important;
+}
+
+/* ── Button utilities (DESIGN.md scale patterns) ── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: var(--radius-button);
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  padding: 5px 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+  transition: transform 150ms ease, opacity 150ms ease, background-color 150ms ease;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary:hover {
+  opacity: 0.92;
+  transform: scale(1.05);
+}
+.btn-primary:active {
+  transform: scale(0.95);
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: var(--radius-button);
+  background-color: rgba(22, 51, 0, 0.08);
+  color: var(--near-black);
+  padding: 8px 12px 8px 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+  transition: transform 150ms ease, background-color 150ms ease;
+  cursor: pointer;
+  border: none;
+}
+.btn-secondary:hover {
+  background-color: rgba(22, 51, 0, 0.14);
+  transform: scale(1.05);
+}
+.btn-secondary:active {
+  transform: scale(0.95);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: var(--radius-button);
+  background-color: transparent;
+  color: var(--theme-muted);
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+  transition: color 150ms ease, background-color 150ms ease;
+  cursor: pointer;
+  border: none;
+}
+.btn-ghost:hover {
+  background-color: var(--theme-panel);
+  color: var(--theme-text);
+}
+
+/* ── Code surface (run-code-surface) — matches frontend exactly ── */
+[data-theme='semantier'] .run-code-surface,
+[data-theme='semantier-light'] .run-code-surface {
+  background: var(--near-black);
+  box-shadow: rgba(14, 15, 12, 0.12) 0 0 0 1px;
+  border-radius: var(--radius-md);
+}
+
+[data-theme='semantier'] .run-code-surface .hljs,
+[data-theme='semantier'] .run-code-surface .hljs-subst,
+[data-theme='semantier-light'] .run-code-surface .hljs,
+[data-theme='semantier-light'] .run-code-surface .hljs-subst {
+  color: var(--light-surface);
+}
+
+[data-theme='semantier'] .run-code-surface .hljs-comment,
+[data-theme='semantier'] .run-code-surface .hljs-quote,
+[data-theme='semantier-light'] .run-code-surface .hljs-comment,
+[data-theme='semantier-light'] .run-code-surface .hljs-quote {
+  color: color-mix(in srgb, var(--light-surface) 58%, var(--near-black));
+}
+
+[data-theme='semantier'] .run-code-surface .hljs-keyword,
+[data-theme='semantier'] .run-code-surface .hljs-selector-tag,
+[data-theme='semantier'] .run-code-surface .hljs-built_in,
+[data-theme='semantier'] .run-code-surface .hljs-name,
+[data-theme='semantier'] .run-code-surface .hljs-tag,
+[data-theme='semantier-light'] .run-code-surface .hljs-keyword,
+[data-theme='semantier-light'] .run-code-surface .hljs-selector-tag,
+[data-theme='semantier-light'] .run-code-surface .hljs-built_in,
+[data-theme='semantier-light'] .run-code-surface .hljs-name,
+[data-theme='semantier-light'] .run-code-surface .hljs-tag {
+  color: var(--wise-green);
+}
+
+[data-theme='semantier'] .run-code-surface .hljs-string,
+[data-theme='semantier'] .run-code-surface .hljs-attr,
+[data-theme='semantier'] .run-code-surface .hljs-template-tag,
+[data-theme='semantier-light'] .run-code-surface .hljs-string,
+[data-theme='semantier-light'] .run-code-surface .hljs-attr,
+[data-theme='semantier-light'] .run-code-surface .hljs-template-tag {
+  color: var(--bright-orange);
+}
+
+[data-theme='semantier'] .run-code-surface .hljs-number,
+[data-theme='semantier'] .run-code-surface .hljs-literal,
+[data-theme='semantier'] .run-code-surface .hljs-symbol,
+[data-theme='semantier'] .run-code-surface .hljs-bullet,
+[data-theme='semantier-light'] .run-code-surface .hljs-number,
+[data-theme='semantier-light'] .run-code-surface .hljs-literal,
+[data-theme='semantier-light'] .run-code-surface .hljs-symbol,
+[data-theme='semantier-light'] .run-code-surface .hljs-bullet {
+  color: var(--warning-yellow);
+}
+
+[data-theme='semantier'] .run-code-surface .hljs-title,
+[data-theme='semantier'] .run-code-surface .hljs-title.class_,
+[data-theme='semantier'] .run-code-surface .hljs-title.function_,
+[data-theme='semantier-light'] .run-code-surface .hljs-title,
+[data-theme='semantier-light'] .run-code-surface .hljs-title.class_,
+[data-theme='semantier-light'] .run-code-surface .hljs-title.function_ {
+  color: var(--pastel-green);
+}
+
+[data-theme='semantier'] .run-code-surface .hljs-variable,
+[data-theme='semantier'] .run-code-surface .hljs-property,
+[data-theme='semantier'] .run-code-surface .hljs-params,
+[data-theme='semantier-light'] .run-code-surface .hljs-variable,
+[data-theme='semantier-light'] .run-code-surface .hljs-property,
+[data-theme='semantier-light'] .run-code-surface .hljs-params {
+  color: color-mix(in srgb, var(--light-surface) 84%, var(--wise-green));
+}
+
 /* KPI card utility (label + value + trend badge) */
 .kpi-card {
   border: 1px solid var(--theme-border);
@@ -142,9 +411,8 @@
   padding: 0.2rem 0.45rem;
 }
 
-[data-theme='ops-dark'] .kpi-card:hover,
-[data-theme='premium-dark'] .kpi-card:hover,
-[data-theme='sunset-brand'] .kpi-card:hover {
+[data-theme='semantier'] .kpi-card:hover,
+[data-theme='semantier-light'] .kpi-card:hover {
   border-color: var(--theme-accent-border);
   box-shadow:
     var(--theme-shadow-2),
@@ -993,9 +1261,10 @@ code {
   --theme-border-subtle: rgba(255, 230, 203, 0.1);
   --theme-text: #ffe6cb;
   --theme-muted: rgba(255, 230, 203, 0.6);
-  --theme-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.55);
-  --theme-shadow-2: 0 6px 16px rgba(0, 0, 0, 0.48);
-  --theme-shadow-3: 0 16px 36px rgba(0, 0, 0, 0.58);
+  /* Minimal shadow system per DESIGN.md — ring + subtle elevation */
+  --theme-shadow-1: rgba(14, 15, 12, 0.12) 0px 0px 0px 1px;
+  --theme-shadow-2: 0 1px 2px rgba(14, 15, 12, 0.08);
+  --theme-shadow-3: 0 8px 24px rgba(14, 15, 12, 0.12);
   --theme-glass: rgba(4, 28, 28, 0.88);
   --theme-focus: #ffac02;
   --theme-accent: #ffac02;
@@ -1075,6 +1344,141 @@ code {
   --theme-input: #fbfdfb;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Semantier — editorial warmth, Wise-green accent
+   Dark:  near-black #0e0f0c, wise-green #9fe870
+   Light: warm parchment #f5f5f0, dark-green #163300
+   ═══════════════════════════════════════════════════════════════ */
+
+[data-theme='semantier'] {
+  --theme-bg: #0e0f0c;
+  --theme-sidebar: #121310;
+  --theme-panel: #121310;
+  --theme-card: #181916;
+  --theme-card2: #1c1d1a;
+  --theme-border: #2a2b28;
+  --theme-border-subtle: #1e1f1c;
+  --theme-text: #f0f0ec;
+  --theme-muted: #868685;
+  --theme-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.55);
+  --theme-shadow-2: 0 6px 16px rgba(0, 0, 0, 0.48);
+  --theme-shadow-3: 0 16px 36px rgba(0, 0, 0, 0.58);
+  --theme-glass: rgba(14, 15, 12, 0.88);
+  --theme-focus: #435ee5;
+  --theme-accent: #9fe870;
+  --theme-accent-secondary: #cdffad;
+  --theme-accent-subtle: rgba(159, 232, 112, 0.14);
+  --theme-accent-border: rgba(159, 232, 112, 0.3);
+  --theme-active: #9fe870;
+  --theme-link: #9fe870;
+  --theme-success: #054d28;
+  --theme-warning: #ffd11a;
+  --theme-danger: #d03238;
+  --theme-stripe: rgba(42, 43, 40, 0.48);
+  --theme-header-bg: #121310;
+  --theme-header-border: #2a2b28;
+  /* Chat bubbles — user = primary (Wise Green), assistant = card */
+  --chat-user-bg: #9fe870;
+  --chat-user-border: rgba(159, 232, 112, 0.45);
+  --chat-user-foreground: #163300;
+  --chat-assistant-bg: var(--theme-card);
+  --chat-assistant-border: var(--theme-border);
+  --chat-assistant-foreground: var(--theme-text);
+  --composer-bg: var(--theme-bg);
+  --composer-border: var(--theme-border);
+  --composer-placeholder: var(--theme-muted);
+  --tool-card-bg: var(--theme-panel);
+  --tool-card-border: var(--theme-border);
+  --tool-card-title: var(--theme-text);
+  --tool-card-muted: var(--theme-muted);
+  --code-bg: var(--near-black);
+  --code-border: var(--theme-border);
+  --code-foreground: var(--light-surface);
+  --theme-input: #1c1d1a;
+
+  /* Frontend semantic overrides — Wise Green CTA in both modes */
+  --primary: #9fe870;
+  --primary-foreground: #163300;
+
+  /* Brand palette tokens */
+  --near-black: #0e0f0c;
+  --wise-green: #9fe870;
+  --dark-green: #163300;
+  --light-mint: #e2f6d5;
+  --pastel-green: #cdffad;
+  --warm-dark: #454745;
+  --warm-gray: #868685;
+  --light-surface: #e8ebe6;
+  --focus-blue: #435ee5;
+  --bright-orange: #ffc091;
+  --warning-yellow: #ffd11a;
+}
+
+[data-theme='semantier-light'] {
+  --theme-bg: #f5f5f0;
+  --theme-sidebar: #eeefea;
+  --theme-panel: #f0f1ec;
+  --theme-card: #ffffff;
+  --theme-card2: #f5f6f1;
+  --theme-border: #d5d6d1;
+  --theme-border-subtle: #e5e6e1;
+  --theme-text: #0e0f0c;
+  --theme-muted: #868685;
+  /* Minimal shadow system per DESIGN.md — ring + subtle elevation */
+  --theme-shadow-1: rgba(14, 15, 12, 0.08) 0px 0px 0px 1px;
+  --theme-shadow-2: 0 1px 2px rgba(14, 15, 12, 0.04);
+  --theme-shadow-3: 0 8px 24px rgba(14, 15, 12, 0.06);
+  --theme-glass: rgba(245, 245, 240, 0.92);
+  --theme-focus: #435ee5;
+  --theme-accent: #163300;
+  --theme-accent-secondary: #2a4d00;
+  --theme-accent-subtle: rgba(22, 51, 0, 0.07);
+  --theme-accent-border: rgba(22, 51, 0, 0.18);
+  --theme-active: #163300;
+  --theme-link: #054d28;
+  --theme-success: #054d28;
+  --theme-warning: #9c6b2f;
+  --theme-danger: #a24b4b;
+  --theme-stripe: rgba(213, 214, 209, 0.4);
+  --theme-header-bg: #f0f1ec;
+  --theme-header-border: #d5d6d1;
+  /* Chat bubbles — user = primary (Wise Green), assistant = card */
+  --chat-user-bg: #9fe870;
+  --chat-user-border: rgba(22, 51, 0, 0.12);
+  --chat-user-foreground: #163300;
+  --chat-assistant-bg: var(--theme-card);
+  --chat-assistant-border: var(--theme-border);
+  --chat-assistant-foreground: var(--theme-text);
+  --composer-bg: var(--theme-bg);
+  --composer-border: var(--theme-border);
+  --composer-placeholder: var(--theme-muted);
+  --tool-card-bg: var(--theme-panel);
+  --tool-card-border: var(--theme-border);
+  --tool-card-title: var(--theme-text);
+  --tool-card-muted: var(--theme-muted);
+  --code-bg: var(--light-surface);
+  --code-border: var(--theme-border);
+  --code-foreground: var(--near-black);
+  --theme-input: #ffffff;
+
+  /* Frontend semantic overrides — Wise Green CTA in both modes */
+  --primary: #9fe870;
+  --primary-foreground: #163300;
+
+  /* Brand palette tokens */
+  --near-black: #0e0f0c;
+  --wise-green: #9fe870;
+  --dark-green: #163300;
+  --light-mint: #e2f6d5;
+  --pastel-green: #cdffad;
+  --warm-dark: #454745;
+  --warm-gray: #868685;
+  --light-surface: #e8ebe6;
+  --focus-blue: #435ee5;
+  --bright-orange: #ffc091;
+  --warning-yellow: #ffd11a;
+}
+
 [data-theme='hermes-nous'] html,
 [data-theme='hermes-nous'] body,
 [data-theme='hermes-nous'] #root,
@@ -1090,7 +1494,11 @@ code {
 [data-theme='hermes-slate'] html,
 [data-theme='hermes-slate'] body,
 [data-theme='hermes-slate'] #root,
-[data-theme='hermes-slate'] .dark {
+[data-theme='hermes-slate'] .dark,
+[data-theme='semantier'] html,
+[data-theme='semantier'] body,
+[data-theme='semantier'] #root,
+[data-theme='semantier'] .dark {
   background-color: var(--theme-bg);
   color: var(--theme-text);
 }
@@ -1110,9 +1518,37 @@ code {
 [data-theme='hermes-slate-light'] html,
 [data-theme='hermes-slate-light'] body,
 [data-theme='hermes-slate-light'] #root,
-[data-theme='hermes-slate-light'] .light {
+[data-theme='hermes-slate-light'] .light,
+[data-theme='semantier-light'] html,
+[data-theme='semantier-light'] body,
+[data-theme='semantier-light'] #root,
+[data-theme='semantier-light'] .light {
   background-color: var(--theme-bg);
   color: var(--theme-text);
+}
+
+/* ── Semantier font-family override ──
+   Mirrors frontend --font-ui and --font-report-ui exactly.
+   ═══════════════════════════════════════════════════════════════ */
+[data-theme='semantier'] html,
+[data-theme='semantier'] body,
+[data-theme='semantier-light'] html,
+[data-theme='semantier-light'] body {
+  font-family: 'Autaut Grotesk', 'Times New Roman', -apple-system, system-ui,
+    'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
+    'Hiragino Kaku Gothic Pro', 'Meiryo', 'MS PGothic', Arial, sans-serif;
+  font-feature-settings: 'calt' 1;
+}
+
+[data-theme='semantier'] .report,
+[data-theme='semantier'] .long-form,
+[data-theme='semantier-light'] .report,
+[data-theme='semantier-light'] .long-form {
+  font-family: 'Autaut Grotesk', 'Times New Roman', -apple-system, system-ui,
+    'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
+    Arial, sans-serif;
+  font-feature-settings: normal;
+  line-height: 1.8;
 }
 
 /* ── Tailwind primary token remaps for dark themes ─────────────────────
@@ -1123,7 +1559,8 @@ code {
 [data-theme='hermes-nous'],
 [data-theme='hermes-official'],
 [data-theme='hermes-classic'],
-[data-theme='hermes-slate'] {
+[data-theme='hermes-slate'],
+[data-theme='semantier'] {
   --color-primary-50: var(--theme-panel);
   --color-primary-100: var(--theme-card);
   --color-primary-200: var(--theme-border);
@@ -1149,7 +1586,8 @@ code {
 [data-theme='hermes-nous-light'],
 [data-theme='hermes-official-light'],
 [data-theme='hermes-classic-light'],
-[data-theme='hermes-slate-light'] {
+[data-theme='hermes-slate-light'],
+[data-theme='semantier-light'] {
   color-scheme: light !important;
   --color-primary-50: var(--theme-card) !important;
   --color-primary-100: var(--theme-card2) !important;

@@ -52,6 +52,8 @@ const VALID_THEMES = [
   'hermes-classic-light',
   'hermes-slate',
   'hermes-slate-light',
+  'semantier',
+  'semantier-light',
 ]
 
 const themeScript = `
@@ -62,7 +64,7 @@ const themeScript = `
     const root = document.documentElement
     const storedTheme = localStorage.getItem('${THEME_STORAGE_KEY}')
     const theme = ${JSON.stringify(VALID_THEMES)}.includes(storedTheme) ? storedTheme : '${DEFAULT_THEME}'
-    const lightThemes = ['hermes-nous-light', 'hermes-official-light', 'hermes-classic-light', 'hermes-slate-light']
+    const lightThemes = ['hermes-nous-light', 'hermes-official-light', 'hermes-classic-light', 'hermes-slate-light', 'semantier-light']
     const isDark = !lightThemes.includes(theme)
     root.classList.remove('light', 'dark', 'system')
     root.classList.add(isDark ? 'dark' : 'light')
@@ -93,9 +95,11 @@ const themeColorScript = `
       'hermes-classic-light': '#F5F2ED',
       'hermes-slate': '#0d1117',
       'hermes-slate-light': '#F6F8FA',
+      'semantier': '#0e0f0c',
+      'semantier-light': '#f5f5f0',
     }
     const nextColor = colors[theme] || colors['${DEFAULT_THEME}']
-    const isDark = !['hermes-nous-light', 'hermes-official-light', 'hermes-classic-light', 'hermes-slate-light'].includes(String(theme))
+    const isDark = !['hermes-nous-light', 'hermes-official-light', 'hermes-classic-light', 'hermes-slate-light', 'semantier-light'].includes(String(theme))
 
     let meta = document.querySelector('meta[name="theme-color"]')
     if (!meta) {
@@ -397,10 +401,20 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 txt = '#24292f';
                 muted = '#57606A';
                 accent = '#3b82f6';
+              } else if (theme === 'semantier') {
+                bg = '#0e0f0c';
+                txt = '#f0f0ec';
+                muted = '#868685';
+                accent = '#9fe870';
+              } else if (theme === 'semantier-light') {
+                bg = '#f5f5f0';
+                txt = '#0e0f0c';
+                muted = '#868685';
+                accent = '#163300';
               }
             } catch(e){}
 
-            var isDark = !['hermes-nous-light','hermes-official-light','hermes-classic-light','hermes-slate-light'].includes(theme);
+            var isDark = !['hermes-nous-light','hermes-official-light','hermes-classic-light','hermes-slate-light','semantier-light'].includes(theme);
             var quips = ["Consulting the oracle...","Loading ancient knowledge...","Warming up the messenger...","Calibrating tool chain...","Summoning Hermes...","Preparing the workspace...","Bridging realms...","Initializing agent runtime..."];
             var quip = quips[Math.floor(Math.random() * quips.length)];
 

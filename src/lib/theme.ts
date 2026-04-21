@@ -7,6 +7,8 @@ export type ThemeId =
   | 'hermes-classic-light'
   | 'hermes-slate'
   | 'hermes-slate-light'
+  | 'semantier'
+  | 'semantier-light'
 
 export const THEMES: Array<{
   id: ThemeId
@@ -62,6 +64,18 @@ export const THEMES: Array<{
     description: 'GitHub-light palette with blue accents',
     icon: '🔷',
   },
+  {
+    id: 'semantier',
+    label: 'Semantier',
+    description: 'Near-black with wise-green accent — editorial warmth',
+    icon: '◉',
+  },
+  {
+    id: 'semantier-light',
+    label: 'Semantier Light',
+    description: 'Warm parchment with dark-green accent',
+    icon: '◉',
+  },
 ]
 
 const STORAGE_KEY = 'hermes-theme'
@@ -75,6 +89,7 @@ const LIGHT_THEME_MAP: Record<
   'hermes-official': 'hermes-official-light',
   'hermes-classic': 'hermes-classic-light',
   'hermes-slate': 'hermes-slate-light',
+  'semantier': 'semantier-light',
 }
 const DARK_THEME_MAP: Record<
   Extract<ThemeId, `${string}-light`>,
@@ -84,6 +99,7 @@ const DARK_THEME_MAP: Record<
   'hermes-official-light': 'hermes-official',
   'hermes-classic-light': 'hermes-classic',
   'hermes-slate-light': 'hermes-slate',
+  'semantier-light': 'semantier',
 }
 
 const LIGHT_THEMES = new Set<ThemeId>([
@@ -91,6 +107,7 @@ const LIGHT_THEMES = new Set<ThemeId>([
   'hermes-official-light',
   'hermes-classic-light',
   'hermes-slate-light',
+  'semantier-light',
 ])
 
 export function isValidTheme(

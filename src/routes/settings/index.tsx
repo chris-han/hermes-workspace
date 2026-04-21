@@ -147,6 +147,20 @@ const THEME_PREVIEWS: Record<
     accent: '#3b82f6',
     text: '#1F2328',
   },
+  'semantier': {
+    bg: '#0e0f0c',
+    panel: '#181916',
+    border: '#2a2b28',
+    accent: '#9fe870',
+    text: '#f0f0ec',
+  },
+  'semantier-light': {
+    bg: '#f5f5f0',
+    panel: '#ffffff',
+    border: '#d5d6d1',
+    accent: '#163300',
+    text: '#0e0f0c',
+  },
 }
 
 function WorkspaceThemePicker() {

@@ -6,6 +6,7 @@ const LIGHT_THEMES = new Set([
   'hermes-official-light',
   'hermes-classic-light',
   'hermes-slate-light',
+  'semantier-light',
 ])
 
 function useIsLightTheme(): boolean {

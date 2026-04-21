@@ -7,8 +7,7 @@ describe('resolveHermesHome', () => {
   it('prefers HERMES_HOME when explicitly configured', () => {
     expect(
       resolveHermesHome({
-        env: { HERMES_HOME: '~/custom-hermes' },
-        homeDir: '/tmp/test-home',
+        env: { HERMES_HOME: '/tmp/test-home/custom-hermes' },
         repoAgentHermesHome: '/repo/agent/.hermes',
         existsSync: () => true,
       }),
@@ -19,21 +18,19 @@ describe('resolveHermesHome', () => {
     expect(
       resolveHermesHome({
         env: {},
-        homeDir: '/tmp/test-home',
         repoAgentHermesHome: '/repo/agent/.hermes',
         existsSync: (targetPath) => targetPath === '/repo/agent/.hermes',
       }),
     ).toBe(path.resolve('/repo/agent/.hermes'))
   })
 
-  it('falls back to ~/.hermes when no override or repo-local home exists', () => {
-    expect(
+  it('throws when no explicit or repo-local Hermes home exists', () => {
+    expect(() =>
       resolveHermesHome({
         env: {},
-        homeDir: '/tmp/test-home',
         repoAgentHermesHome: '/repo/agent/.hermes',
         existsSync: () => false,
       }),
-    ).toBe(path.resolve('/tmp/test-home/.hermes'))
+    ).toThrow('Hermes home is not configured')
   })
 })

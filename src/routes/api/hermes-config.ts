@@ -146,12 +146,14 @@ function maskKey(key: string): string {
   return key.slice(0, 4) + '...' + key.slice(-4)
 }
 
-async function checkAuthStore(providerId: string): Promise<{
+async function checkAuthStore(
+  providerId: string,
+  requestHeaders?: HeadersInit | Headers,
+): Promise<{
   hasToken: boolean
   source: string
   maskedKey?: string
-}, requestHeaders?: HeadersInit | Headers
-> {
+}> {
   const hermesAuthStorePath = await resolveHermesPathFromBackend(
     requestHeaders,
     'auth-profiles.json',

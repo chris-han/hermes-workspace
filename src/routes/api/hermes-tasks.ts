@@ -1,6 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { isAuthenticated } from '../../server/auth-middleware'
-import { createTask, listTasks } from '../../server/tasks-store'
+import {
+  createTask,
+  listTasks,
+  resolveWorkspaceTaskHermesHome,
+} from '../../server/tasks-store'
 
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -18,7 +22,8 @@ export const Route = createFileRoute('/api/hermes-tasks')({
         }
 
         const url = new URL(request.url)
-        const tasks = listTasks({
+        const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
+        const tasks = listTasks(hermesHome, {
           column: url.searchParams.get('column'),
           assignee: url.searchParams.get('assignee'),
           priority: url.searchParams.get('priority'),
@@ -34,12 +39,13 @@ export const Route = createFileRoute('/api/hermes-tasks')({
         }
 
         try {
+          const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
           const body = (await request.json()) as Record<string, unknown>
           if (!body.title || typeof body.title !== 'string') {
             return jsonResponse({ error: 'title is required' }, 400)
           }
 
-          const task = createTask({
+          const task = createTask(hermesHome, {
             id: typeof body.id === 'string' ? body.id : undefined,
             title: body.title,
             description:

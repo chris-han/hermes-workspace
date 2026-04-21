@@ -81,6 +81,14 @@ describe('deriveGatewayModeFromCapabilities', () => {
 })
 
 describe('dashboardFetch', () => {
+  it('rejects protected dashboard requests without a workspace Hermes home', async () => {
+    await expect(
+      dashboardFetch('/api/sessions', {
+        headers: { Authorization: 'Bearer test-dashboard-token' },
+      }),
+    ).rejects.toThrow('Workspace Hermes home is required')
+  })
+
   it('forwards the active workspace hermes home on dashboard requests', async () => {
     const fetchMock = vi
       .fn()

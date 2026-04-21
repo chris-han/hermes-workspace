@@ -4,6 +4,7 @@ import {
   deleteTask,
   getTask,
   moveTask,
+  resolveWorkspaceTaskHermesHome,
   updateTask,
 } from '../../server/tasks-store'
 import type { TaskColumn } from '../../server/tasks-store'
@@ -23,7 +24,8 @@ export const Route = createFileRoute('/api/hermes-tasks/$taskId')({
           return jsonResponse({ error: 'Unauthorized' }, 401)
         }
 
-        const task = getTask(params.taskId)
+        const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
+        const task = getTask(hermesHome, params.taskId)
         if (!task) return jsonResponse({ error: 'Task not found' }, 404)
         return jsonResponse({ task })
       },
@@ -34,8 +36,9 @@ export const Route = createFileRoute('/api/hermes-tasks/$taskId')({
         }
 
         try {
+          const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
           const body = (await request.json()) as Record<string, unknown>
-          const task = updateTask(params.taskId, {
+          const task = updateTask(hermesHome, params.taskId, {
             title: typeof body.title === 'string' ? body.title : undefined,
             description:
               typeof body.description === 'string'
@@ -73,7 +76,8 @@ export const Route = createFileRoute('/api/hermes-tasks/$taskId')({
           return jsonResponse({ error: 'Unauthorized' }, 401)
         }
 
-        const deleted = deleteTask(params.taskId)
+        const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
+        const deleted = deleteTask(hermesHome, params.taskId)
         if (!deleted) return jsonResponse({ error: 'Task not found' }, 404)
         return jsonResponse({ ok: true })
       },
@@ -90,11 +94,16 @@ export const Route = createFileRoute('/api/hermes-tasks/$taskId')({
         }
 
         try {
+          const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
           const body = (await request.json()) as Record<string, unknown>
           if (typeof body.column !== 'string') {
             return jsonResponse({ error: 'column is required' }, 400)
           }
-          const task = moveTask(params.taskId, body.column as TaskColumn)
+          const task = moveTask(
+            hermesHome,
+            params.taskId,
+            body.column as TaskColumn,
+          )
           if (!task) return jsonResponse({ error: 'Task not found' }, 404)
           return jsonResponse({ task })
         } catch {

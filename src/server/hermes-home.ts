@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { resolveActiveWorkspaceRoot } from './workspace-root'
@@ -8,21 +9,29 @@ const REPO_ROOT = path.resolve(SERVER_DIR, '..', '..', '..')
 const REPO_AGENT_HERMES_HOME = path.join(REPO_ROOT, 'agent', '.hermes')
 export type ResolveHermesHomeOptions = {
   env?: NodeJS.ProcessEnv
+  homeDir?: string
   repoAgentHermesHome?: string
   existsSync?: (targetPath: string) => boolean
+}
+
+function expandHome(input: string, homeDir: string): string {
+  if (input === '~') return homeDir
+  if (input.startsWith('~/')) return path.join(homeDir, input.slice(2))
+  return input
 }
 
 export function resolveHermesHome(
   options: ResolveHermesHomeOptions = {},
 ): string {
   const env = options.env ?? process.env
+  const homeDir = options.homeDir ?? os.homedir()
   const existsSync = options.existsSync ?? fs.existsSync
   const repoAgentHermesHome =
     options.repoAgentHermesHome ?? REPO_AGENT_HERMES_HOME
 
   const configured = env.HERMES_HOME?.trim()
   if (configured) {
-    return path.resolve(configured)
+    return path.resolve(expandHome(configured, homeDir))
   }
 
   if (existsSync(repoAgentHermesHome)) {

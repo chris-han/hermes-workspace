@@ -1143,7 +1143,7 @@ code {
   --theme-shadow-3: 0 8px 24px rgba(14, 15, 12, 0.06);
   --theme-glass: rgba(245, 245, 240, 0.92);
   --theme-focus: #163300;
-  --theme-accent: #163300;
+  --theme-accent: #669542;
   --theme-accent-secondary: #2a4d1a;
   --theme-accent-subtle: rgba(22, 51, 0, 0.07);
   --theme-accent-border: rgba(22, 51, 0, 0.18);
@@ -1290,6 +1290,17 @@ code {
 [data-theme$='-light'] [style*='--theme-accent'] .text-white,
 [data-theme$='-light'] .bg-accent-500 .text-white {
   color: #fff !important;
+}
+
+/* Scroll-to-bottom button icon: light in light theme, dark in dark theme */
+[data-theme$='-light'] .scroll-to-bottom-button,
+[data-theme$='-light'] .scroll-to-bottom-button svg {
+  color: #ffffff !important;
+}
+
+[data-theme$='-dark'] .scroll-to-bottom-button,
+[data-theme$='-dark'] .scroll-to-bottom-button svg {
+  color: #0f172a !important;
 }
 
 /* Composer focus ring for all themes */

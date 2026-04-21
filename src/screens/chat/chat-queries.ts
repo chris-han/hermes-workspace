@@ -55,6 +55,24 @@ export const chatQueryKeys = {
   },
 } as const
 
+export const NEW_CHAT_FRIENDLY_ID = 'new'
+export const NEW_CHAT_SESSION_KEY = 'main'
+export const NEW_CHAT_HISTORY_QUERY_KEY = chatQueryKeys.history(
+  NEW_CHAT_FRIENDLY_ID,
+  NEW_CHAT_SESSION_KEY,
+)
+
+export function resetNewChatHistory(queryClient: QueryClient) {
+  queryClient.removeQueries({
+    queryKey: NEW_CHAT_HISTORY_QUERY_KEY,
+    exact: true,
+  })
+  queryClient.setQueryData(NEW_CHAT_HISTORY_QUERY_KEY, {
+    sessionKey: NEW_CHAT_SESSION_KEY,
+    messages: [],
+  })
+}
+
 export async function fetchSessions(): Promise<Array<SessionMeta>> {
   const res = await fetch('/api/sessions')
   if (!res.ok) throw new Error(await readError(res))

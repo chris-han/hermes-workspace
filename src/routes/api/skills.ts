@@ -1,13 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import { isAuthenticated } from '../../server/auth-middleware'
-import {
-  BEARER_TOKEN,
-  HERMES_API,
-  dashboardFetch,
-  ensureGatewayProbed,
-  getCapabilities,
-} from '../../server/gateway-capabilities'
+import { ensureGatewayProbed } from '../../server/gateway-capabilities'
+import { fetchSemantierSkillsInventory } from '../../server/semantier-skills-api'
 import { createCapabilityUnavailablePayload } from '@/lib/feature-gates'
 
 type SkillsTab = 'installed' | 'marketplace' | 'featured'
@@ -36,6 +31,11 @@ type SkillSummary = {
   installed: boolean
   enabled: boolean
   builtin?: boolean
+  sourceTier?: string
+  sourceLabel?: string
+  canEdit?: boolean
+  canUninstall?: boolean
+  canModify?: boolean
   featuredGroup?: string
   security: SecurityRisk
 }
@@ -180,6 +180,16 @@ function normalizeSkill(value: unknown): SkillSummary | null {
     installed: Boolean(record.installed ?? true),
     enabled: Boolean(record.enabled ?? record.installed ?? true),
     builtin: Boolean(record.builtin),
+    sourceTier: readString(record.sourceTier) || undefined,
+    sourceLabel: readString(record.sourceLabel) || undefined,
+    canEdit:
+      typeof record.canEdit === 'boolean' ? record.canEdit : undefined,
+    canUninstall:
+      typeof record.canUninstall === 'boolean'
+        ? record.canUninstall
+        : undefined,
+    canModify:
+      typeof record.canModify === 'boolean' ? record.canModify : undefined,
     featuredGroup: undefined,
     security: normalizeSecurity(record.security),
   }
@@ -188,28 +198,8 @@ function normalizeSkill(value: unknown): SkillSummary | null {
 async function fetchHermesSkills(
   requestHeaders?: HeadersInit | Headers,
 ): Promise<Array<SkillSummary>> {
-  const capabilities = getCapabilities()
-  const headers: Record<string, string> = {}
-  if (BEARER_TOKEN) headers['Authorization'] = `Bearer ${BEARER_TOKEN}`
-
-  const response = capabilities.dashboard.available
-    ? await dashboardFetch('/api/skills', undefined, { requestHeaders })
-    : await fetch(`${HERMES_API}/api/skills`, { headers })
-  if (!response.ok) {
-    const body = await response.text().catch(() => '')
-    throw new Error(body || `Hermes skills request failed (${response.status})`)
-  }
-
-  const payload = (await response.json()) as unknown
-  const items = Array.isArray(payload)
-    ? payload
-    : Array.isArray(asRecord(payload).items)
-      ? (asRecord(payload).items as Array<unknown>)
-      : Array.isArray(asRecord(payload).skills)
-        ? (asRecord(payload).skills as Array<unknown>)
-        : []
-
-  return items
+  const payload = await fetchSemantierSkillsInventory(requestHeaders)
+  return payload.skills
     .map((entry) => normalizeSkill(entry))
     .filter((entry): entry is SkillSummary => entry !== null)
 }
@@ -250,7 +240,7 @@ export const Route = createFileRoute('/api/skills')({
           return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
         }
         const capabilities = await ensureGatewayProbed()
-        if (!capabilities.skills) {
+        if (!capabilities.semantier.available && !capabilities.skills) {
           return json({
             ...createCapabilityUnavailablePayload('skills'),
             items: [],

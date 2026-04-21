@@ -24,17 +24,17 @@ function ScrollToBottomButton({
       {isVisible ? (
         <MotionButton
           type="button"
-          variant="ghost"
+          variant="default"
           size="icon-sm"
           aria-label="Scroll to bottom"
           className={cn(
-            'pointer-events-auto relative rounded-full text-white shadow-lg transition-colors hover:opacity-90',
+            'scroll-to-bottom-button pointer-events-auto relative rounded-full border text-white shadow-lg transition-all hover:brightness-95',
             className,
           )}
           style={{
-            background: 'var(--theme-accent)',
-            boxShadow:
-              '0 4px 12px color-mix(in srgb, var(--theme-accent) 35%, transparent)',
+            backgroundColor: 'var(--theme-accent)',
+            borderColor: 'var(--theme-accent)',
+
           }}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

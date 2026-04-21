@@ -1,16 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import { isAuthenticated } from '../../server/auth-middleware'
-import {
-  BEARER_TOKEN,
-  HERMES_API,
-  dashboardFetch,
-  ensureGatewayProbed,
-} from '../../server/gateway-capabilities'
-
-function authHeaders(): Record<string, string> {
-  return BEARER_TOKEN ? { Authorization: `Bearer ${BEARER_TOKEN}` } : {}
-}
+import { installSemantierSkill } from '../../server/semantier-skills-api'
 
 function normalizeSkillActionResult(payload: unknown): Record<string, unknown> {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -50,44 +41,14 @@ export const Route = createFileRoute('/api/skills/install')({
             )
           }
 
-          const capabilities = await ensureGatewayProbed()
-          const response = capabilities.dashboard.available
-            ? await dashboardFetch(
-                '/api/skills/install',
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    identifier,
-                    category: body.category || '',
-                    force: Boolean(body.force),
-                  }),
-                  signal: AbortSignal.timeout(120_000),
-                },
-                {
-                  requestHeaders: request.headers,
-                },
-              )
-            : await fetch(`${HERMES_API}/api/skills/install`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...authHeaders(),
-                },
-                body: JSON.stringify({
-                  identifier,
-                  category: body.category || '',
-                  force: Boolean(body.force),
-                }),
-                signal: AbortSignal.timeout(120_000),
-              })
-
           const result = normalizeSkillActionResult(
-            await response.json().catch(() => ({})),
+            await installSemantierSkill(request.headers, {
+              identifier,
+              category: body.category || '',
+              force: Boolean(body.force),
+            }),
           )
-          return json(result, { status: response.status })
+          return json(result)
         } catch (error) {
           return json(
             {

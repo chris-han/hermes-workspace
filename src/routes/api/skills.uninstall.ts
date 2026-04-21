@@ -2,15 +2,9 @@ import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import { isAuthenticated } from '../../server/auth-middleware'
 import {
-  BEARER_TOKEN,
-  HERMES_API,
-  dashboardFetch,
-  ensureGatewayProbed,
-} from '../../server/gateway-capabilities'
-
-function authHeaders(): Record<string, string> {
-  return BEARER_TOKEN ? { Authorization: `Bearer ${BEARER_TOKEN}` } : {}
-}
+  fetchSemantierSkillsInventory,
+  uninstallSemantierSkill,
+} from '../../server/semantier-skills-api'
 
 function normalizeSkillActionResult(payload: unknown): Record<string, unknown> {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -48,36 +42,24 @@ export const Route = createFileRoute('/api/skills/uninstall')({
             )
           }
 
-          const capabilities = await ensureGatewayProbed()
-          const response = capabilities.dashboard.available
-            ? await dashboardFetch(
-                '/api/skills/uninstall',
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({ name }),
-                  signal: AbortSignal.timeout(30_000),
-                },
-                {
-                  requestHeaders: request.headers,
-                },
-              )
-            : await fetch(`${HERMES_API}/api/skills/uninstall`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...authHeaders(),
-                },
-                body: JSON.stringify({ name }),
-                signal: AbortSignal.timeout(30_000),
-              })
+          const inventory = await fetchSemantierSkillsInventory(request.headers)
+          const skill = inventory.skills.find(
+            (entry) => entry.id === name || entry.name === name,
+          )
+          if (skill && skill.canUninstall === false) {
+            return json(
+              {
+                ok: false,
+                error: 'Only workspace-owned skills can be uninstalled.',
+              },
+              { status: 403 },
+            )
+          }
 
           const result = normalizeSkillActionResult(
-            await response.json().catch(() => ({})),
+            await uninstallSemantierSkill(request.headers, { name }),
           )
-          return json(result, { status: response.status })
+          return json(result)
         } catch (error) {
           return json(
             {

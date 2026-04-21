@@ -64,6 +64,7 @@ import { Route as ApiConductorSpawnRouteImport } from './routes/api/conductor-sp
 import { Route as ApiChatEventsRouteImport } from './routes/api/chat-events'
 import { Route as ApiAuthCheckRouteImport } from './routes/api/auth-check'
 import { Route as ApiAuthRouteImport } from './routes/api/auth'
+import { Route as ApiToolsToolsetsRouteImport } from './routes/api/tools/toolsets'
 import { Route as ApiSkillsUninstallRouteImport } from './routes/api/skills.uninstall'
 import { Route as ApiSkillsToggleRouteImport } from './routes/api/skills.toggle'
 import { Route as ApiSkillsInstallRouteImport } from './routes/api/skills.install'
@@ -373,6 +374,11 @@ const ApiAuthRoute = ApiAuthRouteImport.update({
   path: '/api/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiToolsToolsetsRoute = ApiToolsToolsetsRouteImport.update({
+  id: '/api/tools/toolsets',
+  path: '/api/tools/toolsets',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSkillsUninstallRoute = ApiSkillsUninstallRouteImport.update({
   id: '/uninstall',
   path: '/uninstall',
@@ -628,6 +634,7 @@ export interface FileRoutesByFullPath {
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/toggle': typeof ApiSkillsToggleRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/tools/toolsets': typeof ApiToolsToolsetsRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
   '/api/sessions/$sessionKey/status': typeof ApiSessionsSessionKeyStatusRoute
 }
@@ -717,6 +724,7 @@ export interface FileRoutesByTo {
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/toggle': typeof ApiSkillsToggleRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/tools/toolsets': typeof ApiToolsToolsetsRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
   '/api/sessions/$sessionKey/status': typeof ApiSessionsSessionKeyStatusRoute
 }
@@ -808,6 +816,7 @@ export interface FileRoutesById {
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/toggle': typeof ApiSkillsToggleRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/tools/toolsets': typeof ApiToolsToolsetsRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
   '/api/sessions/$sessionKey/status': typeof ApiSessionsSessionKeyStatusRoute
 }
@@ -900,6 +909,7 @@ export interface FileRouteTypes {
     | '/api/skills/install'
     | '/api/skills/toggle'
     | '/api/skills/uninstall'
+    | '/api/tools/toolsets'
     | '/api/sessions/$sessionKey/active-run'
     | '/api/sessions/$sessionKey/status'
   fileRoutesByTo: FileRoutesByTo
@@ -989,6 +999,7 @@ export interface FileRouteTypes {
     | '/api/skills/install'
     | '/api/skills/toggle'
     | '/api/skills/uninstall'
+    | '/api/tools/toolsets'
     | '/api/sessions/$sessionKey/active-run'
     | '/api/sessions/$sessionKey/status'
   id:
@@ -1079,6 +1090,7 @@ export interface FileRouteTypes {
     | '/api/skills/install'
     | '/api/skills/toggle'
     | '/api/skills/uninstall'
+    | '/api/tools/toolsets'
     | '/api/sessions/$sessionKey/active-run'
     | '/api/sessions/$sessionKey/status'
   fileRoutesById: FileRoutesById
@@ -1156,6 +1168,7 @@ export interface RootRouteChildren {
   ApiProfilesRenameRoute: typeof ApiProfilesRenameRoute
   ApiProfilesUpdateRoute: typeof ApiProfilesUpdateRoute
   ApiSemantierProxySplatRoute: typeof ApiSemantierProxySplatRoute
+  ApiToolsToolsetsRoute: typeof ApiToolsToolsetsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1543,6 +1556,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth'
       fullPath: '/api/auth'
       preLoaderRoute: typeof ApiAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tools/toolsets': {
+      id: '/api/tools/toolsets'
+      path: '/api/tools/toolsets'
+      fullPath: '/api/tools/toolsets'
+      preLoaderRoute: typeof ApiToolsToolsetsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/skills/uninstall': {
@@ -1944,6 +1964,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiProfilesRenameRoute: ApiProfilesRenameRoute,
   ApiProfilesUpdateRoute: ApiProfilesUpdateRoute,
   ApiSemantierProxySplatRoute: ApiSemantierProxySplatRoute,
+  ApiToolsToolsetsRoute: ApiToolsToolsetsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -517,6 +517,8 @@ function usePersistedBool(key: string, defaultValue: boolean) {
 function ChatSidebarComponent({
   sessions,
   activeFriendlyId,
+  creatingSession,
+  onCreateSession,
   isCollapsed,
   onToggleCollapse,
   onSelectSession,
@@ -1025,14 +1027,17 @@ function ChatSidebarComponent({
       {/* ── New Session button ──────────────────────────────────────── */}
       {!isVisuallyCollapsed && (
         <div className="px-2 pb-1">
-          <Link
-            to="/chat/$sessionKey"
-            params={{ sessionKey: 'new' }}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => {
+              if (creatingSession) return
+              onCreateSession()
               onSelectSession?.()
             }}
+            disabled={creatingSession}
             className={cn(
-              buttonVariants({ variant: 'ghost', size: 'sm' }),
               'w-full justify-start gap-2.5 px-3 py-2 text-primary-900 hover:bg-primary-200 dark:hover:bg-primary-800',
               isNewSessionActive &&
                 'bg-accent-500/10 text-accent-500 hover:bg-accent-50 dark:hover:bg-accent-900/300/15',
@@ -1045,8 +1050,8 @@ function ChatSidebarComponent({
               strokeWidth={1.5}
               className="size-5 shrink-0"
             />
-            <span>New Session</span>
-          </Link>
+            <span>{creatingSession ? 'Starting…' : 'New Session'}</span>
+          </Button>
         </div>
       )}
 
@@ -1357,6 +1362,7 @@ function areSidebarPropsEqual(
 ): boolean {
   if (prevProps.activeFriendlyId !== nextProps.activeFriendlyId) return false
   if (prevProps.creatingSession !== nextProps.creatingSession) return false
+  if (prevProps.onCreateSession !== nextProps.onCreateSession) return false
   if (prevProps.isCollapsed !== nextProps.isCollapsed) return false
   if (prevProps.sessionsLoading !== nextProps.sessionsLoading) return false
   if (prevProps.sessionsFetching !== nextProps.sessionsFetching) return false

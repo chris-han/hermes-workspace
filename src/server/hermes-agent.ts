@@ -66,7 +66,7 @@ export function resolveHermesAgentDir(
   )
 
   for (const candidate of candidates) {
-    if (existsSync(resolve(candidate, 'webapi'))) return candidate
+    if (existsSync(resolve(candidate, 'gateway', 'run.py'))) return candidate
   }
 
   return null
@@ -109,24 +109,21 @@ export async function startHermesAgent(): Promise<StartHermesAgentResult> {
         return {
           ok: false,
           error:
-            'hermes-agent not found. Clone it as a sibling directory or set HERMES_AGENT_PATH in .env',
+            'hermes-agent not found. Expected a sibling ../hermes-agent directory or set HERMES_AGENT_PATH in .env',
         }
       }
 
       const python = resolveHermesPython(agentDir)
       const hermesEnv = readHermesEnv()
 
+      const useGatewayRun = existsSync(resolve(agentDir, 'gateway', 'run.py'))
+      const commandArgs = useGatewayRun
+        ? ['-m', 'gateway.run']
+        : ['-m', 'uvicorn', 'webapi.app:app', '--host', '0.0.0.0', '--port', String(HERMES_START_PORT)]
+
       const child = spawn(
         python,
-        [
-          '-m',
-          'uvicorn',
-          'webapi.app:app',
-          '--host',
-          '0.0.0.0',
-          '--port',
-          String(HERMES_START_PORT),
-        ],
+        commandArgs,
         {
           cwd: agentDir,
           detached: true,
@@ -134,6 +131,7 @@ export async function startHermesAgent(): Promise<StartHermesAgentResult> {
           env: {
             ...process.env,
             ...hermesEnv,
+            API_SERVER_ENABLED: 'true',
             PATH: `${resolve(agentDir, '.venv', 'bin')}:${resolve(agentDir, 'venv', 'bin')}:${process.env.PATH || ''}`,
           },
         },

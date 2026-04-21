@@ -13,6 +13,7 @@ import { Route as TerminalRouteImport } from './routes/terminal'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SessionEventsRouteImport } from './routes/session-events'
 import { Route as ProfilesRouteImport } from './routes/profiles'
 import { Route as OperationsRouteImport } from './routes/operations'
 import { Route as MemoryRouteImport } from './routes/memory'
@@ -113,6 +114,11 @@ const SkillsRoute = SkillsRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SessionEventsRoute = SessionEventsRouteImport.update({
+  id: '/session-events',
+  path: '/session-events',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfilesRoute = ProfilesRouteImport.update({
@@ -533,6 +539,7 @@ export interface FileRoutesByFullPath {
   '/memory': typeof MemoryRoute
   '/operations': typeof OperationsRoute
   '/profiles': typeof ProfilesRoute
+  '/session-events': typeof SessionEventsRoute
   '/settings': typeof SettingsRouteWithChildren
   '/skills': typeof SkillsRoute
   '/tasks': typeof TasksRoute
@@ -620,6 +627,7 @@ export interface FileRoutesByTo {
   '/memory': typeof MemoryRoute
   '/operations': typeof OperationsRoute
   '/profiles': typeof ProfilesRoute
+  '/session-events': typeof SessionEventsRoute
   '/skills': typeof SkillsRoute
   '/tasks': typeof TasksRoute
   '/terminal': typeof TerminalRoute
@@ -707,6 +715,7 @@ export interface FileRoutesById {
   '/memory': typeof MemoryRoute
   '/operations': typeof OperationsRoute
   '/profiles': typeof ProfilesRoute
+  '/session-events': typeof SessionEventsRoute
   '/settings': typeof SettingsRouteWithChildren
   '/skills': typeof SkillsRoute
   '/tasks': typeof TasksRoute
@@ -796,6 +805,7 @@ export interface FileRouteTypes {
     | '/memory'
     | '/operations'
     | '/profiles'
+    | '/session-events'
     | '/settings'
     | '/skills'
     | '/tasks'
@@ -883,6 +893,7 @@ export interface FileRouteTypes {
     | '/memory'
     | '/operations'
     | '/profiles'
+    | '/session-events'
     | '/skills'
     | '/tasks'
     | '/terminal'
@@ -969,6 +980,7 @@ export interface FileRouteTypes {
     | '/memory'
     | '/operations'
     | '/profiles'
+    | '/session-events'
     | '/settings'
     | '/skills'
     | '/tasks'
@@ -1057,6 +1069,7 @@ export interface RootRouteChildren {
   MemoryRoute: typeof MemoryRoute
   OperationsRoute: typeof OperationsRoute
   ProfilesRoute: typeof ProfilesRoute
+  SessionEventsRoute: typeof SessionEventsRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   SkillsRoute: typeof SkillsRoute
   TasksRoute: typeof TasksRoute
@@ -1147,6 +1160,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/session-events': {
+      id: '/session-events'
+      path: '/session-events'
+      fullPath: '/session-events'
+      preLoaderRoute: typeof SessionEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profiles': {
@@ -1821,6 +1841,7 @@ const rootRouteChildren: RootRouteChildren = {
   MemoryRoute: MemoryRoute,
   OperationsRoute: OperationsRoute,
   ProfilesRoute: ProfilesRoute,
+  SessionEventsRoute: SessionEventsRoute,
   SettingsRoute: SettingsRouteWithChildren,
   SkillsRoute: SkillsRoute,
   TasksRoute: TasksRoute,

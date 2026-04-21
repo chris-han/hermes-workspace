@@ -39,7 +39,7 @@ function resolveHermesAgentDir(env: Record<string, string>): string | null {
   )
 
   for (const candidate of candidates) {
-    if (existsSync(resolve(candidate, 'webapi'))) return candidate
+    if (existsSync(resolve(candidate, 'gateway', 'run.py'))) return candidate
   }
   return null
 }
@@ -103,7 +103,7 @@ const config = defineConfig(({ mode, command }) => {
       console.warn(
         '[hermes-agent] Could not find hermes-agent directory.\n' +
           '  Set HERMES_AGENT_PATH in .env or clone hermes-agent as a sibling:\n' +
-          '    git clone https://github.com/outsourc-e/hermes-agent.git ../hermes-agent',
+          '    Ensure hermes-agent exists as a sibling directory (../hermes-agent) or set HERMES_AGENT_PATH in .env',
       )
       return
     }

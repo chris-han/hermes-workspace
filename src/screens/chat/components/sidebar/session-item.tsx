@@ -1,9 +1,10 @@
 'use client'
 
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Delete01Icon,
+  File01Icon,
   MoreHorizontalIcon,
   Pen01Icon,
   PinIcon,
@@ -102,6 +103,7 @@ function SessionItemComponent({
   onRename,
   onDelete,
 }: SessionItemProps) {
+  const navigate = useNavigate()
   const isGenerating = session.titleStatus === 'generating'
   const isError = session.titleStatus === 'error'
   const baseTitle = getSessionDisplayTitle(session, isGenerating)
@@ -183,6 +185,23 @@ function SessionItemComponent({
           />
         </MenuTrigger>
         <MenuContent side="bottom" align="end">
+          <MenuItem
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              void navigate({
+                to: '/session-events',
+                search: {
+                  session: session.key,
+                  friendlyId: session.friendlyId || session.key,
+                },
+              })
+            }}
+            className="gap-2"
+          >
+            <HugeiconsIcon icon={File01Icon} size={20} strokeWidth={1.5} />{' '}
+            Session events
+          </MenuItem>
           <MenuItem
             onClick={(event) => {
               event.preventDefault()

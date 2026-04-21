@@ -11,7 +11,7 @@ Thanks for your interest in contributing! Here's how to get started.
    cp .env.example .env
    # Edit .env — set HERMES_API_URL (default: http://127.0.0.1:8642)
    ```
-4. Start [Hermes Agent](https://github.com/NousResearch/hermes-agent) API server
+4. Start Hermes Agent API server from the local monorepo (`../hermes-agent`)
 5. Run dev server: `pnpm dev`
 6. Make your changes on a feature branch
 7. Open a PR against `main`

@@ -14,7 +14,7 @@ export let HERMES_DASHBOARD_URL =
   process.env.HERMES_DASHBOARD_URL || 'http://127.0.0.1:9119'
 
 export const HERMES_UPGRADE_INSTRUCTIONS =
-  'For full features, install upstream Hermes Agent (`pip install hermes-agent`) and run `hermes gateway run` plus `hermes dashboard` in separate terminals.'
+  'For full features, run hermes-agent from the local monorepo (../hermes-agent) with `hermes gateway run` plus `hermes dashboard` in separate terminals.'
 
 export const SESSIONS_API_UNAVAILABLE_MESSAGE = `Your Hermes backend does not support the sessions API. ${HERMES_UPGRADE_INSTRUCTIONS}`
 

@@ -794,13 +794,13 @@ export function DashboardScreen() {
       {/* ── Header: Hermes Logo + Quick Actions ── */}
       <div className="flex flex-col items-center gap-3 py-3">
         <img
-          src="/hermes-avatar.webp"
-          alt="Hermes"
+          src="/logo.svg"
+          alt="Semantier"
           className="size-12 md:size-14 rounded-md border border-[var(--theme-border)]"
           style={{ padding: '3px', background: 'var(--theme-card)' }}
         />
         <p className="micro-label" style={{ color: 'var(--theme-muted)' }}>
-          Hermes Workspace
+          Semantier
         </p>
         <div className="mt-1 grid w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4">
           <QuickAction

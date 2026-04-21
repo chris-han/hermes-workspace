@@ -45,6 +45,8 @@ function dispatchOnboardingCompletionChanged(completed: boolean) {
 type Step = 'welcome' | 'connect' | 'provider' | 'test' | 'done'
 
 type GatewayStatusResponse = {
+  mode?: string
+  modeLabel?: string
   capabilities?: {
     health?: boolean
     chatCompletions?: boolean
@@ -231,12 +233,27 @@ export function HermesOnboarding() {
       const data = (await res.json()) as GatewayStatusResponse
       setBackendInfo(data)
 
+      const modeLabel =
+        typeof data.modeLabel === 'string' && data.modeLabel.trim().length > 0
+          ? data.modeLabel.trim()
+          : null
+
       if (data.capabilities?.chatCompletions) {
         setBackendStatus('ready')
         setBackendMessage(
-          data.capabilities.sessions
-            ? 'Backend connected. Core chat works, and Hermes gateway enhancements are available.'
-            : 'Backend connected. Core chat is ready.',
+          data.mode === 'semantier-unicell'
+            ? `${modeLabel ?? 'Semantier Unicell'} backend connected. Core chat is ready.`
+            : data.capabilities.sessions
+              ? 'Backend connected. Core chat works, and Hermes gateway enhancements are available.'
+              : 'Backend connected. Core chat is ready.',
+        )
+        return
+      }
+
+      if (data.mode === 'semantier-unicell') {
+        setBackendStatus('ready')
+        setBackendMessage(
+          `${modeLabel ?? 'Semantier Unicell'} backend connected. Workspace-native APIs are available.`,
         )
         return
       }
@@ -516,14 +533,14 @@ export function HermesOnboarding() {
           {step === 'welcome' && (
             <div className="space-y-4 text-center">
               <img
-                src="/hermes-avatar.webp"
-                alt="Hermes"
+                src="/logo.svg"
+                alt="Semantier"
                 className="mx-auto size-20 rounded-2xl"
                 style={{
                   filter: 'drop-shadow(0 8px 24px rgba(99,102,241,0.3))',
                 }}
               />
-              <h2 className="text-xl font-bold">Welcome to Hermes Workspace</h2>
+              <h2 className="text-xl font-bold">Welcome to Semantier</h2>
               <p className="text-sm" style={mutedStyle}>
                 Works with any OpenAI-compatible backend. Hermes gateway APIs
                 unlock sessions, memory, skills, and other extras automatically.

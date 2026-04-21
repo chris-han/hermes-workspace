@@ -40,28 +40,13 @@ export function LoginScreen() {
           {/* Logo */}
           <div className="mb-8 flex justify-center">
             <div className="flex items-center gap-2.5">
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 100 100"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="text-accent-500"
-              >
-                <path
-                  d="M50 10 L90 30 L90 70 L50 90 L10 70 L10 30 Z"
-                  fill="currentColor"
-                  opacity="0.15"
-                />
-                <path
-                  d="M50 25 L75 38 L75 62 L50 75 L25 62 L25 38 Z"
-                  fill="currentColor"
-                  opacity="0.3"
-                />
-                <circle cx="50" cy="50" r="15" fill="currentColor" />
-              </svg>
+              <img
+                src="/logo.svg"
+                alt=""
+                className="size-8 rounded-lg"
+              />
               <h1 className="text-2xl font-bold tracking-tight text-primary-900">
-                Hermes Workspace
+                Semantier
               </h1>
             </div>
           </div>

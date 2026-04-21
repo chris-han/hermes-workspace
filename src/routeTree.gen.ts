@@ -28,6 +28,7 @@ import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as SettingsProvidersRouteImport } from './routes/settings/providers'
 import { Route as SettingsMcpRouteImport } from './routes/settings/mcp'
 import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
+import { Route as AuthSplatRouteImport } from './routes/auth/$'
 import { Route as ApiWorkspaceRouteImport } from './routes/api/workspace'
 import { Route as ApiTerminalStreamRouteImport } from './routes/api/terminal-stream'
 import { Route as ApiTerminalResizeRouteImport } from './routes/api/terminal-resize'
@@ -190,6 +191,11 @@ const SettingsMcpRoute = SettingsMcpRouteImport.update({
 const ChatSessionKeyRoute = ChatSessionKeyRouteImport.update({
   id: '/chat/$sessionKey',
   path: '/chat/$sessionKey',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthSplatRoute = AuthSplatRouteImport.update({
+  id: '/auth/$',
+  path: '/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspaceRoute = ApiWorkspaceRouteImport.update({
@@ -585,6 +591,7 @@ export interface FileRoutesByFullPath {
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
   '/api/terminal-stream': typeof ApiTerminalStreamRoute
   '/api/workspace': typeof ApiWorkspaceRoute
+  '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/providers': typeof SettingsProvidersRoute
@@ -673,6 +680,7 @@ export interface FileRoutesByTo {
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
   '/api/terminal-stream': typeof ApiTerminalStreamRoute
   '/api/workspace': typeof ApiWorkspaceRoute
+  '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/providers': typeof SettingsProvidersRoute
@@ -763,6 +771,7 @@ export interface FileRoutesById {
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
   '/api/terminal-stream': typeof ApiTerminalStreamRoute
   '/api/workspace': typeof ApiWorkspaceRoute
+  '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/providers': typeof SettingsProvidersRoute
@@ -854,6 +863,7 @@ export interface FileRouteTypes {
     | '/api/terminal-resize'
     | '/api/terminal-stream'
     | '/api/workspace'
+    | '/auth/$'
     | '/chat/$sessionKey'
     | '/settings/mcp'
     | '/settings/providers'
@@ -942,6 +952,7 @@ export interface FileRouteTypes {
     | '/api/terminal-resize'
     | '/api/terminal-stream'
     | '/api/workspace'
+    | '/auth/$'
     | '/chat/$sessionKey'
     | '/settings/mcp'
     | '/settings/providers'
@@ -1031,6 +1042,7 @@ export interface FileRouteTypes {
     | '/api/terminal-resize'
     | '/api/terminal-stream'
     | '/api/workspace'
+    | '/auth/$'
     | '/chat/$sessionKey'
     | '/settings/mcp'
     | '/settings/providers'
@@ -1121,6 +1133,7 @@ export interface RootRouteChildren {
   ApiTerminalResizeRoute: typeof ApiTerminalResizeRoute
   ApiTerminalStreamRoute: typeof ApiTerminalStreamRoute
   ApiWorkspaceRoute: typeof ApiWorkspaceRoute
+  AuthSplatRoute: typeof AuthSplatRoute
   ChatSessionKeyRoute: typeof ChatSessionKeyRoute
   ChatIndexRoute: typeof ChatIndexRoute
   ApiHermesProxySplatRoute: typeof ApiHermesProxySplatRoute
@@ -1278,6 +1291,13 @@ declare module '@tanstack/react-router' {
       path: '/chat/$sessionKey'
       fullPath: '/chat/$sessionKey'
       preLoaderRoute: typeof ChatSessionKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/$': {
+      id: '/auth/$'
+      path: '/auth/$'
+      fullPath: '/auth/$'
+      preLoaderRoute: typeof AuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/workspace': {
@@ -1901,6 +1921,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTerminalResizeRoute: ApiTerminalResizeRoute,
   ApiTerminalStreamRoute: ApiTerminalStreamRoute,
   ApiWorkspaceRoute: ApiWorkspaceRoute,
+  AuthSplatRoute: AuthSplatRoute,
   ChatSessionKeyRoute: ChatSessionKeyRoute,
   ChatIndexRoute: ChatIndexRoute,
   ApiHermesProxySplatRoute: ApiHermesProxySplatRoute,

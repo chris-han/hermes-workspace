@@ -1,3 +1,5 @@
+import { VIBE_AGENT_API, vibeAgentAuthHeaders } from './vibe-agent-api'
+
 /**
  * Probes Hermes services to detect which API groups are available.
  *
@@ -17,6 +19,7 @@ export const HERMES_UPGRADE_INSTRUCTIONS =
   'For full features, run hermes-agent from the local monorepo (../hermes-agent) with `hermes gateway run` plus `hermes dashboard` in separate terminals.'
 
 export const SESSIONS_API_UNAVAILABLE_MESSAGE = `Your Hermes backend does not support the sessions API. ${HERMES_UPGRADE_INSTRUCTIONS}`
+export const GATEWAY_MODE_OVERRIDE_ENV = 'HERMES_WORKSPACE_MODE'
 
 const PROBE_TIMEOUT_MS = 3_000
 const PROBE_TTL_MS = 120_000
@@ -49,17 +52,28 @@ export type DashboardCapabilities = {
   }
 }
 
+export type VibeCapabilities = {
+  vibe: {
+    available: boolean
+    url: string
+  }
+}
+
 /** Full capabilities — backward compat with existing code */
 export type GatewayCapabilities =
   CoreCapabilities &
   EnhancedCapabilities &
-  DashboardCapabilities
+  DashboardCapabilities &
+  VibeCapabilities
 
 export type GatewayMode =
+  | 'semantier-unicell'
   | 'zero-fork'
   | 'enhanced-fork'
   | 'portable'
   | 'disconnected'
+
+export type GatewayModeSource = 'probe' | 'override'
 
 export type ChatMode = 'enhanced-hermes' | 'portable' | 'disconnected'
 
@@ -68,6 +82,14 @@ export type ConnectionStatus =
   | 'enhanced'
   | 'partial'
   | 'disconnected'
+
+const GATEWAY_MODE_LABELS: Record<GatewayMode, string> = {
+  'semantier-unicell': 'Semantier Unicell',
+  'zero-fork': 'Zero Fork',
+  'enhanced-fork': 'Enhanced Fork',
+  portable: 'Portable',
+  disconnected: 'Disconnected',
+}
 
 // ── State ─────────────────────────────────────────────────────────
 
@@ -86,6 +108,10 @@ let capabilities: GatewayCapabilities = {
     available: false,
     url: HERMES_DASHBOARD_URL,
   },
+  vibe: {
+    available: false,
+    url: VIBE_AGENT_API,
+  },
   probed: false,
 }
 
@@ -94,6 +120,22 @@ let lastProbeAt = 0
 let lastLoggedSummary = ''
 let dashboardTokenPromise: Promise<string> | null = null
 let dashboardTokenCache = ''
+
+function normalizeGatewayModeOverride(value: string | undefined): GatewayMode | null {
+  const normalized = value?.trim().toLowerCase()
+  if (!normalized) return null
+  if (normalized === 'vibe-native') return 'semantier-unicell'
+  if (
+    normalized === 'semantier-unicell' ||
+    normalized === 'zero-fork' ||
+    normalized === 'enhanced-fork' ||
+    normalized === 'portable' ||
+    normalized === 'disconnected'
+  ) {
+    return normalized
+  }
+  return null
+}
 
 /** Optional bearer token for authenticated gateway endpoints. */
 export const BEARER_TOKEN = process.env.HERMES_API_TOKEN || ''
@@ -239,6 +281,18 @@ async function probeDashboard(): Promise<{ available: boolean; url: string }> {
   }
 }
 
+async function probeVibe(): Promise<{ available: boolean; url: string }> {
+  try {
+    const res = await fetch(`${VIBE_AGENT_API}/health`, {
+      headers: vibeAgentAuthHeaders(),
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    })
+    return { available: res.ok, url: VIBE_AGENT_API }
+  } catch {
+    return { available: false, url: VIBE_AGENT_API }
+  }
+}
+
 // Vanilla hermes-agent 0.10.0 satisfies: health, chatCompletions, models, streaming,
 // sessions, skills, config, jobs. Dashboard-only endpoints (themes/plugins) and the
 // legacy enhanced-fork chat stream are optional — their absence should not emit the
@@ -280,6 +334,8 @@ function logCapabilities(next: GatewayCapabilities): void {
   }
   if (next.dashboard.available) core.push('dashboard')
   else missing.push('dashboard')
+  if (next.vibe.available) core.push('vibe')
+  else missing.push('vibe')
 
   const mode = getGatewayMode()
   const summary = `[gateway] gateway=${HERMES_API} dashboard=${next.dashboard.url} mode=${mode} core=[${core.join(', ')}] enhanced=[${enhanced.join(', ')}] missing=[${missing.join(', ')}]`
@@ -365,6 +421,7 @@ export async function probeGateway(options?: {
       legacyConfig,
       legacyJobs,
       dashboard,
+      vibe,
     ] = await Promise.all([
       probe('/health'),
       probeChatCompletions(),
@@ -375,6 +432,7 @@ export async function probeGateway(options?: {
       probe('/api/config'),
       probe('/api/jobs'),
       probeDashboard(),
+      probeVibe(),
     ])
 
     capabilities = {
@@ -393,6 +451,7 @@ export async function probeGateway(options?: {
       config: dashboard.available || legacyConfig,
       jobs: dashboard.available || legacyJobs,
       dashboard,
+      vibe,
     }
     lastProbeAt = Date.now()
     logCapabilities(capabilities)
@@ -442,19 +501,21 @@ export function getEnhancedCapabilities(): EnhancedCapabilities {
 }
 
 export function getGatewayMode(): GatewayMode {
-  // 'zero-fork' requires the optional dashboard plugin bundle; 'enhanced' is
-  // granted whenever the core enhanced-chat endpoints are present — which
-  // vanilla hermes-agent (≥0.10) satisfies. The label 'enhanced-fork' is
-  // legacy copy from the 2025-era fork and does NOT imply an actual fork is
-  // required. We keep the value for backwards compatibility with UI code.
-  if (capabilities.dashboard.available && capabilities.chatCompletions) {
-    return 'zero-fork'
-  }
-  if (capabilities.sessions && capabilities.enhancedChat) {
-    return 'enhanced-fork'
-  }
-  if (capabilities.chatCompletions || capabilities.health) return 'portable'
-  return 'disconnected'
+  const configuredMode = getConfiguredGatewayMode()
+  if (configuredMode) return configuredMode
+  return deriveGatewayModeFromCapabilities(capabilities)
+}
+
+export function getGatewayModeSource(): GatewayModeSource {
+  return getConfiguredGatewayMode() ? 'override' : 'probe'
+}
+
+export function getGatewayModeLabel(mode: GatewayMode): string {
+  return GATEWAY_MODE_LABELS[mode]
+}
+
+export function getConfiguredGatewayMode(): GatewayMode | null {
+  return normalizeGatewayModeOverride(process.env[GATEWAY_MODE_OVERRIDE_ENV])
 }
 
 /**
@@ -470,6 +531,9 @@ export function getChatMode(): ChatMode {
 }
 
 export function getConnectionStatus(): ConnectionStatus {
+  if (capabilities.vibe.available) {
+    return capabilities.health || capabilities.chatCompletions ? 'enhanced' : 'partial'
+  }
   if (!capabilities.health && !capabilities.chatCompletions) {
     return capabilities.dashboard.available ? 'partial' : 'disconnected'
   }
@@ -483,7 +547,23 @@ export function getConnectionStatus(): ConnectionStatus {
 }
 
 export function isHermesConnected(): boolean {
-  return capabilities.health || capabilities.dashboard.available
+  return capabilities.health || capabilities.dashboard.available || capabilities.vibe.available
 }
 
 void ensureGatewayProbed()
+
+export function deriveGatewayModeFromCapabilities(
+  next: Pick<GatewayCapabilities, 'dashboard' | 'vibe' | 'chatCompletions' | 'sessions' | 'enhancedChat' | 'health'>,
+): GatewayMode {
+  if (next.vibe.available) {
+    return 'semantier-unicell'
+  }
+  if (next.dashboard.available && next.chatCompletions) {
+    return 'zero-fork'
+  }
+  if (next.sessions && next.enhancedChat) {
+    return 'enhanced-fork'
+  }
+  if (next.chatCompletions || next.health) return 'portable'
+  return 'disconnected'
+}

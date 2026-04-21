@@ -1,4 +1,5 @@
 import { useNavigate, useRouterState } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   BrainIcon,
@@ -21,6 +22,11 @@ import {
   selectChatProfileDisplayName,
   useChatSettingsStore,
 } from '@/hooks/use-chat-settings'
+import {
+  logoutVibeAuth,
+  useVibeAuthStatus,
+  vibeAuthQueryKey,
+} from '@/lib/vibe-auth'
 
 const NAV_ITEMS = [
   {
@@ -116,10 +122,25 @@ export function MobileHamburgerMenu() {
   }, [open])
 
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const profileDisplayName = useChatSettingsStore(selectChatProfileDisplayName)
+  const vibeAuthQuery = useVibeAuthStatus()
+  const vibeAuth = vibeAuthQuery.data
+  const [vibeAuthActionPending, setVibeAuthActionPending] = useState(false)
   const isChatRoute =
     pathname.startsWith('/chat') || pathname === '/new' || pathname === '/'
+
+  async function handleFeishuLogout() {
+    if (vibeAuthActionPending) return
+    setVibeAuthActionPending(true)
+    try {
+      await logoutVibeAuth()
+      await queryClient.invalidateQueries({ queryKey: vibeAuthQueryKey })
+    } finally {
+      setVibeAuthActionPending(false)
+    }
+  }
 
   function handleNav(to: string) {
     hapticTap()
@@ -173,8 +194,8 @@ export function MobileHamburgerMenu() {
         >
           <div className="flex items-center gap-2.5">
             <img
-              src="/hermes-avatar.webp"
-              alt="Hermes"
+              src="/logo.svg"
+              alt="Semantier"
               className="size-8 rounded-xl shrink-0"
             />
             <div className="flex flex-col leading-tight">
@@ -316,6 +337,54 @@ export function MobileHamburgerMenu() {
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
             </button>
+          </div>
+
+          <div className="mt-3 px-2">
+            {vibeAuthQuery.isLoading ? (
+              <p
+                className="text-xs"
+                style={{ color: 'var(--color-ink-muted, #666)' }}
+              >
+                Checking Feishu account...
+              </p>
+            ) : (
+              <div className="flex items-center gap-2">
+                <p
+                  className="min-w-0 flex-1 truncate text-xs"
+                  style={{ color: 'var(--color-ink-muted, #666)' }}
+                >
+                  {vibeAuth.authenticated && vibeAuth.user
+                    ? `Signed in as ${vibeAuth.user.name}`
+                    : `Guest workspace: ${vibeAuth.workspace_slug || 'public'}`}
+                </p>
+                {vibeAuth.authenticated ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleFeishuLogout()
+                    }}
+                    className="rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+                    style={{
+                      background: 'var(--color-border, #e5e7eb)',
+                      color: 'var(--color-ink, #111)',
+                    }}
+                  >
+                    {vibeAuthActionPending ? 'Logging out...' : 'Logout'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.assign('/auth/feishu/login')
+                    }}
+                    className="rounded-full px-3 py-1.5 text-xs font-medium text-white transition-colors"
+                    style={{ background: 'var(--color-accent, #6366f1)' }}
+                  >
+                    Login
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

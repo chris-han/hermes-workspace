@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { isAuthenticated } from '../../../server/auth-middleware'
 import {
+  buildVibeAgentProxyHeaders,
   vibeAgentAuthHeaders,
   withVibeAgentBase,
 } from '../../../server/vibe-agent-api'
@@ -11,15 +12,9 @@ async function proxyRequest(request: Request, splat: string) {
   const targetUrl = new URL(withVibeAgentBase(targetPath))
   targetUrl.search = incomingUrl.search
 
-  const headers = new Headers(request.headers)
-  headers.delete('host')
-  headers.delete('content-length')
-
-  for (const [key, value] of Object.entries(vibeAgentAuthHeaders())) {
-    if (!headers.has(key)) {
-      headers.set(key, value)
-    }
-  }
+  const headers = buildVibeAgentProxyHeaders(request.headers, {
+    authHeaders: vibeAgentAuthHeaders(),
+  })
 
   const init: RequestInit = {
     method: request.method,

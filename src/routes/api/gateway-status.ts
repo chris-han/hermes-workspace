@@ -4,6 +4,9 @@ import { isAuthenticated } from '../../server/auth-middleware'
 import {
   HERMES_API,
   HERMES_DASHBOARD_URL,
+  getConfiguredGatewayMode,
+  getGatewayModeLabel,
+  getGatewayModeSource,
   ensureGatewayProbed,
   getCapabilities,
   getGatewayMode,
@@ -18,16 +21,22 @@ export const Route = createFileRoute('/api/gateway-status')({
         }
 
         const capabilities = await ensureGatewayProbed()
+        const mode = getGatewayMode()
         return json({
           capabilities,
-          mode: getGatewayMode(),
+          mode,
+          modeLabel: getGatewayModeLabel(mode),
+          modeSource: getGatewayModeSource(),
+          configuredMode: getConfiguredGatewayMode(),
           hermesUrl: HERMES_API,
           dashboardUrl: HERMES_DASHBOARD_URL,
+          vibeUrl: capabilities.vibe.url,
           gateway: {
             available: capabilities.health || capabilities.chatCompletions,
             url: HERMES_API,
           },
           dashboard: capabilities.dashboard,
+          vibe: capabilities.vibe,
         })
       },
     },

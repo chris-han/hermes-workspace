@@ -19,6 +19,7 @@ import {
   Search01Icon, Settings01Icon, Sun02Icon, UserGroupIcon, UserMultipleIcon
 } from '@hugeicons/core-free-icons'
 import { AnimatePresence, motion } from 'motion/react'
+import { useQueryClient } from '@tanstack/react-query'
 import { t } from '@/lib/i18n'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
@@ -59,6 +60,11 @@ import {
   MenuTrigger,
 } from '@/components/ui/menu'
 import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
+import {
+  logoutVibeAuth,
+  useVibeAuthStatus,
+  vibeAuthQueryKey,
+} from '@/lib/vibe-auth'
 
 type WorkspaceStats = Record<string, unknown>
 
@@ -524,6 +530,9 @@ function ChatSidebarComponent({
       return state.location.pathname
     },
   })
+  const queryClient = useQueryClient()
+  const vibeAuthQuery = useVibeAuthStatus()
+  const vibeAuth = vibeAuthQuery.data
 
   useEffect(() => {
     function handleOpenSettingsEvent(event: Event) {
@@ -611,8 +620,20 @@ function ChatSidebarComponent({
   const [providersOpen, setProvidersOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isHoverExpanded, setIsHoverExpanded] = useState(false)
+  const [vibeAuthActionPending, setVibeAuthActionPending] = useState(false)
   const sidebarRef = useRef<HTMLElement | null>(null)
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
+
+  async function handleFeishuLogout() {
+    if (vibeAuthActionPending) return
+    setVibeAuthActionPending(true)
+    try {
+      await logoutVibeAuth()
+      await queryClient.invalidateQueries({ queryKey: vibeAuthQueryKey })
+    } finally {
+      setVibeAuthActionPending(false)
+    }
+  }
 
   function handleOpenRename(session: SessionMeta) {
     setRenameSessionKey(session.key)
@@ -885,8 +906,8 @@ function ChatSidebarComponent({
                   'w-full pl-1.5 justify-start gap-2',
                 )}
               >
-                <img src="/hermes-avatar.webp" alt="Hermes" className="size-6 rounded-lg" />
-                <span className="text-sm font-semibold tracking-tight" style={{ color: 'var(--theme-text)' }}>Hermes Workspace</span>
+                <img src="/logo.svg" alt="Semantier" className="size-6 rounded-lg" />
+                <span className="text-sm font-semibold tracking-tight" style={{ color: 'var(--theme-text)' }}>Semantier</span>
               </Link>
             </motion.div>
           ) : null}
@@ -1094,6 +1115,48 @@ function ChatSidebarComponent({
               </AnimatePresence>
             </MenuTrigger>
             <MenuContent side="top" align="start" className="min-w-[200px]">
+              {vibeAuthQuery.isLoading ? (
+                <div className="px-2 py-1.5 text-xs text-primary-500 dark:text-neutral-400">
+                  Checking Feishu account...
+                </div>
+              ) : null}
+              {vibeAuth?.feishu_oauth_enabled ? (
+                <>
+                  <div className="px-2 py-1.5 text-xs text-primary-500 dark:text-neutral-400">
+                    {vibeAuth.authenticated && vibeAuth.user ? (
+                      <>
+                        <div className="font-medium text-primary-900 dark:text-neutral-100">
+                          {vibeAuth.user.name}
+                        </div>
+                        <div className="truncate">
+                          {vibeAuth.user.email || `Workspace: ${vibeAuth.user.workspace_slug}`}
+                        </div>
+                      </>
+                    ) : (
+                      <div>Guest mode on {vibeAuth.workspace_slug || 'public'}</div>
+                    )}
+                  </div>
+                </>
+              ) : null}
+              {vibeAuth?.authenticated ? (
+                <MenuItem
+                  onClick={() => {
+                    void handleFeishuLogout()
+                  }}
+                >
+                  {vibeAuthActionPending ? 'Logging out...' : 'Logout'}
+                </MenuItem>
+              ) : (
+                <MenuItem
+                  disabled={vibeAuthQuery.isLoading}
+                  onClick={() => {
+                    window.location.assign('/auth/feishu/login')
+                  }}
+                >
+                  {vibeAuthQuery.isLoading ? 'Login...' : 'Login'}
+                </MenuItem>
+              )}
+              <div className="my-1 h-px bg-primary-200 dark:bg-neutral-800" />
               <MenuItem
                 onClick={function onOpenSettings() {
                   handleOpenSettings('hermes')

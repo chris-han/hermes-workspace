@@ -142,8 +142,8 @@ function AgentAvatar({
             </span>
           ) : (
             <img
-              src="/hermes-avatar.webp"
-              alt="Hermes"
+              src="/logo.svg"
+              alt="Semantier"
               className={cn(
                 getLogoSizeClassName(size),
                 iconClassName,

@@ -11,6 +11,8 @@ import {
   HERMES_API,
   ensureGatewayProbed,
   getChatMode,
+  getGatewayMode,
+  getGatewayModeLabel,
 } from '../../server/gateway-capabilities'
 import { isAuthenticated } from '../../server/auth-middleware'
 
@@ -36,6 +38,8 @@ type ConnectionStatus = {
   status: 'connected' | 'enhanced' | 'partial' | 'disconnected'
   label: 'Connected' | 'Enhanced' | 'Partial' | 'Disconnected'
   detail: string
+  gatewayMode: string
+  gatewayModeLabel: string
   health: boolean
   chatReady: boolean
   modelConfigured: boolean
@@ -53,6 +57,7 @@ export const Route = createFileRoute('/api/connection-status')({
         if (authResult !== true) return authResult as unknown as Response
 
         const caps = await ensureGatewayProbed()
+        const gatewayMode = getGatewayMode()
         const activeModel = readActiveModel()
         const modelConfigured = Boolean(activeModel)
 
@@ -67,7 +72,11 @@ export const Route = createFileRoute('/api/connection-status')({
         let label: ConnectionStatus['label']
         let detail: string
 
-        if (!caps.health && !chatReady) {
+        if (caps.vibe.available && !caps.health && !chatReady) {
+          status = 'partial'
+          label = 'Partial'
+          detail = 'Semantier Unicell backend is available. Hermes chat APIs are not connected yet.'
+        } else if (!caps.health && !chatReady) {
           status = 'disconnected'
           label = 'Disconnected'
           detail = 'No compatible backend detected.'
@@ -103,6 +112,8 @@ export const Route = createFileRoute('/api/connection-status')({
           status,
           label,
           detail,
+          gatewayMode,
+          gatewayModeLabel: getGatewayModeLabel(gatewayMode),
           health: caps.health,
           chatReady,
           modelConfigured,
@@ -119,6 +130,7 @@ export const Route = createFileRoute('/api/connection-status')({
             config: caps.config,
             jobs: caps.jobs,
             dashboard: caps.dashboard.available,
+            vibe: caps.vibe.available,
           },
           hermesUrl: HERMES_API,
         }

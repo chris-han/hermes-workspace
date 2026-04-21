@@ -50,9 +50,9 @@ export function ChatEmptyState({
           <img
             src="/logo.svg"
             alt="Semantier"
-            className="relative size-20 rounded-md"
+            className="relative size-20 rounded-xl"
             style={{
-              border: '1px solid var(--theme-border)',
+              border: '0px solid var(--theme-border)',
               padding: '4px',
               background: 'var(--theme-card)',
             }}

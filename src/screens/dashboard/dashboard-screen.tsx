@@ -793,12 +793,16 @@ export function DashboardScreen() {
       <div className="px-4 pt-14 md:pt-4 py-4 md:px-8 md:py-6 lg:px-10 space-y-5 pb-28">
       {/* ── Header: Hermes Logo + Quick Actions ── */}
       <div className="flex flex-col items-center gap-3 py-3">
-        <img
-          src="/logo.svg"
-          alt="Semantier"
-          className="size-12 md:size-14 rounded-xl ]"
-          style={{ padding: '3px', background: 'var(--theme-card)' }}
-        />
+          <img
+            src="/logo.svg"
+            alt="Semantier"
+            className="relative size-20 rounded-xl"
+            style={{
+              border: '0px solid var(--theme-border)',
+              padding: '4px',
+              background: 'var(--theme-card)',
+            }}
+          />
         <p className="micro-label" style={{ color: 'var(--theme-muted)' }}>
           Semantier
         </p>

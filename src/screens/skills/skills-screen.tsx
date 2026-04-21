@@ -57,6 +57,18 @@ type SkillsApiResponse = {
   categories: Array<string>
 }
 
+type SkillAction = 'install' | 'uninstall' | 'toggle'
+
+type SkillOverride = {
+  installed?: boolean
+  enabled?: boolean
+}
+
+type PendingSkillAction = {
+  skillId: string
+  action: SkillAction
+}
+
 type SkillSearchTier = 0 | 1 | 2 | 3
 
 type HubSkill = {
@@ -126,6 +138,22 @@ function resolveSkillSearchTier(
   return 3
 }
 
+function applySkillOverrides(
+  skills: Array<SkillSummary>,
+  overrides: Record<string, SkillOverride>,
+): Array<SkillSummary> {
+  return skills.map((skill) => {
+    const override = overrides[skill.id]
+    if (!override) return skill
+
+    return {
+      ...skill,
+      installed: override.installed ?? skill.installed,
+      enabled: override.enabled ?? skill.enabled,
+    }
+  })
+}
+
 export function SkillsScreen() {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<SkillsTab>('installed')
@@ -135,7 +163,11 @@ export function SkillsScreen() {
   const [category, setCategory] = useState('All')
   const [sort, setSort] = useState<SkillsSort>('name')
   const [page, setPage] = useState(1)
-  const [actionSkillId, setActionSkillId] = useState<string | null>(null)
+  const [pendingAction, setPendingAction] =
+    useState<PendingSkillAction | null>(null)
+  const [skillOverrides, setSkillOverrides] = useState<
+    Record<string, SkillOverride>
+  >({})
   const [selectedSkill, setSelectedSkill] = useState<SkillSummary | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -211,7 +243,10 @@ export function SkillsScreen() {
 
   const skills = useMemo(
     function resolveVisibleSkills() {
-      const sourceSkills = skillsQuery.data?.skills || []
+      const sourceSkills = applySkillOverrides(
+        skillsQuery.data?.skills || [],
+        skillOverrides,
+      )
       const normalizedQuery = searchInput.trim().toLowerCase()
       if (!normalizedQuery) {
         return sourceSkills
@@ -233,12 +268,12 @@ export function SkillsScreen() {
           return entry.skill
         })
     },
-    [searchInput, skillsQuery.data?.skills],
+    [searchInput, skillOverrides, skillsQuery.data?.skills],
   )
 
   const marketplaceSkills = useMemo<Array<SkillSummary>>(
     function resolveMarketplaceSkills() {
-      return (hubQuery.data?.results || []).map(function mapHubSkill(skill) {
+      const sourceSkills = (hubQuery.data?.results || []).map(function mapHubSkill(skill) {
         // Gateway returns: name, description, source, identifier, trust_level, repo, path, tags, extra, installed
         const skillId = skill.id || skill.name
         const author =
@@ -300,14 +335,16 @@ export function SkillsScreen() {
                 ? 'safe'
                 : skill.trust_level === 'trusted'
                   ? 'safe'
-                  : 'review',
+                  : 'medium',
             flags: [],
             score: 0,
           },
         }
       })
+
+      return applySkillOverrides(sourceSkills, skillOverrides)
     },
-    [hubQuery.data?.results],
+    [hubQuery.data?.results, skillOverrides],
   )
 
   async function copyCommandAndToast(command: string, message: string) {
@@ -327,7 +364,7 @@ export function SkillsScreen() {
   }
 
   async function runSkillAction(
-    action: 'install' | 'uninstall' | 'toggle',
+    action: SkillAction,
     payload: {
       skillId: string
       enabled?: boolean
@@ -335,7 +372,7 @@ export function SkillsScreen() {
     },
   ) {
     setActionError(null)
-    setActionSkillId(payload.skillId)
+    setPendingAction({ skillId: payload.skillId, action })
 
     try {
       const endpoint =
@@ -360,11 +397,13 @@ export function SkillsScreen() {
 
       const data = (await response.json()) as {
         error?: string
+        detail?: string
         command?: string
         ok?: boolean
       }
+      const actionError = data.error || data.detail || 'Action failed'
       if (!response.ok) {
-        throw new Error(data.error || 'Action failed')
+        throw new Error(actionError)
       }
 
       if (
@@ -374,17 +413,45 @@ export function SkillsScreen() {
         if (data.command) {
           await copyCommandAndToast(
             data.command,
-            data.error || 'Gateway action unavailable.',
+            actionError || 'Gateway action unavailable.',
           )
           return
         }
-        throw new Error(data.error || 'Action failed')
+        throw new Error(actionError)
       }
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['skills-browser'] }),
         queryClient.invalidateQueries({ queryKey: ['skills-hub-search'] }),
       ])
+      setSkillOverrides(function updateSkillOverrides(current) {
+        const next = { ...current }
+        const existing = next[payload.skillId] || {}
+
+        if (action === 'install') {
+          next[payload.skillId] = {
+            ...existing,
+            installed: true,
+            enabled: true,
+          }
+          return next
+        }
+
+        if (action === 'uninstall') {
+          next[payload.skillId] = {
+            ...existing,
+            installed: false,
+            enabled: false,
+          }
+          return next
+        }
+
+        next[payload.skillId] = {
+          ...existing,
+          enabled: payload.enabled ?? existing.enabled,
+        }
+        return next
+      })
       setSelectedSkill(function updateSelectedSkill(current) {
         if (!current || current.id !== payload.skillId) return current
         if (action === 'install') {
@@ -411,7 +478,7 @@ export function SkillsScreen() {
       setActionError(errorMessage)
       toast(errorMessage, { type: 'error', icon: '❌' })
     } finally {
-      setActionSkillId(null)
+      setPendingAction(null)
     }
   }
 
@@ -539,7 +606,7 @@ export function SkillsScreen() {
               <SkillsGrid
                 skills={skills}
                 loading={skillsQuery.isPending}
-                actionSkillId={actionSkillId}
+                pendingAction={pendingAction}
                 tab="installed"
                 onOpenDetails={setSelectedSkill}
                 onInstall={(skillId) => runSkillAction('install', { skillId })}
@@ -583,7 +650,7 @@ export function SkillsScreen() {
               <SkillsGrid
                 skills={marketplaceSkills}
                 loading={hubQuery.isPending}
-                actionSkillId={actionSkillId}
+                pendingAction={pendingAction}
                 tab="marketplace"
                 emptyState={{
                   title: searchInput.trim()
@@ -734,7 +801,7 @@ export function SkillsScreen() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={actionSkillId === selectedSkill.id}
+                      disabled={pendingAction?.skillId === selectedSkill.id}
                       onClick={() => {
                         runSkillAction('uninstall', {
                           skillId: selectedSkill.id,
@@ -746,12 +813,20 @@ export function SkillsScreen() {
                   ) : (
                     <Button
                       size="sm"
-                      disabled={actionSkillId === selectedSkill.id}
+                      disabled={pendingAction?.skillId === selectedSkill.id}
                       onClick={() =>
                         runSkillAction('install', { skillId: selectedSkill.id })
                       }
                     >
-                      Install
+                      {pendingAction?.skillId === selectedSkill.id &&
+                      pendingAction.action === 'install' ? (
+                        <>
+                          <InlineSpinner />
+                          Installing…
+                        </>
+                      ) : (
+                        'Install'
+                      )}
                     </Button>
                   )}
                   <Button
@@ -774,7 +849,7 @@ export function SkillsScreen() {
 type SkillsGridProps = {
   skills: Array<SkillSummary>
   loading: boolean
-  actionSkillId: string | null
+  pendingAction: PendingSkillAction | null
   tab: 'installed' | 'marketplace'
   emptyState?: {
     title: string
@@ -940,7 +1015,7 @@ function SecurityScanCard({ security }: { security: SecurityRisk }) {
 function SkillsGrid({
   skills,
   loading,
-  actionSkillId,
+  pendingAction,
   tab,
   emptyState,
   onOpenDetails,
@@ -970,7 +1045,10 @@ function SkillsGrid({
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <AnimatePresence initial={false}>
         {skills.map((skill) => {
-          const isActing = actionSkillId === skill.id
+          const isActing = pendingAction?.skillId === skill.id
+          const isInstalling =
+            pendingAction?.skillId === skill.id &&
+            pendingAction.action === 'install'
 
           return (
             <motion.article
@@ -992,13 +1070,24 @@ function SkillsGrid({
                 </div>
                 <span
                   className={cn(
-                    'rounded-md border px-2 py-0.5 text-xs tabular-nums',
-                    skill.installed
+                    'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs tabular-nums',
+                    isInstalling
+                      ? 'border-primary/40 bg-primary/15 text-primary'
+                      : skill.installed
                       ? 'border-primary/40 bg-primary/15 text-primary'
                       : 'border-primary-200 bg-primary-100/60 text-primary-500',
                   )}
                 >
-                  {skill.installed ? 'Installed' : 'Available'}
+                  {isInstalling ? (
+                    <>
+                      <InlineSpinner />
+                      Installing…
+                    </>
+                  ) : skill.installed ? (
+                    'Installed'
+                  ) : (
+                    'Available'
+                  )}
                 </span>
               </div>
 
@@ -1067,7 +1156,14 @@ function SkillsGrid({
                     disabled={isActing}
                     onClick={() => onInstall(skill.id)}
                   >
-                    Install
+                    {isInstalling ? (
+                      <>
+                        <InlineSpinner />
+                        Installing…
+                      </>
+                    ) : (
+                      'Install'
+                    )}
                   </Button>
                 )}
               </div>
@@ -1079,10 +1175,19 @@ function SkillsGrid({
   )
 }
 
+function InlineSpinner() {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block size-3 animate-spin rounded-full border-[1.5px] border-current border-r-transparent"
+    />
+  )
+}
+
 type FeaturedGridProps = {
   skills: Array<SkillSummary>
   loading: boolean
-  actionSkillId: string | null
+  pendingAction: PendingSkillAction | null
   onOpenDetails: (skill: SkillSummary) => void
   onInstall: (skillId: string) => void
   onUninstall: (skillId: string) => void
@@ -1091,7 +1196,7 @@ type FeaturedGridProps = {
 function FeaturedGrid({
   skills,
   loading,
-  actionSkillId,
+  pendingAction,
   onOpenDetails,
   onInstall,
   onUninstall,
@@ -1111,7 +1216,10 @@ function FeaturedGrid({
   return (
     <div className="grid grid-cols-1 gap-4 pb-2 lg:grid-cols-2">
       {skills.map((skill) => {
-        const isActing = actionSkillId === skill.id
+        const isActing = pendingAction?.skillId === skill.id
+        const isInstalling =
+          pendingAction?.skillId === skill.id &&
+          pendingAction.action === 'install'
         return (
           <article
             key={skill.id}
@@ -1130,13 +1238,24 @@ function FeaturedGrid({
 
               <span
                 className={cn(
-                  'rounded-md border px-2 py-0.5 text-xs tabular-nums',
-                  skill.installed
+                  'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs tabular-nums',
+                  isInstalling
+                    ? 'border-primary/40 bg-primary/15 text-primary'
+                    : skill.installed
                     ? 'border-primary/40 bg-primary/15 text-primary'
                     : 'border-primary-200 bg-primary-100/60 text-primary-500',
                 )}
               >
-                {skill.installed ? 'Installed' : 'Staff Pick'}
+                {isInstalling ? (
+                  <>
+                    <InlineSpinner />
+                    Installing…
+                  </>
+                ) : skill.installed ? (
+                  'Installed'
+                ) : (
+                  'Staff Pick'
+                )}
               </span>
             </div>
 
@@ -1167,7 +1286,14 @@ function FeaturedGrid({
                   disabled={isActing}
                   onClick={() => onInstall(skill.id)}
                 >
-                  Install
+                  {isInstalling ? (
+                    <>
+                      <InlineSpinner />
+                      Installing…
+                    </>
+                  ) : (
+                    'Install'
+                  )}
                 </Button>
               )}
             </div>

@@ -4,12 +4,10 @@ import { isAuthenticated } from '../../server/auth-middleware'
 import {
   BEARER_TOKEN,
   HERMES_API,
-  HERMES_UPGRADE_INSTRUCTIONS,
   dashboardFetch,
   ensureGatewayProbed,
   getCapabilities,
 } from '../../server/gateway-capabilities'
-import { requireJsonContentType } from '../../server/rate-limit'
 import { createCapabilityUnavailablePayload } from '@/lib/feature-gates'
 
 type SkillsTab = 'installed' | 'marketplace' | 'featured'
@@ -333,94 +331,6 @@ export const Route = createFileRoute('/api/skills')({
         } catch (err) {
           return json(
             { error: err instanceof Error ? err.message : String(err) },
-            { status: 500 },
-          )
-        }
-      },
-      POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-        const capabilities = await ensureGatewayProbed()
-        if (!capabilities.skills) {
-          return json(
-            {
-              ...createCapabilityUnavailablePayload('skills', {
-                error: `Gateway does not support /api/skills. ${HERMES_UPGRADE_INSTRUCTIONS}`,
-              }),
-            },
-            { status: 503 },
-          )
-        }
-        const csrfCheck = requireJsonContentType(request)
-        if (csrfCheck) return csrfCheck
-
-        try {
-          const body = (await request.json()) as {
-            action?: string
-            identifier?: string
-            name?: string
-            category?: string
-            force?: boolean
-            enabled?: boolean
-          }
-          const action = (body.action || 'install').trim()
-
-          let endpoint: string
-          let payload: Record<string, unknown>
-
-          if (action === 'uninstall') {
-            endpoint = '/api/skills/uninstall'
-            payload = { name: body.name || body.identifier || '' }
-          } else if (action === 'toggle') {
-            endpoint = '/api/skills/toggle'
-            payload = {
-              name: body.name || body.identifier || '',
-              enabled: body.enabled,
-            }
-          } else {
-            endpoint = '/api/skills/install'
-            payload = {
-              identifier: body.identifier || '',
-              category: body.category || '',
-              force: Boolean(body.force),
-            }
-          }
-
-          if (capabilities.dashboard.available) {
-            const response = await dashboardFetch(endpoint, {
-              method: action === 'toggle' ? 'PUT' : 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-              signal: AbortSignal.timeout(action === 'toggle' ? 30_000 : 120_000),
-            }, {
-              requestHeaders: request.headers,
-            })
-
-            const result = await response.json()
-            return json(result, { status: response.status })
-          }
-
-          const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-          }
-          if (BEARER_TOKEN) headers['Authorization'] = `Bearer ${BEARER_TOKEN}`
-
-          const response = await fetch(`${HERMES_API}${endpoint}`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(120_000),
-          })
-
-          const result = await response.json()
-          return json(result, { status: response.status })
-        } catch (err) {
-          return json(
-            {
-              ok: false,
-              error: err instanceof Error ? err.message : String(err),
-            },
             { status: 500 },
           )
         }

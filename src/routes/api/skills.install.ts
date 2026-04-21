@@ -1,15 +1,31 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../../server/auth-middleware'
+import { isAuthenticated } from '../../server/auth-middleware'
 import {
   BEARER_TOKEN,
   HERMES_API,
   dashboardFetch,
   ensureGatewayProbed,
-} from '../../../server/gateway-capabilities'
+} from '../../server/gateway-capabilities'
 
 function authHeaders(): Record<string, string> {
   return BEARER_TOKEN ? { Authorization: `Bearer ${BEARER_TOKEN}` } : {}
+}
+
+function normalizeSkillActionResult(payload: unknown): Record<string, unknown> {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return {}
+  }
+
+  const result = { ...(payload as Record<string, unknown>) }
+  if (
+    typeof result.error !== 'string' &&
+    typeof result.detail === 'string' &&
+    result.detail.trim()
+  ) {
+    result.error = result.detail
+  }
+  return result
 }
 
 export const Route = createFileRoute('/api/skills/install')({
@@ -68,7 +84,9 @@ export const Route = createFileRoute('/api/skills/install')({
                 signal: AbortSignal.timeout(120_000),
               })
 
-          const result = await response.json()
+          const result = normalizeSkillActionResult(
+            await response.json().catch(() => ({})),
+          )
           return json(result, { status: response.status })
         } catch (error) {
           return json(

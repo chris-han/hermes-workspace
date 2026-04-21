@@ -1,18 +1,34 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../../server/auth-middleware'
+import { isAuthenticated } from '../../server/auth-middleware'
 import {
   BEARER_TOKEN,
   HERMES_API,
   dashboardFetch,
   ensureGatewayProbed,
-} from '../../../server/gateway-capabilities'
+} from '../../server/gateway-capabilities'
 
 function authHeaders(): Record<string, string> {
   return BEARER_TOKEN ? { Authorization: `Bearer ${BEARER_TOKEN}` } : {}
 }
 
-export const Route = createFileRoute('/api/skills/toggle')({
+function normalizeSkillActionResult(payload: unknown): Record<string, unknown> {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return {}
+  }
+
+  const result = { ...(payload as Record<string, unknown>) }
+  if (
+    typeof result.error !== 'string' &&
+    typeof result.detail === 'string' &&
+    result.detail.trim()
+  ) {
+    result.error = result.detail
+  }
+  return result
+}
+
+export const Route = createFileRoute('/api/skills/uninstall')({
   server: {
     handlers: {
       POST: async ({ request }) => {
@@ -23,7 +39,6 @@ export const Route = createFileRoute('/api/skills/toggle')({
           const body = (await request.json()) as {
             skillId?: string
             name?: string
-            enabled?: boolean
           }
           const name = (body.name || body.skillId || '').trim()
           if (!name) {
@@ -32,46 +47,36 @@ export const Route = createFileRoute('/api/skills/toggle')({
               { status: 400 },
             )
           }
-          if (typeof body.enabled !== 'boolean') {
-            return json(
-              { ok: false, error: 'enabled (boolean) required' },
-              { status: 400 },
-            )
-          }
 
           const capabilities = await ensureGatewayProbed()
           const response = capabilities.dashboard.available
             ? await dashboardFetch(
-                '/api/skills/toggle',
+                '/api/skills/uninstall',
                 {
-                  method: 'PUT',
+                  method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify({
-                    name,
-                    enabled: body.enabled,
-                  }),
-                  signal: AbortSignal.timeout(15_000),
+                  body: JSON.stringify({ name }),
+                  signal: AbortSignal.timeout(30_000),
                 },
                 {
                   requestHeaders: request.headers,
                 },
               )
-            : await fetch(`${HERMES_API}/api/skills/toggle`, {
+            : await fetch(`${HERMES_API}/api/skills/uninstall`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   ...authHeaders(),
                 },
-                body: JSON.stringify({
-                  name,
-                  enabled: body.enabled,
-                }),
-                signal: AbortSignal.timeout(15_000),
+                body: JSON.stringify({ name }),
+                signal: AbortSignal.timeout(30_000),
               })
 
-          const result = await response.json()
+          const result = normalizeSkillActionResult(
+            await response.json().catch(() => ({})),
+          )
           return json(result, { status: response.status })
         } catch (error) {
           return json(
@@ -80,7 +85,7 @@ export const Route = createFileRoute('/api/skills/toggle')({
               error:
                 error instanceof Error
                   ? error.message
-                  : 'Failed to toggle skill',
+                  : 'Failed to uninstall skill',
             },
             { status: 500 },
           )

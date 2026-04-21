@@ -86,8 +86,8 @@ function resolveHermesPython(agentDir: string): string {
 function resolveSemantierAgentDir(env: Record<string, string>): string | null {
   const candidates: string[] = []
 
-  if (env.VIBE_AGENT_PATH?.trim()) {
-    candidates.push(env.VIBE_AGENT_PATH.trim())
+  if (env.SEMANTIER_AGENT_PATH?.trim()) {
+    candidates.push(env.SEMANTIER_AGENT_PATH.trim())
   }
 
   const workspaceRoot = dirname(resolve('.'))
@@ -133,8 +133,8 @@ const config = defineConfig(({ mode, command }) => {
     env.HERMES_API_URL || process.env.HERMES_API_URL,
     'http://127.0.0.1:8642',
   )
-  const vibeAgentUrl = normalizeServiceUrl(
-    env.VIBE_AGENT_API_URL || process.env.VIBE_AGENT_API_URL,
+  const semantierAgentUrl = normalizeServiceUrl(
+    env.SEMANTIER_AGENT_API_URL || process.env.SEMANTIER_AGENT_API_URL,
     'http://127.0.0.1:8899',
   )
   const hermesDashboardUrl = normalizeServiceUrl(
@@ -237,14 +237,14 @@ const config = defineConfig(({ mode, command }) => {
 
   const startSemantierBackend = async () => {
     if (semantierBackendStarted) return
-    if (!isLoopbackUrl(vibeAgentUrl)) {
+    if (!isLoopbackUrl(semantierAgentUrl)) {
       console.log(
-        `${localServiceLabel('semantier-backend')} Skipping auto-start — using external API: ${vibeAgentUrl}`,
+        `${localServiceLabel('semantier-backend')} Skipping auto-start — using external API: ${semantierAgentUrl}`,
       )
       semantierBackendStarted = true
       return
     }
-    if (await isHealthyEndpoint(vibeAgentUrl, '/health')) {
+    if (await isHealthyEndpoint(semantierAgentUrl, '/health')) {
       console.log(
         `${localServiceLabel('semantier-backend')} Already running — reusing existing process`,
       )
@@ -256,13 +256,13 @@ const config = defineConfig(({ mode, command }) => {
     if (!agentDir) {
       console.warn(
         `${localServiceLabel('semantier-backend')} Could not find the local /agent directory.\n` +
-          '  Set VIBE_AGENT_PATH in .env or ensure ../agent exists beside hermes-workspace.',
+          '  Set SEMANTIER_AGENT_PATH in .env or ensure ../agent exists beside hermes-workspace.',
       )
       return
     }
 
     const python = resolveSemantierPython(agentDir)
-    const backendPort = String(getServicePort(vibeAgentUrl, 8899))
+    const backendPort = String(getServicePort(semantierAgentUrl, 8899))
     console.log(
       `${localServiceLabel('semantier-backend')} Starting from ${agentDir} using ${python} (api_server.py :${backendPort})`,
     )
@@ -299,8 +299,8 @@ const config = defineConfig(({ mode, command }) => {
 
     for (let i = 0; i < 15; i++) {
       await new Promise((r) => setTimeout(r, 1000))
-      if (await isHealthyEndpoint(vibeAgentUrl, '/health')) {
-        console.log(`${localServiceLabel('semantier-backend')} ✓ Ready on ${vibeAgentUrl}`)
+      if (await isHealthyEndpoint(semantierAgentUrl, '/health')) {
+        console.log(`${localServiceLabel('semantier-backend')} ✓ Ready on ${semantierAgentUrl}`)
         return
       }
     }
@@ -331,7 +331,7 @@ const config = defineConfig(({ mode, command }) => {
     if (!agentDir) {
       console.warn(
         `${localServiceLabel('hermes-dashboard')} Could not find the local /agent directory.\n` +
-          '  Set VIBE_AGENT_PATH in .env or ensure ../agent exists beside hermes-workspace.',
+          '  Set SEMANTIER_AGENT_PATH in .env or ensure ../agent exists beside hermes-workspace.',
       )
       return
     }

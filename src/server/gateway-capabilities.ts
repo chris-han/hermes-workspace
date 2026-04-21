@@ -1,4 +1,4 @@
-import { VIBE_AGENT_API, vibeAgentAuthHeaders } from './vibe-agent-api'
+import { SEMANTIER_AGENT_API, semantierAgentAuthHeaders } from './semantier-agent-api'
 import { resolveActiveWorkspaceRoot } from './workspace-root'
 
 /**
@@ -53,8 +53,8 @@ export type DashboardCapabilities = {
   }
 }
 
-export type VibeCapabilities = {
-  vibe: {
+export type SemantierCapabilities = {
+  semantier: {
     available: boolean
     url: string
   }
@@ -65,7 +65,7 @@ export type GatewayCapabilities =
   CoreCapabilities &
   EnhancedCapabilities &
   DashboardCapabilities &
-  VibeCapabilities
+  SemantierCapabilities
 
 export type GatewayMode =
   | 'semantier-unicell'
@@ -109,9 +109,9 @@ let capabilities: GatewayCapabilities = {
     available: false,
     url: HERMES_DASHBOARD_URL,
   },
-  vibe: {
+  semantier: {
     available: false,
-    url: VIBE_AGENT_API,
+    url: SEMANTIER_AGENT_API,
   },
   probed: false,
 }
@@ -125,7 +125,7 @@ let dashboardTokenCache = ''
 function normalizeGatewayModeOverride(value: string | undefined): GatewayMode | null {
   const normalized = value?.trim().toLowerCase()
   if (!normalized) return null
-  if (normalized === 'vibe-native') return 'semantier-unicell'
+  if (normalized === 'semantier-native') return 'semantier-unicell'
   if (
     normalized === 'semantier-unicell' ||
     normalized === 'zero-fork' ||
@@ -293,15 +293,15 @@ async function probeDashboard(): Promise<{ available: boolean; url: string }> {
   }
 }
 
-async function probeVibe(): Promise<{ available: boolean; url: string }> {
+async function probeSemantier(): Promise<{ available: boolean; url: string }> {
   try {
-    const res = await fetch(`${VIBE_AGENT_API}/health`, {
-      headers: vibeAgentAuthHeaders(),
+    const res = await fetch(`${SEMANTIER_AGENT_API}/health`, {
+      headers: semantierAgentAuthHeaders(),
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     })
-    return { available: res.ok, url: VIBE_AGENT_API }
+    return { available: res.ok, url: SEMANTIER_AGENT_API }
   } catch {
-    return { available: false, url: VIBE_AGENT_API }
+    return { available: false, url: SEMANTIER_AGENT_API }
   }
 }
 
@@ -346,8 +346,8 @@ function logCapabilities(next: GatewayCapabilities): void {
   }
   if (next.dashboard.available) core.push('dashboard')
   else missing.push('dashboard')
-  if (next.vibe.available) core.push('vibe')
-  else missing.push('vibe')
+  if (next.semantier.available) core.push('semantier')
+  else missing.push('semantier')
 
   const mode = getGatewayMode()
   const summary = `[gateway] gateway=${HERMES_API} dashboard=${next.dashboard.url} mode=${mode} core=[${core.join(', ')}] enhanced=[${enhanced.join(', ')}] missing=[${missing.join(', ')}]`
@@ -433,7 +433,7 @@ export async function probeGateway(options?: {
       legacyConfig,
       legacyJobs,
       dashboard,
-      vibe,
+      semantier,
     ] = await Promise.all([
       probe('/health'),
       probeChatCompletions(),
@@ -444,7 +444,7 @@ export async function probeGateway(options?: {
       probe('/api/config'),
       probe('/api/jobs'),
       probeDashboard(),
-      probeVibe(),
+      probeSemantier(),
     ])
 
     capabilities = {
@@ -463,7 +463,7 @@ export async function probeGateway(options?: {
       config: dashboard.available || legacyConfig,
       jobs: dashboard.available || legacyJobs,
       dashboard,
-      vibe,
+      semantier,
     }
     lastProbeAt = Date.now()
     logCapabilities(capabilities)
@@ -543,7 +543,7 @@ export function getChatMode(): ChatMode {
 }
 
 export function getConnectionStatus(): ConnectionStatus {
-  if (capabilities.vibe.available) {
+  if (capabilities.semantier.available) {
     return capabilities.health || capabilities.chatCompletions ? 'enhanced' : 'partial'
   }
   if (!capabilities.health && !capabilities.chatCompletions) {
@@ -559,15 +559,15 @@ export function getConnectionStatus(): ConnectionStatus {
 }
 
 export function isHermesConnected(): boolean {
-  return capabilities.health || capabilities.dashboard.available || capabilities.vibe.available
+  return capabilities.health || capabilities.dashboard.available || capabilities.semantier.available
 }
 
 void ensureGatewayProbed()
 
 export function deriveGatewayModeFromCapabilities(
-  next: Pick<GatewayCapabilities, 'dashboard' | 'vibe' | 'chatCompletions' | 'sessions' | 'enhancedChat' | 'health'>,
+  next: Pick<GatewayCapabilities, 'dashboard' | 'semantier' | 'chatCompletions' | 'sessions' | 'enhancedChat' | 'health'>,
 ): GatewayMode {
-  if (next.vibe.available) {
+  if (next.semantier.available) {
     return 'semantier-unicell'
   }
   if (next.dashboard.available && next.chatCompletions) {

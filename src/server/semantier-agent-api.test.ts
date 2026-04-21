@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  buildVibeAgentProxyHeaders,
-  buildVibeAgentProxyResponseHeaders,
-} from './vibe-agent-api'
+  buildSemantierAgentProxyHeaders,
+  buildSemantierAgentProxyResponseHeaders,
+} from './semantier-agent-api'
 
-describe('buildVibeAgentProxyHeaders', () => {
+describe('buildSemantierAgentProxyHeaders', () => {
   it('strips browser cookies by default so guest traffic stays on the public workspace', () => {
-    const headers = buildVibeAgentProxyHeaders(
+    const headers = buildSemantierAgentProxyHeaders(
       new Headers({
-        cookie: 'hermes-auth=workspace-session; vt_session=vibe-user-session',
+        cookie: 'hermes-auth=workspace-session; vt_session=semantier-user-session',
         host: 'localhost:3000',
         'content-length': '42',
         'x-trace-id': 'trace-123',
@@ -26,25 +26,25 @@ describe('buildVibeAgentProxyHeaders', () => {
   })
 
   it('preserves browser cookies only when explicitly enabled', () => {
-    const headers = buildVibeAgentProxyHeaders(
-      { cookie: 'vt_session=vibe-user-session' },
+    const headers = buildSemantierAgentProxyHeaders(
+      { cookie: 'vt_session=semantier-user-session' },
       {
         authHeaders: {},
         forwardBrowserCookies: true,
       },
     )
 
-    expect(headers.get('cookie')).toBe('vt_session=vibe-user-session')
+    expect(headers.get('cookie')).toBe('vt_session=semantier-user-session')
   })
 
   it('injects server-side auth headers without overwriting an existing authorization header', () => {
-    const injected = buildVibeAgentProxyHeaders(
+    const injected = buildSemantierAgentProxyHeaders(
       {},
       {
         authHeaders: { Authorization: 'Bearer server-key' },
       },
     )
-    const preserved = buildVibeAgentProxyHeaders(
+    const preserved = buildSemantierAgentProxyHeaders(
       { Authorization: 'Bearer caller-token' },
       {
         authHeaders: { Authorization: 'Bearer server-key' },
@@ -56,10 +56,10 @@ describe('buildVibeAgentProxyHeaders', () => {
   })
 
   it('filters forwarded browser cookies down to the auth session cookie when requested', () => {
-    const headers = buildVibeAgentProxyHeaders(
+    const headers = buildSemantierAgentProxyHeaders(
       {
         cookie:
-          'hermes-auth=workspace-session; vt_session=vibe-user-session; csrftoken=abc123',
+          'hermes-auth=workspace-session; vt_session=semantier-user-session; csrftoken=abc123',
       },
       {
         authHeaders: {},
@@ -68,11 +68,11 @@ describe('buildVibeAgentProxyHeaders', () => {
       },
     )
 
-    expect(headers.get('cookie')).toBe('vt_session=vibe-user-session')
+    expect(headers.get('cookie')).toBe('vt_session=semantier-user-session')
   })
 })
 
-describe('buildVibeAgentProxyResponseHeaders', () => {
+describe('buildSemantierAgentProxyResponseHeaders', () => {
   it('preserves redirect and set-cookie headers for auth flows', () => {
     const upstreamHeaders = new Headers({
       'content-type': 'application/json',
@@ -80,7 +80,7 @@ describe('buildVibeAgentProxyResponseHeaders', () => {
       'set-cookie': 'vt_session=session123; Path=/; HttpOnly',
     })
 
-    const headers = buildVibeAgentProxyResponseHeaders(upstreamHeaders)
+    const headers = buildSemantierAgentProxyResponseHeaders(upstreamHeaders)
 
     expect(headers.get('content-type')).toBe('application/json')
     expect(headers.get('location')).toBe('/chat/main')

@@ -14,10 +14,10 @@ afterEach(() => {
 })
 
 describe('deriveGatewayModeFromCapabilities', () => {
-  it('prefers semantier-unicell when the Vibe backend is available', () => {
+  it('prefers semantier-unicell when the Semantier backend is available', () => {
     expect(
       deriveGatewayModeFromCapabilities({
-        vibe: { available: true, url: 'http://127.0.0.1:8899' },
+        semantier: { available: true, url: 'http://127.0.0.1:8899' },
         dashboard: { available: true, url: 'http://127.0.0.1:9119' },
         chatCompletions: true,
         sessions: true,
@@ -27,10 +27,10 @@ describe('deriveGatewayModeFromCapabilities', () => {
     ).toBe('semantier-unicell')
   })
 
-  it('keeps zero-fork detection when Vibe is unavailable', () => {
+  it('keeps zero-fork detection when Semantier is unavailable', () => {
     expect(
       deriveGatewayModeFromCapabilities({
-        vibe: { available: false, url: 'http://127.0.0.1:8899' },
+        semantier: { available: false, url: 'http://127.0.0.1:8899' },
         dashboard: { available: true, url: 'http://127.0.0.1:9119' },
         chatCompletions: true,
         sessions: true,
@@ -43,7 +43,7 @@ describe('deriveGatewayModeFromCapabilities', () => {
   it('falls back to enhanced-fork, portable, and disconnected in order', () => {
     expect(
       deriveGatewayModeFromCapabilities({
-        vibe: { available: false, url: 'http://127.0.0.1:8899' },
+        semantier: { available: false, url: 'http://127.0.0.1:8899' },
         dashboard: { available: false, url: 'http://127.0.0.1:9119' },
         chatCompletions: false,
         sessions: true,
@@ -54,7 +54,7 @@ describe('deriveGatewayModeFromCapabilities', () => {
 
     expect(
       deriveGatewayModeFromCapabilities({
-        vibe: { available: false, url: 'http://127.0.0.1:8899' },
+        semantier: { available: false, url: 'http://127.0.0.1:8899' },
         dashboard: { available: false, url: 'http://127.0.0.1:9119' },
         chatCompletions: true,
         sessions: false,
@@ -65,7 +65,7 @@ describe('deriveGatewayModeFromCapabilities', () => {
 
     expect(
       deriveGatewayModeFromCapabilities({
-        vibe: { available: false, url: 'http://127.0.0.1:8899' },
+        semantier: { available: false, url: 'http://127.0.0.1:8899' },
         dashboard: { available: false, url: 'http://127.0.0.1:9119' },
         chatCompletions: false,
         sessions: false,

@@ -4,15 +4,15 @@ import { isAuthenticated } from '../../server/auth-middleware'
 import { requireJsonContentType } from '../../server/rate-limit'
 import { resolveSessionKey } from '../../server/session-utils'
 import {
-  createVibeSession,
-  isVibeSessionNotFoundError,
-  openVibeSessionEvents,
-  sendVibeSessionMessage,
-} from '../../server/vibe-session-api'
+  createSemantierSession,
+  isSemantierSessionNotFoundError,
+  openSemantierSessionEvents,
+  sendSemantierSessionMessage,
+} from '../../server/semantier-session-api'
 import {
-  translateVibeSessionStreamEvent,
+  translateSemantierSessionStreamEvent,
   type WorkspaceStreamEvent,
-} from '../../server/vibe-session-stream'
+} from '../../server/semantier-session-stream'
 
 const SESSION_BOOTSTRAP_KEYS = new Set(['main', 'new'])
 
@@ -97,24 +97,24 @@ export const Route = createFileRoute('/api/send-stream')({
 
         try {
           if (SESSION_BOOTSTRAP_KEYS.has(sessionKey)) {
-            const session = await createVibeSession(request.headers)
+            const session = await createSemantierSession(request.headers)
             sessionKey = session.session_id
           }
 
           let sendResult
           try {
-            sendResult = await sendVibeSessionMessage(
+            sendResult = await sendSemantierSessionMessage(
               request.headers,
               sessionKey,
               message,
             )
           } catch (error) {
-            if (!isVibeSessionNotFoundError(error)) {
+            if (!isSemantierSessionNotFoundError(error)) {
               throw error
             }
-            const session = await createVibeSession(request.headers)
+            const session = await createSemantierSession(request.headers)
             sessionKey = session.session_id
-            sendResult = await sendVibeSessionMessage(
+            sendResult = await sendSemantierSessionMessage(
               request.headers,
               sessionKey,
               message,
@@ -140,7 +140,7 @@ export const Route = createFileRoute('/api/send-stream')({
               })
 
               try {
-                const upstream = await openVibeSessionEvents(request.headers, sessionKey, {
+                const upstream = await openSemantierSessionEvents(request.headers, sessionKey, {
                   replayExisting: true,
                   signal: abortController.signal,
                 })
@@ -172,7 +172,7 @@ export const Route = createFileRoute('/api/send-stream')({
                       continue
                     }
 
-                    const translated = translateVibeSessionStreamEvent(
+                    const translated = translateSemantierSessionStreamEvent(
                       frame.event,
                       payload,
                       runId,

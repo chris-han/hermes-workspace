@@ -4,22 +4,22 @@ import {
   useChatSettingsStore,
   DEFAULT_CHAT_DISPLAY_NAME,
 } from '@/hooks/use-chat-settings'
-import { useVibeAuthStatus } from '@/lib/vibe-auth'
+import { useSemantierAuthStatus } from '@/lib/semantier-auth'
 
 export function useResolvedAvatarUrl(): string | null {
   const localAvatar = useChatSettingsStore(selectChatProfileAvatarDataUrl)
-  const vibeAuth = useVibeAuthStatus()
+  const semantierAuth = useSemantierAuthStatus()
 
-  return localAvatar || vibeAuth.data?.user?.avatar_url || null
+  return localAvatar || semantierAuth.data?.user?.avatar_url || null
 }
 
 export function useResolvedDisplayName(): string {
   const localName = useChatSettingsStore(selectChatProfileDisplayName)
-  const vibeAuth = useVibeAuthStatus()
+  const semantierAuth = useSemantierAuthStatus()
 
   if (localName && localName !== DEFAULT_CHAT_DISPLAY_NAME) {
     return localName
   }
 
-  return vibeAuth.data?.user?.name || DEFAULT_CHAT_DISPLAY_NAME
+  return semantierAuth.data?.user?.name || DEFAULT_CHAT_DISPLAY_NAME
 }

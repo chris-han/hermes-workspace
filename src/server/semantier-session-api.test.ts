@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  VibeSessionApiError,
-  isVibeSessionNotFoundError,
-  toVibeChatMessage,
-  toVibeSessionSummary,
-} from './vibe-session-api'
+  SemantierSessionApiError,
+  isSemantierSessionNotFoundError,
+  toSemantierChatMessage,
+  toSemantierSessionSummary,
+} from './semantier-session-api'
 
-describe('toVibeSessionSummary', () => {
+describe('toSemantierSessionSummary', () => {
   it('maps backend sessions into workspace sidebar summaries', () => {
-    const summary = toVibeSessionSummary({
+    const summary = toSemantierSessionSummary({
       session_id: 'sess-123',
       title: 'My Session',
       created_at: '2026-04-21T10:00:00Z',
@@ -29,9 +29,9 @@ describe('toVibeSessionSummary', () => {
   })
 })
 
-describe('toVibeChatMessage', () => {
+describe('toSemantierChatMessage', () => {
   it('maps backend messages into chat history items', () => {
-    const message = toVibeChatMessage(
+    const message = toSemantierChatMessage(
       {
         message_id: 'msg-1',
         session_id: 'sess-123',
@@ -53,24 +53,24 @@ describe('toVibeChatMessage', () => {
   })
 })
 
-describe('isVibeSessionNotFoundError', () => {
+describe('isSemantierSessionNotFoundError', () => {
   it('matches typed 404 errors from the agent session API', () => {
-    const error = new VibeSessionApiError(
+    const error = new SemantierSessionApiError(
       '/sessions/sess-123/messages',
       404,
       'Session sess-123 not found',
     )
 
-    expect(isVibeSessionNotFoundError(error)).toBe(true)
+    expect(isSemantierSessionNotFoundError(error)).toBe(true)
   })
 
   it('ignores non-404 API errors', () => {
-    const error = new VibeSessionApiError(
+    const error = new SemantierSessionApiError(
       '/sessions/sess-123/messages',
       500,
       'Internal server error',
     )
 
-    expect(isVibeSessionNotFoundError(error)).toBe(false)
+    expect(isSemantierSessionNotFoundError(error)).toBe(false)
   })
 })

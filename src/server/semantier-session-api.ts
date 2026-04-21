@@ -1,23 +1,23 @@
 import {
-  buildVibeAgentProxyHeaders,
-  withVibeAgentBase,
-} from './vibe-agent-api'
+  buildSemantierAgentProxyHeaders,
+  withSemantierAgentBase,
+} from './semantier-agent-api'
 
 const AUTH_COOKIE_NAMES = ['vt_session']
 
-export class VibeSessionApiError extends Error {
+export class SemantierSessionApiError extends Error {
   status: number
   path: string
 
   constructor(path: string, status: number, message: string) {
-    super(`Vibe sessions ${path}: ${message}`)
-    this.name = 'VibeSessionApiError'
+    super(`Semantier sessions ${path}: ${message}`)
+    this.name = 'SemantierSessionApiError'
     this.status = status
     this.path = path
   }
 }
 
-export type VibeSession = {
+export type SemantierSession = {
   session_id: string
   title?: string
   status?: string
@@ -27,7 +27,7 @@ export type VibeSession = {
   last_attempt_id?: string
 }
 
-export type VibeMessage = {
+export type SemantierMessage = {
   message_id: string
   session_id: string
   role: string
@@ -37,13 +37,13 @@ export type VibeMessage = {
   metadata?: Record<string, unknown>
 }
 
-export type VibeSendMessageResponse = {
+export type SemantierSendMessageResponse = {
   message_id: string
   attempt_id?: string
 }
 
 function buildSessionHeaders(requestHeaders?: HeadersInit | Headers): Headers {
-  return buildVibeAgentProxyHeaders(requestHeaders ?? {}, {
+  return buildSemantierAgentProxyHeaders(requestHeaders ?? {}, {
     forwardBrowserCookies: true,
     allowedCookieNames: AUTH_COOKIE_NAMES,
   })
@@ -61,7 +61,7 @@ async function readError(response: Response): Promise<string> {
   }
 }
 
-async function vibeJson<T>(
+async function semantierJson<T>(
   path: string,
   init?: RequestInit,
   requestHeaders?: HeadersInit | Headers,
@@ -72,18 +72,18 @@ async function vibeJson<T>(
     headers.set(key, value)
   }
 
-  const response = await fetch(withVibeAgentBase(path), {
+  const response = await fetch(withSemantierAgentBase(path), {
     ...init,
     headers,
   })
   if (!response.ok) {
-    throw new VibeSessionApiError(path, response.status, await readError(response))
+    throw new SemantierSessionApiError(path, response.status, await readError(response))
   }
   return response.json() as Promise<T>
 }
 
-export function isVibeSessionNotFoundError(error: unknown): boolean {
-  if (error instanceof VibeSessionApiError) {
+export function isSemantierSessionNotFoundError(error: unknown): boolean {
+  if (error instanceof SemantierSessionApiError) {
     return error.status === 404
   }
   if (!(error instanceof Error)) {
@@ -98,8 +98,8 @@ function toMillis(value: string | undefined): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-export function toVibeSessionSummary(
-  session: VibeSession,
+export function toSemantierSessionSummary(
+  session: SemantierSession,
 ): Record<string, unknown> {
   const key = session.session_id
   const updatedAt = toMillis(session.updated_at) ?? toMillis(session.created_at)
@@ -116,8 +116,8 @@ export function toVibeSessionSummary(
   }
 }
 
-export function toVibeChatMessage(
-  message: VibeMessage,
+export function toSemantierChatMessage(
+  message: SemantierMessage,
   historyIndex?: number,
 ): Record<string, unknown> {
   const timestamp = toMillis(message.created_at) ?? Date.now()
@@ -135,33 +135,33 @@ export function toVibeChatMessage(
   }
 }
 
-export async function listVibeSessions(
+export async function listSemantierSessions(
   requestHeaders?: HeadersInit | Headers,
   limit = 50,
-): Promise<Array<VibeSession>> {
-  return vibeJson<Array<VibeSession>>(
+): Promise<Array<SemantierSession>> {
+  return semantierJson<Array<SemantierSession>>(
     `/sessions?limit=${limit}`,
     { method: 'GET' },
     requestHeaders,
   )
 }
 
-export async function getVibeSession(
+export async function getSemantierSession(
   requestHeaders: HeadersInit | Headers | undefined,
   sessionId: string,
-): Promise<VibeSession> {
-  return vibeJson<VibeSession>(
+): Promise<SemantierSession> {
+  return semantierJson<SemantierSession>(
     `/sessions/${encodeURIComponent(sessionId)}`,
     { method: 'GET' },
     requestHeaders,
   )
 }
 
-export async function createVibeSession(
+export async function createSemantierSession(
   requestHeaders?: HeadersInit | Headers,
   title?: string,
-): Promise<VibeSession> {
-  return vibeJson<VibeSession>(
+): Promise<SemantierSession> {
+  return semantierJson<SemantierSession>(
     '/sessions',
     {
       method: 'POST',
@@ -175,12 +175,12 @@ export async function createVibeSession(
   )
 }
 
-export async function updateVibeSession(
+export async function updateSemantierSession(
   requestHeaders: HeadersInit | Headers | undefined,
   sessionId: string,
   title?: string,
 ): Promise<{ status: string; session_id: string }> {
-  return vibeJson<{ status: string; session_id: string }>(
+  return semantierJson<{ status: string; session_id: string }>(
     `/sessions/${encodeURIComponent(sessionId)}`,
     {
       method: 'PATCH',
@@ -191,11 +191,11 @@ export async function updateVibeSession(
   )
 }
 
-export async function deleteVibeSession(
+export async function deleteSemantierSession(
   requestHeaders: HeadersInit | Headers | undefined,
   sessionId: string,
 ): Promise<{ status: string; deleted: string[]; missing: string[] }> {
-  return vibeJson<{ status: string; deleted: string[]; missing: string[] }>(
+  return semantierJson<{ status: string; deleted: string[]; missing: string[] }>(
     '/sessions/batch-delete',
     {
       method: 'POST',
@@ -206,24 +206,24 @@ export async function deleteVibeSession(
   )
 }
 
-export async function getVibeSessionMessages(
+export async function getSemantierSessionMessages(
   requestHeaders: HeadersInit | Headers | undefined,
   sessionId: string,
   limit = 200,
-): Promise<Array<VibeMessage>> {
-  return vibeJson<Array<VibeMessage>>(
+): Promise<Array<SemantierMessage>> {
+  return semantierJson<Array<SemantierMessage>>(
     `/sessions/${encodeURIComponent(sessionId)}/messages?limit=${limit}`,
     { method: 'GET' },
     requestHeaders,
   )
 }
 
-export async function sendVibeSessionMessage(
+export async function sendSemantierSessionMessage(
   requestHeaders: HeadersInit | Headers | undefined,
   sessionId: string,
   content: string,
-): Promise<VibeSendMessageResponse> {
-  return vibeJson<VibeSendMessageResponse>(
+): Promise<SemantierSendMessageResponse> {
+  return semantierJson<SemantierSendMessageResponse>(
     `/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
       method: 'POST',
@@ -234,7 +234,7 @@ export async function sendVibeSessionMessage(
   )
 }
 
-export async function openVibeSessionEvents(
+export async function openSemantierSessionEvents(
   requestHeaders: HeadersInit | Headers | undefined,
   sessionId: string,
   options?: {
@@ -255,13 +255,13 @@ export async function openVibeSessionEvents(
   }
 
   const path = `/sessions/${encodeURIComponent(sessionId)}/events${search.size > 0 ? `?${search.toString()}` : ''}`
-  const response = await fetch(withVibeAgentBase(path), {
+  const response = await fetch(withSemantierAgentBase(path), {
     method: 'GET',
     headers,
     signal: options?.signal,
   })
   if (!response.ok) {
-    throw new VibeSessionApiError(path, response.status, await readError(response))
+    throw new SemantierSessionApiError(path, response.status, await readError(response))
   }
   return response
 }

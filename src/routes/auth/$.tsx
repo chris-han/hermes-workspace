@@ -1,21 +1,21 @@
 import { createFileRoute } from '@tanstack/react-router'
 import {
-  buildVibeAgentProxyHeaders,
-  buildVibeAgentProxyResponseHeaders,
-  VIBE_AGENT_AUTH_COOKIE,
-  withVibeAgentBase,
-} from '../../server/vibe-agent-api'
+  SEMANTIER_AGENT_AUTH_COOKIE,
+  buildSemantierAgentProxyHeaders,
+  buildSemantierAgentProxyResponseHeaders,
+  withSemantierAgentBase,
+} from '../../server/semantier-agent-api'
 
 async function proxyAuthRequest(request: Request, splat: string) {
   const incomingUrl = new URL(request.url)
   const targetPath = splat ? `/auth/${splat}` : '/auth'
-  const targetUrl = new URL(withVibeAgentBase(targetPath))
+  const targetUrl = new URL(withSemantierAgentBase(targetPath))
   targetUrl.search = incomingUrl.search
 
-  const headers = buildVibeAgentProxyHeaders(request.headers, {
+  const headers = buildSemantierAgentProxyHeaders(request.headers, {
     authHeaders: {},
     forwardBrowserCookies: true,
-    allowedCookieNames: [VIBE_AGENT_AUTH_COOKIE],
+    allowedCookieNames: [SEMANTIER_AGENT_AUTH_COOKIE],
   })
 
   const init: RequestInit = {
@@ -33,7 +33,7 @@ async function proxyAuthRequest(request: Request, splat: string) {
 
   return new Response(body, {
     status: upstream.status,
-    headers: buildVibeAgentProxyResponseHeaders(upstream.headers),
+    headers: buildSemantierAgentProxyResponseHeaders(upstream.headers),
   })
 }
 

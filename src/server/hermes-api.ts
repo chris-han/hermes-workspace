@@ -3,7 +3,7 @@
  *
  * HTTP client for the Hermes gateway transport API.
  * The workspace uses the separate dashboard API for sessions/config and the
- * Vibe backend for Semantier-owned workspace services.
+ * Semantier backend for workspace-owned services.
  */
 
 import {

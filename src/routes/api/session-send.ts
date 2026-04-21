@@ -4,10 +4,10 @@ import { json } from '@tanstack/react-start'
 import { isAuthenticated } from '../../server/auth-middleware'
 import { requireJsonContentType } from '../../server/rate-limit'
 import {
-  createVibeSession,
-  isVibeSessionNotFoundError,
-  sendVibeSessionMessage,
-} from '../../server/vibe-session-api'
+  createSemantierSession,
+  isSemantierSessionNotFoundError,
+  sendSemantierSessionMessage,
+} from '../../server/semantier-session-api'
 
 const SESSION_BOOTSTRAP_KEYS = new Set(['main', 'new'])
 
@@ -36,20 +36,20 @@ export const Route = createFileRoute('/api/session-send')({
           }
 
           if (SESSION_BOOTSTRAP_KEYS.has(sessionKey)) {
-            const session = await createVibeSession(request.headers)
+            const session = await createSemantierSession(request.headers)
             sessionKey = session.session_id
           }
 
           let result
           try {
-            result = await sendVibeSessionMessage(request.headers, sessionKey, message)
+            result = await sendSemantierSessionMessage(request.headers, sessionKey, message)
           } catch (error) {
-            if (!isVibeSessionNotFoundError(error)) {
+            if (!isSemantierSessionNotFoundError(error)) {
               throw error
             }
-            const session = await createVibeSession(request.headers)
+            const session = await createSemantierSession(request.headers)
             sessionKey = session.session_id
-            result = await sendVibeSessionMessage(request.headers, sessionKey, message)
+            result = await sendSemantierSessionMessage(request.headers, sessionKey, message)
           }
           return json({
             ok: true,

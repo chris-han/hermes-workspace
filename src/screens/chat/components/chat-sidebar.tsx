@@ -17,7 +17,8 @@ import {
   PinOffIcon,
   PuzzleIcon,
   Rocket01Icon,
-  Search01Icon, Settings01Icon, Sun02Icon, UserGroupIcon, UserMultipleIcon
+  Search01Icon, Settings01Icon, Sun02Icon, UserGroupIcon, UserMultipleIcon,
+  Copy01Icon, Tick02Icon,
 } from '@hugeicons/core-free-icons'
 import { AnimatePresence, motion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -54,6 +55,7 @@ import {
   useResolvedDisplayName,
 } from '@/hooks/use-resolved-avatar'
 import { useWorkspaceStore } from '@/stores/workspace-store'
+import { writeTextToClipboard } from '@/lib/clipboard'
 import { StatusDot } from '@/components/status-indicator'
 import {
   MenuContent,
@@ -63,10 +65,10 @@ import {
 } from '@/components/ui/menu'
 import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
 import {
-  logoutVibeAuth,
-  useVibeAuthStatus,
-  vibeAuthQueryKey,
-} from '@/lib/vibe-auth'
+  logoutSemantierAuth,
+  semantierAuthQueryKey,
+  useSemantierAuthStatus,
+} from '@/lib/semantier-auth'
 
 type WorkspaceStats = Record<string, unknown>
 
@@ -531,8 +533,8 @@ function ChatSidebarComponent({
     },
   })
   const queryClient = useQueryClient()
-  const vibeAuthQuery = useVibeAuthStatus()
-  const vibeAuth = vibeAuthQuery.data
+  const semantierAuthQuery = useSemantierAuthStatus()
+  const semantierAuth = semantierAuthQuery.data
 
   useEffect(() => {
     function handleOpenSettingsEvent(event: Event) {
@@ -620,20 +622,21 @@ function ChatSidebarComponent({
   const [providersOpen, setProvidersOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isHoverExpanded, setIsHoverExpanded] = useState(false)
-  const [vibeAuthActionPending, setVibeAuthActionPending] = useState(false)
+  const [semantierAuthActionPending, setSemantierAuthActionPending] = useState(false)
+  const [copiedWorkspaceId, setCopiedWorkspaceId] = useState(false)
   const sidebarPinned = useWorkspaceStore((s) => s.sidebarPinned)
   const toggleSidebarPinned = useWorkspaceStore((s) => s.toggleSidebarPinned)
   const sidebarRef = useRef<HTMLElement | null>(null)
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
 
   async function handleFeishuLogout() {
-    if (vibeAuthActionPending) return
-    setVibeAuthActionPending(true)
+    if (semantierAuthActionPending) return
+    setSemantierAuthActionPending(true)
     try {
-      await logoutVibeAuth()
-      await queryClient.invalidateQueries({ queryKey: vibeAuthQueryKey })
+      await logoutSemantierAuth()
+      await queryClient.invalidateQueries({ queryKey: semantierAuthQueryKey })
     } finally {
-      setVibeAuthActionPending(false)
+      setSemantierAuthActionPending(false)
     }
   }
 
@@ -1144,45 +1147,70 @@ function ChatSidebarComponent({
               </AnimatePresence>
             </MenuTrigger>
             <MenuContent side="top" align="start" className="min-w-[200px]">
-              {vibeAuthQuery.isLoading ? (
+              {semantierAuthQuery.isLoading ? (
                 <div className="px-2 py-1.5 text-xs text-primary-500 dark:text-neutral-400">
                   Checking Feishu account...
                 </div>
               ) : null}
-              {vibeAuth?.feishu_oauth_enabled ? (
+              {semantierAuth?.feishu_oauth_enabled ? (
                 <>
                   <div className="px-2 py-1.5 text-xs text-primary-500 dark:text-neutral-400">
-                    {vibeAuth.authenticated && vibeAuth.user ? (
+                    {semantierAuth.authenticated && semantierAuth.user ? (
                       <>
                         <div className="font-medium text-primary-900 dark:text-neutral-100">
-                          {vibeAuth.user.name}
+                          {semantierAuth.user.name}
                         </div>
-                        <div className="truncate">
-                          {vibeAuth.user.email || `Workspace: ${vibeAuth.user.workspace_slug}`}
+                        {semantierAuth.user.email ? (
+                          <div className="truncate">{semantierAuth.user.email}</div>
+                        ) : null}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="truncate max-w-[140px]" title={semantierAuth.user.user_id}>
+                            ID: {semantierAuth.user.user_id}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await writeTextToClipboard(semantierAuth.user!.user_id)
+                                setCopiedWorkspaceId(true)
+                                setTimeout(() => setCopiedWorkspaceId(false), 1500)
+                              } catch {
+                                // ignore
+                              }
+                            }}
+                            className="shrink-0 inline-flex items-center justify-center rounded p-0.5 hover:bg-primary-100 dark:hover:bg-neutral-800 transition-colors"
+                            title="Copy workspace ID"
+                          >
+                            <HugeiconsIcon
+                              icon={copiedWorkspaceId ? Tick02Icon : Copy01Icon}
+                              size={12}
+                              strokeWidth={1.5}
+                            />
+                          </button>
                         </div>
                       </>
                     ) : (
-                      <div>Guest mode on {vibeAuth.workspace_slug || 'public'}</div>
+                      <div>Guest mode on {semantierAuth.workspace_slug || 'public'}</div>
                     )}
                   </div>
                 </>
               ) : null}
-              {vibeAuth?.authenticated ? (
+              {semantierAuth?.authenticated ? (
                 <MenuItem
                   onClick={() => {
                     void handleFeishuLogout()
                   }}
                 >
-                  {vibeAuthActionPending ? 'Logging out...' : 'Logout'}
+                  {semantierAuthActionPending ? 'Logging out...' : 'Logout'}
                 </MenuItem>
               ) : (
                 <MenuItem
-                  disabled={vibeAuthQuery.isLoading}
+                  disabled={semantierAuthQuery.isLoading}
                   onClick={() => {
                     window.location.assign('/auth/feishu/login')
                   }}
                 >
-                  {vibeAuthQuery.isLoading ? 'Login...' : 'Login'}
+                  {semantierAuthQuery.isLoading ? 'Login...' : 'Login'}
                 </MenuItem>
               )}
               <div className="my-1 h-px bg-primary-200 dark:bg-neutral-800" />

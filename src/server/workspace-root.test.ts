@@ -77,7 +77,7 @@ describe('resolveActiveWorkspaceRoot', () => {
     globalThis.fetch = fetchMock as typeof fetch
 
     const result = await resolveActiveWorkspaceRoot({
-      cookie: 'hermes-auth=workspace-session; vt_session=vibe-user-session',
+      cookie: 'hermes-auth=workspace-session; vt_session=semantier-user-session',
     })
 
     expect(result.authenticated).toBe(true)
@@ -90,7 +90,7 @@ describe('resolveActiveWorkspaceRoot', () => {
 
     const [, init] = fetchMock.mock.calls[0]
     const headers = new Headers(init?.headers)
-    expect(headers.get('cookie')).toBe('vt_session=vibe-user-session')
+    expect(headers.get('cookie')).toBe('vt_session=semantier-user-session')
   })
 
   it('falls back to the public workspace when the backend is unavailable', async () => {

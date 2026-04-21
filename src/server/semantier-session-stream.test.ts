@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
-import { translateVibeSessionStreamEvent } from './vibe-session-stream'
+import { translateSemantierSessionStreamEvent } from './semantier-session-stream'
 
-describe('translateVibeSessionStreamEvent', () => {
+describe('translateSemantierSessionStreamEvent', () => {
   it('maps agent text deltas into workspace chunk frames', () => {
     expect(
-      translateVibeSessionStreamEvent('text_delta', { content: 'hello' }, 'run-1'),
+      translateSemantierSessionStreamEvent('text_delta', { content: 'hello' }, 'run-1'),
     ).toEqual([{ event: 'chunk', data: { delta: 'hello' } }])
   })
 
   it('maps tool results into complete tool frames', () => {
     expect(
-      translateVibeSessionStreamEvent(
+      translateSemantierSessionStreamEvent(
         'tool_result',
         { tool: 'search_files', preview: '2 matches', status: 'ok' },
         'run-1',
@@ -33,7 +33,7 @@ describe('translateVibeSessionStreamEvent', () => {
 
   it('maps failed attempts into terminal done events', () => {
     expect(
-      translateVibeSessionStreamEvent('attempt.failed', { error: 'boom' }, 'run-1'),
+      translateSemantierSessionStreamEvent('attempt.failed', { error: 'boom' }, 'run-1'),
     ).toEqual([{ event: 'done', data: { state: 'error', errorMessage: 'boom' } }])
   })
 })

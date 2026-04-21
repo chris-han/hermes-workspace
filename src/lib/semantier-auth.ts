@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-export interface VibeAuthUser {
+export interface SemantierAuthUser {
   user_id: string
   name: string
   email?: string | null
@@ -9,16 +9,16 @@ export interface VibeAuthUser {
   workspace_slug: string
 }
 
-export interface VibeAuthStatus {
+export interface SemantierAuthStatus {
   authenticated: boolean
   feishu_oauth_enabled: boolean
   workspace_slug?: string | null
-  user?: VibeAuthUser | null
+  user?: SemantierAuthUser | null
 }
 
-export const vibeAuthQueryKey = ['vibe-auth', 'me'] as const
+export const semantierAuthQueryKey = ['semantier-auth', 'me'] as const
 
-export async function fetchVibeAuthStatus(): Promise<VibeAuthStatus> {
+export async function fetchSemantierAuthStatus(): Promise<SemantierAuthStatus> {
   const response = await fetch('/auth/me', {
     signal: AbortSignal.timeout(5000),
   })
@@ -27,10 +27,10 @@ export async function fetchVibeAuthStatus(): Promise<VibeAuthStatus> {
     throw new Error(`HTTP ${response.status}`)
   }
 
-  return response.json() as Promise<VibeAuthStatus>
+  return response.json() as Promise<SemantierAuthStatus>
 }
 
-export async function logoutVibeAuth(): Promise<void> {
+export async function logoutSemantierAuth(): Promise<void> {
   const response = await fetch('/auth/logout', {
     method: 'POST',
   })
@@ -40,10 +40,10 @@ export async function logoutVibeAuth(): Promise<void> {
   }
 }
 
-export function useVibeAuthStatus() {
+export function useSemantierAuthStatus() {
   return useQuery({
-    queryKey: vibeAuthQueryKey,
-    queryFn: fetchVibeAuthStatus,
+    queryKey: semantierAuthQueryKey,
+    queryFn: fetchSemantierAuthStatus,
     staleTime: 15_000,
     refetchInterval: 30_000,
     retry: false,

@@ -4,12 +4,12 @@ import { json } from '@tanstack/react-start'
 import { isAuthenticated } from '../../server/auth-middleware'
 import { requireJsonContentType } from '../../server/rate-limit'
 import {
-  createVibeSession,
-  deleteVibeSession,
-  listVibeSessions,
-  toVibeSessionSummary,
-  updateVibeSession,
-} from '../../server/vibe-session-api'
+  createSemantierSession,
+  deleteSemantierSession,
+  listSemantierSessions,
+  toSemantierSessionSummary,
+  updateSemantierSession,
+} from '../../server/semantier-session-api'
 
 export const Route = createFileRoute('/api/sessions')({
   server: {
@@ -20,8 +20,8 @@ export const Route = createFileRoute('/api/sessions')({
         }
 
         try {
-          const sessions = await listVibeSessions(request.headers, 50)
-          return json({ sessions: sessions.map(toVibeSessionSummary) })
+          const sessions = await listSemantierSessions(request.headers, 50)
+          return json({ sessions: sessions.map(toSemantierSessionSummary) })
         } catch (err) {
           return json(
             { error: err instanceof Error ? err.message : String(err) },
@@ -39,13 +39,13 @@ export const Route = createFileRoute('/api/sessions')({
         try {
           const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
           const label = typeof body.label === 'string' ? body.label.trim() : ''
-          const session = await createVibeSession(request.headers, label || undefined)
+          const session = await createSemantierSession(request.headers, label || undefined)
 
           return json({
             ok: true,
             sessionKey: session.session_id,
             friendlyId: session.session_id,
-            entry: toVibeSessionSummary(session),
+            entry: toSemantierSessionSummary(session),
             modelApplied: false,
           })
         } catch (err) {
@@ -76,7 +76,7 @@ export const Route = createFileRoute('/api/sessions')({
             return json({ ok: false, error: 'sessionKey required' }, { status: 400 })
           }
 
-          await updateVibeSession(request.headers, sessionKey, label)
+          await updateSemantierSession(request.headers, sessionKey, label)
 
           return json({
             ok: true,
@@ -115,7 +115,7 @@ export const Route = createFileRoute('/api/sessions')({
             return json({ ok: false, error: 'sessionKey required' }, { status: 400 })
           }
 
-          await deleteVibeSession(request.headers, sessionKey)
+          await deleteSemantierSession(request.headers, sessionKey)
           return json({ ok: true, sessionKey })
         } catch (err) {
           return json(

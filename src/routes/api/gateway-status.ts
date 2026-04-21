@@ -30,13 +30,13 @@ export const Route = createFileRoute('/api/gateway-status')({
           configuredMode: getConfiguredGatewayMode(),
           hermesUrl: HERMES_API,
           dashboardUrl: HERMES_DASHBOARD_URL,
-          vibeUrl: capabilities.vibe.url,
+          semantierUrl: capabilities.semantier.url,
           gateway: {
             available: capabilities.health || capabilities.chatCompletions,
             url: HERMES_API,
           },
           dashboard: capabilities.dashboard,
-          vibe: capabilities.vibe,
+          semantier: capabilities.semantier,
         })
       },
     },

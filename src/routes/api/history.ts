@@ -4,11 +4,11 @@ import { json } from '@tanstack/react-start'
 import { isAuthenticated } from '@/server/auth-middleware'
 import { resolveSessionKey } from '../../server/session-utils'
 import {
-  getVibeSessionMessages,
-  isVibeSessionNotFoundError,
-  listVibeSessions,
-  toVibeChatMessage,
-} from '../../server/vibe-session-api'
+  getSemantierSessionMessages,
+  isSemantierSessionNotFoundError,
+  listSemantierSessions,
+  toSemantierChatMessage,
+} from '../../server/semantier-session-api'
 
 export const Route = createFileRoute('/api/history')({
   server: {
@@ -34,7 +34,7 @@ export const Route = createFileRoute('/api/history')({
           }
 
           if (sessionKey === 'main') {
-            const sessions = await listVibeSessions(request.headers, 1)
+            const sessions = await listSemantierSessions(request.headers, 1)
             if (sessions.length === 0) {
               return json({ sessionKey: 'new', sessionId: 'new', messages: [] })
             }
@@ -43,9 +43,9 @@ export const Route = createFileRoute('/api/history')({
 
           let messages
           try {
-            messages = await getVibeSessionMessages(request.headers, sessionKey, limit)
+            messages = await getSemantierSessionMessages(request.headers, sessionKey, limit)
           } catch (error) {
-            if (isVibeSessionNotFoundError(error)) {
+            if (isSemantierSessionNotFoundError(error)) {
               return json({ sessionKey: 'new', sessionId: 'new', messages: [] })
             }
             throw error
@@ -56,7 +56,7 @@ export const Route = createFileRoute('/api/history')({
             sessionKey,
             sessionId: sessionKey,
             messages: boundedMessages.map((message, index) =>
-              toVibeChatMessage(message, index),
+              toSemantierChatMessage(message, index),
             ),
           })
         } catch (err) {

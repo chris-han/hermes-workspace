@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { vibeAgentAuthHeaders, withVibeAgentBase } from './vibe-agent-api'
+import { semantierAgentAuthHeaders, withSemantierAgentBase } from './semantier-agent-api'
 
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(SERVER_DIR, '..', '..', '..')
@@ -56,8 +56,8 @@ export function resolveHermesPath(...segments: string[]): string {
 }
 
 async function fetchBackendHermesHome(): Promise<string | null> {
-  const response = await fetch(withVibeAgentBase('/system/paths'), {
-    headers: vibeAgentAuthHeaders(),
+  const response = await fetch(withSemantierAgentBase('/system/paths'), {
+    headers: semantierAgentAuthHeaders(),
     signal: AbortSignal.timeout(2_000),
   })
   if (!response.ok) return null

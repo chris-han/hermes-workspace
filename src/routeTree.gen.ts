@@ -64,12 +64,12 @@ import { Route as ApiConductorSpawnRouteImport } from './routes/api/conductor-sp
 import { Route as ApiChatEventsRouteImport } from './routes/api/chat-events'
 import { Route as ApiAuthCheckRouteImport } from './routes/api/auth-check'
 import { Route as ApiAuthRouteImport } from './routes/api/auth'
-import { Route as ApiVibeProxySplatRouteImport } from './routes/api/vibe-proxy/$'
 import { Route as ApiSkillsUninstallRouteImport } from './routes/api/skills/uninstall'
 import { Route as ApiSkillsToggleRouteImport } from './routes/api/skills/toggle'
 import { Route as ApiSkillsInstallRouteImport } from './routes/api/skills/install'
 import { Route as ApiSkillsHubSearchRouteImport } from './routes/api/skills/hub-search'
 import { Route as ApiSessionsSendRouteImport } from './routes/api/sessions/send'
+import { Route as ApiSemantierProxySplatRouteImport } from './routes/api/semantier-proxy/$'
 import { Route as ApiProfilesUpdateRouteImport } from './routes/api/profiles/update'
 import { Route as ApiProfilesRenameRouteImport } from './routes/api/profiles/rename'
 import { Route as ApiProfilesReadRouteImport } from './routes/api/profiles/read'
@@ -373,11 +373,6 @@ const ApiAuthRoute = ApiAuthRouteImport.update({
   path: '/api/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiVibeProxySplatRoute = ApiVibeProxySplatRouteImport.update({
-  id: '/api/vibe-proxy/$',
-  path: '/api/vibe-proxy/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiSkillsUninstallRoute = ApiSkillsUninstallRouteImport.update({
   id: '/uninstall',
   path: '/uninstall',
@@ -402,6 +397,11 @@ const ApiSessionsSendRoute = ApiSessionsSendRouteImport.update({
   id: '/send',
   path: '/send',
   getParentRoute: () => ApiSessionsRoute,
+} as any)
+const ApiSemantierProxySplatRoute = ApiSemantierProxySplatRouteImport.update({
+  id: '/api/semantier-proxy/$',
+  path: '/api/semantier-proxy/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiProfilesUpdateRoute = ApiProfilesUpdateRouteImport.update({
   id: '/api/profiles/update',
@@ -622,12 +622,12 @@ export interface FileRoutesByFullPath {
   '/api/profiles/read': typeof ApiProfilesReadRoute
   '/api/profiles/rename': typeof ApiProfilesRenameRoute
   '/api/profiles/update': typeof ApiProfilesUpdateRoute
+  '/api/semantier-proxy/$': typeof ApiSemantierProxySplatRoute
   '/api/sessions/send': typeof ApiSessionsSendRoute
   '/api/skills/hub-search': typeof ApiSkillsHubSearchRoute
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/toggle': typeof ApiSkillsToggleRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
-  '/api/vibe-proxy/$': typeof ApiVibeProxySplatRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
   '/api/sessions/$sessionKey/status': typeof ApiSessionsSessionKeyStatusRoute
 }
@@ -711,12 +711,12 @@ export interface FileRoutesByTo {
   '/api/profiles/read': typeof ApiProfilesReadRoute
   '/api/profiles/rename': typeof ApiProfilesRenameRoute
   '/api/profiles/update': typeof ApiProfilesUpdateRoute
+  '/api/semantier-proxy/$': typeof ApiSemantierProxySplatRoute
   '/api/sessions/send': typeof ApiSessionsSendRoute
   '/api/skills/hub-search': typeof ApiSkillsHubSearchRoute
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/toggle': typeof ApiSkillsToggleRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
-  '/api/vibe-proxy/$': typeof ApiVibeProxySplatRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
   '/api/sessions/$sessionKey/status': typeof ApiSessionsSessionKeyStatusRoute
 }
@@ -802,12 +802,12 @@ export interface FileRoutesById {
   '/api/profiles/read': typeof ApiProfilesReadRoute
   '/api/profiles/rename': typeof ApiProfilesRenameRoute
   '/api/profiles/update': typeof ApiProfilesUpdateRoute
+  '/api/semantier-proxy/$': typeof ApiSemantierProxySplatRoute
   '/api/sessions/send': typeof ApiSessionsSendRoute
   '/api/skills/hub-search': typeof ApiSkillsHubSearchRoute
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/toggle': typeof ApiSkillsToggleRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
-  '/api/vibe-proxy/$': typeof ApiVibeProxySplatRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
   '/api/sessions/$sessionKey/status': typeof ApiSessionsSessionKeyStatusRoute
 }
@@ -894,12 +894,12 @@ export interface FileRouteTypes {
     | '/api/profiles/read'
     | '/api/profiles/rename'
     | '/api/profiles/update'
+    | '/api/semantier-proxy/$'
     | '/api/sessions/send'
     | '/api/skills/hub-search'
     | '/api/skills/install'
     | '/api/skills/toggle'
     | '/api/skills/uninstall'
-    | '/api/vibe-proxy/$'
     | '/api/sessions/$sessionKey/active-run'
     | '/api/sessions/$sessionKey/status'
   fileRoutesByTo: FileRoutesByTo
@@ -983,12 +983,12 @@ export interface FileRouteTypes {
     | '/api/profiles/read'
     | '/api/profiles/rename'
     | '/api/profiles/update'
+    | '/api/semantier-proxy/$'
     | '/api/sessions/send'
     | '/api/skills/hub-search'
     | '/api/skills/install'
     | '/api/skills/toggle'
     | '/api/skills/uninstall'
-    | '/api/vibe-proxy/$'
     | '/api/sessions/$sessionKey/active-run'
     | '/api/sessions/$sessionKey/status'
   id:
@@ -1073,12 +1073,12 @@ export interface FileRouteTypes {
     | '/api/profiles/read'
     | '/api/profiles/rename'
     | '/api/profiles/update'
+    | '/api/semantier-proxy/$'
     | '/api/sessions/send'
     | '/api/skills/hub-search'
     | '/api/skills/install'
     | '/api/skills/toggle'
     | '/api/skills/uninstall'
-    | '/api/vibe-proxy/$'
     | '/api/sessions/$sessionKey/active-run'
     | '/api/sessions/$sessionKey/status'
   fileRoutesById: FileRoutesById
@@ -1155,7 +1155,7 @@ export interface RootRouteChildren {
   ApiProfilesReadRoute: typeof ApiProfilesReadRoute
   ApiProfilesRenameRoute: typeof ApiProfilesRenameRoute
   ApiProfilesUpdateRoute: typeof ApiProfilesUpdateRoute
-  ApiVibeProxySplatRoute: typeof ApiVibeProxySplatRoute
+  ApiSemantierProxySplatRoute: typeof ApiSemantierProxySplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1545,13 +1545,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/vibe-proxy/$': {
-      id: '/api/vibe-proxy/$'
-      path: '/api/vibe-proxy/$'
-      fullPath: '/api/vibe-proxy/$'
-      preLoaderRoute: typeof ApiVibeProxySplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/skills/uninstall': {
       id: '/api/skills/uninstall'
       path: '/uninstall'
@@ -1586,6 +1579,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/sessions/send'
       preLoaderRoute: typeof ApiSessionsSendRouteImport
       parentRoute: typeof ApiSessionsRoute
+    }
+    '/api/semantier-proxy/$': {
+      id: '/api/semantier-proxy/$'
+      path: '/api/semantier-proxy/$'
+      fullPath: '/api/semantier-proxy/$'
+      preLoaderRoute: typeof ApiSemantierProxySplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/profiles/update': {
       id: '/api/profiles/update'
@@ -1943,7 +1943,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiProfilesReadRoute: ApiProfilesReadRoute,
   ApiProfilesRenameRoute: ApiProfilesRenameRoute,
   ApiProfilesUpdateRoute: ApiProfilesUpdateRoute,
-  ApiVibeProxySplatRoute: ApiVibeProxySplatRoute,
+  ApiSemantierProxySplatRoute: ApiSemantierProxySplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

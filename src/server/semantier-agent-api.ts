@@ -1,10 +1,13 @@
-export let VIBE_AGENT_API =
-  process.env.VIBE_AGENT_API_URL || 'http://127.0.0.1:8899'
+export let SEMANTIER_AGENT_API =
+  process.env.SEMANTIER_AGENT_API_URL ||
+  'http://127.0.0.1:8899'
 
-export const VIBE_AGENT_AUTH_COOKIE = 'vt_session'
+export const SEMANTIER_AGENT_AUTH_COOKIE = 'vt_session'
 
-export const VIBE_AGENT_API_KEY =
-  process.env.VIBE_AGENT_API_KEY || process.env.API_AUTH_KEY || ''
+export const SEMANTIER_AGENT_API_KEY =
+  process.env.SEMANTIER_AGENT_API_KEY ||
+  process.env.API_AUTH_KEY ||
+  ''
 
 function filterCookieHeader(
   cookieHeader: string | null,
@@ -32,13 +35,13 @@ function envFlagEnabled(name: string): boolean {
   return value === '1' || value === 'true' || value === 'yes' || value === 'on'
 }
 
-export function vibeAgentAuthHeaders(): Record<string, string> {
-  return VIBE_AGENT_API_KEY
-    ? { Authorization: `Bearer ${VIBE_AGENT_API_KEY}` }
+export function semantierAgentAuthHeaders(): Record<string, string> {
+  return SEMANTIER_AGENT_API_KEY
+    ? { Authorization: `Bearer ${SEMANTIER_AGENT_API_KEY}` }
     : {}
 }
 
-export function buildVibeAgentProxyHeaders(
+export function buildSemantierAgentProxyHeaders(
   incoming: HeadersInit | Headers,
   options?: {
     authHeaders?: Record<string, string>
@@ -52,7 +55,7 @@ export function buildVibeAgentProxyHeaders(
 
   const forwardBrowserCookies =
     options?.forwardBrowserCookies ??
-    envFlagEnabled('VIBE_AGENT_FORWARD_BROWSER_COOKIES')
+    envFlagEnabled('SEMANTIER_AGENT_FORWARD_BROWSER_COOKIES')
   if (!forwardBrowserCookies) {
     headers.delete('cookie')
   } else if (options?.allowedCookieNames?.length) {
@@ -68,7 +71,7 @@ export function buildVibeAgentProxyHeaders(
   }
 
   for (const [key, value] of Object.entries(
-    options?.authHeaders ?? vibeAgentAuthHeaders(),
+    options?.authHeaders ?? semantierAgentAuthHeaders(),
   )) {
     if (!headers.has(key)) {
       headers.set(key, value)
@@ -78,7 +81,7 @@ export function buildVibeAgentProxyHeaders(
   return headers
 }
 
-export function buildVibeAgentProxyResponseHeaders(
+export function buildSemantierAgentProxyResponseHeaders(
   upstreamHeaders: Headers,
 ): Headers {
   const headers = new Headers()
@@ -111,7 +114,7 @@ export function buildVibeAgentProxyResponseHeaders(
   return headers
 }
 
-export function withVibeAgentBase(path: string): string {
+export function withSemantierAgentBase(path: string): string {
   if (/^https?:\/\//i.test(path)) return path
-  return `${VIBE_AGENT_API}${path.startsWith('/') ? path : `/${path}`}`
+  return `${SEMANTIER_AGENT_API}${path.startsWith('/') ? path : `/${path}`}`
 }

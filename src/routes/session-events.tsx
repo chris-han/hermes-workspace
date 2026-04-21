@@ -82,7 +82,7 @@ async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T> {
     const bodyPreview = (await response.text()).slice(0, 120)
     if (bodyPreview.startsWith('<!DOCTYPE') || bodyPreview.startsWith('<html')) {
       throw new Error(
-        'Session Events API returned HTML instead of JSON. Restart the Hermes Workspace dev server so the new /api/vibe-proxy route is loaded.',
+        'Session Events API returned HTML instead of JSON. Restart the Hermes Workspace dev server so the new /api/semantier-proxy route is loaded.',
       )
     }
     throw new Error(`Expected JSON from ${path}, received ${contentType || 'unknown content type'}`)
@@ -122,7 +122,7 @@ async function requestJson<T>(
     const bodyPreview = (await response.text()).slice(0, 120)
     if (bodyPreview.startsWith('<!DOCTYPE') || bodyPreview.startsWith('<html')) {
       throw new Error(
-        'Session Events API returned HTML instead of JSON. Restart the Hermes Workspace dev server so the new /api/vibe-proxy route is loaded.',
+        'Session Events API returned HTML instead of JSON. Restart the Hermes Workspace dev server so the new /api/semantier-proxy route is loaded.',
       )
     }
     throw new Error(`Expected JSON from ${path}, received ${contentType || 'unknown content type'}`)
@@ -210,7 +210,7 @@ function SessionEventsRoute() {
     const controller = new AbortController()
     setSessionsLoading(true)
 
-    fetchJson<Array<SessionSummary>>('/api/vibe-proxy/sessions', controller.signal)
+    fetchJson<Array<SessionSummary>>('/api/semantier-proxy/sessions', controller.signal)
       .then((items) => {
         setSessions(items)
       })
@@ -277,11 +277,11 @@ function SessionEventsRoute() {
 
     Promise.all([
       fetchJson<Array<SessionEventItem>>(
-        `/api/vibe-proxy/sessions/${encodeURIComponent(sessionId)}/event-log?limit=5000`,
+        `/api/semantier-proxy/sessions/${encodeURIComponent(sessionId)}/event-log?limit=5000`,
         controller.signal,
       ),
       fetchJson<SessionTrajectoryExport>(
-        `/api/vibe-proxy/sessions/${encodeURIComponent(sessionId)}/trajectory`,
+        `/api/semantier-proxy/sessions/${encodeURIComponent(sessionId)}/trajectory`,
         controller.signal,
       ),
     ])
@@ -380,7 +380,7 @@ function SessionEventsRoute() {
       const exports = await Promise.all(
         selectedSessionIds.map((id) =>
           requestJson<SessionTrajectoryExport>(
-            `/api/vibe-proxy/sessions/${encodeURIComponent(id)}/trajectory`,
+            `/api/semantier-proxy/sessions/${encodeURIComponent(id)}/trajectory`,
           ),
         ),
       )
@@ -409,7 +409,7 @@ function SessionEventsRoute() {
       const groups = await Promise.all(
         selectedSessionIds.map((id) =>
           requestJson<Array<SessionEventItem>>(
-            `/api/vibe-proxy/sessions/${encodeURIComponent(id)}/event-log?limit=5000`,
+            `/api/semantier-proxy/sessions/${encodeURIComponent(id)}/event-log?limit=5000`,
           ),
         ),
       )
@@ -442,7 +442,7 @@ function SessionEventsRoute() {
         status: string
         deleted: Array<string>
         missing: Array<string>
-      }>('/api/vibe-proxy/sessions/batch-delete', {
+      }>('/api/semantier-proxy/sessions/batch-delete', {
         method: 'POST',
         body: JSON.stringify({ session_ids: deletingIds }),
       })

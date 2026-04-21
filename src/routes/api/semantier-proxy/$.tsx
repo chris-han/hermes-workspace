@@ -1,19 +1,23 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { isAuthenticated } from '../../../server/auth-middleware'
 import {
-  buildVibeAgentProxyHeaders,
-  vibeAgentAuthHeaders,
-  withVibeAgentBase,
-} from '../../../server/vibe-agent-api'
+  SEMANTIER_AGENT_AUTH_COOKIE,
+  buildSemantierAgentProxyHeaders,
+  buildSemantierAgentProxyResponseHeaders,
+  semantierAgentAuthHeaders,
+  withSemantierAgentBase,
+} from '../../../server/semantier-agent-api'
 
 async function proxyRequest(request: Request, splat: string) {
   const incomingUrl = new URL(request.url)
   const targetPath = splat.startsWith('/') ? splat : `/${splat}`
-  const targetUrl = new URL(withVibeAgentBase(targetPath))
+  const targetUrl = new URL(withSemantierAgentBase(targetPath))
   targetUrl.search = incomingUrl.search
 
-  const headers = buildVibeAgentProxyHeaders(request.headers, {
-    authHeaders: vibeAgentAuthHeaders(),
+  const headers = buildSemantierAgentProxyHeaders(request.headers, {
+    authHeaders: semantierAgentAuthHeaders(),
+    forwardBrowserCookies: true,
+    allowedCookieNames: [SEMANTIER_AGENT_AUTH_COOKIE],
   })
 
   const init: RequestInit = {
@@ -28,11 +32,7 @@ async function proxyRequest(request: Request, splat: string) {
 
   const upstream = await fetch(targetUrl, init)
   const body = await upstream.text()
-  const responseHeaders = new Headers()
-  const contentType = upstream.headers.get('content-type')
-  if (contentType) {
-    responseHeaders.set('content-type', contentType)
-  }
+  const responseHeaders = buildSemantierAgentProxyResponseHeaders(upstream.headers)
 
   return new Response(body, {
     status: upstream.status,
@@ -40,7 +40,7 @@ async function proxyRequest(request: Request, splat: string) {
   })
 }
 
-export const Route = createFileRoute('/api/vibe-proxy/$')({
+export const Route = createFileRoute('/api/semantier-proxy/$')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {

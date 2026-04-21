@@ -4,10 +4,10 @@ import { json } from '@tanstack/react-start'
 import { isAuthenticated } from '@/server/auth-middleware'
 import { isSyntheticSessionKey } from '../../server/session-utils'
 import {
-  getVibeSession,
-  isVibeSessionNotFoundError,
-  listVibeSessions,
-} from '../../server/vibe-session-api'
+  getSemantierSession,
+  isSemantierSessionNotFoundError,
+  listSemantierSessions,
+} from '../../server/semantier-session-api'
 
 function buildIdlePayload() {
   return {
@@ -47,7 +47,7 @@ export const Route = createFileRoute('/api/session-status')({
           }
 
           if (isSyntheticSessionKey(sessionKey)) {
-            const sessions = await listVibeSessions(request.headers, 1)
+            const sessions = await listSemantierSessions(request.headers, 1)
             if (sessions.length === 0) {
               return json({
                 ok: true,
@@ -59,9 +59,9 @@ export const Route = createFileRoute('/api/session-status')({
 
           let session
           try {
-            session = await getVibeSession(request.headers, sessionKey)
+            session = await getSemantierSession(request.headers, sessionKey)
           } catch (error) {
-            if (isVibeSessionNotFoundError(error)) {
+            if (isSemantierSessionNotFoundError(error)) {
               return json({
                 ok: true,
                 payload: buildIdlePayload(),

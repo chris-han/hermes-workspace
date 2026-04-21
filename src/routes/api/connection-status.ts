@@ -70,7 +70,7 @@ export const Route = createFileRoute('/api/connection-status')({
         let label: ConnectionStatus['label']
         let detail: string
 
-        if (caps.vibe.available && !caps.health && !chatReady) {
+        if (caps.semantier.available && !caps.health && !chatReady) {
           status = 'partial'
           label = 'Partial'
           detail = 'Semantier Unicell backend is available. Hermes chat APIs are not connected yet.'
@@ -128,7 +128,7 @@ export const Route = createFileRoute('/api/connection-status')({
             config: caps.config,
             jobs: caps.jobs,
             dashboard: caps.dashboard.available,
-            vibe: caps.vibe.available,
+            semantier: caps.semantier.available,
           },
           hermesUrl: HERMES_API,
         }

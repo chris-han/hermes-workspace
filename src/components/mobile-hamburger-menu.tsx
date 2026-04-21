@@ -19,10 +19,10 @@ import { cn } from '@/lib/utils'
 import { hapticTap } from '@/lib/haptics'
 import { getTheme, getThemeVariant, isDarkTheme, setTheme } from '@/lib/theme'
 import {
-  logoutVibeAuth,
-  useVibeAuthStatus,
-  vibeAuthQueryKey,
-} from '@/lib/vibe-auth'
+  logoutSemantierAuth,
+  semantierAuthQueryKey,
+  useSemantierAuthStatus,
+} from '@/lib/semantier-auth'
 import { UserAvatar } from '@/components/avatars'
 import {
   useResolvedAvatarUrl,
@@ -127,20 +127,20 @@ export function MobileHamburgerMenu() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const profileDisplayName = useResolvedDisplayName()
   const profileAvatarUrl = useResolvedAvatarUrl()
-  const vibeAuthQuery = useVibeAuthStatus()
-  const vibeAuth = vibeAuthQuery.data
-  const [vibeAuthActionPending, setVibeAuthActionPending] = useState(false)
+  const semantierAuthQuery = useSemantierAuthStatus()
+  const semantierAuth = semantierAuthQuery.data
+  const [semantierAuthActionPending, setSemantierAuthActionPending] = useState(false)
   const isChatRoute =
     pathname.startsWith('/chat') || pathname === '/new' || pathname === '/'
 
   async function handleFeishuLogout() {
-    if (vibeAuthActionPending) return
-    setVibeAuthActionPending(true)
+    if (semantierAuthActionPending) return
+    setSemantierAuthActionPending(true)
     try {
-      await logoutVibeAuth()
-      await queryClient.invalidateQueries({ queryKey: vibeAuthQueryKey })
+      await logoutSemantierAuth()
+      await queryClient.invalidateQueries({ queryKey: semantierAuthQueryKey })
     } finally {
-      setVibeAuthActionPending(false)
+      setSemantierAuthActionPending(false)
     }
   }
 
@@ -326,7 +326,7 @@ export function MobileHamburgerMenu() {
           </div>
 
           <div className="mt-3 px-2">
-            {vibeAuthQuery.isLoading ? (
+            {semantierAuthQuery.isLoading ? (
               <p
                 className="text-xs"
                 style={{ color: 'var(--color-ink-muted, #666)' }}
@@ -339,11 +339,11 @@ export function MobileHamburgerMenu() {
                   className="min-w-0 flex-1 truncate text-xs"
                   style={{ color: 'var(--color-ink-muted, #666)' }}
                 >
-                  {vibeAuth.authenticated && vibeAuth.user
-                    ? `Signed in as ${vibeAuth.user.name}`
-                    : `Guest workspace: ${vibeAuth.workspace_slug || 'public'}`}
+                  {semantierAuth.authenticated && semantierAuth.user
+                    ? `Signed in as ${semantierAuth.user.name}`
+                    : `Guest workspace: ${semantierAuth.workspace_slug || 'public'}`}
                 </p>
-                {vibeAuth.authenticated ? (
+                {semantierAuth.authenticated ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -355,7 +355,7 @@ export function MobileHamburgerMenu() {
                       color: 'var(--color-ink, #111)',
                     }}
                   >
-                    {vibeAuthActionPending ? 'Logging out...' : 'Logout'}
+                    {semantierAuthActionPending ? 'Logging out...' : 'Logout'}
                   </button>
                 ) : (
                   <button

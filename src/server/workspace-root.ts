@@ -3,11 +3,11 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import {
-  VIBE_AGENT_AUTH_COOKIE,
-  buildVibeAgentProxyHeaders,
-  vibeAgentAuthHeaders,
-  withVibeAgentBase,
-} from './vibe-agent-api'
+  SEMANTIER_AGENT_AUTH_COOKIE,
+  buildSemantierAgentProxyHeaders,
+  semantierAgentAuthHeaders,
+  withSemantierAgentBase,
+} from './semantier-agent-api'
 
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(SERVER_DIR, '..', '..', '..')
@@ -57,11 +57,11 @@ function cacheKeyFromHeaders(headers?: HeadersInit | Headers): string {
 async function fetchWorkspaceRootFromBackend(
   requestHeaders?: HeadersInit | Headers,
 ): Promise<ActiveWorkspaceRoot | null> {
-  const response = await fetch(withVibeAgentBase('/system/paths'), {
-    headers: buildVibeAgentProxyHeaders(requestHeaders ?? {}, {
-      authHeaders: vibeAgentAuthHeaders(),
+  const response = await fetch(withSemantierAgentBase('/system/paths'), {
+    headers: buildSemantierAgentProxyHeaders(requestHeaders ?? {}, {
+      authHeaders: semantierAgentAuthHeaders(),
       forwardBrowserCookies: true,
-      allowedCookieNames: [VIBE_AGENT_AUTH_COOKIE],
+      allowedCookieNames: [SEMANTIER_AGENT_AUTH_COOKIE],
     }),
     signal: AbortSignal.timeout(2_000),
   })

@@ -15,7 +15,7 @@ describe('dev startup config', () => {
     expect(source).toContain("[hermes-dashboard]")
     expect(source).toContain('void startSemantierBackend()')
     expect(source).toContain('void startHermesDashboard()')
-    expect(source).toContain("env.VIBE_AGENT_API_URL || process.env.VIBE_AGENT_API_URL")
+    expect(source).toContain("env.SEMANTIER_AGENT_API_URL || process.env.SEMANTIER_AGENT_API_URL")
     expect(source).toContain("env.HERMES_DASHBOARD_URL || process.env.HERMES_DASHBOARD_URL")
   })
 })

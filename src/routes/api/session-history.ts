@@ -4,10 +4,10 @@ import { json } from '@tanstack/react-start'
 import { isAuthenticated } from '@/server/auth-middleware'
 import { resolveSessionKey } from '../../server/session-utils'
 import {
-  getVibeSessionMessages,
-  isVibeSessionNotFoundError,
-  toVibeChatMessage,
-} from '../../server/vibe-session-api'
+  getSemantierSessionMessages,
+  isSemantierSessionNotFoundError,
+  toSemantierChatMessage,
+} from '../../server/semantier-session-api'
 
 export const Route = createFileRoute('/api/session-history')({
   server: {
@@ -35,18 +35,18 @@ export const Route = createFileRoute('/api/session-history')({
           })
           let rows
           try {
-            rows = await getVibeSessionMessages(
+            rows = await getSemantierSessionMessages(
               request.headers,
               resolved.sessionKey,
               limit,
             )
           } catch (error) {
-            if (isVibeSessionNotFoundError(error)) {
+            if (isSemantierSessionNotFoundError(error)) {
               return json({
                 ok: true,
                 messages: [],
                 sessionKey: 'new',
-                source: 'vibe',
+                source: 'semantier',
               })
             }
             throw error
@@ -54,9 +54,9 @@ export const Route = createFileRoute('/api/session-history')({
           const trimmed = rows.slice(-limit)
           return json({
             ok: true,
-            messages: trimmed.map((row, index) => toVibeChatMessage(row, index)),
+            messages: trimmed.map((row, index) => toSemantierChatMessage(row, index)),
             sessionKey: resolved.sessionKey,
-            source: 'vibe',
+            source: 'semantier',
           })
         } catch (error) {
           return json(

@@ -19,7 +19,7 @@ function buildToolCallId(
   return `${attemptId}:${toolName}`
 }
 
-export function translateVibeSessionStreamEvent(
+export function translateSemantierSessionStreamEvent(
   eventType: string,
   payload: unknown,
   runId?: string,

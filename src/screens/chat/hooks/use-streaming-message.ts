@@ -752,8 +752,26 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
         })
 
         if (!response.ok) {
-          const errorText = await response.text()
-          throw new Error(errorText || 'Stream request failed')
+          const payload = (await response
+            .json()
+            .catch(() => null)) as Record<string, unknown> | null
+          const payloadError =
+            typeof payload?.error === 'string' ? payload.error.trim() : ''
+          const payloadMessage =
+            typeof payload?.message === 'string' ? payload.message.trim() : ''
+          const statusPrefix =
+            response.status === 429
+              ? 'Rate limit reached'
+              : response.status === 401 || response.status === 403
+                ? 'Unauthorized'
+                : ''
+          const errorText =
+            payloadError || payloadMessage || response.statusText || ''
+          throw new Error(
+            statusPrefix && errorText
+              ? `${statusPrefix}. ${errorText}`
+              : statusPrefix || errorText || 'Stream request failed',
+          )
         }
 
         const resolvedSessionKey =

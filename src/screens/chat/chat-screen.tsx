@@ -135,6 +135,16 @@ function isImageMimeType(value: unknown): boolean {
   return normalized.startsWith('image/')
 }
 
+function isTextLikeMimeType(value: unknown): boolean {
+  const normalized = normalizeMimeType(value)
+  return (
+    normalized.startsWith('text/') ||
+    normalized === 'application/json' ||
+    normalized ===
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  )
+}
+
 function readDataUrlMimeType(value: unknown): string {
   if (typeof value !== 'string') return ''
   const match = /^data:([^;,]+)[^,]*,/i.exec(value.trim())
@@ -1774,7 +1784,7 @@ export function ChatScreen({
           const mime =
             normalizeMimeType(a.contentType ?? '') ||
             readDataUrlMimeType(a.dataUrl ?? '')
-          return !isImageMimeType(mime) && (a.dataUrl ?? '').length > 0
+          return isTextLikeMimeType(mime) && (a.dataUrl ?? '').length > 0
         })
         .map((a) => {
           const raw = a.dataUrl ?? ''
@@ -1783,7 +1793,16 @@ export function ChatScreen({
             : raw
           return `\n\n<attachment name="${a.name ?? 'file'}">\n${content}\n</attachment>`
         })
-      const enrichedBody = body + textBlocks.join('')
+      const attachmentSummary = normalizedAttachments
+        .map((a) => a.name?.trim())
+        .filter((name): name is string => Boolean(name))
+      const fallbackBody =
+        attachmentSummary.length > 0
+          ? `Please review the attached files: ${attachmentSummary.join(', ')}`
+          : 'Please review the attached content.'
+      const enrichedBodyRaw = body + textBlocks.join('')
+      const enrichedBody =
+        enrichedBodyRaw.trim().length > 0 ? enrichedBodyRaw : fallbackBody
 
       let optimisticClientId = existingClientId
       setResearchResetKey((current) => current + 1)

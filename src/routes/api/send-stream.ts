@@ -4,6 +4,7 @@ import { isAuthenticated } from '../../server/auth-middleware'
 import { requireJsonContentType } from '../../server/rate-limit'
 import { resolveSessionKey } from '../../server/session-utils'
 import {
+  SemantierSessionApiError,
   createSemantierSession,
   isSemantierSessionNotFoundError,
   openSemantierSessionEvents,
@@ -55,6 +56,18 @@ function encodeSseFrame(event: WorkspaceStreamEvent): string {
 function asMessage(value: unknown): string {
   if (value instanceof Error) return value.message
   return String(value || 'Request failed')
+}
+
+function semantierErrorResponse(error: unknown): Response | null {
+  if (!(error instanceof SemantierSessionApiError)) return null
+
+  const status = error.status
+  const message =
+    status === 429
+      ? 'Rate limit reached. Please retry in a moment.'
+      : asMessage(error)
+
+  return buildJsonError(message, status)
 }
 
 export const Route = createFileRoute('/api/send-stream')({
@@ -234,6 +247,8 @@ export const Route = createFileRoute('/api/send-stream')({
             },
           })
         } catch (error) {
+          const upstream = semantierErrorResponse(error)
+          if (upstream) return upstream
           return buildJsonError(asMessage(error), 500)
         }
       },

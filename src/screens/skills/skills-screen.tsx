@@ -697,12 +697,27 @@ export function SkillsScreen() {
           <Tabs value={tab} onValueChange={handleTabChange}>
             <div className="flex flex-col gap-3">
               <TabsList
-                className="grid w-full grid-cols-3 rounded-button border border-border bg-primary-100/60 p-1"
-                variant="default"
+                className="w-full justify-start gap-2 border-b border-border bg-transparent px-0"
+                variant="underline"
               >
                 {TAB_OPTIONS.map((option) => (
-                  <TabsTab key={option.value} value={option.value} className="min-w-0">
-                    {option.label}
+                  <TabsTab
+                    key={option.value}
+                    value={option.value}
+                    className="min-w-0 rounded-none px-1 text-primary-500 data-active:text-ink [&[data-active]_.tab-badge]:border-primary-300 [&[data-active]_.tab-badge]:bg-primary-100 [&[data-active]_.tab-badge]:text-ink"
+                  >
+                    <span>{option.label}</span>
+                    <span className="tab-badge inline-flex min-w-[1.25rem] items-center justify-center rounded-full border border-border bg-primary-50 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-primary-500 tabular-nums">
+                      {option.value === 'installed'
+                        ? (skillsQuery.data?.total || 0).toLocaleString()
+                        : option.value === 'toolsets'
+                          ? (toolsetsQuery.data?.length || 0).toLocaleString()
+                          : (
+                              hubQuery.data?.total ||
+                              hubQuery.data?.results?.length ||
+                              0
+                            ).toLocaleString()}
+                    </span>
                   </TabsTab>
                 ))}
               </TabsList>
@@ -1363,27 +1378,38 @@ function SkillsGrid({
                     by {skill.author}
                   </p>
                 </div>
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs tabular-nums',
-                    isInstalling
-                      ? 'border-primary/40 bg-primary/15 text-primary'
-                      : skill.installed
-                      ? 'border-primary/40 bg-primary/15 text-primary'
-                      : 'border-primary-200 bg-primary-100/60 text-primary-500',
-                  )}
-                >
-                  {isInstalling ? (
-                    <>
-                      <InlineSpinner />
-                      Installing…
-                    </>
-                  ) : skill.installed ? (
-                    'Installed'
-                  ) : (
-                    'Available'
-                  )}
-                </span>
+                <div className="flex items-center gap-2">
+                  {tab === 'installed' ? (
+                    <Switch
+                      checked={skill.enabled}
+                      disabled={isActing}
+                      className="[--thumb-size:1.3125rem]"
+                      onCheckedChange={(checked) => onToggle(skill.id, checked)}
+                      aria-label={`Toggle ${skill.name}`}
+                    />
+                  ) : null}
+                  <span
+                    className={cn(
+                      'inline-flex h-[calc(1.3125rem+2px)] items-center gap-1.5 rounded-md border px-2 text-xs tabular-nums',
+                      isInstalling
+                        ? 'border-primary/40 bg-primary/15 text-primary'
+                        : skill.installed
+                        ? 'border-primary/40 bg-primary/15 text-primary'
+                        : 'border-primary-200 bg-primary-100/60 text-primary-500',
+                    )}
+                  >
+                    {isInstalling ? (
+                      <>
+                        <InlineSpinner />
+                        Installing…
+                      </>
+                    ) : skill.installed ? (
+                      'Installed'
+                    ) : (
+                      'Available'
+                    )}
+                  </span>
+                </div>
               </div>
 
               <p className="line-clamp-3 min-h-[58px] text-sm text-primary-500 text-pretty">
@@ -1421,24 +1447,6 @@ function SkillsGrid({
 
                 {tab === 'installed' ? (
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 px-1">
-                      <Switch
-                        checked={skill.enabled}
-                        disabled={isActing}
-                        onCheckedChange={(checked) =>
-                          onToggle(skill.id, checked)
-                        }
-                        aria-label={`Toggle ${skill.name}`}
-                      />
-                      <span
-                        className={cn(
-                          'text-xs font-semibold',
-                          skill.enabled ? 'text-ink' : 'text-primary-600',
-                        )}
-                      >
-                        {skill.enabled ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </div>
                     <Button
                       variant="outline"
                       size="sm"

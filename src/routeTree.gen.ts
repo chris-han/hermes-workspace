@@ -26,6 +26,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as SettingsProvidersRouteImport } from './routes/settings/providers'
+import { Route as SettingsMessagingRouteImport } from './routes/settings/messaging'
 import { Route as SettingsMcpRouteImport } from './routes/settings/mcp'
 import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
 import { Route as AuthSplatRouteImport } from './routes/auth/$'
@@ -185,6 +186,11 @@ const ChatIndexRoute = ChatIndexRouteImport.update({
 const SettingsProvidersRoute = SettingsProvidersRouteImport.update({
   id: '/providers',
   path: '/providers',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsMessagingRoute = SettingsMessagingRouteImport.update({
+  id: '/messaging',
+  path: '/messaging',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsMcpRoute = SettingsMcpRouteImport.update({
@@ -620,6 +626,7 @@ export interface FileRoutesByFullPath {
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/settings/mcp': typeof SettingsMcpRoute
+  '/settings/messaging': typeof SettingsMessagingRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -713,6 +720,7 @@ export interface FileRoutesByTo {
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/settings/mcp': typeof SettingsMcpRoute
+  '/settings/messaging': typeof SettingsMessagingRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat': typeof ChatIndexRoute
   '/settings': typeof SettingsIndexRoute
@@ -808,6 +816,7 @@ export interface FileRoutesById {
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/settings/mcp': typeof SettingsMcpRoute
+  '/settings/messaging': typeof SettingsMessagingRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -904,6 +913,7 @@ export interface FileRouteTypes {
     | '/auth/$'
     | '/chat/$sessionKey'
     | '/settings/mcp'
+    | '/settings/messaging'
     | '/settings/providers'
     | '/chat/'
     | '/settings/'
@@ -997,6 +1007,7 @@ export interface FileRouteTypes {
     | '/auth/$'
     | '/chat/$sessionKey'
     | '/settings/mcp'
+    | '/settings/messaging'
     | '/settings/providers'
     | '/chat'
     | '/settings'
@@ -1091,6 +1102,7 @@ export interface FileRouteTypes {
     | '/auth/$'
     | '/chat/$sessionKey'
     | '/settings/mcp'
+    | '/settings/messaging'
     | '/settings/providers'
     | '/chat/'
     | '/settings/'
@@ -1328,6 +1340,13 @@ declare module '@tanstack/react-router' {
       path: '/providers'
       fullPath: '/settings/providers'
       preLoaderRoute: typeof SettingsProvidersRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/messaging': {
+      id: '/settings/messaging'
+      path: '/messaging'
+      fullPath: '/settings/messaging'
+      preLoaderRoute: typeof SettingsMessagingRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/mcp': {
@@ -1860,12 +1879,14 @@ declare module '@tanstack/react-router' {
 
 interface SettingsRouteChildren {
   SettingsMcpRoute: typeof SettingsMcpRoute
+  SettingsMessagingRoute: typeof SettingsMessagingRoute
   SettingsProvidersRoute: typeof SettingsProvidersRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsMcpRoute: SettingsMcpRoute,
+  SettingsMessagingRoute: SettingsMessagingRoute,
   SettingsProvidersRoute: SettingsProvidersRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }

@@ -273,9 +273,9 @@ type SettingsSectionId =
   | 'advanced'
 
 type SettingsNavItem = {
-  id: SettingsSectionId | 'mcp'
+  id: SettingsSectionId | 'mcp' | 'messaging'
   label: string
-  to?: '/settings/mcp'
+  to?: '/settings/mcp' | '/settings/messaging'
 }
 
 const SETTINGS_NAV_ITEMS: Array<SettingsNavItem> = [
@@ -287,6 +287,7 @@ const SETTINGS_NAV_ITEMS: Array<SettingsNavItem> = [
   { id: 'appearance', label: 'Appearance' },
   { id: 'chat', label: 'Chat' },
   { id: 'notifications', label: 'Notifications' },
+  { id: 'messaging', label: 'Messaging Gateway', to: '/settings/messaging' },
   { id: 'mcp', label: 'MCP Servers', to: '/settings/mcp' },
   { id: 'language' as SettingsSectionId, label: 'Language' },
 ]

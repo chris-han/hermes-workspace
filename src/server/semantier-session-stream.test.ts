@@ -13,6 +13,26 @@ describe('translateSemantierSessionStreamEvent', () => {
     ).toEqual([{ event: 'chunk', data: { delta: 'hello' } }])
   })
 
+  it('preserves leading/trailing spaces in text_delta content', () => {
+    expect(
+      translateSemantierSessionStreamEvent(
+        'text_delta',
+        { content: ' happy to help' },
+        'run-1',
+      ),
+    ).toEqual([{ event: 'chunk', data: { delta: ' happy to help' } }])
+  })
+
+  it('falls back to text field when content is missing', () => {
+    expect(
+      translateSemantierSessionStreamEvent(
+        'text_delta',
+        { text: ' world' },
+        'run-1',
+      ),
+    ).toEqual([{ event: 'chunk', data: { delta: ' world' } }])
+  })
+
   it('maps tool results into complete tool frames', () => {
     expect(
       translateSemantierSessionStreamEvent(

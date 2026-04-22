@@ -15,6 +15,7 @@ import {
   translateSemantierSessionStreamEvent
 } from '../../server/semantier-session-stream'
 import type {WorkspaceStreamEvent} from '../../server/semantier-session-stream';
+import { isCurrentRunEvent } from '../../server/stream-event-filter'
 
 const SESSION_BOOTSTRAP_KEYS = new Set(['main', 'new'])
 
@@ -188,6 +189,10 @@ export const Route = createFileRoute('/api/send-stream')({
                     try {
                       payload = JSON.parse(frame.data)
                     } catch {
+                      continue
+                    }
+
+                    if (!isCurrentRunEvent(frame.event, payload, runId)) {
                       continue
                     }
 

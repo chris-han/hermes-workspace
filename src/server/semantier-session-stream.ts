@@ -45,11 +45,19 @@ export function translateSemantierSessionStreamEvent(
 
   switch (eventType) {
     case 'reasoning_delta': {
-      const text = readString(data.content) || readString(data.text)
+      // Do NOT trim — leading/trailing spaces in streaming chunks are significant
+      const text =
+        (typeof data.content === 'string' ? data.content : null) ??
+        (typeof data.text === 'string' ? data.text : null) ??
+        ''
       return text ? [{ event: 'thinking', data: { text } }] : []
     }
     case 'text_delta': {
-      const delta = readString(data.content) || readString(data.text)
+      // Do NOT trim — leading/trailing spaces in streaming chunks are significant
+      const delta =
+        (typeof data.content === 'string' ? data.content : null) ??
+        (typeof data.text === 'string' ? data.text : null) ??
+        ''
       return delta ? [{ event: 'chunk', data: { delta } }] : []
     }
     case 'tool_call': {

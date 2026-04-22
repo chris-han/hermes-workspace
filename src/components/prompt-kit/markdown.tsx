@@ -25,6 +25,11 @@ function extractLanguage(className?: string): string {
   return match ? match[1] : 'text'
 }
 
+export function normalizeMarkdownHref(href?: string): string | undefined {
+  if (!href) return href
+  return href.startsWith('/runs/') ? `/api/semantier-proxy${href}` : href
+}
+
 type TableRenderContextValue = {
   headersRef: React.MutableRefObject<Array<string>>
   columnIndexRef: React.MutableRefObject<number>
@@ -37,12 +42,33 @@ function useTableRenderContext() {
   return useContext(TableRenderContext)
 }
 
+function shouldInsertBoundarySpace(left: string, right: string): boolean {
+  if (!left || !right) return false
+  const leftChar = left[left.length - 1]
+  const rightChar = right[0]
+  return /[A-Za-z0-9]/.test(leftChar) && /[A-Za-z0-9]/.test(rightChar)
+}
+
+function mergeTextParts(parts: Array<string>): string {
+  let merged = ''
+  for (const part of parts) {
+    if (!part) continue
+    if (shouldInsertBoundarySpace(merged, part)) {
+      merged += ' '
+    }
+    merged += part
+  }
+  return merged
+}
+
 function textFromNode(node: React.ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') {
     return String(node)
   }
   if (Array.isArray(node)) {
-    return node.map((item: React.ReactNode) => textFromNode(item)).join('')
+    return mergeTextParts(
+      node.map((item: React.ReactNode) => textFromNode(item)),
+    )
   }
   if (node && typeof node === 'object' && 'props' in node) {
     const element = node as { props: { children?: React.ReactNode } }
@@ -179,9 +205,10 @@ const INITIAL_COMPONENTS: Partial<Components> = {
     return <li className="leading-relaxed">{children}</li>
   },
   a: function AComponent({ children, href }) {
+    const normalizedHref = normalizeMarkdownHref(href)
     return (
       <a
-        href={href}
+        href={normalizedHref}
         className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
         target="_blank"
         rel="noopener noreferrer"
@@ -262,25 +289,17 @@ const INITIAL_COMPONENTS: Partial<Components> = {
   },
   th: function ThComponent({ children }) {
     const context = useTableRenderContext()
-    let isFirstColumn = false
-    let isLastKnownColumn = false
     if (context) {
       const index = context.columnIndexRef.current
       context.columnIndexRef.current += 1
       if (context.collectingHeaderRef.current) {
         context.headersRef.current[index] = textFromNode(children).trim()
       }
-      isFirstColumn = index === 0
-      isLastKnownColumn =
-        context.collectingHeaderRef.current &&
-        index === context.headersRef.current.length - 1
     }
     return (
       <th
         className={cn(
-          'px-3 py-2 text-left font-medium text-primary-950 whitespace-nowrap',
-          isFirstColumn && 'first:rounded-tl-lg',
-          isLastKnownColumn && 'last:rounded-tr-lg',
+          'border-r border-primary-200 px-3 py-2 text-left font-medium text-primary-950 whitespace-nowrap last:border-r-0',
         )}
       >
         {children}
@@ -298,7 +317,7 @@ const INITIAL_COMPONENTS: Partial<Components> = {
     return (
       <td
         data-label={label}
-        className="px-3 py-2 text-primary-950 align-top max-sm:grid max-sm:grid-cols-[minmax(0,9rem)_1fr] max-sm:gap-3 max-sm:border-b max-sm:border-primary-100 max-sm:px-3 max-sm:py-2 max-sm:last:border-b-0 max-sm:before:content-[attr(data-label)] max-sm:before:text-xs max-sm:before:font-medium max-sm:before:text-primary-700"
+        className="border-r border-primary-100 px-3 py-2 text-primary-950 align-top last:border-r-0 max-sm:grid max-sm:grid-cols-[minmax(0,9rem)_1fr] max-sm:gap-3 max-sm:border-b max-sm:border-primary-100 max-sm:border-r-0 max-sm:px-3 max-sm:py-2 max-sm:last:border-b-0 max-sm:before:content-[attr(data-label)] max-sm:before:text-xs max-sm:before:font-medium max-sm:before:text-primary-700"
       >
         {children}
       </td>

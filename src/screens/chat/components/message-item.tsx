@@ -1697,7 +1697,14 @@ function MessageItemComponent({
   const revealComplete = revealedWordCount >= totalWords && totalWords > 0
   const effectiveIsStreaming =
     remoteStreamingActive || (_simulateStreaming && !revealComplete)
-  const assistantDisplayText = effectiveIsStreaming ? revealedText : displayText
+  // Remote streams already arrive incrementally from SSE; applying an extra
+  // local word-reveal layer makes markdown headings/tables flicker and break
+  // during stream updates.
+  const assistantDisplayText = remoteStreamingActive
+    ? displayText
+    : effectiveIsStreaming
+      ? revealedText
+      : displayText
   const standaloneMarkdownDocument = useMemo(
     () => extractStandaloneMarkdownFence(assistantDisplayText),
     [assistantDisplayText],

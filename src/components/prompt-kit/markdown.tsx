@@ -214,10 +214,12 @@ const INITIAL_COMPONENTS: Partial<Components> = {
       <TableRenderContext.Provider
         value={{ headersRef, columnIndexRef, collectingHeaderRef }}
       >
-        <div className="my-3 max-w-full overflow-x-auto rounded-lg border border-primary-200 bg-primary-50/20">
-          <table className="w-full min-w-max border-collapse text-sm sm:min-w-full tabular-nums">
-            {children}
-          </table>
+        <div className="my-3 max-w-full overflow-hidden rounded-lg border border-primary-200 bg-primary-50/20">
+          <div className="max-w-full overflow-x-auto">
+            <table className="w-full min-w-max border-collapse text-sm sm:min-w-full tabular-nums">
+              {children}
+            </table>
+          </div>
         </div>
       </TableRenderContext.Provider>
     )
@@ -260,15 +262,27 @@ const INITIAL_COMPONENTS: Partial<Components> = {
   },
   th: function ThComponent({ children }) {
     const context = useTableRenderContext()
+    let isFirstColumn = false
+    let isLastKnownColumn = false
     if (context) {
       const index = context.columnIndexRef.current
       context.columnIndexRef.current += 1
       if (context.collectingHeaderRef.current) {
         context.headersRef.current[index] = textFromNode(children).trim()
       }
+      isFirstColumn = index === 0
+      isLastKnownColumn =
+        context.collectingHeaderRef.current &&
+        index === context.headersRef.current.length - 1
     }
     return (
-      <th className="px-3 py-2 text-left font-medium text-primary-950 whitespace-nowrap">
+      <th
+        className={cn(
+          'px-3 py-2 text-left font-medium text-primary-950 whitespace-nowrap',
+          isFirstColumn && 'first:rounded-tl-lg',
+          isLastKnownColumn && 'last:rounded-tr-lg',
+        )}
+      >
         {children}
       </th>
     )

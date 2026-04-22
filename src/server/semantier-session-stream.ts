@@ -7,6 +7,19 @@ function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function readRunId(payload: Record<string, unknown>): string {
+  const explicit = readString(payload.run_id) || readString(payload.runId)
+  if (explicit) return explicit
+
+  const runDir = readString(payload.run_dir) || readString(payload.runDir)
+  if (!runDir) return ''
+
+  const normalized = runDir.replace(/\\+/g, '/').replace(/\/+$/, '')
+  if (!normalized) return ''
+  const segments = normalized.split('/')
+  return segments[segments.length - 1] || ''
+}
+
 function buildToolCallId(
   payload: Record<string, unknown>,
   runId?: string,
@@ -87,11 +100,50 @@ export function translateSemantierSessionStreamEvent(
         },
       ]
     }
-    case 'attempt.completed':
-      return [{ event: 'done', data: { state: 'complete' } }]
+    case 'attempt.completed': {
+      const donePayload: Record<string, unknown> = {
+        state: 'complete',
+      }
+      const runId = readRunId(data)
+      if (runId) donePayload.runId = runId
+
+      const runDir = readString(data.run_dir) || readString(data.runDir)
+      if (runDir) donePayload.run_dir = runDir
+
+      if (typeof data.has_run_artifact === 'boolean') {
+        donePayload.has_run_artifact = data.has_run_artifact
+      }
+
+      const summary = readString(data.summary)
+      if (summary) donePayload.summary = summary
+
+      if (data.metrics && typeof data.metrics === 'object') {
+        donePayload.metrics = data.metrics
+      }
+
+      return [{ event: 'done', data: donePayload }]
+    }
     case 'attempt.failed': {
       const errorMessage = readString(data.error) || 'Request failed'
-      return [{ event: 'done', data: { state: 'error', errorMessage } }]
+      const donePayload: Record<string, unknown> = {
+        state: 'error',
+        errorMessage,
+      }
+      const runId = readRunId(data)
+      if (runId) donePayload.runId = runId
+
+      const runDir = readString(data.run_dir) || readString(data.runDir)
+      if (runDir) donePayload.run_dir = runDir
+
+      if (typeof data.has_run_artifact === 'boolean') {
+        donePayload.has_run_artifact = data.has_run_artifact
+      }
+
+      if (data.metrics && typeof data.metrics === 'object') {
+        donePayload.metrics = data.metrics
+      }
+
+      return [{ event: 'done', data: donePayload }]
     }
     default:
       return []

@@ -40,6 +40,45 @@ type PortableHistoryMessage = {
   content: string
 }
 
+function resolveRunIdFromPayload(payload?: unknown): string {
+  const data =
+    payload && typeof payload === 'object'
+      ? (payload as Record<string, unknown>)
+      : null
+  if (!data) return ''
+
+  const explicitRunId =
+    typeof data.runId === 'string'
+      ? data.runId.trim()
+      : typeof data.run_id === 'string'
+        ? data.run_id.trim()
+        : ''
+  if (explicitRunId) return explicitRunId
+
+  const runDir =
+    typeof data.run_dir === 'string'
+      ? data.run_dir.trim()
+      : typeof data.runDir === 'string'
+        ? data.runDir.trim()
+        : ''
+  if (!runDir) return ''
+
+  const normalized = runDir.replace(/\\+/g, '/').replace(/\/+$/, '')
+  const segments = normalized.split('/')
+  return segments[segments.length - 1] || ''
+}
+
+function appendFullReportLink(text: string, payload?: unknown): string {
+  const content = text.trim()
+  const runId = resolveRunIdFromPayload(payload)
+  if (!runId) return content
+  if (content.includes('/runs/') && content.includes(runId)) return content
+  if (!content) {
+    return `[Full report](/runs/${runId})`
+  }
+  return `${content}\n\n[Full report](/runs/${runId})`
+}
+
 type UseStreamingMessageOptions = {
   onStarted?: (payload: { runId: string | null }) => void
   onChunk?: (text: string, fullText: string) => void
@@ -348,7 +387,7 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
         }, 5000)
       }
 
-      const finalText = fullTextRef.current
+      const finalText = appendFullReportLink(fullTextRef.current, payload)
       const thinking = thinkingRef.current
       renderedTextRef.current = finalText
       targetTextRef.current = finalText

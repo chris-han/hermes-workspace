@@ -46,4 +46,31 @@ describe('translateSemantierSessionStreamEvent', () => {
       { event: 'done', data: { state: 'error', errorMessage: 'boom' } },
     ])
   })
+
+  it('maps completed attempts with run metadata into done events', () => {
+    expect(
+      translateSemantierSessionStreamEvent(
+        'attempt.completed',
+        {
+          summary: 'Done',
+          run_dir: '/tmp/workspaces/ws-1/runs/20260422_010101_abcd',
+          has_run_artifact: true,
+          metrics: { sharpe: 1.2 },
+        },
+        'run-1',
+      ),
+    ).toEqual([
+      {
+        event: 'done',
+        data: {
+          state: 'complete',
+          runId: '20260422_010101_abcd',
+          run_dir: '/tmp/workspaces/ws-1/runs/20260422_010101_abcd',
+          has_run_artifact: true,
+          summary: 'Done',
+          metrics: { sharpe: 1.2 },
+        },
+      },
+    ])
+  })
 })

@@ -332,9 +332,10 @@ const MAX_TRANSPORT_IMAGE_SIZE = 1 * 1024 * 1024
 
 const DOCX_MIME_TYPE =
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const PDF_MIME_TYPE = 'application/pdf'
 
 const ATTACHMENT_ACCEPT =
-  'image/*,.md,.txt,.json,.csv,.ts,.tsx,.js,.py,.docx'
+  'image/*,.md,.txt,.json,.csv,.ts,.tsx,.js,.py,.docx,.pdf'
 
 const IMAGE_EXTENSION_TO_MIME: Record<string, string> = {
   png: 'image/png',
@@ -361,6 +362,7 @@ const TEXT_EXTENSION_TO_MIME: Record<string, string> = {
   js: 'text/plain',
   py: 'text/plain',
   docx: DOCX_MIME_TYPE,
+  pdf: PDF_MIME_TYPE,
 }
 
 function normalizeMimeType(value: string): string {
@@ -389,7 +391,8 @@ function isTextMimeType(value: string): boolean {
   return (
     normalized.startsWith('text/') ||
     normalized === 'application/json' ||
-    normalized === DOCX_MIME_TYPE
+    normalized === DOCX_MIME_TYPE ||
+    normalized === PDF_MIME_TYPE
   )
 }
 
@@ -1229,9 +1232,30 @@ function ChatComposerComponent({
             if (textFile) {
               const inferredMimeType = inferTextMimeTypeFromFileName(file.name)
               const normalizedMimeType = normalizeMimeType(file.type)
+              const resolvedMimeType =
+                (isTextMimeType(file.type) ? normalizedMimeType : '') ||
+                inferredMimeType ||
+                'text/plain'
+
+              if (resolvedMimeType === PDF_MIME_TYPE) {
+                const dataUrl = await readFileAsDataUrl(file)
+                if (!dataUrl) return null
+
+                return {
+                  id: crypto.randomUUID(),
+                  name:
+                    file.name && file.name.trim().length > 0
+                      ? file.name.trim()
+                      : `attachment-${timestamp}-${index + 1}.pdf`,
+                  contentType: PDF_MIME_TYPE,
+                  size: file.size,
+                  dataUrl,
+                  kind: 'file',
+                }
+              }
+
               const textContent =
-                normalizedMimeType === DOCX_MIME_TYPE ||
-                inferredMimeType === DOCX_MIME_TYPE
+                resolvedMimeType === DOCX_MIME_TYPE
                   ? await readDocxAsText(file)
                   : await readFileAsText(file)
               if (textContent === null) return null
@@ -1243,10 +1267,7 @@ function ChatComposerComponent({
               return {
                 id: crypto.randomUUID(),
                 name,
-                contentType:
-                  (isTextMimeType(file.type) ? normalizedMimeType : '') ||
-                  inferredMimeType ||
-                  'text/plain',
+                contentType: resolvedMimeType,
                 size: textBytes,
                 dataUrl: textContent,
                 kind: 'file',

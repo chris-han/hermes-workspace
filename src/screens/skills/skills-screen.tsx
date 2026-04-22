@@ -25,6 +25,11 @@ type SkillsTab = 'installed' | 'marketplace' | 'toolsets'
 type SkillsSort = 'name' | 'category'
 type SkillSourceFilter = 'All' | 'Workspace' | 'Shared' | 'Built-in'
 
+type DisplayControl = {
+  label: string
+  value: string
+}
+
 type SecurityRisk = {
   level: 'safe' | 'low' | 'medium' | 'high'
   flags: Array<string>
@@ -142,6 +147,12 @@ const SOURCE_FILTERS: Array<SkillSourceFilter> = [
   'Workspace',
   'Shared',
   'Built-in',
+]
+
+const TAB_OPTIONS: Array<DisplayControl & { value: SkillsTab }> = [
+  { label: 'Installed', value: 'installed' },
+  { label: 'Toolsets', value: 'toolsets' },
+  { label: 'Marketplace', value: 'marketplace' },
 ]
 
 function resolveSourceTier(
@@ -445,6 +456,14 @@ export function SkillsScreen() {
             skill.source,
           installed: skill.installed,
           enabled: skill.installed,
+          sourceTier:
+            skill.source === 'official' || skill.trust_level === 'builtin'
+              ? 'builtin'
+              : 'external',
+          sourceLabel:
+            skill.source === 'official' || skill.trust_level === 'builtin'
+              ? 'Hermes Built-in'
+              : 'Shared',
           featuredGroup: undefined,
           security: {
             level:
@@ -476,9 +495,9 @@ export function SkillsScreen() {
 
   const visibleSourceFilters = useMemo(
     () =>
-      tab === 'toolsets'
-        ? SOURCE_FILTERS.filter((filter) => filter !== 'Workspace')
-        : SOURCE_FILTERS,
+      tab === 'installed'
+        ? SOURCE_FILTERS
+        : SOURCE_FILTERS.filter((filter) => filter !== 'Workspace'),
     [tab],
   )
 
@@ -676,45 +695,40 @@ export function SkillsScreen() {
 
         <section className="rounded-card border border-border bg-primary-50/80 p-3 backdrop-blur-xl sm:p-4">
           <Tabs value={tab} onValueChange={handleTabChange}>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3">
               <TabsList
-                className="w-full rounded-button border border-border bg-primary-100/60 p-1 sm:w-auto"
+                className="grid w-full grid-cols-3 rounded-button border border-border bg-primary-100/60 p-1"
                 variant="default"
               >
-                <TabsTab value="installed" className="flex-1 sm:min-w-[132px]">
-                  Installed
-                </TabsTab>
-                <TabsTab value="toolsets" className="flex-1 sm:min-w-[132px]">
-                  Toolsets
-                </TabsTab>
-                <TabsTab
-                  value="marketplace"
-                  className="flex-1 sm:min-w-[168px]"
-                >
-                  Marketplace
-                </TabsTab>
+                {TAB_OPTIONS.map((option) => (
+                  <TabsTab key={option.value} value={option.value} className="min-w-0">
+                    {option.label}
+                  </TabsTab>
+                ))}
               </TabsList>
 
-              {tab !== 'marketplace' ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    value={searchInput}
-                    onChange={(event) => handleSearchChange(event.target.value)}
-                    placeholder={
-                      tab === 'toolsets'
-                        ? 'Search by toolset, source, or tool name'
+              <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <input
+                  value={searchInput}
+                  onChange={(event) => handleSearchChange(event.target.value)}
+                  placeholder={
+                    tab === 'toolsets'
+                      ? 'Search by toolset, source, or tool name'
+                      : tab === 'marketplace'
+                        ? 'Search Skills Hub, GitHub, and local fallback'
                         : 'Search by name, tags, or description'
-                    }
-                    className="h-9 w-full min-w-0 rounded-md border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none transition-colors focus:border-primary sm:min-w-[220px]"
-                  />
+                  }
+                  className="h-10 w-full min-w-0 rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none transition-colors focus:border-primary"
+                />
 
+                <div className="flex flex-wrap items-center gap-2">
                   {tab === 'installed' ? (
                     <select
                       value={category}
                       onChange={(event) =>
                         handleCategoryChange(event.target.value)
                       }
-                      className="h-9 rounded-md border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
+                      className="h-10 rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
                     >
                       {categories.map((item) => (
                         <option key={item} value={item}>
@@ -734,18 +748,23 @@ export function SkillsScreen() {
                             : 'name',
                         )
                       }
-                      className="h-9 rounded-md border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
+                      className="h-10 rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
                     >
                       <option value="name">Name A-Z</option>
                       <option value="category">Category</option>
                     </select>
                   ) : null}
+
+                  {tab === 'marketplace' ? (
+                    <div className="text-xs text-primary-500">
+                      Source: {hubQuery.data?.source || 'hub'}
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+              </div>
             </div>
 
-            {tab === 'installed' || tab === 'toolsets' ? (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
                 {visibleSourceFilters.map((filter) => {
                   const active = filter === sourceFilter
                   return (
@@ -757,7 +776,7 @@ export function SkillsScreen() {
                         setPage(1)
                       }}
                       className={cn(
-                        'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                        'rounded-button border px-3 py-1.5 text-xs font-semibold transition-colors',
                         active
                           ? 'border-primary/40 bg-primary/15 text-primary'
                           : 'border-border bg-primary-100/50 text-primary-500 hover:border-primary-300 hover:text-ink',
@@ -767,8 +786,7 @@ export function SkillsScreen() {
                     </button>
                   )
                 })}
-              </div>
-            ) : null}
+            </div>
 
             {actionError ? (
               <p className="rounded-lg border border-border bg-primary-100/60 px-3 py-2 text-sm text-ink">
@@ -802,18 +820,6 @@ export function SkillsScreen() {
             </TabsPanel>
 
             <TabsPanel value="marketplace" className="space-y-3 pt-2">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <input
-                  value={searchInput}
-                  onChange={(event) => handleSearchChange(event.target.value)}
-                  placeholder="Search Skills Hub, GitHub, and local fallback"
-                  className="h-10 w-full rounded-md border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none transition-colors focus:border-primary"
-                />
-                <div className="text-xs text-primary-500 sm:text-right">
-                  Source: {hubQuery.data?.source || 'hub'}
-                </div>
-              </div>
-
               {hubQuery.error ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {hubQuery.error instanceof Error
@@ -930,7 +936,7 @@ export function SkillsScreen() {
                   {selectedSkill.fileCount.toLocaleString()} files
                 </DialogDescription>
                 {selectedSkill.security && (
-                  <div className="mt-3 rounded-xl border border-border bg-primary-50/80 overflow-hidden">
+                  <div className="mt-3 overflow-hidden rounded-card border border-border bg-primary-50/80">
                     <SecurityBadge
                       security={selectedSkill.security}
                       compact={false}
@@ -973,7 +979,7 @@ export function SkillsScreen() {
                       )}
                     </div>
 
-                    <article className="rounded-xl border border-border bg-primary-100/30 p-4 backdrop-blur-sm">
+                    <article className="rounded-card border border-border bg-primary-100/30 p-4 backdrop-blur-sm">
                       <Markdown>
                         {selectedSkill.content ||
                           `# ${selectedSkill.name}\n\n${selectedSkill.description}`}
@@ -1208,7 +1214,7 @@ function SecurityBadge({
           {config.label}
         </button>
         {expanded && (
-          <div className="absolute left-0 bottom-[calc(100%+6px)] z-50 w-72 rounded-xl border border-primary-200 bg-surface p-0 shadow-xl overflow-hidden">
+          <div className="absolute bottom-[calc(100%+6px)] left-0 z-50 w-72 overflow-hidden rounded-card border border-border bg-surface p-0 shadow-xl">
             <SecurityScanCard security={security} />
           </div>
         )}
@@ -1345,7 +1351,7 @@ function SkillsGrid({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.18 }}
-              className="flex min-h-[220px] flex-col rounded-card border border-border bg-primary-50/85 p-4 shadow-sm backdrop-blur-sm"
+              className="flex min-h-[220px] flex-col rounded-card border border-border bg-card p-4"
             >
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div className="space-y-1">
@@ -1415,7 +1421,7 @@ function SkillsGrid({
 
                 {tab === 'installed' ? (
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 text-xs text-primary-500">
+                    <div className="flex items-center gap-2 px-1">
                       <Switch
                         checked={skill.enabled}
                         disabled={isActing}
@@ -1424,7 +1430,14 @@ function SkillsGrid({
                         }
                         aria-label={`Toggle ${skill.name}`}
                       />
-                      {skill.enabled ? 'Enabled' : 'Disabled'}
+                      <span
+                        className={cn(
+                          'text-xs font-semibold',
+                          skill.enabled ? 'text-ink' : 'text-primary-600',
+                        )}
+                      >
+                        {skill.enabled ? 'Enabled' : 'Disabled'}
+                      </span>
                     </div>
                     <Button
                       variant="outline"
@@ -1493,7 +1506,7 @@ function ToolsetsGrid({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18 }}
-            className="flex min-h-[220px] flex-col rounded-card border border-border bg-primary-50/85 p-4 shadow-sm backdrop-blur-sm"
+            className="flex min-h-[220px] flex-col rounded-card border border-border bg-card p-4"
           >
             <div className="mb-2 flex items-start justify-between gap-2">
               <div className="space-y-1">
@@ -1609,7 +1622,7 @@ function FeaturedGrid({
         return (
           <article
             key={skill.id}
-            className="flex min-h-0 flex-col rounded-card border border-border bg-primary-50/85 p-4 shadow-sm backdrop-blur-sm"
+            className="flex min-h-0 flex-col rounded-card border border-border bg-card p-4"
           >
             <div className="mb-3 flex items-start justify-between gap-2">
               <div className="space-y-1">
@@ -1703,14 +1716,14 @@ function SkillsSkeleton({
         <div
           key={index}
           className={cn(
-            'animate-pulse rounded-2xl border border-border bg-primary-50/70 p-4',
+            'animate-pulse rounded-card border border-border bg-primary-50/70 p-4',
             large ? 'min-h-[120px]' : 'min-h-[100px]',
           )}
         >
           <div className="mb-3 h-5 w-2/5 rounded-md bg-primary-100" />
           <div className="mb-2 h-4 w-3/4 rounded-md bg-primary-100" />
           <div className="h-4 w-1/2 rounded-md bg-primary-100" />
-          <div className="mt-4 h-20 rounded-xl bg-primary-100/80" />
+          <div className="mt-4 h-20 rounded-card bg-primary-100/80" />
           <div className="mt-4 h-8 w-1/3 rounded-md bg-primary-100" />
         </div>
       ))}

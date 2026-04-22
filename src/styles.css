@@ -15,6 +15,65 @@
 
 :root {
   --tabbar-h: 0px;
+  /* Design-system radius tokens (theme-safe: does not override Tailwind base radius scale) */
+  --radius-sm: 4px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-button: 16px;
+  --radius-card: 20px;
+  --radius-comfortable: 20px;
+  --radius-section: 32px;
+  --radius-hero: 40px;
+  --theme-toggle-off-bg: var(--theme-card2);
+  --theme-toggle-off-border: var(--theme-border);
+  --theme-toggle-on-bg: var(--theme-accent);
+  --theme-toggle-on-border: var(--theme-accent);
+}
+
+/* Shared radius utilities for all screen pages */
+.rounded-button {
+  border-radius: var(--radius-button, 16px) !important;
+}
+
+.rounded-card {
+  border-radius: var(--radius-card, 20px) !important;
+}
+
+.rounded-comfortable {
+  border-radius: var(--radius-comfortable, 20px) !important;
+}
+
+.rounded-section {
+  border-radius: var(--radius-section, 32px) !important;
+}
+
+.rounded-hero {
+  border-radius: var(--radius-hero, 40px) !important;
+}
+
+/* Global radius harmonization for workspace screens */
+.rounded-sm {
+  border-radius: var(--radius-sm, 4px) !important;
+}
+
+.rounded-md {
+  border-radius: var(--radius-md, 12px) !important;
+}
+
+.rounded-lg {
+  border-radius: var(--radius-lg, 16px) !important;
+}
+
+.rounded-xl {
+  border-radius: var(--radius-card, 20px) !important;
+}
+
+.rounded-2xl {
+  border-radius: var(--radius-card, 20px) !important;
+}
+
+.rounded-3xl {
+  border-radius: var(--radius-section, 32px) !important;
 }
 
 /* Hide scrollbars until scroll (cross-browser) */
@@ -108,6 +167,23 @@
 }
 .theme-shadow-3 {
   box-shadow: var(--theme-shadow-3) !important;
+}
+
+/* Semantic utility aliases used across screens when Tailwind token classes are not emitted */
+.bg-surface {
+  background-color: var(--color-surface, var(--theme-bg)) !important;
+}
+
+.bg-card {
+  background-color: var(--theme-card) !important;
+}
+
+.text-ink {
+  color: var(--color-ink, var(--theme-text)) !important;
+}
+
+.border-border {
+  border-color: var(--theme-border) !important;
 }
 
 /* KPI card utility (label + value + trend badge) */
@@ -1088,19 +1164,23 @@ code {
   --theme-panel: #181916;
   --theme-card: #1e1f1c;
   --theme-card2: #242522;
-  --theme-border: rgba(42, 43, 40, 0.85);
-  --theme-border-subtle: rgba(42, 43, 40, 0.5);
+  --theme-border: rgba(69, 71, 69, 0.68);
+  --theme-border-subtle: rgba(69, 71, 69, 0.4);
   --theme-text: #f0f0ec;
   --theme-muted: rgba(134, 134, 133, 0.7);
   --theme-shadow-1: 0 0 0 rgba(0, 0, 0, 0);
   --theme-shadow-2: 0 1px 2px rgba(0, 0, 0, 0.05);
   --theme-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.15);
   --theme-glass: rgba(14, 15, 12, 0.92);
-  --theme-focus: #9fe870;
+  --theme-focus: #435ee5;
   --theme-accent: #9fe870;
   --theme-accent-secondary: #baf295;
   --theme-accent-subtle: rgba(159, 232, 112, 0.08);
   --theme-accent-border: rgba(159, 232, 112, 0.25);
+  --theme-toggle-off-bg: #242522;
+  --theme-toggle-off-border: #454745;
+  --theme-toggle-on-bg: #9fe870;
+  --theme-toggle-on-border: #163300;
   --theme-active: #9fe870;
   --theme-link: #9fe870;
   --theme-success: #4f7c64;
@@ -1134,19 +1214,23 @@ code {
   --theme-panel: #ebebe6;
   --theme-card: #fafaf7;
   --theme-card2: #e5e5e0;
-  --theme-border: rgba(213, 214, 209, 0.85);
-  --theme-border-subtle: rgba(213, 214, 209, 0.5);
+  --theme-border: #d4d8cf;
+  --theme-border-subtle: #e8ebe6;
   --theme-text: #0e0f0c;
   --theme-muted: rgba(134, 134, 133, 0.75);
   --theme-shadow-1: 0 0 0 rgba(0, 0, 0, 0);
   --theme-shadow-2: 0 1px 2px rgba(14, 15, 12, 0.03);
   --theme-shadow-3: 0 8px 24px rgba(14, 15, 12, 0.06);
   --theme-glass: rgba(245, 245, 240, 0.92);
-  --theme-focus: #163300;
+  --theme-focus: #435ee5;
   --theme-accent: #669542;
   --theme-accent-secondary: #2a4d1a;
   --theme-accent-subtle: rgba(22, 51, 0, 0.07);
   --theme-accent-border: rgba(22, 51, 0, 0.18);
+  --theme-toggle-off-bg: #e8ebe6;
+  --theme-toggle-off-border: #868685;
+  --theme-toggle-on-bg: #9fe870;
+  --theme-toggle-on-border: #163300;
   --theme-active: #163300;
   --theme-link: #163300;
   --theme-success: #4f7c64;
@@ -1387,6 +1471,45 @@ code {
   box-shadow: none !important;
 }
 
+/* Morandi surface normalization for screens using literal white/neutral utilities */
+[data-theme$='-light'] .bg-white {
+  background-color: var(--theme-card) !important;
+}
+[data-theme$='-light'] .bg-white\/90 {
+  background-color: color-mix(in srgb, var(--theme-card) 90%, transparent) !important;
+}
+[data-theme$='-light'] .bg-white\/80 {
+  background-color: color-mix(in srgb, var(--theme-card) 80%, transparent) !important;
+}
+[data-theme$='-light'] .bg-white\/60 {
+  background-color: color-mix(in srgb, var(--theme-card) 60%, transparent) !important;
+}
+[data-theme$='-light'] .bg-neutral-50,
+[data-theme$='-light'] .bg-neutral-100 {
+  background-color: var(--theme-card2) !important;
+}
+[data-theme$='-light'] .border-neutral-100,
+[data-theme$='-light'] .border-neutral-200,
+[data-theme$='-light'] .border-neutral-300,
+[data-theme$='-light'] .border-white,
+[data-theme$='-light'] .border-black {
+  border-color: var(--theme-border) !important;
+}
+
+[data-theme='semantier'] .border-neutral-700,
+[data-theme='semantier'] .border-neutral-800,
+[data-theme='semantier'] .border-neutral-900,
+[data-theme='semantier'] .border-white,
+[data-theme='semantier'] .border-black {
+  border-color: var(--theme-border) !important;
+}
+[data-theme='semantier'] .bg-neutral-800,
+[data-theme='semantier'] .bg-neutral-900,
+[data-theme='semantier'] .bg-black,
+[data-theme='semantier'] .bg-white {
+  background-color: var(--theme-card) !important;
+}
+
 /* Reserved depth class for genuinely floating UI (modals, popovers, toasts) */
 .frame-elevated {
   border: 1px solid var(--theme-border);
@@ -1410,13 +1533,12 @@ code {
   --radius-editorial-input: 6px;
 }
 
-/* Restrain border-radius on common component patterns in light themes
-   (dark themes can keep their existing softer radii for now to avoid surprise) */
+/* Light-theme radius mapping aligned with design system */
 [data-theme$='-light'] .rounded-2xl {
-  border-radius: 8px !important;
+  border-radius: var(--radius-card, 20px) !important;
 }
 [data-theme$='-light'] .rounded-3xl {
-  border-radius: 10px !important;
+  border-radius: var(--radius-section, 32px) !important;
 }
 
 /* Fluid serif numeral for hero/empty-state metrics (optional opt-in) */

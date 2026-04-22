@@ -1156,6 +1156,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (histMsg.role === rtMsg.role && rtText) {
         const histText = extractMessageText(histMsg)
         if (histText === rtText) return true
+
+        if (histMsg.role === 'assistant') {
+          const normalizedHistoryText = normalizeAssistantDedupText(histText)
+          const normalizedRealtimeText = normalizeAssistantDedupText(rtText)
+          if (
+            normalizedHistoryText.length > 0 &&
+            normalizedHistoryText === normalizedRealtimeText
+          ) {
+            return true
+          }
+        }
       }
 
       const histRaw = histMsg as Record<string, unknown>
@@ -1271,6 +1282,23 @@ function extractMessageText(msg: ChatMessage | null | undefined): string {
       return stripFinalTags(val.trim())
   }
   return ''
+}
+
+function normalizeAssistantDedupText(text: string): string {
+  if (!text) return ''
+
+  // History responses can append artifact footers that are not present in the
+  // streamed completion text. Strip these suffixes so both representations of
+  // the same assistant turn deduplicate correctly.
+  let normalized = text
+    .replace(/\n\s*Run directory:\s+[^\n]+\s*$/i, '')
+    .trim()
+
+  normalized = normalized
+    .replace(/\n\s*\[Full report\]\([^\n]*\/runs\/[\w-]+[^\n]*\)\s*$/i, '')
+    .trim()
+
+  return normalized
 }
 
 function ensureAssistantTextContent(msg: ChatMessage): ChatMessage {

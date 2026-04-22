@@ -259,7 +259,7 @@ const INITIAL_COMPONENTS: Partial<Components> = {
       context.headersRef.current = []
     }
     return (
-      <thead className="sticky top-0 z-10 border-b border-primary-200 bg-primary-100/95 backdrop-blur-sm max-sm:hidden">
+      <thead className="sticky top-0 z-10 border-b border-primary-200 bg-transparent max-sm:hidden">
         {children}
       </thead>
     )

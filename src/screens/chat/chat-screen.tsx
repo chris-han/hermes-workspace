@@ -672,7 +672,13 @@ export function ChatScreen({
     sessionsLoading: _sessionsLoading,
     sessionsFetching: _sessionsFetching,
     refetchSessions: _refetchSessions,
-  } = useChatSessions({ activeFriendlyId, isNewChat, forcedSessionKey })
+  } = useChatSessions({
+    activeFriendlyId,
+    isNewChat,
+    forcedSessionKey,
+    sseConnectionState,
+    waitingForResponse,
+  })
   const {
     historyQuery,
     historyMessages,
@@ -690,7 +696,12 @@ export function ChatScreen({
     activeExists,
     sessionsReady: sessionsQuery.isSuccess,
     queryClient,
-    historyRefetchInterval: sseConnectionState === 'connected' ? 30_000 : 5_000,
+    historyRefetchInterval:
+      sseConnectionState === 'connected'
+        ? false
+        : waitingForResponse
+          ? 5_000
+          : 30_000,
     portableMode: isPortableMode,
   })
 

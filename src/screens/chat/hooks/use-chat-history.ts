@@ -31,7 +31,7 @@ type UseChatHistoryInput = {
   activeExists: boolean
   sessionsReady: boolean
   queryClient: QueryClient
-  historyRefetchInterval?: number
+  historyRefetchInterval?: number | false
   /** When true, skip all server history fetching (portable mode). */
   portableMode?: boolean
 }
@@ -324,22 +324,40 @@ export function useChatHistory({
       }
 
       const cached = queryClient.getQueryData(historyKey)
-      const optimisticMessages = Array.isArray((cached as any)?.messages)
-        ? (cached as any).messages.filter((message: any) => {
+      const cachedMessages = Array.isArray((cached as any)?.messages)
+        ? ((cached as any).messages as Array<ChatMessage>)
+        : []
+      const optimisticMessages = cachedMessages.filter((message: any) => {
             if (message.status === 'sending') return true
             if (message.__optimisticId) return true
             return Boolean(message.clientId)
           })
-        : []
+      const latestCachedTs = cachedMessages.reduce((latest, message) => {
+        const ts = getMessageTimestamp(message)
+        return ts > latest ? ts : latest
+      }, 0)
 
       const serverData = await fetchHistory({
         sessionKey: sessionKeyForHistory,
         friendlyId: activeFriendlyId,
+        limit: 200,
+        sinceTimestamp: latestCachedTs > 0 ? latestCachedTs : undefined,
       })
-      if (!optimisticMessages.length) return serverData
+
+      const hasDeltaBase = latestCachedTs > 0 && cachedMessages.length > 0
+      const mergedServerMessages = hasDeltaBase
+        ? mergeDeltaHistoryMessages(cachedMessages, serverData.messages)
+        : serverData.messages
+
+      if (!optimisticMessages.length) {
+        return {
+          ...serverData,
+          messages: mergedServerMessages,
+        }
+      }
 
       const merged = mergeOptimisticHistoryMessages(
-        serverData.messages,
+        mergedServerMessages,
         optimisticMessages,
       )
 
@@ -683,5 +701,46 @@ function mergeOptimisticHistoryMessages(
     }
   }
 
+  return merged
+}
+
+function mergeDeltaHistoryMessages(
+  existingMessages: Array<ChatMessage>,
+  deltaMessages: Array<ChatMessage>,
+): Array<ChatMessage> {
+  if (!deltaMessages.length) return existingMessages
+
+  const merged = [...existingMessages]
+  const FIVE_SECONDS = 5_000
+
+  for (const incoming of deltaMessages) {
+    const incomingClientId = getMessageClientId(incoming)
+    const incomingRole = incoming.role
+    const incomingText = textFromMessage(incoming).trim()
+    const incomingTs = getMessageTimestamp(incoming)
+
+    const exists = merged.some((existing) => {
+      const existingClientId = getMessageClientId(existing)
+      if (incomingClientId && existingClientId) {
+        return incomingClientId === existingClientId
+      }
+
+      if (incomingRole && existing.role && incomingRole !== existing.role) {
+        return false
+      }
+
+      const existingText = textFromMessage(existing).trim()
+      const existingTs = getMessageTimestamp(existing)
+      if (!incomingText || !existingText) return false
+      if (incomingText !== existingText) return false
+      return Math.abs(existingTs - incomingTs) <= FIVE_SECONDS
+    })
+
+    if (!exists) {
+      merged.push(incoming)
+    }
+  }
+
+  merged.sort((a, b) => getMessageTimestamp(a) - getMessageTimestamp(b))
   return merged
 }

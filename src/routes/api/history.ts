@@ -21,6 +21,9 @@ export const Route = createFileRoute('/api/history')({
         try {
           const url = new URL(request.url)
           const limit = Number(url.searchParams.get('limit') || '200')
+          const afterTsRaw = Number(url.searchParams.get('afterTs') || '')
+          const afterTs =
+            Number.isFinite(afterTsRaw) && afterTsRaw > 0 ? afterTsRaw : null
           const rawSessionKey = url.searchParams.get('sessionKey')?.trim()
           const friendlyId = url.searchParams.get('friendlyId')?.trim()
           let { sessionKey } = await resolveSessionKey({
@@ -55,11 +58,19 @@ export const Route = createFileRoute('/api/history')({
             throw error
           }
           const boundedMessages = limit > 0 ? messages.slice(-limit) : messages
+          const filteredMessages =
+            afterTs === null
+              ? boundedMessages
+              : boundedMessages.filter((message) => {
+                  const createdAt = Date.parse(message.created_at)
+                  if (!Number.isFinite(createdAt)) return false
+                  return createdAt > afterTs
+                })
 
           return json({
             sessionKey,
             sessionId: sessionKey,
-            messages: boundedMessages.map((message, index) =>
+            messages: filteredMessages.map((message, index) =>
               toSemantierChatMessage(message, index),
             ),
           })

@@ -83,10 +83,19 @@ export async function fetchSessions(): Promise<Array<SessionMeta>> {
 export async function fetchHistory(payload: {
   sessionKey: string
   friendlyId: string
+  limit?: number
+  sinceTimestamp?: number
 }): Promise<HistoryResponse> {
-  const query = new URLSearchParams({ limit: '1000' })
+  const query = new URLSearchParams({ limit: String(payload.limit ?? 200) })
   if (payload.sessionKey) query.set('sessionKey', payload.sessionKey)
   if (payload.friendlyId) query.set('friendlyId', payload.friendlyId)
+  if (
+    typeof payload.sinceTimestamp === 'number' &&
+    Number.isFinite(payload.sinceTimestamp) &&
+    payload.sinceTimestamp > 0
+  ) {
+    query.set('afterTs', String(Math.floor(payload.sinceTimestamp)))
+  }
   const res = await fetch(`/api/history?${query.toString()}`)
   if (!res.ok) throw new Error(await readError(res))
   return (await res.json()) as HistoryResponse

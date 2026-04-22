@@ -38,17 +38,36 @@ type UseChatSessionsInput = {
   activeFriendlyId: string
   isNewChat: boolean
   forcedSessionKey?: string
+  sseConnectionState?: string
+  waitingForResponse?: boolean
 }
 
 export function useChatSessions({
   activeFriendlyId,
   isNewChat,
   forcedSessionKey,
+  sseConnectionState,
+  waitingForResponse = false,
 }: UseChatSessionsInput) {
+  const hasDegradedSse = sseConnectionState !== 'connected'
   const sessionsQuery = useQuery({
     queryKey: chatQueryKeys.sessions,
     queryFn: fetchSessions,
-    refetchInterval: 5000,
+    refetchInterval(query) {
+      const rows = Array.isArray(query.state.data) ? query.state.data : []
+      const hasActiveRun = rows.some((session) => {
+        const status =
+          typeof session?.status === 'string'
+            ? session.status.toLowerCase()
+            : ''
+        return status === 'running' || status === 'queued' || status === 'streaming'
+      })
+
+      // Keep metadata fresh only when needed; otherwise stay low-frequency.
+      if (waitingForResponse || hasActiveRun) return 5000
+      if (hasDegradedSse) return 15000
+      return 60000
+    },
   })
   const storedTitles = useSessionTitles()
 

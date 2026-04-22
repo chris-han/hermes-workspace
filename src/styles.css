@@ -1639,6 +1639,12 @@ code {
 [data-theme$='-light'] .bg-violet-600 {
   background-color: var(--theme-accent) !important;
 }
+[data-theme$='-light'] .bg-indigo-500,
+[data-theme$='-light'] .bg-indigo-600,
+[data-theme$='-light'] .bg-violet-500,
+[data-theme$='-light'] .bg-violet-600 {
+  color: #ffffff !important;
+}
 [data-theme$='-light'] .border-indigo-200,
 [data-theme$='-light'] .border-indigo-300,
 [data-theme$='-light'] .border-indigo-400,

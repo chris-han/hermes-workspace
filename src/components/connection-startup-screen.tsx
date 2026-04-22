@@ -175,7 +175,7 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto px-6 py-10 text-white"
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto px-6 py-10 text-[#f8fafc]"
       style={{
         backgroundColor: '#0A0E1A',
         fontFamily: 'Inter, system-ui, sans-serif',
@@ -188,7 +188,7 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
           className="mb-5 h-20 w-20 rounded-2xl object-cover shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
         />
 
-        <h1 className="brand-wordmark text-[2rem] font-semibold tracking-tight text-white">
+        <h1 className="brand-wordmark text-[2rem] font-semibold tracking-tight text-[#f8fafc]">
           semantier
         </h1>
 
@@ -214,7 +214,7 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
           ].join(' ')}
         >
           <div className="w-full rounded-3xl border border-[var(--theme-border-subtle)] bg-white/5 p-5 text-left shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-sm">
-            <p className="text-base font-medium text-white">
+            <p className="text-base font-medium text-[#f8fafc]">
               Welcome! Let&apos;s connect your backend
             </p>
             <p className="mt-2 text-sm leading-6 text-white/60">
@@ -233,7 +233,7 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
                   'w-full rounded-xl px-5 py-3 text-sm font-semibold transition',
                   serverStarting
                     ? 'cursor-not-allowed bg-indigo-900/70 text-indigo-200'
-                    : 'bg-indigo-500 text-white hover:bg-indigo-400',
+                    : 'bg-indigo-500 text-[#ffffff] hover:bg-indigo-400',
                 ].join(' ')}
               >
                 {serverStarting ? (

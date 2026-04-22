@@ -12,9 +12,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
-  deriveFriendlyIdFromKey,
   isMissingAuth,
-  readError,
   textFromMessage,
 } from './utils'
 import {
@@ -465,7 +463,6 @@ export function ChatScreen({
   const setChatFocusMode = useWorkspaceStore((s) => s.setChatFocusMode)
   const queryClient = useQueryClient()
   const [sending, setSending] = useState(false)
-  const [_creatingSession, setCreatingSession] = useState(false)
   const [sessionsOpen, setSessionsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
@@ -2096,48 +2093,6 @@ export function ChatScreen({
     }
   }, [flushRetryableMessages, handleRefetch])
 
-  const createSessionForMessage = useCallback(
-    async (preferredFriendlyId?: string) => {
-      setCreatingSession(true)
-      try {
-        const res = await fetch('/api/sessions', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(
-            preferredFriendlyId && preferredFriendlyId.trim().length > 0
-              ? { friendlyId: preferredFriendlyId }
-              : {},
-          ),
-        })
-        if (!res.ok) throw new Error(await readError(res))
-
-        const data = (await res.json()) as {
-          sessionKey?: string
-          friendlyId?: string
-        }
-
-        const sessionKey =
-          typeof data.sessionKey === 'string' ? data.sessionKey : ''
-        const friendlyId =
-          typeof data.friendlyId === 'string' &&
-          data.friendlyId.trim().length > 0
-            ? data.friendlyId.trim()
-            : (preferredFriendlyId?.trim() ?? '') ||
-              deriveFriendlyIdFromKey(sessionKey)
-
-        if (!sessionKey || !friendlyId) {
-          throw new Error('Invalid session response')
-        }
-
-        queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
-        return { sessionKey, friendlyId }
-      } finally {
-        setCreatingSession(false)
-      }
-    },
-    [queryClient],
-  )
-
   const upsertSessionInCache = useCallback(
     (friendlyId: string, lastMessage: ChatMessage) => {
       if (!friendlyId) return
@@ -2305,17 +2260,6 @@ export function ChatScreen({
         setSending(true)
         setWaitingForResponse(true)
 
-        if (!isPortableMode) {
-          void createSessionForMessage(threadId).catch((err: unknown) => {
-            if (import.meta.env.DEV) {
-              console.warn('[chat] failed to register new thread', err)
-            }
-            void queryClient.invalidateQueries({
-              queryKey: chatQueryKeys.sessions,
-            })
-          })
-        }
-
         sendMessage(
           threadId,
           threadId,
@@ -2352,7 +2296,6 @@ export function ChatScreen({
     [
       activeFriendlyId,
       activeSessionKey,
-      createSessionForMessage,
       forcedSessionKey,
       isNewChat,
       navigate,

@@ -52,7 +52,6 @@ import { useVoiceInput } from '@/hooks/use-voice-input'
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder'
 import { toast } from '@/components/ui/toast'
 
-
 type ChatComposerAttachment = {
   id: string
   name: string

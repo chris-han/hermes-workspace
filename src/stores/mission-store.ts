@@ -8,11 +8,10 @@ import type {
   HubTask,
   TaskStatus,
 } from '@/screens/gateway/components/task-board'
-import type {MissionCheckpoint} from '@/screens/gateway/lib/mission-checkpoint';
+import type { MissionCheckpoint } from '@/screens/gateway/lib/mission-checkpoint'
 import {
-  
   archiveMissionToHistory,
-  loadMissionHistory
+  loadMissionHistory,
 } from '@/screens/gateway/lib/mission-checkpoint'
 
 export type MissionProcessType = 'sequential' | 'hierarchical' | 'parallel'
@@ -129,7 +128,9 @@ function applyUpdater<T>(previous: T, next: Updater<T>): T {
   return typeof next === 'function' ? (next as (value: T) => T)(previous) : next
 }
 
-function clampHistory(reports: Array<MissionCheckpoint>): Array<MissionCheckpoint> {
+function clampHistory(
+  reports: Array<MissionCheckpoint>,
+): Array<MissionCheckpoint> {
   return reports.slice(0, MAX_HISTORY)
 }
 

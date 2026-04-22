@@ -9,21 +9,18 @@ import {
   MISSION_REPORTS_STORAGE_KEY,
   MODEL_PRESETS,
   MODEL_PRESET_MAP,
-  
-  
-  
-  
-  
   TEMPLATE_DISPLAY_NAMES,
-  TEMPLATE_MODEL_SUGGESTIONS
+  TEMPLATE_MODEL_SUGGESTIONS,
 } from './hub-constants'
-import {
-  TEAM_TEMPLATES
-  
-  
-} from './team-panel'
-import type {MissionAgentSummary, MissionReportPayload, MissionTaskStats, SavedTeamConfig, StoredMissionReport} from './hub-constants';
-import type {TeamMember, TeamTemplateId} from './team-panel';
+import { TEAM_TEMPLATES } from './team-panel'
+import type {
+  MissionAgentSummary,
+  MissionReportPayload,
+  MissionTaskStats,
+  SavedTeamConfig,
+  StoredMissionReport,
+} from './hub-constants'
+import type { TeamMember, TeamTemplateId } from './team-panel'
 import type { MissionCheckpoint } from '../lib/mission-checkpoint'
 import type { GatewayModelCatalogEntry } from '@/lib/gateway-api'
 import type { HubTask } from './task-board'
@@ -348,7 +345,9 @@ export function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-export function computeMissionTaskStats(tasks: Array<HubTask>): MissionTaskStats {
+export function computeMissionTaskStats(
+  tasks: Array<HubTask>,
+): MissionTaskStats {
   const total = tasks.length
   const completed = tasks.filter(
     (task) => task.status === 'done' || (task.status as string) === 'completed',
@@ -381,7 +380,9 @@ function getAgentOutputMarkdown(lines: Array<string>): string {
   return cleanAgentOutputLines(lines).join('\n').trim()
 }
 
-function getLongestAgentOutput(agentSummaries: Array<MissionAgentSummary>): string {
+function getLongestAgentOutput(
+  agentSummaries: Array<MissionAgentSummary>,
+): string {
   const outputs = agentSummaries
     .map((summary) => getAgentOutputMarkdown(summary.lines))
     .filter((output) => output.length > 0)
@@ -401,7 +402,9 @@ function extractExecutiveSummary(
     : longestOutput
 }
 
-function extractKeyFindings(agentSummaries: Array<MissionAgentSummary>): Array<string> {
+function extractKeyFindings(
+  agentSummaries: Array<MissionAgentSummary>,
+): Array<string> {
   const findings: Array<string> = []
   const seen = new Set<string>()
 

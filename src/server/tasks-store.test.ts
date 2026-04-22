@@ -37,9 +37,9 @@ describe('tasks-store', () => {
     try {
       const created = createTask(home, { title: 'Initial task' })
 
-      expect(updateTask(home, created.id, { title: 'Updated task' })?.title).toBe(
-        'Updated task',
-      )
+      expect(
+        updateTask(home, created.id, { title: 'Updated task' })?.title,
+      ).toBe('Updated task')
       expect(moveTask(home, created.id, 'done')?.column).toBe('done')
       expect(deleteTask(home, created.id)).toBe(true)
       expect(getTask(home, created.id)).toBeNull()

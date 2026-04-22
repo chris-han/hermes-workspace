@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type {GatewaySession} from '@/lib/gateway-api';
+import type { GatewaySession } from '@/lib/gateway-api'
 import { formatModelName } from '@/lib/format-model-name'
 import { cn } from '@/lib/utils'
-import {  fetchSessions } from '@/lib/gateway-api'
+import { fetchSessions } from '@/lib/gateway-api'
 
 export type RemoteAgentsPanelProps = {
   localSessionKeys: Array<string>

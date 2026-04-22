@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { addApproval } from '../lib/approvals-store'
 import type { HubTask, TaskPriority, TaskStatus } from './task-board'
-import type {Task as StoreTask, TaskStatus as StoreTaskStatus} from '@/stores/task-store';
-import { cn } from '@/lib/utils'
-import {
-  
-  
-  useTaskStore
+import type {
+  Task as StoreTask,
+  TaskStatus as StoreTaskStatus,
 } from '@/stores/task-store'
+import { cn } from '@/lib/utils'
+import { useTaskStore } from '@/stores/task-store'
 
 type AgentOption = { id: string; name: string }
 

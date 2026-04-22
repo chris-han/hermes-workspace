@@ -6,11 +6,11 @@ import {
   ViewIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { RunLearnings  } from './run-learnings'
+import { RunLearnings } from './run-learnings'
 import { MissionEventLog } from './mission-event-log'
-import {  onFeedEvent } from './feed-event-bus'
-import type {FeedEvent} from './feed-event-bus';
-import type {RunLearningsProps} from './run-learnings';
+import { onFeedEvent } from './feed-event-bus'
+import type { FeedEvent } from './feed-event-bus'
+import type { RunLearningsProps } from './run-learnings'
 import type { MissionEvent } from '@/screens/gateway/lib/mission-events'
 import { cn } from '@/lib/utils'
 import { fetchSessionHistory } from '@/lib/gateway-api'

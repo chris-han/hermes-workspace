@@ -55,8 +55,7 @@ describe('chat-store mergeHistoryMessages', () => {
       content: [
         {
           type: 'text',
-          text:
-            'Here is the table.\n\n| A | B |\n| - | - |\n| 1 | 2 |\n\n[Full report](/runs/20260422_150534_27_ca822b)\n\nRun directory: /tmp/run/20260422_150534_27_ca822b',
+          text: 'Here is the table.\n\n| A | B |\n| - | - |\n| 1 | 2 |\n\n[Full report](/runs/20260422_150534_27_ca822b)\n\nRun directory: /tmp/run/20260422_150534_27_ca822b',
         },
       ],
     }
@@ -66,7 +65,11 @@ describe('chat-store mergeHistoryMessages', () => {
       .mergeHistoryMessages(sessionKey, [historyAssistant])
 
     expect(merged).toHaveLength(1)
-    expect(textOf(merged[0])).toContain('[Full report](/runs/20260422_150534_27_ca822b)')
-    expect(textOf(merged[0])).toContain('Run directory: /tmp/run/20260422_150534_27_ca822b')
+    expect(textOf(merged[0])).toContain(
+      '[Full report](/runs/20260422_150534_27_ca822b)',
+    )
+    expect(textOf(merged[0])).toContain(
+      'Run directory: /tmp/run/20260422_150534_27_ca822b',
+    )
   })
 })

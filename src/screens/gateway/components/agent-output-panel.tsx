@@ -3,13 +3,10 @@ import { InlineApprovalCard } from './inline-approval-card'
 import { StreamingText } from './streaming-text'
 import type { HubTask } from './task-board'
 import type { ApprovalRequest } from '../lib/approvals-store'
-import type {SessionHistoryMessage} from '@/lib/gateway-api';
+import type { SessionHistoryMessage } from '@/lib/gateway-api'
 import { cn } from '@/lib/utils'
 import { Markdown } from '@/components/prompt-kit/markdown'
-import {
-  
-  fetchSessionHistory
-} from '@/lib/gateway-api'
+import { fetchSessionHistory } from '@/lib/gateway-api'
 
 type OutputMessage = {
   role: 'assistant' | 'user' | 'tool'

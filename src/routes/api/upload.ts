@@ -22,15 +22,14 @@ async function handleUpload(request: Request): Promise<Response> {
   const fileField = incomingForm.get('file')
 
   if (!(fileField instanceof File) && !(fileField instanceof Blob)) {
-    return new Response(
-      JSON.stringify({ error: 'No file provided' }),
-      { status: 400, headers: { 'content-type': 'application/json' } },
-    )
+    return new Response(JSON.stringify({ error: 'No file provided' }), {
+      status: 400,
+      headers: { 'content-type': 'application/json' },
+    })
   }
 
   const outgoingForm = new FormData()
-  const filename =
-    fileField instanceof File ? fileField.name : 'document.pdf'
+  const filename = fileField instanceof File ? fileField.name : 'document.pdf'
   outgoingForm.append('file', fileField, filename)
   if (sessionId) outgoingForm.append('session_id', String(sessionId))
   if (runId) outgoingForm.append('run_id', String(runId))
@@ -74,8 +73,7 @@ async function handleUpload(request: Request): Promise<Response> {
   }
 
   const body = await upstream.text()
-  const contentType =
-    upstream.headers.get('content-type') ?? 'application/json'
+  const contentType = upstream.headers.get('content-type') ?? 'application/json'
   return new Response(body, {
     status: upstream.status,
     headers: { 'content-type': contentType },

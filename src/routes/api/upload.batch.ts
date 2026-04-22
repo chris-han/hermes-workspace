@@ -28,7 +28,11 @@ async function handleUploadBatch(request: Request): Promise<Response> {
     )
   }
 
-  const uploadedFiles: Array<{ status: string; filename?: string; file_path?: string }> = []
+  const uploadedFiles: Array<{
+    status: string
+    filename?: string
+    file_path?: string
+  }> = []
 
   for (const fileField of fileFields) {
     const isFile = fileField instanceof File
@@ -38,7 +42,7 @@ async function handleUploadBatch(request: Request): Promise<Response> {
     }
 
     const outgoingForm = new FormData()
-    const filename = isFile ? (fileField as File).name : 'document.pdf'
+    const filename = isFile ? (fileField).name : 'document.pdf'
     outgoingForm.append('file', fileField, filename)
     if (sessionId) outgoingForm.append('session_id', String(sessionId))
     if (runId) outgoingForm.append('run_id', String(runId))

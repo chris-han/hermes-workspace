@@ -2,12 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { AgentHubLayout } from './agent-hub-layout'
-import type {AgentRegistryCardData, AgentRegistryStatus} from '@/components/agent-view/agent-registry-card';
-import {
-  AgentRegistryCard
-  
-  
+import type {
+  AgentRegistryCardData,
+  AgentRegistryStatus,
 } from '@/components/agent-view/agent-registry-card'
+import { AgentRegistryCard } from '@/components/agent-view/agent-registry-card'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -710,9 +709,7 @@ export function AgentsScreen({
   // Pull-to-refresh: attach to the scrollable <main> in workspace-shell
   const scrollContainerRef = useRef<HTMLElement | null>(null)
   useEffect(() => {
-    const el = document.querySelector(
-      'main[data-tour="chat-area"]',
-    )
+    const el = document.querySelector('main[data-tour="chat-area"]')
     scrollContainerRef.current = el
   }, [])
 

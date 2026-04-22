@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type {SessionHistoryMessage} from '@/lib/gateway-api';
+import type { SessionHistoryMessage } from '@/lib/gateway-api'
 import { cn } from '@/lib/utils'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import {
-  
   fetchSessionHistory,
   sendToSession,
-  steerAgent
+  steerAgent,
 } from '@/lib/gateway-api'
 
 // ── Types ─────────────────────────────────────────────────────────────────────

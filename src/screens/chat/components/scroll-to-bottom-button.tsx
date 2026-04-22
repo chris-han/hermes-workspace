@@ -34,7 +34,6 @@ function ScrollToBottomButton({
           style={{
             backgroundColor: 'var(--theme-accent)',
             borderColor: 'var(--theme-accent)',
-
           }}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

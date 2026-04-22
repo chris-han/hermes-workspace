@@ -1290,9 +1290,7 @@ function normalizeAssistantDedupText(text: string): string {
   // History responses can append artifact footers that are not present in the
   // streamed completion text. Strip these suffixes so both representations of
   // the same assistant turn deduplicate correctly.
-  let normalized = text
-    .replace(/\n\s*Run directory:\s+[^\n]+\s*$/i, '')
-    .trim()
+  let normalized = text.replace(/\n\s*Run directory:\s+[^\n]+\s*$/i, '').trim()
 
   normalized = normalized
     .replace(/\n\s*\[Full report\]\([^\n]*\/runs\/[\w-]+[^\n]*\)\s*$/i, '')

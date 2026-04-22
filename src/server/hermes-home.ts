@@ -58,7 +58,10 @@ export async function resolveHermesPathFromBackend(
   requestHeaders: HeadersInit | Headers | undefined,
   ...segments: Array<string>
 ): Promise<string> {
-  return path.join(await resolveHermesHomeFromBackend(requestHeaders), ...segments)
+  return path.join(
+    await resolveHermesHomeFromBackend(requestHeaders),
+    ...segments,
+  )
 }
 
 export async function resolveHermesConfigPathFromBackend(

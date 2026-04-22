@@ -18,7 +18,9 @@ describe('resetNewChatHistory', () => {
 
     queryClient.setQueryData(chatQueryKeys.history('new', 'new'), {
       sessionKey: 'new',
-      messages: [{ role: 'user', content: [{ type: 'text', text: 'wrong-key' }] }],
+      messages: [
+        { role: 'user', content: [{ type: 'text', text: 'wrong-key' }] },
+      ],
     })
 
     resetNewChatHistory(queryClient)
@@ -27,9 +29,13 @@ describe('resetNewChatHistory', () => {
       sessionKey: 'main',
       messages: [],
     })
-    expect(queryClient.getQueryData(chatQueryKeys.history('new', 'new'))).toEqual({
+    expect(
+      queryClient.getQueryData(chatQueryKeys.history('new', 'new')),
+    ).toEqual({
       sessionKey: 'new',
-      messages: [{ role: 'user', content: [{ type: 'text', text: 'wrong-key' }] }],
+      messages: [
+        { role: 'user', content: [{ type: 'text', text: 'wrong-key' }] },
+      ],
     })
   })
 })

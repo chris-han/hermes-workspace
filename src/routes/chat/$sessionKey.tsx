@@ -2,9 +2,9 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
-  moveHistoryMessages,
   NEW_CHAT_FRIENDLY_ID,
   NEW_CHAT_SESSION_KEY,
+  moveHistoryMessages,
   resetNewChatHistory,
 } from '../../screens/chat/chat-queries'
 import { ErrorBoundary } from '@/components/error-boundary'

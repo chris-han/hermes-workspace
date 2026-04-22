@@ -9,11 +9,8 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { AnimatePresence, motion } from 'motion/react'
-import {
-  
-  useAgentChat
-} from '../hooks/use-agent-chat'
-import type {OperationsChatMessage} from '../hooks/use-agent-chat';
+import { useAgentChat } from '../hooks/use-agent-chat'
+import type { OperationsChatMessage } from '../hooks/use-agent-chat'
 import type { OperationsAgent } from '../hooks/use-operations'
 import { Button } from '@/components/ui/button'
 import { AgentProgress } from '@/components/agent-view/agent-progress'

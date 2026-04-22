@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import {
-  chatQueryKeys,
-  fetchHistory,
   NEW_CHAT_FRIENDLY_ID,
   NEW_CHAT_SESSION_KEY,
+  chatQueryKeys,
+  fetchHistory,
 } from '../chat-queries'
 import { getMessageTimestamp, textFromMessage } from '../utils'
 import {
@@ -72,7 +72,7 @@ function emptyHistoryResponse(sessionKey: string): HistoryResponse {
 
 export function getNewChatHistorySnapshot(
   queryClient: QueryClient,
-  historyKey: readonly unknown[],
+  historyKey: ReadonlyArray<unknown>,
   sessionKey: string,
 ): HistoryResponse {
   return (

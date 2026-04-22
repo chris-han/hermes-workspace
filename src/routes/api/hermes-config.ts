@@ -223,10 +223,7 @@ export const Route = createFileRoute('/api/hermes-config')({
           PROVIDERS.map(async (p) => {
             const hasEnvKey =
               p.envKeys.length === 0 || p.envKeys.some((k) => !!env[k])
-            const authStoreCheck = await checkAuthStore(
-              p.id,
-              request.headers,
-            )
+            const authStoreCheck = await checkAuthStore(p.id, request.headers)
             const hasKey =
               hasEnvKey || authStoreCheck.hasToken || p.authType === 'none'
             const maskedKeys: Record<string, string> = {}

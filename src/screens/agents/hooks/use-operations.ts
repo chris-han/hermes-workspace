@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { CronJob } from '@/components/cron-manager/cron-types'
-import type {GatewaySession} from '@/lib/gateway-api';
+import type { GatewaySession } from '@/lib/gateway-api'
 import { toast } from '@/components/ui/toast'
 import { fetchCronJobs } from '@/lib/cron-api'
-import {  fetchSessions } from '@/lib/gateway-api'
+import { fetchSessions } from '@/lib/gateway-api'
 import {
   formatModelName,
   formatRelativeTime,

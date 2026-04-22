@@ -23,7 +23,7 @@ import type { AccentColor, SettingsThemeMode } from '@/hooks/use-settings'
 import type { LoaderStyle } from '@/hooks/use-chat-settings'
 import type { BrailleSpinnerPreset } from '@/components/ui/braille-spinner'
 import type { ThemeId } from '@/lib/theme'
-import type {LocaleId} from '@/lib/i18n';
+import type { LocaleId } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { applyTheme, useSettings } from '@/hooks/use-settings'
@@ -59,7 +59,7 @@ import {
 
 // ── Language ────────────────────────────────────────────────────────────
 
-import { LOCALE_LABELS,  getLocale, setLocale } from '@/lib/i18n'
+import { LOCALE_LABELS, getLocale, setLocale } from '@/lib/i18n'
 
 // ── Types ───────────────────────────────────────────────────────────────
 

@@ -1,10 +1,6 @@
 import { useMemo, useState } from 'react'
-import {
-  
-  deleteTemplate,
-  getAllTemplates
-} from '../lib/workflow-templates'
-import type {WorkflowTemplate} from '../lib/workflow-templates';
+import { deleteTemplate, getAllTemplates } from '../lib/workflow-templates'
+import type { WorkflowTemplate } from '../lib/workflow-templates'
 import { cn } from '@/lib/utils'
 
 type TemplatePickerProps = {

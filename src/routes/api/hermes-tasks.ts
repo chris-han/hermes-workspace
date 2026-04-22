@@ -39,7 +39,9 @@ export const Route = createFileRoute('/api/hermes-tasks')({
         }
 
         try {
-          const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
+          const hermesHome = await resolveWorkspaceTaskHermesHome(
+            request.headers,
+          )
           const body = (await request.json()) as Record<string, unknown>
           if (!body.title || typeof body.title !== 'string') {
             return jsonResponse({ error: 'title is required' }, 400)

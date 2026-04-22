@@ -154,9 +154,7 @@ describe('resolveActiveWorkspaceRoot', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
       'http://127.0.0.1:8899/system/paths',
     )
-    expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      'http://127.0.0.1:8899/auth/me',
-    )
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8899/auth/me')
 
     const headers = new Headers(fetchMock.mock.calls[1]?.[1]?.headers)
     expect(headers.get('cookie')).toBe(

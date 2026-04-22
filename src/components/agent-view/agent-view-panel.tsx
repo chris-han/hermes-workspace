@@ -22,12 +22,9 @@ import type {
   AgentStatusBubble,
 } from './agent-card'
 import type { ActiveAgent } from '@/hooks/use-agent-view'
-import type {AgentCardStatus} from '@/components/agent-card';
+import type { AgentCardStatus } from '@/components/agent-card'
 import { AgentChatModal } from '@/components/agent-chat/AgentChatModal'
-import {
-  
-  AgentCard as MiniAgentCard
-} from '@/components/agent-card'
+import { AgentCard as MiniAgentCard } from '@/components/agent-card'
 import { Button } from '@/components/ui/button'
 import {
   Collapsible,
@@ -194,9 +191,9 @@ function ocParseContextPct(payload: unknown): number {
     (root.totals as Record<string, unknown> | undefined) ??
     root
   return ocReadPercent(
-    (usage)?.contextPercent ??
-      (usage)?.context_percent ??
-      (usage)?.context ??
+    usage?.contextPercent ??
+      usage?.context_percent ??
+      usage?.context ??
       root?.contextPercent ??
       root?.context_percent,
   )
@@ -238,7 +235,9 @@ function OrchestratorCard({
       }
     },
   )
-  const [allOcProviders, setAllOcProviders] = useState<Array<OcProviderEntry>>([])
+  const [allOcProviders, setAllOcProviders] = useState<Array<OcProviderEntry>>(
+    [],
+  )
   const [providerFlash, setProviderFlash] = useState(false)
   const flashTimerRefOc = useRef<ReturnType<typeof setTimeout> | null>(null)
 

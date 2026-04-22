@@ -6,12 +6,8 @@ import type {
   AgentSessionStatusEntry,
   TeamMember,
 } from '../components/team-panel'
-import type {ActiveMission, MissionProcessType} from '@/stores/mission-store';
-import {
-  
-  
-  useMissionStore
-} from '@/stores/mission-store'
+import type { ActiveMission, MissionProcessType } from '@/stores/mission-store'
+import { useMissionStore } from '@/stores/mission-store'
 import { killAgentSession, toggleAgentPause } from '@/lib/gateway-api'
 
 type SessionRecord = Record<string, unknown>

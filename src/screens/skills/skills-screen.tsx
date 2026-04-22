@@ -155,17 +155,15 @@ const TAB_OPTIONS: Array<DisplayControl & { value: SkillsTab }> = [
   { label: 'Marketplace', value: 'marketplace' },
 ]
 
-function resolveSourceTier(
-  item: {
-    sourceTier?: string
-    sourceLabel?: string
-    sourcePath?: string
-    builtin?: boolean
-    canEdit?: boolean
-    canUninstall?: boolean
-    canModify?: boolean
-  },
-): string | undefined {
+function resolveSourceTier(item: {
+  sourceTier?: string
+  sourceLabel?: string
+  sourcePath?: string
+  builtin?: boolean
+  canEdit?: boolean
+  canUninstall?: boolean
+  canModify?: boolean
+}): string | undefined {
   if (item.sourceTier) return item.sourceTier
   if (item.builtin) return 'builtin'
   if (item.canEdit || item.canUninstall || item.canModify) return 'workspace'
@@ -201,7 +199,10 @@ function matchesSourceFilter(
   return sourceTier === 'application' || sourceTier === 'external'
 }
 
-function matchesToolsetSearch(toolset: ToolsetSummary, rawSearch: string): boolean {
+function matchesToolsetSearch(
+  toolset: ToolsetSummary,
+  rawSearch: string,
+): boolean {
   const search = rawSearch.trim().toLowerCase()
   if (!search) return true
 
@@ -265,14 +266,16 @@ export function SkillsScreen() {
   const [category, setCategory] = useState('All')
   const [sort, setSort] = useState<SkillsSort>('name')
   const [page, setPage] = useState(1)
-  const [pendingAction, setPendingAction] =
-    useState<PendingSkillAction | null>(null)
+  const [pendingAction, setPendingAction] = useState<PendingSkillAction | null>(
+    null,
+  )
   const [skillOverrides, setSkillOverrides] = useState<
     Record<string, SkillOverride>
   >({})
   const [selectedSkill, setSelectedSkill] = useState<SkillSummary | null>(null)
-  const [selectedToolset, setSelectedToolset] =
-    useState<ToolsetSummary | null>(null)
+  const [selectedToolset, setSelectedToolset] = useState<ToolsetSummary | null>(
+    null,
+  )
   const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -401,7 +404,9 @@ export function SkillsScreen() {
 
   const marketplaceSkills = useMemo<Array<SkillSummary>>(
     function resolveMarketplaceSkills() {
-      const sourceSkills: Array<SkillSummary> = (hubQuery.data?.results || []).map(function mapHubSkill(skill) {
+      const sourceSkills: Array<SkillSummary> = (
+        hubQuery.data?.results || []
+      ).map(function mapHubSkill(skill) {
         // Gateway returns: name, description, source, identifier, trust_level, repo, path, tags, extra, installed
         const skillId = skill.id || skill.name
         const author =
@@ -780,27 +785,27 @@ export function SkillsScreen() {
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
-                {visibleSourceFilters.map((filter) => {
-                  const active = filter === sourceFilter
-                  return (
-                    <button
-                      key={filter}
-                      type="button"
-                      onClick={() => {
-                        setSourceFilter(filter)
-                        setPage(1)
-                      }}
-                      className={cn(
-                        'rounded-button border px-3 py-1.5 text-xs font-semibold transition-colors',
-                        active
-                          ? 'border-primary/40 bg-primary/15 text-primary'
-                          : 'border-border bg-primary-100/50 text-primary-500 hover:border-primary-300 hover:text-ink',
-                      )}
-                    >
-                      {filter}
-                    </button>
-                  )
-                })}
+              {visibleSourceFilters.map((filter) => {
+                const active = filter === sourceFilter
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => {
+                      setSourceFilter(filter)
+                      setPage(1)
+                    }}
+                    className={cn(
+                      'rounded-button border px-3 py-1.5 text-xs font-semibold transition-colors',
+                      active
+                        ? 'border-primary/40 bg-primary/15 text-primary'
+                        : 'border-border bg-primary-100/50 text-primary-500 hover:border-primary-300 hover:text-ink',
+                    )}
+                  >
+                    {filter}
+                  </button>
+                )
+              })}
             </div>
 
             {actionError ? (
@@ -925,7 +930,8 @@ export function SkillsScreen() {
           <footer className="flex items-center justify-between rounded-card border border-border bg-primary-50/80 px-3 py-2.5 text-sm text-primary-500 tabular-nums">
             <span>{toolsets.length.toLocaleString()} visible toolsets</span>
             <span>
-              {(toolsetsQuery.data?.length || 0).toLocaleString()} total in runtime
+              {(toolsetsQuery.data?.length || 0).toLocaleString()} total in
+              runtime
             </span>
           </footer>
         ) : null}
@@ -1042,11 +1048,9 @@ export function SkillsScreen() {
                       }
                     >
                       {pendingAction?.skillId === selectedSkill.id &&
-                      pendingAction.action === 'install' ? (
-                        'Installing…'
-                      ) : (
-                        'Install'
-                      )}
+                      pendingAction.action === 'install'
+                        ? 'Installing…'
+                        : 'Install'}
                     </Button>
                   )}
                   <Button
@@ -1092,7 +1096,9 @@ export function SkillsScreen() {
                         {selectedToolset.enabled ? 'Enabled' : 'Disabled'}
                       </span>
                       <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
-                        {selectedToolset.configured ? 'Configured' : 'No extra config'}
+                        {selectedToolset.configured
+                          ? 'Configured'
+                          : 'No extra config'}
                       </span>
                       {selectedToolset.sourceLabel ? (
                         <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
@@ -1394,8 +1400,8 @@ function SkillsGrid({
                       isInstalling
                         ? 'border-primary/40 bg-primary/15 text-primary'
                         : skill.installed
-                        ? 'border-primary/40 bg-primary/15 text-primary'
-                        : 'border-primary-200 bg-primary-100/60 text-primary-500',
+                          ? 'border-primary/40 bg-primary/15 text-primary'
+                          : 'border-primary-200 bg-primary-100/60 text-primary-500',
                     )}
                   >
                     {isInstalling ? (
@@ -1483,11 +1489,7 @@ function SkillsGrid({
   )
 }
 
-function ToolsetsGrid({
-  toolsets,
-  loading,
-  onOpenDetails,
-}: ToolsetsGridProps) {
+function ToolsetsGrid({ toolsets, loading, onOpenDetails }: ToolsetsGridProps) {
   if (loading) {
     return <SkillsSkeleton count={6} />
   }
@@ -1649,8 +1651,8 @@ function FeaturedGrid({
                   isInstalling
                     ? 'border-primary/40 bg-primary/15 text-primary'
                     : skill.installed
-                    ? 'border-primary/40 bg-primary/15 text-primary'
-                    : 'border-primary-200 bg-primary-100/60 text-primary-500',
+                      ? 'border-primary/40 bg-primary/15 text-primary'
+                      : 'border-primary-200 bg-primary-100/60 text-primary-500',
                 )}
               >
                 {isInstalling ? (

@@ -182,8 +182,7 @@ function normalizeSkill(value: unknown): SkillSummary | null {
     builtin: Boolean(record.builtin),
     sourceTier: readString(record.sourceTier) || undefined,
     sourceLabel: readString(record.sourceLabel) || undefined,
-    canEdit:
-      typeof record.canEdit === 'boolean' ? record.canEdit : undefined,
+    canEdit: typeof record.canEdit === 'boolean' ? record.canEdit : undefined,
     canUninstall:
       typeof record.canUninstall === 'boolean'
         ? record.canUninstall

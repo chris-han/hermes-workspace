@@ -1,4 +1,4 @@
-import {  useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import {
   AiBrain03Icon,
@@ -14,7 +14,7 @@ import { OperationsNewAgentModal } from './components/operations-new-agent-modal
 import { OperationsSettingsModal } from './components/operations-settings-modal'
 import { FullOutputsView } from './components/full-outputs-view'
 import { useOperations } from './hooks/use-operations'
-import type {CSSProperties} from 'react';
+import type { CSSProperties } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/screens/dashboard/lib/formatters'

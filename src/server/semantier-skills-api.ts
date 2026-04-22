@@ -105,18 +105,24 @@ export async function installSemantierSkill(
   })
   headers.set('Content-Type', 'application/json')
 
-  const response = await fetch(withSemantierAgentBase('/system/skills/install'), {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      identifier: payload.identifier,
-      category: payload.category || '',
-      force: Boolean(payload.force),
-    }),
-    signal: AbortSignal.timeout(120_000),
-  })
+  const response = await fetch(
+    withSemantierAgentBase('/system/skills/install'),
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        identifier: payload.identifier,
+        category: payload.category || '',
+        force: Boolean(payload.force),
+      }),
+      signal: AbortSignal.timeout(120_000),
+    },
+  )
 
-  const result = (await response.json().catch(() => ({}))) as Record<string, unknown>
+  const result = (await response.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >
   if (!response.ok) {
     const error =
       (typeof result.error === 'string' && result.error) ||
@@ -141,14 +147,20 @@ export async function toggleSemantierSkill(
   })
   headers.set('Content-Type', 'application/json')
 
-  const response = await fetch(withSemantierAgentBase('/system/skills/toggle'), {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(30_000),
-  })
+  const response = await fetch(
+    withSemantierAgentBase('/system/skills/toggle'),
+    {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30_000),
+    },
+  )
 
-  const result = (await response.json().catch(() => ({}))) as Record<string, unknown>
+  const result = (await response.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >
   if (!response.ok) {
     const error =
       (typeof result.error === 'string' && result.error) ||
@@ -172,14 +184,20 @@ export async function uninstallSemantierSkill(
   })
   headers.set('Content-Type', 'application/json')
 
-  const response = await fetch(withSemantierAgentBase('/system/skills/uninstall'), {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(30_000),
-  })
+  const response = await fetch(
+    withSemantierAgentBase('/system/skills/uninstall'),
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30_000),
+    },
+  )
 
-  const result = (await response.json().catch(() => ({}))) as Record<string, unknown>
+  const result = (await response.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >
   if (!response.ok) {
     const error =
       (typeof result.error === 'string' && result.error) ||

@@ -4,11 +4,10 @@
 // or complement ApprovalsBell for a richer approvals experience.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ApprovalRequest } from '../lib/approvals-store'
-import type {GatewayApprovalEntry} from '@/lib/gateway-api';
+import type { GatewayApprovalEntry } from '@/lib/gateway-api'
 import {
-  
   fetchGatewayApprovals,
-  resolveGatewayApproval
+  resolveGatewayApproval,
 } from '@/lib/gateway-api'
 import { cn } from '@/lib/utils'
 

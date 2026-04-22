@@ -1,4 +1,4 @@
-import {  useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -11,15 +11,14 @@ import {
   TaskDone01Icon,
 } from '@hugeicons/core-free-icons'
 import { OfficeView } from './components/office-view'
-import {
-  
-  
-  useConductorGateway
-} from './hooks/use-conductor-gateway'
+import { useConductorGateway } from './hooks/use-conductor-gateway'
 import type { AgentWorkingRow } from './components/agents-working-panel'
-import type {GatewaySession} from '@/lib/gateway-api';
-import type {CSSProperties} from 'react';
-import type {MissionHistoryEntry, MissionHistoryWorkerDetail} from './hooks/use-conductor-gateway';
+import type { GatewaySession } from '@/lib/gateway-api'
+import type { CSSProperties } from 'react'
+import type {
+  MissionHistoryEntry,
+  MissionHistoryWorkerDetail,
+} from './hooks/use-conductor-gateway'
 import { Button } from '@/components/ui/button'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { cn } from '@/lib/utils'
@@ -445,7 +444,9 @@ function WorkerCard({
   const persona = getAgentPersona(index)
   const workerOutput =
     conductor.workerOutputs[worker.key] ??
-    getLastAssistantMessage(worker.raw.messages as Array<HistoryMessage> | undefined)
+    getLastAssistantMessage(
+      worker.raw.messages as Array<HistoryMessage> | undefined,
+    )
   const workerStartedAt =
     typeof worker.raw.createdAt === 'string'
       ? worker.raw.createdAt
@@ -1436,10 +1437,7 @@ export function Conductor() {
       .filter((session) =>
         ((session.label as string) ?? '').startsWith('worker-'),
       )
-      .filter(
-        (session) =>
-          deriveSessionStatus(session) === activityFilter,
-      )
+      .filter((session) => deriveSessionStatus(session) === activityFilter)
   })()
   const activityItems: Array<MissionHistoryEntry | GatewaySession> =
     hasMissionHistory ? filteredHistory : filteredSessions
@@ -2668,7 +2666,9 @@ export function Conductor() {
                     const output = (
                       conductor.workerOutputs[worker.key] ??
                       getLastAssistantMessage(
-                        worker.raw.messages as Array<HistoryMessage> | undefined,
+                        worker.raw.messages as
+                          | Array<HistoryMessage>
+                          | undefined,
                       )
                     ).trim()
                     if (!output) return null

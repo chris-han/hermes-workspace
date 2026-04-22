@@ -207,7 +207,10 @@ const DESK_POSITIONS_BY_TEMPLATE: Record<
   warroom: WARROOM_DESK_POSITIONS,
 }
 
-const SOCIAL_SPOTS_BY_TEMPLATE: Record<OfficeLayoutTemplate, Array<SocialSpot>> = {
+const SOCIAL_SPOTS_BY_TEMPLATE: Record<
+  OfficeLayoutTemplate,
+  Array<SocialSpot>
+> = {
   grid: GRID_SOCIAL_SPOTS,
   roundtable: ROUNDTABLE_SOCIAL_SPOTS,
   warroom: WARROOM_SOCIAL_SPOTS,

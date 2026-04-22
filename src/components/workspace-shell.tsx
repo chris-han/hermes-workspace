@@ -20,10 +20,7 @@ import type { AuthStatus } from '@/lib/hermes-auth'
 import { cn } from '@/lib/utils'
 import { ConnectionStartupScreen } from '@/components/connection-startup-screen'
 import { ChatSidebar } from '@/screens/chat/components/chat-sidebar'
-import {
-  chatQueryKeys,
-  resetNewChatHistory,
-} from '@/screens/chat/chat-queries'
+import { chatQueryKeys, resetNewChatHistory } from '@/screens/chat/chat-queries'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { SIDEBAR_TOGGLE_EVENT } from '@/hooks/use-global-shortcuts'
 import { useSwipeNavigation } from '@/hooks/use-swipe-navigation'

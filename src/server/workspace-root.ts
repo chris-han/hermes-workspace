@@ -141,7 +141,8 @@ async function fetchAuthenticatedWorkspaceRoot(
     typeof payload.user?.workspace_slug === 'string' &&
     payload.user.workspace_slug.trim()
       ? payload.user.workspace_slug.trim()
-      : typeof payload.workspace_slug === 'string' && payload.workspace_slug.trim()
+      : typeof payload.workspace_slug === 'string' &&
+          payload.workspace_slug.trim()
         ? payload.workspace_slug.trim()
         : userId
 

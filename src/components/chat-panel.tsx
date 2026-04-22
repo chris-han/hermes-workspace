@@ -16,10 +16,10 @@ import { AnimatePresence, motion } from 'motion/react'
 import type { SessionMeta } from '@/screens/chat/types'
 import { ChatScreen } from '@/screens/chat/chat-screen'
 import {
-  chatQueryKeys,
-  moveHistoryMessages,
   NEW_CHAT_FRIENDLY_ID,
   NEW_CHAT_SESSION_KEY,
+  chatQueryKeys,
+  moveHistoryMessages,
   resetNewChatHistory,
 } from '@/screens/chat/chat-queries'
 import { useWorkspaceStore } from '@/stores/workspace-store'

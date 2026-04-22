@@ -740,7 +740,7 @@ export function DashboardScreen() {
     enabled: sessionsAvailable,
   })
 
-  const sessions = (sessionsQuery.data ?? [])
+  const sessions = sessionsQuery.data ?? []
 
   const stats = useMemo(() => {
     let totalMessages = 0,

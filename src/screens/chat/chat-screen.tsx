@@ -11,10 +11,7 @@ import {
 import { useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import {
-  isMissingAuth,
-  textFromMessage,
-} from './utils'
+import { isMissingAuth, textFromMessage } from './utils'
 import {
   advanceStickyStreamingText,
   createOptimisticMessage,
@@ -128,10 +125,7 @@ type PortableHistoryMessage = {
 const DOCX_MIME_TYPE =
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 const PDF_MIME_TYPE = 'application/pdf'
-const UPLOAD_API_DOCUMENT_MIME_TYPES = new Set([
-  DOCX_MIME_TYPE,
-  PDF_MIME_TYPE,
-])
+const UPLOAD_API_DOCUMENT_MIME_TYPES = new Set([DOCX_MIME_TYPE, PDF_MIME_TYPE])
 
 function normalizeMimeType(value: unknown): string {
   if (typeof value !== 'string') return ''
@@ -195,7 +189,8 @@ function buildFileFromAttachment(attachment: ChatAttachment): File | null {
     bytes[index] = binaryStr.charCodeAt(index)
   }
 
-  const fallbackName = mimeType === DOCX_MIME_TYPE ? 'document.docx' : 'document.pdf'
+  const fallbackName =
+    mimeType === DOCX_MIME_TYPE ? 'document.docx' : 'document.pdf'
   return new File([bytes], attachment.name?.trim() || fallbackName, {
     type: mimeType,
   })
@@ -1878,12 +1873,17 @@ export function ChatScreen({
         ...attachment,
         id: attachment.id ?? crypto.randomUUID(),
       }))
-      const uploadApiAttachments = normalizedAttachments.filter((attachment) => {
-        const mime =
-          normalizeMimeType(attachment.contentType ?? '') ||
-          readDataUrlMimeType(attachment.dataUrl)
-        return isUploadApiDocumentMimeType(mime) && (attachment.dataUrl ?? '').length > 0
-      })
+      const uploadApiAttachments = normalizedAttachments.filter(
+        (attachment) => {
+          const mime =
+            normalizeMimeType(attachment.contentType ?? '') ||
+            readDataUrlMimeType(attachment.dataUrl)
+          return (
+            isUploadApiDocumentMimeType(mime) &&
+            (attachment.dataUrl ?? '').length > 0
+          )
+        },
+      )
 
       // Inject text/file attachment content directly into the message body.
       // Servers reliably forward text in the message body; file attachments
@@ -1969,38 +1969,38 @@ export function ChatScreen({
           return !isUploadApiDocumentMimeType(mimeType)
         })
         .map((attachment) => {
-        const mimeType =
-          normalizeMimeType(attachment.contentType) ||
-          readDataUrlMimeType(attachment.dataUrl)
-        const isImage = isImageMimeType(mimeType)
-        // For text/file attachments, dataUrl holds raw text (not a base64 data URL).
-        // We must base64-encode it so the server can build a valid data: URI.
-        const rawDataUrl = attachment.dataUrl ?? ''
-        let encodedContent: string
-        let finalDataUrl: string
-        if (!isImage && !rawDataUrl.startsWith('data:')) {
-          encodedContent = btoa(unescape(encodeURIComponent(rawDataUrl)))
-          finalDataUrl = mimeType
-            ? `data:${mimeType};base64,${encodedContent}`
-            : `data:text/plain;base64,${encodedContent}`
-        } else {
-          encodedContent = stripDataUrlPrefix(rawDataUrl)
-          finalDataUrl = rawDataUrl
-        }
-        return {
-          id: attachment.id,
-          name: attachment.name,
-          fileName: attachment.name,
-          contentType: mimeType || undefined,
-          mimeType: mimeType || undefined,
-          mediaType: mimeType || undefined,
-          type: isImage ? 'image' : 'file',
-          content: encodedContent,
-          data: encodedContent,
-          base64: encodedContent,
-          dataUrl: finalDataUrl,
-          size: attachment.size,
-        }
+          const mimeType =
+            normalizeMimeType(attachment.contentType) ||
+            readDataUrlMimeType(attachment.dataUrl)
+          const isImage = isImageMimeType(mimeType)
+          // For text/file attachments, dataUrl holds raw text (not a base64 data URL).
+          // We must base64-encode it so the server can build a valid data: URI.
+          const rawDataUrl = attachment.dataUrl ?? ''
+          let encodedContent: string
+          let finalDataUrl: string
+          if (!isImage && !rawDataUrl.startsWith('data:')) {
+            encodedContent = btoa(unescape(encodeURIComponent(rawDataUrl)))
+            finalDataUrl = mimeType
+              ? `data:${mimeType};base64,${encodedContent}`
+              : `data:text/plain;base64,${encodedContent}`
+          } else {
+            encodedContent = stripDataUrlPrefix(rawDataUrl)
+            finalDataUrl = rawDataUrl
+          }
+          return {
+            id: attachment.id,
+            name: attachment.name,
+            fileName: attachment.name,
+            contentType: mimeType || undefined,
+            mimeType: mimeType || undefined,
+            mediaType: mimeType || undefined,
+            type: isImage ? 'image' : 'file',
+            content: encodedContent,
+            data: encodedContent,
+            base64: encodedContent,
+            dataUrl: finalDataUrl,
+            size: attachment.size,
+          }
         })
       const history = buildPortableHistory(finalDisplayMessages)
 
@@ -2412,12 +2412,13 @@ export function ChatScreen({
           : undefined
         void (async () => {
           try {
-            const resolvedSession = newSession || (await ensureChatSession(createLabel))
+            const resolvedSession =
+              newSession || (await ensureChatSession(createLabel))
             const { sessionKey, friendlyId } = resolvedSession
-        const { optimisticMessage } = createOptimisticMessage(
-          trimmedBody,
-          attachmentPayload,
-        )
+            const { optimisticMessage } = createOptimisticMessage(
+              trimmedBody,
+              attachmentPayload,
+            )
             appendHistoryMessage(
               queryClient,
               friendlyId,

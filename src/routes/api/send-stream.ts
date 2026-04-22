@@ -10,12 +10,9 @@ import {
   openSemantierSessionEvents,
   sendSemantierSessionMessage,
 } from '../../server/semantier-session-api'
-import {
-  
-  translateSemantierSessionStreamEvent
-} from '../../server/semantier-session-stream'
-import type {WorkspaceStreamEvent} from '../../server/semantier-session-stream';
+import { translateSemantierSessionStreamEvent } from '../../server/semantier-session-stream'
 import { isCurrentRunEvent } from '../../server/stream-event-filter'
+import type { WorkspaceStreamEvent } from '../../server/semantier-session-stream'
 
 const SESSION_BOOTSTRAP_KEYS = new Set(['main', 'new'])
 

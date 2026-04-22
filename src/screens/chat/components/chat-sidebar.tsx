@@ -30,9 +30,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { CHAT_OPEN_SETTINGS_EVENT } from '../chat-events'
+import { fetchHistory } from '../chat-queries'
 import { useChatSettings as useSidebarSettings } from '../hooks/use-chat-settings'
 import { useDeleteSession } from '../hooks/use-delete-session'
 import { useRenameSession } from '../hooks/use-rename-session'
+import { exportConversationPdf } from '../export-conversation-pdf'
 import { ProvidersDialog } from './providers-dialog'
 import { SessionRenameDialog } from './sidebar/session-rename-dialog'
 import { SessionDeleteDialog } from './sidebar/session-delete-dialog'
@@ -65,6 +67,7 @@ import {
   MenuRoot,
   MenuTrigger,
 } from '@/components/ui/menu'
+import { toast } from '@/components/ui/toast'
 import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
 import {
   logoutSemantierAuth,
@@ -680,6 +683,45 @@ function ChatSidebarComponent({
     setDeleteDialogOpen(true)
   }
 
+  async function handleExportPdf(session: SessionMeta) {
+    const sessionKey = (session.key || '').trim()
+    const friendlyId = (session.friendlyId || session.key || '').trim()
+    const title =
+      session.label ||
+      session.title ||
+      session.derivedTitle ||
+      session.friendlyId ||
+      session.key ||
+      'conversation'
+
+    if (!sessionKey && !friendlyId) {
+      toast('Failed to export PDF: missing session id', { type: 'error' })
+      return
+    }
+
+    try {
+      const history = await fetchHistory({
+        sessionKey: sessionKey || friendlyId,
+        friendlyId,
+      })
+      const exported = await exportConversationPdf({
+        sessionLabel: title,
+        messages: history.messages,
+      })
+      if (!exported) {
+        throw new Error('PDF export is unavailable in this environment')
+      }
+      toast('Conversation exported as PDF', { type: 'success' })
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : 'Failed to export conversation as PDF',
+        { type: 'error' },
+      )
+    }
+  }
+
   function handleConfirmDelete() {
     if (deleteSessionKey && deleteFriendlyId) {
       const isActive = deleteFriendlyId === activeFriendlyId
@@ -1120,6 +1162,7 @@ function ChatSidebarComponent({
                     sessions={sessions}
                     activeFriendlyId={activeFriendlyId}
                     onSelect={onSelectSession}
+                    onExportPdf={handleExportPdf}
                     onRename={handleOpenRename}
                     onDelete={handleOpenDelete}
                     loading={sessionsLoading}

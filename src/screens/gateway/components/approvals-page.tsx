@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ApprovalRequest } from '../lib/approvals-store'
-import type {GatewayApprovalEntry} from '@/lib/gateway-api';
-import {
-  
-  fetchGatewayApprovals
-} from '@/lib/gateway-api'
+import type { GatewayApprovalEntry } from '@/lib/gateway-api'
+import { fetchGatewayApprovals } from '@/lib/gateway-api'
 import { cn } from '@/lib/utils'
 
 type ApprovalsPageProps = {
@@ -135,9 +132,9 @@ export function ApprovalsPage({
   onApprove,
   onDeny,
 }: ApprovalsPageProps) {
-  const [gatewayPending, setGatewayPending] = useState<Array<GatewayApprovalEntry>>(
-    [],
-  )
+  const [gatewayPending, setGatewayPending] = useState<
+    Array<GatewayApprovalEntry>
+  >([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [resolvingIds, setResolvingIds] = useState<

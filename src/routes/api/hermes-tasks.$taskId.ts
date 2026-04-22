@@ -36,7 +36,9 @@ export const Route = createFileRoute('/api/hermes-tasks/$taskId')({
         }
 
         try {
-          const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
+          const hermesHome = await resolveWorkspaceTaskHermesHome(
+            request.headers,
+          )
           const body = (await request.json()) as Record<string, unknown>
           const task = updateTask(hermesHome, params.taskId, {
             title: typeof body.title === 'string' ? body.title : undefined,
@@ -94,7 +96,9 @@ export const Route = createFileRoute('/api/hermes-tasks/$taskId')({
         }
 
         try {
-          const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
+          const hermesHome = await resolveWorkspaceTaskHermesHome(
+            request.headers,
+          )
           const body = (await request.json()) as Record<string, unknown>
           if (typeof body.column !== 'string') {
             return jsonResponse({ error: 'column is required' }, 400)

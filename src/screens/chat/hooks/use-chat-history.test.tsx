@@ -2,8 +2,8 @@ import { QueryClient } from '@tanstack/react-query'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { chatQueryKeys } from '../chat-queries'
-import type { HistoryResponse } from '../types'
 import { getNewChatHistorySnapshot } from './use-chat-history'
+import type { HistoryResponse } from '../types'
 
 afterEach(() => {
   // no-op placeholder for consistency with other hook tests
@@ -29,7 +29,10 @@ describe('getNewChatHistorySnapshot', () => {
       ],
     }
 
-    queryClient.setQueryData(chatQueryKeys.history('new', 'main'), cachedHistory)
+    queryClient.setQueryData(
+      chatQueryKeys.history('new', 'main'),
+      cachedHistory,
+    )
 
     expect(
       getNewChatHistorySnapshot(

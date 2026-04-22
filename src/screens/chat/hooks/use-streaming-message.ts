@@ -791,9 +791,10 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
         })
 
         if (!response.ok) {
-          const payload = (await response
-            .json()
-            .catch(() => null)) as Record<string, unknown> | null
+          const payload = (await response.json().catch(() => null)) as Record<
+            string,
+            unknown
+          > | null
           const payloadError =
             typeof payload?.error === 'string' ? payload.error.trim() : ''
           const payloadMessage =

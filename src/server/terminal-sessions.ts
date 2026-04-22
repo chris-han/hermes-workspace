@@ -10,7 +10,6 @@ import EventEmitter from 'node:events'
 import { formatWorkspaceCwdLabel, resolveWorkspaceCwd } from './workspace-root'
 import type { ChildProcess } from 'node:child_process'
 
-
 export type TerminalSessionEvent = {
   event: string
   payload: unknown

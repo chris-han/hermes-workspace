@@ -2,11 +2,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import YAML from 'yaml'
-import {
-  
-  readKnowledgeBaseConfig
-} from './knowledge-config'
-import type {KnowledgeBaseSource} from './knowledge-config';
+import { readKnowledgeBaseConfig } from './knowledge-config'
+import type { KnowledgeBaseSource } from './knowledge-config'
 
 export type WikiPageMeta = {
   path: string

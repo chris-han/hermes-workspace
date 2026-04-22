@@ -20,7 +20,11 @@ export function readAttemptId(payload: unknown): string {
  * payload carries an attempt_id that does not match the current runId the
  * frame is from a previous attempt and must be dropped.
  */
-export function isCurrentRunEvent(eventType: string, payload: unknown, runId: string): boolean {
+export function isCurrentRunEvent(
+  eventType: string,
+  payload: unknown,
+  runId: string,
+): boolean {
   const streamEventTypes = new Set([
     'text_delta',
     'reasoning_delta',

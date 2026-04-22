@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import type {GatewaySession} from '@/lib/gateway-api';
-import {  fetchSessions } from '@/lib/gateway-api'
+import type { GatewaySession } from '@/lib/gateway-api'
+import { fetchSessions } from '@/lib/gateway-api'
 
 type HistoryMessagePart = {
   type?: string
@@ -825,9 +825,9 @@ export function useConductorGateway() {
   const [tasks, setTasks] = useState<Array<ConductorTask>>(
     () => initialMission?.tasks ?? [],
   )
-  const [missionHistory, setMissionHistory] = useState<Array<MissionHistoryEntry>>(
-    () => loadMissionHistory(),
-  )
+  const [missionHistory, setMissionHistory] = useState<
+    Array<MissionHistoryEntry>
+  >(() => loadMissionHistory())
   const [selectedHistoryEntry, setSelectedHistoryEntry] =
     useState<MissionHistoryEntry | null>(null)
   const [conductorSettings, setConductorSettings] = useState<ConductorSettings>(

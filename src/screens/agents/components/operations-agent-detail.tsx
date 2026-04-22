@@ -8,9 +8,9 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import type { OperationsAgent } from '../hooks/use-operations'
-import type {GatewayModelCatalogEntry} from '@/lib/gateway-api';
+import type { GatewayModelCatalogEntry } from '@/lib/gateway-api'
 import { Button } from '@/components/ui/button'
-import {  fetchModels } from '@/lib/gateway-api'
+import { fetchModels } from '@/lib/gateway-api'
 import { cn } from '@/lib/utils'
 
 type AvailableModel = {

@@ -1,12 +1,12 @@
-import {  useMemo } from 'react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { OfficeView } from './components/office-view'
-import type {CSSProperties} from 'react';
+import type { CSSProperties } from 'react'
 import type { AgentWorkingRow } from './components/agents-working-panel'
 import type { AgentHubLayoutProps } from './components/hub-constants'
-import type {GatewaySession} from '@/lib/gateway-api';
-import {  fetchSessions } from '@/lib/gateway-api'
+import type { GatewaySession } from '@/lib/gateway-api'
+import { fetchSessions } from '@/lib/gateway-api'
 
 export { AgentAvatar } from './components/agent-avatar'
 

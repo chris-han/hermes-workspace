@@ -1,11 +1,5 @@
-import {
-  MODEL_PRESETS,
-  
-  TEAM_TEMPLATES
-  
-  
-} from './team-panel'
-import type {ModelPresetId, TeamMember, TeamTemplateId} from './team-panel';
+import { MODEL_PRESETS, TEAM_TEMPLATES } from './team-panel'
+import type { ModelPresetId, TeamMember, TeamTemplateId } from './team-panel'
 import type { MissionArtifact } from '@/stores/mission-store'
 import type { HubTask } from './task-board'
 

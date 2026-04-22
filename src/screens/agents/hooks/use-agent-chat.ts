@@ -1,11 +1,7 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type {SessionHistoryMessage} from '@/lib/gateway-api';
-import {
-  
-  fetchSessionHistory,
-  sendToSession
-} from '@/lib/gateway-api'
+import type { SessionHistoryMessage } from '@/lib/gateway-api'
+import { fetchSessionHistory, sendToSession } from '@/lib/gateway-api'
 
 export type OperationsChatMessage = {
   id: string

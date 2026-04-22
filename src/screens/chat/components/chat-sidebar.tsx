@@ -30,7 +30,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { CHAT_OPEN_SETTINGS_EVENT } from '../chat-events'
-import { fetchHistory } from '../chat-queries'
 import { useChatSettings as useSidebarSettings } from '../hooks/use-chat-settings'
 import { useDeleteSession } from '../hooks/use-delete-session'
 import { useRenameSession } from '../hooks/use-rename-session'
@@ -700,13 +699,10 @@ function ChatSidebarComponent({
     }
 
     try {
-      const history = await fetchHistory({
-        sessionKey: sessionKey || friendlyId,
-        friendlyId,
-      })
       const exported = await exportConversationPdf({
         sessionLabel: title,
-        messages: history.messages,
+        sessionKey: sessionKey || friendlyId,
+        friendlyId,
       })
       if (!exported) {
         throw new Error('PDF export is unavailable in this environment')

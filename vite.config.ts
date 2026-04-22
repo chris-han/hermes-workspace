@@ -645,18 +645,14 @@ const config = defineConfig(({ mode, command }) => {
     },
     ssr: {
       external: [
-        'playwright',
-        'playwright-core',
-        'playwright-extra',
-        'puppeteer-extra-plugin-stealth',
+        'md-to-pdf',
+        'puppeteer',
       ],
     },
     optimizeDeps: {
       exclude: [
-        'playwright',
-        'playwright-core',
-        'playwright-extra',
-        'puppeteer-extra-plugin-stealth',
+        'md-to-pdf',
+        'puppeteer',
       ],
     },
     server: {

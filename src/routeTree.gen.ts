@@ -42,6 +42,7 @@ import { Route as ApiSessionsRouteImport } from './routes/api/sessions'
 import { Route as ApiSessionStatusRouteImport } from './routes/api/session-status'
 import { Route as ApiSessionSendRouteImport } from './routes/api/session-send'
 import { Route as ApiSessionHistoryRouteImport } from './routes/api/session-history'
+import { Route as ApiSessionExportPdfRouteImport } from './routes/api/session-export-pdf'
 import { Route as ApiSendStreamRouteImport } from './routes/api/send-stream'
 import { Route as ApiSendRouteImport } from './routes/api/send'
 import { Route as ApiPingRouteImport } from './routes/api/ping'
@@ -264,6 +265,11 @@ const ApiSessionSendRoute = ApiSessionSendRouteImport.update({
 const ApiSessionHistoryRoute = ApiSessionHistoryRouteImport.update({
   id: '/api/session-history',
   path: '/api/session-history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSessionExportPdfRoute = ApiSessionExportPdfRouteImport.update({
+  id: '/api/session-export-pdf',
+  path: '/api/session-export-pdf',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSendStreamRoute = ApiSendStreamRouteImport.update({
@@ -597,6 +603,7 @@ export interface FileRoutesByFullPath {
   '/api/ping': typeof ApiPingRoute
   '/api/send': typeof ApiSendRoute
   '/api/send-stream': typeof ApiSendStreamRoute
+  '/api/session-export-pdf': typeof ApiSessionExportPdfRoute
   '/api/session-history': typeof ApiSessionHistoryRoute
   '/api/session-send': typeof ApiSessionSendRoute
   '/api/session-status': typeof ApiSessionStatusRoute
@@ -689,6 +696,7 @@ export interface FileRoutesByTo {
   '/api/ping': typeof ApiPingRoute
   '/api/send': typeof ApiSendRoute
   '/api/send-stream': typeof ApiSendStreamRoute
+  '/api/session-export-pdf': typeof ApiSessionExportPdfRoute
   '/api/session-history': typeof ApiSessionHistoryRoute
   '/api/session-send': typeof ApiSessionSendRoute
   '/api/session-status': typeof ApiSessionStatusRoute
@@ -783,6 +791,7 @@ export interface FileRoutesById {
   '/api/ping': typeof ApiPingRoute
   '/api/send': typeof ApiSendRoute
   '/api/send-stream': typeof ApiSendStreamRoute
+  '/api/session-export-pdf': typeof ApiSessionExportPdfRoute
   '/api/session-history': typeof ApiSessionHistoryRoute
   '/api/session-send': typeof ApiSessionSendRoute
   '/api/session-status': typeof ApiSessionStatusRoute
@@ -878,6 +887,7 @@ export interface FileRouteTypes {
     | '/api/ping'
     | '/api/send'
     | '/api/send-stream'
+    | '/api/session-export-pdf'
     | '/api/session-history'
     | '/api/session-send'
     | '/api/session-status'
@@ -970,6 +980,7 @@ export interface FileRouteTypes {
     | '/api/ping'
     | '/api/send'
     | '/api/send-stream'
+    | '/api/session-export-pdf'
     | '/api/session-history'
     | '/api/session-send'
     | '/api/session-status'
@@ -1063,6 +1074,7 @@ export interface FileRouteTypes {
     | '/api/ping'
     | '/api/send'
     | '/api/send-stream'
+    | '/api/session-export-pdf'
     | '/api/session-history'
     | '/api/session-send'
     | '/api/session-status'
@@ -1157,6 +1169,7 @@ export interface RootRouteChildren {
   ApiPingRoute: typeof ApiPingRoute
   ApiSendRoute: typeof ApiSendRoute
   ApiSendStreamRoute: typeof ApiSendStreamRoute
+  ApiSessionExportPdfRoute: typeof ApiSessionExportPdfRoute
   ApiSessionHistoryRoute: typeof ApiSessionHistoryRoute
   ApiSessionSendRoute: typeof ApiSessionSendRoute
   ApiSessionStatusRoute: typeof ApiSessionStatusRoute
@@ -1427,6 +1440,13 @@ declare module '@tanstack/react-router' {
       path: '/api/session-history'
       fullPath: '/api/session-history'
       preLoaderRoute: typeof ApiSessionHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/session-export-pdf': {
+      id: '/api/session-export-pdf'
+      path: '/api/session-export-pdf'
+      fullPath: '/api/session-export-pdf'
+      preLoaderRoute: typeof ApiSessionExportPdfRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/send-stream': {
@@ -1980,6 +2000,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPingRoute: ApiPingRoute,
   ApiSendRoute: ApiSendRoute,
   ApiSendStreamRoute: ApiSendStreamRoute,
+  ApiSessionExportPdfRoute: ApiSessionExportPdfRoute,
   ApiSessionHistoryRoute: ApiSessionHistoryRoute,
   ApiSessionSendRoute: ApiSessionSendRoute,
   ApiSessionStatusRoute: ApiSessionStatusRoute,

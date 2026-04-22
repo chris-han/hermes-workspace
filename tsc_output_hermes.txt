@@ -1,0 +1,144 @@
+src/components/dashboard-overflow-panel.tsx(151,26): error TS2552: Cannot find name 'nextTheme'. Did you mean 'getTheme'?
+src/components/mobile-hamburger-menu.tsx(343,20): error TS18048: 'semantierAuth' is possibly 'undefined'.
+src/components/mobile-hamburger-menu.tsx(343,51): error TS18048: 'semantierAuth' is possibly 'undefined'.
+src/components/mobile-hamburger-menu.tsx(344,39): error TS18048: 'semantierAuth' is possibly 'undefined'.
+src/components/mobile-hamburger-menu.tsx(345,43): error TS18048: 'semantierAuth' is possibly 'undefined'.
+src/components/mobile-hamburger-menu.tsx(347,18): error TS18048: 'semantierAuth' is possibly 'undefined'.
+src/lib/i18n.ts(66,3): error TS2322: Type '"Panel"' is not assignable to type '"Dashboard"'.
+src/lib/i18n.ts(68,3): error TS2322: Type '"Archivos"' is not assignable to type '"Files"'.
+src/lib/i18n.ts(70,3): error TS2322: Type '"Trabajos"' is not assignable to type '"Jobs"'.
+src/lib/i18n.ts(71,3): error TS2322: Type '"Tareas"' is not assignable to type '"Tasks"'.
+src/lib/i18n.ts(72,3): error TS2322: Type '"Memoria"' is not assignable to type '"Memory"'.
+src/lib/i18n.ts(73,3): error TS2322: Type '"Habilidades"' is not assignable to type '"Skills"'.
+src/lib/i18n.ts(74,3): error TS2322: Type '"Perfiles"' is not assignable to type '"Profiles"'.
+src/lib/i18n.ts(75,3): error TS2322: Type '"Configuración"' is not assignable to type '"Settings"'.
+src/lib/i18n.ts(76,3): error TS2322: Type '"Instaladas"' is not assignable to type '"Installed"'.
+src/lib/i18n.ts(77,3): error TS2322: Type '"Mercado"' is not assignable to type '"Marketplace"'.
+src/lib/i18n.ts(78,3): error TS2322: Type '"Buscar por nombre, etiquetas o descripción"' is not assignable to type '"Search by name, tags, or description"'.
+src/lib/i18n.ts(79,3): error TS2322: Type '"No se encontraron habilidades"' is not assignable to type '"No skills found"'.
+src/lib/i18n.ts(80,3): error TS2322: Type '"Perfiles"' is not assignable to type '"Profiles"'.
+src/lib/i18n.ts(81,3): error TS2322: Type '"Monitoreo"' is not assignable to type '"Monitoring"'.
+src/lib/i18n.ts(82,3): error TS2322: Type '"Tareas"' is not assignable to type '"Tasks"'.
+src/lib/i18n.ts(83,3): error TS2322: Type '"Nueva Tarea"' is not assignable to type '"New Task"'.
+src/lib/i18n.ts(84,3): error TS2322: Type '"Pendientes"' is not assignable to type '"Backlog"'.
+src/lib/i18n.ts(85,3): error TS2322: Type '"Por Hacer"' is not assignable to type '"Todo"'.
+src/lib/i18n.ts(86,3): error TS2322: Type '"En Progreso"' is not assignable to type '"In Progress"'.
+src/lib/i18n.ts(87,3): error TS2322: Type '"Revisión"' is not assignable to type '"Review"'.
+src/lib/i18n.ts(88,3): error TS2322: Type '"Hecho"' is not assignable to type '"Done"'.
+src/lib/i18n.ts(89,3): error TS2322: Type '"Trabajos"' is not assignable to type '"Jobs"'.
+src/lib/i18n.ts(90,3): error TS2322: Type '"Nuevo Trabajo"' is not assignable to type '"New Job"'.
+src/lib/i18n.ts(91,3): error TS2322: Type '"Configuración"' is not assignable to type '"Settings"'.
+src/lib/i18n.ts(92,3): error TS2322: Type '"Idioma"' is not assignable to type '"Language"'.
+src/lib/i18n.ts(93,3): error TS2322: Type '"Elige el idioma de la interfaz del espacio de trabajo."' is not assignable to type '"Choose the display language for the workspace UI."'.
+src/lib/i18n.ts(95,3): error TS2322: Type '"Guardar"' is not assignable to type '"Save"'.
+src/lib/i18n.ts(96,3): error TS2322: Type '"Cancelar"' is not assignable to type '"Cancel"'.
+src/lib/i18n.ts(97,3): error TS2322: Type '"Eliminar"' is not assignable to type '"Delete"'.
+src/lib/i18n.ts(98,3): error TS2322: Type '"Buscar"' is not assignable to type '"Search"'.
+src/lib/i18n.ts(99,3): error TS2322: Type '"Cargando..."' is not assignable to type '"Loading..."'.
+src/lib/i18n.ts(101,3): error TS2322: Type '"Sin datos"' is not assignable to type '"No data"'.
+src/lib/i18n.ts(105,3): error TS2322: Type '"Tableau de bord"' is not assignable to type '"Dashboard"'.
+src/lib/i18n.ts(107,3): error TS2322: Type '"Fichiers"' is not assignable to type '"Files"'.
+src/lib/i18n.ts(109,3): error TS2322: Type '"Tâches planifiées"' is not assignable to type '"Jobs"'.
+src/lib/i18n.ts(110,3): error TS2322: Type '"Tâches"' is not assignable to type '"Tasks"'.
+src/lib/i18n.ts(111,3): error TS2322: Type '"Mémoire"' is not assignable to type '"Memory"'.
+src/lib/i18n.ts(112,3): error TS2322: Type '"Compétences"' is not assignable to type '"Skills"'.
+src/lib/i18n.ts(113,3): error TS2322: Type '"Profils"' is not assignable to type '"Profiles"'.
+src/lib/i18n.ts(114,3): error TS2322: Type '"Paramètres"' is not assignable to type '"Settings"'.
+src/lib/i18n.ts(115,3): error TS2322: Type '"Installées"' is not assignable to type '"Installed"'.
+src/lib/i18n.ts(116,3): error TS2322: Type '"Marché"' is not assignable to type '"Marketplace"'.
+src/lib/i18n.ts(117,3): error TS2322: Type '"Rechercher par nom, tags ou description"' is not assignable to type '"Search by name, tags, or description"'.
+src/lib/i18n.ts(118,3): error TS2322: Type '"Aucune compétence trouvée"' is not assignable to type '"No skills found"'.
+src/lib/i18n.ts(119,3): error TS2322: Type '"Profils"' is not assignable to type '"Profiles"'.
+src/lib/i18n.ts(120,3): error TS2322: Type '"Surveillance"' is not assignable to type '"Monitoring"'.
+src/lib/i18n.ts(121,3): error TS2322: Type '"Tâches"' is not assignable to type '"Tasks"'.
+src/lib/i18n.ts(122,3): error TS2322: Type '"Nouvelle Tâche"' is not assignable to type '"New Task"'.
+src/lib/i18n.ts(123,3): error TS2322: Type '"En attente"' is not assignable to type '"Backlog"'.
+src/lib/i18n.ts(124,3): error TS2322: Type '"À faire"' is not assignable to type '"Todo"'.
+src/lib/i18n.ts(125,3): error TS2322: Type '"En cours"' is not assignable to type '"In Progress"'.
+src/lib/i18n.ts(126,3): error TS2322: Type '"Révision"' is not assignable to type '"Review"'.
+src/lib/i18n.ts(127,3): error TS2322: Type '"Terminé"' is not assignable to type '"Done"'.
+src/lib/i18n.ts(128,3): error TS2322: Type '"Tâches planifiées"' is not assignable to type '"Jobs"'.
+src/lib/i18n.ts(129,3): error TS2322: Type '"Nouvelle tâche"' is not assignable to type '"New Job"'.
+src/lib/i18n.ts(130,3): error TS2322: Type '"Paramètres"' is not assignable to type '"Settings"'.
+src/lib/i18n.ts(131,3): error TS2322: Type '"Langue"' is not assignable to type '"Language"'.
+src/lib/i18n.ts(132,3): error TS2322: Type '"Choisissez la langue d'affichage de l'espace de travail."' is not assignable to type '"Choose the display language for the workspace UI."'.
+src/lib/i18n.ts(134,3): error TS2322: Type '"Enregistrer"' is not assignable to type '"Save"'.
+src/lib/i18n.ts(135,3): error TS2322: Type '"Annuler"' is not assignable to type '"Cancel"'.
+src/lib/i18n.ts(136,3): error TS2322: Type '"Supprimer"' is not assignable to type '"Delete"'.
+src/lib/i18n.ts(137,3): error TS2322: Type '"Rechercher"' is not assignable to type '"Search"'.
+src/lib/i18n.ts(138,3): error TS2322: Type '"Chargement..."' is not assignable to type '"Loading..."'.
+src/lib/i18n.ts(139,3): error TS2322: Type '"Erreur"' is not assignable to type '"Error"'.
+src/lib/i18n.ts(140,3): error TS2322: Type '"Aucune donnée"' is not assignable to type '"No data"'.
+src/lib/i18n.ts(144,3): error TS2322: Type '"仪表板"' is not assignable to type '"Dashboard"'.
+src/lib/i18n.ts(145,3): error TS2322: Type '"聊天"' is not assignable to type '"Chat"'.
+src/lib/i18n.ts(146,3): error TS2322: Type '"文件"' is not assignable to type '"Files"'.
+src/lib/i18n.ts(147,3): error TS2322: Type '"终端"' is not assignable to type '"Terminal"'.
+src/lib/i18n.ts(148,3): error TS2322: Type '"任务计划"' is not assignable to type '"Jobs"'.
+src/lib/i18n.ts(149,3): error TS2322: Type '"任务"' is not assignable to type '"Tasks"'.
+src/lib/i18n.ts(150,3): error TS2322: Type '"记忆"' is not assignable to type '"Memory"'.
+src/lib/i18n.ts(151,3): error TS2322: Type '"技能"' is not assignable to type '"Skills"'.
+src/lib/i18n.ts(152,3): error TS2322: Type '"配置"' is not assignable to type '"Profiles"'.
+src/lib/i18n.ts(153,3): error TS2322: Type '"设置"' is not assignable to type '"Settings"'.
+src/lib/i18n.ts(154,3): error TS2322: Type '"已安装"' is not assignable to type '"Installed"'.
+src/lib/i18n.ts(155,3): error TS2322: Type '"市场"' is not assignable to type '"Marketplace"'.
+src/lib/i18n.ts(156,3): error TS2322: Type '"按名称、标签或描述搜索"' is not assignable to type '"Search by name, tags, or description"'.
+src/lib/i18n.ts(157,3): error TS2322: Type '"未找到技能"' is not assignable to type '"No skills found"'.
+src/lib/i18n.ts(158,3): error TS2322: Type '"配置"' is not assignable to type '"Profiles"'.
+src/lib/i18n.ts(159,3): error TS2322: Type '"监控"' is not assignable to type '"Monitoring"'.
+src/lib/i18n.ts(160,3): error TS2322: Type '"任务"' is not assignable to type '"Tasks"'.
+src/lib/i18n.ts(161,3): error TS2322: Type '"新建任务"' is not assignable to type '"New Task"'.
+src/lib/i18n.ts(162,3): error TS2322: Type '"待办"' is not assignable to type '"Backlog"'.
+src/lib/i18n.ts(163,3): error TS2322: Type '"计划中"' is not assignable to type '"Todo"'.
+src/lib/i18n.ts(164,3): error TS2322: Type '"进行中"' is not assignable to type '"In Progress"'.
+src/lib/i18n.ts(165,3): error TS2322: Type '"审核"' is not assignable to type '"Review"'.
+src/lib/i18n.ts(166,3): error TS2322: Type '"完成"' is not assignable to type '"Done"'.
+src/lib/i18n.ts(167,3): error TS2322: Type '"任务计划"' is not assignable to type '"Jobs"'.
+src/lib/i18n.ts(168,3): error TS2322: Type '"新建计划"' is not assignable to type '"New Job"'.
+src/lib/i18n.ts(169,3): error TS2322: Type '"设置"' is not assignable to type '"Settings"'.
+src/lib/i18n.ts(170,3): error TS2322: Type '"语言"' is not assignable to type '"Language"'.
+src/lib/i18n.ts(171,3): error TS2322: Type '"选择工作区界面显示语言。"' is not assignable to type '"Choose the display language for the workspace UI."'.
+src/lib/i18n.ts(172,3): error TS2322: Type '"保存"' is not assignable to type '"Save"'.
+src/lib/i18n.ts(173,3): error TS2322: Type '"取消"' is not assignable to type '"Cancel"'.
+src/lib/i18n.ts(174,3): error TS2322: Type '"删除"' is not assignable to type '"Delete"'.
+src/lib/i18n.ts(175,3): error TS2322: Type '"搜索"' is not assignable to type '"Search"'.
+src/lib/i18n.ts(176,3): error TS2322: Type '"加载中..."' is not assignable to type '"Loading..."'.
+src/lib/i18n.ts(177,3): error TS2322: Type '"错误"' is not assignable to type '"Error"'.
+src/lib/i18n.ts(178,3): error TS2322: Type '"暂无数据"' is not assignable to type '"No data"'.
+src/routes/__root.tsx(294,7): error TS2322: Type 'ServiceWorkerContainer | undefined' is not assignable to type 'ServiceWorkerLike | undefined'.
+  Type 'ServiceWorkerContainer' is not assignable to type 'ServiceWorkerLike'.
+    The types returned by 'getRegistrations()' are incompatible between these types.
+      Type 'Promise<readonly ServiceWorkerRegistration[]>' is not assignable to type 'Promise<{ unregister: () => void | Promise<void>; }[]>'.
+        The type 'readonly ServiceWorkerRegistration[]' is 'readonly' and cannot be assigned to the mutable type '{ unregister: () => void | Promise<void>; }[]'.
+src/routes/api/hermes-tasks.$taskId.ts(49,13): error TS2322: Type 'string | undefined' is not assignable to type 'TaskColumn | undefined'.
+  Type 'string' is not assignable to type 'TaskColumn | undefined'.
+src/routes/api/hermes-tasks.$taskId.ts(50,13): error TS2322: Type 'string | undefined' is not assignable to type 'TaskPriority | undefined'.
+  Type 'string' is not assignable to type 'TaskPriority | undefined'.
+src/routes/api/hermes-tasks.ts(55,13): error TS2322: Type 'string | undefined' is not assignable to type 'TaskColumn | undefined'.
+  Type 'string' is not assignable to type 'TaskColumn | undefined'.
+src/routes/api/hermes-tasks.ts(56,13): error TS2322: Type 'string | undefined' is not assignable to type 'TaskPriority | undefined'.
+  Type 'string' is not assignable to type 'TaskPriority | undefined'.
+src/routes/api/models.ts(77,5): error TS2322: Type '({ id: string; name: string; provider: string; } | null)[]' is not assignable to type 'ModelEntry[]'.
+  Type '{ id: string; name: string; provider: string; } | null' is not assignable to type 'ModelEntry'.
+    Type 'null' is not assignable to type 'ModelEntry'.
+src/routes/api/session-export-pdf.ts(255,31): error TS2345: Argument of type 'Buffer<ArrayBufferLike>' is not assignable to parameter of type 'BodyInit | null | undefined'.
+  Type 'Buffer<ArrayBufferLike>' is missing the following properties from type 'URLSearchParams': size, append, delete, get, and 2 more.
+src/routes/api/upload.ts(24,41): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+src/screens/chat/chat-queries.ts(493,43): error TS2339: Property 'messages' does not exist on type '{}'.
+src/screens/chat/chat-queries.ts(493,64): error TS2339: Property 'messages' does not exist on type '{}'.
+src/screens/chat/components/chat-message-list.tsx(417,29): error TS2339: Property 'id' does not exist on type '{ name: string; phase: string; }'.
+src/screens/chat/components/chat-sidebar.tsx(257,19): error TS2322: Type 'Record<string, unknown> | undefined' is not assignable to type 'true | ParamsReducerFn<RouterCore<Route<Register, any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, RootRouteChildren, FileRouteTypes, unknown, unknown, undefined>, "never", false, RouterHistory, Record<...>>, "SEARCH", string, string | undefined> | undefined'.
+  Type 'Record<string, unknown>' is not assignable to type 'true | ParamsReducerFn<RouterCore<Route<Register, any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, RootRouteChildren, FileRouteTypes, unknown, unknown, undefined>, "never", false, RouterHistory, Record<...>>, "SEARCH", string, string | undefined> | undefined'.
+src/screens/chat/components/chat-sidebar.tsx(275,9): error TS2322: Type 'Record<string, unknown> | undefined' is not assignable to type 'true | ParamsReducerFn<RouterCore<Route<Register, any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, RootRouteChildren, FileRouteTypes, unknown, unknown, undefined>, "never", false, RouterHistory, Record<...>>, "SEARCH", string, string | undefined> | undefined'.
+  Type 'Record<string, unknown>' is not assignable to type 'true | ParamsReducerFn<RouterCore<Route<Register, any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, RootRouteChildren, FileRouteTypes, unknown, unknown, undefined>, "never", false, RouterHistory, Record<...>>, "SEARCH", string, string | undefined> | undefined'.
+src/screens/gateway/agents-screen.tsx(713,5): error TS2322: Type 'Element | null' is not assignable to type 'HTMLElement | null'.
+  Type 'Element' is missing the following properties from type 'HTMLElement': accessKey, accessKeyLabel, autocapitalize, autocorrect, and 129 more.
+src/screens/gateway/agents-screen.tsx(1866,56): error TS2322: Type '"/cron"' is not assignable to type '"." | ".." | "/api/connection-status" | "/api/gateway-status" | "/api/sessions" | "/" | "/chat" | "/$" | "/conductor" | "/dashboard" | "/files" | "/jobs" | "/memory" | "/operations" | ... 78 more ... | "/api/sessions/$sessionKey/status"'.
+src/screens/memory/knowledge-browser-screen.tsx(465,30): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & DialogTriggerProps<unknown> & RefAttributes<HTMLElement>'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & DialogTriggerProps<unknown> & RefAttributes<HTMLElement>'.
+src/screens/memory/knowledge-browser-screen.tsx(486,17): error TS2322: Type '{ children: Element; className: string; style: { backgroundColor: string; color: string; border: string; }; }' is not assignable to type 'IntrinsicAttributes & DialogContentProps'.
+  Property 'style' does not exist on type 'IntrinsicAttributes & DialogContentProps'.
+src/server/chat-backends.ts(141,21): error TS2339: Property 'text' does not exist on type 'StreamChunkType'.
+  Property 'text' does not exist on type '{ type: "tool"; name: string; label: string; }'.
+src/server/local-provider-discovery.ts(111,11): error TS2322: Type '({ id: string; name: string; provider: string; source: "local-discovery"; size: number | null; } | null)[]' is not assignable to type 'DiscoveredModel[]'.
+  Type '{ id: string; name: string; provider: string; source: "local-discovery"; size: number | null; } | null' is not assignable to type 'DiscoveredModel'.
+    Type 'null' is not assignable to type 'DiscoveredModel'.

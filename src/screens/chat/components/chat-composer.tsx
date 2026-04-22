@@ -486,16 +486,6 @@ async function readFileAsText(file: File): Promise<string | null> {
   })
 }
 
-async function readDocxAsText(file: File): Promise<string | null> {
-  try {
-    const arrayBuffer = await file.arrayBuffer()
-    const result = await extractRawText({ arrayBuffer })
-    return result.value.trim()
-  } catch {
-    return null
-  }
-}
-
 function readText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
@@ -1254,10 +1244,24 @@ function ChatComposerComponent({
                 }
               }
 
-              const textContent =
-                resolvedMimeType === DOCX_MIME_TYPE
-                  ? await readDocxAsText(file)
-                  : await readFileAsText(file)
+              if (resolvedMimeType === DOCX_MIME_TYPE) {
+                const dataUrl = await readFileAsDataUrl(file)
+                if (!dataUrl) return null
+
+                return {
+                  id: crypto.randomUUID(),
+                  name:
+                    file.name && file.name.trim().length > 0
+                      ? file.name.trim()
+                      : `attachment-${timestamp}-${index + 1}.docx`,
+                  contentType: DOCX_MIME_TYPE,
+                  size: file.size,
+                  dataUrl,
+                  kind: 'file',
+                }
+              }
+
+              const textContent = await readFileAsText(file)
               if (textContent === null) return null
               const name =
                 file.name && file.name.trim().length > 0

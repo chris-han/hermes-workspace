@@ -198,7 +198,7 @@ export function MobileHamburgerMenu() {
           <div className="flex items-center gap-2.5">
             <img
               src="/logo.svg"
-              alt="Semantier"
+              alt="semantier logo"
               className="size-8 rounded-xl shrink-0"
             />
             <div className="flex flex-col leading-tight">

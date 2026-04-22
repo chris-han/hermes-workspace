@@ -1261,8 +1261,8 @@ function SecurityScanCard({ security }: { security: SecurityRisk }) {
         </p>
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <span className="text-primary-500 font-medium w-16 shrink-0">
-              Semantier
+            <span className="brand-wordmark text-primary-500 font-medium w-16 shrink-0">
+              semantier
             </span>
             <span
               className={cn(

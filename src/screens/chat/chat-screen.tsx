@@ -125,6 +125,14 @@ type PortableHistoryMessage = {
   content: string
 }
 
+const DOCX_MIME_TYPE =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const PDF_MIME_TYPE = 'application/pdf'
+const UPLOAD_API_DOCUMENT_MIME_TYPES = new Set([
+  DOCX_MIME_TYPE,
+  PDF_MIME_TYPE,
+])
+
 function normalizeMimeType(value: unknown): string {
   if (typeof value !== 'string') return ''
   return value.trim().toLowerCase()
@@ -140,9 +148,12 @@ function isTextLikeMimeType(value: unknown): boolean {
   return (
     normalized.startsWith('text/') ||
     normalized === 'application/json' ||
-    normalized ===
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    normalized === DOCX_MIME_TYPE
   )
+}
+
+function isUploadApiDocumentMimeType(value: unknown): boolean {
+  return UPLOAD_API_DOCUMENT_MIME_TYPES.has(normalizeMimeType(value))
 }
 
 function readDataUrlMimeType(value: unknown): string {
@@ -160,6 +171,98 @@ function stripDataUrlPrefix(value: unknown): string {
     return trimmed.slice(commaIndex + 1).trim()
   }
   return trimmed
+}
+
+function buildFileFromAttachment(attachment: ChatAttachment): File | null {
+  const mimeType =
+    normalizeMimeType(attachment.contentType) ||
+    readDataUrlMimeType(attachment.dataUrl)
+  if (!isUploadApiDocumentMimeType(mimeType)) {
+    return null
+  }
+
+  const rawDataUrl = attachment.dataUrl ?? ''
+  const base64Part = rawDataUrl.startsWith('data:')
+    ? (rawDataUrl.split(',')[1] ?? '')
+    : rawDataUrl
+  if (!base64Part) {
+    return null
+  }
+
+  const binaryStr = atob(base64Part)
+  const bytes = new Uint8Array(binaryStr.length)
+  for (let index = 0; index < binaryStr.length; index += 1) {
+    bytes[index] = binaryStr.charCodeAt(index)
+  }
+
+  const fallbackName = mimeType === DOCX_MIME_TYPE ? 'document.docx' : 'document.pdf'
+  return new File([bytes], attachment.name?.trim() || fallbackName, {
+    type: mimeType,
+  })
+}
+
+async function ensureChatSession(label: string): Promise<{
+  sessionKey: string
+  friendlyId: string
+}> {
+  const response = await fetch('/api/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label }),
+  })
+  if (!response.ok) {
+    throw new Error(`Create session failed: ${response.status}`)
+  }
+
+  const payload = (await response.json()) as {
+    ok?: boolean
+    error?: string
+    sessionKey?: string
+    friendlyId?: string
+  }
+  if (!payload.ok || !payload.sessionKey) {
+    throw new Error(payload.error || 'Create session failed')
+  }
+
+  return {
+    sessionKey: payload.sessionKey,
+    friendlyId: payload.friendlyId || payload.sessionKey,
+  }
+}
+
+async function uploadChatDocuments(
+  sessionKey: string,
+  attachments: Array<ChatAttachment>,
+): Promise<Array<string>> {
+  const uploadFiles = attachments
+    .map(buildFileFromAttachment)
+    .filter((file): file is File => file !== null)
+  if (uploadFiles.length === 0) {
+    return []
+  }
+
+  const form = new FormData()
+  form.append('session_id', sessionKey)
+  for (const file of uploadFiles) {
+    form.append('files', file)
+  }
+
+  const response = await fetch('/api/upload/batch', {
+    method: 'POST',
+    body: form,
+  })
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.status}`)
+  }
+
+  const payload = (await response.json()) as {
+    files?: Array<{ filename?: string }>
+  }
+  return Array.isArray(payload.files)
+    ? payload.files
+        .map((entry) => entry.filename?.trim() || '')
+        .filter((name) => name.length > 0)
+    : []
 }
 
 function normalizeMessageValue(value: unknown): string {
@@ -1759,7 +1862,7 @@ export function ChatScreen({
    * Response arrives via SSE stream, not via this function.
    */
   const sendMessage = useCallback(
-    function sendMessage(
+    async function sendMessage(
       sessionKey: string,
       friendlyId: string,
       body: string,
@@ -1775,6 +1878,12 @@ export function ChatScreen({
         ...attachment,
         id: attachment.id ?? crypto.randomUUID(),
       }))
+      const uploadApiAttachments = normalizedAttachments.filter((attachment) => {
+        const mime =
+          normalizeMimeType(attachment.contentType ?? '') ||
+          readDataUrlMimeType(attachment.dataUrl)
+        return isUploadApiDocumentMimeType(mime) && (attachment.dataUrl ?? '').length > 0
+      })
 
       // Inject text/file attachment content directly into the message body.
       // Servers reliably forward text in the message body; file attachments
@@ -1784,7 +1893,11 @@ export function ChatScreen({
           const mime =
             normalizeMimeType(a.contentType ?? '') ||
             readDataUrlMimeType(a.dataUrl ?? '')
-          return isTextLikeMimeType(mime) && (a.dataUrl ?? '').length > 0
+          return (
+            isTextLikeMimeType(mime) &&
+            !isUploadApiDocumentMimeType(mime) &&
+            (a.dataUrl ?? '').length > 0
+          )
         })
         .map((a) => {
           const raw = a.dataUrl ?? ''
@@ -1801,7 +1914,7 @@ export function ChatScreen({
           ? `Please review the attached files: ${attachmentSummary.join(', ')}`
           : 'Please review the attached content.'
       const enrichedBodyRaw = body + textBlocks.join('')
-      const enrichedBody =
+      let enrichedBody =
         enrichedBodyRaw.trim().length > 0 ? enrichedBodyRaw : fallbackBody
 
       let optimisticClientId = existingClientId
@@ -1848,7 +1961,14 @@ export function ChatScreen({
 
       // Send a compatibility shape for attachment parsing.
       // Different server/channel versions read different keys.
-      const payloadAttachments = normalizedAttachments.map((attachment) => {
+      const payloadAttachments = normalizedAttachments
+        .filter((attachment) => {
+          const mimeType =
+            normalizeMimeType(attachment.contentType) ||
+            readDataUrlMimeType(attachment.dataUrl)
+          return !isUploadApiDocumentMimeType(mimeType)
+        })
+        .map((attachment) => {
         const mimeType =
           normalizeMimeType(attachment.contentType) ||
           readDataUrlMimeType(attachment.dataUrl)
@@ -1881,8 +2001,24 @@ export function ChatScreen({
           dataUrl: finalDataUrl,
           size: attachment.size,
         }
-      })
+        })
       const history = buildPortableHistory(finalDisplayMessages)
+
+      if (uploadApiAttachments.length > 0) {
+        const uploadedNames = await uploadChatDocuments(
+          sessionKey,
+          uploadApiAttachments,
+        )
+        if (uploadedNames.length > 0) {
+          const refBlock = uploadedNames
+            .map((n) => `Uploaded document: uploads/${n}`)
+            .join('\n')
+          enrichedBody =
+            enrichedBody.trim().length > 0
+              ? `${enrichedBody}\n\n${refBlock}`
+              : refBlock
+        }
+      }
 
       try {
         streamStart()
@@ -2267,37 +2403,61 @@ export function ChatScreen({
 
       if (isNewChat) {
         // In portable mode, use 'main' — no server-side sessions exist.
-        // In enhanced mode, create a UUID thread for the sessions API.
-        const threadId = isPortableMode ? 'main' : crypto.randomUUID()
+        // In enhanced mode, create the backend session first so document uploads
+        // have a real session-scoped uploads directory.
+        const createLabel =
+          trimmedBody || attachmentPayload[0]?.name?.trim() || 'New Session'
+        const newSession = isPortableMode
+          ? { sessionKey: 'main', friendlyId: 'main' }
+          : undefined
+        void (async () => {
+          try {
+            const resolvedSession = newSession || (await ensureChatSession(createLabel))
+            const { sessionKey, friendlyId } = resolvedSession
         const { optimisticMessage } = createOptimisticMessage(
           trimmedBody,
           attachmentPayload,
         )
-        appendHistoryMessage(queryClient, threadId, threadId, optimisticMessage)
-        upsertSessionInCache(threadId, optimisticMessage)
-        setPendingGeneration(true)
-        setSending(true)
-        setWaitingForResponse(true)
+            appendHistoryMessage(
+              queryClient,
+              friendlyId,
+              sessionKey,
+              optimisticMessage,
+            )
+            upsertSessionInCache(sessionKey, optimisticMessage)
+            setPendingGeneration(true)
+            setSending(true)
+            setWaitingForResponse(true)
+            onSessionResolved?.({ sessionKey, friendlyId })
 
-        sendMessage(
-          threadId,
-          threadId,
-          trimmedBody,
-          attachmentPayload,
-          fastMode,
-          true,
-          typeof optimisticMessage.clientId === 'string'
-            ? optimisticMessage.clientId
-            : '',
-        )
-        // In portable mode, navigate to /chat/main instead of UUID
-        if (!embedded) {
-          navigate({
-            to: '/chat/$sessionKey',
-            params: { sessionKey: threadId },
-            replace: true,
-          })
-        }
+            sendMessage(
+              sessionKey,
+              friendlyId,
+              trimmedBody,
+              attachmentPayload,
+              fastMode,
+              true,
+              typeof optimisticMessage.clientId === 'string'
+                ? optimisticMessage.clientId
+                : '',
+            )
+            if (!embedded) {
+              navigate({
+                to: '/chat/$sessionKey',
+                params: { sessionKey },
+                replace: true,
+              })
+            }
+          } catch (err) {
+            const messageText = err instanceof Error ? err.message : String(err)
+            setSending(false)
+            setPendingGeneration(false)
+            setWaitingForResponse(false)
+            setError(`Failed to send message. ${messageText}`)
+            toast('Failed to send message', { type: 'error' })
+            showErrorToast(messageText)
+          }
+        })()
         return
       }
 

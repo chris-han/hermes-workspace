@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=EB+Garamond:opsz,wght@8..120,400..800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:opsz,wght@8..120,400..800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600&display=swap');
 @import 'tailwindcss';
 
@@ -15,6 +15,14 @@
 
 :root {
   --tabbar-h: 0px;
+  --font-ui:
+    'Autaut Grotesk', 'Times New Roman', -apple-system, system-ui,
+    'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
+    'Hiragino Kaku Gothic Pro', 'Meiryo', 'MS PGothic', Arial, sans-serif;
+  --font-report-ui:
+    'Autaut Grotesk', 'Times New Roman', -apple-system, system-ui,
+    'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
+    Arial, sans-serif;
   /* Design-system radius tokens (theme-safe: does not override Tailwind base radius scale) */
   --radius-sm: 4px;
   --radius-md: 12px;
@@ -267,6 +275,8 @@
 html,
 body {
   @apply m-0 font-sans;
+  font-family: var(--font-ui);
+  font-feature-settings: 'calt' 1;
   letter-spacing: -0.15px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -276,7 +286,26 @@ body {
 }
 
 .font-sans {
+  font-family: var(--font-ui);
   letter-spacing: -0.15px;
+}
+
+.font-ui {
+  font-family: var(--font-ui);
+  font-feature-settings: 'calt' 1;
+}
+
+.font-report-ui {
+  font-family: var(--font-report-ui);
+  font-feature-settings: normal;
+}
+
+.brand-wordmark {
+  font-family: 'Autaut Grotesk', 'Noto Sans SC', -apple-system, system-ui,
+    'Segoe UI', Roboto, Arial, sans-serif;
+  font-feature-settings: 'calt' 1;
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
 }
 
 .inline-code {
@@ -1403,6 +1432,7 @@ code {
    Use for section headers, metric labels, KPI captions.
    Replaces casual lowercase mid-weight headings. */
 .micro-label {
+  font-family: var(--font-ui);
   text-transform: uppercase;
   letter-spacing: 0.2em;
   font-size: 0.6875rem; /* 11px */

@@ -931,14 +931,14 @@ function ChatSidebarComponent({
               >
                 <img
                   src="/logo.svg"
-                  alt="Semantier"
+                  alt="semantier logo"
                   className="size-6 rounded-lg"
                 />
                 <span
-                  className="text-sm font-semibold tracking-tight"
+                  className="brand-wordmark text-sm font-semibold tracking-tight"
                   style={{ color: 'var(--theme-text)' }}
                 >
-                  Semantier
+                  semantier
                 </span>
               </Link>
             </motion.div>

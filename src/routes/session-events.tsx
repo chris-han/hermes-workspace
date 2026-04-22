@@ -165,7 +165,7 @@ function SessionEventsRoute() {
 
   const navigate = useNavigate()
   const search = Route.useSearch()
-  const sessionId = search.session || ''
+  const sessionId = (search.session || search.friendlyId || '').trim()
 
   const [sessions, setSessions] = useState<Array<SessionSummary>>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
@@ -257,19 +257,28 @@ function SessionEventsRoute() {
   }, [sessions])
 
   useEffect(() => {
-    if (!sessionId || sessionsLoading) return
-    if (sessions.some((session) => session.session_id === sessionId)) return
-    void navigate({ to: '/session-events', search: {} })
-    setEvents([])
-    setTrajectory(null)
-  }, [navigate, sessionId, sessions, sessionsLoading])
-
-  useEffect(() => {
     if (!sessionId) return
     setSelectedSessionIds((previous) =>
       previous.includes(sessionId) ? previous : [sessionId, ...previous],
     )
   }, [sessionId])
+
+  const sessionsWithCurrent = useMemo(() => {
+    if (!sessionId) {
+      return sessions
+    }
+    if (sessions.some((session) => session.session_id === sessionId)) {
+      return sessions
+    }
+    return [
+      {
+        session_id: sessionId,
+        title: sessionId,
+        status: 'unknown',
+      },
+      ...sessions,
+    ]
+  }, [sessionId, sessions])
 
   useEffect(() => {
     if (!sessionId) {
@@ -330,14 +339,14 @@ function SessionEventsRoute() {
 
   const selectedSessions = useMemo(
     () =>
-      sessions.filter((session) =>
+      sessionsWithCurrent.filter((session) =>
         selectedSessionIds.includes(session.session_id),
       ),
-    [selectedSessionIds, sessions],
+    [selectedSessionIds, sessionsWithCurrent],
   )
 
   const sortedSessions = useMemo(() => {
-    const copy = [...sessions]
+    const copy = [...sessionsWithCurrent]
     copy.sort((left, right) => {
       const leftTs = Date.parse(left.updated_at || left.created_at || '') || 0
       const rightTs =
@@ -345,7 +354,7 @@ function SessionEventsRoute() {
       return timestampSort === 'desc' ? rightTs - leftTs : leftTs - rightTs
     })
     return copy
-  }, [sessions, timestampSort])
+  }, [sessionsWithCurrent, timestampSort])
 
   function setRouteSession(nextSessionId?: string) {
     void navigate({
@@ -369,9 +378,9 @@ function SessionEventsRoute() {
 
   function toggleAllSessions() {
     setSelectedSessionIds((previous) =>
-      previous.length === sessions.length
+      previous.length === sessionsWithCurrent.length
         ? []
-        : sessions.map((session) => session.session_id),
+        : sessionsWithCurrent.map((session) => session.session_id),
     )
   }
 

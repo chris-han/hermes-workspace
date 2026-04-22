@@ -143,7 +143,7 @@ function AgentAvatar({
           ) : (
             <img
               src="/logo.svg"
-              alt="Semantier"
+              alt="semantier logo"
               className={cn(
                 getLogoSizeClassName(size),
                 iconClassName,

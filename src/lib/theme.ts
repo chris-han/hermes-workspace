@@ -67,13 +67,13 @@ export const THEMES: Array<{
   },
   {
     id: 'semantier',
-    label: 'Semantier',
+    label: 'semantier',
     description: 'Near-black with wise-green accent — editorial warmth',
     icon: '◉',
   },
   {
     id: 'semantier-light',
-    label: 'Semantier Light',
+    label: 'semantier light',
     description: 'Warm parchment with dark-green accent',
     icon: '◉',
   },

@@ -184,12 +184,12 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
       <div className="flex w-full max-w-lg flex-col items-center text-center">
         <img
           src="/logo.svg"
-          alt="Semantier"
+          alt="semantier logo"
           className="mb-5 h-20 w-20 rounded-2xl object-cover shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
         />
 
-        <h1 className="text-[2rem] font-semibold tracking-tight text-white">
-          Semantier
+        <h1 className="brand-wordmark text-[2rem] font-semibold tracking-tight text-white">
+          semantier
         </h1>
 
         {/* Connecting spinner */}

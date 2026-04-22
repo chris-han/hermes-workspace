@@ -860,7 +860,7 @@ export function DashboardScreen() {
         <div className="flex flex-col items-center gap-3 py-3">
           <img
             src="/logo.svg"
-            alt="Semantier"
+            alt="semantier logo"
             className="relative size-20 rounded-xl"
             style={{
               border: '0px solid var(--theme-border)',
@@ -868,8 +868,11 @@ export function DashboardScreen() {
               background: 'var(--theme-card)',
             }}
           />
-          <p className="micro-label" style={{ color: 'var(--theme-muted)' }}>
-            Semantier
+          <p
+            className="brand-wordmark text-[11px] font-semibold"
+            style={{ color: 'var(--theme-muted)' }}
+          >
+            semantier
           </p>
           <div className="mt-1 grid w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4">
             <QuickAction

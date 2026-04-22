@@ -164,7 +164,7 @@ export function ChatEmptyState({
         <div className="relative mb-6">
           <img
             src="/logo.svg"
-            alt="Semantier"
+            alt="semantier logo"
             className="relative size-20 rounded-xl"
             style={{
               border: '0px solid var(--theme-border)',
@@ -174,12 +174,15 @@ export function ChatEmptyState({
           />
         </div>
 
-        <p className="micro-label mb-2" style={{ color: 'var(--theme-muted)' }}>
-          Semantier
+        <p
+          className="brand-wordmark mb-2 text-[16px]"
+          style={{ color: 'var(--theme-muted)' }}
+        >
+          semantier
         </p>
 
         <h2
-          className="editorial-display text-3xl"
+          className="font-ui text-3xl font-bold tracking-tight"
           style={{ color: 'var(--theme-text)' }}
         >
           Begin a session
@@ -187,7 +190,10 @@ export function ChatEmptyState({
 
         {!compact && (
           <>
-            <p className="mt-3 text-sm" style={{ color: 'var(--theme-muted)' }}>
+            <p
+              className="font-ui mt-3 text-sm font-medium"
+              style={{ color: 'var(--theme-muted)' }}
+            >
               Agent chat · live tools · memory · full observability
             </p>
 

@@ -17,7 +17,7 @@ export const tourSteps: Array<Step> = [
       >
         <img
           src="/logo.svg"
-          alt="Semantier"
+          alt="semantier logo"
           style={{ width: 48, height: 48, borderRadius: 12 }}
         />
         <p style={{ textAlign: 'center', margin: 0 }}>

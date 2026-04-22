@@ -147,7 +147,7 @@ export function OnboardingWizard() {
                         {step.id === 'welcome' ? (
                           <img
                             src="/logo.svg"
-                            alt="Semantier"
+                            alt="semantier logo"
                             className="size-16 rounded-2xl"
                           />
                         ) : (

@@ -13,7 +13,7 @@ function AssistantAvatarComponent({ size = 28, className }: AvatarProps) {
   return (
     <img
       src="/logo.svg"
-      alt="Semantier"
+      alt="semantier logo"
       className={cn('shrink-0', className)}
       style={{
         width: size,

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import QRCode from 'qrcode'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
@@ -30,6 +31,27 @@ type ValidateResponse = {
   details: Record<string, unknown>
 }
 
+type WeixinQrStartResponse = {
+  qrcode: string
+  qrcode_url?: string
+  qr_scan_data: string
+  base_url: string
+  bot_type: string
+}
+
+type WeixinQrStatusResponse = {
+  status: string
+  base_url: string
+  redirect_base_url?: string
+  credentials?: {
+    account_id: string
+    token: string
+    base_url: string
+    user_id?: string
+  }
+  raw: Record<string, unknown>
+}
+
 type FeishuDraft = {
   appId: string
   appSecret: string
@@ -41,6 +63,15 @@ type WeixinDraft = {
   accountId: string
   token: string
   baseUrl: string
+}
+
+type WeixinQrState = {
+  qrcode: string
+  qrcodeUrl: string
+  scanData: string
+  baseUrl: string
+  status: string
+  redirectBaseUrl: string
 }
 
 const EMPTY_FEISHU: FeishuDraft = {
@@ -58,13 +89,34 @@ const EMPTY_WEIXIN: WeixinDraft = {
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/semantier-proxy${path}`, init)
+  const contentType = response.headers.get('content-type')?.toLowerCase() || ''
   const text = await response.text()
-  const payload = text ? (JSON.parse(text) as T & { detail?: string }) : ({} as T & { detail?: string })
+  const isJson = contentType.includes('application/json')
+  let payload: (T & { detail?: string; error?: string }) | null = null
+
+  if (text && isJson) {
+    try {
+      payload = JSON.parse(text) as T & { detail?: string; error?: string }
+    } catch {
+      throw new Error('API returned malformed JSON response.')
+    }
+  }
+
+  if (text && !isJson) {
+    const maybeHtml = text.trim().startsWith('<')
+    if (maybeHtml) {
+      throw new Error('API returned HTML instead of JSON. Please check auth session or proxy route handling.')
+    }
+  }
+
   if (!response.ok) {
-    const detail = typeof payload.detail === 'string' ? payload.detail : `Request failed (${response.status})`
+    const detail =
+      (payload && typeof payload.detail === 'string' && payload.detail) ||
+      (payload && typeof payload.error === 'string' && payload.error) ||
+      `Request failed (${response.status})`
     throw new Error(detail)
   }
-  return payload
+  return (payload ?? ({} as T)) as T
 }
 
 function platformTitle(id: PlatformId): string {
@@ -114,11 +166,15 @@ export function MessagingSettingsScreen() {
 
   const [feishu, setFeishu] = useState<FeishuDraft>(EMPTY_FEISHU)
   const [weixin, setWeixin] = useState<WeixinDraft>(EMPTY_WEIXIN)
+  const [showWeixinToken, setShowWeixinToken] = useState(false)
 
   const [validationMessage, setValidationMessage] = useState<Record<PlatformId, string>>({
     feishu: '',
     weixin: '',
   })
+  const [requestingWeixinQr, setRequestingWeixinQr] = useState(false)
+  const [weixinQr, setWeixinQr] = useState<WeixinQrState | null>(null)
+  const [weixinQrDataUrl, setWeixinQrDataUrl] = useState('')
 
   async function loadPlatforms() {
     setLoading(true)
@@ -154,7 +210,7 @@ export function MessagingSettingsScreen() {
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load messaging settings.'
-      toast.error(message)
+      toast(message, { type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -171,6 +227,142 @@ export function MessagingSettingsScreen() {
   const canValidateWeixin = useMemo(() => {
     return weixin.accountId.trim() !== '' && weixin.token.trim() !== ''
   }, [weixin])
+
+  const weixinQrPolling = useMemo(() => {
+    if (!weixinQr) {
+      return false
+    }
+    return ['wait', 'scaned', 'scaned_but_redirect'].includes(weixinQr.status)
+  }, [weixinQr])
+
+  async function requestWeixinQrCode() {
+    setRequestingWeixinQr(true)
+    try {
+      const response = await requestJson<WeixinQrStartResponse>('/messaging/weixin/qrcode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base_url: weixin.baseUrl.trim() || 'https://ilinkai.weixin.qq.com',
+          bot_type: '3',
+        }),
+      })
+
+      setWeixinQr({
+        qrcode: response.qrcode,
+        qrcodeUrl: response.qrcode_url ?? '',
+        scanData: response.qr_scan_data,
+        baseUrl: response.base_url,
+        status: 'wait',
+        redirectBaseUrl: '',
+      })
+      setValidationMessage((current) => ({
+        ...current,
+        weixin: 'QR code ready. Scan it with WeChat and confirm on your phone.',
+      }))
+      toast('Weixin QR code generated.', { type: 'success' })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to generate Weixin QR code.'
+      toast(message, { type: 'error' })
+    } finally {
+      setRequestingWeixinQr(false)
+    }
+  }
+
+  async function pollWeixinQrCode(currentQr: WeixinQrState) {
+    try {
+      const statusPath = new URLSearchParams({
+        qrcode: currentQr.qrcode,
+        base_url: currentQr.redirectBaseUrl || currentQr.baseUrl,
+      })
+      const response = await requestJson<WeixinQrStatusResponse>(`/messaging/weixin/qrcode/status?${statusPath.toString()}`)
+
+      setWeixinQr((existing) => {
+        if (!existing || existing.qrcode !== currentQr.qrcode) {
+          return existing
+        }
+        return {
+          ...existing,
+          status: response.status,
+          baseUrl: response.base_url || existing.baseUrl,
+          redirectBaseUrl: response.redirect_base_url ?? existing.redirectBaseUrl,
+        }
+      })
+
+      if (response.status === 'scaned') {
+        setValidationMessage((current) => ({
+          ...current,
+          weixin: 'QR scanned. Confirm login in WeChat.',
+        }))
+      }
+
+      if (response.status === 'confirmed' && response.credentials) {
+        setWeixin({
+          accountId: response.credentials.account_id ?? '',
+          token: response.credentials.token ?? '',
+          baseUrl: response.credentials.base_url ?? currentQr.baseUrl,
+        })
+        setValidationMessage((current) => ({
+          ...current,
+          weixin: 'QR login confirmed. Credentials loaded. Validate and save to store them.',
+        }))
+        toast('Weixin QR login confirmed. Credentials auto-filled.', { type: 'success' })
+      }
+
+      if (response.status === 'expired') {
+        setValidationMessage((current) => ({
+          ...current,
+          weixin: 'QR code expired. Generate a new code to continue.',
+        }))
+        toast('Weixin QR code expired.', { type: 'error' })
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to poll Weixin QR status.'
+      setValidationMessage((current) => ({
+        ...current,
+        weixin: message,
+      }))
+    }
+  }
+
+  useEffect(() => {
+    if (!weixinQrPolling || !weixinQr) {
+      return
+    }
+    const timer = window.setTimeout(() => {
+      void pollWeixinQrCode(weixinQr)
+    }, 1500)
+    return () => window.clearTimeout(timer)
+  }, [weixinQr, weixinQrPolling])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function buildWeixinQrDataUrl() {
+      if (!weixinQr?.scanData) {
+        setWeixinQrDataUrl('')
+        return
+      }
+      try {
+        const dataUrl = await QRCode.toDataURL(weixinQr.scanData, {
+          width: 320,
+          margin: 1,
+          errorCorrectionLevel: 'M',
+        })
+        if (!cancelled) {
+          setWeixinQrDataUrl(dataUrl)
+        }
+      } catch {
+        if (!cancelled) {
+          setWeixinQrDataUrl('')
+        }
+      }
+    }
+
+    void buildWeixinQrDataUrl()
+    return () => {
+      cancelled = true
+    }
+  }, [weixinQr?.scanData])
 
   async function validate(platform: PlatformId) {
     setValidatingPlatform(platform)
@@ -203,14 +395,14 @@ export function MessagingSettingsScreen() {
         ...current,
         [platform]: response.summary,
       }))
-      toast.success(`${platformTitle(platform)} validation passed.`)
+      toast(`${platformTitle(platform)} validation passed.`, { type: 'success' })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Validation failed.'
       setValidationMessage((current) => ({
         ...current,
         [platform]: message,
       }))
-      toast.error(message)
+      toast(message, { type: 'error' })
     } finally {
       setValidatingPlatform(null)
     }
@@ -243,7 +435,7 @@ export function MessagingSettingsScreen() {
         body: JSON.stringify(payload),
       })
 
-      toast.success(`${platformTitle(platform)} configuration saved.`)
+      toast(`${platformTitle(platform)} configuration saved.`, { type: 'success' })
       await loadPlatforms()
       setValidationMessage((current) => ({
         ...current,
@@ -251,7 +443,7 @@ export function MessagingSettingsScreen() {
       }))
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Save failed.'
-      toast.error(message)
+      toast(message, { type: 'error' })
     } finally {
       setSavingPlatform(null)
     }
@@ -263,7 +455,7 @@ export function MessagingSettingsScreen() {
       await requestJson<{ ok: boolean }>(`/messaging/${platform}`, {
         method: 'DELETE',
       })
-      toast.success(`${platformTitle(platform)} configuration removed.`)
+      toast(`${platformTitle(platform)} configuration removed.`, { type: 'success' })
       await loadPlatforms()
       setValidationMessage((current) => ({
         ...current,
@@ -271,7 +463,7 @@ export function MessagingSettingsScreen() {
       }))
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Delete failed.'
-      toast.error(message)
+      toast(message, { type: 'error' })
     } finally {
       setSavingPlatform(null)
     }
@@ -399,17 +591,41 @@ export function MessagingSettingsScreen() {
                     </label>
                     <label className="space-y-1.5">
                       <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">Token</span>
-                      <Input
-                        type="password"
-                        value={weixin.token}
-                        placeholder={state.configured ? 'Re-enter to update' : 'bot-token'}
-                        onChange={(event) =>
-                          setWeixin((current) => ({
-                            ...current,
-                            token: event.target.value,
-                          }))
-                        }
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showWeixinToken ? 'text' : 'password'}
+                          value={weixin.token}
+                          placeholder={state.configured ? 'Re-enter to update' : 'bot-token'}
+                          className="pr-10"
+                          onChange={(event) =>
+                            setWeixin((current) => ({
+                              ...current,
+                              token: event.target.value,
+                            }))
+                          }
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowWeixinToken((value) => !value)}
+                          aria-label={showWeixinToken ? 'Hide token' : 'Show token'}
+                          title={showWeixinToken ? 'Hide token' : 'Show token'}
+                          className="absolute inset-y-0 right-2 inline-flex items-center text-primary-500 hover:text-primary-700"
+                        >
+                          {showWeixinToken ? (
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C7 20 2.73 16.89 1 12c.77-2.17 2.06-4 3.63-5.35" />
+                              <path d="M10.59 10.59A2 2 0 0 0 12 14a2 2 0 0 0 1.41-.59" />
+                              <path d="M1 1l22 22" />
+                              <path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8a11.94 11.94 0 0 1-4.06 5.94" />
+                            </svg>
+                          ) : (
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12Z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     </label>
                     <label className="space-y-1.5 md:col-span-2">
                       <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">Base URL</span>
@@ -424,6 +640,44 @@ export function MessagingSettingsScreen() {
                         }
                       />
                     </label>
+                    <div className="md:col-span-2 rounded-lg border border-primary-200 bg-surface p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={requestingWeixinQr || saving || validating}
+                          onClick={() => void requestWeixinQrCode()}
+                        >
+                          {requestingWeixinQr ? 'Generating QR...' : 'Generate QR Login'}
+                        </Button>
+                        {weixinQr ? (
+                          <span className="text-xs text-primary-700">
+                            QR status: {weixinQr.status}
+                          </span>
+                        ) : null}
+                      </div>
+                      {weixinQr ? (
+                        <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-start md:gap-4">
+                          <img
+                            src={weixinQrDataUrl || weixinQr.qrcodeUrl || ''}
+                            alt="Weixin login QR code"
+                            className="h-40 w-40 rounded-md border border-primary-200 bg-white object-contain"
+                          />
+                          <div className="min-w-0 text-xs text-primary-700">
+                            <p>Scan with WeChat, then confirm login on your phone.</p>
+                            {weixinQr.qrcodeUrl ? (
+                              <p className="mt-1 break-all">
+                                QR URL: <a className="underline" href={weixinQr.qrcodeUrl} target="_blank" rel="noreferrer">Open QR link</a>
+                              </p>
+                            ) : (
+                              <p className="mt-1 break-all">
+                                QR scan data: {weixinQr.scanData}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 )}
 

@@ -68,7 +68,7 @@ export const THEMES: Array<{
   {
     id: 'semantier',
     label: 'semantier',
-    description: 'Near-black with wise-green accent — editorial warmth',
+    description: 'Near-black with semantier-green accent — editorial warmth',
     icon: '◉',
   },
   {

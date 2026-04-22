@@ -72,6 +72,15 @@ export const Route = createFileRoute('/api/semantier-proxy/$')({
         }
         return proxyRequest(request, params._splat || '')
       },
+      PUT: async ({ request, params }) => {
+        if (!isAuthenticated(request)) {
+          return new Response(
+            JSON.stringify({ ok: false, error: 'Unauthorized' }),
+            { status: 401, headers: { 'content-type': 'application/json' } },
+          )
+        }
+        return proxyRequest(request, params._splat || '')
+      },
       DELETE: async ({ request, params }) => {
         if (!isAuthenticated(request)) {
           return new Response(

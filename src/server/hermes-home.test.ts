@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { resolveHermesHome } from './hermes-home'
+import { resolveHermesHome, resolveHermesHomeForWorkspace } from './hermes-home'
 
 describe('resolveHermesHome', () => {
   it('prefers HERMES_HOME when explicitly configured', () => {
@@ -32,5 +32,25 @@ describe('resolveHermesHome', () => {
         existsSync: () => false,
       }),
     ).toThrow('Hermes home is not configured')
+  })
+})
+
+describe('resolveHermesHomeForWorkspace', () => {
+  it('uses workspace sandbox home for regular users', () => {
+    expect(
+      resolveHermesHomeForWorkspace('/repo/workspaces/public', {
+        role: 'regular',
+        administratorHome: '/home/chris/repo/semantier/agent/.hermes',
+      }),
+    ).toBe(path.resolve('/repo/workspaces/public/.hermes'))
+  })
+
+  it('uses administrator home override for administrator mode', () => {
+    expect(
+      resolveHermesHomeForWorkspace('/repo/workspaces/public', {
+        role: 'administrator',
+        administratorHome: '/home/chris/repo/semantier/agent/.hermes',
+      }),
+    ).toBe(path.resolve('/home/chris/repo/semantier/agent/.hermes'))
   })
 })

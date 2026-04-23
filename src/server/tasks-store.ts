@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { resolveActiveWorkspaceRoot } from './workspace-root'
+import { resolveHermesHomeFromBackend } from './hermes-home'
 
 export type TaskColumn = 'backlog' | 'todo' | 'in_progress' | 'review' | 'done'
 export type TaskPriority = 'high' | 'medium' | 'low'
@@ -72,8 +72,7 @@ function writeTaskFile(hermesHome: string, data: TaskFile): void {
 export async function resolveWorkspaceTaskHermesHome(
   requestHeaders?: HeadersInit | Headers,
 ): Promise<string> {
-  const workspace = await resolveActiveWorkspaceRoot(requestHeaders)
-  return path.join(workspace.path, '.hermes')
+  return resolveHermesHomeFromBackend(requestHeaders)
 }
 
 function normalizeTask(

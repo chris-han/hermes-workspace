@@ -14,6 +14,45 @@ export type MarkdownProps = {
   components?: Partial<Components>
 }
 
+function normalizeFilesTargetPath(pathValue: string): string {
+  const normalized = pathValue.trim().replace(/\\/g, '/')
+
+  const fromFileScheme = normalized.match(/^file:\/\/(.+)$/i)
+  const hostPath = fromFileScheme ? fromFileScheme[1] : normalized
+
+  const workspaceMatch = hostPath.match(/\/workspaces\/[^/]+\/(.+)$/)
+  if (workspaceMatch?.[1]) {
+    return workspaceMatch[1].replace(/^\/+/, '')
+  }
+
+  const sessionIndex = hostPath.lastIndexOf('/sessions/')
+  if (sessionIndex >= 0) {
+    return hostPath.slice(sessionIndex + 1)
+  }
+
+  const runsIndex = hostPath.lastIndexOf('/runs/')
+  if (runsIndex >= 0) {
+    return hostPath.slice(runsIndex + 1)
+  }
+
+  return hostPath.replace(/^\/+/, '')
+}
+
+export function linkifyRunDirectoryFooter(markdown: string): string {
+  if (!markdown) return markdown
+
+  return markdown.replace(
+    /^(\s*Run directory:\s*)(\/[^\n]+?)\s*$/gim,
+    (_fullMatch, prefix: string, rawPath: string) => {
+      if (!rawPath || rawPath.includes('](')) return `${prefix}${rawPath}`
+      const targetPath = normalizeFilesTargetPath(rawPath)
+      if (!targetPath) return `${prefix}${rawPath}`
+      const href = `/files?path=${encodeURIComponent(targetPath)}`
+      return `${prefix}[${rawPath}](${href})`
+    },
+  )
+}
+
 function parseMarkdownIntoBlocks(markdown: string): Array<string> {
   const tokens = marked.lexer(markdown)
   return tokens.map((token) => token.raw)
@@ -206,12 +245,17 @@ const INITIAL_COMPONENTS: Partial<Components> = {
   },
   a: function AComponent({ children, href }) {
     const normalizedHref = normalizeMarkdownHref(href)
+    const openInNewTab = Boolean(
+      normalizedHref &&
+        (normalizedHref.startsWith('/api/') ||
+          /^https?:\/\//i.test(normalizedHref)),
+    )
     return (
       <a
         href={normalizedHref}
         className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
-        target="_blank"
-        rel="noopener noreferrer"
+        target={openInNewTab ? '_blank' : undefined}
+        rel={openInNewTab ? 'noopener noreferrer' : undefined}
       >
         {children}
       </a>
@@ -364,7 +408,14 @@ function MarkdownComponent({
 }: MarkdownProps) {
   const generatedId = useId()
   const blockId = id ?? generatedId
-  const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
+  const normalizedMarkdown = useMemo(
+    () => linkifyRunDirectoryFooter(children),
+    [children],
+  )
+  const blocks = useMemo(
+    () => parseMarkdownIntoBlocks(normalizedMarkdown),
+    [normalizedMarkdown],
+  )
 
   return (
     <div

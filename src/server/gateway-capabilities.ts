@@ -2,7 +2,7 @@ import {
   SEMANTIER_AGENT_API,
   semantierAgentAuthHeaders,
 } from './semantier-agent-api'
-import { resolveActiveWorkspaceRoot } from './workspace-root'
+import { resolveHermesHomeFromBackend } from './hermes-home'
 
 /**
  * Probes Hermes services to detect which API groups are available.
@@ -210,10 +210,9 @@ export async function dashboardFetch(
   const method = (init.method || 'GET').toUpperCase()
   let activeWorkspaceHermesHome: string | null = null
   if (options?.requestHeaders) {
-    const activeWorkspace = await resolveActiveWorkspaceRoot(
-      options.requestHeaders,
-    )
-    activeWorkspaceHermesHome = `${activeWorkspace.path}/.hermes`
+      activeWorkspaceHermesHome = await resolveHermesHomeFromBackend(
+        options.requestHeaders,
+      )
   }
   const doFetch = async (forceToken = false) => {
     const headers = new Headers(init.headers)

@@ -15,6 +15,7 @@ import {
   Settings02Icon,
   SparklesIcon,
   Sun01Icon,
+  UserLock01Icon,
   VolumeHighIcon,
 } from '@hugeicons/core-free-icons'
 import { Component, useCallback, useEffect, useState } from 'react'
@@ -65,6 +66,7 @@ import { LOCALE_LABELS, getLocale, setLocale } from '@/lib/i18n'
 
 type SectionId =
   | 'hermes'
+  | 'access_control'
   | 'agent'
   | 'routing'
   | 'voice'
@@ -76,6 +78,7 @@ type SectionId =
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'hermes', label: 'Model & Provider', icon: CloudIcon },
+  { id: 'access_control', label: 'Access Control', icon: UserLock01Icon },
   { id: 'agent', label: 'Agent', icon: Settings02Icon },
   { id: 'routing', label: 'Smart Routing', icon: SparklesIcon },
   { id: 'voice', label: 'Voice', icon: VolumeHighIcon },
@@ -151,7 +154,12 @@ function Row({
 }
 
 const SETTINGS_CARD_CLASS =
-  'rounded-xl border border-primary-200 bg-primary-50/80 px-4 py-3 shadow-sm'
+  'rounded-xl px-4 py-3'
+
+const getCardStyle = (): React.CSSProperties => ({
+  border: '1px solid var(--theme-border)',
+  backgroundColor: 'var(--theme-card)',
+})
 
 // ── Section components ──────────────────────────────────────────────────
 
@@ -787,7 +795,7 @@ function _ProfileContent() {
         title="Profile"
         description="Your display identity in chat."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <div className="flex items-center gap-3">
           <UserAvatar size={44} src={cs.avatarDataUrl} alt={displayName} />
           <div>
@@ -800,7 +808,7 @@ function _ProfileContent() {
           </div>
         </div>
       </div>
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Display name" description="Shown in chat and sidebar">
           <div className="w-full max-w-xs">
             <Input
@@ -889,7 +897,7 @@ function AppearanceContent() {
         title="Appearance"
         description="Theme and color accents."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
           Theme Mode
         </p>
@@ -917,13 +925,13 @@ function AppearanceContent() {
         </div>
       </div>
       {/* Accent color removed — themes control accent */}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
           Enterprise Theme
         </p>
         <EnterpriseThemePicker />
       </div>
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row
           label="System metrics footer"
           description="Show a persistent footer with CPU, RAM, disk, and Hermes status."
@@ -1250,7 +1258,7 @@ function ChatContent() {
         title="Chat"
         description="Message visibility and response loader style."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row
           label="Show tool messages"
           description="Display tool call details in assistant responses."
@@ -1285,7 +1293,7 @@ function NotificationsContent() {
         title="Notifications"
         description="Simple alerts and threshold controls."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Enable alerts">
           <Switch
             checked={settings.notificationsEnabled}
@@ -1360,7 +1368,7 @@ function _AdvancedContent() {
         title="Advanced"
         description="Hermes endpoint and connectivity."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Hermes URL" description="Used for API requests from Studio">
           <div className="w-full max-w-sm">
             <Input
@@ -1509,7 +1517,7 @@ function AgentBehaviorContent() {
           {msg}
         </div>
       )}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row
           label="Max turns"
           description="Maximum agent turns per request (1-100)"
@@ -1544,6 +1552,263 @@ function AgentBehaviorContent() {
             <option value="none">None</option>
           </select>
         </Row>
+      </div>
+    </div>
+  )
+}
+
+type AccessControlRole = 'regular' | 'administrator'
+
+type AccessControlPayload = {
+  hermesHome?: string
+  workspaceHermesHome?: string
+  accessControl?: {
+    role?: string
+    administratorHome?: string
+    defaultAdministratorHome?: string
+  }
+}
+
+function AccessControlContent() {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [role, setRole] = useState<AccessControlRole>('regular')
+  const [administratorHome, setAdministratorHome] = useState('')
+  const [adminHomeInput, setAdminHomeInput] = useState('')
+  const [workspaceHermesHome, setWorkspaceHermesHome] = useState('')
+  const [effectiveHermesHome, setEffectiveHermesHome] = useState('')
+
+  const applyPayload = useCallback((payload: AccessControlPayload) => {
+    const nextRole =
+      payload.accessControl?.role === 'administrator'
+        ? 'administrator'
+        : 'regular'
+    const nextAdminHome =
+      payload.accessControl?.administratorHome ||
+      payload.accessControl?.defaultAdministratorHome ||
+      ''
+    setRole(nextRole)
+    setAdministratorHome(nextAdminHome)
+    setAdminHomeInput(nextAdminHome)
+    setWorkspaceHermesHome(payload.workspaceHermesHome || '')
+    setEffectiveHermesHome(payload.hermesHome || '')
+  }, [])
+
+  const loadAccessControl = useCallback(async () => {
+    setLoading(true)
+    setMsg(null)
+    try {
+      const res = await fetch('/api/paths')
+      const payload = (await res.json()) as AccessControlPayload
+      if (!res.ok) {
+        setMsg('Failed to load access control settings.')
+        return
+      }
+      applyPayload(payload)
+    } catch {
+      setMsg('Failed to load access control settings.')
+    } finally {
+      setLoading(false)
+    }
+  }, [applyPayload])
+
+  useEffect(() => {
+    void loadAccessControl()
+  }, [loadAccessControl])
+
+  const patchAccessControl = async (updates: {
+    role?: AccessControlRole
+    administratorHome?: string
+  }) => {
+    setSaving(true)
+    setMsg(null)
+    try {
+      const res = await fetch('/api/paths', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      const payload = (await res.json()) as AccessControlPayload & {
+        error?: string
+      }
+      if (!res.ok) {
+        setMsg(payload.error || 'Failed to update access control settings.')
+        return
+      }
+      applyPayload(payload)
+      setMsg('Saved')
+      setTimeout(() => setMsg(null), 2500)
+    } catch {
+      setMsg('Failed to update access control settings.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const cardStyle = getCardStyle()
+  const radioStyle: React.CSSProperties = {
+    accentColor: 'var(--theme-accent)',
+  }
+  const mutedStyle: React.CSSProperties = {
+    color: 'var(--theme-muted)',
+  }
+  const pathDisplayStyle: React.CSSProperties = {
+    color: 'var(--theme-text)',
+    backgroundColor: 'transparent',
+    borderBottom: 'none',
+    paddingBottom: 0,
+  }
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        title="Access Control"
+        description="Choose sandboxed regular mode or administrator mode with an explicit Hermes home."
+      />
+
+      {msg && (
+        <div
+          className={cn(
+            'rounded-lg px-3 py-1.5 text-xs font-medium',
+            msg === 'Saved'
+              ? 'bg-green-500/15 text-green-400'
+              : 'bg-red-500/15 text-red-400',
+          )}
+        >
+          {msg}
+        </div>
+      )}
+
+      <div className={SETTINGS_CARD_CLASS} style={cardStyle}>
+        {/* Role Selection with Radio Buttons */}
+        <div className="py-1.5 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
+              Access Level
+            </p>
+            <p className="text-xs" style={mutedStyle}>
+              Regular keeps the current workspace sandbox. Administrator can use a dedicated Hermes home.
+            </p>
+            
+            {/* Radio Button: Regular User */}
+            <label className="flex items-center gap-3 cursor-pointer py-1.5 px-2 rounded-md transition-colors hover:opacity-80">
+              <input
+                type="radio"
+                name="access-role"
+                value="regular"
+                checked={role === 'regular'}
+                onChange={() => void patchAccessControl({ role: 'regular' })}
+                disabled={saving || loading}
+                style={radioStyle}
+                className="w-4 h-4"
+              />
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
+                  Regular User
+                </p>
+                <p className="text-xs" style={mutedStyle}>
+                  Sandboxed workspace home
+                </p>
+              </div>
+            </label>
+
+            {/* Radio Button: Administrator */}
+            <label className="flex items-center gap-3 cursor-pointer py-1.5 px-2 rounded-md transition-colors hover:opacity-80">
+              <input
+                type="radio"
+                name="access-role"
+                value="administrator"
+                checked={role === 'administrator'}
+                onChange={() =>
+                  void patchAccessControl({
+                    role: 'administrator',
+                    administratorHome,
+                  })
+                }
+                disabled={saving || loading}
+                style={radioStyle}
+                className="w-4 h-4"
+              />
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
+                  Administrator
+                </p>
+                <p className="text-xs" style={mutedStyle}>
+                  Custom Hermes home for shared tools
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Workspace Sandbox Home - shown only in regular mode */}
+        {role === 'regular' && (
+          <div className="py-3 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
+              Workspace Sandbox
+            </p>
+            <p className="text-xs mb-2" style={mutedStyle}>
+              Used in regular mode
+            </p>
+            <div
+              className="font-mono text-xs overflow-x-auto"
+              style={pathDisplayStyle}
+            >
+              {workspaceHermesHome || '—'}
+            </div>
+          </div>
+        )}
+
+        {/* Administrator Home - Conditional Input/Display */}
+        {role === 'administrator' && (
+          <div className="py-3 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
+              Administrator Home
+            </p>
+            <p className="text-xs mb-2" style={mutedStyle}>
+              This home manages shared skills, tools, cron jobs, and memories
+            </p>
+            <div className="flex w-full max-w-[30rem] items-center gap-2">
+              <Input
+                value={adminHomeInput}
+                onChange={(e) => setAdminHomeInput(e.target.value)}
+                placeholder="/home/chris/repo/semantier/agent/.hermes"
+                className="h-8 flex-1 rounded-md text-xs font-mono"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={() =>
+                  void patchAccessControl({
+                    role: 'administrator',
+                    administratorHome: adminHomeInput,
+                  })
+                }
+                disabled={saving || loading || adminHomeInput === administratorHome}
+                className="h-8 rounded-md px-3"
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Effective Hermes Home - Text with Dimmed Underline */}
+        <div className="py-3">
+          <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
+            Effective Hermes Home
+          </p>
+          <p className="text-xs mb-2" style={mutedStyle}>
+            Currently active for config and runtime storage
+          </p>
+          <div
+            className="font-mono text-xs overflow-x-auto"
+            style={pathDisplayStyle}
+          >
+            {effectiveHermesHome || '—'}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -1609,7 +1874,7 @@ function SmartRoutingContent() {
           {msg}
         </div>
       )}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row
           label="Enable smart routing"
           description="Auto-route simple queries"
@@ -1730,7 +1995,7 @@ function VoiceContent() {
           {msg}
         </div>
       )}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
           Text-to-Speech
         </p>
@@ -1771,7 +2036,7 @@ function VoiceContent() {
           </Row>
         )}
       </div>
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
           Speech-to-Text
         </p>
@@ -1845,7 +2110,7 @@ function DisplayContent() {
           {msg}
         </div>
       )}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Personality" description="Agent response style">
           <select
             value={String(config.personality || 'default')}
@@ -1926,6 +2191,7 @@ function LanguageContent() {
 
 const CONTENT_MAP: Record<SectionId, () => React.JSX.Element> = {
   hermes: HermesContent,
+  access_control: AccessControlContent,
   agent: AgentBehaviorContent,
   routing: SmartRoutingContent,
   voice: VoiceContent,

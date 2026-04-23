@@ -970,10 +970,7 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
       )}
       {/* Expanded content — args while running, result when done */}
       {expanded && (
-        <div
-          className="border-t"
-          style={{ borderColor: 'var(--theme-border)' }}
-        >
+        <div className="border-t border-border">
           {/* Show args (input) */}
           {toolCall.args != null &&
             typeof toolCall.args === 'object' &&
@@ -990,10 +987,7 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
             )}
           {/* Show result when done */}
           {isDone && result && (
-            <div
-              className="px-2.5 py-1.5 border-t"
-              style={{ borderColor: 'var(--theme-border)' }}
-            >
+            <div className="px-2.5 py-1.5 border-t border-border">
               <div className="text-[9px] uppercase tracking-widest opacity-40 mb-0.5">
                 Output
               </div>
@@ -1027,10 +1021,7 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
           )}
           {/* Running indicator when expanded */}
           {isRunning && (
-            <div
-              className="px-2.5 py-1.5 text-[10px] border-t"
-              style={{ borderColor: 'var(--theme-border)' }}
-            >
+            <div className="px-2.5 py-1.5 text-[10px] border-t border-border">
               <span>
                 {verb}
                 {dots}
@@ -1168,12 +1159,11 @@ function MarkdownDocumentCard({
   return (
     <div
       className={cn(
-        'w-full max-w-[36rem] overflow-hidden rounded-card',
+        'w-full max-w-[36rem] overflow-hidden rounded-card theme-border-1 theme-tool-surface',
         className,
       )}
-      style={{ border: '1px solid var(--theme-border)', background: 'var(--tool-card-bg)' }}
     >
-      <div className="flex items-start justify-between gap-3 border-b px-3 py-2.5" style={{ borderColor: 'var(--theme-border)' }}>
+      <div className="flex items-start justify-between gap-3 border-b border-border px-3 py-2.5">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium text-primary-900">
             {title}
@@ -1182,7 +1172,7 @@ function MarkdownDocumentCard({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {hasContent ? (
-            <div className="flex items-center rounded-md p-0.5" style={{ border: '1px solid var(--theme-border)', background: 'var(--theme-card2)' }}>
+            <div className="flex items-center rounded-md p-0.5 theme-border-1 theme-card2-surface">
               <Button
                 type="button"
                 variant="ghost"
@@ -1451,7 +1441,7 @@ function InlineToolSectionItem({
 
       {/* ── Expanded detail — terminal-style args + output ── */}
       {open && (
-        <div className="mt-1 ml-3 flex flex-col gap-1.5 pb-1 pl-3 animate-in slide-in-from-top-1 duration-150" style={{ borderLeft: '1px solid var(--theme-border)' }}>
+        <div className="mt-1 ml-3 flex flex-col gap-1.5 pb-1 pl-3 animate-in slide-in-from-top-1 duration-150 theme-border-l-1">
           {hasInputData && !showRawJson ? (
             <div>
               <div className="text-[9px] uppercase tracking-widest mb-0.5 font-sans" style={{ color: 'var(--tool-card-muted)' }}>
@@ -2139,7 +2129,7 @@ function MessageItemComponent({
               />
             </CollapsibleTrigger>
             <CollapsiblePanel>
-              <div className="rounded-md p-3" style={{ border: '1px solid var(--theme-border)', background: 'var(--tool-card-bg)' }}>
+              <div className="rounded-md p-3 theme-border-1 theme-tool-surface">
                 <p className="text-sm text-primary-700 whitespace-pre-wrap text-pretty">
                   {thinking}
                 </p>
@@ -2163,7 +2153,7 @@ function MessageItemComponent({
       {/* Narration messages (tool-call activity) — compact collapsible row */}
       {!isUser && (message as any).__isNarration && hasText && (
         <div className="w-full max-w-[900px]">
-          <details className="group/narration rounded-md transition-colors" style={{ border: '1px solid var(--theme-border)', background: 'var(--tool-card-bg)' }}>
+          <details className="group/narration rounded-md transition-colors theme-border-1 theme-tool-surface">
             <summary className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 list-none [&::-webkit-details-marker]:hidden">
               <span className="size-6 flex items-center justify-center rounded-full bg-accent-500/15 shrink-0">
                 <span className="text-xs">⚡</span>
@@ -2242,8 +2232,7 @@ function MessageItemComponent({
                         href={source}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block overflow-hidden rounded-md transition-colors max-w-full"
-                        style={{ border: '1px solid var(--theme-border)' }}
+                        className="block overflow-hidden rounded-md transition-colors max-w-full theme-border-1"
                       >
                         <img
                           src={source}
@@ -2275,7 +2264,7 @@ function MessageItemComponent({
                       href={source}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex max-w-full items-center gap-2 rounded-md px-3 py-2 text-sm" style={{ border: '1px solid var(--theme-border)', background: 'var(--tool-card-bg)', color: 'var(--tool-card-title)' }}
+                      className="inline-flex max-w-full items-center gap-2 rounded-md px-3 py-2 text-sm theme-border-1 theme-tool-surface"
                     >
                       <span>📄</span>
                       <span className="truncate">
@@ -2297,8 +2286,7 @@ function MessageItemComponent({
                     href={img.src}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block overflow-hidden rounded-md transition-colors max-w-full"
-                    style={{ border: '1px solid var(--theme-border)' }}
+                    className="block overflow-hidden rounded-md transition-colors max-w-full theme-border-1"
                   >
                     <img
                       src={img.src}

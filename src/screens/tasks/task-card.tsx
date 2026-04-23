@@ -1,4 +1,5 @@
 import type { HermesTask } from '@/lib/tasks-api'
+import type { CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 import { PRIORITY_COLORS, isOverdue } from '@/lib/tasks-api'
 
@@ -39,14 +40,14 @@ export function TaskCard({
       onDragStart={onDragStart}
       onClick={onClick}
       className={cn(
-        'relative rounded-lg border p-3 cursor-pointer transition-all select-none',
+        'relative rounded-lg border theme-left-status-border p-3 cursor-pointer transition-all select-none',
         'bg-[var(--theme-card)] border-[var(--theme-border)]',
         'hover:border-[var(--theme-accent)]',
         isDragging
           ? 'opacity-40 rotate-1 shadow-2xl'
           : 'hover:shadow-[0_4px_16px_rgba(0,0,0,0.35)]',
       )}
-      style={{ borderLeftWidth: 3, borderLeftColor: priorityColor }}
+      style={{ '--status-border-color': priorityColor } as CSSProperties}
     >
       {/* Priority dot in top-right */}
       <span

@@ -249,17 +249,15 @@ export function MemoryBrowserScreen() {
       style={{ backgroundColor: 'var(--theme-bg)', color: 'var(--theme-text)' }}
     >
       <div
-        className="px-3 py-3 md:px-4"
+        className="px-3 py-3 md:px-4 theme-border-b-1"
         style={{
-          borderBottom: '1px solid var(--theme-border)',
           backgroundColor: 'var(--theme-bg)',
         }}
       >
         <div className="flex items-center gap-3">
           <div
-            className="inline-flex size-9 items-center justify-center rounded-xl"
+            className="inline-flex size-9 items-center justify-center rounded-xl theme-border-1"
             style={{
-              border: '1px solid var(--theme-border)',
               backgroundColor: 'var(--theme-card)',
               color: 'var(--theme-text)',
             }}
@@ -279,9 +277,8 @@ export function MemoryBrowserScreen() {
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Search memory files"
-                className="w-full rounded-xl py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-accent-500"
+                className="w-full rounded-xl theme-border-1 py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-accent-500"
                 style={{
-                  border: '1px solid var(--theme-border)',
                   backgroundColor: 'var(--theme-card)',
                   color: 'var(--theme-text)',
                 }}
@@ -482,9 +479,8 @@ export function MemoryBrowserScreen() {
               <StateBox label={contentQuery.error.message} error />
             ) : isEditing ? (
               <div
-                className="h-full rounded-xl p-2"
+                className="h-full rounded-xl p-2 theme-border-1"
                 style={{
-                  border: '1px solid var(--theme-border)',
                   backgroundColor: 'var(--theme-card)',
                 }}
               >
@@ -495,9 +491,8 @@ export function MemoryBrowserScreen() {
                     setDraftContent(nextValue)
                     setHasUnsavedChanges(nextValue !== content)
                   }}
-                  className="h-full w-full resize-none rounded-lg px-3 py-2 font-mono text-[13px] outline-none ring-0"
+                  className="h-full w-full resize-none rounded-lg theme-border-1 px-3 py-2 font-mono text-[13px] outline-none ring-0"
                   style={{
-                    border: '1px solid var(--theme-border)',
                     backgroundColor: 'var(--theme-bg)',
                     color: 'var(--theme-text)',
                   }}
@@ -506,9 +501,8 @@ export function MemoryBrowserScreen() {
               </div>
             ) : (
               <div
-                className="rounded-xl"
+                className="rounded-xl theme-border-1"
                 style={{
-                  border: '1px solid var(--theme-border)',
                   backgroundColor: 'var(--theme-card)',
                 }}
               >

@@ -165,11 +165,9 @@ export function ChatEmptyState({
           <img
             src="/logo.svg"
             alt="semantier logo"
-            className="relative size-20 rounded-xl"
+            className="relative size-20 rounded-xl theme-card-surface"
             style={{
-              border: '0px solid var(--theme-border)',
               padding: '4px',
-              background: 'var(--theme-card)',
             }}
           />
         </div>
@@ -201,11 +199,10 @@ export function ChatEmptyState({
               {CAPABILITY_CHIPS.map((chip) => (
                 <span
                   key={chip}
-                  className="rounded-full px-2.5 py-0.5 text-[11px]"
+                  className="rounded-full px-2.5 py-0.5 text-[11px] theme-border-1"
                   style={{
                     background:
                       'color-mix(in srgb, var(--theme-card2) 72%, transparent)',
-                    border: '1px solid var(--theme-border)',
                     color: 'var(--theme-muted)',
                   }}
                 >
@@ -245,10 +242,9 @@ export function ChatEmptyState({
                       key={example.title}
                       type="button"
                       onClick={() => onSuggestionClick?.(example.prompt)}
-                      className="block w-full cursor-pointer rounded-lg px-3 py-2.5 text-left transition-all"
+                      className="block w-full cursor-pointer rounded-lg px-3 py-2.5 text-left transition-all theme-border-1"
                       style={{
                         background: 'var(--theme-card)',
-                        border: '1px solid var(--theme-border)',
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.background = 'var(--theme-card2)'
@@ -290,10 +286,9 @@ export function ChatEmptyState({
               <button
                 type="button"
                 onClick={() => setShowAllCategories(true)}
-                className="rounded-full px-3 py-1 text-xs transition-colors"
+                className="rounded-full px-3 py-1 text-xs transition-colors theme-border-1"
                 style={{
                   background: 'var(--theme-card)',
-                  border: '1px solid var(--theme-border)',
                   color: 'var(--theme-muted)',
                 }}
               >

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -140,8 +141,8 @@ function AgentCard({ member }: { member: CrewMember }) {
       )}
     >
       <div
-        className="border-l-[3px] p-4 h-full flex flex-col gap-3"
-        style={{ borderLeftColor: borderColor }}
+        className="theme-left-status-border p-4 h-full flex flex-col gap-3"
+        style={{ '--status-border-color': borderColor } as CSSProperties}
       >
         {/* Top row: status dot + role */}
         <div className="flex items-start justify-between gap-2">

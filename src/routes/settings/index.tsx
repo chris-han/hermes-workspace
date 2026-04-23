@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/input'
 import { LogoLoader } from '@/components/logo-loader'
 import { BrailleSpinner } from '@/components/ui/braille-spinner'
 import { ThreeDotsSpinner } from '@/components/ui/three-dots-spinner'
+import type { CSSProperties } from 'react'
 // useWorkspaceStore removed — hamburger eliminated on mobile
 
 export const Route = createFileRoute('/settings/')({
@@ -55,19 +56,16 @@ function PageThemeSwatch({
 }) {
   return (
     <div
-      className="flex h-10 w-full overflow-hidden rounded-md border"
-      style={{ borderColor: colors.border, backgroundColor: colors.bg }}
+      className="flex h-10 w-full overflow-hidden rounded-md theme-swatch-frame"
+      style={{
+        '--swatch-border': colors.border,
+        '--swatch-bg': colors.bg,
+        '--swatch-panel': colors.panel,
+      } as CSSProperties}
     >
-      <div
-        className="flex h-full w-4 flex-col gap-0.5 p-0.5"
-        style={{ backgroundColor: colors.panel }}
-      >
+      <div className="flex h-full w-4 flex-col gap-0.5 p-0.5 theme-swatch-panel">
         {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-1.5 w-full rounded-sm"
-            style={{ backgroundColor: colors.border }}
-          />
+          <div key={i} className="h-1.5 w-full rounded-sm theme-swatch-line" />
         ))}
       </div>
       <div className="flex flex-1 flex-col gap-0.5 p-1">

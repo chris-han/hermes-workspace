@@ -194,6 +194,61 @@
   border-color: var(--theme-border) !important;
 }
 
+/* Unified border/surface utilities for page-level components */
+.theme-border-1 {
+  border: 1px solid var(--theme-border) !important;
+}
+
+.theme-border-t-1 {
+  border-top: 1px solid var(--theme-border) !important;
+}
+
+.theme-border-b-1 {
+  border-bottom: 1px solid var(--theme-border) !important;
+}
+
+.theme-border-l-1 {
+  border-left: 1px solid var(--theme-border) !important;
+}
+
+.theme-tool-surface {
+  background: var(--tool-card-bg) !important;
+  color: var(--tool-card-title) !important;
+}
+
+.theme-card-surface {
+  background: var(--theme-card) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-card2-surface {
+  background: var(--theme-card2) !important;
+}
+
+.theme-left-status-border {
+  border-left-width: 3px !important;
+  border-left-style: solid !important;
+  border-left-color: var(--status-border-color, var(--theme-border)) !important;
+}
+
+.theme-swatch-frame {
+  border: 1px solid var(--swatch-border, var(--theme-border)) !important;
+  background-color: var(--swatch-bg, var(--theme-bg)) !important;
+}
+
+.theme-swatch-panel {
+  background-color: var(--swatch-panel, var(--theme-card)) !important;
+}
+
+.theme-swatch-line {
+  background-color: var(--swatch-border, var(--theme-border)) !important;
+}
+
+.theme-spinner-ring {
+  border-color: var(--theme-border) !important;
+  border-top-color: var(--theme-accent) !important;
+}
+
 /* KPI card utility (label + value + trend badge) */
 .kpi-card {
   border: 1px solid var(--theme-border);

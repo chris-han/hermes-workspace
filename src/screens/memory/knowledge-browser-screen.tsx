@@ -407,18 +407,16 @@ export function KnowledgeBrowserScreen() {
     <div className="min-h-full overflow-y-auto bg-surface text-ink">
       <div className="mx-auto flex w-full max-w-[1200px] min-h-0 flex-col px-4 py-6 sm:px-6 lg:px-8">
         <div
-          className="px-3 py-3 md:px-4"
+          className="px-3 py-3 md:px-4 theme-border-b-1"
           style={{
-            borderBottom: '1px solid var(--theme-border)',
             backgroundColor: 'var(--theme-bg)',
           }}
         >
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <div
-                className="inline-flex size-9 items-center justify-center rounded-xl"
+                className="inline-flex size-9 items-center justify-center rounded-xl theme-border-1"
                 style={{
-                  border: '1px solid var(--theme-border)',
                   backgroundColor: 'var(--theme-card)',
                   color: 'var(--theme-text)',
                 }}
@@ -437,9 +435,8 @@ export function KnowledgeBrowserScreen() {
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
                   placeholder="Search knowledge"
-                  className="w-full rounded-xl py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-accent-500"
+                  className="w-full rounded-xl theme-border-1 py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-accent-500"
                   style={{
-                    border: '1px solid var(--theme-border)',
                     backgroundColor: 'var(--theme-card)',
                     color: 'var(--theme-text)',
                   }}
@@ -450,9 +447,8 @@ export function KnowledgeBrowserScreen() {
             <button
               type="button"
               onClick={() => setGraphOpen(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-primary-100 dark:hover:bg-neutral-900"
+              className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-primary-100 dark:hover:bg-neutral-900 theme-border-1"
               style={{
-                border: '1px solid var(--theme-border)',
                 backgroundColor: 'var(--theme-card)',
                 color: 'var(--theme-text)',
               }}
@@ -465,9 +461,8 @@ export function KnowledgeBrowserScreen() {
               <DialogTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-primary-100 dark:hover:bg-neutral-900"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-primary-100 dark:hover:bg-neutral-900 theme-border-1"
                   style={{
-                    border: '1px solid var(--theme-border)',
                     backgroundColor: 'var(--theme-card)',
                     color: 'var(--theme-text)',
                   }}
@@ -482,11 +477,10 @@ export function KnowledgeBrowserScreen() {
                 </button>
               </DialogTrigger>
               <DialogContent
-                className="sm:max-w-md"
+                className="sm:max-w-md theme-border-1"
                 style={{
                   backgroundColor: 'var(--theme-bg)',
                   color: 'var(--theme-text)',
-                  border: '1px solid var(--theme-border)',
                 }}
               >
                 <div className="space-y-4">
@@ -588,9 +582,8 @@ export function KnowledgeBrowserScreen() {
                           )
                         }
                         placeholder="~/my-wiki or /absolute/path"
-                        className="w-full rounded-xl border px-3 py-2 text-sm outline-none"
+                        className="w-full rounded-xl border border-border px-3 py-2 text-sm outline-none"
                         style={{
-                          borderColor: 'var(--theme-border)',
                           backgroundColor: 'var(--theme-card)',
                           color: 'var(--theme-text)',
                         }}
@@ -619,9 +612,8 @@ export function KnowledgeBrowserScreen() {
                             )
                           }
                           placeholder="owner/repo (e.g. dontcallmejames/my-wiki)"
-                          className="w-full rounded-xl border px-3 py-2 text-sm outline-none"
+                          className="w-full rounded-xl border border-border px-3 py-2 text-sm outline-none"
                           style={{
-                            borderColor: 'var(--theme-border)',
                             backgroundColor: 'var(--theme-card)',
                             color: 'var(--theme-text)',
                           }}
@@ -647,9 +639,8 @@ export function KnowledgeBrowserScreen() {
                               )
                             }
                             placeholder="main"
-                            className="w-full rounded-xl border px-3 py-2 text-sm outline-none"
+                            className="w-full rounded-xl border border-border px-3 py-2 text-sm outline-none"
                             style={{
-                              borderColor: 'var(--theme-border)',
                               backgroundColor: 'var(--theme-card)',
                               color: 'var(--theme-text)',
                             }}
@@ -674,9 +665,8 @@ export function KnowledgeBrowserScreen() {
                               )
                             }
                             placeholder="wiki (optional)"
-                            className="w-full rounded-xl border px-3 py-2 text-sm outline-none"
+                            className="w-full rounded-xl border border-border px-3 py-2 text-sm outline-none"
                             style={{
-                              borderColor: 'var(--theme-border)',
                               backgroundColor: 'var(--theme-card)',
                               color: 'var(--theme-text)',
                             }}
@@ -733,9 +723,8 @@ export function KnowledgeBrowserScreen() {
                           }
                         }}
                         disabled={syncing || !settingsSource.repo}
-                        className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors hover:bg-primary-100 disabled:opacity-50 dark:hover:bg-neutral-900"
+                        className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-primary-100 disabled:opacity-50 dark:hover:bg-neutral-900"
                         style={{
-                          borderColor: 'var(--theme-border)',
                           color: 'var(--theme-text)',
                         }}
                       >
@@ -950,9 +939,8 @@ export function KnowledgeBrowserScreen() {
                 <StateBox label="Page not found" error />
               ) : (
                 <div
-                  className="rounded-xl"
+                  className="rounded-xl theme-border-1"
                   style={{
-                    border: '1px solid var(--theme-border)',
                     backgroundColor: 'var(--theme-card)',
                   }}
                 >

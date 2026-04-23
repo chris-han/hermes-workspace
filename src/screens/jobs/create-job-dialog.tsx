@@ -132,16 +132,14 @@ export function CreateJobDialog({
             exit={{ opacity: 0, scale: 0.98, y: 10 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
             onSubmit={handleFormSubmit}
-            className="relative z-10 flex max-h-[85vh] w-[min(720px,96vw)] flex-col overflow-hidden rounded-2xl border shadow-2xl"
+            className="relative z-10 flex max-h-[85vh] w-[min(720px,96vw)] flex-col overflow-hidden rounded-2xl border border-border shadow-2xl"
             style={{
               background: 'var(--theme-card)',
-              borderColor: 'var(--theme-border)',
               color: 'var(--theme-text)',
             }}
           >
             <div
-              className="flex items-start justify-between gap-4 border-b px-5 py-4"
-              style={{ borderColor: 'var(--theme-border)' }}
+              className="flex items-start justify-between gap-4 border-b border-border px-5 py-4"
             >
               <div>
                 <h2 className="text-lg font-semibold">Create Job</h2>
@@ -176,10 +174,9 @@ export function CreateJobDialog({
                   }
                   placeholder="Daily research summary"
                   required
-                  className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                  className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                   style={{
                     background: 'var(--theme-input)',
-                    borderColor: 'var(--theme-border)',
                     color: 'var(--theme-text)',
                     boxShadow: '0 0 0 0 transparent',
                   }}
@@ -237,10 +234,9 @@ export function CreateJobDialog({
                     }
                     placeholder="every 30m or 0 9 * * *"
                     required
-                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                    className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                     style={{
                       background: 'var(--theme-input)',
-                      borderColor: 'var(--theme-border)',
                       color: 'var(--theme-text)',
                     }}
                   />
@@ -266,10 +262,9 @@ export function CreateJobDialog({
                   placeholder="What should Hermes do?"
                   required
                   rows={5}
-                  className="w-full resize-none rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                  className="w-full resize-none rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                   style={{
                     background: 'var(--theme-input)',
-                    borderColor: 'var(--theme-border)',
                     color: 'var(--theme-text)',
                   }}
                 />
@@ -297,10 +292,9 @@ export function CreateJobDialog({
                       }))
                     }
                     placeholder="research, writing, synthesis"
-                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                    className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                     style={{
                       background: 'var(--theme-input)',
-                      borderColor: 'var(--theme-border)',
                       color: 'var(--theme-text)',
                     }}
                   />
@@ -420,10 +414,9 @@ export function CreateJobDialog({
                           repeatCount: event.target.value,
                         }))
                       }
-                      className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                      className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                       style={{
                         background: 'var(--theme-input)',
-                        borderColor: 'var(--theme-border)',
                         color: 'var(--theme-text)',
                       }}
                     />
@@ -433,8 +426,7 @@ export function CreateJobDialog({
             </div>
 
             <div
-              className="flex items-center justify-end gap-2 border-t px-5 py-4"
-              style={{ borderColor: 'var(--theme-border)' }}
+              className="flex items-center justify-end gap-2 border-t border-border px-5 py-4"
             >
               <button
                 type="button"

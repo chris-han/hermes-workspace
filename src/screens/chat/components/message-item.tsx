@@ -918,30 +918,16 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
   const dots = useAnimatedDots()
 
   const result = toolCall.result ?? ''
-  const preview = result.slice(0, 100)
   const detail = result.slice(0, 500)
   const hasMore = result.length > 500
 
-  const borderColor = isDone
-    ? 'color-mix(in srgb, var(--theme-success) 35%, var(--theme-border))'
-    : isError
-      ? 'color-mix(in srgb, var(--theme-danger) 35%, var(--theme-border))'
-      : 'color-mix(in srgb, var(--theme-accent) 50%, var(--theme-border))'
-
-  const leftAccent = isRunning
-    ? 'var(--theme-accent)'
-    : isDone
-      ? 'var(--theme-success)'
-      : 'var(--theme-danger)'
-
   return (
     <div
-      className="rounded-lg border border-primary-200 bg-primary-50 text-[11px] max-w-full overflow-hidden"
+      className="rounded-md text-[11px] max-w-full overflow-hidden"
       style={{
-        borderLeftWidth: '3px',
-        borderLeftColor: isRunning ? '#6366f1' : isDone ? '#22c55e' : '#ef4444',
-        transition: 'border-color 0.3s',
-        boxShadow: isRunning ? '0 0 8px rgba(99,102,241,0.15)' : 'none',
+        background: 'var(--tool-card-bg)',
+        border: '1px solid var(--tool-card-border)',
+        color: 'var(--tool-card-title)',
       }}
     >
       {/* Header row — always clickable */}
@@ -964,18 +950,18 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
         )}
         <span className="flex-1" />
         {elapsed && (
-          <span className="shrink-0 text-[10px] tabular-nums text-primary-400">
+          <span className="shrink-0 text-[10px] tabular-nums" style={{ color: 'var(--tool-card-muted)' }}>
             {elapsed}
           </span>
         )}
-        {isDone && <span className="shrink-0 text-xs text-green-500">✅</span>}
-        {isError && <span className="shrink-0 text-xs text-red-500">❌</span>}
+        {isDone && <span className="shrink-0 text-xs" style={{ color: 'var(--theme-success)' }}>✓</span>}
+        {isError && <span className="shrink-0 text-xs" style={{ color: 'var(--theme-danger)' }}>✕</span>}
         {isRunning && (
-          <span className="shrink-0 size-1.5 rounded-full animate-pulse bg-indigo-500" />
+          <span className="shrink-0 size-1.5 rounded-full animate-pulse" style={{ background: 'var(--theme-accent)' }} />
         )}
       </button>
       {isRunning && !expanded && (
-        <div className="px-2.5 pb-1.5 text-[10px] text-primary-400">
+        <div className="px-2.5 pb-1.5 text-[10px]" style={{ color: 'var(--tool-card-muted)' }}>
           <span>
             {verb}
             {dots}
@@ -1031,10 +1017,10 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
           {/* Show error */}
           {isError && result && (
             <div className="px-2.5 py-1.5">
-              <div className="text-[9px] uppercase tracking-widest text-red-500 mb-0.5">
+              <div className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: 'var(--theme-danger)' }}>
                 Error
               </div>
-              <pre className="text-[10px] font-mono whitespace-pre-wrap break-words max-h-48 overflow-y-auto text-red-500">
+              <pre className="text-[10px] font-mono whitespace-pre-wrap break-words max-h-48 overflow-y-auto" style={{ color: 'var(--theme-danger)' }}>
                 {result}
               </pre>
             </div>
@@ -1042,7 +1028,7 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
           {/* Running indicator when expanded */}
           {isRunning && (
             <div
-              className="px-2.5 py-1.5 text-[10px] text-primary-400 border-t"
+              className="px-2.5 py-1.5 text-[10px] border-t"
               style={{ borderColor: 'var(--theme-border)' }}
             >
               <span>
@@ -1054,7 +1040,7 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
         </div>
       )}
       {!expanded && isError && result && (
-        <div className="px-2.5 pb-1.5 text-[10px] font-mono truncate text-red-500">
+        <div className="px-2.5 pb-1.5 text-[10px] font-mono truncate" style={{ color: 'var(--theme-danger)' }}>
           {result.slice(0, 80)}
         </div>
       )}
@@ -1182,11 +1168,12 @@ function MarkdownDocumentCard({
   return (
     <div
       className={cn(
-        'w-full max-w-[36rem] overflow-hidden rounded-2xl border border-primary-200 bg-primary-50/70',
+        'w-full max-w-[36rem] overflow-hidden rounded-card',
         className,
       )}
+      style={{ border: '1px solid var(--theme-border)', background: 'var(--tool-card-bg)' }}
     >
-      <div className="flex items-start justify-between gap-3 border-b border-primary-200 px-3 py-2.5">
+      <div className="flex items-start justify-between gap-3 border-b px-3 py-2.5" style={{ borderColor: 'var(--theme-border)' }}>
         <div className="min-w-0">
           <div className="truncate text-sm font-medium text-primary-900">
             {title}
@@ -1195,7 +1182,7 @@ function MarkdownDocumentCard({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {hasContent ? (
-            <div className="flex items-center rounded-lg border border-primary-200 bg-primary-100/70 p-0.5">
+            <div className="flex items-center rounded-md p-0.5" style={{ border: '1px solid var(--theme-border)', background: 'var(--theme-card2)' }}>
               <Button
                 type="button"
                 variant="ghost"
@@ -1413,18 +1400,13 @@ function InlineToolSectionItem({
       {/* ── Card — always clickable to expand ── */}
       <div
         className={cn(
-          'rounded-xl border border-primary-200 bg-primary-50 text-[12px] overflow-hidden',
-          'cursor-pointer hover:border-primary-300 hover:shadow-md transition-all',
-          'shadow-sm',
+          'rounded-md text-[12px] overflow-hidden',
+          'cursor-pointer transition-all',
         )}
         style={{
-          borderLeftWidth: '4px',
-          borderLeftColor: isRunning
-            ? '#6366f1'
-            : isDone
-              ? '#22c55e'
-              : '#ef4444',
-          boxShadow: isRunning ? '0 2px 12px rgba(99,102,241,0.15)' : undefined,
+          background: 'var(--tool-card-bg)',
+          border: '1px solid var(--tool-card-border)',
+          color: 'var(--tool-card-title)',
         }}
         onClick={() => setOpen((v) => !v)}
         role="button"
@@ -1442,16 +1424,16 @@ function InlineToolSectionItem({
           ) : null}
           <span className="flex-1" />
           {isRunning && (
-            <span className="text-[10px] tabular-nums text-primary-400">
+            <span className="text-[10px] tabular-nums" style={{ color: 'var(--tool-card-muted)' }}>
               {elapsedLabel}
             </span>
           )}
           {isDone && !isRunning && (
-            <span className="text-xs text-green-500">✅</span>
+            <span className="text-xs" style={{ color: 'var(--theme-success)' }}>✓</span>
           )}
-          {isError && <span className="text-xs text-red-500">❌</span>}
+          {isError && <span className="text-xs" style={{ color: 'var(--theme-danger)' }}>✕</span>}
           {isRunning && (
-            <span className="size-1.5 rounded-full animate-pulse bg-indigo-500" />
+            <span className="size-1.5 rounded-full animate-pulse" style={{ background: 'var(--theme-accent)' }} />
           )}
           {hasExpandableContent && (
             <span className="text-[8px] opacity-30 ml-0.5">
@@ -1460,7 +1442,7 @@ function InlineToolSectionItem({
           )}
         </div>
         {isRunning && (
-          <div className="px-2.5 pb-1.5 text-[10px] text-primary-400">
+          <div className="px-2.5 pb-1.5 text-[10px]" style={{ color: 'var(--tool-card-muted)' }}>
             {verb}
             {'.'.repeat(dots)}
           </div>
@@ -1469,10 +1451,10 @@ function InlineToolSectionItem({
 
       {/* ── Expanded detail — terminal-style args + output ── */}
       {open && (
-        <div className="mt-1 ml-3 flex flex-col gap-1.5 pb-1 border-l-2 border-primary-200/40 pl-3 animate-in slide-in-from-top-1 duration-150">
+        <div className="mt-1 ml-3 flex flex-col gap-1.5 pb-1 pl-3 animate-in slide-in-from-top-1 duration-150" style={{ borderLeft: '1px solid var(--theme-border)' }}>
           {hasInputData && !showRawJson ? (
             <div>
-              <div className="text-[9px] uppercase tracking-widest text-primary-500 mb-0.5 font-sans">
+              <div className="text-[9px] uppercase tracking-widest mb-0.5 font-sans" style={{ color: 'var(--tool-card-muted)' }}>
                 Input
               </div>
               {toolSection.type === 'exec' && headerArg ? (
@@ -1499,19 +1481,19 @@ function InlineToolSectionItem({
           {!showRawJson ? (
             isError && toolSection.errorText ? (
               <div>
-                <div className="text-[9px] uppercase tracking-widest text-red-500 mb-0.5 font-sans">
+                <div className="text-[9px] uppercase tracking-widest mb-0.5 font-sans" style={{ color: 'var(--theme-danger)' }}>
                   Error
                 </div>
                 <pre
-                  className="max-h-48 overflow-x-auto whitespace-pre-wrap break-words rounded p-2 text-[10px] font-mono text-red-400"
-                  style={{ background: 'var(--code-bg, var(--theme-card))' }}
+                  className="max-h-48 overflow-x-auto whitespace-pre-wrap break-words rounded p-2 text-[10px] font-mono"
+                  style={{ background: 'var(--code-bg, var(--theme-card))', color: 'var(--theme-danger)' }}
                 >
                   {displayedOutputText}
                 </pre>
               </div>
             ) : toolSection.outputText ? (
               <div>
-                <div className="text-[9px] uppercase tracking-widest text-primary-500 mb-0.5 font-sans">
+                <div className="text-[9px] uppercase tracking-widest mb-0.5 font-sans" style={{ color: 'var(--tool-card-muted)' }}>
                   Output
                 </div>
                 <pre
@@ -1546,7 +1528,7 @@ function InlineToolSectionItem({
                     e.stopPropagation()
                     setShowFullOutput((v) => !v)
                   }}
-                  className="text-[9px] text-primary-500 hover:text-primary-700"
+                  className="text-[9px]" style={{ color: 'var(--tool-card-muted)' }}
                 >
                   {showFullOutput ? 'less' : 'more'}
                 </button>
@@ -1557,7 +1539,7 @@ function InlineToolSectionItem({
                   e.stopPropagation()
                   setShowRawJson((v) => !v)
                 }}
-                className="text-[9px] text-primary-500 hover:text-primary-700"
+                className="text-[9px]" style={{ color: 'var(--tool-card-muted)' }}
               >
                 {showRawJson ? 'formatted' : 'raw'}
               </button>
@@ -1565,7 +1547,7 @@ function InlineToolSectionItem({
           )}
           {/* Fallback when no args or output available */}
           {!hasInputData && !hasOutputData && !isRunning && (
-            <div className="text-[10px] text-primary-400 italic">
+            <div className="text-[10px] italic" style={{ color: 'var(--tool-card-muted)' }}>
               No detail available for this tool call
             </div>
           )}
@@ -2157,7 +2139,7 @@ function MessageItemComponent({
               />
             </CollapsibleTrigger>
             <CollapsiblePanel>
-              <div className="rounded-md border border-primary-200 bg-primary-50 p-3">
+              <div className="rounded-md p-3" style={{ border: '1px solid var(--theme-border)', background: 'var(--tool-card-bg)' }}>
                 <p className="text-sm text-primary-700 whitespace-pre-wrap text-pretty">
                   {thinking}
                 </p>
@@ -2181,7 +2163,7 @@ function MessageItemComponent({
       {/* Narration messages (tool-call activity) — compact collapsible row */}
       {!isUser && (message as any).__isNarration && hasText && (
         <div className="w-full max-w-[900px]">
-          <details className="group/narration rounded-lg border border-primary-200/50 bg-primary-50/30 hover:bg-primary-50 dark:hover:bg-primary-800/50 transition-colors">
+          <details className="group/narration rounded-md transition-colors" style={{ border: '1px solid var(--theme-border)', background: 'var(--tool-card-bg)' }}>
             <summary className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 list-none [&::-webkit-details-marker]:hidden">
               <span className="size-6 flex items-center justify-center rounded-full bg-accent-500/15 shrink-0">
                 <span className="text-xs">⚡</span>
@@ -2260,7 +2242,8 @@ function MessageItemComponent({
                         href={source}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block overflow-hidden rounded-lg border border-primary-200 hover:border-primary-400 transition-colors max-w-full"
+                        className="block overflow-hidden rounded-md transition-colors max-w-full"
+                        style={{ border: '1px solid var(--theme-border)' }}
                       >
                         <img
                           src={source}
@@ -2292,13 +2275,13 @@ function MessageItemComponent({
                       href={source}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex max-w-full items-center gap-2 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-700 hover:border-primary-400"
+                      className="inline-flex max-w-full items-center gap-2 rounded-md px-3 py-2 text-sm" style={{ border: '1px solid var(--theme-border)', background: 'var(--tool-card-bg)', color: 'var(--tool-card-title)' }}
                     >
                       <span>📄</span>
                       <span className="truncate">
                         {attachment.name || 'Attachment'}
                       </span>
-                      <span className="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] uppercase text-primary-600">
+                      <span className="rounded px-1.5 py-0.5 text-[10px] uppercase" style={{ background: 'var(--theme-card2)', color: 'var(--tool-card-muted)' }}>
                         {ext || 'file'}
                       </span>
                     </a>
@@ -2314,7 +2297,8 @@ function MessageItemComponent({
                     href={img.src}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block overflow-hidden rounded-lg border border-primary-200 hover:border-primary-400 transition-colors max-w-full"
+                    className="block overflow-hidden rounded-md transition-colors max-w-full"
+                    style={{ border: '1px solid var(--theme-border)' }}
                   >
                     <img
                       src={img.src}

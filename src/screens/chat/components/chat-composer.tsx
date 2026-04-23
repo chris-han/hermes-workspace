@@ -1859,6 +1859,7 @@ function ChatComposerComponent({
         maxHeight={isMobileViewport ? 120 : 240}
         className={cn(
           'relative z-50 transition-all duration-300',
+          !isMobileViewport && '!rounded-2xl',
           // On mobile: remove PromptInput's built-in rounded/bg/padding — outer wrapper owns the container
           isMobileViewport &&
             'py-0 gap-0 !rounded-none !bg-transparent shadow-none outline-none',

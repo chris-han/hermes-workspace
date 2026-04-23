@@ -234,7 +234,7 @@ export function MessagingSettingsScreen() {
   const [weixinPairingPending, setWeixinPairingPending] = useState<PairingPendingEntry[]>([])
   const [loadingWeixinPairing, setLoadingWeixinPairing] = useState(false)
   const [approvingWeixinPairing, setApprovingWeixinPairing] = useState(false)
-  const [weixinPairingCode, setWeixinPairingCode] = useState('')
+  const [approvingWeixinPairingCode, setApprovingWeixinPairingCode] = useState('')
 
   async function loadPlatforms() {
     setLoading(true)
@@ -386,30 +386,31 @@ export function MessagingSettingsScreen() {
     }
   }
 
-  async function approveWeixinPairingCode() {
-    const code = weixinPairingCode.trim()
-    if (!code) {
-      toast('Please enter a pairing code.', { type: 'error' })
+  async function approveWeixinPairingCode(code: string) {
+    const normalizedCode = code.trim().toUpperCase()
+    if (!normalizedCode) {
+      toast('Pairing code is missing for this request.', { type: 'error' })
       return
     }
 
+    setApprovingWeixinPairingCode(normalizedCode)
     setApprovingWeixinPairing(true)
     try {
       const result = await requestJson<PairingApproveResponse>('/messaging/weixin/pairing/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code: normalizedCode }),
       })
 
       const who = result.user_name || result.user_id || 'user'
       toast(`Pairing approved for ${who}.`, { type: 'success' })
-      setWeixinPairingCode('')
       await loadWeixinPairingPending()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to approve pairing code.'
       toast(message, { type: 'error' })
     } finally {
       setApprovingWeixinPairing(false)
+      setApprovingWeixinPairingCode('')
     }
   }
 
@@ -1052,7 +1053,7 @@ export function MessagingSettingsScreen() {
                   <div className="mt-4 rounded-lg border border-primary-200 bg-surface p-3">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <p className="text-xs text-primary-700">
-                        Ask user to DM the bot, then enter the pairing code they receive and click Approve.
+                        Ask user to DM the bot, then approve their request directly in the matching row.
                       </p>
                       <Button
                         type="button"
@@ -1073,30 +1074,6 @@ export function MessagingSettingsScreen() {
                       <p className="mb-2 text-xs text-amber-700">Unsaved Weixin changes — save to apply policy updates to queued requests.</p>
                     ) : null}
 
-                    <div className="mb-2 flex flex-wrap items-end gap-2">
-                      <label className="min-w-[220px] flex-1 space-y-1.5">
-                        <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
-                          Pairing Code
-                        </span>
-                        <Input
-                          value={weixinPairingCode}
-                          placeholder="Enter 8-char code"
-                          onChange={(event) => setWeixinPairingCode(event.target.value.toUpperCase())}
-                        />
-                      </label>
-                      <Button
-                        type="button"
-                        disabled={
-                          approvingWeixinPairing ||
-                          loadingWeixinPairing ||
-                          weixinPairingCode.trim() === ''
-                        }
-                        onClick={() => void approveWeixinPairingCode()}
-                      >
-                        {approvingWeixinPairing ? 'Approving...' : 'Approve Code'}
-                      </Button>
-                    </div>
-
                     {weixinPairingPending.length > 0 ? (
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs text-primary-800">
@@ -1105,7 +1082,8 @@ export function MessagingSettingsScreen() {
                               <th className="py-1 pr-3">Code</th>
                               <th className="py-1 pr-3">User ID</th>
                               <th className="py-1 pr-3">User Name</th>
-                              <th className="py-1">Age</th>
+                              <th className="py-1 pr-3">Age</th>
+                              <th className="py-1 text-right">Action</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1114,7 +1092,25 @@ export function MessagingSettingsScreen() {
                                 <td className="py-1 pr-3 font-mono">{entry.code}</td>
                                 <td className="py-1 pr-3">{entry.user_id}</td>
                                 <td className="py-1 pr-3">{entry.user_name || '-'}</td>
-                                <td className="py-1">{entry.age_minutes}m</td>
+                                <td className="py-1 pr-3">{entry.age_minutes}m</td>
+                                <td className="py-1 text-right">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={
+                                      approvingWeixinPairing ||
+                                      loadingWeixinPairing ||
+                                      saving ||
+                                      validating
+                                    }
+                                    onClick={() => void approveWeixinPairingCode(entry.code)}
+                                  >
+                                    {approvingWeixinPairing && approvingWeixinPairingCode === entry.code
+                                      ? 'Approving...'
+                                      : 'Approve'}
+                                  </Button>
+                                </td>
                               </tr>
                             ))}
                           </tbody>

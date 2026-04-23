@@ -306,7 +306,13 @@ function ThinkingBubble({
       </div>
 
       {/* Chat bubble */}
-      <div className="relative max-w-[36rem] overflow-hidden rounded-2xl rounded-bl-sm border border-primary-200 dark:border-primary-200/20 bg-primary-100 dark:bg-primary-100 thinking-shimmer-bubble">
+      <div
+        className="relative max-w-[36rem] overflow-hidden rounded-card rounded-bl-sm thinking-shimmer-bubble"
+        style={{
+          border: '1px solid var(--theme-border)',
+          background: 'var(--tool-card-bg)',
+        }}
+      >
         {/* Shimmer overlay */}
         <div
           className="thinking-shimmer-sweep pointer-events-none absolute inset-0"
@@ -319,7 +325,11 @@ function ThinkingBubble({
               <div className="flex items-center gap-1.5">
                 {isCompacting ? (
                   <span
-                    className="inline-block size-3 rounded-full border border-primary-300 border-t-primary-500 animate-spin"
+                    className="inline-block size-3 rounded-full border animate-spin"
+                    style={{
+                      borderColor: 'var(--theme-border)',
+                      borderTopColor: 'var(--theme-accent)',
+                    }}
                     aria-hidden="true"
                   />
                 ) : (

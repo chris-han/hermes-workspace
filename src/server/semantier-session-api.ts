@@ -125,10 +125,24 @@ export function toSemantierChatMessage(
   historyIndex?: number,
 ): Record<string, unknown> {
   const timestamp = toMillis(message.created_at) ?? Date.now()
+  const content: Array<Record<string, unknown>> = [
+    { type: 'text', text: message.content || '' },
+  ]
+  const uiSchema =
+    message.metadata && typeof message.metadata === 'object'
+      ? (message.metadata.ui_schema as unknown)
+      : undefined
+  if (uiSchema && typeof uiSchema === 'object' && !Array.isArray(uiSchema)) {
+    content.push({
+      type: 'a2ui',
+      schema: uiSchema as Record<string, unknown>,
+    })
+  }
+
   return {
     id: `msg-${message.message_id}`,
     role: message.role,
-    content: [{ type: 'text', text: message.content || '' }],
+    content,
     text: message.content || '',
     timestamp,
     createdAt: message.created_at,

@@ -51,6 +51,43 @@ describe('toSemantierChatMessage', () => {
     })
     expect(message.content).toEqual([{ type: 'text', text: 'Hello' }])
   })
+
+  it('projects metadata ui_schema as an a2ui content block', () => {
+    const message = toSemantierChatMessage({
+      message_id: 'msg-2',
+      session_id: 'sess-123',
+      role: 'assistant',
+      content: '请填写信息',
+      created_at: '2026-04-21T10:06:00Z',
+      metadata: {
+        ui_schema: {
+          version: '1.0',
+          root: {
+            component: 'schema_form',
+            props: {
+              fields: [{ key: 'topic', label: '会议主题', type: 'text' }],
+            },
+          },
+        },
+      },
+    })
+
+    expect(message.content).toEqual([
+      { type: 'text', text: '请填写信息' },
+      {
+        type: 'a2ui',
+        schema: {
+          version: '1.0',
+          root: {
+            component: 'schema_form',
+            props: {
+              fields: [{ key: 'topic', label: '会议主题', type: 'text' }],
+            },
+          },
+        },
+      },
+    ])
+  })
 })
 
 describe('isSemantierSessionNotFoundError', () => {

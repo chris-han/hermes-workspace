@@ -2,12 +2,19 @@ import { Fragment, useState } from 'react'
 import type { A2UiNode, A2UiSchema } from '../types'
 
 type PropsBag = Record<string, unknown>
+type SchemaFormOption = {
+  label: string
+  value: string
+}
+
 type SchemaFormField = {
   key: string
   label: string
-  type: 'text' | 'textarea' | 'number' | 'date' | 'datetime' | 'email'
+  type: 'text' | 'textarea' | 'number' | 'date' | 'datetime' | 'email' | 'select'
   required: boolean
   placeholder: string
+  options: Array<SchemaFormOption>
+  defaultValue: string
 }
 
 function asString(value: unknown): string {
@@ -33,6 +40,29 @@ function normalizeChildren(
   return [children]
 }
 
+function normalizeSchemaFormOptions(value: unknown): Array<SchemaFormOption> {
+  if (!Array.isArray(value)) return []
+  const options: Array<SchemaFormOption> = []
+
+  for (const item of value) {
+    if (typeof item === 'string') {
+      const normalized = item.trim()
+      if (!normalized) continue
+      options.push({ label: normalized, value: normalized })
+      continue
+    }
+    if (!item || typeof item !== 'object') continue
+    const raw = item as Record<string, unknown>
+    const label = asString(raw.label).trim()
+    const valueString = asString(raw.value).trim()
+    const valueNormalized = valueString || label
+    if (!label || !valueNormalized) continue
+    options.push({ label, value: valueNormalized })
+  }
+
+  return options
+}
+
 function normalizeSchemaFormFields(value: unknown): Array<SchemaFormField> {
   if (!Array.isArray(value)) return []
   const fields: Array<SchemaFormField> = []
@@ -49,7 +79,8 @@ function normalizeSchemaFormFields(value: unknown): Array<SchemaFormField> {
       typeRaw === 'number' ||
       typeRaw === 'date' ||
       typeRaw === 'datetime' ||
-      typeRaw === 'email'
+      typeRaw === 'email' ||
+      typeRaw === 'select'
         ? (typeRaw as SchemaFormField['type'])
         : 'text'
     const requiredRaw = raw.required
@@ -60,6 +91,8 @@ function normalizeSchemaFormFields(value: unknown): Array<SchemaFormField> {
         ['true', '1', 'yes', 'required'].includes(
           requiredRaw.trim().toLowerCase(),
         ))
+    const options = normalizeSchemaFormOptions(raw.options)
+    const defaultValue = asString(raw.defaultValue || raw.default).trim()
 
     fields.push({
       key,
@@ -67,6 +100,8 @@ function normalizeSchemaFormFields(value: unknown): Array<SchemaFormField> {
       type,
       required,
       placeholder: asString(raw.placeholder),
+      options,
+      defaultValue,
     })
   }
 
@@ -89,7 +124,7 @@ function SchemaForm({
   const [values, setValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {}
     for (const field of fields) {
-      initial[field.key] = ''
+      initial[field.key] = field.defaultValue
     }
     return initial
   })
@@ -136,6 +171,22 @@ function SchemaForm({
               className="rounded-md border border-border bg-background px-2.5 py-2 text-sm"
               required={field.required}
             />
+          ) : field.type === 'select' ? (
+            <select
+              value={asString(values[field.key])}
+              onChange={(event) => setFieldValue(field.key, event.target.value)}
+              className="rounded-md border border-border bg-background px-2.5 py-2 text-sm"
+              required={field.required}
+            >
+              {!field.defaultValue ? (
+                <option value="">{field.placeholder || `请选择${field.label}`}</option>
+              ) : null}
+              {field.options.map((option) => (
+                <option key={`${field.key}-${option.value}`} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           ) : (
             <input
               type={field.type === 'datetime' ? 'text' : field.type}

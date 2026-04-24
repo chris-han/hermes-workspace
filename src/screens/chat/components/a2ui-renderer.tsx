@@ -203,7 +203,7 @@ function SchemaForm({
       ))}
       <button
         type="submit"
-        className="inline-flex w-fit items-center rounded-md border border-border bg-foreground px-3 py-1.5 text-xs text-background hover:opacity-90"
+        className="theme-accent-button inline-flex w-fit items-center rounded-md border px-3 py-1.5 text-xs hover:opacity-90"
       >
         {submitLabel}
       </button>

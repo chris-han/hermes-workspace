@@ -167,6 +167,21 @@
   background-color: var(--theme-accent-subtle) !important;
 }
 
+.theme-accent-button {
+  background-color: var(--theme-accent) !important;
+  border-color: var(--theme-accent-secondary) !important;
+  color: var(--theme-toggle-on-border) !important;
+}
+
+[data-theme$='-light'] .theme-accent {
+  color: #ffffff !important;
+}
+
+[data-theme='semantier'] .theme-accent,
+[data-theme='semantier-light'] .theme-accent {
+  color: var(--theme-toggle-on-border) !important;
+}
+
 /* Accent action controls: always use theme token fill (no hardcoded palette). */
 .theme-accent-fill {
   background-color: var(--theme-accent) !important;

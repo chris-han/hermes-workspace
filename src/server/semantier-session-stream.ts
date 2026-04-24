@@ -123,7 +123,20 @@ export function translateSemantierSessionStreamEvent(
       }
 
       const summary = readString(data.summary)
-      if (summary) donePayload.summary = summary
+      if (summary) {
+        donePayload.summary = summary
+        // Provide an authoritative final message so the chat store uses the
+        // clean server-stripped text (no raw a2ui fence blocks) instead of the
+        // accumulated streaming buffer, which still contains the raw ```a2ui…```
+        // code fence. Without this, mergeHistoryMessages dedup fails because
+        // the realtime completeMessage text (with a2ui) doesn't match the
+        // history message text (blank lines where a2ui was stripped), causing
+        // both messages to render simultaneously as a "duplicate" response.
+        donePayload.message = {
+          role: 'assistant',
+          content: [{ type: 'text', text: summary }],
+        }
+      }
 
       if (data.metrics && typeof data.metrics === 'object') {
         donePayload.metrics = data.metrics

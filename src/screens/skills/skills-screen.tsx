@@ -23,7 +23,7 @@ import { toast } from '@/components/ui/toast'
 
 type SkillsTab = 'installed' | 'marketplace' | 'toolsets'
 type SkillsSort = 'name' | 'category'
-type SkillSourceFilter = 'All' | 'Workspace' | 'Shared' | 'Built-in'
+type SkillSourceFilter = 'All' | 'User' | 'Shared' | 'Built-in'
 
 type DisplayControl = {
   label: string
@@ -144,7 +144,7 @@ const DEFAULT_CATEGORIES = [
 
 const SOURCE_FILTERS: Array<SkillSourceFilter> = [
   'All',
-  'Workspace',
+  'User',
   'Shared',
   'Built-in',
 ]
@@ -169,7 +169,7 @@ function resolveSourceTier(item: {
   if (item.canEdit || item.canUninstall || item.canModify) return 'workspace'
 
   const sourceLabel = item.sourceLabel?.toLowerCase()
-  if (sourceLabel === 'workspace') return 'workspace'
+  if (sourceLabel === 'user' || sourceLabel === 'workspace') return 'workspace'
   if (sourceLabel === 'application shared') return 'application'
   if (sourceLabel === 'hermes built-in') return 'builtin'
 
@@ -194,7 +194,7 @@ function matchesSourceFilter(
   const sourceTier = resolveSourceTier(item)
 
   if (filter === 'All') return true
-  if (filter === 'Workspace') return sourceTier === 'workspace'
+  if (filter === 'User') return sourceTier === 'workspace'
   if (filter === 'Built-in') return sourceTier === 'builtin'
   return sourceTier === 'application' || sourceTier === 'external'
 }

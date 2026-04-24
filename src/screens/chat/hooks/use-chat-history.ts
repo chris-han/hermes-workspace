@@ -87,6 +87,16 @@ type ExecNotification = {
   ok: boolean | null
 }
 
+function hasA2UiContentBlock(message: ChatMessage): boolean {
+  const content = Array.isArray(message.content) ? message.content : []
+  return content.some((block: any) => {
+    if (!block || typeof block !== 'object') return false
+    if (block.type !== 'a2ui' && block.type !== 'uiSchema') return false
+    const payload = block.schema || block.payload || block.data
+    return !!payload && typeof payload === 'object' && !Array.isArray(payload)
+  })
+}
+
 function coerceExitCode(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value
   if (typeof value === 'string') {
@@ -525,7 +535,8 @@ export function useChatHistory({
             typeof c.text === 'string' &&
             c.text.trim().length > 0,
         )
-        if (!hasText) return false
+        const hasA2Ui = hasA2UiContentBlock(msg)
+        if (!hasText && !hasA2Ui) return false
 
         return true
       }
@@ -556,8 +567,9 @@ export function useChatHistory({
           typeof c.text === 'string' &&
           c.text.trim().length > 20,
       )
+      const hasA2Ui = hasA2UiContentBlock(msg)
       // If it has real text content, it's a response — never hide it
-      if (substantialText) continue
+      if (substantialText || hasA2Ui) continue
 
       const hasLater = filtered
         .slice(i + 1)
@@ -579,7 +591,8 @@ export function useChatHistory({
   const messageCount = useMemo(() => {
     return historyMessages.filter((message) => {
       if (message.role !== 'user' && message.role !== 'assistant') return false
-      return Boolean(textFromMessage(message))
+      if (Boolean(textFromMessage(message))) return true
+      return hasA2UiContentBlock(message)
     }).length
   }, [historyMessages])
 

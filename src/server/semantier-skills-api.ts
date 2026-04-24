@@ -26,6 +26,18 @@ export type SemantierSkillInventoryItem = {
   content?: string
   author?: string
   homepage?: string | null
+  configFields?: Array<{
+    key: string
+    label?: string
+    description?: string
+    prompt?: string
+    placeholder?: string
+    type?: 'string' | 'number' | 'boolean' | 'select'
+    required?: boolean
+    secret?: boolean
+    default?: unknown
+    options?: Array<{ label: string; value: string }>
+  }>
   security?: {
     level?: 'safe' | 'low' | 'medium' | 'high'
     flags?: Array<string>
@@ -96,6 +108,7 @@ export async function installSemantierSkill(
     identifier: string
     category?: string
     force?: boolean
+    config?: Record<string, unknown>
   },
 ): Promise<Record<string, unknown>> {
   const headers = buildSemantierAgentProxyHeaders(requestHeaders, {
@@ -114,6 +127,10 @@ export async function installSemantierSkill(
         identifier: payload.identifier,
         category: payload.category || '',
         force: Boolean(payload.force),
+        config:
+          payload.config && Object.keys(payload.config).length > 0
+            ? payload.config
+            : {},
       }),
       signal: AbortSignal.timeout(120_000),
     },

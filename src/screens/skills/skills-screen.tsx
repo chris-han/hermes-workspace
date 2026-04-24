@@ -36,6 +36,24 @@ type SecurityRisk = {
   score: number
 }
 
+type SkillConfigFieldOption = {
+  label: string
+  value: string
+}
+
+type SkillConfigField = {
+  key: string
+  label?: string
+  description?: string
+  prompt?: string
+  placeholder?: string
+  type?: 'string' | 'number' | 'boolean' | 'select'
+  required?: boolean
+  secret?: boolean
+  default?: unknown
+  options?: Array<SkillConfigFieldOption>
+}
+
 type SkillSummary = {
   id: string
   slug: string
@@ -58,6 +76,7 @@ type SkillSummary = {
   canUninstall?: boolean
   canModify?: boolean
   featuredGroup?: string
+  configFields?: Array<SkillConfigField>
   security?: SecurityRisk
 }
 
@@ -256,6 +275,93 @@ function applySkillOverrides(
   })
 }
 
+type InstallA2UiFieldNode = {
+  key: string
+  label: string
+  description: string
+  required: boolean
+  control: 'text' | 'number' | 'boolean' | 'select'
+  secret: boolean
+  placeholder: string
+  options: Array<SkillConfigFieldOption>
+  defaultValue: string
+}
+
+function labelFromSkillConfigKey(key: string): string {
+  const tail = key.split('.').pop() || key
+  return tail
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function buildInstallA2UiSchema(skill: SkillSummary | null): Array<InstallA2UiFieldNode> {
+  const fields = skill?.configFields || []
+  return fields
+    .filter((field) => field.key)
+    .map((field) => {
+      const control =
+        field.type === 'boolean'
+          ? 'boolean'
+          : field.type === 'number'
+            ? 'number'
+            : field.type === 'select'
+              ? 'select'
+              : 'text'
+      const defaultValue =
+        field.default === undefined || field.default === null
+          ? ''
+          : String(field.default)
+
+      return {
+        key: field.key,
+        label: field.label || labelFromSkillConfigKey(field.key),
+        description: field.description || field.prompt || '',
+        required: Boolean(field.required),
+        control,
+        secret: Boolean(field.secret),
+        placeholder: field.placeholder || '',
+        options: field.options || [],
+        defaultValue,
+      }
+    })
+}
+
+function buildInitialInstallConfigValues(
+  schema: Array<InstallA2UiFieldNode>,
+): Record<string, string> {
+  return schema.reduce<Record<string, string>>((acc, node) => {
+    acc[node.key] = node.defaultValue
+    return acc
+  }, {})
+}
+
+function buildInstallConfigPayload(
+  schema: Array<InstallA2UiFieldNode>,
+  values: Record<string, string>,
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {}
+  for (const node of schema) {
+    const raw = (values[node.key] || '').trim()
+    if (!raw) continue
+
+    if (node.control === 'boolean') {
+      payload[node.key] = raw.toLowerCase() === 'true'
+      continue
+    }
+    if (node.control === 'number') {
+      const numeric = Number(raw)
+      if (Number.isFinite(numeric)) {
+        payload[node.key] = numeric
+      }
+      continue
+    }
+    payload[node.key] = raw
+  }
+  return payload
+}
+
 export function SkillsScreen() {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<SkillsTab>('installed')
@@ -276,7 +382,19 @@ export function SkillsScreen() {
   const [selectedToolset, setSelectedToolset] = useState<ToolsetSummary | null>(
     null,
   )
+  const [installConfigValues, setInstallConfigValues] = useState<
+    Record<string, string>
+  >({})
   const [actionError, setActionError] = useState<string | null>(null)
+
+  const installConfigSchema = useMemo(
+    () => buildInstallA2UiSchema(selectedSkill),
+    [selectedSkill],
+  )
+
+  useEffect(() => {
+    setInstallConfigValues(buildInitialInstallConfigValues(installConfigSchema))
+  }, [installConfigSchema, selectedSkill?.id])
 
   useEffect(() => {
     if (tab !== 'marketplace') return
@@ -499,10 +617,7 @@ export function SkillsScreen() {
   )
 
   const visibleSourceFilters = useMemo(
-    () =>
-      tab === 'installed'
-        ? SOURCE_FILTERS
-        : SOURCE_FILTERS.filter((filter) => filter !== 'Workspace'),
+    () => SOURCE_FILTERS,
     [tab],
   )
 
@@ -528,6 +643,7 @@ export function SkillsScreen() {
       skillId: string
       enabled?: boolean
       source?: HubSkill['source']
+      config?: Record<string, unknown>
     },
   ) {
     setActionError(null)
@@ -551,6 +667,7 @@ export function SkillsScreen() {
           identifier: payload.skillId,
           enabled: payload.enabled,
           source: payload.source,
+          config: payload.config || {},
         }),
       })
 
@@ -655,10 +772,7 @@ export function SkillsScreen() {
       setCategory('All')
       setSort('name')
     }
-    if (
-      parsedTab === 'marketplace' ||
-      (parsedTab === 'toolsets' && sourceFilter === 'Workspace')
-    ) {
+    if (parsedTab === 'marketplace') {
       setSourceFilter('All')
     }
   }
@@ -676,6 +790,47 @@ export function SkillsScreen() {
   function handleSortChange(value: SkillsSort) {
     setSort(value)
     setPage(1)
+  }
+
+  function openInstallFlow(skill: SkillSummary, source?: HubSkill['source']) {
+    if (skill.configFields && skill.configFields.length > 0) {
+      setSelectedSkill(skill)
+      toast('This skill requires install config. Complete the A2UI form to continue.', {
+        type: 'warning',
+        icon: '🧩',
+      })
+      return
+    }
+
+    void runSkillAction('install', { skillId: skill.id, source })
+  }
+
+  function handleInstallFromDialog(skill: SkillSummary) {
+    if (installConfigSchema.length === 0) {
+      void runSkillAction('install', { skillId: skill.id })
+      return
+    }
+
+    const missingRequired = installConfigSchema
+      .filter((node) => node.required)
+      .filter((node) => !(installConfigValues[node.key] || '').trim())
+
+    if (missingRequired.length > 0) {
+      const firstMissing = missingRequired[0]?.label || missingRequired[0]?.key
+      const message = `Missing required field: ${firstMissing}`
+      setActionError(message)
+      toast(message, { type: 'error', icon: '❌' })
+      return
+    }
+
+    const configPayload = buildInstallConfigPayload(
+      installConfigSchema,
+      installConfigValues,
+    )
+    void runSkillAction('install', {
+      skillId: skill.id,
+      config: configPayload,
+    })
   }
 
   return (
@@ -829,7 +984,7 @@ export function SkillsScreen() {
                 pendingAction={pendingAction}
                 tab="installed"
                 onOpenDetails={setSelectedSkill}
-                onInstall={(skillId) => runSkillAction('install', { skillId })}
+                onInstall={(skill) => openInstallFlow(skill)}
                 onUninstall={(skillId) =>
                   runSkillAction('uninstall', { skillId })
                 }
@@ -869,14 +1024,11 @@ export function SkillsScreen() {
                     : 'Start typing to search Skills Hub and other skill sources.',
                 }}
                 onOpenDetails={setSelectedSkill}
-                onInstall={(skillId) => {
-                  const skill = hubQuery.data?.results.find(
-                    (entry) => entry.id === skillId,
+                onInstall={(skill) => {
+                  const hubSkill = hubQuery.data?.results.find(
+                    (entry) => entry.id === skill.id,
                   )
-                  runSkillAction('install', {
-                    skillId,
-                    source: skill?.source,
-                  })
+                  openInstallFlow(skill, hubSkill?.source)
                 }}
                 onUninstall={(skillId) =>
                   runSkillAction('uninstall', { skillId })
@@ -1000,6 +1152,81 @@ export function SkillsScreen() {
                       )}
                     </div>
 
+                    {!selectedSkill.installed && installConfigSchema.length > 0 ? (
+                      <section className="rounded-card border border-border bg-primary-50/80 p-4 backdrop-blur-sm">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-500">
+                          Install Configuration (A2UI)
+                        </p>
+                        <p className="mt-1 text-sm text-primary-500">
+                          This skill declares configuration fields that are stored under skills.config.* during install.
+                        </p>
+
+                        <div className="mt-3 space-y-3">
+                          {installConfigSchema.map((node) => (
+                            <label key={node.key} className="block space-y-1.5">
+                              <span className="text-sm font-medium text-ink">
+                                {node.label}
+                                {node.required ? (
+                                  <span className="ml-1 text-red-600">*</span>
+                                ) : null}
+                              </span>
+                              {node.description ? (
+                                <p className="text-xs text-primary-500">{node.description}</p>
+                              ) : null}
+
+                              {node.control === 'boolean' ? (
+                                <select
+                                  value={installConfigValues[node.key] || ''}
+                                  onChange={(event) =>
+                                    setInstallConfigValues((current) => ({
+                                      ...current,
+                                      [node.key]: event.target.value,
+                                    }))
+                                  }
+                                  className="h-10 w-full rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
+                                >
+                                  <option value="">Select</option>
+                                  <option value="true">True</option>
+                                  <option value="false">False</option>
+                                </select>
+                              ) : node.control === 'select' ? (
+                                <select
+                                  value={installConfigValues[node.key] || ''}
+                                  onChange={(event) =>
+                                    setInstallConfigValues((current) => ({
+                                      ...current,
+                                      [node.key]: event.target.value,
+                                    }))
+                                  }
+                                  className="h-10 w-full rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
+                                >
+                                  <option value="">Select</option>
+                                  {node.options.map((option) => (
+                                    <option key={`${node.key}-${option.value}`} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  type={node.secret ? 'password' : node.control === 'number' ? 'number' : 'text'}
+                                  value={installConfigValues[node.key] || ''}
+                                  onChange={(event) =>
+                                    setInstallConfigValues((current) => ({
+                                      ...current,
+                                      [node.key]: event.target.value,
+                                    }))
+                                  }
+                                  placeholder={node.placeholder || node.key}
+                                  className="h-10 w-full rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
+                                />
+                              )}
+                            </label>
+                          ))}
+                        </div>
+                      </section>
+                    ) : null}
+
                     <article className="rounded-card border border-border bg-primary-100/30 p-4 backdrop-blur-sm">
                       <Markdown>
                         {selectedSkill.content ||
@@ -1043,14 +1270,14 @@ export function SkillsScreen() {
                     <Button
                       size="sm"
                       disabled={pendingAction?.skillId === selectedSkill.id}
-                      onClick={() =>
-                        runSkillAction('install', { skillId: selectedSkill.id })
-                      }
+                      onClick={() => handleInstallFromDialog(selectedSkill)}
                     >
                       {pendingAction?.skillId === selectedSkill.id &&
                       pendingAction.action === 'install'
                         ? 'Installing…'
-                        : 'Install'}
+                        : installConfigSchema.length > 0
+                          ? 'Install With Config'
+                          : 'Install'}
                     </Button>
                   )}
                   <Button
@@ -1165,7 +1392,7 @@ type SkillsGridProps = {
     description: string
   }
   onOpenDetails: (skill: SkillSummary) => void
-  onInstall: (skillId: string) => void
+  onInstall: (skill: SkillSummary) => void
   onUninstall: (skillId: string) => void
   onToggle: (skillId: string, enabled: boolean) => void
 }
@@ -1475,7 +1702,7 @@ function SkillsGrid({
                   <Button
                     size="sm"
                     disabled={isActing}
-                    onClick={() => onInstall(skill.id)}
+                    onClick={() => onInstall(skill)}
                   >
                     {isInstalling ? 'Installing…' : 'Install'}
                   </Button>

@@ -37,7 +37,21 @@ type SkillSummary = {
   canUninstall?: boolean
   canModify?: boolean
   featuredGroup?: string
+  configFields?: Array<SkillConfigField>
   security: SecurityRisk
+}
+
+type SkillConfigField = {
+  key: string
+  label?: string
+  description?: string
+  prompt?: string
+  placeholder?: string
+  type?: 'string' | 'number' | 'boolean' | 'select'
+  required?: boolean
+  secret?: boolean
+  default?: unknown
+  options?: Array<{ label: string; value: string }>
 }
 
 const KNOWN_CATEGORIES = [
@@ -117,6 +131,56 @@ function normalizeSecurity(value: unknown): SecurityRisk {
   }
 }
 
+function normalizeSkillConfigFields(value: unknown): Array<SkillConfigField> {
+  if (!Array.isArray(value)) return []
+
+  const fields: Array<SkillConfigField> = []
+  for (const entry of value) {
+    const record = asRecord(entry)
+    const key = readString(record.key)
+    if (!key) continue
+
+    const typeValue = readString(record.type).toLowerCase()
+    const type =
+      typeValue === 'string' ||
+      typeValue === 'number' ||
+      typeValue === 'boolean' ||
+      typeValue === 'select'
+        ? (typeValue as SkillConfigField['type'])
+        : 'string'
+
+    const options = Array.isArray(record.options)
+      ? record.options
+          .map((option) => {
+            const optRecord = asRecord(option)
+            const value = readString(optRecord.value)
+            const label = readString(optRecord.label) || value
+            if (!value) return null
+            return { label, value }
+          })
+          .filter((option): option is { label: string; value: string } =>
+            Boolean(option),
+          )
+      : []
+
+    fields.push({
+      key,
+      label: readString(record.label) || undefined,
+      description: readString(record.description) || undefined,
+      prompt: readString(record.prompt) || undefined,
+      placeholder: readString(record.placeholder) || undefined,
+      type,
+      required:
+        typeof record.required === 'boolean' ? record.required : undefined,
+      secret: typeof record.secret === 'boolean' ? record.secret : undefined,
+      default: record.default,
+      options: options.length > 0 ? options : undefined,
+    })
+  }
+
+  return fields
+}
+
 function guessCategory(record: Record<string, unknown>): string {
   const direct =
     readString(record.category) ||
@@ -190,6 +254,7 @@ function normalizeSkill(value: unknown): SkillSummary | null {
     canModify:
       typeof record.canModify === 'boolean' ? record.canModify : undefined,
     featuredGroup: undefined,
+    configFields: normalizeSkillConfigFields(record.configFields),
     security: normalizeSecurity(record.security),
   }
 }

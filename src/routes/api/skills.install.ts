@@ -32,6 +32,7 @@ export const Route = createFileRoute('/api/skills/install')({
             identifier?: string
             category?: string
             force?: boolean
+            config?: Record<string, unknown>
           }
           const identifier = (body.identifier || body.skillId || '').trim()
           if (!identifier) {
@@ -46,6 +47,10 @@ export const Route = createFileRoute('/api/skills/install')({
               identifier,
               category: body.category || '',
               force: Boolean(body.force),
+              config:
+                body.config && typeof body.config === 'object'
+                  ? body.config
+                  : {},
             }),
           )
           return json(result)

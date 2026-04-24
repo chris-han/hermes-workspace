@@ -7,13 +7,19 @@ import {
   textFromMessage,
 } from '../utils'
 import { MessageActionsBar } from './message-actions-bar'
-import type { ChatAttachment, ChatMessage, ToolCallContent } from '../types'
+import type {
+  A2UiSchema,
+  ChatAttachment,
+  ChatMessage,
+  ToolCallContent,
+} from '../types'
 import type { ToolPart } from '@/components/prompt-kit/tool'
 import { AssistantAvatar, UserAvatar } from '@/components/avatars'
 import { CodeBlock } from '@/components/prompt-kit/code-block'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { Message, MessageContent } from '@/components/prompt-kit/message'
 import { Button } from '@/components/ui/button'
+import { A2UiRenderer } from './a2ui-renderer'
 import {
   Collapsible,
   CollapsiblePanel,
@@ -155,7 +161,18 @@ type InlineToolSection = {
 
 export type InlineRenderPlanItem =
   | { kind: 'text'; text: string }
+  | { kind: 'ui'; key: string; schema: A2UiSchema }
   | { kind: 'tool'; section: InlineToolSection }
+
+function extractA2UiSchema(part: unknown): A2UiSchema | null {
+  if (!part || typeof part !== 'object') return null
+  const payload = part as Record<string, unknown>
+  const candidate = payload.schema || payload.payload || payload.data
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    return null
+  }
+  return candidate as A2UiSchema
+}
 
 export function buildInlineToolRenderPlan(
   message: ChatMessage,
@@ -172,11 +189,23 @@ export function buildInlineToolRenderPlan(
   const usedKeys = new Set<string>()
   const plan: Array<InlineRenderPlanItem> = []
 
-  for (const part of parts) {
+  for (let idx = 0; idx < parts.length; idx += 1) {
+    const part = parts[idx]
     if (part.type === 'text') {
       const text = typeof part.text === 'string' ? part.text : ''
       if (text.length > 0) {
         plan.push({ kind: 'text', text })
+      }
+      continue
+    }
+
+    if (part.type === 'a2ui' || part.type === 'uiSchema') {
+      const schema = extractA2UiSchema(part)
+      if (schema) {
+        const key =
+          (typeof (part as any).id === 'string' && (part as any).id) ||
+          `${part.type}-${idx}`
+        plan.push({ kind: 'ui', key, schema })
       }
       continue
     }
@@ -1975,9 +2004,11 @@ function MessageItemComponent({
     () => buildInlineToolRenderPlan(message, finalToolSections),
     [message, finalToolSections],
   )
+  const hasA2UiBlocks = inlineRenderPlan.some((item) => item.kind === 'ui')
   const hasToolCalls = finalToolSections.length > 0
   const shouldRenderMessageBubble =
     hasText ||
+    hasA2UiBlocks ||
     hasAttachments ||
     hasInlineImages ||
     (effectiveIsStreaming && hasRevealedText)
@@ -2308,6 +2339,10 @@ function MessageItemComponent({
                       expandAll={expandAllToolSections}
                       isStreaming={effectiveIsStreaming}
                     />
+                  ) : item.kind === 'ui' ? (
+                    <div key={item.key} className="rounded-lg border border-border/70 bg-muted/10 p-3">
+                      <A2UiRenderer schema={item.schema} />
+                    </div>
                   ) : item.text.trim().length > 0 ? (
                     <div key={`text-${index}`} className="relative">
                       {extractStandaloneMarkdownFence(item.text) ? (

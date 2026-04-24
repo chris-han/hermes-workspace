@@ -2005,9 +2005,14 @@ function ChatComposerComponent({
                     type="button"
                     onClick={handleAbort}
                     aria-label="Stop generation"
-                    className="size-9 rounded-full bg-red-500 flex items-center justify-center text-white transition-all duration-150"
+                    className="size-9 rounded-full bg-red-500 flex items-center justify-center transition-all duration-150"
                   >
-                    <HugeiconsIcon icon={StopIcon} size={18} strokeWidth={2} />
+                    <HugeiconsIcon
+                      icon={StopIcon}
+                      size={18}
+                      strokeWidth={2}
+                      className="theme-danger-contrast"
+                    />
                   </button>
                 ) : value.trim().length > 0 ||
                   attachments.length > 0 ||
@@ -2017,12 +2022,13 @@ function ChatComposerComponent({
                     onClick={handleSubmit}
                     disabled={submitDisabled}
                     aria-label="Send message"
-                    className="size-9 rounded-full bg-accent-500 flex items-center justify-center text-white transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                    className="size-9 rounded-full theme-accent-fill flex items-center justify-center transition-all duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                   >
                     <HugeiconsIcon
                       icon={ArrowUp02Icon}
                       size={18}
                       strokeWidth={2}
+                      className="theme-accent-icon"
                     />
                   </button>
                 ) : voiceInput.isSupported || voiceRecorder.isSupported ? (
@@ -2075,12 +2081,13 @@ function ChatComposerComponent({
                     onClick={handleSubmit}
                     disabled={submitDisabled}
                     aria-label="Send message"
-                    className="size-9 rounded-full bg-accent-500 flex items-center justify-center text-white transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="size-9 rounded-full theme-accent-fill flex items-center justify-center transition-all duration-150 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <HugeiconsIcon
                       icon={ArrowUp02Icon}
                       size={18}
                       strokeWidth={2}
+                      className="theme-accent-icon"
                     />
                   </button>
                 )}
@@ -2729,13 +2736,14 @@ function ChatComposerComponent({
                       onClick={handleAbort}
                       size="icon-sm"
                       variant="destructive"
-                      className="rounded-md"
+                      className="rounded-full bg-red-500 hover:bg-red-600 theme-danger-contrast"
                       aria-label="Stop generation"
                     >
                       <HugeiconsIcon
                         icon={StopIcon}
                         size={20}
                         strokeWidth={1.5}
+                        className="theme-danger-contrast"
                       />
                     </Button>
                   </PromptInputAction>
@@ -2747,13 +2755,14 @@ function ChatComposerComponent({
                         onClick={handleSubmit}
                         disabled={submitDisabled}
                         size="icon-sm"
-                        className="rounded-full"
+                        className="rounded-full theme-accent-fill hover:opacity-90"
                         aria-label="Send message"
                       >
                         <HugeiconsIcon
                           icon={ArrowUp02Icon}
                           size={20}
                           strokeWidth={1.5}
+                          className="theme-accent-icon"
                         />
                       </Button>
                     </PromptInputAction>

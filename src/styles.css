@@ -167,6 +167,28 @@
   background-color: var(--theme-accent-subtle) !important;
 }
 
+/* Accent action controls: always use theme token fill (no hardcoded palette). */
+.theme-accent-fill {
+  background-color: var(--theme-accent) !important;
+}
+
+/* Default accent icon contrast for most themes. */
+.theme-accent-icon {
+  color: var(--theme-text) !important;
+}
+
+/* Semantier accent is brighter, so force deeper icon color for contrast. */
+[data-theme='semantier'] .theme-accent-icon,
+[data-theme='semantier-light'] .theme-accent-icon {
+  color: var(--theme-toggle-on-border) !important;
+}
+
+/* Danger controls must keep white foreground on red backgrounds. */
+.theme-danger-contrast,
+.theme-danger-contrast svg {
+  color: #ffffff !important;
+}
+
 .theme-shadow-1 {
   box-shadow: var(--theme-shadow-1) !important;
 }
@@ -1265,7 +1287,7 @@ code {
   --theme-glass: rgba(14, 15, 12, 0.92);
   --theme-focus: #435ee5;
   --theme-accent: #9fe870;
-  --theme-accent-secondary: #baf295;
+  --theme-accent-secondary: #669542;
   --theme-accent-subtle: rgba(159, 232, 112, 0.08);
   --theme-accent-border: rgba(159, 232, 112, 0.25);
   --theme-toggle-off-bg: #242522;
@@ -1314,8 +1336,8 @@ code {
   --theme-shadow-3: 0 8px 24px rgba(14, 15, 12, 0.06);
   --theme-glass: rgba(245, 245, 240, 0.92);
   --theme-focus: #435ee5;
-  --theme-accent: #669542;
-  --theme-accent-secondary: #2a4d1a;
+  --theme-accent: #9fe870;
+  --theme-accent-secondary: #669542;
   --theme-accent-subtle: rgba(22, 51, 0, 0.07);
   --theme-accent-border: rgba(22, 51, 0, 0.18);
   --theme-toggle-off-bg: #e8ebe6;

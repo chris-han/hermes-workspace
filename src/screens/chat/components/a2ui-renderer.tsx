@@ -1,7 +1,14 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import type { A2UiNode, A2UiSchema } from '../types'
 
 type PropsBag = Record<string, unknown>
+type SchemaFormField = {
+  key: string
+  label: string
+  type: 'text' | 'textarea' | 'number' | 'date' | 'datetime' | 'email'
+  required: boolean
+  placeholder: string
+}
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value : ''
@@ -26,7 +33,138 @@ function normalizeChildren(
   return [children]
 }
 
-function renderNode(node: A2UiNode | string, key: string): React.ReactNode {
+function normalizeSchemaFormFields(value: unknown): Array<SchemaFormField> {
+  if (!Array.isArray(value)) return []
+  const fields: Array<SchemaFormField> = []
+
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue
+    const raw = item as Record<string, unknown>
+    const key = asString(raw.key).trim()
+    const label = asString(raw.label).trim()
+    if (!key || !label) continue
+    const typeRaw = asString(raw.type).trim().toLowerCase()
+    const type: SchemaFormField['type'] =
+      typeRaw === 'textarea' ||
+      typeRaw === 'number' ||
+      typeRaw === 'date' ||
+      typeRaw === 'datetime' ||
+      typeRaw === 'email'
+        ? (typeRaw as SchemaFormField['type'])
+        : 'text'
+    const requiredRaw = raw.required
+    const required =
+      requiredRaw === true ||
+      requiredRaw === 1 ||
+      (typeof requiredRaw === 'string' &&
+        ['true', '1', 'yes', 'required'].includes(
+          requiredRaw.trim().toLowerCase(),
+        ))
+
+    fields.push({
+      key,
+      label,
+      type,
+      required,
+      placeholder: asString(raw.placeholder),
+    })
+  }
+
+  return fields
+}
+
+function SchemaForm({
+  title,
+  submitLabel,
+  fields,
+  followUp,
+  onSubmit,
+}: {
+  title: string
+  submitLabel: string
+  fields: Array<SchemaFormField>
+  followUp: string
+  onSubmit?: (payload: string) => void
+}) {
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {}
+    for (const field of fields) {
+      initial[field.key] = ''
+    }
+    return initial
+  })
+
+  function setFieldValue(key: string, value: string) {
+    setValues((current) => ({ ...current, [key]: value }))
+  }
+
+  return (
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (!onSubmit) return
+
+        const missingRequired = fields.some(
+          (field) => field.required && !asString(values[field.key]).trim(),
+        )
+        if (missingRequired) return
+
+        const lines = fields.map((field) => {
+          const value = asString(values[field.key]).trim()
+          return `- ${field.label}：${value || '未填写'}`
+        })
+        const payload = [
+          `${title}：`,
+          ...lines,
+          '',
+          followUp,
+        ].join('\n')
+        onSubmit(payload)
+      }}
+    >
+      <div className="text-sm font-medium text-foreground">{title}</div>
+      {fields.map((field) => (
+        <label key={field.key} className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">{field.label}</span>
+          {field.type === 'textarea' ? (
+            <textarea
+              value={asString(values[field.key])}
+              onChange={(event) => setFieldValue(field.key, event.target.value)}
+              rows={3}
+              placeholder={field.placeholder}
+              className="rounded-md border border-border bg-background px-2.5 py-2 text-sm"
+              required={field.required}
+            />
+          ) : (
+            <input
+              type={field.type === 'datetime' ? 'text' : field.type}
+              value={asString(values[field.key])}
+              onChange={(event) => setFieldValue(field.key, event.target.value)}
+              placeholder={field.placeholder}
+              className="rounded-md border border-border bg-background px-2.5 py-2 text-sm"
+              required={field.required}
+              min={field.type === 'number' ? 0 : undefined}
+              step={field.type === 'number' ? 1 : undefined}
+            />
+          )}
+        </label>
+      ))}
+      <button
+        type="submit"
+        className="inline-flex w-fit items-center rounded-md border border-border bg-foreground px-3 py-1.5 text-xs text-background hover:opacity-90"
+      >
+        {submitLabel}
+      </button>
+    </form>
+  )
+}
+
+function renderNode(
+  node: A2UiNode | string,
+  key: string,
+  onSubmit?: (payload: string) => void,
+): React.ReactNode {
   if (typeof node === 'string') {
     return (
       <span key={key} className="whitespace-pre-wrap break-words">
@@ -39,7 +177,7 @@ function renderNode(node: A2UiNode | string, key: string): React.ReactNode {
   const props = (node.props || {}) as PropsBag
   const children = normalizeChildren(node.children)
   const renderedChildren = children.map((child, index) =>
-    renderNode(child, `${key}-${index}`),
+    renderNode(child, `${key}-${index}`, onSubmit),
   )
 
   switch (component) {
@@ -120,6 +258,7 @@ function renderNode(node: A2UiNode | string, key: string): React.ReactNode {
     case 'button': {
       const text = asString(props.text) || 'Action'
       const href = asString(props.href)
+      const value = asString(props.value)
       if (href) {
         return (
           <a
@@ -138,11 +277,43 @@ function renderNode(node: A2UiNode | string, key: string): React.ReactNode {
           key={key}
           type="button"
           className="inline-flex items-center rounded-md border border-border px-2.5 py-1.5 text-xs opacity-80"
-          disabled
-          title="Interactive actions are not wired for this A2UI block yet"
+          disabled={!onSubmit}
+          title={
+            onSubmit
+              ? undefined
+              : 'Interactive actions are not wired for this A2UI block yet'
+          }
+          onClick={() => {
+            if (!onSubmit) return
+            onSubmit(value || text)
+          }}
         >
           {text}
         </button>
+      )
+    }
+    case 'schema_form': {
+      const title = asString(props.title) || '请填写信息'
+      const submitLabel = asString(props.submitLabel) || '提交信息'
+      const followUp =
+        asString(props.followUp).trim() || '请根据以上信息继续执行。'
+      const fields = normalizeSchemaFormFields(props.fields)
+      if (fields.length === 0) {
+        return (
+          <pre key={key} className="max-h-64 overflow-auto rounded-md bg-muted/50 p-2 text-[11px] text-foreground">
+            {JSON.stringify(node, null, 2)}
+          </pre>
+        )
+      }
+      return (
+        <SchemaForm
+          key={key}
+          title={title}
+          submitLabel={submitLabel}
+          fields={fields}
+          followUp={followUp}
+          onSubmit={onSubmit}
+        />
       )
     }
     default:
@@ -154,7 +325,13 @@ function renderNode(node: A2UiNode | string, key: string): React.ReactNode {
   }
 }
 
-export function A2UiRenderer({ schema }: { schema: A2UiSchema }) {
+export function A2UiRenderer({
+  schema,
+  onSubmit,
+}: {
+  schema: A2UiSchema
+  onSubmit?: (payload: string) => void
+}) {
   const nodes = normalizeNodes(schema)
   if (nodes.length === 0) {
     return (
@@ -164,5 +341,9 @@ export function A2UiRenderer({ schema }: { schema: A2UiSchema }) {
     )
   }
 
-  return <div className="flex flex-col gap-2">{nodes.map((node, index) => renderNode(node, `a2ui-${index}`))}</div>
+  return (
+    <div className="flex flex-col gap-2">
+      {nodes.map((node, index) => renderNode(node, `a2ui-${index}`, onSubmit))}
+    </div>
+  )
 }

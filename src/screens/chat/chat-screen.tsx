@@ -2519,6 +2519,19 @@ export function ChatScreen({
     setWaitingForResponse(false)
   }, [cancelStreaming, queryClient])
 
+  const handleA2UiSubmit = useCallback(
+    (payload: string) => {
+      const body = payload.trim()
+      if (!body) return
+      send(body, [], false, {
+        reset: () => {},
+        setValue: () => {},
+        setAttachments: () => {},
+      })
+    },
+    [send],
+  )
+
   const runPaletteSlashCommand = useCallback(
     (command: string) => {
       const trimmedCommand = command.trim()
@@ -2806,6 +2819,7 @@ export function ChatScreen({
             <ChatMessageList
               messages={finalDisplayMessages}
               onRetryMessage={handleRetryMessage}
+              onA2UiSubmit={handleA2UiSubmit}
               onRefresh={handleRefreshHistory}
               loading={historyLoading}
               empty={historyEmpty}

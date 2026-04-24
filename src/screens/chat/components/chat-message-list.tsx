@@ -626,6 +626,7 @@ function escapeAttributeSelector(value: string): string {
 type ChatMessageListProps = {
   messages: Array<ChatMessage>
   onRetryMessage?: (message: ChatMessage) => void
+  onA2UiSubmit?: (payload: string) => void
   onRefresh?: () => void | Promise<unknown>
   loading: boolean
   empty: boolean
@@ -664,6 +665,7 @@ type ChatMessageListProps = {
 function ChatMessageListComponent({
   messages,
   onRetryMessage,
+  onA2UiSubmit,
   onRefresh: _onRefresh,
   loading,
   empty,
@@ -1346,6 +1348,7 @@ function ChatMessageListComponent({
             message={chatMessage}
             attachedToolMessages={entry.attachedToolMessages}
             onRetryMessage={effectiveOnRetry}
+            onA2UiSubmit={onA2UiSubmit}
             toolResultsByCallId={hasToolCalls ? toolResultsByCallId : undefined}
             forceActionsVisible={forceActionsVisible}
             wrapperClassName={spacingClass}
@@ -1380,6 +1383,7 @@ function ChatMessageListComponent({
         message={chatMessage}
         attachedToolMessages={entry.attachedToolMessages}
         onRetryMessage={effectiveOnRetry}
+        onA2UiSubmit={onA2UiSubmit}
         toolResultsByCallId={hasToolCalls ? toolResultsByCallId : undefined}
         forceActionsVisible={forceActionsVisible}
         wrapperClassName={spacingClass}
@@ -1826,6 +1830,7 @@ function ChatMessageListComponent({
                         message={chatMessage}
                         attachedToolMessages={entry.attachedToolMessages}
                         onRetryMessage={onRetryMessage}
+                        onA2UiSubmit={onA2UiSubmit}
                         toolResultsByCallId={
                           hasToolCalls ? toolResultsByCallId : undefined
                         }
@@ -1993,6 +1998,7 @@ function areChatMessageListEqual(
   return (
     prev.messages === next.messages &&
     prev.onRetryMessage === next.onRetryMessage &&
+    prev.onA2UiSubmit === next.onA2UiSubmit &&
     prev.onRefresh === next.onRefresh &&
     prev.loading === next.loading &&
     prev.empty === next.empty &&

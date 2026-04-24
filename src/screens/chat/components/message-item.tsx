@@ -143,6 +143,7 @@ type MessageItemProps = {
   streamingKey?: string | null
   expandAllToolSections?: boolean
   isLastAssistant?: boolean
+  onA2UiSubmit?: (payload: string) => void
 }
 
 type InlineToolSection = {
@@ -174,14 +175,159 @@ function extractA2UiSchema(part: unknown): A2UiSchema | null {
   return candidate as A2UiSchema
 }
 
+function buildSlug(value: string, fallbackIndex: number): string {
+  const normalized = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return normalized || `field_${fallbackIndex + 1}`
+}
+
+function normalizeCandidateLabel(value: string): string {
+  return value
+    .replace(/^[-*\d.\)\s]+/, '')
+    .replace(/\*+/g, '')
+    .replace(/（?\s*(可选|optional)\s*）?/gi, '')
+    .replace(/[：:？?。]+$/g, '')
+    .replace(/[\(（]\s*$/, '')
+    .replace(/[\)）]\s*$/g, '')
+    .trim()
+}
+
+type InferredField = {
+  label: string
+  required: boolean
+}
+
+function parseRequestedFields(text: string): Array<InferredField> {
+  const normalized = text
+    .replace(/\r\n/g, '\n')
+    .replace(/。/g, '。\n')
+    .trim()
+  if (!normalized) return []
+
+  const listSignals = [
+    /请告诉我/, /请提供/, /请填写/, /请补充/, /需要(以下)?信息/, /如下信息/,
+    /please provide/i, /fill in/i, /let me know/i,
+  ]
+  const hasSignal = listSignals.some((signal) => signal.test(normalized))
+  if (!hasSignal) return []
+
+  const lines = normalized
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const candidates: Array<InferredField> = []
+
+  const skipLabelPatterns = [
+    /^(请|如果|若|然后|之后|接着)/,
+    /^(提供|提交|填写|补充)这些信息后/,
+    /(我就|即可|就能|可以)帮你/,
+    /^可选$/,
+    /^信息$/,
+  ]
+
+  function pushCandidate(rawValue: string) {
+    const optionalHint = /可选|optional|如果没有就不填|不填也可以/i.test(
+      rawValue,
+    )
+    const label = normalizeCandidateLabel(rawValue)
+    if (!label) return
+    if (skipLabelPatterns.some((pattern) => pattern.test(label))) return
+    if (label.length < 2 || label.length > 30) return
+    candidates.push({ label, required: !optionalHint })
+  }
+
+  for (const line of lines) {
+    const lineForSplit = (() => {
+      const colonIndex = line.search(/[：:]/)
+      if (colonIndex <= 0) return line
+      const prefix = line.slice(0, colonIndex)
+      const suffix = line.slice(colonIndex + 1)
+      const prefixHasSignal = listSignals.some((signal) => signal.test(prefix))
+      return prefixHasSignal && suffix.trim().length > 0 ? suffix : line
+    })()
+
+    const parts = lineForSplit
+      .split(/[，,、；;]/)
+      .map((part) => part.trim())
+      .filter(Boolean)
+    if (parts.length >= 2) {
+      parts.forEach(pushCandidate)
+      continue
+    }
+
+    if (
+      parts.length === 1 &&
+      (/\*\*/.test(lineForSplit) || /[？?]/.test(lineForSplit))
+    ) {
+      pushCandidate(parts[0] || lineForSplit)
+      continue
+    }
+
+    if (/^[-*\d.\)]/.test(line)) {
+      pushCandidate(line)
+    }
+  }
+
+  const dedupedByLabel = new Map<string, InferredField>()
+  for (const candidate of candidates) {
+    const existing = dedupedByLabel.get(candidate.label)
+    if (!existing) {
+      dedupedByLabel.set(candidate.label, candidate)
+      continue
+    }
+    // If any duplicate entry marks the field optional, keep it optional.
+    dedupedByLabel.set(candidate.label, {
+      label: candidate.label,
+      required: existing.required && candidate.required,
+    })
+  }
+
+  return Array.from(dedupedByLabel.values())
+}
+
+function buildAutoSchemaForm(message: ChatMessage): A2UiSchema | null {
+  if (message.role !== 'assistant') return null
+  const text = textFromMessage(message)
+  if (!text.trim()) return null
+
+  const inferredFields = parseRequestedFields(text)
+  if (inferredFields.length < 2) return null
+
+  const fields = inferredFields.map((field, index) => ({
+    key: buildSlug(field.label, index),
+    label: field.label,
+    type: /描述|说明|备注|description|details/i.test(field.label)
+      ? 'textarea'
+      : /时长|数量|金额|count|amount|duration/i.test(field.label)
+        ? 'number'
+        : 'text',
+    required: field.required,
+    placeholder: field.required
+      ? `请填写${field.label}`
+      : `选填：${field.label}`,
+  }))
+
+  return {
+    version: '1.0',
+    root: {
+      component: 'schema_form',
+      props: {
+        title: '请补充以下信息',
+        submitLabel: '提交信息',
+        followUp: '请根据以上信息继续执行。',
+        fields,
+      },
+    },
+  }
+}
+
 export function buildInlineToolRenderPlan(
   message: ChatMessage,
   toolSections: Array<InlineToolSection>,
 ): Array<InlineRenderPlanItem> {
   const parts = Array.isArray(message.content) ? message.content : []
-  if (parts.length === 0) {
-    return toolSections.map((section) => ({ kind: 'tool' as const, section }))
-  }
 
   const toolSectionsById = new Map(
     toolSections.map((section) => [section.key, section] as const),
@@ -225,6 +371,18 @@ export function buildInlineToolRenderPlan(
   )
   for (const section of trailingSections) {
     plan.push({ kind: 'tool', section })
+  }
+
+  const hasUiBlock = plan.some((item) => item.kind === 'ui')
+  if (!hasUiBlock) {
+    const schema = buildAutoSchemaForm(message)
+    if (schema) {
+      plan.push({
+        kind: 'ui',
+        key: 'auto-schema-form',
+        schema,
+      })
+    }
   }
 
   return plan
@@ -1618,6 +1776,7 @@ function MessageItemComponent({
   streamingKey: _streamingKey,
   expandAllToolSections = false,
   isLastAssistant = false,
+  onA2UiSubmit,
 }: MessageItemProps) {
   const role = message.role || 'assistant'
   const profileDisplayName = useResolvedDisplayName()
@@ -2329,7 +2488,7 @@ function MessageItemComponent({
                 ))}
               </div>
             )}
-            {!isUser && hasToolCalls && (
+            {!isUser && (hasToolCalls || hasA2UiBlocks) && (
               <div className="flex flex-col gap-2">
                 {inlineRenderPlan.map((item, index) =>
                   item.kind === 'tool' ? (
@@ -2341,7 +2500,10 @@ function MessageItemComponent({
                     />
                   ) : item.kind === 'ui' ? (
                     <div key={item.key} className="rounded-lg border border-border/70 bg-muted/10 p-3">
-                      <A2UiRenderer schema={item.schema} />
+                      <A2UiRenderer
+                        schema={item.schema}
+                        onSubmit={onA2UiSubmit}
+                      />
                     </div>
                   ) : item.text.trim().length > 0 ? (
                     <div key={`text-${index}`} className="relative">
@@ -2487,6 +2649,9 @@ function areMessagesEqual(
     return false
   }
   if (prevProps.expandAllToolSections !== nextProps.expandAllToolSections) {
+    return false
+  }
+  if (prevProps.onA2UiSubmit !== nextProps.onA2UiSubmit) {
     return false
   }
   if (

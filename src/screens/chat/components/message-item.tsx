@@ -2573,6 +2573,24 @@ function MessageItemComponent({
           <span>Working&hellip;</span>
         </div>
       ) : null}
+      {/* Retry information if available */}
+      {!isUser && !effectiveIsStreaming ? (() => {
+        const retryMessage = typeof message.retry_message === 'string' ? message.retry_message : null
+        if (retryMessage) {
+          return (
+            <div className="mt-2 rounded-lg border border-amber-200/50 bg-amber-50/30 px-3 py-2 text-[11px] text-amber-700 dark:border-amber-800/30 dark:bg-amber-900/10 dark:text-amber-300">
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 shrink-0 text-lg">⚡</span>
+                <div>
+                  <div className="font-medium">Auto-retry</div>
+                  <div className="mt-1 opacity-90">{retryMessage}</div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+        return null
+      })() : null}
       {hasAssistantMetadata ? (
         <div className="flex flex-wrap justify-end gap-x-2 gap-y-0.5 pl-10 pr-1 mt-0.5 font-mono text-[10px] tabular-nums text-primary-400 leading-relaxed">
           {usageMetadata.inputTokens !== null && (

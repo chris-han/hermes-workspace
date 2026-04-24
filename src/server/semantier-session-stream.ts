@@ -142,6 +142,11 @@ export function translateSemantierSessionStreamEvent(
         donePayload.metrics = data.metrics
       }
 
+      const retryMessage = readString(data.retry_message)
+      if (retryMessage) {
+        donePayload.retry_message = retryMessage
+      }
+
       return [{ event: 'done', data: donePayload }]
     }
     case 'attempt.failed': {

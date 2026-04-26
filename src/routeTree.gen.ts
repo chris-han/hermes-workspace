@@ -28,6 +28,7 @@ import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as SettingsProvidersRouteImport } from './routes/settings/providers'
 import { Route as SettingsMessagingRouteImport } from './routes/settings/messaging'
 import { Route as SettingsMcpRouteImport } from './routes/settings/mcp'
+import { Route as RunsRunIdRouteImport } from './routes/runs/$runId'
 import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
 import { Route as AuthSplatRouteImport } from './routes/auth/$'
 import { Route as ApiWorkspaceRouteImport } from './routes/api/workspace'
@@ -197,6 +198,11 @@ const SettingsMcpRoute = SettingsMcpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
   getParentRoute: () => SettingsRoute,
+} as any)
+const RunsRunIdRoute = RunsRunIdRouteImport.update({
+  id: '/runs/$runId',
+  path: '/runs/$runId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ChatSessionKeyRoute = ChatSessionKeyRouteImport.update({
   id: '/chat/$sessionKey',
@@ -625,6 +631,7 @@ export interface FileRoutesByFullPath {
   '/api/workspace': typeof ApiWorkspaceRoute
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/runs/$runId': typeof RunsRunIdRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/messaging': typeof SettingsMessagingRoute
   '/settings/providers': typeof SettingsProvidersRoute
@@ -719,6 +726,7 @@ export interface FileRoutesByTo {
   '/api/workspace': typeof ApiWorkspaceRoute
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/runs/$runId': typeof RunsRunIdRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/messaging': typeof SettingsMessagingRoute
   '/settings/providers': typeof SettingsProvidersRoute
@@ -815,6 +823,7 @@ export interface FileRoutesById {
   '/api/workspace': typeof ApiWorkspaceRoute
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/runs/$runId': typeof RunsRunIdRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/messaging': typeof SettingsMessagingRoute
   '/settings/providers': typeof SettingsProvidersRoute
@@ -912,6 +921,7 @@ export interface FileRouteTypes {
     | '/api/workspace'
     | '/auth/$'
     | '/chat/$sessionKey'
+    | '/runs/$runId'
     | '/settings/mcp'
     | '/settings/messaging'
     | '/settings/providers'
@@ -1006,6 +1016,7 @@ export interface FileRouteTypes {
     | '/api/workspace'
     | '/auth/$'
     | '/chat/$sessionKey'
+    | '/runs/$runId'
     | '/settings/mcp'
     | '/settings/messaging'
     | '/settings/providers'
@@ -1101,6 +1112,7 @@ export interface FileRouteTypes {
     | '/api/workspace'
     | '/auth/$'
     | '/chat/$sessionKey'
+    | '/runs/$runId'
     | '/settings/mcp'
     | '/settings/messaging'
     | '/settings/providers'
@@ -1197,6 +1209,7 @@ export interface RootRouteChildren {
   ApiWorkspaceRoute: typeof ApiWorkspaceRoute
   AuthSplatRoute: typeof AuthSplatRoute
   ChatSessionKeyRoute: typeof ChatSessionKeyRoute
+  RunsRunIdRoute: typeof RunsRunIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
   ApiHermesProxySplatRoute: typeof ApiHermesProxySplatRoute
   ApiKnowledgeConfigRoute: typeof ApiKnowledgeConfigRoute
@@ -1355,6 +1368,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/mcp'
       preLoaderRoute: typeof SettingsMcpRouteImport
       parentRoute: typeof SettingsRoute
+    }
+    '/runs/$runId': {
+      id: '/runs/$runId'
+      path: '/runs/$runId'
+      fullPath: '/runs/$runId'
+      preLoaderRoute: typeof RunsRunIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/chat/$sessionKey': {
       id: '/chat/$sessionKey'
@@ -2037,6 +2057,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWorkspaceRoute: ApiWorkspaceRoute,
   AuthSplatRoute: AuthSplatRoute,
   ChatSessionKeyRoute: ChatSessionKeyRoute,
+  RunsRunIdRoute: RunsRunIdRoute,
   ChatIndexRoute: ChatIndexRoute,
   ApiHermesProxySplatRoute: ApiHermesProxySplatRoute,
   ApiKnowledgeConfigRoute: ApiKnowledgeConfigRoute,

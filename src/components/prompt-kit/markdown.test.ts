@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { linkifyRunDirectoryFooter, normalizeMarkdownHref } from './markdown'
 
 describe('normalizeMarkdownHref', () => {
-  it('rewrites semantier run links through the proxy', () => {
+  it('keeps run links as SPA-routable /runs/ paths', () => {
     expect(normalizeMarkdownHref('/runs/20260422_123456_abcd')).toBe(
-      '/api/semantier-proxy/runs/20260422_123456_abcd',
+      '/runs/20260422_123456_abcd',
     )
   })
 

@@ -1,5 +1,6 @@
 import { marked } from 'marked'
 import { createContext, memo, useContext, useId, useMemo, useRef } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import ReactMarkdown from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
@@ -67,7 +68,7 @@ function extractLanguage(className?: string): string {
 
 export function normalizeMarkdownHref(href?: string): string | undefined {
   if (!href) return href
-  return href.startsWith('/runs/') ? `/api/semantier-proxy${href}` : href
+  return href
 }
 
 type TableRenderContextValue = {
@@ -250,18 +251,33 @@ const INITIAL_COMPONENTS: Partial<Components> = {
     return <li className="leading-relaxed">{children}</li>
   },
   a: function AComponent({ children, href }) {
+    const navigate = useNavigate()
     const normalizedHref = normalizeMarkdownHref(href)
-    const openInNewTab = Boolean(
+    const linkClass =
+      'text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500'
+    const isInternalSpaPath = Boolean(
       normalizedHref &&
-        (normalizedHref.startsWith('/api/') ||
-          /^https?:\/\//i.test(normalizedHref)),
+        normalizedHref.startsWith('/') &&
+        !normalizedHref.startsWith('/api/'),
     )
+    const openInNewTab = Boolean(
+      normalizedHref && /^https?:\/\//i.test(normalizedHref),
+    )
+
+    function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
+      if (isInternalSpaPath && normalizedHref) {
+        e.preventDefault()
+        void navigate({ to: normalizedHref as string })
+      }
+    }
+
     return (
       <a
         href={normalizedHref}
-        className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
+        className={linkClass}
         target={openInNewTab ? '_blank' : undefined}
         rel={openInNewTab ? 'noopener noreferrer' : undefined}
+        onClick={handleClick}
       >
         {children}
       </a>

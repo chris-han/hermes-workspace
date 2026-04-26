@@ -1,11 +1,11 @@
 import path from 'node:path'
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   resolveHermesAccessControlFromBackend,
   updateHermesAccessControlFromBackend,
 } from '../../server/hermes-home'
+import { WorkspaceAuthRequiredError } from '../../server/workspace-root'
 
 type AccessControlRole = 'regular' | 'administrator'
 
@@ -13,32 +13,32 @@ export const Route = createFileRoute('/api/paths')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
+        try {
+          const accessControl = await resolveHermesAccessControlFromBackend(
+            request.headers,
+          )
+          const hermesHome = accessControl.effectiveHermesHome
+          return json({
+            ok: true,
+            hermesHome,
+            workspaceHermesHome: accessControl.workspaceHermesHome,
+            accessControl: {
+              role: accessControl.role,
+              administratorHome: accessControl.administratorHome,
+              defaultAdministratorHome: accessControl.defaultAdministratorHome,
+            },
+            memoriesDir: path.join(hermesHome, 'memories'),
+            skillsDir: path.join(hermesHome, 'skills'),
+          })
+        } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return json({ ok: false, error: err.message }, { status: 401 })
+          }
+          throw err
         }
-        const accessControl = await resolveHermesAccessControlFromBackend(
-          request.headers,
-        )
-        const hermesHome = accessControl.effectiveHermesHome
-        return json({
-          ok: true,
-          hermesHome,
-          workspaceHermesHome: accessControl.workspaceHermesHome,
-          accessControl: {
-            role: accessControl.role,
-            administratorHome: accessControl.administratorHome,
-            defaultAdministratorHome: accessControl.defaultAdministratorHome,
-          },
-          memoriesDir: path.join(hermesHome, 'memories'),
-          skillsDir: path.join(hermesHome, 'skills'),
-        })
       },
 
       PATCH: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-
         const body = (await request.json()) as {
           role?: unknown
           administratorHome?: unknown
@@ -103,6 +103,9 @@ export const Route = createFileRoute('/api/paths')({
             skillsDir: path.join(hermesHome, 'skills'),
           })
         } catch (error) {
+          if (error instanceof WorkspaceAuthRequiredError) {
+            return json({ ok: false, error: error.message }, { status: 401 })
+          }
           return json(
             {
               ok: false,

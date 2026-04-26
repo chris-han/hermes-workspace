@@ -7,7 +7,7 @@ import {
   isSemantierSessionNotFoundError,
   listSemantierSessions,
 } from '../../server/semantier-session-api'
-import { isAuthenticated } from '@/server/auth-middleware'
+import {  } from '@/server/auth-middleware'
 
 function buildIdlePayload() {
   return {
@@ -27,10 +27,6 @@ export const Route = createFileRoute('/api/session-status')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-
         try {
           const url = new URL(request.url)
           const requestedKey =

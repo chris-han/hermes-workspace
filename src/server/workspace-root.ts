@@ -52,16 +52,15 @@ function normalizeWorkspaceRoot(input: string): string {
   return path.resolve(input)
 }
 
-function fallbackWorkspaceRoot(): ActiveWorkspaceRoot {
-  const configured = process.env.HERMES_WORKSPACE_DIR?.trim()
-  const target = configured ? configured : DEFAULT_PUBLIC_WORKSPACE
-  return {
-    authenticated: false,
-    workspaceId: 'public',
-    workspaceSlug: 'public',
-    path: normalizeWorkspaceRoot(target),
-    source: 'fallback',
+export class WorkspaceAuthRequiredError extends Error {
+  constructor(message = 'Authentication required') {
+    super(message)
+    this.name = 'WorkspaceAuthRequiredError'
   }
+}
+
+function fallbackWorkspaceRoot(): never {
+  throw new WorkspaceAuthRequiredError('Public workspace is disabled. Please log in.')
 }
 
 function cacheKeyFromHeaders(headers?: HeadersInit | Headers): string {
@@ -108,6 +107,7 @@ async function fetchWorkspaceRootFromBackend(
     if (authFallback) {
       return authFallback
     }
+    throw new WorkspaceAuthRequiredError()
   }
 
   return {
@@ -238,19 +238,27 @@ export async function resolveActiveWorkspaceRoot(
   }
 
   const promise = fetchWorkspaceRootFromBackend(requestHeaders)
-    .catch(() => null)
+    .catch((err) => {
+      if (err instanceof WorkspaceAuthRequiredError) {
+        throw err
+      }
+      return null
+    })
     .finally(() => {
       workspaceRootPromises.delete(key)
     })
   workspaceRootPromises.set(key, promise)
 
-  const resolved = (await promise) ?? fallbackWorkspaceRoot()
+  const resolved = await promise
+  if (!resolved) {
+    fallbackWorkspaceRoot()
+  }
   workspaceRootCache.set(key, { value: resolved, fetchedAt: Date.now() })
   return resolved
 }
 
-export function resolveDefaultPublicWorkspaceRoot(): string {
-  return fallbackWorkspaceRoot().path
+export function resolveDefaultPublicWorkspaceRoot(): never {
+  fallbackWorkspaceRoot()
 }
 
 export function workspaceRootExists(targetPath: string): boolean {

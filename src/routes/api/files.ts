@@ -5,7 +5,6 @@ import { promisify } from 'node:util'
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import {
-  isAuthenticated,
   requireLocalOrAuth,
 } from '../../server/auth-middleware'
 import {
@@ -16,6 +15,7 @@ import {
   safeErrorMessage,
 } from '../../server/rate-limit'
 import {
+  WorkspaceAuthRequiredError,
   ensureWorkspacePathWithinRoot,
   resolveActiveWorkspaceRoot,
   toWorkspaceRelativePath,
@@ -227,9 +227,6 @@ export const Route = createFileRoute('/api/files')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
         try {
           const activeWorkspace = await resolveActiveWorkspaceRoot(
             request.headers,
@@ -301,13 +298,13 @@ export const Route = createFileRoute('/api/files')({
             entries: tree,
           })
         } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return json({ error: err.message }, { status: 401 })
+          }
           return json({ error: safeErrorMessage(err) }, { status: 500 })
         }
       },
       POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
         const ip = getClientIp(request)
         if (!rateLimit(`files:${ip}`, 30, 60_000)) {
           return rateLimitResponse()
@@ -407,6 +404,9 @@ export const Route = createFileRoute('/api/files')({
           await fs.writeFile(filePath, content, 'utf8')
           return json({ ok: true, path: toRelative(workspaceRoot, filePath) })
         } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return json({ error: err.message }, { status: 401 })
+          }
           return json({ error: safeErrorMessage(err) }, { status: 500 })
         }
       },

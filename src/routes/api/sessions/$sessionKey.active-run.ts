@@ -1,17 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../../server/auth-middleware'
 import { getActiveRunForSession } from '../../../server/run-store'
-import { resolveActiveWorkspaceRoot } from '../../../server/workspace-root'
+import {
+  WorkspaceAuthRequiredError,
+  resolveActiveWorkspaceRoot,
+} from '../../../server/workspace-root'
 
 export const Route = createFileRoute('/api/sessions/$sessionKey/active-run')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-
         const sessionKey = params.sessionKey?.trim()
         if (!sessionKey) {
           return json(
@@ -30,6 +28,9 @@ export const Route = createFileRoute('/api/sessions/$sessionKey/active-run')({
           )
           return json({ ok: true, run })
         } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return json({ ok: false, error: err.message }, { status: 401 })
+          }
           return json(
             {
               ok: false,

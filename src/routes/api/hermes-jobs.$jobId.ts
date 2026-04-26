@@ -3,7 +3,6 @@
  * or the upstream dashboard cron API.
  */
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   BEARER_TOKEN,
   HERMES_API,
@@ -29,11 +28,6 @@ export const Route = createFileRoute('/api/hermes-jobs/$jobId')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-          })
-        }
         const capabilities = await ensureGatewayProbed()
         if (!capabilities.jobs) return notSupported()
 
@@ -61,11 +55,6 @@ export const Route = createFileRoute('/api/hermes-jobs/$jobId')({
         })
       },
       POST: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-          })
-        }
         const capabilities = await ensureGatewayProbed()
         if (!capabilities.jobs) return notSupported()
 
@@ -104,11 +93,6 @@ export const Route = createFileRoute('/api/hermes-jobs/$jobId')({
         })
       },
       PATCH: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-          })
-        }
         const capabilities = await ensureGatewayProbed()
         if (!capabilities.jobs) return notSupported()
 
@@ -130,11 +114,6 @@ export const Route = createFileRoute('/api/hermes-jobs/$jobId')({
         })
       },
       DELETE: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-          })
-        }
         const capabilities = await ensureGatewayProbed()
         if (!capabilities.jobs) return notSupported()
 

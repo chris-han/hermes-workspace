@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   ensureBusStarted,
   subscribeToChatEvents,
@@ -16,13 +15,6 @@ export const Route = createFileRoute('/api/chat-events')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(
-            JSON.stringify({ ok: false, error: 'Unauthorized' }),
-            { status: 401, headers: { 'Content-Type': 'application/json' } },
-          )
-        }
-
         const url = new URL(request.url)
         const sessionKeyParam =
           url.searchParams.get('sessionKey')?.trim() || undefined

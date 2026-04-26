@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../../server/auth-middleware'
 import {
   dashboardFetch,
   ensureGatewayProbed,
@@ -16,10 +15,6 @@ export const Route = createFileRoute('/api/model/info')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
         await ensureGatewayProbed()
         const gatewayMode = getGatewayMode()
 

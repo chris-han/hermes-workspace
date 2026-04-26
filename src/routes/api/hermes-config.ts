@@ -7,7 +7,6 @@ import path from 'node:path'
 import os from 'node:os'
 import { createFileRoute } from '@tanstack/react-router'
 import YAML from 'yaml'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   ensureGatewayProbed,
   getCapabilities,
@@ -19,6 +18,7 @@ import {
   resolveHermesPathFromBackend,
 } from '../../server/hermes-home'
 import { createCapabilityUnavailablePayload } from '@/lib/feature-gates'
+import { WorkspaceAuthRequiredError } from '../../server/workspace-root'
 
 type AuthResult = Response | true
 
@@ -195,162 +195,178 @@ export const Route = createFileRoute('/api/hermes-config')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const authResult = isAuthenticated(request) as AuthResult
-        if (authResult !== true) return authResult
-        await ensureGatewayProbed()
-        const hermesHome = await resolveHermesHomeFromBackend(request.headers)
-        if (!getCapabilities().config) {
+        try {
+          await ensureGatewayProbed()
+          const hermesHome = await resolveHermesHomeFromBackend(request.headers)
+          if (!getCapabilities().config) {
+            return Response.json({
+              ...createCapabilityUnavailablePayload('config'),
+              config: {},
+              providers: [],
+              activeProvider: '',
+              activeModel: '',
+              hermesHome,
+            })
+          }
+
+          const configPath = await resolveHermesConfigPathFromBackend(
+            request.headers,
+          )
+          const envPath = await resolveHermesEnvPathFromBackend(request.headers)
+
+          const config = readConfig(configPath)
+          const env = readEnv(envPath)
+
+          // Build provider status
+          const providerStatus = await Promise.all(
+            PROVIDERS.map(async (p) => {
+              const hasEnvKey =
+                p.envKeys.length === 0 || p.envKeys.some((k) => !!env[k])
+              const authStoreCheck = await checkAuthStore(p.id, request.headers)
+              const hasKey =
+                hasEnvKey || authStoreCheck.hasToken || p.authType === 'none'
+              const maskedKeys: Record<string, string> = {}
+              for (const k of p.envKeys) {
+                if (env[k]) maskedKeys[k] = maskKey(env[k])
+              }
+              if (authStoreCheck.hasToken && authStoreCheck.maskedKey) {
+                maskedKeys['auth-store'] = authStoreCheck.maskedKey
+              }
+              return {
+                ...p,
+                configured: hasKey,
+                authSource: authStoreCheck.hasToken
+                  ? authStoreCheck.source
+                  : hasEnvKey
+                    ? 'env'
+                    : 'none',
+                maskedKeys,
+              }
+            }),
+          )
+
+          // Get active provider/model from config
+          // Support both flat keys (model: "gpt-5.4", provider: "openai-codex")
+          // and legacy nested format (model: { default: "...", provider: "..." })
+          const modelField = config.model
+          let activeModel = ''
+          let activeProvider = ''
+          if (typeof modelField === 'string') {
+            activeModel = modelField
+            activeProvider = (config.provider as string) || ''
+          } else if (modelField && typeof modelField === 'object') {
+            const modelObj = modelField as Record<string, unknown>
+            activeModel = (modelObj.default as string) || ''
+            activeProvider =
+              (modelObj.provider as string) || (config.provider as string) || ''
+          }
+
           return Response.json({
-            ...createCapabilityUnavailablePayload('config'),
-            config: {},
-            providers: [],
-            activeProvider: '',
-            activeModel: '',
+            config,
+            providers: providerStatus,
+            activeProvider,
+            activeModel,
             hermesHome,
           })
+        } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return Response.json(
+              { ok: false, error: err.message },
+              { status: 401 },
+            )
+          }
+          throw err
         }
-
-        const configPath = await resolveHermesConfigPathFromBackend(
-          request.headers,
-        )
-        const envPath = await resolveHermesEnvPathFromBackend(request.headers)
-
-        const config = readConfig(configPath)
-        const env = readEnv(envPath)
-
-        // Build provider status
-        const providerStatus = await Promise.all(
-          PROVIDERS.map(async (p) => {
-            const hasEnvKey =
-              p.envKeys.length === 0 || p.envKeys.some((k) => !!env[k])
-            const authStoreCheck = await checkAuthStore(p.id, request.headers)
-            const hasKey =
-              hasEnvKey || authStoreCheck.hasToken || p.authType === 'none'
-            const maskedKeys: Record<string, string> = {}
-            for (const k of p.envKeys) {
-              if (env[k]) maskedKeys[k] = maskKey(env[k])
-            }
-            if (authStoreCheck.hasToken && authStoreCheck.maskedKey) {
-              maskedKeys['auth-store'] = authStoreCheck.maskedKey
-            }
-            return {
-              ...p,
-              configured: hasKey,
-              authSource: authStoreCheck.hasToken
-                ? authStoreCheck.source
-                : hasEnvKey
-                  ? 'env'
-                  : 'none',
-              maskedKeys,
-            }
-          }),
-        )
-
-        // Get active provider/model from config
-        // Support both flat keys (model: "gpt-5.4", provider: "openai-codex")
-        // and legacy nested format (model: { default: "...", provider: "..." })
-        const modelField = config.model
-        let activeModel = ''
-        let activeProvider = ''
-        if (typeof modelField === 'string') {
-          activeModel = modelField
-          activeProvider = (config.provider as string) || ''
-        } else if (modelField && typeof modelField === 'object') {
-          const modelObj = modelField as Record<string, unknown>
-          activeModel = (modelObj.default as string) || ''
-          activeProvider =
-            (modelObj.provider as string) || (config.provider as string) || ''
-        }
-
-        return Response.json({
-          config,
-          providers: providerStatus,
-          activeProvider,
-          activeModel,
-          hermesHome,
-        })
       },
 
       PATCH: async ({ request }) => {
-        const authResult = isAuthenticated(request) as AuthResult
-        if (authResult !== true) return authResult
-        await ensureGatewayProbed()
-        if (!getCapabilities().config) {
-          return new Response(
-            JSON.stringify(
-              createCapabilityUnavailablePayload('config', {
-                error: 'Configuration updates are unavailable on this backend.',
-              }),
-            ),
-            { status: 503, headers: { 'Content-Type': 'application/json' } },
+        try {
+          await ensureGatewayProbed()
+          if (!getCapabilities().config) {
+            return new Response(
+              JSON.stringify(
+                createCapabilityUnavailablePayload('config', {
+                  error: 'Configuration updates are unavailable on this backend.',
+                }),
+              ),
+              { status: 503, headers: { 'Content-Type': 'application/json' } },
+            )
+          }
+
+          const body = (await request.json()) as Record<string, unknown>
+          const hermesHome = await resolveHermesHomeFromBackend(request.headers)
+          const configPath = await resolveHermesConfigPathFromBackend(
+            request.headers,
           )
-        }
+          const envPath = await resolveHermesEnvPathFromBackend(request.headers)
 
-        const body = (await request.json()) as Record<string, unknown>
-        const hermesHome = await resolveHermesHomeFromBackend(request.headers)
-        const configPath = await resolveHermesConfigPathFromBackend(
-          request.headers,
-        )
-        const envPath = await resolveHermesEnvPathFromBackend(request.headers)
+          // Handle config updates
+          if (body.config && typeof body.config === 'object') {
+            const current = readConfig(configPath)
+            const updates = body.config as Record<string, unknown>
 
-        // Handle config updates
-        if (body.config && typeof body.config === 'object') {
-          const current = readConfig(configPath)
-          const updates = body.config as Record<string, unknown>
-
-          // Deep merge
-          function deepMerge(
-            target: Record<string, unknown>,
-            source: Record<string, unknown>,
-          ) {
-            for (const [key, value] of Object.entries(source)) {
-              if (
-                value &&
-                typeof value === 'object' &&
-                !Array.isArray(value) &&
-                target[key] &&
-                typeof target[key] === 'object'
-              ) {
-                deepMerge(
-                  target[key] as Record<string, unknown>,
-                  value as Record<string, unknown>,
-                )
-              } else {
-                target[key] = value
+            // Deep merge
+            function deepMerge(
+              target: Record<string, unknown>,
+              source: Record<string, unknown>,
+            ) {
+              for (const [key, value] of Object.entries(source)) {
+                if (
+                  value &&
+                  typeof value === 'object' &&
+                  !Array.isArray(value) &&
+                  target[key] &&
+                  typeof target[key] === 'object'
+                ) {
+                  deepMerge(
+                    target[key] as Record<string, unknown>,
+                    value as Record<string, unknown>,
+                  )
+                } else {
+                  target[key] = value
+                }
               }
             }
-          }
 
-          // Handle null values as explicit removals
-          for (const [key, value] of Object.entries(updates)) {
-            if (value === null) {
-              delete current[key]
-              delete updates[key]
+            // Handle null values as explicit removals
+            for (const [key, value] of Object.entries(updates)) {
+              if (value === null) {
+                delete current[key]
+                delete updates[key]
+              }
             }
+            deepMerge(current, updates)
+            writeConfig(current, hermesHome, configPath)
           }
-          deepMerge(current, updates)
-          writeConfig(current, hermesHome, configPath)
-        }
 
-        // Handle env var updates
-        if (body.env && typeof body.env === 'object') {
-          const currentEnv = readEnv(envPath)
-          const envUpdates = body.env as Record<string, string | null>
-          for (const [key, value] of Object.entries(envUpdates)) {
-            if (value === '' || value === null) {
-              delete currentEnv[key]
-            } else {
-              currentEnv[key] = value
+          // Handle env var updates
+          if (body.env && typeof body.env === 'object') {
+            const currentEnv = readEnv(envPath)
+            const envUpdates = body.env as Record<string, string | null>
+            for (const [key, value] of Object.entries(envUpdates)) {
+              if (value === '' || value === null) {
+                delete currentEnv[key]
+              } else {
+                currentEnv[key] = value
+              }
             }
+            writeEnv(currentEnv, hermesHome, envPath)
           }
-          writeEnv(currentEnv, hermesHome, envPath)
-        }
 
-        return Response.json({
-          ok: true,
-          message: 'Config updated. Restart Hermes to apply changes.',
-          hermesHome,
-        })
+          return Response.json({
+            ok: true,
+            message: 'Config updated. Restart Hermes to apply changes.',
+            hermesHome,
+          })
+        } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return Response.json(
+              { ok: false, error: err.message },
+              { status: 401 },
+            )
+          }
+          throw err
+        }
       },
     },
   },

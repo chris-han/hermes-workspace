@@ -13,7 +13,7 @@ import {
   getGatewayModeLabel,
 } from '../../server/gateway-capabilities'
 import { resolveHermesConfigPathFromBackend } from '../../server/hermes-home'
-import { isAuthenticated } from '../../server/auth-middleware'
+import { WorkspaceAuthRequiredError } from '../../server/workspace-root'
 
 function readActiveModel(configPath: string): string {
   try {
@@ -50,16 +50,14 @@ export const Route = createFileRoute('/api/connection-status')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const authResult = isAuthenticated(request)
-        if (authResult !== true) return authResult as unknown as Response
-
-        const caps = await ensureGatewayProbed()
-        const gatewayMode = getGatewayMode()
-        const configPath = await resolveHermesConfigPathFromBackend(
-          request.headers,
-        )
-        const activeModel = readActiveModel(configPath)
-        const modelConfigured = Boolean(activeModel)
+        try {
+          const caps = await ensureGatewayProbed()
+          const gatewayMode = getGatewayMode()
+          const configPath = await resolveHermesConfigPathFromBackend(
+            request.headers,
+          )
+          const activeModel = readActiveModel(configPath)
+          const modelConfigured = Boolean(activeModel)
 
         const chatReady = caps.chatCompletions
         const enhancedReady =
@@ -136,7 +134,16 @@ export const Route = createFileRoute('/api/connection-status')({
           hermesUrl: HERMES_API,
         }
 
-        return Response.json(body)
+          return Response.json(body)
+        } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return Response.json(
+              { status: 'disconnected', label: 'Disconnected', detail: err.message },
+              { status: 401 },
+            )
+          }
+          throw err
+        }
       },
     },
   },

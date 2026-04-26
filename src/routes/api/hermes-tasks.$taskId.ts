@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   deleteTask,
   getTask,
@@ -7,6 +6,7 @@ import {
   resolveWorkspaceTaskHermesHome,
   updateTask,
 } from '../../server/tasks-store'
+import { WorkspaceAuthRequiredError } from '../../server/workspace-root'
 import type { TaskColumn } from '../../server/tasks-store'
 
 function jsonResponse(data: unknown, status = 200) {
@@ -20,21 +20,20 @@ export const Route = createFileRoute('/api/hermes-tasks/$taskId')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return jsonResponse({ error: 'Unauthorized' }, 401)
+        try {
+          const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
+          const task = getTask(hermesHome, params.taskId)
+          if (!task) return jsonResponse({ error: 'Task not found' }, 404)
+          return jsonResponse({ task })
+        } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return jsonResponse({ error: err.message }, 401)
+          }
+          throw err
         }
-
-        const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
-        const task = getTask(hermesHome, params.taskId)
-        if (!task) return jsonResponse({ error: 'Task not found' }, 404)
-        return jsonResponse({ task })
       },
 
       PATCH: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return jsonResponse({ error: 'Unauthorized' }, 401)
-        }
-
         try {
           const hermesHome = await resolveWorkspaceTaskHermesHome(
             request.headers,
@@ -68,27 +67,29 @@ export const Route = createFileRoute('/api/hermes-tasks/$taskId')({
 
           if (!task) return jsonResponse({ error: 'Task not found' }, 404)
           return jsonResponse({ task })
-        } catch {
+        } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return jsonResponse({ error: err.message }, 401)
+          }
           return jsonResponse({ error: 'Invalid request body' }, 400)
         }
       },
 
       DELETE: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return jsonResponse({ error: 'Unauthorized' }, 401)
+        try {
+          const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
+          const deleted = deleteTask(hermesHome, params.taskId)
+          if (!deleted) return jsonResponse({ error: 'Task not found' }, 404)
+          return jsonResponse({ ok: true })
+        } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return jsonResponse({ error: err.message }, 401)
+          }
+          throw err
         }
-
-        const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
-        const deleted = deleteTask(hermesHome, params.taskId)
-        if (!deleted) return jsonResponse({ error: 'Task not found' }, 404)
-        return jsonResponse({ ok: true })
       },
 
       POST: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return jsonResponse({ error: 'Unauthorized' }, 401)
-        }
-
         const url = new URL(request.url)
         const action = url.searchParams.get('action') || 'move'
         if (action !== 'move') {
@@ -110,7 +111,10 @@ export const Route = createFileRoute('/api/hermes-tasks/$taskId')({
           )
           if (!task) return jsonResponse({ error: 'Task not found' }, 404)
           return jsonResponse({ task })
-        } catch {
+        } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return jsonResponse({ error: err.message }, 401)
+          }
           return jsonResponse({ error: 'Invalid request body' }, 400)
         }
       },

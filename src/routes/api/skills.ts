@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../server/auth-middleware'
 import { ensureGatewayProbed } from '../../server/gateway-capabilities'
 import { fetchSemantierSkillsInventory } from '../../server/semantier-skills-api'
 import { createCapabilityUnavailablePayload } from '@/lib/feature-gates'
@@ -300,9 +299,6 @@ export const Route = createFileRoute('/api/skills')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
         const capabilities = await ensureGatewayProbed()
         if (!capabilities.semantier.available && !capabilities.skills) {
           return json({

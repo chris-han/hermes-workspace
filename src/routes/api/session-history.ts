@@ -7,16 +7,12 @@ import {
   isSemantierSessionNotFoundError,
   toSemantierChatMessage,
 } from '../../server/semantier-session-api'
-import { isAuthenticated } from '@/server/auth-middleware'
+import {  } from '@/server/auth-middleware'
 
 export const Route = createFileRoute('/api/session-history')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-
         const url = new URL(request.url)
         const key =
           url.searchParams.get('key')?.trim() ||

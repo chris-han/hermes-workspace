@@ -27,6 +27,7 @@ import { useSwipeNavigation } from '@/hooks/use-swipe-navigation'
 import { ChatPanel } from '@/components/chat-panel'
 import { ChatPanelToggle } from '@/components/chat-panel-toggle'
 import { LoginScreen } from '@/components/auth/login-screen'
+import { useSemantierAuthStatus } from '@/lib/semantier-auth'
 import { MobileTabBar } from '@/components/mobile-tab-bar'
 import { MobileHamburgerMenu } from '@/components/mobile-hamburger-menu'
 import { MobilePageHeader } from '@/components/mobile-page-header'
@@ -126,6 +127,20 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     setAuthStatus(status)
     setConnectionVerified(true)
   }, [])
+
+  // Feishu auth redirect — unauthenticated users are sent to login
+  const semantierAuthQuery = useSemantierAuthStatus()
+  useEffect(() => {
+    if (!isClient) return
+    if (semantierAuthQuery.isLoading) return
+    const data = semantierAuthQuery.data
+    if (data?.feishu_oauth_enabled && !data.authenticated) {
+      // Avoid infinite redirect when already on an auth route
+      const path = window.location.pathname
+      if (path.startsWith('/auth/')) return
+      window.location.assign('/auth/feishu/login')
+    }
+  }, [isClient, semantierAuthQuery.isLoading, semantierAuthQuery.data])
 
   // Derive active session from URL
   const mobilePageTitle = (() => {

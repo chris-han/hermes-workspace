@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { isAuthenticated } from '../../server/auth-middleware'
 import { requireJsonContentType } from '../../server/rate-limit'
 import { resolveSessionKey } from '../../server/session-utils'
 import {
@@ -72,9 +71,6 @@ export const Route = createFileRoute('/api/send-stream')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return buildJsonError('Unauthorized', 401)
-        }
         const csrfCheck = requireJsonContentType(request)
         if (csrfCheck) return csrfCheck
 

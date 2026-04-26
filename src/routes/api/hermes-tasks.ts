@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   createTask,
   listTasks,
   resolveWorkspaceTaskHermesHome,
 } from '../../server/tasks-store'
+import { WorkspaceAuthRequiredError } from '../../server/workspace-root'
 
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -17,27 +17,26 @@ export const Route = createFileRoute('/api/hermes-tasks')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return jsonResponse({ error: 'Unauthorized' }, 401)
+        try {
+          const url = new URL(request.url)
+          const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
+          const tasks = listTasks(hermesHome, {
+            column: url.searchParams.get('column'),
+            assignee: url.searchParams.get('assignee'),
+            priority: url.searchParams.get('priority'),
+            includeDone: url.searchParams.get('include_done') === 'true',
+          })
+
+          return jsonResponse({ tasks })
+        } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return jsonResponse({ error: err.message }, 401)
+          }
+          throw err
         }
-
-        const url = new URL(request.url)
-        const hermesHome = await resolveWorkspaceTaskHermesHome(request.headers)
-        const tasks = listTasks(hermesHome, {
-          column: url.searchParams.get('column'),
-          assignee: url.searchParams.get('assignee'),
-          priority: url.searchParams.get('priority'),
-          includeDone: url.searchParams.get('include_done') === 'true',
-        })
-
-        return jsonResponse({ tasks })
       },
 
       POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return jsonResponse({ error: 'Unauthorized' }, 401)
-        }
-
         try {
           const hermesHome = await resolveWorkspaceTaskHermesHome(
             request.headers,
@@ -68,7 +67,10 @@ export const Route = createFileRoute('/api/hermes-tasks')({
           })
 
           return jsonResponse({ task }, 201)
-        } catch {
+        } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return jsonResponse({ error: err.message }, 401)
+          }
           return jsonResponse({ error: 'Invalid request body' }, 400)
         }
       },

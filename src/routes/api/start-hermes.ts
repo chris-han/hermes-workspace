@@ -1,6 +1,5 @@
 import { json } from '@tanstack/react-start'
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   SEMANTIER_AGENT_AUTH_COOKIE,
   buildSemantierAgentProxyHeaders,
@@ -13,10 +12,6 @@ export const Route = createFileRoute('/api/start-hermes')({
     handlers: {
       POST: async ({ request }) => {
         try {
-          if (!isAuthenticated(request)) {
-            return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-          }
-
           const targetUrl = withSemantierAgentBase('/api/start-hermes')
           const headers = buildSemantierAgentProxyHeaders(request.headers, {
             authHeaders: semantierAgentAuthHeaders(),

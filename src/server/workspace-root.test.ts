@@ -2,6 +2,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  WorkspaceAuthRequiredError,
   ensureWorkspacePathWithinRoot,
   formatWorkspaceCwdLabel,
   resolveActiveWorkspaceRoot,
@@ -74,7 +75,7 @@ describe('resolveActiveWorkspaceRoot', () => {
         currentWorkspaceId: 'bb685f18514b4dc89018900bbb4687eb',
         currentWorkspaceSlug: 'alice_zhang',
         currentWorkspaceRoot:
-          '/home/chris/repo/Vibe-Trading/workspaces/bb685f18514b4dc89018900bbb4687eb',
+          '/home/chris/repo/semantier/workspaces/bb685f18514b4dc89018900bbb4687eb',
       }),
     })
     globalThis.fetch = fetchMock as typeof fetch
@@ -88,7 +89,7 @@ describe('resolveActiveWorkspaceRoot', () => {
     expect(result.workspaceId).toBe('bb685f18514b4dc89018900bbb4687eb')
     expect(result.path).toBe(
       path.resolve(
-        '/home/chris/repo/Vibe-Trading/workspaces/bb685f18514b4dc89018900bbb4687eb',
+        '/home/chris/repo/semantier/workspaces/bb685f18514b4dc89018900bbb4687eb',
       ),
     )
 
@@ -97,16 +98,14 @@ describe('resolveActiveWorkspaceRoot', () => {
     expect(headers.get('cookie')).toBe('vt_session=semantier-user-session')
   })
 
-  it('falls back to the public workspace when the backend is unavailable', async () => {
+  it('throws WorkspaceAuthRequiredError when the backend is unavailable', async () => {
     globalThis.fetch = vi
       .fn()
       .mockRejectedValue(new Error('offline')) as typeof fetch
 
-    const result = await resolveActiveWorkspaceRoot()
-
-    expect(result.workspaceId).toBe('public')
-    expect(result.workspaceSlug).toBe('public')
-    expect(result.path.endsWith('/workspaces/public')).toBe(true)
+    await expect(resolveActiveWorkspaceRoot()).rejects.toThrow(
+      WorkspaceAuthRequiredError,
+    )
   })
 
   it('falls back to auth/me when system paths resolve to public for an authenticated user', async () => {
@@ -119,7 +118,7 @@ describe('resolveActiveWorkspaceRoot', () => {
           currentWorkspaceId: 'public',
           currentWorkspaceSlug: 'public',
           currentWorkspaceRoot:
-            '/home/chris/repo/Vibe-Trading/workspaces/public',
+            '/home/chris/repo/semantier/workspaces/public',
         }),
       })
       .mockResolvedValueOnce({
@@ -145,7 +144,7 @@ describe('resolveActiveWorkspaceRoot', () => {
     expect(result.workspaceSlug).toBe('alice_zhang')
     expect(result.path).toBe(
       path.resolve(
-        '/home/chris/repo/Vibe-Trading/workspaces/bb685f18514b4dc89018900bbb4687eb',
+        '/home/chris/repo/semantier/workspaces/bb685f18514b4dc89018900bbb4687eb',
       ),
     )
     expect(result.source).toBe('auth-fallback')

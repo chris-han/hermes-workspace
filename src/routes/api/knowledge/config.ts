@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../../server/auth-middleware'
 import {
   readKnowledgeBaseConfig,
   writeKnowledgeBaseConfig,
@@ -11,9 +10,6 @@ export const Route = createFileRoute('/api/knowledge/config')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ error: 'Unauthorized' }, { status: 401 })
-        }
         try {
           return json({ config: readKnowledgeBaseConfig() })
         } catch (error) {
@@ -29,9 +25,6 @@ export const Route = createFileRoute('/api/knowledge/config')({
         }
       },
       POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ error: 'Unauthorized' }, { status: 401 })
-        }
         try {
           const body = (await request.json()) as Partial<KnowledgeBaseConfig>
           const current = readKnowledgeBaseConfig()

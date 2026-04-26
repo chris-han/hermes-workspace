@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../server/auth-middleware'
 import { toggleSemantierSkill } from '../../server/semantier-skills-api'
 
 function normalizeSkillActionResult(payload: unknown): Record<string, unknown> {
@@ -23,9 +22,6 @@ export const Route = createFileRoute('/api/skills/toggle')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
         try {
           const body = (await request.json()) as {
             skillId?: string

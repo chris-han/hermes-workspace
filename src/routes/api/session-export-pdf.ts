@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { mdToPdf } from 'md-to-pdf'
 
-import { isAuthenticated } from '../../server/auth-middleware'
 import { resolveSessionKey } from '../../server/session-utils'
 import {
   getSemantierSessionMessages,
@@ -100,13 +99,6 @@ export const Route = createFileRoute('/api/session-export-pdf')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-            headers: { 'content-type': 'application/json' },
-          })
-        }
-
         try {
           const url = new URL(request.url)
           const rawSessionKey = url.searchParams.get('sessionKey')?.trim()

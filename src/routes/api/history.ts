@@ -8,16 +8,12 @@ import {
   listSemantierSessions,
   toSemantierChatMessage,
 } from '../../server/semantier-session-api'
-import { isAuthenticated } from '@/server/auth-middleware'
+import {  } from '@/server/auth-middleware'
 
 export const Route = createFileRoute('/api/history')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-
         try {
           const url = new URL(request.url)
           const limit = Number(url.searchParams.get('limit') || '200')

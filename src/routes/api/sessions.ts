@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 
-import { isAuthenticated } from '../../server/auth-middleware'
 import { requireJsonContentType } from '../../server/rate-limit'
 import {
   createSemantierSession,
@@ -15,10 +14,6 @@ export const Route = createFileRoute('/api/sessions')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-
         try {
           const sessions = await listSemantierSessions(request.headers, 50)
           return json({ sessions: sessions.map(toSemantierSessionSummary) })
@@ -30,9 +25,6 @@ export const Route = createFileRoute('/api/sessions')({
         }
       },
       POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
         const csrfCheck = requireJsonContentType(request)
         if (csrfCheck) return csrfCheck
 
@@ -65,9 +57,6 @@ export const Route = createFileRoute('/api/sessions')({
         }
       },
       PATCH: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
         const csrfCheck = requireJsonContentType(request)
         if (csrfCheck) return csrfCheck
 
@@ -116,10 +105,6 @@ export const Route = createFileRoute('/api/sessions')({
         }
       },
       DELETE: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-
         try {
           const url = new URL(request.url)
           const rawSessionKey = url.searchParams.get('sessionKey') ?? ''

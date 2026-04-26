@@ -2,8 +2,8 @@ import path from 'node:path'
 import fs from 'node:fs/promises'
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
+  WorkspaceAuthRequiredError,
   ensureWorkspacePathWithinRoot,
   resolveActiveWorkspaceRoot,
 } from '../../server/workspace-root'
@@ -79,9 +79,6 @@ export const Route = createFileRoute('/api/workspace')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
         try {
           const url = new URL(request.url)
           const savedPath = url.searchParams.get('saved') || undefined

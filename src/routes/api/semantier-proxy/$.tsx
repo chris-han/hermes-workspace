@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../../server/auth-middleware'
 import {
   SEMANTIER_AGENT_AUTH_COOKIE,
   buildSemantierAgentProxyHeaders,
@@ -70,45 +69,30 @@ export const Route = createFileRoute('/api/semantier-proxy/$')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return jsonUnauthorizedResponse()
-        }
         if (shouldForceMessagingJsonUnauthorized(request, params._splat || '')) {
           return jsonUnauthorizedResponse()
         }
         return proxyRequest(request, params._splat || '')
       },
       POST: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return jsonUnauthorizedResponse()
-        }
         if (shouldForceMessagingJsonUnauthorized(request, params._splat || '')) {
           return jsonUnauthorizedResponse()
         }
         return proxyRequest(request, params._splat || '')
       },
       PATCH: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return jsonUnauthorizedResponse()
-        }
         if (shouldForceMessagingJsonUnauthorized(request, params._splat || '')) {
           return jsonUnauthorizedResponse()
         }
         return proxyRequest(request, params._splat || '')
       },
       PUT: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return jsonUnauthorizedResponse()
-        }
         if (shouldForceMessagingJsonUnauthorized(request, params._splat || '')) {
           return jsonUnauthorizedResponse()
         }
         return proxyRequest(request, params._splat || '')
       },
       DELETE: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return jsonUnauthorizedResponse()
-        }
         if (shouldForceMessagingJsonUnauthorized(request, params._splat || '')) {
           return jsonUnauthorizedResponse()
         }

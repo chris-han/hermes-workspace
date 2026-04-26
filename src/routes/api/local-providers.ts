@@ -1,6 +1,5 @@
 import { json } from '@tanstack/react-start'
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   ensureDiscovery,
   forceDiscovery,
@@ -13,10 +12,6 @@ export const Route = createFileRoute('/api/local-providers')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-
         const url = new URL(request.url)
         const refresh = url.searchParams.get('refresh') === 'true'
 

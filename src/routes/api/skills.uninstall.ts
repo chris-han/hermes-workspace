@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   fetchSemantierSkillsInventory,
   uninstallSemantierSkill,
@@ -26,9 +25,6 @@ export const Route = createFileRoute('/api/skills/uninstall')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
         try {
           const body = (await request.json()) as {
             skillId?: string

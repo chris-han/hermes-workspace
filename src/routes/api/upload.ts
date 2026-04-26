@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   SEMANTIER_AGENT_AUTH_COOKIE,
   semantierAgentAuthHeaders,
@@ -84,12 +83,6 @@ export const Route = createFileRoute('/api/upload')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(
-            JSON.stringify({ ok: false, error: 'Unauthorized' }),
-            { status: 401, headers: { 'content-type': 'application/json' } },
-          )
-        }
         return handleUpload(request)
       },
     },

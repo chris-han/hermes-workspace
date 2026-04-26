@@ -5,7 +5,6 @@ import { join } from 'node:path'
 import { json } from '@tanstack/react-start'
 import { createFileRoute } from '@tanstack/react-router'
 import yaml from 'yaml'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   BEARER_TOKEN,
   HERMES_API,
@@ -246,10 +245,6 @@ export const Route = createFileRoute('/api/crew-status')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
         await ensureGatewayProbed()
         const taskCounts = await fetchAssignedTaskCounts()
         const crewDefinitions = buildCrewDefinitions()

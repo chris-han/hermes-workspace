@@ -1,7 +1,6 @@
 import fs from 'node:fs'
 import { json } from '@tanstack/react-start'
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   ensureGatewayProbed,
   getGatewayCapabilities,
@@ -16,6 +15,7 @@ import {
   resolveHermesConfigPathFromBackend,
   resolveHermesPathFromBackend,
 } from '../../server/hermes-home'
+import { WorkspaceAuthRequiredError } from '../../server/workspace-root'
 
 type ModelEntry = {
   provider?: string
@@ -134,9 +134,6 @@ export const Route = createFileRoute('/api/models')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
         await ensureGatewayProbed()
 
         try {
@@ -198,6 +195,9 @@ export const Route = createFileRoute('/api/models')({
             source,
           })
         } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return json({ ok: false, error: err.message }, { status: 401 })
+          }
           return json(
             {
               ok: false,

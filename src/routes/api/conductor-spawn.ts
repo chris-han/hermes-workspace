@@ -149,7 +149,7 @@ async function createHermesJob(payload: {
     prompt: payload.prompt,
     deliver: payload.deliver ?? 'local',
   })
-  const capabilities = await ensureGatewayProbed()
+  const capabilities = ensureGatewayProbed()
   const res = capabilities.dashboard.available
     ? await dashboardFetch('/api/cron/jobs', {
         method: 'POST',

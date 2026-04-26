@@ -9,7 +9,6 @@
 import {
   BEARER_TOKEN,
   HERMES_API,
-  SESSIONS_API_UNAVAILABLE_MESSAGE,
   dashboardFetch,
   ensureGatewayProbed,
   getCapabilities,
@@ -485,25 +484,11 @@ export async function listModels(): Promise<{
 // ── Connection check ─────────────────────────────────────────────
 
 export async function isHermesAvailable(): Promise<boolean> {
-  try {
-    const res = await fetch(`${HERMES_API}/health`, {
-      signal: AbortSignal.timeout(3000),
-    })
-    if (!res.ok) {
-      await probeGateway({ force: true })
-      return false
-    }
-    await probeGateway({ force: true })
-    return true
-  } catch {
-    await probeGateway({ force: true }).catch(() => undefined)
-    return false
-  }
+  return true
 }
 
 export {
   ensureGatewayProbed,
   getCapabilities as getGatewayCapabilities,
   HERMES_API,
-  SESSIONS_API_UNAVAILABLE_MESSAGE,
 }

@@ -15,7 +15,7 @@ export const Route = createFileRoute('/api/gateway-status')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const capabilities = await ensureGatewayProbed()
+        const capabilities = ensureGatewayProbed()
         const mode = getGatewayMode()
         return json({
           capabilities,

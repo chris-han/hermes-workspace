@@ -15,7 +15,7 @@ export const Route = createFileRoute('/api/model/info')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        await ensureGatewayProbed()
+        ensureGatewayProbed()
         const gatewayMode = getGatewayMode()
 
         let rawPayload: unknown = null

@@ -299,7 +299,7 @@ export const Route = createFileRoute('/api/skills')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const capabilities = await ensureGatewayProbed()
+        const capabilities = ensureGatewayProbed()
         if (!capabilities.semantier.available && !capabilities.skills) {
           return json({
             ...createCapabilityUnavailablePayload('skills'),

@@ -11,7 +11,7 @@ export const Route = createFileRoute('/api/conductor-stop')({
         if (csrfCheck) return csrfCheck
 
         try {
-          await ensureGatewayProbed()
+          ensureGatewayProbed()
           const body = (await request.json().catch(() => ({}))) as Record<
             string,
             unknown

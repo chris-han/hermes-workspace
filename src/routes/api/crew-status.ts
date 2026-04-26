@@ -245,7 +245,7 @@ export const Route = createFileRoute('/api/crew-status')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        await ensureGatewayProbed()
+        ensureGatewayProbed()
         const taskCounts = await fetchAssignedTaskCounts()
         const crewDefinitions = buildCrewDefinitions()
 

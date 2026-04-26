@@ -196,7 +196,7 @@ export const Route = createFileRoute('/api/hermes-config')({
     handlers: {
       GET: async ({ request }) => {
         try {
-          await ensureGatewayProbed()
+          ensureGatewayProbed()
           const hermesHome = await resolveHermesHomeFromBackend(request.headers)
           if (!getCapabilities().config) {
             return Response.json({
@@ -281,7 +281,7 @@ export const Route = createFileRoute('/api/hermes-config')({
 
       PATCH: async ({ request }) => {
         try {
-          await ensureGatewayProbed()
+          ensureGatewayProbed()
           if (!getCapabilities().config) {
             return new Response(
               JSON.stringify(

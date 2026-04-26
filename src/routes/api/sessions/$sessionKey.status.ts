@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import {
-  SESSIONS_API_UNAVAILABLE_MESSAGE,
   ensureGatewayProbed,
   getGatewayCapabilities,
   getSession,
@@ -12,10 +11,10 @@ export const Route = createFileRoute('/api/sessions/$sessionKey/status')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        await ensureGatewayProbed()
+        ensureGatewayProbed()
         if (!getGatewayCapabilities().sessions) {
           return json(
-            { ok: false, error: SESSIONS_API_UNAVAILABLE_MESSAGE },
+            { ok: false, error: 'Sessions API is not available in semantier-unicell mode.' },
             { status: 503 },
           )
         }

@@ -8,8 +8,7 @@ interface GatewayStatus {
 }
 
 function deriveChatMode(capabilities: Record<string, boolean>): ChatMode {
-  if (capabilities.sessions) return 'enhanced-hermes'
-  if (capabilities.chatCompletions || capabilities.health) return 'portable'
+  if (capabilities.semantier) return 'enhanced-hermes'
   return 'disconnected'
 }
 

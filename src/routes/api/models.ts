@@ -1,16 +1,7 @@
 import fs from 'node:fs'
 import { json } from '@tanstack/react-start'
 import { createFileRoute } from '@tanstack/react-router'
-import {
-  ensureGatewayProbed,
-  getGatewayCapabilities,
-} from '../../server/hermes-api'
-import { BEARER_TOKEN, HERMES_API } from '../../server/gateway-capabilities'
-import {
-  ensureDiscovery,
-  ensureProviderInConfig,
-  getDiscoveredModels,
-} from '../../server/local-provider-discovery'
+import { ensureGatewayProbed } from '../../server/hermes-api'
 import {
   resolveHermesConfigPathFromBackend,
   resolveHermesPathFromBackend,
@@ -110,31 +101,11 @@ function readHermesDefaultModel(configPath: string): ModelEntry | null {
   }
 }
 
-/**
- * Fallback: fetch models from the hermes-agent /v1/models endpoint.
- */
-async function fetchHermesModels(): Promise<Array<ModelEntry>> {
-  const headers: Record<string, string> = {}
-  if (BEARER_TOKEN) headers['Authorization'] = `Bearer ${BEARER_TOKEN}`
-  const response = await fetch(`${HERMES_API}/v1/models`, { headers })
-  if (!response.ok)
-    throw new Error(`Hermes models request failed (${response.status})`)
-  const payload = asRecord(await response.json())
-  const rawModels = Array.isArray(payload.data)
-    ? payload.data
-    : Array.isArray(payload.models)
-      ? payload.models
-      : []
-  return rawModels
-    .map(normalizeModel)
-    .filter((e): e is ModelEntry => e !== null)
-}
-
 export const Route = createFileRoute('/api/models')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        await ensureGatewayProbed()
+        ensureGatewayProbed()
 
         try {
           const modelsPath = await resolveHermesPathFromBackend(
@@ -158,23 +129,9 @@ export const Route = createFileRoute('/api/models')({
             }
           }
 
-          // Fallback: if no models.json, fetch from hermes-agent /v1/models
-          if (models.length === 0 && getGatewayCapabilities().models) {
-            models = await fetchHermesModels()
-            source = 'hermes-agent'
-          }
-
-          // Merge auto-discovered local models (Ollama, Atomic Chat, etc.)
-          await ensureDiscovery()
-          const localModels = getDiscoveredModels()
-          const existingIds = new Set(models.map((m) => m.id))
-          for (const m of localModels) {
-            if (!existingIds.has(m.id)) {
-              models.push(m)
-              existingIds.add(m.id)
-              ensureProviderInConfig(m.provider)
-            }
-          }
+          // In semantier-unicell mode, models come exclusively from the agent
+          // wrapper (models.json / config.yaml). No fallback to /v1/models or
+          // local provider discovery is performed.
 
           const configuredProviders = Array.from(
             new Set(

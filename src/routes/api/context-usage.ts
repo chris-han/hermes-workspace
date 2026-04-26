@@ -60,7 +60,7 @@ export const Route = createFileRoute('/api/context-usage')({
           // Step 1: Get session data from Hermes
           let sessionData: Record<string, unknown> | null = null
 
-          const capabilities = await ensureGatewayProbed()
+          const capabilities = ensureGatewayProbed()
 
           if (sessionId) {
             try {

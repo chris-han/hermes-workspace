@@ -3,7 +3,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import { requireJsonContentType } from '../../../server/rate-limit'
 import {
-  SESSIONS_API_UNAVAILABLE_MESSAGE,
   ensureGatewayProbed,
   getGatewayCapabilities,
   sendChat,
@@ -16,14 +15,12 @@ export const Route = createFileRoute('/api/sessions/send')({
       POST: async ({ request }) => {
         const csrfCheck = requireJsonContentType(request)
         if (csrfCheck) return csrfCheck
-        const capabilities = await ensureGatewayProbed()
+        const capabilities = ensureGatewayProbed()
         if (!capabilities.enhancedChat) {
           return json(
             {
               ok: false,
-              error: capabilities.dashboard.available
-                ? 'Legacy session send is not supported in zero-fork mode. Use /api/send-stream.'
-                : SESSIONS_API_UNAVAILABLE_MESSAGE,
+              error: 'Legacy session send is not supported in semantier-unicell mode. Use /api/send-stream.',
             },
             { status: 503 },
           )

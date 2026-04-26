@@ -28,7 +28,7 @@ export const Route = createFileRoute('/api/ping')({
           )
         }
 
-        const caps = await ensureGatewayProbed()
+        const caps = ensureGatewayProbed()
         if (!caps.health) {
           return Response.json(
             {

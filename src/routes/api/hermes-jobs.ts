@@ -5,7 +5,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import {
   BEARER_TOKEN,
   HERMES_API,
-  HERMES_UPGRADE_INSTRUCTIONS,
   dashboardFetch,
   ensureGatewayProbed,
   getCapabilities,
@@ -20,7 +19,7 @@ export const Route = createFileRoute('/api/hermes-jobs')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const capabilities = await ensureGatewayProbed()
+        const capabilities = ensureGatewayProbed()
         if (!capabilities.jobs) {
           return new Response(
             JSON.stringify({
@@ -44,12 +43,12 @@ export const Route = createFileRoute('/api/hermes-jobs')({
         })
       },
       POST: async ({ request }) => {
-        const capabilities = await ensureGatewayProbed()
+        const capabilities = ensureGatewayProbed()
         if (!capabilities.jobs) {
           return new Response(
             JSON.stringify({
               ...createCapabilityUnavailablePayload('jobs', {
-                error: `Gateway does not support /api/jobs. ${HERMES_UPGRADE_INSTRUCTIONS}`,
+                error: 'Gateway does not support /api/jobs in semantier-unicell mode.',
               }),
             }),
             { status: 503, headers: { 'Content-Type': 'application/json' } },

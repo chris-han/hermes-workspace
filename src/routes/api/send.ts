@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import {
-  SESSIONS_API_UNAVAILABLE_MESSAGE,
   ensureGatewayProbed,
   getGatewayCapabilities,
 } from '../../server/hermes-api'
@@ -13,10 +12,10 @@ export const Route = createFileRoute('/api/send')({
       POST: async ({ request }) => {
         const csrfCheck = requireJsonContentType(request)
         if (csrfCheck) return csrfCheck
-        await ensureGatewayProbed()
+        ensureGatewayProbed()
         if (!getGatewayCapabilities().sessions) {
           return json(
-            { ok: false, error: SESSIONS_API_UNAVAILABLE_MESSAGE },
+            { ok: false, error: 'Sessions API is not available in semantier-unicell mode.' },
             { status: 503 },
           )
         }

@@ -110,7 +110,7 @@ const PROVIDERS = [
     id: 'custom',
     name: 'Custom (OpenAI-compat)',
     logo: '/providers/openai.png',
-    desc: 'Any OpenAI-compatible endpoint',
+    desc: 'Custom provider via the agent wrapper',
     authType: 'custom',
   },
 ]
@@ -238,30 +238,10 @@ export function HermesOnboarding() {
           ? data.modeLabel.trim()
           : null
 
-      if (data.capabilities?.chatCompletions) {
-        setBackendStatus('ready')
-        setBackendMessage(
-          data.mode === 'semantier-unicell'
-            ? `${modeLabel ?? 'Semantier Unicell'} backend connected. Core chat is ready.`
-            : data.capabilities.sessions
-              ? 'Backend connected. Core chat works, and Hermes gateway enhancements are available.'
-              : 'Backend connected. Core chat is ready.',
-        )
-        return
-      }
-
       if (data.mode === 'semantier-unicell') {
         setBackendStatus('ready')
         setBackendMessage(
           `${modeLabel ?? 'Semantier Unicell'} backend connected. Workspace-native APIs are available.`,
-        )
-        return
-      }
-
-      if (data.capabilities?.health) {
-        setBackendStatus('error')
-        setBackendMessage(
-          'Backend is reachable, but /v1/chat/completions is not available yet.',
         )
         return
       }
@@ -542,8 +522,8 @@ export function HermesOnboarding() {
               />
               <h2 className="text-xl font-bold">Welcome to Semantier</h2>
               <p className="text-sm" style={mutedStyle}>
-                Works with any OpenAI-compatible backend. Hermes gateway APIs
-                unlock sessions, memory, skills, and other extras automatically.
+                Connects to the Semantier agent wrapper. The wrapper manages
+                the Hermes gateway internally — frontends never connect directly.
               </p>
               <button
                 onClick={() => {
@@ -565,8 +545,8 @@ export function HermesOnboarding() {
               <div className="text-4xl">🔌</div>
               <h2 className="text-lg font-bold">Connect Your Backend</h2>
               <p className="text-sm" style={mutedStyle}>
-                Start by verifying that Hermes Workspace can reach your
-                OpenAI-compatible backend.
+                Start by verifying that Hermes Workspace can reach the
+                Semantier agent wrapper.
               </p>
 
               {backendStatus === 'checking' && (
@@ -611,10 +591,9 @@ export function HermesOnboarding() {
                       Compatible backends
                     </p>
                     <p className="mt-2" style={mutedStyle}>
-                      Use any backend that exposes{' '}
-                      <code>/v1/chat/completions</code>. If you point Hermes
-                      Workspace at a Hermes gateway, enhanced features unlock
-                      automatically.
+                      Connect to the Semantier agent wrapper at{' '}
+                      <code>HERMES_API_URL</code>. The agent wrapper manages
+                      Hermes gateway internally.
                     </p>
                     <div
                       className="mt-3 rounded-lg px-3 py-2 font-mono text-[11px]"
@@ -668,9 +647,7 @@ export function HermesOnboarding() {
               <div className="rounded-xl p-3 text-xs" style={cardStyle}>
                 <p style={mutedStyle}>Backend mode</p>
                 <p className="mt-1">
-                  {backendInfo?.capabilities?.sessions
-                    ? 'Hermes gateway detected'
-                    : 'Portable OpenAI-compatible backend'}
+                  {'Semantier Unicell backend'}
                 </p>
                 {configuredModel ? (
                   <p className="mt-2" style={mutedStyle}>
@@ -912,7 +889,7 @@ export function HermesOnboarding() {
                 <p className="mt-2 text-xs" style={mutedStyle}>
                   {canFetchModels
                     ? 'Models were fetched from the backend when available.'
-                    : 'If your backend does not expose /v1/models, enter the model name manually.'}
+                    : 'Enter the model name configured in the agent wrapper.'}
                 </p>
               </div>
 

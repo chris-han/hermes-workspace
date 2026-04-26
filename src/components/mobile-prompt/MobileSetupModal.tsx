@@ -77,7 +77,7 @@ export function MobileSetupModal({ isOpen, onClose }: MobileSetupModalProps) {
     },
     {
       title: 'Keep your backend reachable',
-      body: 'Semantier can talk to any OpenAI-compatible backend on mobile too. Make sure both the workspace and backend stay reachable over Tailscale or your local network.',
+      body: 'Semantier connects to the agent wrapper on mobile too. Make sure both the workspace and the agent wrapper stay reachable over Tailscale or your local network.',
       showTailscaleIcon: false,
       action: (
         <div className="rounded-lg border border-primary-700 bg-primary-950 px-4 py-3 text-sm text-primary-200">

@@ -94,7 +94,7 @@ export const Route = createFileRoute('/api/mcp/servers')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        await ensureGatewayProbed()
+        ensureGatewayProbed()
         if (!getCapabilities().config) {
           return Response.json({
             ...createCapabilityUnavailablePayload('config', {

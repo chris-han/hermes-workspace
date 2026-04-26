@@ -22,19 +22,31 @@ async function proxyAuthRequest(request: Request, splat: string) {
     method: request.method,
     headers,
     redirect: 'manual',
+    signal: AbortSignal.timeout(5_000),
   }
 
   if (!['GET', 'HEAD'].includes(request.method.toUpperCase())) {
     init.body = await request.text()
   }
 
-  const upstream = await fetch(targetUrl, init)
-  const body = await upstream.text()
+  try {
+    const upstream = await fetch(targetUrl, init)
+    const body = await upstream.text()
 
-  return new Response(body, {
-    status: upstream.status,
-    headers: buildSemantierAgentProxyResponseHeaders(upstream.headers),
-  })
+    return new Response(body, {
+      status: upstream.status,
+      headers: buildSemantierAgentProxyResponseHeaders(upstream.headers),
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Agent backend unreachable'
+    return new Response(
+      JSON.stringify({ ok: false, error: message }),
+      {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    )
+  }
 }
 
 export const Route = createFileRoute('/auth/$')({

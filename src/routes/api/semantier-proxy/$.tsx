@@ -7,9 +7,12 @@ import {
   withSemantierAgentBase,
 } from '../../../server/semantier-agent-api'
 
-function jsonUnauthorizedResponse() {
-  return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
-    status: 401,
+function jsonUnauthorizedResponse(
+  message = 'Unauthorized',
+  status = 401,
+) {
+  return new Response(JSON.stringify({ ok: false, error: message }), {
+    status,
     headers: { 'content-type': 'application/json' },
   })
 }
@@ -47,22 +50,28 @@ async function proxyRequest(request: Request, splat: string) {
     method: request.method,
     headers,
     redirect: 'manual',
+    signal: AbortSignal.timeout(10_000),
   }
 
   if (!['GET', 'HEAD'].includes(request.method.toUpperCase())) {
     init.body = await request.text()
   }
 
-  const upstream = await fetch(targetUrl, init)
-  const body = await upstream.text()
-  const responseHeaders = buildSemantierAgentProxyResponseHeaders(
-    upstream.headers,
-  )
+  try {
+    const upstream = await fetch(targetUrl, init)
+    const body = await upstream.text()
+    const responseHeaders = buildSemantierAgentProxyResponseHeaders(
+      upstream.headers,
+    )
 
-  return new Response(body, {
-    status: upstream.status,
-    headers: responseHeaders,
-  })
+    return new Response(body, {
+      status: upstream.status,
+      headers: responseHeaders,
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Agent backend unreachable'
+    return jsonUnauthorizedResponse(message, 503)
+  }
 }
 
 export const Route = createFileRoute('/api/semantier-proxy/$')({

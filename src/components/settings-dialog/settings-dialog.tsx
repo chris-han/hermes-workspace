@@ -7,6 +7,7 @@ import {
   CheckmarkCircle02Icon,
   CloudIcon,
   ComputerIcon,
+  Message01Icon,
   MessageMultiple01Icon,
   Mic01Icon,
   Moon01Icon,
@@ -50,6 +51,7 @@ import { applyAccentColor } from '@/lib/accent-colors'
 import { getUnavailableReason } from '@/lib/feature-gates'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { ProviderLogo } from '@/components/provider-logo'
+import { MessagingSettingsScreen } from '@/screens/settings/messaging-settings-screen'
 import {
   DialogClose,
   DialogContent,
@@ -75,6 +77,7 @@ type SectionId =
   | 'chat'
   | 'notifications'
   | 'language'
+  | 'messaging'
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'hermes', label: 'Model & Provider', icon: CloudIcon },
@@ -87,6 +90,7 @@ const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'chat', label: 'Chat', icon: MessageMultiple01Icon },
   { id: 'notifications', label: 'Alerts', icon: Notification03Icon },
   { id: 'language', label: 'Language', icon: MessageMultiple01Icon },
+  { id: 'messaging', label: 'IM Gateway', icon: Message01Icon },
 ]
 
 const DARK_ENTERPRISE_THEMES = new Set<ThemeId>([
@@ -2200,6 +2204,7 @@ const CONTENT_MAP: Record<SectionId, () => React.JSX.Element> = {
   chat: ChatContent,
   notifications: NotificationsContent,
   language: LanguageContent,
+  messaging: MessagingSettingsScreen,
 }
 
 type SettingsDialogProps = {

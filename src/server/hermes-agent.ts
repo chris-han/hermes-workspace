@@ -80,6 +80,41 @@ export function resolveHermesPython(agentDir: string): string {
   return 'python3'
 }
 
+/** Same directory resolution logic as vite.config.ts. */
+export function resolveSemantierAgentDir(
+  env: Record<string, string | undefined> = process.env,
+): string | null {
+  const candidates: Array<string> = []
+
+  if (env.SEMANTIER_AGENT_PATH?.trim()) {
+    candidates.push(env.SEMANTIER_AGENT_PATH.trim())
+  }
+
+  const workspaceRoot = dirname(resolve('.'))
+  candidates.push(
+    resolve(workspaceRoot, 'agent'),
+    resolve(workspaceRoot, '..', 'agent'),
+  )
+
+  for (const candidate of candidates) {
+    if (
+      existsSync(resolve(candidate, 'api_server.py')) &&
+      existsSync(resolve(candidate, 'hermes_dashboard_wrapper.py'))
+    ) {
+      return candidate
+    }
+  }
+  return null
+}
+
+export function resolveSemantierPython(agentDir: string): string {
+  const venvPython = resolve(agentDir, '.venv', 'bin', 'python')
+  if (existsSync(venvPython)) return venvPython
+  const uvVenv = resolve(agentDir, 'venv', 'bin', 'python')
+  if (existsSync(uvVenv)) return uvVenv
+  return 'python3'
+}
+
 export async function isHermesAgentHealthy(
   port = HERMES_START_PORT,
 ): Promise<boolean> {
@@ -113,7 +148,10 @@ export async function startHermesAgent(): Promise<StartHermesAgentResult> {
         }
       }
 
-      const python = resolveHermesPython(agentDir)
+      const semantierAgentDir = resolveSemantierAgentDir()
+      const python = semantierAgentDir
+        ? resolveSemantierPython(semantierAgentDir)
+        : resolveHermesPython(agentDir)
       const hermesEnv = readHermesEnv()
 
       const useGatewayRun = existsSync(resolve(agentDir, 'gateway', 'run.py'))
@@ -129,15 +167,19 @@ export async function startHermesAgent(): Promise<StartHermesAgentResult> {
             String(HERMES_START_PORT),
           ]
 
+      const gatewayCwd = semantierAgentDir || agentDir
       const child = spawn(python, commandArgs, {
-        cwd: agentDir,
+        cwd: gatewayCwd,
         detached: true,
         stdio: 'ignore',
         env: {
           ...process.env,
           ...hermesEnv,
           API_SERVER_ENABLED: 'true',
-          PATH: `${resolve(agentDir, '.venv', 'bin')}:${resolve(agentDir, 'venv', 'bin')}:${process.env.PATH || ''}`,
+          PYTHONPATH: agentDir
+            ? `${agentDir}${process.env.PYTHONPATH ? `:${process.env.PYTHONPATH}` : ''}`
+            : process.env.PYTHONPATH,
+          PATH: `${resolve(gatewayCwd, '.venv', 'bin')}:${resolve(gatewayCwd, 'venv', 'bin')}:${process.env.PATH || ''}`,
         },
       })
 

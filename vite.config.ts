@@ -180,7 +180,10 @@ const config = defineConfig(({ mode, command }) => {
       return
     }
 
-    const python = resolveHermesPython(agentDir)
+    const semantierAgentDir = resolveSemantierAgentDir(env)
+    const python = semantierAgentDir
+      ? resolveSemantierPython(semantierAgentDir)
+      : resolveHermesPython(agentDir)
     const useGatewayRun = existsSync(resolve(agentDir, 'gateway', 'run.py'))
     const gatewayPort = String(getServicePort(hermesApiUrl, 8642))
     const commandArgs = useGatewayRun
@@ -195,17 +198,21 @@ const config = defineConfig(({ mode, command }) => {
           gatewayPort,
         ]
 
+    const gatewayCwd = semantierAgentDir || agentDir
     console.log(
-      `${localServiceLabel('hermes-gateway')} Starting from ${agentDir} using ${python} (${useGatewayRun ? 'gateway.run' : `uvicorn :${gatewayPort}`})`,
+      `${localServiceLabel('hermes-gateway')} Starting from ${gatewayCwd} using ${python} (${useGatewayRun ? 'gateway.run' : `uvicorn :${gatewayPort}`})`,
     )
 
     const child = spawn(python, commandArgs, {
-      cwd: agentDir,
+      cwd: gatewayCwd,
       detached: false, // keep tied to vite process — stops when dev server stops
       stdio: 'pipe',
       env: {
         ...process.env,
-        PATH: `${resolve(agentDir, '.venv', 'bin')}:${resolve(agentDir, 'venv', 'bin')}:${process.env.PATH || ''}`,
+        PYTHONPATH: agentDir
+          ? `${agentDir}${process.env.PYTHONPATH ? `:${process.env.PYTHONPATH}` : ''}`
+          : process.env.PYTHONPATH,
+        PATH: `${resolve(gatewayCwd, '.venv', 'bin')}:${resolve(gatewayCwd, 'venv', 'bin')}:${process.env.PATH || ''}`,
       },
     })
 

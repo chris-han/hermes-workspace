@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from './code-block'
+import { MermaidBlock } from './mermaid-block'
 import type { Components } from 'react-markdown'
 import { cn } from '@/lib/utils'
 
@@ -128,6 +129,11 @@ function slugifyHeading(children: React.ReactNode): string {
 const INITIAL_COMPONENTS: Partial<Components> = {
   code: function CodeComponent({ className, children }) {
     const isInline = !className?.includes('language-')
+    const source = String(children ?? '').replace(/\n$/, '')
+
+    if (!isInline && /(?:^|\s)language-mermaid(?:\s|$)/.test(className || '')) {
+      return <MermaidBlock chart={source} />
+    }
 
     if (isInline) {
       return (
@@ -140,7 +146,7 @@ const INITIAL_COMPONENTS: Partial<Components> = {
     const language = extractLanguage(className)
     return (
       <CodeBlock
-        content={String(children ?? '')}
+        content={source}
         language={language}
         className="w-full my-2"
       />

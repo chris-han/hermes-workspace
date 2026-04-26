@@ -154,7 +154,7 @@ export function CodeBlock({
           {html ? (
             <div
               className={cn(
-                'text-sm text-primary-900 [&>pre]:m-0 [&>pre]:overflow-visible [&>pre]:leading-6',
+                'text-sm text-primary-900 [&>pre]:m-0 [&>pre]:overflow-visible [&>pre]:leading-6 [&>pre]:whitespace-pre [&>pre]:font-mono [&_code]:font-mono',
                 isSingleLine
                   ? '[&>pre]:whitespace-pre [&>pre]:px-3 [&>pre]:py-2'
                   : '[&>pre]:px-3 [&>pre]:py-3',
@@ -164,7 +164,7 @@ export function CodeBlock({
           ) : (
             <pre
               className={cn(
-                'text-sm leading-6 text-primary-900',
+                'font-mono text-sm leading-6 text-primary-900 whitespace-pre',
                 isSingleLine ? 'whitespace-pre px-3 py-2' : 'px-3 py-3',
               )}
             >

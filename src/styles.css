@@ -223,6 +223,26 @@
   background-color: var(--theme-card) !important;
 }
 
+/* Table header surface token and utility
+   Defaults to the theme card surface; light-theme variants prefer the quiet light surface.
+*/
+
+:root {
+  /* Matcha (抹茶色) header surface by default */
+  --theme-table-header: #7BA05B; /* semantier matcha/lime */
+}
+
+/* Keep previous light-theme override behavior but default to matcha as well */
+[data-theme$='-light'] {
+  --theme-table-header: #7BA05B !important;
+}
+
+/* Alias utilities: bg-table-header for Tailwind-style and theme-table-header for semantic use */
+.bg-table-header,
+.theme-table-header {
+  background-color: var(--theme-table-header, #7BA05B) !important;
+}
+
 .text-ink {
   color: var(--color-ink, var(--theme-text)) !important;
 }

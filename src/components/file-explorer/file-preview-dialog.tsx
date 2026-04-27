@@ -346,7 +346,7 @@ export default function FilePreviewDialog({
                         {excelTableModel.headerCells.map((cell, index) => (
                           <th
                             key={`h-${index}`}
-                              className="sticky top-0 z-20 border-b border-r border-border bg-card px-2 py-1.5 text-left font-semibold text-card-foreground shadow-sm"
+                              className="sticky top-0 z-20 border-b border-r border-border bg-table-header px-2 py-1.5 text-left font-semibold text-card-foreground shadow-sm"
                           >
                             {cell || `Column ${index + 1}`}
                           </th>
@@ -360,7 +360,7 @@ export default function FilePreviewDialog({
                           {excelTableModel.headerCells.map((_, colIndex) => (
                             <td
                               key={`c-${rowIndex}-${colIndex}`}
-                              className="max-w-[260px] truncate border-r border-b border-primary-100 px-2 py-1.5"
+                              className="max-w-[260px] truncate border-r border-b border-border px-2 py-1.5"
                               title={row[colIndex] || ''}
                             >
                               {row[colIndex] || ''}

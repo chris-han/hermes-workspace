@@ -1174,11 +1174,14 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
                   )}
                   <tbody>
                     {excelTableModel.bodyRows.map((row, rowIndex) => (
-                      <tr key={`row-${rowIndex}`} className="odd:bg-white even:bg-primary-50/40 dark:odd:bg-neutral-950 dark:even:bg-neutral-900/60">
+                      <tr
+                        key={`row-${rowIndex}`}
+                        className={rowIndex % 2 === 0 ? 'excel-preview-row-odd' : 'excel-preview-row-even'}
+                      >
                         {excelTableModel.headerCells.map((_, colIndex) => (
                           <td
                             key={`cell-${rowIndex}-${colIndex}`}
-                            className="max-w-[280px] truncate border-r border-b border-border px-2 py-1.5 text-primary-800 dark:border-neutral-800 dark:text-neutral-200"
+                            className="excel-preview-cell max-w-[280px] truncate border-r border-b border-border px-2 py-1.5"
                             title={row[colIndex] || ''}
                           >
                             {row[colIndex] || ''}

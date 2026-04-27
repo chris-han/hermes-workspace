@@ -243,6 +243,18 @@
   background-color: var(--theme-table-header, #7BA05B) !important;
 }
 
+.excel-preview-row-odd {
+  background-color: var(--theme-card) !important;
+}
+
+.excel-preview-row-even {
+  background-color: var(--theme-card2) !important;
+}
+
+.excel-preview-cell {
+  color: var(--theme-text) !important;
+}
+
 .text-ink {
   color: var(--color-ink, var(--theme-text)) !important;
 }

@@ -356,11 +356,14 @@ export default function FilePreviewDialog({
                     )}
                     <tbody>
                       {excelTableModel.bodyRows.map((row, rowIndex) => (
-                        <tr key={`r-${rowIndex}`} className="odd:bg-white even:bg-primary-50/40">
+                        <tr
+                          key={`r-${rowIndex}`}
+                          className={rowIndex % 2 === 0 ? 'excel-preview-row-odd' : 'excel-preview-row-even'}
+                        >
                           {excelTableModel.headerCells.map((_, colIndex) => (
                             <td
                               key={`c-${rowIndex}-${colIndex}`}
-                              className="max-w-[260px] truncate border-r border-b border-border px-2 py-1.5"
+                              className="excel-preview-cell max-w-[260px] truncate border-r border-b border-border px-2 py-1.5"
                               title={row[colIndex] || ''}
                             >
                               {row[colIndex] || ''}

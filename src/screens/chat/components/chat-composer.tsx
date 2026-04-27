@@ -23,6 +23,15 @@ import {
 } from 'react'
 import { setLocalModelOverride } from '../chat-screen'
 import {
+  ATTACHMENT_ACCEPT,
+  DOCX_MIME_TYPE,
+  PDF_MIME_TYPE,
+  XLS_MIME_TYPE,
+  XLSX_MIME_TYPE,
+  inferUploadApiDocumentMimeTypeFromFileName,
+  isUploadApiDocumentMimeType,
+} from '../attachment-documents'
+import {
   MODEL_SWITCH_BLOCKED_TOAST,
   getZeroForkModelInfoFlags,
   shouldBlockZeroForkModelSwitch,
@@ -329,13 +338,6 @@ const IMAGE_QUALITY = 0.85
 /** Safe image attachment limit after processing (1MB). */
 const MAX_TRANSPORT_IMAGE_SIZE = 1 * 1024 * 1024
 
-const DOCX_MIME_TYPE =
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-const PDF_MIME_TYPE = 'application/pdf'
-
-const ATTACHMENT_ACCEPT =
-  'image/*,.md,.txt,.json,.csv,.ts,.tsx,.js,.py,.docx,.pdf'
-
 const IMAGE_EXTENSION_TO_MIME: Record<string, string> = {
   png: 'image/png',
   jpg: 'image/jpeg',
@@ -360,8 +362,6 @@ const TEXT_EXTENSION_TO_MIME: Record<string, string> = {
   tsx: 'text/plain',
   js: 'text/plain',
   py: 'text/plain',
-  docx: DOCX_MIME_TYPE,
-  pdf: PDF_MIME_TYPE,
 }
 
 function normalizeMimeType(value: string): string {
@@ -387,12 +387,12 @@ function inferTextMimeTypeFromFileName(name: string): string {
 
 function isTextMimeType(value: string): boolean {
   const normalized = normalizeMimeType(value)
-  return (
-    normalized.startsWith('text/') ||
-    normalized === 'application/json' ||
-    normalized === DOCX_MIME_TYPE ||
-    normalized === PDF_MIME_TYPE
-  )
+  return normalized.startsWith('text/') || normalized === 'application/json'
+}
+
+function isUploadApiDocumentFile(file: File): boolean {
+  if (isUploadApiDocumentMimeType(file.type)) return true
+  return inferUploadApiDocumentMimeTypeFromFileName(file.name).length > 0
 }
 
 function isImageFile(file: File): boolean {
@@ -427,6 +427,7 @@ function hasAttachableData(dt: DataTransfer | null): boolean {
         item.kind === 'file' &&
         (isImageMimeType(item.type) ||
           isTextMimeType(item.type) ||
+          isUploadApiDocumentMimeType(item.type) ||
           item.type.trim().length === 0),
     )
   )
@@ -434,7 +435,10 @@ function hasAttachableData(dt: DataTransfer | null): boolean {
   const files = Array.from(dt.files)
   return files.some(
     (file) =>
-      isImageFile(file) || isTextFile(file) || file.type.trim().length === 0,
+      isImageFile(file) ||
+      isTextFile(file) ||
+      isUploadApiDocumentFile(file) ||
+      file.type.trim().length === 0,
   )
 }
 
@@ -1206,7 +1210,13 @@ function ChatComposerComponent({
           async (file, index): Promise<ChatComposerAttachment | null> => {
             const imageFile = isImageFile(file)
             const textFile = isTextFile(file)
-            if (!imageFile && !textFile && file.type.trim().length > 0) {
+            const uploadApiDocumentFile = isUploadApiDocumentFile(file)
+            if (
+              !imageFile &&
+              !textFile &&
+              !uploadApiDocumentFile &&
+              file.type.trim().length > 0
+            ) {
               return null
             }
 
@@ -1218,6 +1228,46 @@ function ChatComposerComponent({
               return null
             }
 
+            if (uploadApiDocumentFile) {
+              const resolvedMimeType =
+                (isUploadApiDocumentMimeType(file.type)
+                  ? normalizeMimeType(file.type)
+                  : '') || inferUploadApiDocumentMimeTypeFromFileName(file.name)
+
+              if (
+                resolvedMimeType !== PDF_MIME_TYPE &&
+                resolvedMimeType !== DOCX_MIME_TYPE &&
+                resolvedMimeType !== XLS_MIME_TYPE &&
+                resolvedMimeType !== XLSX_MIME_TYPE
+              ) {
+                return null
+              }
+
+              const dataUrl = await readFileAsDataUrl(file)
+              if (!dataUrl) return null
+
+              const fallbackExtension =
+                resolvedMimeType === DOCX_MIME_TYPE
+                  ? 'docx'
+                  : resolvedMimeType === XLS_MIME_TYPE
+                    ? 'xls'
+                    : resolvedMimeType === XLSX_MIME_TYPE
+                      ? 'xlsx'
+                      : 'pdf'
+
+              return {
+                id: crypto.randomUUID(),
+                name:
+                  file.name && file.name.trim().length > 0
+                    ? file.name.trim()
+                    : `attachment-${timestamp}-${index + 1}.${fallbackExtension}`,
+                contentType: resolvedMimeType,
+                size: file.size,
+                dataUrl,
+                kind: 'file',
+              }
+            }
+
             if (textFile) {
               const inferredMimeType = inferTextMimeTypeFromFileName(file.name)
               const normalizedMimeType = normalizeMimeType(file.type)
@@ -1225,40 +1275,6 @@ function ChatComposerComponent({
                 (isTextMimeType(file.type) ? normalizedMimeType : '') ||
                 inferredMimeType ||
                 'text/plain'
-
-              if (resolvedMimeType === PDF_MIME_TYPE) {
-                const dataUrl = await readFileAsDataUrl(file)
-                if (!dataUrl) return null
-
-                return {
-                  id: crypto.randomUUID(),
-                  name:
-                    file.name && file.name.trim().length > 0
-                      ? file.name.trim()
-                      : `attachment-${timestamp}-${index + 1}.pdf`,
-                  contentType: PDF_MIME_TYPE,
-                  size: file.size,
-                  dataUrl,
-                  kind: 'file',
-                }
-              }
-
-              if (resolvedMimeType === DOCX_MIME_TYPE) {
-                const dataUrl = await readFileAsDataUrl(file)
-                if (!dataUrl) return null
-
-                return {
-                  id: crypto.randomUUID(),
-                  name:
-                    file.name && file.name.trim().length > 0
-                      ? file.name.trim()
-                      : `attachment-${timestamp}-${index + 1}.docx`,
-                  contentType: DOCX_MIME_TYPE,
-                  size: file.size,
-                  dataUrl,
-                  kind: 'file',
-                }
-              }
 
               const textContent = await readFileAsText(file)
               if (textContent === null) return null

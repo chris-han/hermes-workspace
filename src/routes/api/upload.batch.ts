@@ -31,6 +31,7 @@ async function handleUploadBatch(request: Request): Promise<Response> {
     status: string
     filename?: string
     file_path?: string
+    error?: string
   }> = []
 
   for (const fileField of fileFields) {
@@ -81,6 +82,7 @@ async function handleUploadBatch(request: Request): Promise<Response> {
       uploadedFiles.push({
         status: 'error',
         filename,
+        error: msg,
       })
       continue
     }
@@ -105,12 +107,14 @@ async function handleUploadBatch(request: Request): Promise<Response> {
         uploadedFiles.push({
           status: 'error',
           filename,
+          error: 'Invalid upstream response payload',
         })
       }
     } else {
       uploadedFiles.push({
         status: 'error',
         filename,
+        error: `Upstream upload failed (${upstream.status})`,
       })
     }
   }

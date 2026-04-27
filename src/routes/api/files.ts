@@ -87,7 +87,7 @@ const IGNORED_DIRS = new Set([
   '.DS_Store',
 ])
 
-const MAX_DIRECTORY_DEPTH = 3
+const MAX_DIRECTORY_DEPTH = 6
 const MAX_DIRECTORY_ENTRIES = 20_000
 
 type ReadDirectoryOptions = {
@@ -223,6 +223,14 @@ function isImageFile(filePath: string) {
   return ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'].includes(ext)
 }
 
+function buildContentDisposition(filename: string) {
+  // Header values must stay ASCII-safe; keep a fallback filename and provide
+  // an RFC 5987 UTF-8 variant so Unicode names still round-trip correctly.
+  const asciiFallback = filename.replace(/[^\x20-\x7E]/g, '_') || 'download'
+  const encodedUtf8 = encodeURIComponent(filename)
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodedUtf8}`
+}
+
 export const Route = createFileRoute('/api/files')({
   server: {
     handlers: {
@@ -278,9 +286,9 @@ export const Route = createFileRoute('/api/files')({
             return new Response(buffer, {
               headers: {
                 'Content-Type': getMimeType(resolvedPath),
-                'Content-Disposition': `attachment; filename="${path.basename(
-                  resolvedPath,
-                )}"`,
+                'Content-Disposition': buildContentDisposition(
+                  path.basename(resolvedPath),
+                ),
               },
             })
           }

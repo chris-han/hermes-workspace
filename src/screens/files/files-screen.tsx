@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import * as XLSX from 'xlsx'
 import { cn } from '@/lib/utils'
 import { usePageTitle } from '@/hooks/use-page-title'
 import {
@@ -70,6 +71,8 @@ const IGNORED_DIRS = new Set([
 ])
 
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
+const EXCEL_EXTS = new Set(['xls', 'xlsx', 'xlsm', 'xlsb'])
+const EXCEL_PREVIEW_MAX_ROWS = 200
 const CODE_EXTS = new Set([
   'ts',
   'tsx',
@@ -98,6 +101,10 @@ function isImageFile(name: string): boolean {
   return IMAGE_EXTS.has(getExt(name))
 }
 
+function isExcelFile(name: string): boolean {
+  return EXCEL_EXTS.has(getExt(name))
+}
+
 function isCodeFile(name: string): boolean {
   return CODE_EXTS.has(getExt(name))
 }
@@ -108,7 +115,7 @@ function isMarkdownFile(name: string): boolean {
 }
 
 function isEditableFile(name: string): boolean {
-  return !isImageFile(name)
+  return !isImageFile(name) && !isExcelFile(name)
 }
 
 function getFileIcon(entry: FileEntry): string {
@@ -118,6 +125,7 @@ function getFileIcon(entry: FileEntry): string {
   if (ext === 'json') return '📋'
   if (ext === 'ts' || ext === 'tsx' || ext === 'js' || ext === 'jsx')
     return '📜'
+  if (EXCEL_EXTS.has(ext)) return '📊'
   if (IMAGE_EXTS.has(ext)) return '🖼'
   return '📃'
 }
@@ -689,6 +697,14 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
   const [fileError, setFileError] = useState<string | null>(null)
   const [content, setContent] = useState('')
   const [dataUrl, setDataUrl] = useState('')
+  const [excelSheetNames, setExcelSheetNames] = useState<Array<string>>([])
+  const [excelActiveSheet, setExcelActiveSheet] = useState('')
+  const [excelPreviewRows, setExcelPreviewRows] = useState<Array<Array<string>>>(
+    [],
+  )
+  const [excelTotalRows, setExcelTotalRows] = useState(0)
+  const [excelHeaderEnabled, setExcelHeaderEnabled] = useState(true)
+  const [excelHeaderRowIndex, setExcelHeaderRowIndex] = useState(0)
   const [editValue, setEditValue] = useState('')
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -696,11 +712,13 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
   const [rawMode, setRawMode] = useState(false)
   const [showDiff, setShowDiff] = useState(false)
   const prevPathRef = useRef<string | null>(null)
+  const excelWorkbookRef = useRef<XLSX.WorkBook | null>(null)
 
   // Derive file type info (safe regardless of selectedEntry nullity)
   const fileName = selectedEntry?.name ?? ''
   const ext = getExt(fileName)
   const isImage = isImageFile(fileName)
+  const isExcel = isExcelFile(fileName)
   const isMd = isMarkdownFile(fileName)
   const isCode = isCodeFile(fileName)
   const isEditable = isEditableFile(fileName)
@@ -721,6 +739,13 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
     setFileError(null)
     setContent('')
     setDataUrl('')
+    setExcelSheetNames([])
+    setExcelActiveSheet('')
+    setExcelPreviewRows([])
+    setExcelTotalRows(0)
+    setExcelHeaderEnabled(true)
+    setExcelHeaderRowIndex(0)
+    excelWorkbookRef.current = null
     setDirty(false)
     setRawMode(false)
     try {
@@ -742,12 +767,131 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
     }
   }, [])
 
+  const loadExcelSheetPreview = useCallback((sheetName: string) => {
+    const workbook = excelWorkbookRef.current
+    if (!workbook) return
+    const worksheet = workbook.Sheets[sheetName]
+    if (!worksheet) {
+      setExcelPreviewRows([])
+      setExcelTotalRows(0)
+      setExcelActiveSheet(sheetName)
+      return
+    }
+
+    const rows = XLSX.utils.sheet_to_json(worksheet, {
+      header: 1,
+      raw: false,
+      defval: '',
+    }) as Array<Array<unknown>>
+
+    const previewRows = rows
+      .slice(0, EXCEL_PREVIEW_MAX_ROWS + 1)
+      .map((row) => row.map((cell) => String(cell ?? '')))
+
+    setExcelPreviewRows(previewRows)
+    setExcelTotalRows(rows.length)
+    setExcelActiveSheet(sheetName)
+    setExcelHeaderEnabled(true)
+    setExcelHeaderRowIndex(0)
+  }, [])
+
+  const loadExcelFile = useCallback(
+    async (path: string) => {
+      setLoadingFile(true)
+      setFileError(null)
+      setContent('')
+      setDataUrl('')
+      setDirty(false)
+      setRawMode(false)
+      try {
+        const res = await fetch(
+          `/api/files?action=download&path=${encodeURIComponent(path)}`,
+        )
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const workbookBuffer = await res.arrayBuffer()
+        const workbook = XLSX.read(workbookBuffer, {
+          type: 'array',
+          cellDates: true,
+        })
+        if (!workbook.SheetNames.length) {
+          throw new Error('Workbook has no sheets')
+        }
+        excelWorkbookRef.current = workbook
+        setExcelSheetNames(workbook.SheetNames)
+        loadExcelSheetPreview(workbook.SheetNames[0])
+      } catch (err) {
+        setFileError(err instanceof Error ? err.message : String(err))
+      } finally {
+        setLoadingFile(false)
+      }
+    },
+    [loadExcelSheetPreview],
+  )
+
   useEffect(() => {
     if (!selectedEntry || selectedEntry.type === 'folder') return
     if (prevPathRef.current === selectedEntry.path) return
     prevPathRef.current = selectedEntry.path
+    if (isExcel) {
+      void loadExcelFile(selectedEntry.path)
+      return
+    }
     void loadFile(selectedEntry.path)
-  }, [selectedEntry, loadFile])
+  }, [selectedEntry, isExcel, loadExcelFile, loadFile])
+
+  const handleDownloadCurrent = useCallback(async () => {
+    if (!selectedEntry || selectedEntry.type === 'folder') return
+    const res = await fetch(
+      `/api/files?action=download&path=${encodeURIComponent(selectedEntry.path)}`,
+    )
+    if (!res.ok) {
+      setFileError(`HTTP ${res.status}`)
+      return
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = selectedEntry.name
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }, [selectedEntry])
+
+  const excelColumnCount = useMemo(
+    () =>
+      excelPreviewRows.reduce(
+        (max, row) => Math.max(max, row.length),
+        0,
+      ),
+    [excelPreviewRows],
+  )
+
+  const excelTableModel = useMemo(() => {
+    if (!excelPreviewRows.length || excelColumnCount === 0) {
+      return { headerCells: [] as Array<string>, bodyRows: [] as Array<Array<string>> }
+    }
+
+    if (!excelHeaderEnabled) {
+      return {
+        headerCells: Array.from({ length: excelColumnCount }, (_, index) => `Column ${index + 1}`),
+        bodyRows: excelPreviewRows,
+      }
+    }
+
+    const safeHeaderRowIndex = Math.min(
+      Math.max(excelHeaderRowIndex, 0),
+      Math.max(excelPreviewRows.length - 1, 0),
+    )
+    const headerSource = excelPreviewRows[safeHeaderRowIndex] || []
+
+    return {
+      headerCells: Array.from(
+        { length: excelColumnCount },
+        (_, index) => headerSource[index] || `Column ${index + 1}`,
+      ),
+      bodyRows: excelPreviewRows.slice(safeHeaderRowIndex + 1),
+    }
+  }, [excelColumnCount, excelHeaderEnabled, excelHeaderRowIndex, excelPreviewRows])
 
   /** Actually write to disk (called after diff confirmation or if nothing changed) */
   const commitSave = useCallback(async (path: string, value: string) => {
@@ -928,6 +1072,130 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
             ) : (
               <div className="text-sm text-primary-400">No preview</div>
             )}
+          </div>
+          {footer}
+        </div>
+      </>
+    )
+  }
+
+  // Excel preview via SheetJS (xlsx).
+  if (isExcel) {
+    const isTruncated = excelTotalRows > EXCEL_PREVIEW_MAX_ROWS + 1
+
+    return (
+      <>
+        {diffModal}
+        <div className="flex h-full flex-col">
+          {header}
+          <div className="flex flex-1 min-h-0 flex-col overflow-hidden p-3">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-xs text-primary-500 dark:text-neutral-400">
+                Sheet
+              </span>
+              <select
+                value={excelActiveSheet}
+                onChange={(e) => loadExcelSheetPreview(e.target.value)}
+                className="h-8 rounded-md border border-primary-200 bg-white px-2 text-xs text-primary-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+              >
+                {excelSheetNames.map((sheet) => (
+                  <option key={sheet} value={sheet}>
+                    {sheet}
+                  </option>
+                ))}
+              </select>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-xs text-primary-500 dark:text-neutral-400">
+                  {excelTotalRows.toLocaleString()} rows
+                </span>
+                <Button size="sm" variant="outline" onClick={() => void handleDownloadCurrent()}>
+                  Download file
+                </Button>
+              </div>
+            </div>
+
+            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-850">
+              <label className="flex items-center gap-2 text-xs text-primary-700 dark:text-neutral-200">
+                <input
+                  type="checkbox"
+                  checked={excelHeaderEnabled}
+                  onChange={(e) => setExcelHeaderEnabled(e.target.checked)}
+                />
+                Use header row
+              </label>
+              <label className="flex items-center gap-2 text-xs text-primary-700 dark:text-neutral-200">
+                Header row
+                <input
+                  type="number"
+                  min={1}
+                  max={Math.max(excelPreviewRows.length, 1)}
+                  value={excelHeaderRowIndex + 1}
+                  disabled={!excelHeaderEnabled || excelPreviewRows.length === 0}
+                  onChange={(e) => {
+                    const nextRow = Number(e.target.value)
+                    if (!Number.isFinite(nextRow)) return
+                    setExcelHeaderRowIndex(
+                      Math.min(
+                        Math.max(Math.floor(nextRow) - 1, 0),
+                        Math.max(excelPreviewRows.length - 1, 0),
+                      ),
+                    )
+                  }}
+                  className="h-7 w-20 rounded-md border border-primary-200 bg-white px-2 text-xs text-primary-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                />
+              </label>
+              {!excelHeaderEnabled ? (
+                <span className="text-xs text-primary-500 dark:text-neutral-400">
+                  Header disabled. Generic column names are shown.
+                </span>
+              ) : null}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-primary-200 dark:border-neutral-800">
+              {excelPreviewRows.length === 0 ? (
+                <div className="flex h-full min-h-40 items-center justify-center p-6 text-sm text-primary-500 dark:text-neutral-400">
+                  This sheet has no rows.
+                </div>
+              ) : (
+                <table className="w-full border-separate border-spacing-0 text-xs">
+                  {excelHeaderEnabled && (
+                  <thead>
+                    <tr>
+                      {excelTableModel.headerCells.map((cell, index) => (
+                        <th
+                          key={`header-${index}`}
+                          className="sticky top-0 z-20 border-b border-r border-border bg-card px-2 py-1.5 text-left font-semibold text-card-foreground shadow-sm"
+                        >
+                          {cell || `Column ${index + 1}`}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  )}
+                  <tbody>
+                    {excelTableModel.bodyRows.map((row, rowIndex) => (
+                      <tr key={`row-${rowIndex}`} className="odd:bg-white even:bg-primary-50/40 dark:odd:bg-neutral-950 dark:even:bg-neutral-900/60">
+                        {excelTableModel.headerCells.map((_, colIndex) => (
+                          <td
+                            key={`cell-${rowIndex}-${colIndex}`}
+                            className="max-w-[280px] truncate border-r border-b border-primary-100 px-2 py-1.5 text-primary-800 dark:border-neutral-800 dark:text-neutral-200"
+                            title={row[colIndex] || ''}
+                          >
+                            {row[colIndex] || ''}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {isTruncated ? (
+              <p className="mt-2 text-xs text-primary-500 dark:text-neutral-400">
+                Preview is limited to the first {EXCEL_PREVIEW_MAX_ROWS.toLocaleString()} data rows.
+              </p>
+            ) : null}
           </div>
           {footer}
         </div>

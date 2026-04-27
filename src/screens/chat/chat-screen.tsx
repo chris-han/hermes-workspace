@@ -91,6 +91,11 @@ import { useResearchCard } from '@/hooks/use-research-card'
 // MOBILE_TAB_BAR_OFFSET removed — tab bar always hidden in chat
 import { useTapDebug } from '@/hooks/use-tap-debug'
 import { useChatMode } from '@/hooks/use-chat-mode'
+import {
+  DOCX_MIME_TYPE,
+  fallbackUploadApiDocumentName,
+  isUploadApiDocumentMimeType,
+} from './attachment-documents'
 
 export let _localModelOverride = ''
 export function setLocalModelOverride(model: string) {
@@ -122,10 +127,7 @@ type PortableHistoryMessage = {
   content: string
 }
 
-const DOCX_MIME_TYPE =
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 const PDF_MIME_TYPE = 'application/pdf'
-const UPLOAD_API_DOCUMENT_MIME_TYPES = new Set([DOCX_MIME_TYPE, PDF_MIME_TYPE])
 
 function normalizeMimeType(value: unknown): string {
   if (typeof value !== 'string') return ''
@@ -144,10 +146,6 @@ function isTextLikeMimeType(value: unknown): boolean {
     normalized === 'application/json' ||
     normalized === DOCX_MIME_TYPE
   )
-}
-
-function isUploadApiDocumentMimeType(value: unknown): boolean {
-  return UPLOAD_API_DOCUMENT_MIME_TYPES.has(normalizeMimeType(value))
 }
 
 function readDataUrlMimeType(value: unknown): string {
@@ -189,8 +187,7 @@ function buildFileFromAttachment(attachment: ChatAttachment): File | null {
     bytes[index] = binaryStr.charCodeAt(index)
   }
 
-  const fallbackName =
-    mimeType === DOCX_MIME_TYPE ? 'document.docx' : 'document.pdf'
+  const fallbackName = fallbackUploadApiDocumentName(mimeType)
   return new File([bytes], attachment.name?.trim() || fallbackName, {
     type: mimeType,
   })
@@ -251,13 +248,32 @@ async function uploadChatDocuments(
   }
 
   const payload = (await response.json()) as {
-    files?: Array<{ filename?: string }>
+    files?: Array<{
+      status?: string
+      filename?: string
+      error?: string
+    }>
   }
-  return Array.isArray(payload.files)
-    ? payload.files
-        .map((entry) => entry.filename?.trim() || '')
-        .filter((name) => name.length > 0)
-    : []
+  if (!Array.isArray(payload.files)) return []
+
+  const failedCount = payload.files.filter(
+    (entry) => (entry.status || '').toLowerCase() !== 'ok',
+  ).length
+  if (failedCount > 0) {
+    toast(
+      failedCount === 1
+        ? '1 file failed to upload. It will not be referenced in this message.'
+        : `${failedCount} files failed to upload. They will not be referenced in this message.`,
+      { type: 'warning' },
+    )
+  }
+
+  const successNames = payload.files
+    .filter((entry) => (entry.status || '').toLowerCase() === 'ok')
+    .map((entry) => entry.filename?.trim() || '')
+    .filter((name) => name.length > 0)
+
+  return successNames
 }
 
 function normalizeMessageValue(value: unknown): string {

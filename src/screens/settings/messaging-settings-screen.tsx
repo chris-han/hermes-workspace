@@ -72,6 +72,34 @@ type PairingApproveResponse = {
   message: string
 }
 
+type AuthMeResponse = {
+  authenticated: boolean
+  user?: {
+    user_id: string
+    name: string
+    email?: string | null
+    avatar_url?: string | null
+    feishu_open_id?: string
+    workspace_slug?: string
+    home_dir_path?: string | null
+  } | null
+}
+
+type FeishuLinkStartResponse = {
+  status: 'pending' | 'already_linked'
+  authorize_url?: string
+  state?: string
+  expires_at?: string
+  feishu_open_id?: string
+}
+
+type FeishuLinkStatusResponse = {
+  state: string
+  status: 'pending' | 'linked' | 'expired' | 'failed'
+  feishu_open_id?: string
+  message?: string
+}
+
 type FeishuDraft = {
   appId: string
   appSecret: string
@@ -220,6 +248,14 @@ export function MessagingSettingsScreen() {
   const [savingPlatform, setSavingPlatform] = useState<PlatformId | null>(null)
   const [validatingPlatform, setValidatingPlatform] = useState<PlatformId | null>(null)
 
+  const [authMe, setAuthMe] = useState<AuthMeResponse | null>(null)
+  const [startingFeishuLink, setStartingFeishuLink] = useState(false)
+  const [feishuLinkState, setFeishuLinkState] = useState('')
+  const [feishuLinkStatus, setFeishuLinkStatus] = useState<'pending' | 'linked' | 'expired' | 'failed' | ''>('')
+  const [feishuLinkMessage, setFeishuLinkMessage] = useState('')
+  const [feishuLinkAuthorizeUrl, setFeishuLinkAuthorizeUrl] = useState('')
+  const [feishuLinkQrDataUrl, setFeishuLinkQrDataUrl] = useState('')
+
   const [feishu, setFeishu] = useState<FeishuDraft>(EMPTY_FEISHU)
   const [weixin, setWeixin] = useState<WeixinDraft>(EMPTY_WEIXIN)
   const [showWeixinToken, setShowWeixinToken] = useState(false)
@@ -290,8 +326,18 @@ export function MessagingSettingsScreen() {
     }
   }
 
+  async function loadAuthMe() {
+    try {
+      const data = await requestJson<AuthMeResponse>('/auth/me')
+      setAuthMe(data)
+    } catch {
+      setAuthMe(null)
+    }
+  }
+
   useEffect(() => {
     void loadPlatforms()
+    void loadAuthMe()
   }, [])
 
   const canValidateFeishu = useMemo(() => {
@@ -414,6 +460,57 @@ export function MessagingSettingsScreen() {
     }
   }
 
+  async function startFeishuLinkQr() {
+    setStartingFeishuLink(true)
+    try {
+      const response = await requestJson<FeishuLinkStartResponse>('/auth/feishu/link/start', {
+        method: 'POST',
+      })
+
+      if (response.status === 'already_linked') {
+        setFeishuLinkState('')
+        setFeishuLinkStatus('linked')
+        setFeishuLinkAuthorizeUrl('')
+        setFeishuLinkMessage('This account is already linked with Feishu.')
+        toast('This account is already linked with Feishu.', { type: 'success' })
+        await loadAuthMe()
+        return
+      }
+
+      if (!response.state || !response.authorize_url) {
+        throw new Error('Failed to start Feishu link session.')
+      }
+
+      setFeishuLinkState(response.state)
+      setFeishuLinkAuthorizeUrl(response.authorize_url)
+      setFeishuLinkStatus('pending')
+      setFeishuLinkMessage('Scan this QR code with Feishu to link your account.')
+      toast('Feishu link QR generated.', { type: 'success' })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to start Feishu link flow.'
+      toast(message, { type: 'error' })
+    } finally {
+      setStartingFeishuLink(false)
+    }
+  }
+
+  async function pollFeishuLinkStatus(state: string) {
+    try {
+      const response = await requestJson<FeishuLinkStatusResponse>(`/auth/feishu/link/status?state=${encodeURIComponent(state)}`)
+      setFeishuLinkStatus(response.status)
+      setFeishuLinkMessage(response.message || '')
+
+      if (response.status === 'linked') {
+        toast('Feishu account linked successfully.', { type: 'success' })
+        await loadAuthMe()
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to check Feishu link status.'
+      setFeishuLinkStatus('failed')
+      setFeishuLinkMessage(message)
+    }
+  }
+
   async function pollWeixinQrCode(currentQr: WeixinQrState) {
     try {
       const statusPath = new URLSearchParams({
@@ -482,6 +579,16 @@ export function MessagingSettingsScreen() {
   }, [weixinQr, weixinQrPolling])
 
   useEffect(() => {
+    if (!feishuLinkState || feishuLinkStatus !== 'pending') {
+      return
+    }
+    const timer = window.setTimeout(() => {
+      void pollFeishuLinkStatus(feishuLinkState)
+    }, 1500)
+    return () => window.clearTimeout(timer)
+  }, [feishuLinkState, feishuLinkStatus])
+
+  useEffect(() => {
     if (weixin.dmPolicy !== 'pairing') {
       setWeixinPairingPending([])
       return
@@ -518,6 +625,36 @@ export function MessagingSettingsScreen() {
       cancelled = true
     }
   }, [weixinQr?.scanData])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function buildFeishuLinkQrDataUrl() {
+      if (!feishuLinkAuthorizeUrl) {
+        setFeishuLinkQrDataUrl('')
+        return
+      }
+      try {
+        const dataUrl = await QRCode.toDataURL(feishuLinkAuthorizeUrl, {
+          width: 320,
+          margin: 1,
+          errorCorrectionLevel: 'M',
+        })
+        if (!cancelled) {
+          setFeishuLinkQrDataUrl(dataUrl)
+        }
+      } catch {
+        if (!cancelled) {
+          setFeishuLinkQrDataUrl('')
+        }
+      }
+    }
+
+    void buildFeishuLinkQrDataUrl()
+    return () => {
+      cancelled = true
+    }
+  }, [feishuLinkAuthorizeUrl])
 
   async function validate(platform: PlatformId) {
     setValidatingPlatform(platform)
@@ -751,6 +888,50 @@ export function MessagingSettingsScreen() {
                         <option value="webhook">Webhook</option>
                       </select>
                     </label>
+
+                    <div className="md:col-span-2 rounded-lg border border-primary-200 bg-surface p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={startingFeishuLink || Boolean(authMe?.user?.feishu_open_id)}
+                          onClick={() => void startFeishuLinkQr()}
+                        >
+                          {startingFeishuLink ? 'Preparing QR...' : 'Link Feishu Account (QR)'}
+                        </Button>
+                        {authMe?.user?.feishu_open_id ? (
+                          <span className="text-xs text-emerald-700">
+                            Linked open_id: {authMe.user.feishu_open_id}
+                          </span>
+                        ) : null}
+                        {feishuLinkStatus ? (
+                          <span className="text-xs text-primary-700">Link status: {feishuLinkStatus}</span>
+                        ) : null}
+                      </div>
+
+                      {feishuLinkAuthorizeUrl && !authMe?.user?.feishu_open_id ? (
+                        <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-start md:gap-4">
+                          <img
+                            src={feishuLinkQrDataUrl || ''}
+                            alt="Feishu account linking QR code"
+                            className="h-40 w-40 rounded-md border border-primary-200 bg-white object-contain"
+                          />
+                          <div className="min-w-0 text-xs text-primary-700">
+                            <p>Scan this QR with Feishu and approve authorization.</p>
+                            <p className="mt-1 break-all">
+                              OAuth URL:{' '}
+                              <a className="underline" href={feishuLinkAuthorizeUrl} target="_blank" rel="noreferrer">
+                                Open link
+                              </a>
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {feishuLinkMessage ? (
+                        <p className="mt-2 text-xs text-primary-700">{feishuLinkMessage}</p>
+                      ) : null}
+                    </div>
                   </div>
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2">

@@ -46,7 +46,7 @@ describe('buildInlineToolRenderPlan', () => {
     ])
   })
 
-  it('auto-injects generic schema_form for structured assistant prompt', () => {
+  it('does not auto-inject schema_form for free-form structured prompts (use backend A2UI instead)', () => {
     const message: ChatMessage = {
       role: 'assistant',
       content: [
@@ -60,28 +60,8 @@ describe('buildInlineToolRenderPlan', () => {
 
     const plan = buildInlineToolRenderPlan(message, [])
 
-    expect(plan.some((item) => item.kind === 'ui')).toBe(true)
-    expect(plan).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ kind: 'text' }),
-        expect.objectContaining({
-          kind: 'ui',
-          schema: expect.objectContaining({
-            root: expect.objectContaining({
-              component: 'schema_form',
-              props: expect.objectContaining({
-                fields: expect.arrayContaining([
-                  expect.objectContaining({ label: '项目名称' }),
-                  expect.objectContaining({ label: '目标用户' }),
-                  expect.objectContaining({ label: '上线时间' }),
-                  expect.objectContaining({ label: '项目描述' }),
-                ]),
-              }),
-            }),
-          }),
-        }),
-      ]),
-    )
+    // Auto-synthesis is disabled — forms must come from explicit backend A2UI schemas.
+    expect(plan.some((item) => item.kind === 'ui')).toBe(false)
   })
 
   it('does not inject generic form when assistant text is not requesting fields', () => {
@@ -96,7 +76,7 @@ describe('buildInlineToolRenderPlan', () => {
     expect(plan.some((item) => item.kind === 'ui')).toBe(false)
   })
 
-  it('filters instruction lines and marks optional fields as not required', () => {
+  it('does not synthesize a schema_form even when assistant lists labelled fields', () => {
     const message: ChatMessage = {
       role: 'assistant',
       content: [
@@ -117,37 +97,39 @@ describe('buildInlineToolRenderPlan', () => {
     }
 
     const plan = buildInlineToolRenderPlan(message, [])
-    const uiItem = plan.find((item) => item.kind === 'ui') as
-      | Extract<(typeof plan)[number], { kind: 'ui' }>
-      | undefined
 
-    expect(uiItem).toBeDefined()
-    const root = uiItem?.schema.root as {
-      component?: string
-      props?: { fields?: Array<{ label?: string; required?: boolean }> }
+    // Auto-synthesis is disabled — even when text reads like a field list,
+    // forms must come from an explicit backend A2UI schema.
+    expect(plan.some((item) => item.kind === 'ui')).toBe(false)
+  })
+
+  it('does not mine markdown tables into form fields when assistant uses conversational closing phrases', () => {
+    // Regression: session 64adbd385339 produced a free-text form with garbage
+    // labels like "| S&P 500 | 7" because the closing line "...请告诉我您感兴趣的方向"
+    // triggered auto-form synthesis that then split the markdown table rows.
+    const message: ChatMessage = {
+      role: 'assistant',
+      content: [
+        {
+          type: 'text',
+          text: [
+            '## 美股走势概览',
+            '',
+            '| 指数 | 最新收盘 | 日涨跌 | 月涨跌 | 3 月涨跌 |',
+            '|------|----------|--------|--------|----------|',
+            '| **S&P 500** | 7,135.95 | -0.04% | +9.30% | +2.29% |',
+            '| **NASDAQ** | 24,673.24 | +0.04% | +14.28% | +4.58% |',
+            '| **Dow Jones** | 48,861.81 | -0.57% | +5.44% | -1.10% |',
+            '',
+            '如需查看具体个股走势、行业板块分析或更详细的技术面分析，请告诉我您感兴趣的方向。',
+          ].join('\n'),
+        },
+      ],
+      timestamp: Date.now(),
     }
-    expect(root.component).toBe('schema_form')
-    const fields = root.props?.fields || []
 
-    const topicField = fields.find((field) =>
-      (field.label || '').includes('会议主题'),
-    )
-    const timeField = fields.find((field) =>
-      (field.label || '').includes('会议时间'),
-    )
-    const attendeeField = fields.find((field) =>
-      (field.label || '').includes('参会人员'),
-    )
+    const plan = buildInlineToolRenderPlan(message, [])
 
-    expect(topicField).toBeDefined()
-    expect(topicField?.required).toBe(true)
-    expect(timeField).toBeDefined()
-    expect(timeField?.required).toBe(true)
-    expect(attendeeField).toBeDefined()
-    expect(attendeeField?.required).toBe(false)
-
-    expect(fields.some((field) => field.label === '如果没有就不填')).toBe(false)
-    expect(fields.some((field) => field.label === '提供这些信息后')).toBe(false)
-    expect(fields.some((field) => field.label === '我就可以帮你创建飞书会议了')).toBe(false)
+    expect(plan.some((item) => item.kind === 'ui')).toBe(false)
   })
 })

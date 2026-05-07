@@ -4,9 +4,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl git \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/outsourc-e/hermes-agent.git /app
-
 WORKDIR /app
+
+COPY hermes-agent /app
 
 RUN pip install --no-cache-dir -e .
 

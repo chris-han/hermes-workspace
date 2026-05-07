@@ -11,13 +11,8 @@ export const Route = createFileRoute('/api/auth-check')({
     handlers: {
       GET: async ({ request }) => {
         try {
-          // Use ensureGatewayProbed() which handles auto-detection across
-          // multiple ports (8642, 8643) instead of checking a single
-          // hardcoded URL. This was previously a standalone
-          // isBackendReachable() that only tried port 8642 and never
-          // benefited from the gateway-capabilities auto-detection logic.
-          const caps = await ensureGatewayProbed()
-          const reachable = caps.health || caps.chatCompletions || caps.models
+          const caps = ensureGatewayProbed()
+          const reachable = caps.semantier.available || caps.health
 
           if (!reachable) {
             return json(

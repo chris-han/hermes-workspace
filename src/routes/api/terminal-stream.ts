@@ -2,6 +2,10 @@ import { createFileRoute } from '@tanstack/react-router'
 import { requireLocalOrAuth } from '../../server/auth-middleware'
 import { createTerminalSession } from '../../server/terminal-sessions'
 import {
+  WorkspaceAuthRequiredError,
+  resolveActiveWorkspaceRoot,
+} from '../../server/workspace-root'
+import {
   getClientIp,
   rateLimit,
   rateLimitResponse,
@@ -32,6 +36,18 @@ export const Route = createFileRoute('/api/terminal-stream')({
           string,
           unknown
         >
+        let activeWorkspace
+        try {
+          activeWorkspace = await resolveActiveWorkspaceRoot(request.headers)
+        } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return new Response(
+              JSON.stringify({ ok: false, error: err.message }),
+              { status: 401, headers: { 'Content-Type': 'application/json' } },
+            )
+          }
+          throw err
+        }
         const cwd =
           typeof body.cwd === 'string' && body.cwd.trim().length > 0
             ? body.cwd.trim()
@@ -72,6 +88,7 @@ export const Route = createFileRoute('/api/terminal-stream')({
               session = createTerminalSession({
                 command,
                 cwd,
+                workspaceRoot: activeWorkspace.path,
                 cols,
                 rows,
               })

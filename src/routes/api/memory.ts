@@ -16,7 +16,7 @@ export const Route = createFileRoute('/api/memory')({
           return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
         }
 
-        await ensureGatewayProbed()
+        ensureGatewayProbed()
         if (!getCapabilities().memory) {
           return json(
             {

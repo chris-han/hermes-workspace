@@ -7,6 +7,7 @@ import {
   CheckmarkCircle02Icon,
   CloudIcon,
   ComputerIcon,
+  Message01Icon,
   MessageMultiple01Icon,
   Mic01Icon,
   Moon01Icon,
@@ -15,6 +16,7 @@ import {
   Settings02Icon,
   SparklesIcon,
   Sun01Icon,
+  UserLock01Icon,
   VolumeHighIcon,
 } from '@hugeicons/core-free-icons'
 import { Component, useCallback, useEffect, useState } from 'react'
@@ -23,6 +25,7 @@ import type { AccentColor, SettingsThemeMode } from '@/hooks/use-settings'
 import type { LoaderStyle } from '@/hooks/use-chat-settings'
 import type { BrailleSpinnerPreset } from '@/components/ui/braille-spinner'
 import type { ThemeId } from '@/lib/theme'
+import type { LocaleId } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { applyTheme, useSettings } from '@/hooks/use-settings'
@@ -48,6 +51,7 @@ import { applyAccentColor } from '@/lib/accent-colors'
 import { getUnavailableReason } from '@/lib/feature-gates'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { ProviderLogo } from '@/components/provider-logo'
+import { MessagingSettingsScreen } from '@/screens/settings/messaging-settings-screen'
 import {
   DialogClose,
   DialogContent,
@@ -56,10 +60,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
+// ── Language ────────────────────────────────────────────────────────────
+
+import { LOCALE_LABELS, getLocale, setLocale } from '@/lib/i18n'
+
 // ── Types ───────────────────────────────────────────────────────────────
 
 type SectionId =
   | 'hermes'
+  | 'access_control'
   | 'agent'
   | 'routing'
   | 'voice'
@@ -68,9 +77,11 @@ type SectionId =
   | 'chat'
   | 'notifications'
   | 'language'
+  | 'messaging'
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'hermes', label: 'Model & Provider', icon: CloudIcon },
+  { id: 'access_control', label: 'Access Control', icon: UserLock01Icon },
   { id: 'agent', label: 'Agent', icon: Settings02Icon },
   { id: 'routing', label: 'Smart Routing', icon: SparklesIcon },
   { id: 'voice', label: 'Voice', icon: VolumeHighIcon },
@@ -79,6 +90,7 @@ const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'chat', label: 'Chat', icon: MessageMultiple01Icon },
   { id: 'notifications', label: 'Alerts', icon: Notification03Icon },
   { id: 'language', label: 'Language', icon: MessageMultiple01Icon },
+  { id: 'messaging', label: 'IM Gateway', icon: Message01Icon },
 ]
 
 const DARK_ENTERPRISE_THEMES = new Set<ThemeId>([
@@ -86,6 +98,7 @@ const DARK_ENTERPRISE_THEMES = new Set<ThemeId>([
   'hermes-official',
   'hermes-classic',
   'hermes-slate',
+  'semantier',
 ])
 
 function _isDarkEnterpriseTheme(theme: string | null): theme is ThemeId {
@@ -145,7 +158,12 @@ function Row({
 }
 
 const SETTINGS_CARD_CLASS =
-  'rounded-xl border border-primary-200 bg-primary-50/80 px-4 py-3 shadow-sm'
+  'rounded-xl px-4 py-3'
+
+const getCardStyle = (): React.CSSProperties => ({
+  border: '1px solid var(--theme-border)',
+  backgroundColor: 'var(--theme-card)',
+})
 
 // ── Section components ──────────────────────────────────────────────────
 
@@ -185,7 +203,12 @@ const PROVIDER_CARDS: Array<{
     id: 'nous',
     name: 'Nous Portal',
     logo: '/providers/nous.png',
-    models: ['xiaomi/mimo-v2-pro', 'xiaomi/mimo-v2-omni', 'hermes-3-llama-3.1-405b', 'hermes-3-llama-3.1-70b'],
+    models: [
+      'xiaomi/mimo-v2-pro',
+      'xiaomi/mimo-v2-omni',
+      'hermes-3-llama-3.1-405b',
+      'hermes-3-llama-3.1-70b',
+    ],
     authType: 'oauth',
   },
   {
@@ -253,39 +276,51 @@ function HermesContent() {
   const [memEnabled, setMemEnabled] = useState(true)
   const [userProfileEnabled, setUserProfileEnabled] = useState(true)
   const [localDiscovery, setLocalDiscovery] = useState<{
-    providers: Array<{ id: string; name: string; online: boolean; modelCount: number; configured: boolean; needsRestart: boolean }>
+    providers: Array<{
+      id: string
+      name: string
+      online: boolean
+      modelCount: number
+      configured: boolean
+      needsRestart: boolean
+    }>
     models: Array<{ id: string; name: string; provider: string }>
   } | null>(null)
 
-  const fetchModelsForProvider = useCallback((providerId: string) => {
-    // For local providers, prefer auto-discovered models first
-    if (localDiscovery) {
-      const discovered = localDiscovery.models
-        .filter((m) => m.provider === providerId)
-        .map((m) => m.id)
-      if (discovered.length > 0) {
-        setAvailableModels(discovered)
-        return
+  const fetchModelsForProvider = useCallback(
+    (providerId: string) => {
+      // For local providers, prefer auto-discovered models first
+      if (localDiscovery) {
+        const discovered = localDiscovery.models
+          .filter((m) => m.provider === providerId)
+          .map((m) => m.id)
+        if (discovered.length > 0) {
+          setAvailableModels(discovered)
+          return
+        }
       }
-    }
-    fetch(
-      `/api/hermes-proxy/api/available-models?provider=${encodeURIComponent(providerId)}`,
-    )
-      .then((r) => r.json())
-      .then((d: { models?: Array<{ id: string }> }) => {
-        setAvailableModels((d.models || []).map((m) => m.id))
-      })
-      .catch(() => {
-        // Fall back to hardcoded
-        const card = PROVIDER_CARDS.find((p) => p.id === providerId)
-        setAvailableModels(card?.models || [])
-      })
-  }, [localDiscovery])
+      fetch(
+        `/api/hermes-proxy/api/available-models?provider=${encodeURIComponent(providerId)}`,
+      )
+        .then((r) => r.json())
+        .then((d: { models?: Array<{ id: string }> }) => {
+          setAvailableModels((d.models || []).map((m) => m.id))
+        })
+        .catch(() => {
+          // Fall back to hardcoded
+          const card = PROVIDER_CARDS.find((p) => p.id === providerId)
+          setAvailableModels(card?.models || [])
+        })
+    },
+    [localDiscovery],
+  )
 
   useEffect(() => {
     fetch('/api/local-providers')
       .then((r) => r.json())
-      .then((d: any) => { if (d.ok) setLocalDiscovery(d) })
+      .then((d: any) => {
+        if (d.ok) setLocalDiscovery(d)
+      })
       .catch(() => {})
   }, [])
 
@@ -433,7 +468,9 @@ function HermesContent() {
                 <span className="text-xs font-semibold mt-1">{p.name}</span>
                 <span className="text-[9px]" style={mutedStyle}>
                   {(() => {
-                    const disc = localDiscovery?.providers.find((lp) => lp.id === p.id)
+                    const disc = localDiscovery?.providers.find(
+                      (lp) => lp.id === p.id,
+                    )
                     if (disc?.online) return '🟢 Detected'
                     if (p.authType === 'oauth') return 'OAuth'
                     if (p.authType === 'none') return 'Local'
@@ -463,7 +500,10 @@ function HermesContent() {
                 .filter((m) => m.provider === activeProvider)
                 .map((m) => m.id)
               if (discovered && discovered.length > 0) return discovered
-              return PROVIDER_CARDS.find((p) => p.id === activeProvider)?.models || []
+              return (
+                PROVIDER_CARDS.find((p) => p.id === activeProvider)?.models ||
+                []
+              )
             })().map((model) => (
               <button
                 key={model}
@@ -485,11 +525,17 @@ function HermesContent() {
       )}
 
       {(() => {
-        const disc = localDiscovery?.providers.find((lp) => lp.id === activeProvider)
+        const disc = localDiscovery?.providers.find(
+          (lp) => lp.id === activeProvider,
+        )
         if (!disc || !disc.needsRestart) return null
         return (
           <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-200">
-            ⚠️ Gateway restart needed to use {disc.name}. Run <code className="rounded bg-black/30 px-1">hermes gateway restart</code> in your terminal.
+            ⚠️ Gateway restart needed to use {disc.name}. Run{' '}
+            <code className="rounded bg-black/30 px-1">
+              hermes gateway restart
+            </code>{' '}
+            in your terminal.
           </div>
         )
       })()}
@@ -674,7 +720,9 @@ function HermesContent() {
               '—'}
           </span>
           <span style={mutedStyle}>Config</span>
-          <span className="font-mono font-medium">~/.hermes/config.yaml</span>
+          <span className="font-mono font-medium">
+            active Hermes config.yaml
+          </span>
         </div>
       </div>
     </div>
@@ -751,7 +799,7 @@ function _ProfileContent() {
         title="Profile"
         description="Your display identity in chat."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <div className="flex items-center gap-3">
           <UserAvatar size={44} src={cs.avatarDataUrl} alt={displayName} />
           <div>
@@ -764,7 +812,7 @@ function _ProfileContent() {
           </div>
         </div>
       </div>
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Display name" description="Shown in chat and sidebar">
           <div className="w-full max-w-xs">
             <Input
@@ -853,7 +901,7 @@ function AppearanceContent() {
         title="Appearance"
         description="Theme and color accents."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
           Theme Mode
         </p>
@@ -881,13 +929,13 @@ function AppearanceContent() {
         </div>
       </div>
       {/* Accent color removed — themes control accent */}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
           Enterprise Theme
         </p>
         <EnterpriseThemePicker />
       </div>
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row
           label="System metrics footer"
           description="Show a persistent footer with CPU, RAM, disk, and Hermes status."
@@ -912,6 +960,7 @@ const ENTERPRISE_THEME_FAMILIES: Array<ThemeId> = [
   'hermes-official',
   'hermes-classic',
   'hermes-slate',
+  'semantier',
 ]
 
 const ENTERPRISE_THEMES = THEMES.map((theme) => ({
@@ -934,53 +983,69 @@ const ENTERPRISE_THEMES = THEMES.map((theme) => ({
             accent: '#2557B7',
             text: '#16315F',
           }
-      : theme.id === 'hermes-official'
-      ? {
-          bg: '#0A0E1A',
-          panel: '#11182A',
-          border: '#24304A',
-          accent: '#6366F1',
-          text: '#E6EAF2',
-        }
-      : theme.id === 'hermes-official-light'
-        ? {
-            bg: '#F7F7F1',
-            panel: '#FAFBF6',
-            border: '#CDD5DA',
-            accent: '#2557B7',
-            text: '#16315F',
-          }
-        : theme.id === 'hermes-classic'
+        : theme.id === 'hermes-official'
           ? {
-              bg: '#0d0f12',
-              panel: '#1a1f26',
-              border: '#2a313b',
-              accent: '#b98a44',
-              text: '#eceff4',
+              bg: '#0A0E1A',
+              panel: '#11182A',
+              border: '#24304A',
+              accent: '#6366F1',
+              text: '#E6EAF2',
             }
-          : theme.id === 'hermes-classic-light'
+          : theme.id === 'hermes-official-light'
             ? {
-                bg: '#F5F2ED',
-                panel: '#FCFAF7',
-                border: '#D8CCBC',
-                accent: '#b98a44',
-                text: '#1a1f26',
+                bg: '#F7F7F1',
+                panel: '#FAFBF6',
+                border: '#CDD5DA',
+                accent: '#2557B7',
+                text: '#16315F',
               }
-            : theme.id === 'hermes-slate'
+            : theme.id === 'hermes-classic'
               ? {
-                  bg: '#0d1117',
-                  panel: '#1c2128',
-                  border: '#30363d',
-                  accent: '#7eb8f6',
-                  text: '#c9d1d9',
+                  bg: '#0d0f12',
+                  panel: '#1a1f26',
+                  border: '#2a313b',
+                  accent: '#b98a44',
+                  text: '#eceff4',
                 }
-              : {
-                  bg: '#F6F8FA',
-                  panel: '#FFFFFF',
-                  border: '#D0D7DE',
-                  accent: '#3b82f6',
-                  text: '#24292f',
-                },
+              : theme.id === 'hermes-classic-light'
+                ? {
+                    bg: '#F5F2ED',
+                    panel: '#FCFAF7',
+                    border: '#D8CCBC',
+                    accent: '#b98a44',
+                    text: '#1a1f26',
+                  }
+                : theme.id === 'hermes-slate'
+                  ? {
+                      bg: '#0d1117',
+                      panel: '#1c2128',
+                      border: '#30363d',
+                      accent: '#7eb8f6',
+                      text: '#c9d1d9',
+                    }
+                  : theme.id === 'semantier'
+                    ? {
+                        bg: '#0e0f0c',
+                        panel: '#181916',
+                        border: '#2a2b28',
+                        accent: '#9fe870',
+                        text: '#f0f0ec',
+                      }
+                    : theme.id === 'semantier-light'
+                      ? {
+                          bg: '#f5f5f0',
+                          panel: '#ffffff',
+                          border: '#d5d6d1',
+                          accent: '#163300',
+                          text: '#0e0f0c',
+                        }
+                      : {
+                          bg: '#F6F8FA',
+                          panel: '#FFFFFF',
+                          border: '#D0D7DE',
+                          accent: '#3b82f6',
+                          text: '#24292f',
+                        },
 }))
 
 function ThemeSwatch({
@@ -1197,7 +1262,7 @@ function ChatContent() {
         title="Chat"
         description="Message visibility and response loader style."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row
           label="Show tool messages"
           description="Display tool call details in assistant responses."
@@ -1232,7 +1297,7 @@ function NotificationsContent() {
         title="Notifications"
         description="Simple alerts and threshold controls."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Enable alerts">
           <Switch
             checked={settings.notificationsEnabled}
@@ -1307,7 +1372,7 @@ function _AdvancedContent() {
         title="Advanced"
         description="Hermes endpoint and connectivity."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Hermes URL" description="Used for API requests from Studio">
           <div className="w-full max-w-sm">
             <Input
@@ -1456,7 +1521,7 @@ function AgentBehaviorContent() {
           {msg}
         </div>
       )}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row
           label="Max turns"
           description="Maximum agent turns per request (1-100)"
@@ -1491,6 +1556,263 @@ function AgentBehaviorContent() {
             <option value="none">None</option>
           </select>
         </Row>
+      </div>
+    </div>
+  )
+}
+
+type AccessControlRole = 'regular' | 'administrator'
+
+type AccessControlPayload = {
+  hermesHome?: string
+  workspaceHermesHome?: string
+  accessControl?: {
+    role?: string
+    administratorHome?: string
+    defaultAdministratorHome?: string
+  }
+}
+
+function AccessControlContent() {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [role, setRole] = useState<AccessControlRole>('regular')
+  const [administratorHome, setAdministratorHome] = useState('')
+  const [adminHomeInput, setAdminHomeInput] = useState('')
+  const [workspaceHermesHome, setWorkspaceHermesHome] = useState('')
+  const [effectiveHermesHome, setEffectiveHermesHome] = useState('')
+
+  const applyPayload = useCallback((payload: AccessControlPayload) => {
+    const nextRole =
+      payload.accessControl?.role === 'administrator'
+        ? 'administrator'
+        : 'regular'
+    const nextAdminHome =
+      payload.accessControl?.administratorHome ||
+      payload.accessControl?.defaultAdministratorHome ||
+      ''
+    setRole(nextRole)
+    setAdministratorHome(nextAdminHome)
+    setAdminHomeInput(nextAdminHome)
+    setWorkspaceHermesHome(payload.workspaceHermesHome || '')
+    setEffectiveHermesHome(payload.hermesHome || '')
+  }, [])
+
+  const loadAccessControl = useCallback(async () => {
+    setLoading(true)
+    setMsg(null)
+    try {
+      const res = await fetch('/api/paths')
+      const payload = (await res.json()) as AccessControlPayload
+      if (!res.ok) {
+        setMsg('Failed to load access control settings.')
+        return
+      }
+      applyPayload(payload)
+    } catch {
+      setMsg('Failed to load access control settings.')
+    } finally {
+      setLoading(false)
+    }
+  }, [applyPayload])
+
+  useEffect(() => {
+    void loadAccessControl()
+  }, [loadAccessControl])
+
+  const patchAccessControl = async (updates: {
+    role?: AccessControlRole
+    administratorHome?: string
+  }) => {
+    setSaving(true)
+    setMsg(null)
+    try {
+      const res = await fetch('/api/paths', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      const payload = (await res.json()) as AccessControlPayload & {
+        error?: string
+      }
+      if (!res.ok) {
+        setMsg(payload.error || 'Failed to update access control settings.')
+        return
+      }
+      applyPayload(payload)
+      setMsg('Saved')
+      setTimeout(() => setMsg(null), 2500)
+    } catch {
+      setMsg('Failed to update access control settings.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const cardStyle = getCardStyle()
+  const radioStyle: React.CSSProperties = {
+    accentColor: 'var(--theme-accent)',
+  }
+  const mutedStyle: React.CSSProperties = {
+    color: 'var(--theme-muted)',
+  }
+  const pathDisplayStyle: React.CSSProperties = {
+    color: 'var(--theme-text)',
+    backgroundColor: 'transparent',
+    borderBottom: 'none',
+    paddingBottom: 0,
+  }
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        title="Access Control"
+        description="Choose sandboxed regular mode or administrator mode with an explicit Hermes home."
+      />
+
+      {msg && (
+        <div
+          className={cn(
+            'rounded-lg px-3 py-1.5 text-xs font-medium',
+            msg === 'Saved'
+              ? 'bg-green-500/15 text-green-400'
+              : 'bg-red-500/15 text-red-400',
+          )}
+        >
+          {msg}
+        </div>
+      )}
+
+      <div className={SETTINGS_CARD_CLASS} style={cardStyle}>
+        {/* Role Selection with Radio Buttons */}
+        <div className="py-1.5 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
+              Access Level
+            </p>
+            <p className="text-xs" style={mutedStyle}>
+              Regular keeps the current workspace sandbox. Administrator can use a dedicated Hermes home.
+            </p>
+            
+            {/* Radio Button: Regular User */}
+            <label className="flex items-center gap-3 cursor-pointer py-1.5 px-2 rounded-md transition-colors hover:opacity-80">
+              <input
+                type="radio"
+                name="access-role"
+                value="regular"
+                checked={role === 'regular'}
+                onChange={() => void patchAccessControl({ role: 'regular' })}
+                disabled={saving || loading}
+                style={radioStyle}
+                className="w-4 h-4"
+              />
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
+                  Regular User
+                </p>
+                <p className="text-xs" style={mutedStyle}>
+                  Sandboxed workspace home
+                </p>
+              </div>
+            </label>
+
+            {/* Radio Button: Administrator */}
+            <label className="flex items-center gap-3 cursor-pointer py-1.5 px-2 rounded-md transition-colors hover:opacity-80">
+              <input
+                type="radio"
+                name="access-role"
+                value="administrator"
+                checked={role === 'administrator'}
+                onChange={() =>
+                  void patchAccessControl({
+                    role: 'administrator',
+                    administratorHome,
+                  })
+                }
+                disabled={saving || loading}
+                style={radioStyle}
+                className="w-4 h-4"
+              />
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
+                  Administrator
+                </p>
+                <p className="text-xs" style={mutedStyle}>
+                  Custom Hermes home for shared tools
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Workspace Sandbox Home - shown only in regular mode */}
+        {role === 'regular' && (
+          <div className="py-3 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
+              Workspace Sandbox
+            </p>
+            <p className="text-xs mb-2" style={mutedStyle}>
+              Used in regular mode
+            </p>
+            <div
+              className="font-mono text-xs overflow-x-auto"
+              style={pathDisplayStyle}
+            >
+              {workspaceHermesHome || '—'}
+            </div>
+          </div>
+        )}
+
+        {/* Administrator Home - Conditional Input/Display */}
+        {role === 'administrator' && (
+          <div className="py-3 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
+              Administrator Home
+            </p>
+            <p className="text-xs mb-2" style={mutedStyle}>
+              This home manages shared skills, tools, cron jobs, and memories
+            </p>
+            <div className="flex w-full max-w-[30rem] items-center gap-2">
+              <Input
+                value={adminHomeInput}
+                onChange={(e) => setAdminHomeInput(e.target.value)}
+                placeholder="/home/chris/repo/semantier/agent/.hermes"
+                className="h-8 flex-1 rounded-md text-xs font-mono"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={() =>
+                  void patchAccessControl({
+                    role: 'administrator',
+                    administratorHome: adminHomeInput,
+                  })
+                }
+                disabled={saving || loading || adminHomeInput === administratorHome}
+                className="h-8 rounded-md px-3"
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Effective Hermes Home - Text with Dimmed Underline */}
+        <div className="py-3">
+          <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
+            Effective Hermes Home
+          </p>
+          <p className="text-xs mb-2" style={mutedStyle}>
+            Currently active for config and runtime storage
+          </p>
+          <div
+            className="font-mono text-xs overflow-x-auto"
+            style={pathDisplayStyle}
+          >
+            {effectiveHermesHome || '—'}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -1556,7 +1878,7 @@ function SmartRoutingContent() {
           {msg}
         </div>
       )}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row
           label="Enable smart routing"
           description="Auto-route simple queries"
@@ -1677,7 +1999,7 @@ function VoiceContent() {
           {msg}
         </div>
       )}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
           Text-to-Speech
         </p>
@@ -1718,7 +2040,7 @@ function VoiceContent() {
           </Row>
         )}
       </div>
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
           Speech-to-Text
         </p>
@@ -1792,7 +2114,7 @@ function DisplayContent() {
           {msg}
         </div>
       )}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Personality" description="Agent response style">
           <select
             value={String(config.personality || 'default')}
@@ -1837,10 +2159,6 @@ function DisplayContent() {
   )
 }
 
-// ── Language ────────────────────────────────────────────────────────────
-
-import { getLocale, setLocale, LOCALE_LABELS, type LocaleId } from '@/lib/i18n'
-
 function LanguageContent() {
   return (
     <div className="space-y-4">
@@ -1848,7 +2166,10 @@ function LanguageContent() {
         title="Language"
         description="Choose the display language for the workspace UI."
       />
-      <Row label="Interface Language" description="Translates navigation, labels, and buttons.">
+      <Row
+        label="Interface Language"
+        description="Translates navigation, labels, and buttons."
+      >
         <select
           value={getLocale()}
           onChange={(e) => {
@@ -1857,9 +2178,13 @@ function LanguageContent() {
           }}
           className="h-9 w-full rounded-lg border border-primary-200 dark:border-neutral-700 bg-primary-50 dark:bg-neutral-800 px-3 text-sm text-primary-900 dark:text-neutral-100 outline-none md:max-w-xs"
         >
-          {(Object.entries(LOCALE_LABELS) as Array<[LocaleId, string]>).map(([id, label]) => (
-            <option key={id} value={id}>{label}</option>
-          ))}
+          {(Object.entries(LOCALE_LABELS) as Array<[LocaleId, string]>).map(
+            ([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ),
+          )}
         </select>
       </Row>
     </div>
@@ -1870,6 +2195,7 @@ function LanguageContent() {
 
 const CONTENT_MAP: Record<SectionId, () => React.JSX.Element> = {
   hermes: HermesContent,
+  access_control: AccessControlContent,
   agent: AgentBehaviorContent,
   routing: SmartRoutingContent,
   voice: VoiceContent,
@@ -1878,6 +2204,7 @@ const CONTENT_MAP: Record<SectionId, () => React.JSX.Element> = {
   chat: ChatContent,
   notifications: NotificationsContent,
   language: LanguageContent,
+  messaging: MessagingSettingsScreen,
 }
 
 type SettingsDialogProps = {
@@ -1917,7 +2244,7 @@ export function SettingsDialog({
                 Settings
               </DialogTitle>
               <DialogDescription className="sr-only">
-                Configure Hermes Workspace
+                Configure Semantier
               </DialogDescription>
             </div>
             <DialogClose

@@ -104,7 +104,7 @@ export function ConnectionCheckStep({
         {status === 'connected'
           ? 'Your backend is reachable and ready for setup.'
           : status === 'checking'
-            ? 'Checking whether an OpenAI-compatible backend is available...'
+            ? 'Checking whether the Semantier agent wrapper is available...'
             : 'No compatible backend is connected yet.'}
       </p>
 
@@ -132,8 +132,8 @@ export function ConnectionCheckStep({
             </div>
           </div>
           <p className="mt-3 text-xs text-red-700">
-            Or point <code>HERMES_API_URL</code> at any OpenAI-compatible
-            backend (Ollama, LiteLLM, vLLM, etc.).
+            Or point <code>HERMES_API_URL</code> at the Semantier agent wrapper
+            (default: http://127.0.0.1:8899).
           </p>
           {lastError && (
             <p className="mt-3 text-xs text-red-700">{lastError}</p>
@@ -213,8 +213,8 @@ export function ModelConfigurationStep({
       </h2>
 
       <p className="mb-6 max-w-md text-base leading-relaxed text-primary-600">
-        Core chat works with any OpenAI-compatible backend. Hermes gateway APIs
-        make provider and model setup editable from the workspace.
+        Core chat goes through the Semantier agent wrapper. The wrapper manages
+        the Hermes gateway internally and handles provider and model setup.
       </p>
 
       <div className="mb-6 w-full rounded-2xl border border-primary-200 bg-primary-100/70 p-4 text-left">

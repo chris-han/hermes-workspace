@@ -1,8 +1,5 @@
 // Module-level local model override — set by composer when user picks a local model
 // Avoids prop threading. Reset when switching back to cloud models.
-export let _localModelOverride = ''
-export function setLocalModelOverride(model: string) { _localModelOverride = model }
-
 import {
   useCallback,
   useEffect,
@@ -14,12 +11,7 @@ import {
 import { useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import {
-  deriveFriendlyIdFromKey,
-  isMissingAuth,
-  readError,
-  textFromMessage,
-} from './utils'
+import { isMissingAuth, textFromMessage } from './utils'
 import {
   advanceStickyStreamingText,
   createOptimisticMessage,
@@ -99,6 +91,16 @@ import { useResearchCard } from '@/hooks/use-research-card'
 // MOBILE_TAB_BAR_OFFSET removed — tab bar always hidden in chat
 import { useTapDebug } from '@/hooks/use-tap-debug'
 import { useChatMode } from '@/hooks/use-chat-mode'
+import {
+  DOCX_MIME_TYPE,
+  fallbackUploadApiDocumentName,
+  isUploadApiDocumentMimeType,
+} from './attachment-documents'
+
+export let _localModelOverride = ''
+export function setLocalModelOverride(model: string) {
+  _localModelOverride = model
+}
 // Activity store removed — not used in Hermes Workspace
 const _noopSetActivity = (_s: string) => {}
 
@@ -125,6 +127,8 @@ type PortableHistoryMessage = {
   content: string
 }
 
+const PDF_MIME_TYPE = 'application/pdf'
+
 function normalizeMimeType(value: unknown): string {
   if (typeof value !== 'string') return ''
   return value.trim().toLowerCase()
@@ -133,6 +137,15 @@ function normalizeMimeType(value: unknown): string {
 function isImageMimeType(value: unknown): boolean {
   const normalized = normalizeMimeType(value)
   return normalized.startsWith('image/')
+}
+
+function isTextLikeMimeType(value: unknown): boolean {
+  const normalized = normalizeMimeType(value)
+  return (
+    normalized.startsWith('text/') ||
+    normalized === 'application/json' ||
+    normalized === DOCX_MIME_TYPE
+  )
 }
 
 function readDataUrlMimeType(value: unknown): string {
@@ -150,6 +163,117 @@ function stripDataUrlPrefix(value: unknown): string {
     return trimmed.slice(commaIndex + 1).trim()
   }
   return trimmed
+}
+
+function buildFileFromAttachment(attachment: ChatAttachment): File | null {
+  const mimeType =
+    normalizeMimeType(attachment.contentType) ||
+    readDataUrlMimeType(attachment.dataUrl)
+  if (!isUploadApiDocumentMimeType(mimeType)) {
+    return null
+  }
+
+  const rawDataUrl = attachment.dataUrl ?? ''
+  const base64Part = rawDataUrl.startsWith('data:')
+    ? (rawDataUrl.split(',')[1] ?? '')
+    : rawDataUrl
+  if (!base64Part) {
+    return null
+  }
+
+  const binaryStr = atob(base64Part)
+  const bytes = new Uint8Array(binaryStr.length)
+  for (let index = 0; index < binaryStr.length; index += 1) {
+    bytes[index] = binaryStr.charCodeAt(index)
+  }
+
+  const fallbackName = fallbackUploadApiDocumentName(mimeType)
+  return new File([bytes], attachment.name?.trim() || fallbackName, {
+    type: mimeType,
+  })
+}
+
+async function ensureChatSession(label: string): Promise<{
+  sessionKey: string
+  friendlyId: string
+}> {
+  const response = await fetch('/api/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label }),
+  })
+  if (!response.ok) {
+    throw new Error(`Create session failed: ${response.status}`)
+  }
+
+  const payload = (await response.json()) as {
+    ok?: boolean
+    error?: string
+    sessionKey?: string
+    friendlyId?: string
+  }
+  if (!payload.ok || !payload.sessionKey) {
+    throw new Error(payload.error || 'Create session failed')
+  }
+
+  return {
+    sessionKey: payload.sessionKey,
+    friendlyId: payload.friendlyId || payload.sessionKey,
+  }
+}
+
+async function uploadChatDocuments(
+  sessionKey: string,
+  attachments: Array<ChatAttachment>,
+): Promise<Array<string>> {
+  const uploadFiles = attachments
+    .map(buildFileFromAttachment)
+    .filter((file): file is File => file !== null)
+  if (uploadFiles.length === 0) {
+    return []
+  }
+
+  const form = new FormData()
+  form.append('session_id', sessionKey)
+  for (const file of uploadFiles) {
+    form.append('files', file)
+  }
+
+  const response = await fetch('/api/upload/batch', {
+    method: 'POST',
+    body: form,
+  })
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.status}`)
+  }
+
+  const payload = (await response.json()) as {
+    files?: Array<{
+      status?: string
+      filename?: string
+      error?: string
+    }>
+  }
+  if (!Array.isArray(payload.files)) return []
+
+  const failedCount = payload.files.filter(
+    (entry) => (entry.status || '').toLowerCase() !== 'ok',
+  ).length
+  if (failedCount > 0) {
+    toast(
+      failedCount === 1
+        ? '1 file failed to upload. It will not be referenced in this message.'
+        : `${failedCount} files failed to upload. They will not be referenced in this message.`,
+      { type: 'warning' },
+    )
+  }
+
+  const successNames = payload.files
+    .filter((entry) => (entry.status || '').toLowerCase() === 'ok')
+    .map((entry) => entry.filename?.trim() || '')
+    .filter((name) => name.length > 0)
+
+  return successNames
 }
 
 function normalizeMessageValue(value: unknown): string {
@@ -463,7 +587,6 @@ export function ChatScreen({
   const setChatFocusMode = useWorkspaceStore((s) => s.setChatFocusMode)
   const queryClient = useQueryClient()
   const [sending, setSending] = useState(false)
-  const [_creatingSession, setCreatingSession] = useState(false)
   const [sessionsOpen, setSessionsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
@@ -565,7 +688,13 @@ export function ChatScreen({
     sessionsLoading: _sessionsLoading,
     sessionsFetching: _sessionsFetching,
     refetchSessions: _refetchSessions,
-  } = useChatSessions({ activeFriendlyId, isNewChat, forcedSessionKey })
+  } = useChatSessions({
+    activeFriendlyId,
+    isNewChat,
+    forcedSessionKey,
+    sseConnectionState,
+    waitingForResponse,
+  })
   const {
     historyQuery,
     historyMessages,
@@ -583,7 +712,12 @@ export function ChatScreen({
     activeExists,
     sessionsReady: sessionsQuery.isSuccess,
     queryClient,
-    historyRefetchInterval: sseConnectionState === 'connected' ? 30_000 : 5_000,
+    historyRefetchInterval:
+      sseConnectionState === 'connected'
+        ? false
+        : waitingForResponse
+          ? 5_000
+          : 30_000,
     portableMode: isPortableMode,
   })
 
@@ -594,7 +728,8 @@ export function ChatScreen({
   // If so, re-set waitingForResponse in the store so the UI shows the spinner.
   useActiveRunCheck({
     sessionKey: resolvedSessionKey ?? '',
-    enabled: !isNewChat && Boolean(resolvedSessionKey) && historyQuery.isSuccess,
+    enabled:
+      !isNewChat && Boolean(resolvedSessionKey) && historyQuery.isSuccess,
   })
 
   // Wire SSE realtime stream for instant message delivery
@@ -617,9 +752,9 @@ export function ChatScreen({
       : isNewChat
         ? 'new'
         : resolvedSessionKey ||
-        sessionKeyForHistory ||
-        activeCanonicalKey ||
-        'main',
+          sessionKeyForHistory ||
+          activeCanonicalKey ||
+          'main',
     friendlyId: portableChatFriendlyId,
     historyMessages,
     portableMode: isPortableMode,
@@ -906,7 +1041,11 @@ export function ChatScreen({
         )
         if (!res.ok) return
         const data = await res.json()
-        if (!data.ok || !data.run || !['accepted', 'active', 'handoff'].includes(data.run.status)) {
+        if (
+          !data.ok ||
+          !data.run ||
+          !['accepted', 'active', 'handoff'].includes(data.run.status)
+        ) {
           streamFinish()
           refreshHistoryRef.current()
         }
@@ -1162,10 +1301,12 @@ export function ChatScreen({
     activeRealtimeStreamingText,
     activeIsRealtimeStreaming,
   )
-  const stickyStreamingTextRef = useRef<{ runId: string | null; text: string }>({
-    runId: null,
-    text: '',
-  })
+  const stickyStreamingTextRef = useRef<{ runId: string | null; text: string }>(
+    {
+      runId: null,
+      text: '',
+    },
+  )
   stickyStreamingTextRef.current = advanceStickyStreamingText({
     isStreaming: activeIsRealtimeStreaming,
     runId: streamingRunId ?? null,
@@ -1743,7 +1884,7 @@ export function ChatScreen({
    * Response arrives via SSE stream, not via this function.
    */
   const sendMessage = useCallback(
-    function sendMessage(
+    async function sendMessage(
       sessionKey: string,
       friendlyId: string,
       body: string,
@@ -1759,6 +1900,17 @@ export function ChatScreen({
         ...attachment,
         id: attachment.id ?? crypto.randomUUID(),
       }))
+      const uploadApiAttachments = normalizedAttachments.filter(
+        (attachment) => {
+          const mime =
+            normalizeMimeType(attachment.contentType ?? '') ||
+            readDataUrlMimeType(attachment.dataUrl)
+          return (
+            isUploadApiDocumentMimeType(mime) &&
+            (attachment.dataUrl ?? '').length > 0
+          )
+        },
+      )
 
       // Inject text/file attachment content directly into the message body.
       // Servers reliably forward text in the message body; file attachments
@@ -1768,7 +1920,11 @@ export function ChatScreen({
           const mime =
             normalizeMimeType(a.contentType ?? '') ||
             readDataUrlMimeType(a.dataUrl ?? '')
-          return !isImageMimeType(mime) && (a.dataUrl ?? '').length > 0
+          return (
+            isTextLikeMimeType(mime) &&
+            !isUploadApiDocumentMimeType(mime) &&
+            (a.dataUrl ?? '').length > 0
+          )
         })
         .map((a) => {
           const raw = a.dataUrl ?? ''
@@ -1777,7 +1933,16 @@ export function ChatScreen({
             : raw
           return `\n\n<attachment name="${a.name ?? 'file'}">\n${content}\n</attachment>`
         })
-      const enrichedBody = body + textBlocks.join('')
+      const attachmentSummary = normalizedAttachments
+        .map((a) => a.name?.trim())
+        .filter((name): name is string => Boolean(name))
+      const fallbackBody =
+        attachmentSummary.length > 0
+          ? `Please review the attached files: ${attachmentSummary.join(', ')}`
+          : 'Please review the attached content.'
+      const enrichedBodyRaw = body + textBlocks.join('')
+      let enrichedBody =
+        enrichedBodyRaw.trim().length > 0 ? enrichedBodyRaw : fallbackBody
 
       let optimisticClientId = existingClientId
       setResearchResetKey((current) => current + 1)
@@ -1823,41 +1988,64 @@ export function ChatScreen({
 
       // Send a compatibility shape for attachment parsing.
       // Different server/channel versions read different keys.
-      const payloadAttachments = normalizedAttachments.map((attachment) => {
-        const mimeType =
-          normalizeMimeType(attachment.contentType) ||
-          readDataUrlMimeType(attachment.dataUrl)
-        const isImage = isImageMimeType(mimeType)
-        // For text/file attachments, dataUrl holds raw text (not a base64 data URL).
-        // We must base64-encode it so the server can build a valid data: URI.
-        const rawDataUrl = attachment.dataUrl ?? ''
-        let encodedContent: string
-        let finalDataUrl: string
-        if (!isImage && !rawDataUrl.startsWith('data:')) {
-          encodedContent = btoa(unescape(encodeURIComponent(rawDataUrl)))
-          finalDataUrl = mimeType
-            ? `data:${mimeType};base64,${encodedContent}`
-            : `data:text/plain;base64,${encodedContent}`
-        } else {
-          encodedContent = stripDataUrlPrefix(rawDataUrl)
-          finalDataUrl = rawDataUrl
-        }
-        return {
-          id: attachment.id,
-          name: attachment.name,
-          fileName: attachment.name,
-          contentType: mimeType || undefined,
-          mimeType: mimeType || undefined,
-          mediaType: mimeType || undefined,
-          type: isImage ? 'image' : 'file',
-          content: encodedContent,
-          data: encodedContent,
-          base64: encodedContent,
-          dataUrl: finalDataUrl,
-          size: attachment.size,
-        }
-      })
+      const payloadAttachments = normalizedAttachments
+        .filter((attachment) => {
+          const mimeType =
+            normalizeMimeType(attachment.contentType) ||
+            readDataUrlMimeType(attachment.dataUrl)
+          return !isUploadApiDocumentMimeType(mimeType)
+        })
+        .map((attachment) => {
+          const mimeType =
+            normalizeMimeType(attachment.contentType) ||
+            readDataUrlMimeType(attachment.dataUrl)
+          const isImage = isImageMimeType(mimeType)
+          // For text/file attachments, dataUrl holds raw text (not a base64 data URL).
+          // We must base64-encode it so the server can build a valid data: URI.
+          const rawDataUrl = attachment.dataUrl ?? ''
+          let encodedContent: string
+          let finalDataUrl: string
+          if (!isImage && !rawDataUrl.startsWith('data:')) {
+            encodedContent = btoa(unescape(encodeURIComponent(rawDataUrl)))
+            finalDataUrl = mimeType
+              ? `data:${mimeType};base64,${encodedContent}`
+              : `data:text/plain;base64,${encodedContent}`
+          } else {
+            encodedContent = stripDataUrlPrefix(rawDataUrl)
+            finalDataUrl = rawDataUrl
+          }
+          return {
+            id: attachment.id,
+            name: attachment.name,
+            fileName: attachment.name,
+            contentType: mimeType || undefined,
+            mimeType: mimeType || undefined,
+            mediaType: mimeType || undefined,
+            type: isImage ? 'image' : 'file',
+            content: encodedContent,
+            data: encodedContent,
+            base64: encodedContent,
+            dataUrl: finalDataUrl,
+            size: attachment.size,
+          }
+        })
       const history = buildPortableHistory(finalDisplayMessages)
+
+      if (uploadApiAttachments.length > 0) {
+        const uploadedNames = await uploadChatDocuments(
+          sessionKey,
+          uploadApiAttachments,
+        )
+        if (uploadedNames.length > 0) {
+          const refBlock = uploadedNames
+            .map((n) => `Uploaded document: uploads/${n}`)
+            .join('\n')
+          enrichedBody =
+            enrichedBody.trim().length > 0
+              ? `${enrichedBody}\n\n${refBlock}`
+              : refBlock
+        }
+      }
 
       try {
         streamStart()
@@ -2087,48 +2275,6 @@ export function ChatScreen({
     }
   }, [flushRetryableMessages, handleRefetch])
 
-  const createSessionForMessage = useCallback(
-    async (preferredFriendlyId?: string) => {
-      setCreatingSession(true)
-      try {
-        const res = await fetch('/api/sessions', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(
-            preferredFriendlyId && preferredFriendlyId.trim().length > 0
-              ? { friendlyId: preferredFriendlyId }
-              : {},
-          ),
-        })
-        if (!res.ok) throw new Error(await readError(res))
-
-        const data = (await res.json()) as {
-          sessionKey?: string
-          friendlyId?: string
-        }
-
-        const sessionKey =
-          typeof data.sessionKey === 'string' ? data.sessionKey : ''
-        const friendlyId =
-          typeof data.friendlyId === 'string' &&
-          data.friendlyId.trim().length > 0
-            ? data.friendlyId.trim()
-            : (preferredFriendlyId?.trim() ?? '') ||
-              deriveFriendlyIdFromKey(sessionKey)
-
-        if (!sessionKey || !friendlyId) {
-          throw new Error('Invalid session response')
-        }
-
-        queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
-        return { sessionKey, friendlyId }
-      } finally {
-        setCreatingSession(false)
-      }
-    },
-    [queryClient],
-  )
-
   const upsertSessionInCache = useCallback(
     (friendlyId: string, lastMessage: ChatMessage) => {
       if (!friendlyId) return
@@ -2284,48 +2430,62 @@ export function ChatScreen({
 
       if (isNewChat) {
         // In portable mode, use 'main' — no server-side sessions exist.
-        // In enhanced mode, create a UUID thread for the sessions API.
-        const threadId = isPortableMode ? 'main' : crypto.randomUUID()
-        const { optimisticMessage } = createOptimisticMessage(
-          trimmedBody,
-          attachmentPayload,
-        )
-        appendHistoryMessage(queryClient, threadId, threadId, optimisticMessage)
-        upsertSessionInCache(threadId, optimisticMessage)
-        setPendingGeneration(true)
-        setSending(true)
-        setWaitingForResponse(true)
+        // In enhanced mode, create the backend session first so document uploads
+        // have a real session-scoped uploads directory.
+        const createLabel =
+          trimmedBody || attachmentPayload[0]?.name?.trim() || 'New Session'
+        const newSession = isPortableMode
+          ? { sessionKey: 'main', friendlyId: 'main' }
+          : undefined
+        void (async () => {
+          try {
+            const resolvedSession =
+              newSession || (await ensureChatSession(createLabel))
+            const { sessionKey, friendlyId } = resolvedSession
+            const { optimisticMessage } = createOptimisticMessage(
+              trimmedBody,
+              attachmentPayload,
+            )
+            appendHistoryMessage(
+              queryClient,
+              friendlyId,
+              sessionKey,
+              optimisticMessage,
+            )
+            upsertSessionInCache(sessionKey, optimisticMessage)
+            setPendingGeneration(true)
+            setSending(true)
+            setWaitingForResponse(true)
+            onSessionResolved?.({ sessionKey, friendlyId })
 
-        if (!isPortableMode) {
-          void createSessionForMessage(threadId).catch((err: unknown) => {
-            if (import.meta.env.DEV) {
-              console.warn('[chat] failed to register new thread', err)
+            sendMessage(
+              sessionKey,
+              friendlyId,
+              trimmedBody,
+              attachmentPayload,
+              fastMode,
+              true,
+              typeof optimisticMessage.clientId === 'string'
+                ? optimisticMessage.clientId
+                : '',
+            )
+            if (!embedded) {
+              navigate({
+                to: '/chat/$sessionKey',
+                params: { sessionKey },
+                replace: true,
+              })
             }
-            void queryClient.invalidateQueries({
-              queryKey: chatQueryKeys.sessions,
-            })
-          })
-        }
-
-        sendMessage(
-          threadId,
-          threadId,
-          trimmedBody,
-          attachmentPayload,
-          fastMode,
-          true,
-          typeof optimisticMessage.clientId === 'string'
-            ? optimisticMessage.clientId
-            : '',
-        )
-        // In portable mode, navigate to /chat/main instead of UUID
-        if (!embedded) {
-          navigate({
-            to: '/chat/$sessionKey',
-            params: { sessionKey: threadId },
-            replace: true,
-          })
-        }
+          } catch (err) {
+            const messageText = err instanceof Error ? err.message : String(err)
+            setSending(false)
+            setPendingGeneration(false)
+            setWaitingForResponse(false)
+            setError(`Failed to send message. ${messageText}`)
+            toast('Failed to send message', { type: 'error' })
+            showErrorToast(messageText)
+          }
+        })()
         return
       }
 
@@ -2343,7 +2503,6 @@ export function ChatScreen({
     [
       activeFriendlyId,
       activeSessionKey,
-      createSessionForMessage,
       forcedSessionKey,
       isNewChat,
       navigate,
@@ -2375,6 +2534,19 @@ export function ChatScreen({
     setPendingGeneration(false)
     setWaitingForResponse(false)
   }, [cancelStreaming, queryClient])
+
+  const handleA2UiSubmit = useCallback(
+    (payload: string) => {
+      const body = payload.trim()
+      if (!body) return
+      send(body, [], false, {
+        reset: () => {},
+        setValue: () => {},
+        setAttachments: () => {},
+      })
+    },
+    [send],
+  )
 
   const runPaletteSlashCommand = useCallback(
     (command: string) => {
@@ -2663,6 +2835,7 @@ export function ChatScreen({
             <ChatMessageList
               messages={finalDisplayMessages}
               onRetryMessage={handleRetryMessage}
+              onA2UiSubmit={handleA2UiSubmit}
               onRefresh={handleRefreshHistory}
               loading={historyLoading}
               empty={historyEmpty}

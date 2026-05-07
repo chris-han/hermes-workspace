@@ -201,7 +201,7 @@ function normalizeJob(row: Record<string, unknown>, index: number): CronJob {
 function friendlyError(raw: string): string {
   if (!raw) return 'Request failed'
   if (raw.includes("require 'croniter'") || raw.includes('croniter')) {
-    return "Cron support missing: reinstall hermes-agent with 'pip install \"hermes-agent[cron]\"' (or 'pipx install --force hermes-agent[cron]'), then restart the gateway."
+    return 'Cron support missing: install hermes-agent from the local monorepo with \'pip install -e ".[cron]"\', then restart the gateway.'
   }
   return raw
 }
@@ -210,7 +210,8 @@ async function readError(response: Response): Promise<string> {
   try {
     const payload = (await response.json()) as Record<string, unknown>
     if (typeof payload.error === 'string') return friendlyError(payload.error)
-    if (typeof payload.message === 'string') return friendlyError(payload.message)
+    if (typeof payload.message === 'string')
+      return friendlyError(payload.message)
     return JSON.stringify(payload)
   } catch {
     const text = await response.text().catch(() => '')
@@ -290,9 +291,7 @@ export async function runCronJob(jobId: string): Promise<RunCronPayload> {
   return readJsonAndCheckOk<RunCronPayload>(response)
 }
 
-export async function runCronJobIfDue(
-  jobId: string,
-): Promise<RunCronPayload> {
+export async function runCronJobIfDue(jobId: string): Promise<RunCronPayload> {
   const response = await fetch(
     `/api/hermes-jobs/${encodeURIComponent(jobId)}?action=run-if-due`,
     {

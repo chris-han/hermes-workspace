@@ -1,22 +1,18 @@
+import {
+  SEMANTIER_AGENT_API,
+  semantierAgentAuthHeaders,
+} from './semantier-agent-api'
+import { resolveHermesHomeFromBackend } from './hermes-home'
+
 /**
- * Probes Hermes services to detect which API groups are available.
- *
- * Zero-fork architecture:
- *   - Gateway (:8645 by default): /health, /v1/chat/completions, /v1/models
- *   - Dashboard (:9119 by default): sessions, skills, config, cron, env, analytics
- *
- * Legacy enhanced-fork compatibility remains for users still running the
- * older all-in-one web API on the gateway port.
+ * Semantier unicell architecture — agent wrapper is the only backend.
  */
 
-export let HERMES_API = process.env.HERMES_API_URL || 'http://127.0.0.1:8645'
+export let HERMES_API = process.env.HERMES_API_URL || 'http://127.0.0.1:8899'
 export let HERMES_DASHBOARD_URL =
   process.env.HERMES_DASHBOARD_URL || 'http://127.0.0.1:9119'
 
-export const HERMES_UPGRADE_INSTRUCTIONS =
-  'For full features, install upstream Hermes Agent (`pip install hermes-agent`) and run `hermes gateway run` plus `hermes dashboard` in separate terminals.'
-
-export const SESSIONS_API_UNAVAILABLE_MESSAGE = `Your Hermes backend does not support the sessions API. ${HERMES_UPGRADE_INSTRUCTIONS}`
+export const GATEWAY_MODE_OVERRIDE_ENV = 'HERMES_WORKSPACE_MODE'
 
 const PROBE_TIMEOUT_MS = 3_000
 const PROBE_TTL_MS = 120_000
@@ -49,17 +45,27 @@ export type DashboardCapabilities = {
   }
 }
 
+export type SemantierCapabilities = {
+  semantier: {
+    available: boolean
+    url: string
+  }
+}
+
 /** Full capabilities — backward compat with existing code */
-export type GatewayCapabilities =
-  CoreCapabilities &
+export type GatewayCapabilities = CoreCapabilities &
   EnhancedCapabilities &
-  DashboardCapabilities
+  DashboardCapabilities &
+  SemantierCapabilities
 
 export type GatewayMode =
+  | 'semantier-unicell'
   | 'zero-fork'
   | 'enhanced-fork'
   | 'portable'
   | 'disconnected'
+
+export type GatewayModeSource = 'probe' | 'override'
 
 export type ChatMode = 'enhanced-hermes' | 'portable' | 'disconnected'
 
@@ -68,6 +74,14 @@ export type ConnectionStatus =
   | 'enhanced'
   | 'partial'
   | 'disconnected'
+
+const GATEWAY_MODE_LABELS: Record<GatewayMode, string> = {
+  'semantier-unicell': 'Semantier Unicell',
+  'zero-fork': 'Zero Fork',
+  'enhanced-fork': 'Enhanced Fork',
+  portable: 'Portable',
+  disconnected: 'Disconnected',
+}
 
 // ── State ─────────────────────────────────────────────────────────
 
@@ -86,6 +100,10 @@ let capabilities: GatewayCapabilities = {
     available: false,
     url: HERMES_DASHBOARD_URL,
   },
+  semantier: {
+    available: false,
+    url: SEMANTIER_AGENT_API,
+  },
   probed: false,
 }
 
@@ -94,6 +112,24 @@ let lastProbeAt = 0
 let lastLoggedSummary = ''
 let dashboardTokenPromise: Promise<string> | null = null
 let dashboardTokenCache = ''
+
+function normalizeGatewayModeOverride(
+  value: string | undefined,
+): GatewayMode | null {
+  const normalized = value?.trim().toLowerCase()
+  if (!normalized) return null
+  if (normalized === 'semantier-native') return 'semantier-unicell'
+  if (
+    normalized === 'semantier-unicell' ||
+    normalized === 'zero-fork' ||
+    normalized === 'enhanced-fork' ||
+    normalized === 'portable' ||
+    normalized === 'disconnected'
+  ) {
+    return normalized
+  }
+  return null
+}
 
 /** Optional bearer token for authenticated gateway endpoints. */
 export const BEARER_TOKEN = process.env.HERMES_API_TOKEN || ''
@@ -155,9 +191,18 @@ function withDashboardBase(path: string): string {
 export async function dashboardFetch(
   path: string,
   init: RequestInit = {},
+  options?: {
+    requestHeaders?: HeadersInit | Headers
+  },
 ): Promise<Response> {
   const requestPath = withDashboardBase(path)
   const method = (init.method || 'GET').toUpperCase()
+  let activeWorkspaceHermesHome: string | null = null
+  if (options?.requestHeaders) {
+      activeWorkspaceHermesHome = await resolveHermesHomeFromBackend(
+        options.requestHeaders,
+      )
+  }
   const doFetch = async (forceToken = false) => {
     const headers = new Headers(init.headers)
     const isProtected =
@@ -170,11 +215,20 @@ export async function dashboardFetch(
       !requestPath.endsWith('/api/dashboard/plugins') &&
       !requestPath.endsWith('/api/dashboard/plugins/rescan')
 
+    if (isProtected && !activeWorkspaceHermesHome) {
+      throw new Error(
+        `Workspace Hermes home is required for dashboard request: ${path}`,
+      )
+    }
+
     if (isProtected && !headers.has('Authorization')) {
       const auth = await dashboardAuthHeaders({ force: forceToken })
       for (const [key, value] of Object.entries(auth)) {
         headers.set(key, value)
       }
+    }
+    if (activeWorkspaceHermesHome && !headers.has('X-Hermes-Home')) {
+      headers.set('X-Hermes-Home', activeWorkspaceHermesHome)
     }
 
     return fetch(requestPath, {
@@ -207,23 +261,6 @@ async function probe(path: string): Promise<boolean> {
   }
 }
 
-async function probeChatCompletions(): Promise<boolean> {
-  try {
-    const getRes = await fetch(`${HERMES_API}/v1/chat/completions`, {
-      method: 'GET',
-      headers: authHeaders(),
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    })
-    if (getRes.status === 405) return true
-    if (getRes.ok) return true
-    if (getRes.status === 400 || getRes.status === 422) return true
-    if (getRes.status === 404) return false
-    return true
-  } catch {
-    return false
-  }
-}
-
 async function probeDashboard(): Promise<{ available: boolean; url: string }> {
   try {
     const res = await fetch(`${HERMES_DASHBOARD_URL}/api/status`, {
@@ -239,38 +276,27 @@ async function probeDashboard(): Promise<{ available: boolean; url: string }> {
   }
 }
 
-// Vanilla hermes-agent 0.10.0 satisfies: health, chatCompletions, models, streaming,
-// sessions, skills, config, jobs. Dashboard-only endpoints (themes/plugins) and the
-// legacy enhanced-fork chat stream are optional — their absence should not emit the
-// "Missing Hermes APIs detected" warning, which only applies to critical gaps.
-const OPTIONAL_APIS = new Set([
-  'jobs',
-  'chatCompletions',
-  'streaming',
-  'memory',
-  'dashboard',
-  'enhancedChat',
-])
+async function probeSemantier(): Promise<{ available: boolean; url: string }> {
+  try {
+    const res = await fetch(`${SEMANTIER_AGENT_API}/health`, {
+      headers: semantierAgentAuthHeaders(),
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    })
+    return { available: res.ok, url: SEMANTIER_AGENT_API }
+  } catch {
+    return { available: false, url: SEMANTIER_AGENT_API }
+  }
+}
+
+const OPTIONAL_APIS = new Set(['dashboard'])
 
 function logCapabilities(next: GatewayCapabilities): void {
   const core: Array<string> = []
   const enhanced: Array<string> = []
   const missing: Array<string> = []
 
-  const coreKeys: Array<keyof CoreCapabilities> = [
-    'health',
-    'chatCompletions',
-    'models',
-    'streaming',
-  ]
-  const enhancedKeys: Array<keyof EnhancedCapabilities> = [
-    'sessions',
-    'enhancedChat',
-    'skills',
-    'memory',
-    'config',
-    'jobs',
-  ]
+  const coreKeys: Array<keyof CoreCapabilities> = ['health']
+  const enhancedKeys: Array<keyof EnhancedCapabilities> = []
 
   for (const key of coreKeys) {
     ;(next[key] ? core : missing).push(key)
@@ -280,6 +306,8 @@ function logCapabilities(next: GatewayCapabilities): void {
   }
   if (next.dashboard.available) core.push('dashboard')
   else missing.push('dashboard')
+  if (next.semantier.available) core.push('semantier')
+  else missing.push('semantier')
 
   const mode = getGatewayMode()
   const summary = `[gateway] gateway=${HERMES_API} dashboard=${next.dashboard.url} mode=${mode} core=[${core.join(', ')}] enhanced=[${enhanced.join(', ')}] missing=[${missing.join(', ')}]`
@@ -287,39 +315,10 @@ function logCapabilities(next: GatewayCapabilities): void {
   lastLoggedSummary = summary
   console.log(summary)
 
-  const criticalMissing = missing.filter((key) => !OPTIONAL_APIS.has(key))
-  if (criticalMissing.length > 0 && (next.health || next.dashboard.available)) {
-    console.warn(
-      `[gateway] Missing Hermes APIs detected. ${HERMES_UPGRADE_INSTRUCTIONS}`,
-    )
-  }
 }
 
-async function autoDetectGatewayUrl(): Promise<void> {
-  if (process.env.HERMES_API_URL) return
-
-  const candidates = [
-    'http://127.0.0.1:8645',
-    'http://127.0.0.1:8642',
-    'http://127.0.0.1:8643',
-  ]
-
-  for (const candidate of candidates) {
-    try {
-      const res = await fetch(`${candidate}/health`, {
-        signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-      })
-      if (res.ok) {
-        HERMES_API = candidate
-        console.log(`[gateway] Connected to Hermes gateway at ${HERMES_API}`)
-        return
-      }
-    } catch {
-      // continue
-    }
-  }
-
-  console.warn('[gateway] Could not reach Hermes gateway on 8645, 8642, or 8643')
+function autoDetectGatewayUrl(): void {
+  HERMES_API = process.env.HERMES_API_URL || 'http://127.0.0.1:8899'
 }
 
 async function autoDetectDashboardUrl(): Promise<void> {
@@ -341,75 +340,42 @@ async function autoDetectDashboardUrl(): Promise<void> {
   }
 }
 
-export async function probeGateway(options?: {
+export function probeGateway(options?: {
   force?: boolean
-}): Promise<GatewayCapabilities> {
+}): GatewayCapabilities {
   const force = options?.force === true
   if (!force && capabilities.probed) {
     return capabilities
   }
-  if (probePromise) {
-    return probePromise
+
+  autoDetectGatewayUrl()
+
+  capabilities = {
+    health: true,
+    chatCompletions: false,
+    models: false,
+    streaming: false,
+    probed: true,
+    sessions: false,
+    enhancedChat: false,
+    skills: false,
+    // Memory is always available: workspace reads $HERMES_HOME/MEMORY.md +
+    // memory/*.md + memories/*.md directly from the local filesystem.
+    // No remote gateway endpoint is required.
+    memory: true,
+    config: false,
+    jobs: false,
+    dashboard: { available: false, url: HERMES_DASHBOARD_URL },
+    semantier: { available: true, url: SEMANTIER_AGENT_API },
   }
-
-  probePromise = (async () => {
-    await Promise.all([autoDetectGatewayUrl(), autoDetectDashboardUrl()])
-
-    const [
-      health,
-      chatCompletions,
-      models,
-      legacySessions,
-      enhancedChat,
-      legacySkills,
-      legacyConfig,
-      legacyJobs,
-      dashboard,
-    ] = await Promise.all([
-      probe('/health'),
-      probeChatCompletions(),
-      probe('/v1/models'),
-      probe('/api/sessions'),
-      probe('/api/sessions/__probe__/chat/stream'),
-      probe('/api/skills'),
-      probe('/api/config'),
-      probe('/api/jobs'),
-      probeDashboard(),
-    ])
-
-    capabilities = {
-      health,
-      chatCompletions,
-      models,
-      streaming: chatCompletions,
-      probed: true,
-      sessions: dashboard.available || legacySessions,
-      enhancedChat,
-      skills: dashboard.available || legacySkills,
-      // Memory is always available: workspace reads $HERMES_HOME/MEMORY.md +
-      // memory/*.md + memories/*.md directly from the local filesystem.
-      // No remote gateway endpoint is required.
-      memory: true,
-      config: dashboard.available || legacyConfig,
-      jobs: dashboard.available || legacyJobs,
-      dashboard,
-    }
-    lastProbeAt = Date.now()
-    logCapabilities(capabilities)
-    return capabilities
-  })()
-
-  try {
-    return await probePromise
-  } finally {
-    probePromise = null
-  }
+  lastProbeAt = Date.now()
+  logCapabilities(capabilities)
+  return capabilities
 }
 
-export async function ensureGatewayProbed(): Promise<GatewayCapabilities> {
-  const isStale = Date.now() - lastProbeAt > PROBE_TTL_MS
-  if (!capabilities.probed || isStale) {
-    return probeGateway({ force: isStale })
+export function ensureGatewayProbed(): GatewayCapabilities {
+  if (!capabilities.probed) {
+    return probeGateway()
   }
   return capabilities
 }
@@ -442,48 +408,54 @@ export function getEnhancedCapabilities(): EnhancedCapabilities {
 }
 
 export function getGatewayMode(): GatewayMode {
-  // 'zero-fork' requires the optional dashboard plugin bundle; 'enhanced' is
-  // granted whenever the core enhanced-chat endpoints are present — which
-  // vanilla hermes-agent (≥0.10) satisfies. The label 'enhanced-fork' is
-  // legacy copy from the 2025-era fork and does NOT imply an actual fork is
-  // required. We keep the value for backwards compatibility with UI code.
-  if (capabilities.dashboard.available && capabilities.chatCompletions) {
-    return 'zero-fork'
-  }
-  if (capabilities.sessions && capabilities.enhancedChat) {
-    return 'enhanced-fork'
-  }
-  if (capabilities.chatCompletions || capabilities.health) return 'portable'
-  return 'disconnected'
+  const configuredMode = getConfiguredGatewayMode()
+  if (configuredMode) return configuredMode
+  return deriveGatewayModeFromCapabilities(capabilities)
 }
 
-/**
- * UI-facing chat transport mode:
- * - enhanced-hermes: legacy fork session streaming API available
- * - portable: OpenAI-compatible /v1/chat/completions transport
- * - disconnected: no usable chat backend
- */
+export function getGatewayModeSource(): GatewayModeSource {
+  return getConfiguredGatewayMode() ? 'override' : 'probe'
+}
+
+export function getGatewayModeLabel(mode: GatewayMode): string {
+  return GATEWAY_MODE_LABELS[mode]
+}
+
+export function getConfiguredGatewayMode(): GatewayMode | null {
+  return normalizeGatewayModeOverride(process.env[GATEWAY_MODE_OVERRIDE_ENV])
+}
+
 export function getChatMode(): ChatMode {
-  if (capabilities.enhancedChat) return 'enhanced-hermes'
-  if (capabilities.chatCompletions || capabilities.health) return 'portable'
+  if (capabilities.semantier.available) return 'enhanced-hermes'
   return 'disconnected'
 }
 
 export function getConnectionStatus(): ConnectionStatus {
-  if (!capabilities.health && !capabilities.chatCompletions) {
-    return capabilities.dashboard.available ? 'partial' : 'disconnected'
-  }
-  const enhanced =
-    (capabilities.dashboard.available || capabilities.sessions) &&
-    capabilities.skills &&
-    capabilities.config
-  if (enhanced) return 'enhanced'
-  if (capabilities.chatCompletions || capabilities.sessions) return 'partial'
-  return 'connected'
+  if (capabilities.semantier.available) return 'enhanced'
+  return 'disconnected'
 }
 
 export function isHermesConnected(): boolean {
-  return capabilities.health || capabilities.dashboard.available
+  return (
+    capabilities.health ||
+    capabilities.dashboard.available ||
+    capabilities.semantier.available
+  )
 }
 
 void ensureGatewayProbed()
+
+export function deriveGatewayModeFromCapabilities(
+  next: Pick<
+    GatewayCapabilities,
+    | 'dashboard'
+    | 'semantier'
+    | 'chatCompletions'
+    | 'sessions'
+    | 'enhancedChat'
+    | 'health'
+  >,
+): GatewayMode {
+  if (next.semantier.available) return 'semantier-unicell'
+  return 'disconnected'
+}

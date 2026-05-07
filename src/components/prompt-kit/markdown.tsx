@@ -1,9 +1,11 @@
 import { marked } from 'marked'
 import { createContext, memo, useContext, useId, useMemo, useRef } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import ReactMarkdown from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from './code-block'
+import { MermaidBlock } from './mermaid-block'
 import type { Components } from 'react-markdown'
 import { cn } from '@/lib/utils'
 
@@ -12,6 +14,45 @@ export type MarkdownProps = {
   id?: string
   className?: string
   components?: Partial<Components>
+}
+
+function normalizeFilesTargetPath(pathValue: string): string {
+  const normalized = pathValue.trim().replace(/\\/g, '/')
+
+  const fromFileScheme = normalized.match(/^file:\/\/(.+)$/i)
+  const hostPath = fromFileScheme ? fromFileScheme[1] : normalized
+
+  const workspaceMatch = hostPath.match(/\/workspaces\/[^/]+\/(.+)$/)
+  if (workspaceMatch?.[1]) {
+    return workspaceMatch[1].replace(/^\/+/, '')
+  }
+
+  const sessionIndex = hostPath.lastIndexOf('/sessions/')
+  if (sessionIndex >= 0) {
+    return hostPath.slice(sessionIndex + 1)
+  }
+
+  const runsIndex = hostPath.lastIndexOf('/runs/')
+  if (runsIndex >= 0) {
+    return hostPath.slice(runsIndex + 1)
+  }
+
+  return hostPath.replace(/^\/+/, '')
+}
+
+export function linkifyRunDirectoryFooter(markdown: string): string {
+  if (!markdown) return markdown
+
+  return markdown.replace(
+    /^(\s*Run directory:\s*)(\/[^\n]+?)\s*$/gim,
+    (_fullMatch, prefix: string, rawPath: string) => {
+      if (!rawPath || rawPath.includes('](')) return `${prefix}${rawPath}`
+      const targetPath = normalizeFilesTargetPath(rawPath)
+      if (!targetPath) return `${prefix}${rawPath}`
+      const href = `/files?path=${encodeURIComponent(targetPath)}`
+      return `${prefix}[${rawPath}](${href})`
+    },
+  )
 }
 
 function parseMarkdownIntoBlocks(markdown: string): Array<string> {
@@ -23,6 +64,11 @@ function extractLanguage(className?: string): string {
   if (!className) return 'text'
   const match = className.match(/language-(\w+)/)
   return match ? match[1] : 'text'
+}
+
+export function normalizeMarkdownHref(href?: string): string | undefined {
+  if (!href) return href
+  return href
 }
 
 type TableRenderContextValue = {
@@ -37,12 +83,33 @@ function useTableRenderContext() {
   return useContext(TableRenderContext)
 }
 
+function shouldInsertBoundarySpace(left: string, right: string): boolean {
+  if (!left || !right) return false
+  const leftChar = left[left.length - 1]
+  const rightChar = right[0]
+  return /[A-Za-z0-9]/.test(leftChar) && /[A-Za-z0-9]/.test(rightChar)
+}
+
+function mergeTextParts(parts: Array<string>): string {
+  let merged = ''
+  for (const part of parts) {
+    if (!part) continue
+    if (shouldInsertBoundarySpace(merged, part)) {
+      merged += ' '
+    }
+    merged += part
+  }
+  return merged
+}
+
 function textFromNode(node: React.ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') {
     return String(node)
   }
   if (Array.isArray(node)) {
-    return node.map((item: React.ReactNode) => textFromNode(item)).join('')
+    return mergeTextParts(
+      node.map((item: React.ReactNode) => textFromNode(item)),
+    )
   }
   if (node && typeof node === 'object' && 'props' in node) {
     const element = node as { props: { children?: React.ReactNode } }
@@ -63,6 +130,11 @@ function slugifyHeading(children: React.ReactNode): string {
 const INITIAL_COMPONENTS: Partial<Components> = {
   code: function CodeComponent({ className, children }) {
     const isInline = !className?.includes('language-')
+    const source = String(children ?? '').replace(/\n$/, '')
+
+    if (!isInline && /(?:^|\s)language-mermaid(?:\s|$)/.test(className || '')) {
+      return <MermaidBlock chart={source} />
+    }
 
     if (isInline) {
       return (
@@ -75,7 +147,7 @@ const INITIAL_COMPONENTS: Partial<Components> = {
     const language = extractLanguage(className)
     return (
       <CodeBlock
-        content={String(children ?? '')}
+        content={source}
         language={language}
         className="w-full my-2"
       />
@@ -179,12 +251,33 @@ const INITIAL_COMPONENTS: Partial<Components> = {
     return <li className="leading-relaxed">{children}</li>
   },
   a: function AComponent({ children, href }) {
+    const navigate = useNavigate()
+    const normalizedHref = normalizeMarkdownHref(href)
+    const linkClass =
+      'text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500'
+    const isInternalSpaPath = Boolean(
+      normalizedHref &&
+        normalizedHref.startsWith('/') &&
+        !normalizedHref.startsWith('/api/'),
+    )
+    const openInNewTab = Boolean(
+      normalizedHref && /^https?:\/\//i.test(normalizedHref),
+    )
+
+    function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
+      if (isInternalSpaPath && normalizedHref) {
+        e.preventDefault()
+        void navigate({ to: normalizedHref as string })
+      }
+    }
+
     return (
       <a
-        href={href}
-        className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
-        target="_blank"
-        rel="noopener noreferrer"
+        href={normalizedHref}
+        className={linkClass}
+        target={openInNewTab ? '_blank' : undefined}
+        rel={openInNewTab ? 'noopener noreferrer' : undefined}
+        onClick={handleClick}
       >
         {children}
       </a>
@@ -214,10 +307,12 @@ const INITIAL_COMPONENTS: Partial<Components> = {
       <TableRenderContext.Provider
         value={{ headersRef, columnIndexRef, collectingHeaderRef }}
       >
-        <div className="my-3 max-w-full overflow-x-auto rounded-lg border border-primary-200 bg-primary-50/20">
-          <table className="w-full min-w-max border-collapse text-sm sm:min-w-full tabular-nums">
-            {children}
-          </table>
+        <div className="my-3 max-w-full overflow-hidden rounded-lg border border-primary-200 bg-primary-50/20">
+          <div className="max-w-full overflow-x-auto">
+            <table className="w-full min-w-max border-collapse text-sm sm:min-w-full tabular-nums">
+              {children}
+            </table>
+          </div>
         </div>
       </TableRenderContext.Provider>
     )
@@ -230,7 +325,7 @@ const INITIAL_COMPONENTS: Partial<Components> = {
       context.headersRef.current = []
     }
     return (
-      <thead className="sticky top-0 z-10 border-b border-primary-200 bg-primary-100/95 backdrop-blur-sm max-sm:hidden">
+      <thead className="sticky top-0 z-10 border-b border-primary-200 bg-transparent max-sm:hidden">
         {children}
       </thead>
     )
@@ -268,7 +363,11 @@ const INITIAL_COMPONENTS: Partial<Components> = {
       }
     }
     return (
-      <th className="px-3 py-2 text-left font-medium text-primary-950 whitespace-nowrap">
+      <th
+        className={cn(
+          'border-r border-primary-200 px-3 py-2 text-left font-medium text-primary-950 whitespace-nowrap last:border-r-0',
+        )}
+      >
         {children}
       </th>
     )
@@ -284,7 +383,7 @@ const INITIAL_COMPONENTS: Partial<Components> = {
     return (
       <td
         data-label={label}
-        className="px-3 py-2 text-primary-950 align-top max-sm:grid max-sm:grid-cols-[minmax(0,9rem)_1fr] max-sm:gap-3 max-sm:border-b max-sm:border-primary-100 max-sm:px-3 max-sm:py-2 max-sm:last:border-b-0 max-sm:before:content-[attr(data-label)] max-sm:before:text-xs max-sm:before:font-medium max-sm:before:text-primary-700"
+        className="border-r border-primary-100 px-3 py-2 text-primary-950 align-top last:border-r-0 max-sm:grid max-sm:grid-cols-[minmax(0,9rem)_1fr] max-sm:gap-3 max-sm:border-b max-sm:border-primary-100 max-sm:border-r-0 max-sm:px-3 max-sm:py-2 max-sm:last:border-b-0 max-sm:before:content-[attr(data-label)] max-sm:before:text-xs max-sm:before:font-medium max-sm:before:text-primary-700"
       >
         {children}
       </td>
@@ -331,7 +430,14 @@ function MarkdownComponent({
 }: MarkdownProps) {
   const generatedId = useId()
   const blockId = id ?? generatedId
-  const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
+  const normalizedMarkdown = useMemo(
+    () => linkifyRunDirectoryFooter(children),
+    [children],
+  )
+  const blocks = useMemo(
+    () => parseMarkdownIntoBlocks(normalizedMarkdown),
+    [normalizedMarkdown],
+  )
 
   return (
     <div

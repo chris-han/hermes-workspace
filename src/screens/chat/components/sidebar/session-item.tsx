@@ -1,9 +1,11 @@
 'use client'
 
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Delete01Icon,
+  Download01Icon,
+  File01Icon,
   MoreHorizontalIcon,
   Pen01Icon,
   PinIcon,
@@ -25,6 +27,7 @@ type SessionItemProps = {
   isPinned: boolean
   onSelect?: () => void
   onTogglePin: (session: SessionMeta) => void
+  onExportPdf: (session: SessionMeta) => void
   onRename: (session: SessionMeta) => void
   onDelete: (session: SessionMeta) => void
 }
@@ -99,9 +102,11 @@ function SessionItemComponent({
   isPinned,
   onSelect,
   onTogglePin,
+  onExportPdf,
   onRename,
   onDelete,
 }: SessionItemProps) {
+  const navigate = useNavigate()
   const isGenerating = session.titleStatus === 'generating'
   const isError = session.titleStatus === 'error'
   const baseTitle = getSessionDisplayTitle(session, isGenerating)
@@ -187,6 +192,34 @@ function SessionItemComponent({
             onClick={(event) => {
               event.preventDefault()
               event.stopPropagation()
+              void navigate({
+                to: '/session-events',
+                search: {
+                  session: session.key,
+                  friendlyId: session.friendlyId || session.key,
+                },
+              })
+            }}
+            className="gap-2"
+          >
+            <HugeiconsIcon icon={File01Icon} size={20} strokeWidth={1.5} />{' '}
+            Session events
+          </MenuItem>
+          <MenuItem
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              void onExportPdf(session)
+            }}
+            className="gap-2"
+          >
+            <HugeiconsIcon icon={Download01Icon} size={20} strokeWidth={1.5} />{' '}
+            Export PDF
+          </MenuItem>
+          <MenuItem
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
               onTogglePin(session)
             }}
             className="gap-2"
@@ -227,6 +260,7 @@ function areSessionItemsEqual(prev: SessionItemProps, next: SessionItemProps) {
   if (prev.isPinned !== next.isPinned) return false
   if (prev.onSelect !== next.onSelect) return false
   if (prev.onTogglePin !== next.onTogglePin) return false
+  if (prev.onExportPdf !== next.onExportPdf) return false
   if (prev.onRename !== next.onRename) return false
   if (prev.onDelete !== next.onDelete) return false
   if (prev.session === next.session) return true

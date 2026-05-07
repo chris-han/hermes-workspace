@@ -16,6 +16,7 @@ def main():
     cwd = sys.argv[2] if len(sys.argv) > 2 else os.environ.get('HOME', '/tmp')
     cols = int(sys.argv[3]) if len(sys.argv) > 3 else 80
     rows = int(sys.argv[4]) if len(sys.argv) > 4 else 24
+    workspace_root = os.environ.get('HERMES_TERMINAL_ROOT', '').strip()
 
     if cwd.startswith('~'):
         cwd = os.path.expanduser(cwd)
@@ -40,6 +41,8 @@ def main():
             os.close(slave_fd)
 
         os.chdir(cwd)
+        if workspace_root:
+            os.environ['HOME'] = workspace_root
         os.environ['TERM'] = 'xterm-256color'
         os.environ['COLORTERM'] = 'truecolor'
         os.execvp(shell, [shell, '-i'])

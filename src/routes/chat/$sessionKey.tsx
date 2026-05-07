@@ -1,7 +1,12 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { moveHistoryMessages } from '../../screens/chat/chat-queries'
+import {
+  NEW_CHAT_FRIENDLY_ID,
+  NEW_CHAT_SESSION_KEY,
+  moveHistoryMessages,
+  resetNewChatHistory,
+} from '../../screens/chat/chat-queries'
 import { ErrorBoundary } from '@/components/error-boundary'
 
 const ChatScreen = lazy(async () => {
@@ -74,7 +79,7 @@ function ChatRoute() {
   // Clear history cache when navigating to new chat
   useEffect(() => {
     if (isNewChat) {
-      queryClient.removeQueries({ queryKey: ['chat', 'history', 'new', 'new'] })
+      resetNewChatHistory(queryClient)
     }
   }, [isNewChat, queryClient])
 
@@ -84,7 +89,11 @@ function ChatRoute() {
       sessionKey: string
     }) {
       const sourceFriendlyId = activeFriendlyId
-      const sourceSessionKey = forcedSessionKey ?? activeFriendlyId
+      const sourceSessionKey =
+        forcedSessionKey ??
+        (activeFriendlyId === NEW_CHAT_FRIENDLY_ID
+          ? NEW_CHAT_SESSION_KEY
+          : activeFriendlyId)
       moveHistoryMessages(
         queryClient,
         sourceFriendlyId,

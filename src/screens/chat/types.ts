@@ -27,7 +27,33 @@ export type ThinkingContent = {
   thinkingSignature?: string
 }
 
-export type MessageContent = TextContent | ToolCallContent | ThinkingContent
+export type A2UiNode = {
+  component?: string
+  props?: Record<string, unknown>
+  children?: Array<A2UiNode | string> | A2UiNode | string
+}
+
+export type A2UiSchema = {
+  version?: string
+  root?: A2UiNode
+  nodes?: Array<A2UiNode>
+  blocks?: Array<A2UiNode>
+  meta?: Record<string, unknown>
+}
+
+export type A2UiContent = {
+  type: 'a2ui' | 'uiSchema'
+  id?: string
+  schema?: A2UiSchema
+  payload?: A2UiSchema
+  data?: A2UiSchema
+}
+
+export type MessageContent =
+  | TextContent
+  | ToolCallContent
+  | ThinkingContent
+  | A2UiContent
 
 export type ChatAttachment = {
   id?: string
@@ -67,6 +93,7 @@ export type SessionSummary = {
   label?: string
   title?: string
   derivedTitle?: string
+  status?: string
   updatedAt?: number
   lastMessage?: ChatMessage | null
   friendlyId?: string
@@ -91,6 +118,7 @@ export type SessionMeta = {
   title?: string
   derivedTitle?: string
   label?: string
+  status?: string
   updatedAt?: number
   lastMessage?: ChatMessage | null
   titleStatus?: SessionTitleStatus

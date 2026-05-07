@@ -101,8 +101,8 @@ export function MobilePromptTrigger() {
               <div className="flex items-center gap-3">
                 <div className="flex shrink-0 items-center gap-1.5">
                   <img
-                    src="/hermes-avatar.webp"
-                    alt="Hermes"
+                    src="/logo.svg"
+                    alt="semantier logo"
                     className="size-8 rounded-lg"
                   />
                   <span className="text-xs text-primary-600">+</span>
@@ -180,8 +180,8 @@ export function MobilePromptTrigger() {
                     className="text-xs"
                     style={{ color: 'var(--theme-muted)' }}
                   >
-                    Connect your phone to this Hermes Workspace instance in a
-                    few steps.
+                    Connect your phone to this Semantier instance in a few
+                    steps.
                   </p>
                 </div>
 

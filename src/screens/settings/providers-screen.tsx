@@ -32,11 +32,13 @@ import { cn } from '@/lib/utils'
 async function getConfig(): Promise<Record<string, unknown>> {
   const res = await fetch('/api/hermes-config')
   if (!res.ok) throw new Error(`Failed to load config: HTTP ${res.status}`)
-  const data = await res.json() as { config?: Record<string, unknown> }
+  const data = (await res.json()) as { config?: Record<string, unknown> }
   return data.config ?? {}
 }
 
-async function patchConfig(patch: Record<string, unknown>): Promise<Record<string, unknown>> {
+async function patchConfig(
+  patch: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
   const res = await fetch('/api/hermes-config', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -1104,7 +1106,7 @@ function ActiveModelCard({
           <p className="text-sm text-primary-600">
             Update the primary model, optional fallback, and stream timeout
             settings saved in{' '}
-            <code className="font-mono">~/.hermes/config.yaml</code>.
+            <code className="font-mono">the active Hermes config.yaml</code>.
           </p>
         </div>
         <Button

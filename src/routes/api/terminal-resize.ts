@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
 import { getTerminalSession } from '../../server/terminal-sessions'
 import { requireJsonContentType } from '../../server/rate-limit'
 
@@ -7,15 +6,6 @@ export const Route = createFileRoute('/api/terminal-resize')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(
-            JSON.stringify({ ok: false, error: 'Unauthorized' }),
-            {
-              status: 401,
-              headers: { 'Content-Type': 'application/json' },
-            },
-          )
-        }
         const csrfCheck = requireJsonContentType(request)
         if (csrfCheck) return csrfCheck
 

@@ -320,13 +320,13 @@ export function ProfilesScreen() {
                     )}
                   >
                     <img
-                      src="/hermes-avatar.webp"
+                      src="/logo.svg"
                       alt={profile.name}
                       className={cn(
                         'size-20 rounded-full border-2 object-cover',
                         profile.active
-                          ? 'border-white dark:border-neutral-950'
-                          : 'border-primary-50 dark:border-neutral-950',
+                          ? 'border-border'
+                          : 'border-primary-50 dark:border-border',
                       )}
                       style={{
                         filter: profile.active
@@ -336,7 +336,7 @@ export function ProfilesScreen() {
                     />
                   </div>
                   {profile.active && (
-                    <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full border-2 border-white bg-emerald-500 px-2 py-0.5 dark:border-neutral-950">
+                    <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full border-2 border-border bg-emerald-500 px-2 py-0.5">
                       <HugeiconsIcon
                         icon={CheckmarkCircle02Icon}
                         size={10}
@@ -830,7 +830,7 @@ export function ProfilesScreen() {
           <div className="shrink-0 border-b border-primary-200 px-6 pb-4 pt-5 dark:border-neutral-800">
             <div className="flex items-center gap-3">
               <img
-                src="/hermes-avatar.webp"
+                src="/logo.svg"
                 alt={detailsName || ''}
                 className="size-12 rounded-full border-2 border-primary-200 object-cover dark:border-neutral-700"
               />

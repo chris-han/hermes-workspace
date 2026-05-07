@@ -1,11 +1,87 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=EB+Garamond:opsz,wght@8..120,400..800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:opsz,wght@8..120,400..800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600&display=swap');
 @import 'tailwindcss';
+
+@font-face {
+  font-family: 'Autaut Grotesk';
+  src: url('/font/AutautGrotesk-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* Tailwind v4 — enable dark: variant on .dark class (set by __root.tsx) */
 @variant dark (&:where(.dark, .dark *));
 
 :root {
   --tabbar-h: 0px;
+  --font-ui:
+    'Autaut Grotesk', 'Times New Roman', -apple-system, system-ui,
+    'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
+    'Hiragino Kaku Gothic Pro', 'Meiryo', 'MS PGothic', Arial, sans-serif;
+  --font-report-ui:
+    'Autaut Grotesk', 'Times New Roman', -apple-system, system-ui,
+    'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', Arial,
+    sans-serif;
+  /* Design-system radius tokens (theme-safe: does not override Tailwind base radius scale) */
+  --radius-sm: 4px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-button: 16px;
+  --radius-card: 20px;
+  --radius-comfortable: 20px;
+  --radius-section: 32px;
+  --radius-hero: 40px;
+  --theme-toggle-off-bg: var(--theme-card2);
+  --theme-toggle-off-border: var(--theme-border);
+  --theme-toggle-on-bg: var(--theme-accent);
+  --theme-toggle-on-border: var(--theme-accent);
+}
+
+/* Shared radius utilities for all screen pages */
+.rounded-button {
+  border-radius: var(--radius-button, 16px) !important;
+}
+
+.rounded-card {
+  border-radius: var(--radius-card, 20px) !important;
+}
+
+.rounded-comfortable {
+  border-radius: var(--radius-comfortable, 20px) !important;
+}
+
+.rounded-section {
+  border-radius: var(--radius-section, 32px) !important;
+}
+
+.rounded-hero {
+  border-radius: var(--radius-hero, 40px) !important;
+}
+
+/* Global radius harmonization for workspace screens */
+.rounded-sm {
+  border-radius: var(--radius-sm, 4px) !important;
+}
+
+.rounded-md {
+  border-radius: var(--radius-md, 12px) !important;
+}
+
+.rounded-lg {
+  border-radius: var(--radius-lg, 16px) !important;
+}
+
+.rounded-xl {
+  border-radius: var(--radius-card, 20px) !important;
+}
+
+.rounded-2xl {
+  border-radius: var(--radius-card, 20px) !important;
+}
+
+.rounded-3xl {
+  border-radius: var(--radius-section, 32px) !important;
 }
 
 /* Hide scrollbars until scroll (cross-browser) */
@@ -91,6 +167,43 @@
   background-color: var(--theme-accent-subtle) !important;
 }
 
+.theme-accent-button {
+  background-color: var(--theme-accent) !important;
+  border-color: var(--theme-accent-secondary) !important;
+  color: var(--theme-toggle-on-border) !important;
+}
+
+[data-theme$='-light'] .theme-accent {
+  color: #ffffff !important;
+}
+
+[data-theme='semantier'] .theme-accent,
+[data-theme='semantier-light'] .theme-accent {
+  color: var(--theme-toggle-on-border) !important;
+}
+
+/* Accent action controls: always use theme token fill (no hardcoded palette). */
+.theme-accent-fill {
+  background-color: var(--theme-accent) !important;
+}
+
+/* Default accent icon contrast for most themes. */
+.theme-accent-icon {
+  color: var(--theme-text) !important;
+}
+
+/* Semantier accent is brighter, so force deeper icon color for contrast. */
+[data-theme='semantier'] .theme-accent-icon,
+[data-theme='semantier-light'] .theme-accent-icon {
+  color: var(--theme-toggle-on-border) !important;
+}
+
+/* Danger controls must keep white foreground on red backgrounds. */
+.theme-danger-contrast,
+.theme-danger-contrast svg {
+  color: #ffffff !important;
+}
+
 .theme-shadow-1 {
   box-shadow: var(--theme-shadow-1) !important;
 }
@@ -99,6 +212,110 @@
 }
 .theme-shadow-3 {
   box-shadow: var(--theme-shadow-3) !important;
+}
+
+/* Semantic utility aliases used across screens when Tailwind token classes are not emitted */
+.bg-surface {
+  background-color: var(--color-surface, var(--theme-bg)) !important;
+}
+
+.bg-card {
+  background-color: var(--theme-card) !important;
+}
+
+/* Table header surface token and utility
+   Defaults to the theme card surface; light-theme variants prefer the quiet light surface.
+*/
+
+:root {
+  /* Matcha (抹茶色) header surface by default */
+  --theme-table-header: #7BA05B; /* semantier matcha/lime */
+}
+
+/* Keep previous light-theme override behavior but default to matcha as well */
+[data-theme$='-light'] {
+  --theme-table-header: #7BA05B !important;
+}
+
+/* Alias utilities: bg-table-header for Tailwind-style and theme-table-header for semantic use */
+.bg-table-header,
+.theme-table-header {
+  background-color: var(--theme-table-header, #7BA05B) !important;
+}
+
+.excel-preview-row-odd {
+  background-color: var(--theme-card) !important;
+}
+
+.excel-preview-row-even {
+  background-color: var(--theme-card2) !important;
+}
+
+.excel-preview-cell {
+  color: var(--theme-text) !important;
+}
+
+.text-ink {
+  color: var(--color-ink, var(--theme-text)) !important;
+}
+
+.border-border {
+  border-color: var(--theme-border) !important;
+}
+
+/* Unified border/surface utilities for page-level components */
+.theme-border-1 {
+  border: 1px solid var(--theme-border) !important;
+}
+
+.theme-border-t-1 {
+  border-top: 1px solid var(--theme-border) !important;
+}
+
+.theme-border-b-1 {
+  border-bottom: 1px solid var(--theme-border) !important;
+}
+
+.theme-border-l-1 {
+  border-left: 1px solid var(--theme-border) !important;
+}
+
+.theme-tool-surface {
+  background: var(--tool-card-bg) !important;
+  color: var(--tool-card-title) !important;
+}
+
+.theme-card-surface {
+  background: var(--theme-card) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-card2-surface {
+  background: var(--theme-card2) !important;
+}
+
+.theme-left-status-border {
+  border-left-width: 3px !important;
+  border-left-style: solid !important;
+  border-left-color: var(--status-border-color, var(--theme-border)) !important;
+}
+
+.theme-swatch-frame {
+  border: 1px solid var(--swatch-border, var(--theme-border)) !important;
+  background-color: var(--swatch-bg, var(--theme-bg)) !important;
+}
+
+.theme-swatch-panel {
+  background-color: var(--swatch-panel, var(--theme-card)) !important;
+}
+
+.theme-swatch-line {
+  background-color: var(--swatch-border, var(--theme-border)) !important;
+}
+
+.theme-spinner-ring {
+  border-color: var(--theme-border) !important;
+  border-top-color: var(--theme-accent) !important;
 }
 
 /* KPI card utility (label + value + trend badge) */
@@ -182,6 +399,8 @@
 html,
 body {
   @apply m-0 font-sans;
+  font-family: var(--font-ui);
+  font-feature-settings: 'calt' 1;
   letter-spacing: -0.15px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -191,7 +410,33 @@ body {
 }
 
 .font-sans {
+  font-family: var(--font-ui);
   letter-spacing: -0.15px;
+}
+
+.font-ui {
+  font-family: var(--font-ui);
+  font-feature-settings: 'calt' 1;
+}
+
+.font-report-ui {
+  font-family: var(--font-report-ui);
+  font-feature-settings: normal;
+}
+
+.brand-wordmark {
+  font-family:
+    'Autaut Grotesk',
+    'Noto Sans SC',
+    -apple-system,
+    system-ui,
+    'Segoe UI',
+    Roboto,
+    Arial,
+    sans-serif;
+  font-feature-settings: 'calt' 1;
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
 }
 
 .inline-code {
@@ -976,7 +1221,6 @@ code {
   --theme-input: #ffffff;
 }
 
-
 /* ============================================================
    Hermes Nous — matches nousresearch.com/hermes-agent chrome
    Dark:  deep teal #041C1C background, cream #ffe6cb accent
@@ -1074,6 +1318,105 @@ code {
   --code-foreground: #16315f;
   --theme-input: #fbfdfb;
 }
+[data-theme='semantier'] {
+  --theme-bg: #0e0f0c;
+  --theme-sidebar: #121311;
+  --theme-panel: #181916;
+  --theme-card: #1e1f1c;
+  --theme-card2: #242522;
+  --theme-border: rgba(69, 71, 69, 0.68);
+  --theme-border-subtle: rgba(69, 71, 69, 0.4);
+  --theme-text: #f0f0ec;
+  --theme-muted: rgba(134, 134, 133, 0.7);
+  --theme-shadow-1: 0 0 0 rgba(0, 0, 0, 0);
+  --theme-shadow-2: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --theme-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --theme-glass: rgba(14, 15, 12, 0.92);
+  --theme-focus: #435ee5;
+  --theme-accent: #9fe870;
+  --theme-accent-secondary: #669542;
+  --theme-accent-subtle: rgba(159, 232, 112, 0.08);
+  --theme-accent-border: rgba(159, 232, 112, 0.25);
+  --theme-toggle-off-bg: #242522;
+  --theme-toggle-off-border: #454745;
+  --theme-toggle-on-bg: #9fe870;
+  --theme-toggle-on-border: #163300;
+  --theme-active: #9fe870;
+  --theme-link: #9fe870;
+  --theme-success: #4f7c64;
+  --theme-warning: #9c6b2f;
+  --theme-danger: #a24b4b;
+  --theme-stripe: rgba(42, 43, 40, 0.35);
+  --theme-header-bg: #121311;
+  --theme-header-border: rgba(42, 43, 40, 0.85);
+  --chat-user-bg: #1e1f1c;
+  --chat-user-border: rgba(159, 232, 112, 0.2);
+  --chat-user-foreground: #f0f0ec;
+  --chat-assistant-bg: #181916;
+  --chat-assistant-border: rgba(42, 43, 40, 0.5);
+  --chat-assistant-foreground: #f0f0ec;
+  --composer-bg: #1e1f1c;
+  --composer-border: rgba(42, 43, 40, 0.85);
+  --composer-placeholder: rgba(134, 134, 133, 0.45);
+  --tool-card-bg: #1a1b18;
+  --tool-card-border: rgba(42, 43, 40, 0.6);
+  --tool-card-title: #f0f0ec;
+  --tool-card-muted: rgba(134, 134, 133, 0.65);
+  --code-bg: #141513;
+  --code-border: rgba(42, 43, 40, 0.5);
+  --code-foreground: #f0f0ec;
+  --theme-input: #181916;
+}
+
+[data-theme='semantier-light'] {
+  --theme-bg: #f5f5f0;
+  --theme-sidebar: #efefea;
+  --theme-panel: #ebebe6;
+  --theme-card: #fafaf7;
+  --theme-card2: #e5e5e0;
+  --theme-border: #d4d8cf;
+  --theme-border-subtle: #e8ebe6;
+  --theme-text: #0e0f0c;
+  --theme-muted: rgba(134, 134, 133, 0.75);
+  --theme-shadow-1: 0 0 0 rgba(0, 0, 0, 0);
+  --theme-shadow-2: 0 1px 2px rgba(14, 15, 12, 0.03);
+  --theme-shadow-3: 0 8px 24px rgba(14, 15, 12, 0.06);
+  --theme-glass: rgba(245, 245, 240, 0.92);
+  --theme-focus: #435ee5;
+  --theme-accent: #9fe870;
+  --theme-accent-secondary: #669542;
+  --theme-accent-subtle: rgba(22, 51, 0, 0.07);
+  --theme-accent-border: rgba(22, 51, 0, 0.18);
+  --theme-toggle-off-bg: #e8ebe6;
+  --theme-toggle-off-border: #868685;
+  --theme-toggle-on-bg: #9fe870;
+  --theme-toggle-on-border: #163300;
+  --theme-active: #163300;
+  --theme-link: #163300;
+  --theme-success: #4f7c64;
+  --theme-warning: #9c6b2f;
+  --theme-danger: #a24b4b;
+  --theme-stripe: rgba(213, 214, 209, 0.35);
+  --theme-header-bg: #efefea;
+  --theme-header-border: rgba(213, 214, 209, 0.85);
+  --chat-user-bg: #e8e8e3;
+  --chat-user-border: rgba(22, 51, 0, 0.18);
+  --chat-user-foreground: #0e0f0c;
+  --chat-assistant-bg: #f0f0ec;
+  --chat-assistant-border: rgba(213, 214, 209, 0.4);
+  --chat-assistant-foreground: #0e0f0c;
+  --composer-bg: #fafaf7;
+  --composer-border: rgba(213, 214, 209, 0.85);
+  --composer-placeholder: rgba(134, 134, 133, 0.5);
+  --tool-card-bg: #ebebe6;
+  --tool-card-border: rgba(213, 214, 209, 0.6);
+  --tool-card-title: #0e0f0c;
+  --tool-card-muted: rgba(134, 134, 133, 0.7);
+  --code-bg: #e5e5e0;
+  --code-border: rgba(213, 214, 209, 0.5);
+  --code-foreground: #0e0f0c;
+  --theme-input: #fafaf7;
+}
 
 [data-theme='hermes-nous'] html,
 [data-theme='hermes-nous'] body,
@@ -1090,7 +1433,11 @@ code {
 [data-theme='hermes-slate'] html,
 [data-theme='hermes-slate'] body,
 [data-theme='hermes-slate'] #root,
-[data-theme='hermes-slate'] .dark {
+[data-theme='hermes-slate'] .dark,
+[data-theme='semantier'] html,
+[data-theme='semantier'] body,
+[data-theme='semantier'] #root,
+[data-theme='semantier'] .dark {
   background-color: var(--theme-bg);
   color: var(--theme-text);
 }
@@ -1110,7 +1457,11 @@ code {
 [data-theme='hermes-slate-light'] html,
 [data-theme='hermes-slate-light'] body,
 [data-theme='hermes-slate-light'] #root,
-[data-theme='hermes-slate-light'] .light {
+[data-theme='hermes-slate-light'] .light,
+[data-theme='semantier-light'] html,
+[data-theme='semantier-light'] body,
+[data-theme='semantier-light'] #root,
+[data-theme='semantier-light'] .light {
   background-color: var(--theme-bg);
   color: var(--theme-text);
 }
@@ -1123,7 +1474,8 @@ code {
 [data-theme='hermes-nous'],
 [data-theme='hermes-official'],
 [data-theme='hermes-classic'],
-[data-theme='hermes-slate'] {
+[data-theme='hermes-slate'],
+[data-theme='semantier'] {
   --color-primary-50: var(--theme-panel);
   --color-primary-100: var(--theme-card);
   --color-primary-200: var(--theme-border);
@@ -1149,7 +1501,8 @@ code {
 [data-theme='hermes-nous-light'],
 [data-theme='hermes-official-light'],
 [data-theme='hermes-classic-light'],
-[data-theme='hermes-slate-light'] {
+[data-theme='hermes-slate-light'],
+[data-theme='semantier-light'] {
   color-scheme: light !important;
   --color-primary-50: var(--theme-card) !important;
   --color-primary-100: var(--theme-card2) !important;
@@ -1183,6 +1536,17 @@ code {
   color: #fff !important;
 }
 
+/* Scroll-to-bottom button icon: light in light theme, dark in dark theme */
+[data-theme$='-light'] .scroll-to-bottom-button,
+[data-theme$='-light'] .scroll-to-bottom-button svg {
+  color: #ffffff !important;
+}
+
+[data-theme$='-dark'] .scroll-to-bottom-button,
+[data-theme$='-dark'] .scroll-to-bottom-button svg {
+  color: #0f172a !important;
+}
+
 /* Composer focus ring for all themes */
 [data-theme] .composer-input:focus-within {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 65%, transparent);
@@ -1199,6 +1563,7 @@ code {
    Use for section headers, metric labels, KPI captions.
    Replaces casual lowercase mid-weight headings. */
 .micro-label {
+  font-family: var(--font-ui);
   text-transform: uppercase;
   letter-spacing: 0.2em;
   font-size: 0.6875rem; /* 11px */
@@ -1255,7 +1620,9 @@ code {
 [data-theme$='-light'] .shadow-lg,
 [data-theme$='-light'] .shadow-xl,
 [data-theme$='-light'] .shadow-2xl {
-  box-shadow: 0 1px 0 rgba(22, 49, 95, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+  box-shadow:
+    0 1px 0 rgba(22, 49, 95, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
 }
 [data-theme$='-light'] .shadow-md {
   box-shadow: 0 1px 0 rgba(22, 49, 95, 0.04) !important;
@@ -1263,6 +1630,57 @@ code {
 [data-theme$='-light'] .shadow-sm,
 [data-theme$='-light'] .shadow-xs {
   box-shadow: none !important;
+}
+
+/* Morandi surface normalization for screens using literal white/neutral utilities */
+[data-theme$='-light'] .bg-white {
+  background-color: var(--theme-card) !important;
+}
+[data-theme$='-light'] .bg-white\/90 {
+  background-color: color-mix(
+    in srgb,
+    var(--theme-card) 90%,
+    transparent
+  ) !important;
+}
+[data-theme$='-light'] .bg-white\/80 {
+  background-color: color-mix(
+    in srgb,
+    var(--theme-card) 80%,
+    transparent
+  ) !important;
+}
+[data-theme$='-light'] .bg-white\/60 {
+  background-color: color-mix(
+    in srgb,
+    var(--theme-card) 60%,
+    transparent
+  ) !important;
+}
+[data-theme$='-light'] .bg-neutral-50,
+[data-theme$='-light'] .bg-neutral-100 {
+  background-color: var(--theme-card2) !important;
+}
+[data-theme$='-light'] .border-neutral-100,
+[data-theme$='-light'] .border-neutral-200,
+[data-theme$='-light'] .border-neutral-300,
+[data-theme$='-light'] .border-white,
+[data-theme$='-light'] .border-black {
+  border-color: var(--theme-border) !important;
+}
+
+[data-theme='semantier'] .border-neutral-700,
+[data-theme='semantier'] .border-neutral-800,
+[data-theme='semantier'] .border-neutral-900,
+[data-theme='semantier'] .border-white,
+[data-theme='semantier'] .border-black {
+  border-color: var(--theme-border) !important;
+}
+[data-theme='semantier'] .bg-neutral-800,
+[data-theme='semantier'] .bg-neutral-900,
+[data-theme='semantier'] .bg-black,
+[data-theme='semantier'] .bg-white {
+  background-color: var(--theme-card) !important;
 }
 
 /* Reserved depth class for genuinely floating UI (modals, popovers, toasts) */
@@ -1288,13 +1706,12 @@ code {
   --radius-editorial-input: 6px;
 }
 
-/* Restrain border-radius on common component patterns in light themes
-   (dark themes can keep their existing softer radii for now to avoid surprise) */
+/* Light-theme radius mapping aligned with design system */
 [data-theme$='-light'] .rounded-2xl {
-  border-radius: 8px !important;
+  border-radius: var(--radius-card, 20px) !important;
 }
 [data-theme$='-light'] .rounded-3xl {
-  border-radius: 10px !important;
+  border-radius: var(--radius-section, 32px) !important;
 }
 
 /* Fluid serif numeral for hero/empty-state metrics (optional opt-in) */
@@ -1345,6 +1762,12 @@ code {
 [data-theme$='-light'] .bg-violet-500,
 [data-theme$='-light'] .bg-violet-600 {
   background-color: var(--theme-accent) !important;
+}
+[data-theme$='-light'] .bg-indigo-500,
+[data-theme$='-light'] .bg-indigo-600,
+[data-theme$='-light'] .bg-violet-500,
+[data-theme$='-light'] .bg-violet-600 {
+  color: #ffffff !important;
 }
 [data-theme$='-light'] .border-indigo-200,
 [data-theme$='-light'] .border-indigo-300,

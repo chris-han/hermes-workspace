@@ -21,13 +21,37 @@ import { cn } from '@/lib/utils'
 import { writeTextToClipboard } from '@/lib/clipboard'
 import { toast } from '@/components/ui/toast'
 
-type SkillsTab = 'installed' | 'marketplace'
+type SkillsTab = 'installed' | 'marketplace' | 'toolsets'
 type SkillsSort = 'name' | 'category'
+type SkillSourceFilter = 'All' | 'User' | 'Shared' | 'Built-in'
+
+type DisplayControl = {
+  label: string
+  value: string
+}
 
 type SecurityRisk = {
   level: 'safe' | 'low' | 'medium' | 'high'
   flags: Array<string>
   score: number
+}
+
+type SkillConfigFieldOption = {
+  label: string
+  value: string
+}
+
+type SkillConfigField = {
+  key: string
+  label?: string
+  description?: string
+  prompt?: string
+  placeholder?: string
+  type?: 'string' | 'number' | 'boolean' | 'select'
+  required?: boolean
+  secret?: boolean
+  default?: unknown
+  options?: Array<SkillConfigFieldOption>
 }
 
 type SkillSummary = {
@@ -46,7 +70,13 @@ type SkillSummary = {
   sourcePath: string
   installed: boolean
   enabled: boolean
+  sourceTier?: string
+  sourceLabel?: string
+  canEdit?: boolean
+  canUninstall?: boolean
+  canModify?: boolean
   featuredGroup?: string
+  configFields?: Array<SkillConfigField>
   security?: SecurityRisk
 }
 
@@ -55,6 +85,33 @@ type SkillsApiResponse = {
   total: number
   page: number
   categories: Array<string>
+}
+
+type ToolsetSummary = {
+  id: string
+  name: string
+  label: string
+  description: string
+  tools: Array<string>
+  enabled: boolean
+  available: boolean
+  configured: boolean
+  sourceTier?: string
+  sourceLabel?: string
+  builtin?: boolean
+  canModify?: boolean
+}
+
+type SkillAction = 'install' | 'uninstall' | 'toggle'
+
+type SkillOverride = {
+  installed?: boolean
+  enabled?: boolean
+}
+
+type PendingSkillAction = {
+  skillId: string
+  action: SkillAction
 }
 
 type SkillSearchTier = 0 | 1 | 2 | 3
@@ -104,6 +161,82 @@ const DEFAULT_CATEGORIES = [
   'Finance & Crypto',
 ]
 
+const SOURCE_FILTERS: Array<SkillSourceFilter> = [
+  'All',
+  'User',
+  'Shared',
+  'Built-in',
+]
+
+const TAB_OPTIONS: Array<DisplayControl & { value: SkillsTab }> = [
+  { label: 'Installed', value: 'installed' },
+  { label: 'Toolsets', value: 'toolsets' },
+  { label: 'Marketplace', value: 'marketplace' },
+]
+
+function resolveSourceTier(item: {
+  sourceTier?: string
+  sourceLabel?: string
+  sourcePath?: string
+  builtin?: boolean
+  canEdit?: boolean
+  canUninstall?: boolean
+  canModify?: boolean
+}): string | undefined {
+  if (item.sourceTier) return item.sourceTier
+  if (item.builtin) return 'builtin'
+  if (item.canEdit || item.canUninstall || item.canModify) return 'workspace'
+
+  const sourceLabel = item.sourceLabel?.toLowerCase()
+  if (sourceLabel === 'user' || sourceLabel === 'workspace') return 'workspace'
+  if (sourceLabel === 'application shared') return 'application'
+  if (sourceLabel === 'hermes built-in') return 'builtin'
+
+  const sourcePath = item.sourcePath?.replaceAll('\\', '/')
+  if (sourcePath?.includes('/.hermes/skills/')) return 'workspace'
+
+  return undefined
+}
+
+function matchesSourceFilter(
+  item: {
+    sourceTier?: string
+    sourceLabel?: string
+    sourcePath?: string
+    builtin?: boolean
+    canEdit?: boolean
+    canUninstall?: boolean
+    canModify?: boolean
+  },
+  filter: SkillSourceFilter,
+): boolean {
+  const sourceTier = resolveSourceTier(item)
+
+  if (filter === 'All') return true
+  if (filter === 'User') return sourceTier === 'workspace'
+  if (filter === 'Built-in') return sourceTier === 'builtin'
+  return sourceTier === 'application' || sourceTier === 'external'
+}
+
+function matchesToolsetSearch(
+  toolset: ToolsetSummary,
+  rawSearch: string,
+): boolean {
+  const search = rawSearch.trim().toLowerCase()
+  if (!search) return true
+
+  return [
+    toolset.name,
+    toolset.label,
+    toolset.description,
+    toolset.sourceLabel || '',
+    ...toolset.tools,
+  ]
+    .join('\n')
+    .toLowerCase()
+    .includes(search)
+}
+
 function resolveSkillSearchTier(
   skill: SkillSummary,
   query: string,
@@ -126,18 +259,142 @@ function resolveSkillSearchTier(
   return 3
 }
 
+function applySkillOverrides(
+  skills: Array<SkillSummary>,
+  overrides: Record<string, SkillOverride>,
+): Array<SkillSummary> {
+  return skills.map((skill) => {
+    const override = overrides[skill.id]
+    if (!override) return skill
+
+    return {
+      ...skill,
+      installed: override.installed ?? skill.installed,
+      enabled: override.enabled ?? skill.enabled,
+    }
+  })
+}
+
+type InstallA2UiFieldNode = {
+  key: string
+  label: string
+  description: string
+  required: boolean
+  control: 'text' | 'number' | 'boolean' | 'select'
+  secret: boolean
+  placeholder: string
+  options: Array<SkillConfigFieldOption>
+  defaultValue: string
+}
+
+function labelFromSkillConfigKey(key: string): string {
+  const tail = key.split('.').pop() || key
+  return tail
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function buildInstallA2UiSchema(skill: SkillSummary | null): Array<InstallA2UiFieldNode> {
+  const fields = skill?.configFields || []
+  return fields
+    .filter((field) => field.key)
+    .map((field) => {
+      const control =
+        field.type === 'boolean'
+          ? 'boolean'
+          : field.type === 'number'
+            ? 'number'
+            : field.type === 'select'
+              ? 'select'
+              : 'text'
+      const defaultValue =
+        field.default === undefined || field.default === null
+          ? ''
+          : String(field.default)
+
+      return {
+        key: field.key,
+        label: field.label || labelFromSkillConfigKey(field.key),
+        description: field.description || field.prompt || '',
+        required: Boolean(field.required),
+        control,
+        secret: Boolean(field.secret),
+        placeholder: field.placeholder || '',
+        options: field.options || [],
+        defaultValue,
+      }
+    })
+}
+
+function buildInitialInstallConfigValues(
+  schema: Array<InstallA2UiFieldNode>,
+): Record<string, string> {
+  return schema.reduce<Record<string, string>>((acc, node) => {
+    acc[node.key] = node.defaultValue
+    return acc
+  }, {})
+}
+
+function buildInstallConfigPayload(
+  schema: Array<InstallA2UiFieldNode>,
+  values: Record<string, string>,
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {}
+  for (const node of schema) {
+    const raw = (values[node.key] || '').trim()
+    if (!raw) continue
+
+    if (node.control === 'boolean') {
+      payload[node.key] = raw.toLowerCase() === 'true'
+      continue
+    }
+    if (node.control === 'number') {
+      const numeric = Number(raw)
+      if (Number.isFinite(numeric)) {
+        payload[node.key] = numeric
+      }
+      continue
+    }
+    payload[node.key] = raw
+  }
+  return payload
+}
+
 export function SkillsScreen() {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<SkillsTab>('installed')
   const [searchInput, setSearchInput] = useState('')
   const [debouncedMarketplaceSearch, setDebouncedMarketplaceSearch] =
     useState('')
+  const [sourceFilter, setSourceFilter] = useState<SkillSourceFilter>('All')
   const [category, setCategory] = useState('All')
   const [sort, setSort] = useState<SkillsSort>('name')
   const [page, setPage] = useState(1)
-  const [actionSkillId, setActionSkillId] = useState<string | null>(null)
+  const [pendingAction, setPendingAction] = useState<PendingSkillAction | null>(
+    null,
+  )
+  const [skillOverrides, setSkillOverrides] = useState<
+    Record<string, SkillOverride>
+  >({})
   const [selectedSkill, setSelectedSkill] = useState<SkillSummary | null>(null)
+  const [selectedToolset, setSelectedToolset] = useState<ToolsetSummary | null>(
+    null,
+  )
+  const [installConfigValues, setInstallConfigValues] = useState<
+    Record<string, string>
+  >({})
   const [actionError, setActionError] = useState<string | null>(null)
+
+  const installConfigSchema = useMemo(
+    () => buildInstallA2UiSchema(selectedSkill),
+    [selectedSkill],
+  )
+
+  useEffect(() => {
+    setInstallConfigValues(buildInitialInstallConfigValues(installConfigSchema))
+  }, [installConfigSchema, selectedSkill?.id])
 
   useEffect(() => {
     if (tab !== 'marketplace') return
@@ -153,6 +410,7 @@ export function SkillsScreen() {
 
   const skillsQuery = useQuery({
     queryKey: ['skills-browser', tab, searchInput, category, page, sort],
+    enabled: tab !== 'toolsets',
     queryFn: async function fetchSkills(): Promise<SkillsApiResponse> {
       const params = new URLSearchParams()
       params.set('tab', tab)
@@ -170,6 +428,29 @@ export function SkillsScreen() {
         throw new Error(payload.error || 'Failed to fetch skills')
       }
       return payload
+    },
+  })
+
+  const toolsetsQuery = useQuery({
+    queryKey: ['skills-browser', 'toolsets'],
+    enabled: tab === 'toolsets',
+    queryFn: async function fetchToolsets(): Promise<Array<ToolsetSummary>> {
+      const response = await fetch('/api/tools/toolsets')
+      const payload = (await response.json().catch(() => [])) as
+        | Array<ToolsetSummary>
+        | { error?: string; detail?: string }
+
+      if (!response.ok) {
+        const record =
+          payload && !Array.isArray(payload)
+            ? (payload as { error?: string; detail?: string })
+            : {}
+        throw new Error(
+          record.error || record.detail || 'Failed to load toolsets',
+        )
+      }
+
+      return Array.isArray(payload) ? payload : []
     },
   })
 
@@ -211,7 +492,10 @@ export function SkillsScreen() {
 
   const skills = useMemo(
     function resolveVisibleSkills() {
-      const sourceSkills = skillsQuery.data?.skills || []
+      const sourceSkills = applySkillOverrides(
+        skillsQuery.data?.skills || [],
+        skillOverrides,
+      ).filter((skill) => matchesSourceFilter(skill, sourceFilter))
       const normalizedQuery = searchInput.trim().toLowerCase()
       if (!normalizedQuery) {
         return sourceSkills
@@ -233,12 +517,14 @@ export function SkillsScreen() {
           return entry.skill
         })
     },
-    [searchInput, skillsQuery.data?.skills],
+    [searchInput, skillOverrides, skillsQuery.data?.skills, sourceFilter],
   )
 
   const marketplaceSkills = useMemo<Array<SkillSummary>>(
     function resolveMarketplaceSkills() {
-      return (hubQuery.data?.results || []).map(function mapHubSkill(skill) {
+      const sourceSkills: Array<SkillSummary> = (
+        hubQuery.data?.results || []
+      ).map(function mapHubSkill(skill) {
         // Gateway returns: name, description, source, identifier, trust_level, repo, path, tags, extra, installed
         const skillId = skill.id || skill.name
         const author =
@@ -270,8 +556,7 @@ export function SkillsScreen() {
           icon:
             skill.source === 'github'
               ? '🐙'
-              : skill.source === 'official' ||
-                  skill.trust_level === 'builtin'
+              : skill.source === 'official' || skill.trust_level === 'builtin'
                 ? '✅'
                 : skill.source === 'skills-sh'
                   ? '📦'
@@ -288,9 +573,20 @@ export function SkillsScreen() {
             .filter(Boolean)
             .join('\n\n'),
           fileCount: 0,
-          sourcePath: skill.identifier || (typeof homepage === 'string' ? homepage : '') || skill.source,
+          sourcePath:
+            skill.identifier ||
+            (typeof homepage === 'string' ? homepage : '') ||
+            skill.source,
           installed: skill.installed,
           enabled: skill.installed,
+          sourceTier:
+            skill.source === 'official' || skill.trust_level === 'builtin'
+              ? 'builtin'
+              : 'external',
+          sourceLabel:
+            skill.source === 'official' || skill.trust_level === 'builtin'
+              ? 'Hermes Built-in'
+              : 'Shared',
           featuredGroup: undefined,
           security: {
             level:
@@ -298,14 +594,31 @@ export function SkillsScreen() {
                 ? 'safe'
                 : skill.trust_level === 'trusted'
                   ? 'safe'
-                  : 'review',
+                  : 'medium',
             flags: [],
             score: 0,
           },
         }
       })
+
+      return applySkillOverrides(sourceSkills, skillOverrides)
     },
-    [hubQuery.data?.results],
+    [hubQuery.data?.results, skillOverrides],
+  )
+
+  const toolsets = useMemo(
+    function resolveVisibleToolsets() {
+      return (toolsetsQuery.data || [])
+        .filter((toolset) => matchesSourceFilter(toolset, sourceFilter))
+        .filter((toolset) => matchesToolsetSearch(toolset, searchInput))
+        .sort((left, right) => left.label.localeCompare(right.label))
+    },
+    [searchInput, sourceFilter, toolsetsQuery.data],
+  )
+
+  const visibleSourceFilters = useMemo(
+    () => SOURCE_FILTERS,
+    [tab],
   )
 
   async function copyCommandAndToast(command: string, message: string) {
@@ -325,15 +638,16 @@ export function SkillsScreen() {
   }
 
   async function runSkillAction(
-    action: 'install' | 'uninstall' | 'toggle',
+    action: SkillAction,
     payload: {
       skillId: string
       enabled?: boolean
       source?: HubSkill['source']
+      config?: Record<string, unknown>
     },
   ) {
     setActionError(null)
-    setActionSkillId(payload.skillId)
+    setPendingAction({ skillId: payload.skillId, action })
 
     try {
       const endpoint =
@@ -353,16 +667,19 @@ export function SkillsScreen() {
           identifier: payload.skillId,
           enabled: payload.enabled,
           source: payload.source,
+          config: payload.config || {},
         }),
       })
 
       const data = (await response.json()) as {
         error?: string
+        detail?: string
         command?: string
         ok?: boolean
       }
+      const actionError = data.error || data.detail || 'Action failed'
       if (!response.ok) {
-        throw new Error(data.error || 'Action failed')
+        throw new Error(actionError)
       }
 
       if (
@@ -372,17 +689,45 @@ export function SkillsScreen() {
         if (data.command) {
           await copyCommandAndToast(
             data.command,
-            data.error || 'Gateway action unavailable.',
+            actionError || 'Gateway action unavailable.',
           )
           return
         }
-        throw new Error(data.error || 'Action failed')
+        throw new Error(actionError)
       }
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['skills-browser'] }),
         queryClient.invalidateQueries({ queryKey: ['skills-hub-search'] }),
       ])
+      setSkillOverrides(function updateSkillOverrides(current) {
+        const next = { ...current }
+        const existing = next[payload.skillId] || {}
+
+        if (action === 'install') {
+          next[payload.skillId] = {
+            ...existing,
+            installed: true,
+            enabled: true,
+          }
+          return next
+        }
+
+        if (action === 'uninstall') {
+          next[payload.skillId] = {
+            ...existing,
+            installed: false,
+            enabled: false,
+          }
+          return next
+        }
+
+        next[payload.skillId] = {
+          ...existing,
+          enabled: payload.enabled ?? existing.enabled,
+        }
+        return next
+      })
       setSelectedSkill(function updateSelectedSkill(current) {
         if (!current || current.id !== payload.skillId) return current
         if (action === 'install') {
@@ -409,7 +754,7 @@ export function SkillsScreen() {
       setActionError(errorMessage)
       toast(errorMessage, { type: 'error', icon: '❌' })
     } finally {
-      setActionSkillId(null)
+      setPendingAction(null)
     }
   }
 
@@ -417,15 +762,18 @@ export function SkillsScreen() {
     const parsedTab: SkillsTab =
       nextTab === 'installed' ||
       nextTab === 'marketplace' ||
-      nextTab === 'featured'
+      nextTab === 'toolsets'
         ? nextTab
         : 'installed'
 
     setTab(parsedTab)
     setPage(1)
-    if (parsedTab !== 'marketplace') {
+    if (parsedTab !== 'installed') {
       setCategory('All')
       setSort('name')
+    }
+    if (parsedTab === 'marketplace') {
+      setSourceFilter('All')
     }
   }
 
@@ -444,61 +792,118 @@ export function SkillsScreen() {
     setPage(1)
   }
 
+  function openInstallFlow(skill: SkillSummary, source?: HubSkill['source']) {
+    if (skill.configFields && skill.configFields.length > 0) {
+      setSelectedSkill(skill)
+      toast('This skill requires install config. Complete the A2UI form to continue.', {
+        type: 'warning',
+        icon: '🧩',
+      })
+      return
+    }
+
+    void runSkillAction('install', { skillId: skill.id, source })
+  }
+
+  function handleInstallFromDialog(skill: SkillSummary) {
+    if (installConfigSchema.length === 0) {
+      void runSkillAction('install', { skillId: skill.id })
+      return
+    }
+
+    const missingRequired = installConfigSchema
+      .filter((node) => node.required)
+      .filter((node) => !(installConfigValues[node.key] || '').trim())
+
+    if (missingRequired.length > 0) {
+      const firstMissing = missingRequired[0]?.label || missingRequired[0]?.key
+      const message = `Missing required field: ${firstMissing}`
+      setActionError(message)
+      toast(message, { type: 'error', icon: '❌' })
+      return
+    }
+
+    const configPayload = buildInstallConfigPayload(
+      installConfigSchema,
+      installConfigValues,
+    )
+    void runSkillAction('install', {
+      skillId: skill.id,
+      config: configPayload,
+    })
+  }
+
   return (
     <div className="min-h-full overflow-y-auto bg-surface text-ink">
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-4 py-6 pb-[calc(var(--tabbar-h,80px)+1.5rem)] sm:px-6 lg:px-8">
-        <header className="rounded-2xl border border-primary-200 bg-primary-50/85 p-4 backdrop-blur-xl">
+        <header className="rounded-card border border-border bg-primary-50/85 p-4 backdrop-blur-xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1.5">
               <p className="text-xs font-medium uppercase text-primary-500 tabular-nums">
-                Hermes Workspace Marketplace
+                Semantier Marketplace
               </p>
               <h1 className="text-2xl font-medium text-ink text-balance sm:text-3xl">
-                Skills Browser
+                Skills & Toolsets
               </h1>
               <p className="text-sm text-primary-500 text-pretty sm:text-base">
-                Discover, install, and manage skills across your local workspace
-                and Skills Hub.
+                Discover, install, and inspect workspace skills plus the
+                toolsets available to the active Semantier runtime.
               </p>
             </div>
           </div>
         </header>
 
-        <section className="rounded-2xl border border-primary-200 bg-primary-50/80 p-3 backdrop-blur-xl sm:p-4">
+        <section className="rounded-card border border-border bg-primary-50/80 p-3 backdrop-blur-xl sm:p-4">
           <Tabs value={tab} onValueChange={handleTabChange}>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3">
               <TabsList
-                className="w-full rounded-xl border border-primary-200 bg-primary-100/60 p-1 sm:w-auto"
-                variant="default"
+                className="w-full justify-start gap-2 border-b border-border bg-transparent px-0"
+                variant="underline"
               >
-                <TabsTab value="installed" className="flex-1 sm:min-w-[132px]">
-                  Installed
-                </TabsTab>
-                <TabsTab
-                  value="marketplace"
-                  className="flex-1 sm:min-w-[168px]"
-                >
-                  Marketplace
-                </TabsTab>
-
+                {TAB_OPTIONS.map((option) => (
+                  <TabsTab
+                    key={option.value}
+                    value={option.value}
+                    className="min-w-0 rounded-none px-1 text-primary-500 data-active:text-ink [&[data-active]_.tab-badge]:border-primary-300 [&[data-active]_.tab-badge]:bg-primary-100 [&[data-active]_.tab-badge]:text-ink"
+                  >
+                    <span>{option.label}</span>
+                    <span className="tab-badge inline-flex min-w-[1.25rem] items-center justify-center rounded-full border border-border bg-primary-50 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-primary-500 tabular-nums">
+                      {option.value === 'installed'
+                        ? (skillsQuery.data?.total || 0).toLocaleString()
+                        : option.value === 'toolsets'
+                          ? (toolsetsQuery.data?.length || 0).toLocaleString()
+                          : (
+                              hubQuery.data?.total ||
+                              hubQuery.data?.results?.length ||
+                              0
+                            ).toLocaleString()}
+                    </span>
+                  </TabsTab>
+                ))}
               </TabsList>
 
-              {tab !== 'marketplace' ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    value={searchInput}
-                    onChange={(event) => handleSearchChange(event.target.value)}
-                    placeholder="Search by name, tags, or description"
-                    className="h-9 w-full min-w-0 rounded-lg border border-primary-200 bg-primary-100/60 px-3 text-sm text-ink outline-none transition-colors focus:border-primary sm:min-w-[220px]"
-                  />
+              <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <input
+                  value={searchInput}
+                  onChange={(event) => handleSearchChange(event.target.value)}
+                  placeholder={
+                    tab === 'toolsets'
+                      ? 'Search by toolset, source, or tool name'
+                      : tab === 'marketplace'
+                        ? 'Search Skills Hub, GitHub, and local fallback'
+                        : 'Search by name, tags, or description'
+                  }
+                  className="h-10 w-full min-w-0 rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none transition-colors focus:border-primary"
+                />
 
+                <div className="flex flex-wrap items-center gap-2">
                   {tab === 'installed' ? (
                     <select
                       value={category}
                       onChange={(event) =>
                         handleCategoryChange(event.target.value)
                       }
-                      className="h-9 rounded-lg border border-primary-200 bg-primary-100/60 px-3 text-sm text-ink outline-none"
+                      className="h-10 rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
                     >
                       {categories.map((item) => (
                         <option key={item} value={item}>
@@ -518,19 +923,57 @@ export function SkillsScreen() {
                             : 'name',
                         )
                       }
-                      className="h-9 rounded-lg border border-primary-200 bg-primary-100/60 px-3 text-sm text-ink outline-none"
+                      className="h-10 rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
                     >
                       <option value="name">Name A-Z</option>
                       <option value="category">Category</option>
                     </select>
                   ) : null}
+
+                  {tab === 'marketplace' ? (
+                    <div className="text-xs text-primary-500">
+                      Source: {hubQuery.data?.source || 'hub'}
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {visibleSourceFilters.map((filter) => {
+                const active = filter === sourceFilter
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => {
+                      setSourceFilter(filter)
+                      setPage(1)
+                    }}
+                    className={cn(
+                      'rounded-button border px-3 py-1.5 text-xs font-semibold transition-colors',
+                      active
+                        ? 'border-primary/40 bg-primary/15 text-primary'
+                        : 'border-border bg-primary-100/50 text-primary-500 hover:border-primary-300 hover:text-ink',
+                    )}
+                  >
+                    {filter}
+                  </button>
+                )
+              })}
             </div>
 
             {actionError ? (
-              <p className="rounded-lg border border-primary-200 bg-primary-100/60 px-3 py-2 text-sm text-ink">
+              <p className="rounded-lg border border-border bg-primary-100/60 px-3 py-2 text-sm text-ink">
                 {actionError}
+              </p>
+            ) : null}
+
+            {tab === 'toolsets' && toolsetsQuery.error ? (
+              <p className="rounded-lg border border-border bg-primary-100/60 px-3 py-2 text-sm text-ink">
+                {toolsetsQuery.error instanceof Error
+                  ? toolsetsQuery.error.message
+                  : 'Failed to load toolsets.'}
               </p>
             ) : null}
 
@@ -538,10 +981,10 @@ export function SkillsScreen() {
               <SkillsGrid
                 skills={skills}
                 loading={skillsQuery.isPending}
-                actionSkillId={actionSkillId}
+                pendingAction={pendingAction}
                 tab="installed"
                 onOpenDetails={setSelectedSkill}
-                onInstall={(skillId) => runSkillAction('install', { skillId })}
+                onInstall={(skill) => openInstallFlow(skill)}
                 onUninstall={(skillId) =>
                   runSkillAction('uninstall', { skillId })
                 }
@@ -552,18 +995,6 @@ export function SkillsScreen() {
             </TabsPanel>
 
             <TabsPanel value="marketplace" className="space-y-3 pt-2">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <input
-                  value={searchInput}
-                  onChange={(event) => handleSearchChange(event.target.value)}
-                  placeholder="Search Skills Hub, GitHub, and local fallback"
-                  className="h-10 w-full rounded-lg border border-primary-200 bg-primary-100/60 px-3 text-sm text-ink outline-none transition-colors focus:border-primary"
-                />
-                <div className="text-xs text-primary-500 sm:text-right">
-                  Source: {hubQuery.data?.source || 'hub'}
-                </div>
-              </div>
-
               {hubQuery.error ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {hubQuery.error instanceof Error
@@ -582,7 +1013,7 @@ export function SkillsScreen() {
               <SkillsGrid
                 skills={marketplaceSkills}
                 loading={hubQuery.isPending}
-                actionSkillId={actionSkillId}
+                pendingAction={pendingAction}
                 tab="marketplace"
                 emptyState={{
                   title: searchInput.trim()
@@ -593,14 +1024,11 @@ export function SkillsScreen() {
                     : 'Start typing to search Skills Hub and other skill sources.',
                 }}
                 onOpenDetails={setSelectedSkill}
-                onInstall={(skillId) => {
-                  const skill = hubQuery.data?.results.find(
-                    (entry) => entry.id === skillId,
+                onInstall={(skill) => {
+                  const hubSkill = hubQuery.data?.results.find(
+                    (entry) => entry.id === skill.id,
                   )
-                  runSkillAction('install', {
-                    skillId,
-                    source: skill?.source,
-                  })
+                  openInstallFlow(skill, hubSkill?.source)
                 }}
                 onUninstall={(skillId) =>
                   runSkillAction('uninstall', { skillId })
@@ -610,11 +1038,19 @@ export function SkillsScreen() {
                 }
               />
             </TabsPanel>
+
+            <TabsPanel value="toolsets" className="pt-2">
+              <ToolsetsGrid
+                toolsets={toolsets}
+                loading={toolsetsQuery.isPending}
+                onOpenDetails={setSelectedToolset}
+              />
+            </TabsPanel>
           </Tabs>
         </section>
 
-        {tab !== 'marketplace' ? (
-          <footer className="flex items-center justify-between rounded-xl border border-primary-200 bg-primary-50/80 px-3 py-2.5 text-sm text-primary-500 tabular-nums">
+        {tab === 'installed' ? (
+          <footer className="flex items-center justify-between rounded-card border border-border bg-primary-50/80 px-3 py-2.5 text-sm text-primary-500 tabular-nums">
             <span>
               {(skillsQuery.data?.total || 0).toLocaleString()} total skills
             </span>
@@ -642,6 +1078,14 @@ export function SkillsScreen() {
               </Button>
             </div>
           </footer>
+        ) : tab === 'toolsets' ? (
+          <footer className="flex items-center justify-between rounded-card border border-border bg-primary-50/80 px-3 py-2.5 text-sm text-primary-500 tabular-nums">
+            <span>{toolsets.length.toLocaleString()} visible toolsets</span>
+            <span>
+              {(toolsetsQuery.data?.length || 0).toLocaleString()} total in
+              runtime
+            </span>
+          </footer>
         ) : null}
       </div>
 
@@ -653,10 +1097,10 @@ export function SkillsScreen() {
           }
         }}
       >
-        <DialogContent className="w-[min(960px,95vw)] border-primary-200 bg-primary-50/95 backdrop-blur-sm">
+        <DialogContent className="rounded-card w-[min(960px,95vw)] border-border bg-primary-50/95 backdrop-blur-sm">
           {selectedSkill ? (
             <div className="flex max-h-[85vh] flex-col">
-              <div className="border-b border-primary-200 px-5 py-4">
+              <div className="border-b border-border px-5 py-4">
                 <DialogTitle className="text-balance">
                   {selectedSkill.icon} {selectedSkill.name}
                 </DialogTitle>
@@ -665,7 +1109,7 @@ export function SkillsScreen() {
                   {selectedSkill.fileCount.toLocaleString()} files
                 </DialogDescription>
                 {selectedSkill.security && (
-                  <div className="mt-3 rounded-xl border border-primary-200 bg-primary-50/80 overflow-hidden">
+                  <div className="mt-3 overflow-hidden rounded-card border border-border bg-primary-50/80">
                     <SecurityBadge
                       security={selectedSkill.security}
                       compact={false}
@@ -696,19 +1140,94 @@ export function SkillsScreen() {
                         selectedSkill.triggers.slice(0, 8).map((trigger) => (
                           <span
                             key={trigger}
-                            className="rounded-md border border-primary-200 bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500"
+                            className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500"
                           >
                             {trigger}
                           </span>
                         ))
                       ) : (
-                        <span className="rounded-md border border-primary-200 bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                        <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
                           No triggers listed
                         </span>
                       )}
                     </div>
 
-                    <article className="rounded-xl border border-primary-200 bg-primary-100/30 p-4 backdrop-blur-sm">
+                    {!selectedSkill.installed && installConfigSchema.length > 0 ? (
+                      <section className="rounded-card border border-border bg-primary-50/80 p-4 backdrop-blur-sm">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-500">
+                          Install Configuration (A2UI)
+                        </p>
+                        <p className="mt-1 text-sm text-primary-500">
+                          This skill declares configuration fields that are stored under skills.config.* during install.
+                        </p>
+
+                        <div className="mt-3 space-y-3">
+                          {installConfigSchema.map((node) => (
+                            <label key={node.key} className="block space-y-1.5">
+                              <span className="text-sm font-medium text-ink">
+                                {node.label}
+                                {node.required ? (
+                                  <span className="ml-1 text-red-600">*</span>
+                                ) : null}
+                              </span>
+                              {node.description ? (
+                                <p className="text-xs text-primary-500">{node.description}</p>
+                              ) : null}
+
+                              {node.control === 'boolean' ? (
+                                <select
+                                  value={installConfigValues[node.key] || ''}
+                                  onChange={(event) =>
+                                    setInstallConfigValues((current) => ({
+                                      ...current,
+                                      [node.key]: event.target.value,
+                                    }))
+                                  }
+                                  className="h-10 w-full rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
+                                >
+                                  <option value="">Select</option>
+                                  <option value="true">True</option>
+                                  <option value="false">False</option>
+                                </select>
+                              ) : node.control === 'select' ? (
+                                <select
+                                  value={installConfigValues[node.key] || ''}
+                                  onChange={(event) =>
+                                    setInstallConfigValues((current) => ({
+                                      ...current,
+                                      [node.key]: event.target.value,
+                                    }))
+                                  }
+                                  className="h-10 w-full rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
+                                >
+                                  <option value="">Select</option>
+                                  {node.options.map((option) => (
+                                    <option key={`${node.key}-${option.value}`} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  type={node.secret ? 'password' : node.control === 'number' ? 'number' : 'text'}
+                                  value={installConfigValues[node.key] || ''}
+                                  onChange={(event) =>
+                                    setInstallConfigValues((current) => ({
+                                      ...current,
+                                      [node.key]: event.target.value,
+                                    }))
+                                  }
+                                  placeholder={node.placeholder || node.key}
+                                  className="h-10 w-full rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
+                                />
+                              )}
+                            </label>
+                          ))}
+                        </div>
+                      </section>
+                    ) : null}
+
+                    <article className="rounded-card border border-border bg-primary-100/30 p-4 backdrop-blur-sm">
                       <Markdown>
                         {selectedSkill.content ||
                           `# ${selectedSkill.name}\n\n${selectedSkill.description}`}
@@ -721,7 +1240,7 @@ export function SkillsScreen() {
                 </ScrollAreaScrollbar>
               </ScrollAreaRoot>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-primary-200 px-5 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-3">
                 <p className="text-sm text-primary-500 text-pretty">
                   Source:{' '}
                   <code className="inline-code">
@@ -733,24 +1252,32 @@ export function SkillsScreen() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={actionSkillId === selectedSkill.id}
+                      disabled={
+                        pendingAction?.skillId === selectedSkill.id ||
+                        selectedSkill.canUninstall === false
+                      }
                       onClick={() => {
                         runSkillAction('uninstall', {
                           skillId: selectedSkill.id,
                         })
                       }}
                     >
-                      Uninstall
+                      {selectedSkill.canUninstall === false
+                        ? 'Read only'
+                        : 'Uninstall'}
                     </Button>
                   ) : (
                     <Button
                       size="sm"
-                      disabled={actionSkillId === selectedSkill.id}
-                      onClick={() =>
-                        runSkillAction('install', { skillId: selectedSkill.id })
-                      }
+                      disabled={pendingAction?.skillId === selectedSkill.id}
+                      onClick={() => handleInstallFromDialog(selectedSkill)}
                     >
-                      Install
+                      {pendingAction?.skillId === selectedSkill.id &&
+                      pendingAction.action === 'install'
+                        ? 'Installing…'
+                        : installConfigSchema.length > 0
+                          ? 'Install With Config'
+                          : 'Install'}
                     </Button>
                   )}
                   <Button
@@ -766,6 +1293,91 @@ export function SkillsScreen() {
           ) : null}
         </DialogContent>
       </DialogRoot>
+
+      <DialogRoot
+        open={Boolean(selectedToolset)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedToolset(null)
+          }
+        }}
+      >
+        <DialogContent className="rounded-card w-[min(820px,95vw)] border-border bg-primary-50/95 backdrop-blur-sm">
+          {selectedToolset ? (
+            <div className="flex max-h-[85vh] flex-col">
+              <div className="border-b border-border px-5 py-4">
+                <DialogTitle className="text-balance">
+                  {selectedToolset.label}
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-pretty">
+                  {selectedToolset.sourceLabel || 'Toolset'} •{' '}
+                  {selectedToolset.tools.length.toLocaleString()} tools
+                </DialogDescription>
+              </div>
+
+              <ScrollAreaRoot className="h-[52vh]">
+                <ScrollAreaViewport className="px-5 py-4">
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                        {selectedToolset.enabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                      <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                        {selectedToolset.configured
+                          ? 'Configured'
+                          : 'No extra config'}
+                      </span>
+                      {selectedToolset.sourceLabel ? (
+                        <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                          {selectedToolset.sourceLabel}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <article className="rounded-xl border border-border bg-primary-100/30 p-4 backdrop-blur-sm">
+                      <p className="text-sm leading-relaxed text-primary-600">
+                        {selectedToolset.description}
+                      </p>
+                    </article>
+
+                    <div className="rounded-xl border border-border bg-primary-100/30 p-4 backdrop-blur-sm">
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-primary-500">
+                        Included Tools
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedToolset.tools.map((tool) => (
+                          <span
+                            key={tool}
+                            className="rounded-md border border-border bg-primary-50/80 px-2 py-0.5 text-xs text-primary-600"
+                          >
+                            {tool}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </ScrollAreaViewport>
+                <ScrollAreaScrollbar>
+                  <ScrollAreaThumb />
+                </ScrollAreaScrollbar>
+              </ScrollAreaRoot>
+
+              <div className="flex items-center justify-between gap-2 border-t border-border px-5 py-3">
+                <p className="text-sm text-primary-500 text-pretty">
+                  Runtime toolsets are currently read-only in the workspace UI.
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedToolset(null)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </DialogRoot>
     </div>
   )
 }
@@ -773,16 +1385,22 @@ export function SkillsScreen() {
 type SkillsGridProps = {
   skills: Array<SkillSummary>
   loading: boolean
-  actionSkillId: string | null
+  pendingAction: PendingSkillAction | null
   tab: 'installed' | 'marketplace'
   emptyState?: {
     title: string
     description: string
   }
   onOpenDetails: (skill: SkillSummary) => void
-  onInstall: (skillId: string) => void
+  onInstall: (skill: SkillSummary) => void
   onUninstall: (skillId: string) => void
   onToggle: (skillId: string, enabled: boolean) => void
+}
+
+type ToolsetsGridProps = {
+  toolsets: Array<ToolsetSummary>
+  loading: boolean
+  onOpenDetails: (toolset: ToolsetSummary) => void
 }
 
 const SECURITY_BADGE: Record<
@@ -844,7 +1462,7 @@ function SecurityBadge({
           {config.label}
         </button>
         {expanded && (
-          <div className="absolute left-0 bottom-[calc(100%+6px)] z-50 w-72 rounded-xl border border-primary-200 bg-surface p-0 shadow-xl overflow-hidden">
+          <div className="absolute bottom-[calc(100%+6px)] left-0 z-50 w-72 overflow-hidden rounded-card border border-border bg-surface p-0 shadow-xl">
             <SecurityScanCard security={security} />
           </div>
         )}
@@ -876,8 +1494,8 @@ function SecurityScanCard({ security }: { security: SecurityRisk }) {
         </p>
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <span className="text-primary-500 font-medium w-16 shrink-0">
-              Hermes Workspace
+            <span className="brand-wordmark text-primary-500 font-medium w-16 shrink-0">
+              semantier
             </span>
             <span
               className={cn(
@@ -939,7 +1557,7 @@ function SecurityScanCard({ security }: { security: SecurityRisk }) {
 function SkillsGrid({
   skills,
   loading,
-  actionSkillId,
+  pendingAction,
   tab,
   emptyState,
   onOpenDetails,
@@ -953,7 +1571,7 @@ function SkillsGrid({
 
   if (skills.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-primary-200 bg-primary-100/40 px-4 py-8 text-center">
+      <div className="rounded-card border border-dashed border-border bg-primary-100/40 px-4 py-8 text-center">
         <p className="text-sm font-medium text-primary-700">
           {emptyState?.title || 'No skills found'}
         </p>
@@ -969,7 +1587,11 @@ function SkillsGrid({
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <AnimatePresence initial={false}>
         {skills.map((skill) => {
-          const isActing = actionSkillId === skill.id
+          const isActing = pendingAction?.skillId === skill.id
+          const isInstalling =
+            pendingAction?.skillId === skill.id &&
+            pendingAction.action === 'install'
+          const canUninstall = skill.canUninstall ?? true
 
           return (
             <motion.article
@@ -977,7 +1599,7 @@ function SkillsGrid({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.18 }}
-              className="flex min-h-[220px] flex-col rounded-2xl border border-primary-200 bg-primary-50/85 p-4 shadow-sm backdrop-blur-sm"
+              className="flex min-h-[220px] flex-col rounded-card border border-border bg-card p-4"
             >
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div className="space-y-1">
@@ -989,16 +1611,38 @@ function SkillsGrid({
                     by {skill.author}
                   </p>
                 </div>
-                <span
-                  className={cn(
-                    'rounded-md border px-2 py-0.5 text-xs tabular-nums',
-                    skill.installed
-                      ? 'border-primary/40 bg-primary/15 text-primary'
-                      : 'border-primary-200 bg-primary-100/60 text-primary-500',
-                  )}
-                >
-                  {skill.installed ? 'Installed' : 'Available'}
-                </span>
+                <div className="flex items-center gap-2">
+                  {tab === 'installed' ? (
+                    <Switch
+                      checked={skill.enabled}
+                      disabled={isActing}
+                      className="[--thumb-size:1.3125rem]"
+                      onCheckedChange={(checked) => onToggle(skill.id, checked)}
+                      aria-label={`Toggle ${skill.name}`}
+                    />
+                  ) : null}
+                  <span
+                    className={cn(
+                      'inline-flex h-[calc(1.3125rem+2px)] items-center gap-1.5 rounded-md border px-2 text-xs tabular-nums',
+                      isInstalling
+                        ? 'border-primary/40 bg-primary/15 text-primary'
+                        : skill.installed
+                          ? 'border-primary/40 bg-primary/15 text-primary'
+                          : 'border-primary-200 bg-primary-100/60 text-primary-500',
+                    )}
+                  >
+                    {isInstalling ? (
+                      <>
+                        <InlineSpinner />
+                        Installing…
+                      </>
+                    ) : skill.installed ? (
+                      'Installed'
+                    ) : (
+                      'Available'
+                    )}
+                  </span>
+                </div>
               </div>
 
               <p className="line-clamp-3 min-h-[58px] text-sm text-primary-500 text-pretty">
@@ -1007,13 +1651,18 @@ function SkillsGrid({
 
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <SecurityBadge security={skill.security} />
-                <span className="rounded-md border border-primary-200 bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                {skill.sourceLabel ? (
+                  <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                    {skill.sourceLabel}
+                  </span>
+                ) : null}
+                <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
                   {skill.category}
                 </span>
                 {skill.triggers.slice(0, 2).map((trigger) => (
                   <span
                     key={`${skill.id}-${trigger}`}
-                    className="rounded-md border border-primary-200 bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500"
+                    className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500"
                   >
                     {trigger}
                   </span>
@@ -1031,42 +1680,31 @@ function SkillsGrid({
 
                 {tab === 'installed' ? (
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 text-xs text-primary-500">
-                      <Switch
-                        checked={skill.enabled}
-                        disabled={isActing}
-                        onCheckedChange={(checked) =>
-                          onToggle(skill.id, checked)
-                        }
-                        aria-label={`Toggle ${skill.name}`}
-                      />
-                      {skill.enabled ? 'Enabled' : 'Disabled'}
-                    </div>
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={isActing}
+                      disabled={isActing || !canUninstall}
                       onClick={() => onUninstall(skill.id)}
                     >
-                      Uninstall
+                      {canUninstall ? 'Uninstall' : 'Read only'}
                     </Button>
                   </div>
                 ) : skill.installed ? (
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={isActing}
+                    disabled={isActing || !canUninstall}
                     onClick={() => onUninstall(skill.id)}
                   >
-                    Uninstall
+                    {canUninstall ? 'Uninstall' : 'Read only'}
                   </Button>
                 ) : (
                   <Button
                     size="sm"
                     disabled={isActing}
-                    onClick={() => onInstall(skill.id)}
+                    onClick={() => onInstall(skill)}
                   >
-                    Install
+                    {isInstalling ? 'Installing…' : 'Install'}
                   </Button>
                 )}
               </div>
@@ -1078,10 +1716,114 @@ function SkillsGrid({
   )
 }
 
+function ToolsetsGrid({ toolsets, loading, onOpenDetails }: ToolsetsGridProps) {
+  if (loading) {
+    return <SkillsSkeleton count={6} />
+  }
+
+  if (toolsets.length === 0) {
+    return (
+      <div className="rounded-card border border-dashed border-border bg-primary-100/40 px-4 py-8 text-center">
+        <p className="text-sm font-medium text-primary-700">
+          No toolsets found
+        </p>
+        <p className="mt-1 text-xs text-primary-500 text-pretty max-w-sm mx-auto">
+          Try a different search term or source filter.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <AnimatePresence initial={false}>
+        {toolsets.map((toolset) => (
+          <motion.article
+            key={toolset.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18 }}
+            className="flex min-h-[220px] flex-col rounded-card border border-border bg-card p-4"
+          >
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <div className="space-y-1">
+                <p className="text-xl leading-none">
+                  {toolset.sourceTier === 'application' ? '🧩' : '🛠️'}
+                </p>
+                <h3 className="line-clamp-2 text-base font-medium text-ink text-balance">
+                  {toolset.label}
+                </h3>
+                <p className="line-clamp-1 text-xs text-primary-500">
+                  {toolset.tools.length.toLocaleString()} tools
+                </p>
+              </div>
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs tabular-nums',
+                  toolset.enabled
+                    ? 'border-primary/40 bg-primary/15 text-primary'
+                    : 'border-primary-200 bg-primary-100/60 text-primary-500',
+                )}
+              >
+                {toolset.enabled ? 'Enabled' : 'Inactive'}
+              </span>
+            </div>
+
+            <p className="line-clamp-3 min-h-[58px] text-sm text-primary-500 text-pretty">
+              {toolset.description}
+            </p>
+
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {toolset.sourceLabel ? (
+                <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                  {toolset.sourceLabel}
+                </span>
+              ) : null}
+              <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                {toolset.configured ? 'Configured' : 'No extra config'}
+              </span>
+              {toolset.tools.slice(0, 2).map((tool) => (
+                <span
+                  key={`${toolset.id}-${tool}`}
+                  className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500"
+                >
+                  {tool}
+                </span>
+              ))}
+            </div>
+
+            <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenDetails(toolset)}
+              >
+                Details
+              </Button>
+              <span className="text-xs text-primary-500">
+                {toolset.canModify ? 'Editable' : 'Read only'}
+              </span>
+            </div>
+          </motion.article>
+        ))}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function InlineSpinner() {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block size-3 animate-spin rounded-full border-[1.5px] border-current border-r-transparent"
+    />
+  )
+}
+
 type FeaturedGridProps = {
   skills: Array<SkillSummary>
   loading: boolean
-  actionSkillId: string | null
+  pendingAction: PendingSkillAction | null
   onOpenDetails: (skill: SkillSummary) => void
   onInstall: (skillId: string) => void
   onUninstall: (skillId: string) => void
@@ -1090,7 +1832,7 @@ type FeaturedGridProps = {
 function FeaturedGrid({
   skills,
   loading,
-  actionSkillId,
+  pendingAction,
   onOpenDetails,
   onInstall,
   onUninstall,
@@ -1101,7 +1843,7 @@ function FeaturedGrid({
 
   if (skills.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-primary-200 bg-primary-100/40 px-4 py-10 text-center text-sm text-primary-500 text-pretty">
+      <div className="rounded-xl border border-dashed border-border bg-primary-100/40 px-4 py-10 text-center text-sm text-primary-500 text-pretty">
         Featured picks are currently unavailable.
       </div>
     )
@@ -1110,11 +1852,14 @@ function FeaturedGrid({
   return (
     <div className="grid grid-cols-1 gap-4 pb-2 lg:grid-cols-2">
       {skills.map((skill) => {
-        const isActing = actionSkillId === skill.id
+        const isActing = pendingAction?.skillId === skill.id
+        const isInstalling =
+          pendingAction?.skillId === skill.id &&
+          pendingAction.action === 'install'
         return (
           <article
             key={skill.id}
-            className="flex min-h-0 flex-col rounded-2xl border border-primary-200 bg-primary-50/85 p-4 shadow-sm backdrop-blur-sm"
+            className="flex min-h-0 flex-col rounded-card border border-border bg-card p-4"
           >
             <div className="mb-3 flex items-start justify-between gap-2">
               <div className="space-y-1">
@@ -1129,13 +1874,24 @@ function FeaturedGrid({
 
               <span
                 className={cn(
-                  'rounded-md border px-2 py-0.5 text-xs tabular-nums',
-                  skill.installed
+                  'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs tabular-nums',
+                  isInstalling
                     ? 'border-primary/40 bg-primary/15 text-primary'
-                    : 'border-primary-200 bg-primary-100/60 text-primary-500',
+                    : skill.installed
+                      ? 'border-primary/40 bg-primary/15 text-primary'
+                      : 'border-primary-200 bg-primary-100/60 text-primary-500',
                 )}
               >
-                {skill.installed ? 'Installed' : 'Staff Pick'}
+                {isInstalling ? (
+                  <>
+                    <InlineSpinner />
+                    Installing…
+                  </>
+                ) : skill.installed ? (
+                  'Installed'
+                ) : (
+                  'Staff Pick'
+                )}
               </span>
             </div>
 
@@ -1166,7 +1922,7 @@ function FeaturedGrid({
                   disabled={isActing}
                   onClick={() => onInstall(skill.id)}
                 >
-                  Install
+                  {isInstalling ? 'Installing…' : 'Install'}
                 </Button>
               )}
             </div>
@@ -1197,14 +1953,14 @@ function SkillsSkeleton({
         <div
           key={index}
           className={cn(
-            'animate-pulse rounded-2xl border border-primary-200 bg-primary-50/70 p-4',
+            'animate-pulse rounded-card border border-border bg-primary-50/70 p-4',
             large ? 'min-h-[120px]' : 'min-h-[100px]',
           )}
         >
           <div className="mb-3 h-5 w-2/5 rounded-md bg-primary-100" />
           <div className="mb-2 h-4 w-3/4 rounded-md bg-primary-100" />
           <div className="h-4 w-1/2 rounded-md bg-primary-100" />
-          <div className="mt-4 h-20 rounded-xl bg-primary-100/80" />
+          <div className="mt-4 h-20 rounded-card bg-primary-100/80" />
           <div className="mt-4 h-8 w-1/3 rounded-md bg-primary-100" />
         </div>
       ))}

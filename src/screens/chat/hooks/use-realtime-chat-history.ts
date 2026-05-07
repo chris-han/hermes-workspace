@@ -491,6 +491,7 @@ export function useRealtimeChatHistory({
     if (!effectiveSessionKey || effectiveSessionKey === 'new' || !enabled)
       return
     syncIntervalRef.current = setInterval(() => {
+      if (connectionState === 'connected') return
       // Don't poll during active streaming — causes flicker/overwrites
       if (streamingStateRef.current !== null) return
       // Guard window: don't poll right after streaming clears — new stream
@@ -505,7 +506,13 @@ export function useRealtimeChatHistory({
     return () => {
       if (syncIntervalRef.current) clearInterval(syncIntervalRef.current)
     }
-  }, [effectiveFriendlyId, effectiveSessionKey, enabled, queryClient])
+  }, [
+    connectionState,
+    effectiveFriendlyId,
+    effectiveSessionKey,
+    enabled,
+    queryClient,
+  ])
 
   // Clear realtime buffer when session changes
   useEffect(() => {

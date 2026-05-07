@@ -80,7 +80,6 @@ function buildTooltip(
   const parts: Array<string> = [`Backend: ${label}`]
   if (data.detail) parts.push(data.detail)
   if (data.status === 'partial') {
-    if (!data.chatReady) parts.push('Missing /v1/chat/completions')
     if (!data.modelConfigured) parts.push('No model selected')
   }
   if (data.status === 'enhanced') {

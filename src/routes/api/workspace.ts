@@ -1,13 +1,12 @@
-/**
- * Phase 2.6: Workspace detection API
- * Auto-detects workspace from Hermes config, env, or default paths
- */
-import os from 'node:os'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../server/auth-middleware'
+import {
+  WorkspaceAuthRequiredError,
+  ensureWorkspacePathWithinRoot,
+  resolveActiveWorkspaceRoot,
+} from '../../server/workspace-root'
 
 function extractFolderName(fullPath: string): string {
   const parts = fullPath.replace(/\\/g, '/').split('/')
@@ -23,70 +22,54 @@ async function isValidDirectory(dirPath: string): Promise<boolean> {
   }
 }
 
-async function detectWorkspace(savedPath?: string): Promise<{
+async function detectWorkspace(
+  workspaceRoot: string,
+  savedPath?: string,
+): Promise<{
   path: string
   folderName: string
   source: string
   isValid: boolean
+  workspaceId?: string
+  workspaceSlug?: string
+  authenticated?: boolean
 }> {
-  // Priority 1: Saved path from localStorage (passed via query param)
   if (savedPath) {
-    const isValid = await isValidDirectory(savedPath)
-    if (isValid) {
-      return {
-        path: savedPath,
-        folderName: extractFolderName(savedPath),
-        source: 'localStorage',
-        isValid: true,
-      }
+    let resolvedSavedPath = ''
+    try {
+      resolvedSavedPath = ensureWorkspacePathWithinRoot(
+        workspaceRoot,
+        savedPath,
+      )
+    } catch {
+      resolvedSavedPath = ''
     }
-    // Saved path is stale, fall through to auto-detect
-  }
-
-  // Priority 2: Environment variable
-  const envWorkspace =
-    process.env.HERMES_WORKSPACE_DIR?.trim() ||
-    process.env.HERMES_WORKSPACE_DIR?.trim()
-  if (envWorkspace) {
-    const isValid = await isValidDirectory(envWorkspace)
+    const isValid = resolvedSavedPath
+      ? await isValidDirectory(resolvedSavedPath)
+      : false
     if (isValid) {
       return {
-        path: envWorkspace,
-        folderName: extractFolderName(envWorkspace),
-        source: 'hermes',
+        path: resolvedSavedPath,
+        folderName: extractFolderName(resolvedSavedPath),
+        source: 'saved',
         isValid: true,
       }
     }
   }
 
-  // Priority 3: Default Hermes workspace path
-  const defaultPath = path.join(os.homedir(), '.hermes')
-  const defaultValid = await isValidDirectory(defaultPath)
-  if (defaultValid) {
+  const isValid = await isValidDirectory(workspaceRoot)
+  if (isValid) {
     return {
-      path: defaultPath,
-      folderName: extractFolderName(defaultPath),
-      source: 'default',
+      path: workspaceRoot,
+      folderName: extractFolderName(workspaceRoot),
+      source: 'backend',
       isValid: true,
     }
   }
 
-  // Priority 4: Hermes home directory
-  const hermesDir = path.join(os.homedir(), '.hermes')
-  const hermesDirValid = await isValidDirectory(hermesDir)
-  if (hermesDirValid) {
-    return {
-      path: hermesDir,
-      folderName: '.hermes',
-      source: 'default',
-      isValid: true,
-    }
-  }
-
-  // Nothing found
   return {
-    path: '',
-    folderName: '',
+    path: workspaceRoot,
+    folderName: extractFolderName(workspaceRoot),
     source: 'none',
     isValid: false,
   }
@@ -96,16 +79,21 @@ export const Route = createFileRoute('/api/workspace')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
         try {
           const url = new URL(request.url)
           const savedPath = url.searchParams.get('saved') || undefined
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
 
-          const result = await detectWorkspace(savedPath)
+          const result = await detectWorkspace(activeWorkspace.path, savedPath)
 
-          return json(result)
+          return json({
+            ...result,
+            authenticated: activeWorkspace.authenticated,
+            workspaceId: activeWorkspace.workspaceId,
+            workspaceSlug: activeWorkspace.workspaceSlug,
+          })
         } catch (err) {
           return json(
             {

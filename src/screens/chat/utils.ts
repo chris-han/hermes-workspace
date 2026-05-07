@@ -247,6 +247,10 @@ export function normalizeSessions(
       title: explicitTitle,
       derivedTitle,
       label,
+      status:
+        typeof session.status === 'string' && session.status.trim().length > 0
+          ? session.status.trim().toLowerCase()
+          : undefined,
       updatedAt:
         typeof session.updatedAt === 'number' ? session.updatedAt : undefined,
       lastMessage: session.lastMessage ?? null,

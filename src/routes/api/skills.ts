@@ -1,15 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../server/auth-middleware'
-import {
-  BEARER_TOKEN,
-  HERMES_API,
-  HERMES_UPGRADE_INSTRUCTIONS,
-  dashboardFetch,
-  ensureGatewayProbed,
-  getCapabilities,
-} from '../../server/gateway-capabilities'
-import { requireJsonContentType } from '../../server/rate-limit'
+import { ensureGatewayProbed } from '../../server/gateway-capabilities'
+import { fetchSemantierSkillsInventory } from '../../server/semantier-skills-api'
 import { createCapabilityUnavailablePayload } from '@/lib/feature-gates'
 
 type SkillsTab = 'installed' | 'marketplace' | 'featured'
@@ -38,8 +30,27 @@ type SkillSummary = {
   installed: boolean
   enabled: boolean
   builtin?: boolean
+  sourceTier?: string
+  sourceLabel?: string
+  canEdit?: boolean
+  canUninstall?: boolean
+  canModify?: boolean
   featuredGroup?: string
+  configFields?: Array<SkillConfigField>
   security: SecurityRisk
+}
+
+type SkillConfigField = {
+  key: string
+  label?: string
+  description?: string
+  prompt?: string
+  placeholder?: string
+  type?: 'string' | 'number' | 'boolean' | 'select'
+  required?: boolean
+  secret?: boolean
+  default?: unknown
+  options?: Array<{ label: string; value: string }>
 }
 
 const KNOWN_CATEGORIES = [
@@ -119,6 +130,56 @@ function normalizeSecurity(value: unknown): SecurityRisk {
   }
 }
 
+function normalizeSkillConfigFields(value: unknown): Array<SkillConfigField> {
+  if (!Array.isArray(value)) return []
+
+  const fields: Array<SkillConfigField> = []
+  for (const entry of value) {
+    const record = asRecord(entry)
+    const key = readString(record.key)
+    if (!key) continue
+
+    const typeValue = readString(record.type).toLowerCase()
+    const type =
+      typeValue === 'string' ||
+      typeValue === 'number' ||
+      typeValue === 'boolean' ||
+      typeValue === 'select'
+        ? (typeValue as SkillConfigField['type'])
+        : 'string'
+
+    const options = Array.isArray(record.options)
+      ? record.options
+          .map((option) => {
+            const optRecord = asRecord(option)
+            const value = readString(optRecord.value)
+            const label = readString(optRecord.label) || value
+            if (!value) return null
+            return { label, value }
+          })
+          .filter((option): option is { label: string; value: string } =>
+            Boolean(option),
+          )
+      : []
+
+    fields.push({
+      key,
+      label: readString(record.label) || undefined,
+      description: readString(record.description) || undefined,
+      prompt: readString(record.prompt) || undefined,
+      placeholder: readString(record.placeholder) || undefined,
+      type,
+      required:
+        typeof record.required === 'boolean' ? record.required : undefined,
+      secret: typeof record.secret === 'boolean' ? record.secret : undefined,
+      default: record.default,
+      options: options.length > 0 ? options : undefined,
+    })
+  }
+
+  return fields
+}
+
 function guessCategory(record: Record<string, unknown>): string {
   const direct =
     readString(record.category) ||
@@ -182,34 +243,26 @@ function normalizeSkill(value: unknown): SkillSummary | null {
     installed: Boolean(record.installed ?? true),
     enabled: Boolean(record.enabled ?? record.installed ?? true),
     builtin: Boolean(record.builtin),
+    sourceTier: readString(record.sourceTier) || undefined,
+    sourceLabel: readString(record.sourceLabel) || undefined,
+    canEdit: typeof record.canEdit === 'boolean' ? record.canEdit : undefined,
+    canUninstall:
+      typeof record.canUninstall === 'boolean'
+        ? record.canUninstall
+        : undefined,
+    canModify:
+      typeof record.canModify === 'boolean' ? record.canModify : undefined,
     featuredGroup: undefined,
+    configFields: normalizeSkillConfigFields(record.configFields),
     security: normalizeSecurity(record.security),
   }
 }
 
-async function fetchHermesSkills(): Promise<Array<SkillSummary>> {
-  const capabilities = getCapabilities()
-  const headers: Record<string, string> = {}
-  if (BEARER_TOKEN) headers['Authorization'] = `Bearer ${BEARER_TOKEN}`
-
-  const response = capabilities.dashboard.available
-    ? await dashboardFetch('/api/skills')
-    : await fetch(`${HERMES_API}/api/skills`, { headers })
-  if (!response.ok) {
-    const body = await response.text().catch(() => '')
-    throw new Error(body || `Hermes skills request failed (${response.status})`)
-  }
-
-  const payload = (await response.json()) as unknown
-  const items = Array.isArray(payload)
-    ? payload
-    : Array.isArray(asRecord(payload).items)
-      ? (asRecord(payload).items as Array<unknown>)
-      : Array.isArray(asRecord(payload).skills)
-        ? (asRecord(payload).skills as Array<unknown>)
-        : []
-
-  return items
+async function fetchHermesSkills(
+  requestHeaders?: HeadersInit | Headers,
+): Promise<Array<SkillSummary>> {
+  const payload = await fetchSemantierSkillsInventory(requestHeaders)
+  return payload.skills
     .map((entry) => normalizeSkill(entry))
     .filter((entry): entry is SkillSummary => entry !== null)
 }
@@ -246,11 +299,8 @@ export const Route = createFileRoute('/api/skills')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-        const capabilities = await ensureGatewayProbed()
-        if (!capabilities.skills) {
+        const capabilities = ensureGatewayProbed()
+        if (!capabilities.semantier.available && !capabilities.skills) {
           return json({
             ...createCapabilityUnavailablePayload('skills'),
             items: [],
@@ -283,7 +333,7 @@ export const Route = createFileRoute('/api/skills')({
             Math.max(1, Number(url.searchParams.get('limit') || '30')),
           )
 
-          const sourceItems = await fetchHermesSkills()
+          const sourceItems = await fetchHermesSkills(request.headers)
           const installedLookup = new Set(
             sourceItems
               .filter((skill) => skill.installed)
@@ -331,103 +381,6 @@ export const Route = createFileRoute('/api/skills')({
         } catch (err) {
           return json(
             { error: err instanceof Error ? err.message : String(err) },
-            { status: 500 },
-          )
-        }
-      },
-      POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-        const capabilities = await ensureGatewayProbed()
-        if (!capabilities.skills) {
-          return json(
-            {
-              ...createCapabilityUnavailablePayload('skills', {
-                error: `Gateway does not support /api/skills. ${HERMES_UPGRADE_INSTRUCTIONS}`,
-              }),
-            },
-            { status: 503 },
-          )
-        }
-        const csrfCheck = requireJsonContentType(request)
-        if (csrfCheck) return csrfCheck
-
-        try {
-          const body = (await request.json()) as {
-            action?: string
-            identifier?: string
-            name?: string
-            category?: string
-            force?: boolean
-            enabled?: boolean
-          }
-          const action = (body.action || 'install').trim()
-
-          let endpoint: string
-          let payload: Record<string, unknown>
-
-          if (action === 'uninstall') {
-            endpoint = '/api/skills/uninstall'
-            payload = { name: body.name || body.identifier || '' }
-          } else if (action === 'toggle') {
-            endpoint = '/api/skills/toggle'
-            payload = {
-              name: body.name || body.identifier || '',
-              enabled: body.enabled,
-            }
-          } else {
-            endpoint = '/api/skills/install'
-            payload = {
-              identifier: body.identifier || '',
-              category: body.category || '',
-              force: Boolean(body.force),
-            }
-          }
-
-          if (capabilities.dashboard.available) {
-            if (action !== 'toggle') {
-              return json(
-                {
-                  ok: false,
-                  error:
-                    'Skill install/uninstall is only available on the legacy enhanced fork right now. Zero-fork mode supports listing and toggling installed skills.',
-                },
-                { status: 501 },
-              )
-            }
-
-            const response = await dashboardFetch('/api/skills/toggle', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-              signal: AbortSignal.timeout(30_000),
-            })
-
-            const result = await response.json()
-            return json(result, { status: response.status })
-          }
-
-          const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-          }
-          if (BEARER_TOKEN) headers['Authorization'] = `Bearer ${BEARER_TOKEN}`
-
-          const response = await fetch(`${HERMES_API}${endpoint}`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(120_000),
-          })
-
-          const result = await response.json()
-          return json(result, { status: response.status })
-        } catch (err) {
-          return json(
-            {
-              ok: false,
-              error: err instanceof Error ? err.message : String(err),
-            },
             { status: 500 },
           )
         }

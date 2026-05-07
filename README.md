@@ -13,7 +13,7 @@
 
 > Not a chat wrapper. A complete workspace — orchestrate agents, browse memory, manage skills, and control everything from one interface.
 
-> **v2 — zero-fork. Clone, don't fork.** Runs on vanilla [`pip install hermes-agent`](https://github.com/NousResearch/hermes-agent). No patches, no drift. Upgrade any time with `pip install -U hermes-agent`.
+> **v2 — zero-fork. Clone, don't fork.** Uses the local [`hermes-agent`](../hermes-agent) from this monorepo. No patches, no drift.
 
 ![Hermes Workspace](./docs/screenshots/splash.png)
 
@@ -34,20 +34,20 @@
 
 ## 📸 Screenshots
 
-|                 Chat                 |                  Conductor                   |
-| :----------------------------------: | :------------------------------------------: |
+|                 Chat                 |                   Conductor                    |
+| :----------------------------------: | :--------------------------------------------: |
 | ![Chat](./docs/screenshots/chat.png) | ![Conductor](./docs/screenshots/conductor.png) |
 
-|                   Dashboard                  |                  Memory                  |
-| :------------------------------------------: | :--------------------------------------: |
+|                   Dashboard                    |                  Memory                  |
+| :--------------------------------------------: | :--------------------------------------: |
 | ![Dashboard](./docs/screenshots/dashboard.png) | ![Memory](./docs/screenshots/memory.png) |
 
 |                   Terminal                   |                   Settings                   |
 | :------------------------------------------: | :------------------------------------------: |
 | ![Terminal](./docs/screenshots/terminal.png) | ![Settings](./docs/screenshots/settings.png) |
 
-|                  Tasks                  |                 Jobs                 |
-| :--------------------------------------: | :----------------------------------: |
+|                 Tasks                  |                 Jobs                 |
+| :------------------------------------: | :----------------------------------: |
 | ![Tasks](./docs/screenshots/tasks.png) | ![Jobs](./docs/screenshots/jobs.png) |
 
 ---
@@ -60,7 +60,7 @@
 curl -fsSL https://raw.githubusercontent.com/outsourc-e/hermes-workspace/main/install.sh | bash
 ```
 
-This installs `hermes-agent` from PyPI, clones this repo, sets up `.env`, and installs deps. Then:
+This installs `hermes-agent` from the local monorepo when available, clones this repo, sets up `.env`, and installs deps. Then:
 
 ```bash
 hermes gateway run                  # terminal 1
@@ -91,9 +91,10 @@ Point Hermes Workspace at any backend that supports:
 Example Hermes gateway setup:
 
 ```bash
+cd ../hermes-agent
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install hermes-agent
+pip install -e .
 hermes setup
 hermes gateway run
 ```
@@ -410,17 +411,17 @@ The workspace auto-detects your gateway's capabilities on startup. Check your te
 
 ```
 [gateway] http://127.0.0.1:8642 available: health, models; missing: sessions, skills, memory, config, jobs
-[gateway] Missing Hermes APIs detected. Update Hermes: pip install -U hermes-agent && hermes gateway run
+[gateway] Missing Hermes APIs detected. Update Hermes: cd ../hermes-agent && pip install -e . && hermes gateway run
 ```
 
-**Fix:** Upgrade to the latest stock `hermes-agent`, which now ships the extended endpoints:
+**Fix:** Upgrade to the latest `hermes-agent` from the local monorepo:
 
 ```bash
-pip install -U hermes-agent
+cd ../hermes-agent && pip install -e .
 hermes gateway run
 ```
 
-If you were on the old `outsourc-e/hermes-agent` fork, it's no longer needed as of v2 — uninstall it and install upstream instead.
+If you were on the old `outsourc-e/hermes-agent` fork, it's no longer needed as of v2 — use the local monorepo copy instead.
 
 ### "Connection refused" or workspace hangs on load
 
@@ -448,7 +449,7 @@ Verify: `curl http://localhost:8642/health` should return `{"status": "ok"}`.
 
 ### "Using upstream NousResearch/hermes-agent"
 
-v2+ runs on vanilla `hermes-agent` with full feature parity. `pip install -U hermes-agent` gets you the extended endpoints (sessions, memory, skills, config). **No fork required, ever.**
+v2+ runs on the local `hermes-agent` monorepo copy with full feature parity. `cd ../hermes-agent && pip install -e .` gets you the extended endpoints (sessions, memory, skills, config). **No fork required, ever.**
 
 If you're pinned to an older `hermes-agent` version and missing endpoints, the workspace will degrade gracefully to **portable mode** with basic chat — upgrade upstream to restore full features.
 

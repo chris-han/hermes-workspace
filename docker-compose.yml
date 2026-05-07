@@ -11,9 +11,8 @@
 #   4. Open http://localhost:3000
 #
 # Enhanced Mode (sessions, skills, memory, config):
-#   The bundled agent Dockerfile builds from outsourc-e/hermes-agent which
-#   includes the enhanced gateway APIs. Vanilla NousResearch/hermes-agent
-#   will work in "portable" mode (chat only, no sessions/skills/memory).
+#   The bundled agent Dockerfile copies from the local hermes-agent directory
+#   in this monorepo and installs it in editable mode.
 #
 # Troubleshooting:
 #   - See README.md "Docker" troubleshooting section
@@ -25,8 +24,8 @@ services:
   # Provides the backend API that the workspace connects to
   hermes-agent:
     build:
-      context: .
-      dockerfile: docker/agent/Dockerfile
+      context: ..
+      dockerfile: hermes-workspace/docker/agent/Dockerfile
     env_file:
       - .env
     environment:

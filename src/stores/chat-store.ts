@@ -133,10 +133,7 @@ type ChatState = {
 
   /** Sessions currently waiting for a response — survives component unmount */
   waitingSessionKeys: Set<string>
-  waitingSessionMeta: Record<
-    string,
-    { since: number; runId: string | null }
-  >
+  waitingSessionMeta: Record<string, { since: number; runId: string | null }>
   /** Mark a session as waiting for a response */
   setSessionWaiting: (sessionKey: string, runId?: string | null) => void
   /** Clear waiting state for a session */
@@ -984,7 +981,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
             timestamp: getMessageEventTime(cleanedMessage) ?? now,
             __receiveTime: now,
             __realtimeSequence: realtimeMessageSequence++,
-            __streamingStatus: (event.state === 'interrupted' ? 'interrupted' : 'complete') as any,
+            __streamingStatus: (event.state === 'interrupted'
+              ? 'interrupted'
+              : 'complete') as any,
             ...(streamToolCallsToEmbed
               ? { __streamToolCalls: streamToolCallsToEmbed }
               : {}),
@@ -1157,6 +1156,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (histMsg.role === rtMsg.role && rtText) {
         const histText = extractMessageText(histMsg)
         if (histText === rtText) return true
+
+        if (histMsg.role === 'assistant') {
+          const normalizedHistoryText = normalizeAssistantDedupText(histText)
+          const normalizedRealtimeText = normalizeAssistantDedupText(rtText)
+          if (
+            normalizedHistoryText.length > 0 &&
+            normalizedHistoryText === normalizedRealtimeText
+          ) {
+            return true
+          }
+        }
       }
 
       const histRaw = histMsg as Record<string, unknown>
@@ -1272,6 +1282,21 @@ function extractMessageText(msg: ChatMessage | null | undefined): string {
       return stripFinalTags(val.trim())
   }
   return ''
+}
+
+function normalizeAssistantDedupText(text: string): string {
+  if (!text) return ''
+
+  // History responses can append artifact footers that are not present in the
+  // streamed completion text. Strip these suffixes so both representations of
+  // the same assistant turn deduplicate correctly.
+  let normalized = text.replace(/\n\s*Run directory:\s+[^\n]+\s*$/i, '').trim()
+
+  normalized = normalized
+    .replace(/\n\s*\[Full report\]\([^\n]*\/runs\/[\w-]+[^\n]*\)\s*$/i, '')
+    .trim()
+
+  return normalized
 }
 
 function ensureAssistantTextContent(msg: ChatMessage): ChatMessage {

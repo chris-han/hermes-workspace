@@ -3,11 +3,9 @@
  * or the upstream dashboard cron API.
  */
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   BEARER_TOKEN,
   HERMES_API,
-  HERMES_UPGRADE_INSTRUCTIONS,
   dashboardFetch,
   ensureGatewayProbed,
 } from '../../server/gateway-capabilities'
@@ -19,7 +17,7 @@ function authHeaders(): Record<string, string> {
 function notSupported(): Response {
   return new Response(
     JSON.stringify({
-      error: `Gateway does not support /api/jobs. ${HERMES_UPGRADE_INSTRUCTIONS}`,
+      error: 'Gateway does not support /api/jobs in semantier-unicell mode.',
     }),
     { status: 404, headers: { 'Content-Type': 'application/json' } },
   )
@@ -29,12 +27,7 @@ export const Route = createFileRoute('/api/hermes-jobs/$jobId')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-          })
-        }
-        const capabilities = await ensureGatewayProbed()
+        const capabilities = ensureGatewayProbed()
         if (!capabilities.jobs) return notSupported()
 
         const url = new URL(request.url)
@@ -61,12 +54,7 @@ export const Route = createFileRoute('/api/hermes-jobs/$jobId')({
         })
       },
       POST: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-          })
-        }
-        const capabilities = await ensureGatewayProbed()
+        const capabilities = ensureGatewayProbed()
         if (!capabilities.jobs) return notSupported()
 
         const url = new URL(request.url)
@@ -104,12 +92,7 @@ export const Route = createFileRoute('/api/hermes-jobs/$jobId')({
         })
       },
       PATCH: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-          })
-        }
-        const capabilities = await ensureGatewayProbed()
+        const capabilities = ensureGatewayProbed()
         if (!capabilities.jobs) return notSupported()
 
         const body = await request.text()
@@ -130,12 +113,7 @@ export const Route = createFileRoute('/api/hermes-jobs/$jobId')({
         })
       },
       DELETE: async ({ request, params }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-          })
-        }
-        const capabilities = await ensureGatewayProbed()
+        const capabilities = ensureGatewayProbed()
         if (!capabilities.jobs) return notSupported()
 
         const res = capabilities.dashboard.available

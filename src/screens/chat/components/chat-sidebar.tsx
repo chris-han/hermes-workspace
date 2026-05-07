@@ -8,33 +8,39 @@ import {
   CheckListIcon,
   Clock01Icon,
   ComputerTerminal01Icon,
+  Copy01Icon,
   DashboardSquare01Icon,
   File01Icon,
   MessageMultiple01Icon,
   Moon02Icon,
   PencilEdit02Icon,
+  PinIcon,
+  PinOffIcon,
   PuzzleIcon,
-
   Rocket01Icon,
-  Search01Icon, Settings01Icon, Sun02Icon, UserGroupIcon, UserMultipleIcon
+  Search01Icon,
+  Settings01Icon,
+  Sun02Icon,
+  Tick02Icon,
+  UserGroupIcon,
+  UserMultipleIcon,
 } from '@hugeicons/core-free-icons'
 import { AnimatePresence, motion } from 'motion/react'
-import { t } from '@/lib/i18n'
+import { useQueryClient } from '@tanstack/react-query'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
-import {
-  CHAT_OPEN_SETTINGS_EVENT
-  
-} from '../chat-events'
+import { CHAT_OPEN_SETTINGS_EVENT } from '../chat-events'
 import { useChatSettings as useSidebarSettings } from '../hooks/use-chat-settings'
 import { useDeleteSession } from '../hooks/use-delete-session'
 import { useRenameSession } from '../hooks/use-rename-session'
+import { exportConversationPdf } from '../export-conversation-pdf'
 import { ProvidersDialog } from './providers-dialog'
 import { SessionRenameDialog } from './sidebar/session-rename-dialog'
 import { SessionDeleteDialog } from './sidebar/session-delete-dialog'
 import { SidebarSessions } from './sidebar/sidebar-sessions'
-import type {ChatOpenSettingsDetail} from '../chat-events';
+import type { ChatOpenSettingsDetail } from '../chat-events'
 import type { SessionMeta } from '../types'
+import { t } from '@/lib/i18n'
 import { SettingsDialog } from '@/components/settings-dialog'
 import {
   TooltipContent,
@@ -46,11 +52,13 @@ import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { UserAvatar } from '@/components/avatars'
 import { SEARCH_MODAL_EVENTS, useSearchModal } from '@/hooks/use-search-modal'
+import { useChatSettingsStore } from '@/hooks/use-chat-settings'
 import {
-  selectChatProfileAvatarDataUrl,
-  selectChatProfileDisplayName,
-  useChatSettingsStore,
-} from '@/hooks/use-chat-settings'
+  useResolvedAvatarUrl,
+  useResolvedDisplayName,
+} from '@/hooks/use-resolved-avatar'
+import { useWorkspaceStore } from '@/stores/workspace-store'
+import { writeTextToClipboard } from '@/lib/clipboard'
 import { StatusDot } from '@/components/status-indicator'
 import {
   MenuContent,
@@ -58,7 +66,13 @@ import {
   MenuRoot,
   MenuTrigger,
 } from '@/components/ui/menu'
+import { toast } from '@/components/ui/toast'
 import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
+import {
+  logoutSemantierAuth,
+  semantierAuthQueryKey,
+  useSemantierAuthStatus,
+} from '@/lib/semantier-auth'
 
 type WorkspaceStats = Record<string, unknown>
 
@@ -67,9 +81,10 @@ function ThemeToggleMini() {
   const updateSettings = useSettingsStore((state) => state.updateSettings)
   void _theme
   // Detect dark/light from actual data-theme attribute
-  const currentDataTheme = typeof document !== 'undefined'
-    ? document.documentElement.getAttribute('data-theme') || 'hermes-official'
-    : 'hermes-official'
+  const currentDataTheme =
+    typeof document !== 'undefined'
+      ? document.documentElement.getAttribute('data-theme') || 'hermes-official'
+      : 'hermes-official'
   const isDark = !currentDataTheme.endsWith('-light')
 
   // Map between dark and light counterparts — must include all theme families
@@ -82,6 +97,8 @@ function ThemeToggleMini() {
     'hermes-classic-light': 'hermes-classic',
     'hermes-slate': 'hermes-slate-light',
     'hermes-slate-light': 'hermes-slate',
+    semantier: 'semantier-light',
+    'semantier-light': 'semantier',
   }
 
   return (
@@ -89,7 +106,11 @@ function ThemeToggleMini() {
       type="button"
       onClick={() => {
         // Fall back to current family rather than dropping the user into hermes-official
-        const nextDataTheme = LIGHT_DARK_PAIRS[currentDataTheme] || (isDark ? `${currentDataTheme}-light` : currentDataTheme.replace(/-light$/, ''))
+        const nextDataTheme =
+          LIGHT_DARK_PAIRS[currentDataTheme] ||
+          (isDark
+            ? `${currentDataTheme}-light`
+            : currentDataTheme.replace(/-light$/, ''))
         // Import and call setTheme to persist and apply
         import('@/lib/theme').then(({ setTheme }) => {
           setTheme(nextDataTheme as any)
@@ -103,7 +124,11 @@ function ThemeToggleMini() {
       style={{ color: 'var(--theme-muted)' }}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      <HugeiconsIcon icon={isDark ? Sun02Icon : Moon02Icon} size={16} strokeWidth={1.5} />
+      <HugeiconsIcon
+        icon={isDark ? Sun02Icon : Moon02Icon}
+        size={16}
+        strokeWidth={1.5}
+      />
     </button>
   )
 }
@@ -122,8 +147,6 @@ type ChatSidebarProps = {
   sessionsError: string | null
   onRetrySessions: () => void
 }
-
-
 
 // ── Reusable nav item ───────────────────────────────────────────────────
 
@@ -205,7 +228,9 @@ function NavItem({
           transition={transition}
           className="flex min-w-0 items-center gap-2"
         >
-          <span className="overflow-hidden whitespace-nowrap">{item.label}</span>
+          <span className="overflow-hidden whitespace-nowrap">
+            {item.label}
+          </span>
           {item.badge && item.badge !== 'error-dot' ? (
             <span className="ml-auto inline-flex min-w-6 items-center justify-center rounded-full border border-primary-700 bg-primary-900 px-2 py-0.5 text-[10px] font-semibold leading-none text-primary-300">
               {item.badge}
@@ -228,7 +253,7 @@ function NavItem({
             <TooltipTrigger
               render={
                 <Link
-                  to={item.to!}
+                  to={item.to}
                   search={item.search}
                   hash={item.hash}
                   onClick={handleSelect}
@@ -246,7 +271,7 @@ function NavItem({
     }
     return (
       <Link
-        to={item.to!}
+        to={item.to}
         search={item.search}
         hash={item.hash}
         onClick={handleSelect}
@@ -494,6 +519,8 @@ function usePersistedBool(key: string, defaultValue: boolean) {
 function ChatSidebarComponent({
   sessions,
   activeFriendlyId,
+  creatingSession,
+  onCreateSession,
   isCollapsed,
   onToggleCollapse,
   onSelectSession,
@@ -503,16 +530,10 @@ function ChatSidebarComponent({
   sessionsError,
   onRetrySessions,
 }: ChatSidebarProps) {
-  const {
-    settingsOpen,
-    settingsSection,
-    setSettingsOpen,
-    handleOpenSettings,
-  } = useSidebarSettings()
-  const profileDisplayName = useChatSettingsStore(selectChatProfileDisplayName)
-  const profileAvatarDataUrl = useChatSettingsStore(
-    selectChatProfileAvatarDataUrl,
-  )
+  const { settingsOpen, settingsSection, setSettingsOpen, handleOpenSettings } =
+    useSidebarSettings()
+  const profileDisplayName = useResolvedDisplayName()
+  const profileAvatarUrl = useResolvedAvatarUrl()
   const { deleteSession } = useDeleteSession()
   const { renameSession } = useRenameSession()
   const openSearchModal = useSearchModal((state) => state.openModal)
@@ -522,11 +543,16 @@ function ChatSidebarComponent({
       return state.location.pathname
     },
   })
+  const queryClient = useQueryClient()
+  const semantierAuthQuery = useSemantierAuthStatus()
+  const semantierAuth = semantierAuthQuery.data
 
   useEffect(() => {
     function handleOpenSettingsEvent(event: Event) {
       const detail = (event as CustomEvent<ChatOpenSettingsDetail>).detail
-      handleOpenSettings(detail?.section === 'appearance' ? 'appearance' : 'hermes')
+      handleOpenSettings(
+        detail?.section === 'appearance' ? 'appearance' : 'hermes',
+      )
     }
 
     window.addEventListener(CHAT_OPEN_SETTINGS_EVENT, handleOpenSettingsEvent)
@@ -581,8 +607,6 @@ function ChatSidebarComponent({
     ease: isCollapsed ? 'easeIn' : 'easeOut',
   } as const
 
-
-
   // Collapsible section states
   const [mainExpanded, toggleMain] = usePersistedBool(
     'hermes-sidebar-main-expanded',
@@ -609,8 +633,24 @@ function ChatSidebarComponent({
   const [providersOpen, setProvidersOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isHoverExpanded, setIsHoverExpanded] = useState(false)
+  const [semantierAuthActionPending, setSemantierAuthActionPending] =
+    useState(false)
+  const [copiedWorkspaceId, setCopiedWorkspaceId] = useState(false)
+  const sidebarPinned = useWorkspaceStore((s) => s.sidebarPinned)
+  const toggleSidebarPinned = useWorkspaceStore((s) => s.toggleSidebarPinned)
   const sidebarRef = useRef<HTMLElement | null>(null)
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
+
+  async function handleFeishuLogout() {
+    if (semantierAuthActionPending) return
+    setSemantierAuthActionPending(true)
+    try {
+      await logoutSemantierAuth()
+      await queryClient.invalidateQueries({ queryKey: semantierAuthQueryKey })
+    } finally {
+      setSemantierAuthActionPending(false)
+    }
+  }
 
   function handleOpenRename(session: SessionMeta) {
     setRenameSessionKey(session.key)
@@ -642,6 +682,42 @@ function ChatSidebarComponent({
     setDeleteDialogOpen(true)
   }
 
+  async function handleExportPdf(session: SessionMeta) {
+    const sessionKey = (session.key || '').trim()
+    const friendlyId = (session.friendlyId || session.key || '').trim()
+    const title =
+      session.label ||
+      session.title ||
+      session.derivedTitle ||
+      session.friendlyId ||
+      session.key ||
+      'conversation'
+
+    if (!sessionKey && !friendlyId) {
+      toast('Failed to export PDF: missing session id', { type: 'error' })
+      return
+    }
+
+    try {
+      const exported = await exportConversationPdf({
+        sessionLabel: title,
+        sessionKey: sessionKey || friendlyId,
+        friendlyId,
+      })
+      if (!exported) {
+        throw new Error('PDF export is unavailable in this environment')
+      }
+      toast('Conversation exported as PDF', { type: 'success' })
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : 'Failed to export conversation as PDF',
+        { type: 'error' },
+      )
+    }
+  }
+
   function handleConfirmDelete() {
     if (deleteSessionKey && deleteFriendlyId) {
       const isActive = deleteFriendlyId === activeFriendlyId
@@ -671,7 +747,6 @@ function ChatSidebarComponent({
 
   const isVisuallyCollapsed = isCollapsed && !isHoverExpanded
   const isHoverPreviewExpanded = !isMobile && isCollapsed && isHoverExpanded
-
 
   function handleSidebarToggle() {
     if (isHoverPreviewExpanded) {
@@ -847,17 +922,26 @@ function ChatSidebarComponent({
       }}
       initial={false}
       animate={{
-        width: isVisuallyCollapsed ? (isMobile ? 0 : 48) : isMobile ? '85vw' : 300,
+        width: isVisuallyCollapsed
+          ? isMobile
+            ? 0
+            : 48
+          : isMobile
+            ? '85vw'
+            : 300,
       }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      className={cn(asideProps.className, isMobile && isCollapsed && 'pointer-events-none overflow-hidden')}
+      className={cn(
+        asideProps.className,
+        isMobile && isCollapsed && 'pointer-events-none overflow-hidden',
+      )}
       data-tour="sidebar-container"
       style={isMobile ? { maxWidth: 360 } : undefined}
       onMouseEnter={() => {
         if (!isMobile && isCollapsed) setIsHoverExpanded(true)
       }}
       onMouseLeave={() => {
-        if (!isMobile) setIsHoverExpanded(false)
+        if (!isMobile && !sidebarPinned) setIsHoverExpanded(false)
       }}
       aria-hidden={isMobile && isCollapsed ? true : undefined}
       {...(isMobile && isCollapsed ? { inert: true } : {})}
@@ -883,12 +967,48 @@ function ChatSidebarComponent({
                   'w-full pl-1.5 justify-start gap-2',
                 )}
               >
-                <img src="/hermes-avatar.webp" alt="Hermes" className="size-6 rounded-lg" />
-                <span className="text-sm font-semibold tracking-tight" style={{ color: 'var(--theme-text)' }}>Hermes Workspace</span>
+                <img
+                  src="/logo.svg"
+                  alt="semantier logo"
+                  className="size-6 rounded-lg"
+                />
+                <span
+                  className="brand-wordmark text-sm font-semibold tracking-tight"
+                  style={{ color: 'var(--theme-text)' }}
+                >
+                  semantier
+                </span>
               </Link>
             </motion.div>
           ) : null}
         </AnimatePresence>
+        {!isVisuallyCollapsed && (
+          <TooltipProvider>
+            <TooltipRoot>
+              <TooltipTrigger
+                onClick={toggleSidebarPinned}
+                render={
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={sidebarPinned ? 'Unpin Sidebar' : 'Pin Sidebar'}
+                    className="absolute right-10 top-1/2 shrink-0 -translate-y-1/2 opacity-80 hover:opacity-100"
+                    data-tour="sidebar-pin-toggle"
+                  >
+                    <HugeiconsIcon
+                      icon={sidebarPinned ? PinIcon : PinOffIcon}
+                      size={18}
+                      strokeWidth={1.75}
+                    />
+                  </Button>
+                }
+              />
+              <TooltipContent side="right">
+                {sidebarPinned ? 'Unpin Sidebar' : 'Pin Sidebar'}
+              </TooltipContent>
+            </TooltipRoot>
+          </TooltipProvider>
+        )}
         <TooltipProvider>
           <TooltipRoot>
             <TooltipTrigger
@@ -897,7 +1017,9 @@ function ChatSidebarComponent({
                 <Button
                   size="icon-sm"
                   variant="ghost"
-                  aria-label={isVisuallyCollapsed ? 'Open Sidebar' : 'Close Sidebar'}
+                  aria-label={
+                    isVisuallyCollapsed ? 'Open Sidebar' : 'Close Sidebar'
+                  }
                   className="absolute right-2 top-1/2 shrink-0 -translate-y-1/2 opacity-80 hover:opacity-100"
                   data-tour="sidebar-collapse-toggle"
                 >
@@ -943,14 +1065,17 @@ function ChatSidebarComponent({
       {/* ── New Session button ──────────────────────────────────────── */}
       {!isVisuallyCollapsed && (
         <div className="px-2 pb-1">
-          <Link
-            to="/chat/$sessionKey"
-            params={{ sessionKey: 'new' }}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => {
+              if (creatingSession) return
+              onCreateSession()
               onSelectSession?.()
             }}
+            disabled={creatingSession}
             className={cn(
-              buttonVariants({ variant: 'ghost', size: 'sm' }),
               'w-full justify-start gap-2.5 px-3 py-2 text-primary-900 hover:bg-primary-200 dark:hover:bg-primary-800',
               isNewSessionActive &&
                 'bg-accent-500/10 text-accent-500 hover:bg-accent-50 dark:hover:bg-accent-900/300/15',
@@ -963,8 +1088,8 @@ function ChatSidebarComponent({
               strokeWidth={1.5}
               className="size-5 shrink-0"
             />
-            <span>New Session</span>
-          </Link>
+            <span>{creatingSession ? 'Starting…' : 'New Session'}</span>
+          </Button>
         </div>
       )}
 
@@ -1017,12 +1142,7 @@ function ChatSidebarComponent({
         </div>
 
         {/* Sessions list */}
-        <div
-          className={cn(
-            'shrink-0 mt-1',
-            isMobile && 'order-1',
-          )}
-        >
+        <div className={cn('shrink-0 mt-1', isMobile && 'order-1')}>
           <AnimatePresence initial={false}>
             {!isVisuallyCollapsed && (
               <motion.div
@@ -1038,6 +1158,7 @@ function ChatSidebarComponent({
                     sessions={sessions}
                     activeFriendlyId={activeFriendlyId}
                     onSelect={onSelectSession}
+                    onExportPdf={handleExportPdf}
                     onRename={handleOpenRename}
                     onDelete={handleOpenDelete}
                     loading={sessionsLoading}
@@ -1056,10 +1177,12 @@ function ChatSidebarComponent({
       {/* ── Footer with User Menu ─────────────────────────────────── */}
       <div className="px-2 py-2.5 border-t shrink-0 theme-border theme-panel">
         {/* User card + actions */}
-        <div className={cn(
-          'flex items-center rounded-lg transition-colors',
-          isVisuallyCollapsed ? 'flex-col gap-2 py-2' : 'gap-2.5 px-2 py-1.5',
-        )}>
+        <div
+          className={cn(
+            'flex items-center rounded-lg transition-colors',
+            isVisuallyCollapsed ? 'flex-col gap-2 py-2' : 'gap-2.5 px-2 py-1.5',
+          )}
+        >
           {/* User menu trigger */}
           <MenuRoot>
             <MenuTrigger
@@ -1071,7 +1194,7 @@ function ChatSidebarComponent({
             >
               <UserAvatar
                 size={28}
-                src={profileAvatarDataUrl}
+                src={profileAvatarUrl}
                 alt={profileDisplayName}
               />
               <AnimatePresence initial={false} mode="wait">
@@ -1092,6 +1215,85 @@ function ChatSidebarComponent({
               </AnimatePresence>
             </MenuTrigger>
             <MenuContent side="top" align="start" className="min-w-[200px]">
+              {semantierAuthQuery.isLoading ? (
+                <div className="px-2 py-1.5 text-xs text-primary-500 dark:text-neutral-400">
+                  Checking Feishu account...
+                </div>
+              ) : null}
+              {semantierAuth?.feishu_oauth_enabled ? (
+                <>
+                  <div className="px-2 py-1.5 text-xs text-primary-500 dark:text-neutral-400">
+                    {semantierAuth.authenticated && semantierAuth.user ? (
+                      <>
+                        <div className="font-medium text-primary-900 dark:text-neutral-100">
+                          {semantierAuth.user.name}
+                        </div>
+                        {semantierAuth.user.email ? (
+                          <div className="truncate">
+                            {semantierAuth.user.email}
+                          </div>
+                        ) : null}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span
+                            className="truncate max-w-[140px]"
+                            title={semantierAuth.user.user_id}
+                          >
+                            ID: {semantierAuth.user.user_id}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await writeTextToClipboard(
+                                  semantierAuth.user!.user_id,
+                                )
+                                setCopiedWorkspaceId(true)
+                                setTimeout(
+                                  () => setCopiedWorkspaceId(false),
+                                  1500,
+                                )
+                              } catch {
+                                // ignore
+                              }
+                            }}
+                            className="shrink-0 inline-flex items-center justify-center rounded p-0.5 hover:bg-primary-100 dark:hover:bg-neutral-800 transition-colors"
+                            title="Copy workspace ID"
+                          >
+                            <HugeiconsIcon
+                              icon={copiedWorkspaceId ? Tick02Icon : Copy01Icon}
+                              size={12}
+                              strokeWidth={1.5}
+                            />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div>
+                        Guest mode on {semantierAuth.workspace_slug || 'public'}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : null}
+              {semantierAuth?.authenticated ? (
+                <MenuItem
+                  onClick={() => {
+                    void handleFeishuLogout()
+                  }}
+                >
+                  {semantierAuthActionPending ? 'Logging out...' : 'Logout'}
+                </MenuItem>
+              ) : (
+                <MenuItem
+                  disabled={semantierAuthQuery.isLoading}
+                  onClick={() => {
+                    window.location.assign('/auth/feishu/login')
+                  }}
+                >
+                  {semantierAuthQuery.isLoading ? 'Login...' : 'Login'}
+                </MenuItem>
+              )}
+              <div className="my-1 h-px bg-primary-200 dark:bg-neutral-800" />
               <MenuItem
                 onClick={function onOpenSettings() {
                   handleOpenSettings('hermes')
@@ -1119,7 +1321,11 @@ function ChatSidebarComponent({
                 className="shrink-0 rounded-lg p-1.5 text-primary-400 hover:bg-primary-200 dark:hover:bg-neutral-800 hover:text-primary-600 dark:hover:text-neutral-300 transition-colors"
                 aria-label="Settings"
               >
-                <HugeiconsIcon icon={Settings01Icon} size={16} strokeWidth={1.5} />
+                <HugeiconsIcon
+                  icon={Settings01Icon}
+                  size={16}
+                  strokeWidth={1.5}
+                />
               </button>
               <ThemeToggleMini />
             </div>
@@ -1195,6 +1401,7 @@ function areSidebarPropsEqual(
 ): boolean {
   if (prevProps.activeFriendlyId !== nextProps.activeFriendlyId) return false
   if (prevProps.creatingSession !== nextProps.creatingSession) return false
+  if (prevProps.onCreateSession !== nextProps.onCreateSession) return false
   if (prevProps.isCollapsed !== nextProps.isCollapsed) return false
   if (prevProps.sessionsLoading !== nextProps.sessionsLoading) return false
   if (prevProps.sessionsFetching !== nextProps.sessionsFetching) return false

@@ -2,12 +2,15 @@
  * useAgentBehaviors — Manages the living office simulation loop.
  * Each agent gets independent activity cycles, break schedules, chat visits, and movement.
  */
-import { useEffect, useRef, useCallback, useState } from 'react'
-import { assignPersona, releasePersona } from '@/lib/agent-personas'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SwarmSession } from '@/stores/agent-swarm-store'
+import type {
+  AgentActivity,
+  AgentBehaviorState,
+} from '@/components/agent-swarm/agent-behaviors'
+import { assignPersona, releasePersona } from '@/lib/agent-personas'
 import {
-  type AgentActivity,
-  type AgentBehaviorState,
+  DESK_POSITIONS,
   createBehaviorState,
   getBreakType,
   getExpression,
@@ -15,7 +18,6 @@ import {
   getRandomMessage,
   isAtTarget,
   lerpPosition,
-  DESK_POSITIONS,
 } from '@/components/agent-swarm/agent-behaviors'
 
 const TICK_MS = 1000

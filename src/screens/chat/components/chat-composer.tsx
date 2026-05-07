@@ -10,6 +10,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { extractRawText } from 'mammoth'
 import {
   memo,
   useCallback,
@@ -20,6 +21,21 @@ import {
   useRef,
   useState,
 } from 'react'
+import { setLocalModelOverride } from '../chat-screen'
+import {
+  ATTACHMENT_ACCEPT,
+  DOCX_MIME_TYPE,
+  PDF_MIME_TYPE,
+  XLS_MIME_TYPE,
+  XLSX_MIME_TYPE,
+  inferUploadApiDocumentMimeTypeFromFileName,
+  isUploadApiDocumentMimeType,
+} from '../attachment-documents'
+import {
+  MODEL_SWITCH_BLOCKED_TOAST,
+  getZeroForkModelInfoFlags,
+  shouldBlockZeroForkModelSwitch,
+} from './chat-composer-model-switch'
 import type { CSSProperties, Ref } from 'react'
 
 import type { ModelCatalogEntry, ModelSwitchResponse } from '@/lib/model-types'
@@ -44,11 +60,6 @@ import { cn } from '@/lib/utils'
 import { useVoiceInput } from '@/hooks/use-voice-input'
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder'
 import { toast } from '@/components/ui/toast'
-import {
-  getZeroForkModelInfoFlags,
-  MODEL_SWITCH_BLOCKED_TOAST,
-  shouldBlockZeroForkModelSwitch,
-} from './chat-composer-model-switch'
 
 type ChatComposerAttachment = {
   id: string
@@ -265,8 +276,6 @@ async function fetchModelsForProvider(
   }))
 }
 
-import { setLocalModelOverride } from '../chat-screen'
-
 const LOCAL_PROVIDERS_SET = new Set(['ollama', 'atomic-chat'])
 
 async function switchModel(
@@ -381,6 +390,11 @@ function isTextMimeType(value: string): boolean {
   return normalized.startsWith('text/') || normalized === 'application/json'
 }
 
+function isUploadApiDocumentFile(file: File): boolean {
+  if (isUploadApiDocumentMimeType(file.type)) return true
+  return inferUploadApiDocumentMimeTypeFromFileName(file.name).length > 0
+}
+
 function isImageFile(file: File): boolean {
   if (isImageMimeType(file.type)) return true
   return inferImageMimeTypeFromFileName(file.name).length > 0
@@ -413,6 +427,7 @@ function hasAttachableData(dt: DataTransfer | null): boolean {
         item.kind === 'file' &&
         (isImageMimeType(item.type) ||
           isTextMimeType(item.type) ||
+          isUploadApiDocumentMimeType(item.type) ||
           item.type.trim().length === 0),
     )
   )
@@ -420,7 +435,10 @@ function hasAttachableData(dt: DataTransfer | null): boolean {
   const files = Array.from(dt.files)
   return files.some(
     (file) =>
-      isImageFile(file) || isTextFile(file) || file.type.trim().length === 0,
+      isImageFile(file) ||
+      isTextFile(file) ||
+      isUploadApiDocumentFile(file) ||
+      file.type.trim().length === 0,
   )
 }
 
@@ -1192,7 +1210,13 @@ function ChatComposerComponent({
           async (file, index): Promise<ChatComposerAttachment | null> => {
             const imageFile = isImageFile(file)
             const textFile = isTextFile(file)
-            if (!imageFile && !textFile && file.type.trim().length > 0) {
+            const uploadApiDocumentFile = isUploadApiDocumentFile(file)
+            if (
+              !imageFile &&
+              !textFile &&
+              !uploadApiDocumentFile &&
+              file.type.trim().length > 0
+            ) {
               return null
             }
 
@@ -1204,7 +1228,54 @@ function ChatComposerComponent({
               return null
             }
 
+            if (uploadApiDocumentFile) {
+              const resolvedMimeType =
+                (isUploadApiDocumentMimeType(file.type)
+                  ? normalizeMimeType(file.type)
+                  : '') || inferUploadApiDocumentMimeTypeFromFileName(file.name)
+
+              if (
+                resolvedMimeType !== PDF_MIME_TYPE &&
+                resolvedMimeType !== DOCX_MIME_TYPE &&
+                resolvedMimeType !== XLS_MIME_TYPE &&
+                resolvedMimeType !== XLSX_MIME_TYPE
+              ) {
+                return null
+              }
+
+              const dataUrl = await readFileAsDataUrl(file)
+              if (!dataUrl) return null
+
+              const fallbackExtension =
+                resolvedMimeType === DOCX_MIME_TYPE
+                  ? 'docx'
+                  : resolvedMimeType === XLS_MIME_TYPE
+                    ? 'xls'
+                    : resolvedMimeType === XLSX_MIME_TYPE
+                      ? 'xlsx'
+                      : 'pdf'
+
+              return {
+                id: crypto.randomUUID(),
+                name:
+                  file.name && file.name.trim().length > 0
+                    ? file.name.trim()
+                    : `attachment-${timestamp}-${index + 1}.${fallbackExtension}`,
+                contentType: resolvedMimeType,
+                size: file.size,
+                dataUrl,
+                kind: 'file',
+              }
+            }
+
             if (textFile) {
+              const inferredMimeType = inferTextMimeTypeFromFileName(file.name)
+              const normalizedMimeType = normalizeMimeType(file.type)
+              const resolvedMimeType =
+                (isTextMimeType(file.type) ? normalizedMimeType : '') ||
+                inferredMimeType ||
+                'text/plain'
+
               const textContent = await readFileAsText(file)
               if (textContent === null) return null
               const name =
@@ -1215,12 +1286,7 @@ function ChatComposerComponent({
               return {
                 id: crypto.randomUUID(),
                 name,
-                contentType:
-                  (isTextMimeType(file.type)
-                    ? normalizeMimeType(file.type)
-                    : '') ||
-                  inferTextMimeTypeFromFileName(name) ||
-                  'text/plain',
+                contentType: resolvedMimeType,
                 size: textBytes,
                 dataUrl: textContent,
                 kind: 'file',
@@ -1795,7 +1861,7 @@ function ChatComposerComponent({
       <input
         ref={attachmentInputRef}
         type="file"
-        accept="image/*,.md,.txt,.json,.csv,.ts,.tsx,.js,.py"
+        accept={ATTACHMENT_ACCEPT}
         multiple
         className="hidden"
         onChange={handleAttachmentInputChange}
@@ -1809,6 +1875,7 @@ function ChatComposerComponent({
         maxHeight={isMobileViewport ? 120 : 240}
         className={cn(
           'relative z-50 transition-all duration-300',
+          !isMobileViewport && '!rounded-2xl',
           // On mobile: remove PromptInput's built-in rounded/bg/padding — outer wrapper owns the container
           isMobileViewport &&
             'py-0 gap-0 !rounded-none !bg-transparent shadow-none outline-none',
@@ -1954,9 +2021,14 @@ function ChatComposerComponent({
                     type="button"
                     onClick={handleAbort}
                     aria-label="Stop generation"
-                    className="size-9 rounded-full bg-red-500 flex items-center justify-center text-white transition-all duration-150"
+                    className="size-9 rounded-full bg-red-500 flex items-center justify-center transition-all duration-150"
                   >
-                    <HugeiconsIcon icon={StopIcon} size={18} strokeWidth={2} />
+                    <HugeiconsIcon
+                      icon={StopIcon}
+                      size={18}
+                      strokeWidth={2}
+                      className="theme-danger-contrast"
+                    />
                   </button>
                 ) : value.trim().length > 0 ||
                   attachments.length > 0 ||
@@ -1966,12 +2038,13 @@ function ChatComposerComponent({
                     onClick={handleSubmit}
                     disabled={submitDisabled}
                     aria-label="Send message"
-                    className="size-9 rounded-full bg-accent-500 flex items-center justify-center text-white transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                    className="size-9 rounded-full theme-accent-fill flex items-center justify-center transition-all duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                   >
                     <HugeiconsIcon
                       icon={ArrowUp02Icon}
                       size={18}
                       strokeWidth={2}
+                      className="theme-accent-icon"
                     />
                   </button>
                 ) : voiceInput.isSupported || voiceRecorder.isSupported ? (
@@ -2024,12 +2097,13 @@ function ChatComposerComponent({
                     onClick={handleSubmit}
                     disabled={submitDisabled}
                     aria-label="Send message"
-                    className="size-9 rounded-full bg-accent-500 flex items-center justify-center text-white transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="size-9 rounded-full theme-accent-fill flex items-center justify-center transition-all duration-150 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <HugeiconsIcon
                       icon={ArrowUp02Icon}
                       size={18}
                       strokeWidth={2}
+                      className="theme-accent-icon"
                     />
                   </button>
                 )}
@@ -2218,8 +2292,9 @@ function ChatComposerComponent({
                             const LOCAL_PROVIDER_IDS = ['ollama', 'atomic-chat']
                             const isLocal =
                               (typeof m !== 'string' &&
-                              (m as Record<string, unknown>).description ===
-                                'local') || LOCAL_PROVIDER_IDS.includes(mProvider)
+                                (m as Record<string, unknown>).description ===
+                                  'local') ||
+                              LOCAL_PROVIDER_IDS.includes(mProvider)
                             return {
                               id: mId,
                               name: mName,
@@ -2677,13 +2752,14 @@ function ChatComposerComponent({
                       onClick={handleAbort}
                       size="icon-sm"
                       variant="destructive"
-                      className="rounded-md"
+                      className="rounded-full bg-red-500 hover:bg-red-600 theme-danger-contrast"
                       aria-label="Stop generation"
                     >
                       <HugeiconsIcon
                         icon={StopIcon}
                         size={20}
                         strokeWidth={1.5}
+                        className="theme-danger-contrast"
                       />
                     </Button>
                   </PromptInputAction>
@@ -2695,13 +2771,14 @@ function ChatComposerComponent({
                         onClick={handleSubmit}
                         disabled={submitDisabled}
                         size="icon-sm"
-                        className="rounded-full"
+                        className="rounded-full theme-accent-fill hover:opacity-90"
                         aria-label="Send message"
                       >
                         <HugeiconsIcon
                           icon={ArrowUp02Icon}
                           size={20}
                           strokeWidth={1.5}
+                          className="theme-accent-icon"
                         />
                       </Button>
                     </PromptInputAction>

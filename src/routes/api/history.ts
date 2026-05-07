@@ -1,37 +1,25 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import {
-  SESSIONS_API_UNAVAILABLE_MESSAGE,
-  ensureGatewayProbed,
-  getGatewayCapabilities,
-  getMessages,
-  listSessions,
-  toChatMessage,
-} from '../../server/hermes-api'
+
 import { resolveSessionKey } from '../../server/session-utils'
-import { isAuthenticated } from '@/server/auth-middleware'
-import { getLocalSession, getLocalMessages } from '../../server/local-session-store'
+import {
+  getSemantierSessionMessages,
+  isSemantierSessionNotFoundError,
+  listSemantierSessions,
+  toSemantierChatMessage,
+} from '../../server/semantier-session-api'
+import {  } from '@/server/auth-middleware'
 
 export const Route = createFileRoute('/api/history')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-        await ensureGatewayProbed()
-        if (!getGatewayCapabilities().sessions) {
-          return json({
-            sessionKey: 'new',
-            sessionId: 'new',
-            messages: [],
-            source: 'unavailable',
-            message: SESSIONS_API_UNAVAILABLE_MESSAGE,
-          })
-        }
         try {
           const url = new URL(request.url)
           const limit = Number(url.searchParams.get('limit') || '200')
+          const afterTsRaw = Number(url.searchParams.get('afterTs') || '')
+          const afterTs =
+            Number.isFinite(afterTsRaw) && afterTsRaw > 0 ? afterTsRaw : null
           const rawSessionKey = url.searchParams.get('sessionKey')?.trim()
           const friendlyId = url.searchParams.get('friendlyId')?.trim()
           let { sessionKey } = await resolveSessionKey({
@@ -39,64 +27,47 @@ export const Route = createFileRoute('/api/history')({
             friendlyId,
             defaultKey: 'main',
           })
-          // Keep /chat/new empty until the first message creates a real session.
+
           if (sessionKey === 'new') {
-            return json({
-              sessionKey: 'new',
-              sessionId: 'new',
-              messages: [],
-            })
+            return json({ sessionKey: 'new', sessionId: 'new', messages: [] })
           }
-          // "main" doesn't exist in Hermes — resolve it to the latest session.
+
           if (sessionKey === 'main') {
-            try {
-              const sessions = await listSessions(1, 0)
-              if (sessions.length > 0) {
-                sessionKey = sessions[0].id
-              } else {
-                return json({
-                  sessionKey: 'new',
-                  sessionId: 'new',
-                  messages: [],
-                })
-              }
-            } catch {
+            const sessions = await listSemantierSessions(request.headers, 1)
+            if (sessions.length === 0) {
               return json({ sessionKey: 'new', sessionId: 'new', messages: [] })
             }
+            sessionKey = sessions[0].session_id
           }
+
           let messages
           try {
-            messages = await getMessages(sessionKey)
-          } catch {
-            messages = []
-          }
-
-          // Fallback to local session store for portable/local model sessions
-          if (messages.length === 0) {
-            const localSession = getLocalSession(sessionKey)
-            if (localSession) {
-              const localMessages = getLocalMessages(sessionKey)
-              return json({
-                sessionKey,
-                sessionId: sessionKey,
-                messages: localMessages.map((m, index) => ({
-                  id: m.id,
-                  role: m.role,
-                  content: [{ type: 'text', text: m.content }],
-                  timestamp: m.timestamp,
-                  historyIndex: index,
-                })),
-              })
+            messages = await getSemantierSessionMessages(
+              request.headers,
+              sessionKey,
+              limit,
+            )
+          } catch (error) {
+            if (isSemantierSessionNotFoundError(error)) {
+              return json({ sessionKey: 'new', sessionId: 'new', messages: [] })
             }
+            throw error
           }
-
           const boundedMessages = limit > 0 ? messages.slice(-limit) : messages
+          const filteredMessages =
+            afterTs === null
+              ? boundedMessages
+              : boundedMessages.filter((message) => {
+                  const createdAt = Date.parse(message.created_at)
+                  if (!Number.isFinite(createdAt)) return false
+                  return createdAt > afterTs
+                })
 
           return json({
             sessionKey,
             sessionId: sessionKey,
-            messages: boundedMessages.map((message, index) =>
-              toChatMessage(message, { historyIndex: index }),
+            messages: filteredMessages.map((message, index) =>
+              toSemantierChatMessage(message, index),
             ),
           })
         } catch (err) {

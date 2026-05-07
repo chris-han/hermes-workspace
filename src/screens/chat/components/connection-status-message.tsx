@@ -25,7 +25,7 @@ function classifyConnectionError(
   if (!normalizedError && !status) {
     return {
       title: 'Not connected',
-      description: "Hermes Workspace can't reach Hermes.",
+      description: "Semantier can't reach Hermes.",
       action: 'Check that Hermes is running, then try again.',
     }
   }
@@ -59,7 +59,8 @@ function classifyConnectionError(
     return {
       title: 'Hermes gateway not running',
       description: 'The Hermes gateway is not running on port 8642.',
-      action: 'Run: pip install -U hermes-agent && hermes gateway run',
+      action:
+        'Run: cd ../hermes-agent && pip install -e . && hermes gateway run',
     }
   }
 

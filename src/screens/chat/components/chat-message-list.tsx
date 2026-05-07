@@ -173,10 +173,13 @@ function ToolCallCard({ name, phase }: { name: string; phase: string }) {
 
   return (
     <div
-      className="rounded-lg border border-primary-200 bg-primary-50 text-[11px] overflow-hidden"
+      className="rounded-md theme-border-1 theme-left-status-border theme-tool-surface text-[11px] overflow-hidden"
       style={{
-        borderLeftWidth: '3px',
-        borderLeftColor: isRunning ? '#6366f1' : isDone ? '#22c55e' : '#ef4444',
+        ['--status-border-color' as string]: isRunning
+          ? 'var(--theme-accent)'
+          : isDone
+            ? 'var(--theme-success)'
+            : 'var(--theme-danger)',
         boxShadow: isRunning ? '0 0 8px rgba(99,102,241,0.12)' : 'none',
       }}
     >
@@ -306,7 +309,7 @@ function ThinkingBubble({
       </div>
 
       {/* Chat bubble */}
-      <div className="relative max-w-[36rem] overflow-hidden rounded-2xl rounded-bl-sm border border-primary-200 dark:border-primary-200/20 bg-primary-100 dark:bg-primary-100 thinking-shimmer-bubble">
+      <div className="relative max-w-[36rem] overflow-hidden rounded-card rounded-bl-sm thinking-shimmer-bubble theme-border-1 theme-tool-surface">
         {/* Shimmer overlay */}
         <div
           className="thinking-shimmer-sweep pointer-events-none absolute inset-0"
@@ -319,7 +322,7 @@ function ThinkingBubble({
               <div className="flex items-center gap-1.5">
                 {isCompacting ? (
                   <span
-                    className="inline-block size-3 rounded-full border border-primary-300 border-t-primary-500 animate-spin"
+                    className="inline-block size-3 rounded-full border animate-spin theme-spinner-ring"
                     aria-hidden="true"
                   />
                 ) : (
@@ -591,7 +594,10 @@ export function buildDisplayEntries(
       attachedToolMessages: [],
     }
 
-    if (message.role === 'assistant' && pendingAssistantToolMessages.length > 0) {
+    if (
+      message.role === 'assistant' &&
+      pendingAssistantToolMessages.length > 0
+    ) {
       entry.attachedToolMessages.push(...pendingAssistantToolMessages)
       pendingAssistantToolMessages = []
     }
@@ -620,6 +626,7 @@ function escapeAttributeSelector(value: string): string {
 type ChatMessageListProps = {
   messages: Array<ChatMessage>
   onRetryMessage?: (message: ChatMessage) => void
+  onA2UiSubmit?: (payload: string) => void
   onRefresh?: () => void | Promise<unknown>
   loading: boolean
   empty: boolean
@@ -658,6 +665,7 @@ type ChatMessageListProps = {
 function ChatMessageListComponent({
   messages,
   onRetryMessage,
+  onA2UiSubmit,
   onRefresh: _onRefresh,
   loading,
   empty,
@@ -1340,6 +1348,7 @@ function ChatMessageListComponent({
             message={chatMessage}
             attachedToolMessages={entry.attachedToolMessages}
             onRetryMessage={effectiveOnRetry}
+            onA2UiSubmit={onA2UiSubmit}
             toolResultsByCallId={hasToolCalls ? toolResultsByCallId : undefined}
             forceActionsVisible={forceActionsVisible}
             wrapperClassName={spacingClass}
@@ -1374,6 +1383,7 @@ function ChatMessageListComponent({
         message={chatMessage}
         attachedToolMessages={entry.attachedToolMessages}
         onRetryMessage={effectiveOnRetry}
+        onA2UiSubmit={onA2UiSubmit}
         toolResultsByCallId={hasToolCalls ? toolResultsByCallId : undefined}
         forceActionsVisible={forceActionsVisible}
         wrapperClassName={spacingClass}
@@ -1820,6 +1830,7 @@ function ChatMessageListComponent({
                         message={chatMessage}
                         attachedToolMessages={entry.attachedToolMessages}
                         onRetryMessage={onRetryMessage}
+                        onA2UiSubmit={onA2UiSubmit}
                         toolResultsByCallId={
                           hasToolCalls ? toolResultsByCallId : undefined
                         }
@@ -1987,6 +1998,7 @@ function areChatMessageListEqual(
   return (
     prev.messages === next.messages &&
     prev.onRetryMessage === next.onRetryMessage &&
+    prev.onA2UiSubmit === next.onA2UiSubmit &&
     prev.onRefresh === next.onRefresh &&
     prev.loading === next.loading &&
     prev.empty === next.empty &&

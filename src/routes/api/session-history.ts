@@ -1,70 +1,60 @@
-/**
- * ControlSuite-compatible session-history adapter.
- * Forwards to the existing /api/history handler with param translation:
- *   key= -> sessionKey=
- *   limit, includeTools pass through.
- */
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import {
-  SESSIONS_API_UNAVAILABLE_MESSAGE,
-  ensureGatewayProbed,
-  getGatewayCapabilities,
-  getMessages,
-  toChatMessage,
-} from '../../server/hermes-api'
+
 import { resolveSessionKey } from '../../server/session-utils'
-import { isAuthenticated } from '@/server/auth-middleware'
 import {
-  getLocalMessages,
-  getLocalSession,
-} from '../../server/local-session-store'
+  getSemantierSessionMessages,
+  isSemantierSessionNotFoundError,
+  toSemantierChatMessage,
+} from '../../server/semantier-session-api'
+import {  } from '@/server/auth-middleware'
 
 export const Route = createFileRoute('/api/session-history')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-        await ensureGatewayProbed()
         const url = new URL(request.url)
         const key =
           url.searchParams.get('key')?.trim() ||
           url.searchParams.get('sessionKey')?.trim() ||
           ''
         const limit = Number(url.searchParams.get('limit') || '200')
-        const includeTools = url.searchParams.get('includeTools') === 'true'
+
         if (!key) {
           return json({ ok: false, messages: [], error: 'key is required' })
         }
-        // Try local store first (in-memory sessions)
-        const local = getLocalSession(key)
-        if (local) {
-          const messages = getLocalMessages(key).slice(-limit)
-          return json({ ok: true, messages, sessionKey: key, source: 'local' })
-        }
-        if (!getGatewayCapabilities().sessions) {
-          return json({
-            ok: false,
-            messages: [],
-            sessionKey: key,
-            error: SESSIONS_API_UNAVAILABLE_MESSAGE,
-          })
-        }
+
         try {
           const resolved = await resolveSessionKey({
             rawSessionKey: key,
             defaultKey: 'main',
           })
-          void includeTools
-          const rows = await getMessages(resolved.sessionKey)
+          let rows
+          try {
+            rows = await getSemantierSessionMessages(
+              request.headers,
+              resolved.sessionKey,
+              limit,
+            )
+          } catch (error) {
+            if (isSemantierSessionNotFoundError(error)) {
+              return json({
+                ok: true,
+                messages: [],
+                sessionKey: 'new',
+                source: 'semantier',
+              })
+            }
+            throw error
+          }
           const trimmed = rows.slice(-limit)
           return json({
             ok: true,
-            messages: trimmed.map((row) => toChatMessage(row)),
+            messages: trimmed.map((row, index) =>
+              toSemantierChatMessage(row, index),
+            ),
             sessionKey: resolved.sessionKey,
-            source: 'gateway',
+            source: 'semantier',
           })
         } catch (error) {
           return json(

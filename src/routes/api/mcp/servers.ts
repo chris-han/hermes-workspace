@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../../server/auth-middleware'
 import {
   BEARER_TOKEN,
   HERMES_API,
@@ -95,10 +94,7 @@ export const Route = createFileRoute('/api/mcp/servers')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const authResult = isAuthenticated(request) as AuthResult
-        if (authResult !== true) return authResult
-
-        await ensureGatewayProbed()
+        ensureGatewayProbed()
         if (!getCapabilities().config) {
           return Response.json({
             ...createCapabilityUnavailablePayload('config', {

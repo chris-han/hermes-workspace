@@ -1,6 +1,4 @@
 import { streamChat } from './hermes-api'
-import { resolveChatBackend } from './chat-mode'
-import { openaiChat } from './openai-compat-api'
 
 export type ChatMessage = {
   role: string
@@ -100,53 +98,22 @@ export async function sendChatUnified(
   messages: Array<ChatMessage>,
   options: UnifiedChatOptions = {},
 ): Promise<string> {
-  const backend = resolveChatBackend()
-
-  if (backend === 'openai-compat') {
-    return openaiChat(messages, {
-      model: options.model,
-      temperature: options.temperature,
-      signal: options.signal,
-      stream: false,
-    })
+  if (!options.sessionId) {
+    throw new Error('Hermes enhanced chat requires sessionId')
   }
-
-  if (backend === 'hermes-enhanced') {
-    let text = ''
-    for await (const delta of streamHermesChat(messages, options)) {
-      text += delta
-    }
-    return text
+  let text = ''
+  for await (const delta of streamHermesChat(messages, options)) {
+    text += delta
   }
-
-  throw new Error('No chat backend available')
+  return text
 }
 
 export async function streamChatUnified(
   messages: Array<ChatMessage>,
   options: UnifiedChatOptions = {},
 ): Promise<AsyncGenerator<string, void, void>> {
-  const backend = resolveChatBackend()
-
-  if (backend === 'openai-compat') {
-    const rawStream = await openaiChat(messages, {
-      model: options.model,
-      temperature: options.temperature,
-      signal: options.signal,
-      stream: true,
-    })
-    // Adapt StreamChunkType to plain string for legacy callers
-    async function* toStringStream() {
-      for await (const chunk of rawStream) {
-        yield chunk.text
-      }
-    }
-    return toStringStream()
+  if (!options.sessionId) {
+    throw new Error('Hermes enhanced chat requires sessionId')
   }
-
-  if (backend === 'hermes-enhanced') {
-    return streamHermesChat(messages, options)
-  }
-
-  throw new Error('No chat backend available')
+  return streamHermesChat(messages, options)
 }

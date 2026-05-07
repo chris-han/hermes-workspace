@@ -6,7 +6,7 @@
 #
 # What it does:
 #   1. Verifies Node 22+, Python 3.11+, pnpm
-#   2. Installs hermes-agent via pip (vanilla, no fork)
+#   2. Installs hermes-agent from local monorepo if available, else PyPI
 #   3. Clones hermes-workspace
 #   4. Sets up .env, installs deps, starts both servers
 #
@@ -71,54 +71,72 @@ if ! command -v pnpm &>/dev/null; then
 fi
 green "  pnpm $(pnpm --version) ✓"
 
-# ─── install hermes-agent (vanilla, no fork) ──────────────────────────────
+# ─── install hermes-agent (prefer local monorepo, fallback to PyPI) ───────
 
-cyan "→ Installing hermes-agent (vanilla from PyPI)…"
-if python3 -c "import project_agent" &>/dev/null; then
-  green "  hermes-agent already installed ✓"
+LOCAL_AGENT_DIR=""
+if [[ -d "$INSTALL_DIR/../hermes-agent/webapi" ]]; then
+  LOCAL_AGENT_DIR=$(cd "$INSTALL_DIR/../hermes-agent" && pwd)
+fi
+
+if [[ -n "$LOCAL_AGENT_DIR" ]]; then
+  cyan "→ Installing hermes-agent from local monorepo ($LOCAL_AGENT_DIR)…"
+  cd "$LOCAL_AGENT_DIR"
+  if [[ -d ".venv" ]]; then
+    "./.venv/bin/pip" install -e ".[cron]" >/dev/null 2>&1 || "./.venv/bin/pip" install -e . >/dev/null 2>&1
+  elif [[ -d "venv" ]]; then
+    "./venv/bin/pip" install -e ".[cron]" >/dev/null 2>&1 || "./venv/bin/pip" install -e . >/dev/null 2>&1
+  else
+    python3 -m pip install -e ".[cron]" >/dev/null 2>&1 || python3 -m pip install -e . >/dev/null 2>&1
+  fi
+  green "  hermes-agent installed from local monorepo ✓"
 else
-  # Detect PEP 668 environments (Debian 12+, Ubuntu 23.04+, recent Fedora, etc.)
-  is_externally_managed() {
-    python3 - <<'PY' 2>/dev/null
+  cyan "→ Installing hermes-agent (vanilla from PyPI)…"
+  if python3 -c "import project_agent" &>/dev/null; then
+    green "  hermes-agent already installed ✓"
+  else
+    # Detect PEP 668 environments (Debian 12+, Ubuntu 23.04+, recent Fedora, etc.)
+    is_externally_managed() {
+      python3 - <<'PY' 2>/dev/null
 import sys, sysconfig, pathlib
 p = pathlib.Path(sysconfig.get_paths()["stdlib"]).parent / "EXTERNALLY-MANAGED"
 sys.exit(0 if p.exists() else 1)
 PY
-  }
+    }
 
-  install_with_pipx() {
-    if ! command -v pipx &>/dev/null; then return 1; fi
-    pipx install --force "hermes-agent[cron]" && pipx ensurepath >/dev/null 2>&1
-  }
+    install_with_pipx() {
+      if ! command -v pipx &>/dev/null; then return 1; fi
+      pipx install --force "hermes-agent[cron]" && pipx ensurepath >/dev/null 2>&1
+    }
 
-  install_with_venv() {
-    local venv_dir="$HOME/.local/share/hermes-agent/venv"
-    local bin_dir="$HOME/.local/bin"
-    yellow "  Creating isolated venv at $venv_dir"
-    python3 -m venv "$venv_dir"
-    "$venv_dir/bin/pip" install --upgrade pip >/dev/null
-    "$venv_dir/bin/pip" install --upgrade "hermes-agent[cron]"
-    mkdir -p "$bin_dir"
-    ln -sf "$venv_dir/bin/project-agent" "$bin_dir/project-agent" 2>/dev/null || true
-    ln -sf "$venv_dir/bin/hermes-agent" "$bin_dir/hermes-agent" 2>/dev/null || true
-    case ":$PATH:" in
-      *":$bin_dir:"*) ;;
-      *) yellow "  Add to your shell rc: export PATH=\"$bin_dir:\$PATH\"" ;;
-    esac
-  }
+    install_with_venv() {
+      local venv_dir="$HOME/.local/share/hermes-agent/venv"
+      local bin_dir="$HOME/.local/bin"
+      yellow "  Creating isolated venv at $venv_dir"
+      python3 -m venv "$venv_dir"
+      "$venv_dir/bin/pip" install --upgrade pip >/dev/null
+      "$venv_dir/bin/pip" install --upgrade "hermes-agent[cron]"
+      mkdir -p "$bin_dir"
+      ln -sf "$venv_dir/bin/project-agent" "$bin_dir/project-agent" 2>/dev/null || true
+      ln -sf "$venv_dir/bin/hermes-agent" "$bin_dir/hermes-agent" 2>/dev/null || true
+      case ":$PATH:" in
+        *":$bin_dir:") ;;
+        *) yellow "  Add to your shell rc: export PATH=\"$bin_dir:\$PATH\"" ;;
+      esac
+    }
 
-  if is_externally_managed; then
-    yellow "  PEP 668 environment detected (system Python is externally managed)"
-    if install_with_pipx; then
-      green "  hermes-agent installed via pipx ✓"
+    if is_externally_managed; then
+      yellow "  PEP 668 environment detected (system Python is externally managed)"
+      if install_with_pipx; then
+        green "  hermes-agent installed via pipx ✓"
+      else
+        yellow "  pipx not available — falling back to isolated venv"
+        install_with_venv
+        green "  hermes-agent installed in venv ✓"
+      fi
     else
-      yellow "  pipx not available — falling back to isolated venv"
-      install_with_venv
-      green "  hermes-agent installed in venv ✓"
+      python3 -m pip install --user --upgrade "hermes-agent[cron]"
+      green "  hermes-agent installed ✓"
     fi
-  else
-    python3 -m pip install --user --upgrade "hermes-agent[cron]"
-    green "  hermes-agent installed ✓"
   fi
 fi
 

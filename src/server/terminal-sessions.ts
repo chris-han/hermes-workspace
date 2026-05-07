@@ -6,8 +6,8 @@ import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { homedir } from 'node:os'
 import EventEmitter from 'node:events'
+import { formatWorkspaceCwdLabel, resolveWorkspaceCwd } from './workspace-root'
 import type { ChildProcess } from 'node:child_process'
 
 export type TerminalSessionEvent = {
@@ -36,6 +36,7 @@ const PTY_HELPER = resolve(__dirname_resolved, 'pty-helper.py')
 export function createTerminalSession(params: {
   command?: Array<string>
   cwd?: string
+  workspaceRoot: string
   env?: Record<string, string>
   cols?: number
   rows?: number
@@ -43,7 +44,7 @@ export function createTerminalSession(params: {
   const emitter = new EventEmitter()
   const sessionId = randomUUID()
 
-  const home = process.env.HOME ?? homedir() ?? '/tmp'
+  const workspaceRoot = resolveWorkspaceCwd(params.workspaceRoot, '~')
   const defaultShell =
     process.platform === 'win32'
       ? 'powershell.exe'
@@ -51,10 +52,7 @@ export function createTerminalSession(params: {
         ? '/bin/zsh'
         : '/bin/bash'
   const shell = params.command?.[0] ?? process.env.SHELL ?? defaultShell
-  let cwd = params.cwd ?? home
-  if (cwd.startsWith('~')) {
-    cwd = cwd.replace('~', home)
-  }
+  const cwd = resolveWorkspaceCwd(workspaceRoot, params.cwd)
 
   const cols = params.cols ?? 80
   const rows = params.rows ?? 24
@@ -91,6 +89,10 @@ export function createTerminalSession(params: {
       env: {
         ...process.env,
         ...params.env,
+        HOME: workspaceRoot,
+        HERMES_TERMINAL_ROOT: workspaceRoot,
+        HERMES_TERMINAL_CWD_LABEL: formatWorkspaceCwdLabel(workspaceRoot, cwd),
+        PROMPT_COMMAND: `case "$PWD" in "${workspaceRoot}"|"${workspaceRoot}"/*) ;; *) printf '\n[terminal] blocked: path outside workspace root, returning to %s\n' "${workspaceRoot}" >&2; builtin cd "${workspaceRoot}" ;; esac${process.env.PROMPT_COMMAND ? `;${process.env.PROMPT_COMMAND}` : ''}`,
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
         COLUMNS: String(cols),

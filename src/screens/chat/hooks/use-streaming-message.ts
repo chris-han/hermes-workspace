@@ -40,6 +40,45 @@ type PortableHistoryMessage = {
   content: string
 }
 
+function resolveRunIdFromPayload(payload?: unknown): string {
+  const data =
+    payload && typeof payload === 'object'
+      ? (payload as Record<string, unknown>)
+      : null
+  if (!data) return ''
+
+  const explicitRunId =
+    typeof data.runId === 'string'
+      ? data.runId.trim()
+      : typeof data.run_id === 'string'
+        ? data.run_id.trim()
+        : ''
+  if (explicitRunId) return explicitRunId
+
+  const runDir =
+    typeof data.run_dir === 'string'
+      ? data.run_dir.trim()
+      : typeof data.runDir === 'string'
+        ? data.runDir.trim()
+        : ''
+  if (!runDir) return ''
+
+  const normalized = runDir.replace(/\\+/g, '/').replace(/\/+$/, '')
+  const segments = normalized.split('/')
+  return segments[segments.length - 1] || ''
+}
+
+function appendFullReportLink(text: string, payload?: unknown): string {
+  const content = text.trim()
+  const runId = resolveRunIdFromPayload(payload)
+  if (!runId) return content
+  if (content.includes('/runs/') && content.includes(runId)) return content
+  if (!content) {
+    return `[Full report](/runs/${runId})`
+  }
+  return `${content}\n\n[Full report](/runs/${runId})`
+}
+
 type UseStreamingMessageOptions = {
   onStarted?: (payload: { runId: string | null }) => void
   onChunk?: (text: string, fullText: string) => void
@@ -85,7 +124,9 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
   const finishedRef = useRef(false)
   const thinkingRef = useRef<string>('')
   const activeRunIdRef = useRef<string | null>(null)
-  const delayedUnregisterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const delayedUnregisterTimerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
   const activeSessionKeyRef = useRef<string>('main')
   const lifecyclePhaseRef = useRef<StreamLifecyclePhase>('idle')
   const acceptedAtRef = useRef<number | null>(null)
@@ -346,7 +387,7 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
         }, 5000)
       }
 
-      const finalText = fullTextRef.current
+      const finalText = appendFullReportLink(fullTextRef.current, payload)
       const thinking = thinkingRef.current
       renderedTextRef.current = finalText
       targetTextRef.current = finalText
@@ -597,9 +638,7 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
             type: 'done',
             state: doneState ?? 'final',
             errorMessage,
-            message: (payload).message as
-              | Record<string, unknown>
-              | undefined,
+            message: payload.message as Record<string, unknown> | undefined,
             runId: activeRunIdRef.current ?? undefined,
             sessionKey: activeSessionKeyRef.current,
             transport: 'send-stream',
@@ -698,7 +737,12 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
               role: 'assistant',
               content: [
                 ...(thinkingRef.current
-                  ? [{ type: 'thinking' as const, thinking: thinkingRef.current }]
+                  ? [
+                      {
+                        type: 'thinking' as const,
+                        thinking: thinkingRef.current,
+                      },
+                    ]
                   : []),
                 { type: 'text' as const, text: fullTextRef.current },
               ],
@@ -738,14 +782,36 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
             attachments: params.attachments,
             idempotencyKey: params.idempotencyKey ?? crypto.randomUUID(),
             model: params.model || undefined,
-            locale: typeof window !== 'undefined' ? localStorage.getItem('hermes-workspace-locale') || 'en' : 'en',
+            locale:
+              typeof window !== 'undefined'
+                ? localStorage.getItem('hermes-workspace-locale') || 'en'
+                : 'en',
           }),
           signal: abortController.signal,
         })
 
         if (!response.ok) {
-          const errorText = await response.text()
-          throw new Error(errorText || 'Stream request failed')
+          const payload = (await response.json().catch(() => null)) as Record<
+            string,
+            unknown
+          > | null
+          const payloadError =
+            typeof payload?.error === 'string' ? payload.error.trim() : ''
+          const payloadMessage =
+            typeof payload?.message === 'string' ? payload.message.trim() : ''
+          const statusPrefix =
+            response.status === 429
+              ? 'Rate limit reached'
+              : response.status === 401 || response.status === 403
+                ? 'Unauthorized'
+                : ''
+          const errorText =
+            payloadError || payloadMessage || response.statusText || ''
+          throw new Error(
+            statusPrefix && errorText
+              ? `${statusPrefix}. ${errorText}`
+              : statusPrefix || errorText || 'Stream request failed',
+          )
         }
 
         const resolvedSessionKey =

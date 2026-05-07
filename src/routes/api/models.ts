@@ -1,19 +1,12 @@
 import fs from 'node:fs'
-import path from 'node:path'
-import os from 'node:os'
 import { json } from '@tanstack/react-start'
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
+import { ensureGatewayProbed } from '../../server/hermes-api'
 import {
-  ensureGatewayProbed,
-  getGatewayCapabilities,
-} from '../../server/hermes-api'
-import { BEARER_TOKEN, HERMES_API } from '../../server/gateway-capabilities'
-import {
-  ensureDiscovery,
-  getDiscoveredModels,
-  ensureProviderInConfig,
-} from '../../server/local-provider-discovery'
+  resolveHermesConfigPathFromBackend,
+  resolveHermesPathFromBackend,
+} from '../../server/hermes-home'
+import { WorkspaceAuthRequiredError } from '../../server/workspace-root'
 
 type ModelEntry = {
   provider?: string
@@ -62,12 +55,11 @@ function normalizeModel(entry: unknown): ModelEntry | null {
 }
 
 /**
- * Read user-configured models from ~/.hermes/models.json.
+ * Read user-configured models from the active Hermes home models.json.
  * This is the curated list the user manages via the Hermes CLI or UI.
  * Each entry has: { id, name, provider, model, baseUrl, createdAt }
  */
-function readHermesModelsJson(): Array<ModelEntry> {
-  const modelsPath = path.join(os.homedir(), '.hermes', 'models.json')
+function readHermesModelsJson(modelsPath: string): Array<ModelEntry> {
   try {
     if (!fs.existsSync(modelsPath)) return []
     const raw = fs.readFileSync(modelsPath, 'utf-8')
@@ -91,11 +83,10 @@ function readHermesModelsJson(): Array<ModelEntry> {
 }
 
 /**
- * Read the default model from ~/.hermes/config.yaml without a YAML parser.
+ * Read the default model from the active Hermes config.yaml without a YAML parser.
  * Looks for "default: <model-id>" under the "model:" section.
  */
-function readHermesDefaultModel(): ModelEntry | null {
-  const configPath = path.join(os.homedir(), '.hermes', 'config.yaml')
+function readHermesDefaultModel(configPath: string): ModelEntry | null {
   try {
     if (!fs.existsSync(configPath)) return null
     const raw = fs.readFileSync(configPath, 'utf-8')
@@ -110,42 +101,27 @@ function readHermesDefaultModel(): ModelEntry | null {
   }
 }
 
-/**
- * Fallback: fetch models from the hermes-agent /v1/models endpoint.
- */
-async function fetchHermesModels(): Promise<Array<ModelEntry>> {
-  const headers: Record<string, string> = {}
-  if (BEARER_TOKEN) headers['Authorization'] = `Bearer ${BEARER_TOKEN}`
-  const response = await fetch(`${HERMES_API}/v1/models`, { headers })
-  if (!response.ok)
-    throw new Error(`Hermes models request failed (${response.status})`)
-  const payload = asRecord(await response.json())
-  const rawModels = Array.isArray(payload.data)
-    ? payload.data
-    : Array.isArray(payload.models)
-      ? payload.models
-      : []
-  return rawModels
-    .map(normalizeModel)
-    .filter((e): e is ModelEntry => e !== null)
-}
-
 export const Route = createFileRoute('/api/models')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-        await ensureGatewayProbed()
+        ensureGatewayProbed()
 
         try {
-          // Primary: read user-configured models from ~/.hermes/models.json
-          let models = readHermesModelsJson()
+          const modelsPath = await resolveHermesPathFromBackend(
+            request.headers,
+            'models.json',
+          )
+          const configPath = await resolveHermesConfigPathFromBackend(
+            request.headers,
+          )
+
+          // Primary: read user-configured models from the active Hermes home.
+          let models = readHermesModelsJson(modelsPath)
           let source = 'models.json'
 
           // Ensure the default model from config.yaml is always included
-          const defaultModel = readHermesDefaultModel()
+          const defaultModel = readHermesDefaultModel(configPath)
           if (defaultModel) {
             const hasDefault = models.some((m) => m.id === defaultModel.id)
             if (!hasDefault) {
@@ -153,23 +129,9 @@ export const Route = createFileRoute('/api/models')({
             }
           }
 
-          // Fallback: if no models.json, fetch from hermes-agent /v1/models
-          if (models.length === 0 && getGatewayCapabilities().models) {
-            models = await fetchHermesModels()
-            source = 'hermes-agent'
-          }
-
-          // Merge auto-discovered local models (Ollama, Atomic Chat, etc.)
-          await ensureDiscovery()
-          const localModels = getDiscoveredModels()
-          const existingIds = new Set(models.map((m) => m.id))
-          for (const m of localModels) {
-            if (!existingIds.has(m.id)) {
-              models.push(m)
-              existingIds.add(m.id)
-              ensureProviderInConfig(m.provider)
-            }
-          }
+          // In semantier-unicell mode, models come exclusively from the agent
+          // wrapper (models.json / config.yaml). No fallback to /v1/models or
+          // local provider discovery is performed.
 
           const configuredProviders = Array.from(
             new Set(
@@ -190,6 +152,9 @@ export const Route = createFileRoute('/api/models')({
             source,
           })
         } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return json({ ok: false, error: err.message }, { status: 401 })
+          }
           return json(
             {
               ok: false,

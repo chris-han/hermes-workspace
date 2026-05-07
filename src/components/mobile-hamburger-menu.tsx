@@ -1,4 +1,5 @@
 import { useNavigate, useRouterState } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   BrainIcon,
@@ -18,9 +19,15 @@ import { cn } from '@/lib/utils'
 import { hapticTap } from '@/lib/haptics'
 import { getTheme, getThemeVariant, isDarkTheme, setTheme } from '@/lib/theme'
 import {
-  selectChatProfileDisplayName,
-  useChatSettingsStore,
-} from '@/hooks/use-chat-settings'
+  logoutSemantierAuth,
+  semantierAuthQueryKey,
+  useSemantierAuthStatus,
+} from '@/lib/semantier-auth'
+import { UserAvatar } from '@/components/avatars'
+import {
+  useResolvedAvatarUrl,
+  useResolvedDisplayName,
+} from '@/hooks/use-resolved-avatar'
 
 const NAV_ITEMS = [
   {
@@ -116,10 +123,27 @@ export function MobileHamburgerMenu() {
   }, [open])
 
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const profileDisplayName = useChatSettingsStore(selectChatProfileDisplayName)
+  const profileDisplayName = useResolvedDisplayName()
+  const profileAvatarUrl = useResolvedAvatarUrl()
+  const semantierAuthQuery = useSemantierAuthStatus()
+  const semantierAuth = semantierAuthQuery.data
+  const [semantierAuthActionPending, setSemantierAuthActionPending] =
+    useState(false)
   const isChatRoute =
     pathname.startsWith('/chat') || pathname === '/new' || pathname === '/'
+
+  async function handleFeishuLogout() {
+    if (semantierAuthActionPending) return
+    setSemantierAuthActionPending(true)
+    try {
+      await logoutSemantierAuth()
+      await queryClient.invalidateQueries({ queryKey: semantierAuthQueryKey })
+    } finally {
+      setSemantierAuthActionPending(false)
+    }
+  }
 
   function handleNav(to: string) {
     hapticTap()
@@ -173,8 +197,8 @@ export function MobileHamburgerMenu() {
         >
           <div className="flex items-center gap-2.5">
             <img
-              src="/hermes-avatar.webp"
-              alt="Hermes"
+              src="/logo.svg"
+              alt="semantier logo"
               className="size-8 rounded-xl shrink-0"
             />
             <div className="flex flex-col leading-tight">
@@ -244,27 +268,11 @@ export function MobileHamburgerMenu() {
         >
           <div className="flex items-center gap-3 px-2">
             {/* User avatar + name + status dot */}
-            <div
-              className="size-9 rounded-xl shrink-0 flex items-center justify-center"
-              style={{
-                background: 'var(--color-accent-muted, rgba(99,102,241,0.15))',
-              }}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ color: 'var(--color-accent, #6366f1)' }}
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </div>
+            <UserAvatar
+              size={36}
+              src={profileAvatarUrl}
+              alt={profileDisplayName}
+            />
             <span
               className="text-[15px] font-semibold truncate"
               style={{ color: 'var(--color-ink, #111)' }}
@@ -316,6 +324,54 @@ export function MobileHamburgerMenu() {
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
             </button>
+          </div>
+
+          <div className="mt-3 px-2">
+            {semantierAuthQuery.isLoading ? (
+              <p
+                className="text-xs"
+                style={{ color: 'var(--color-ink-muted, #666)' }}
+              >
+                Checking Feishu account...
+              </p>
+            ) : (
+              <div className="flex items-center gap-2">
+                <p
+                  className="min-w-0 flex-1 truncate text-xs"
+                  style={{ color: 'var(--color-ink-muted, #666)' }}
+                >
+                  {semantierAuth.authenticated && semantierAuth.user
+                    ? `Signed in as ${semantierAuth.user.name}`
+                    : `Guest workspace: ${semantierAuth.workspace_slug || 'public'}`}
+                </p>
+                {semantierAuth.authenticated ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleFeishuLogout()
+                    }}
+                    className="rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+                    style={{
+                      background: 'var(--color-border, #e5e7eb)',
+                      color: 'var(--color-ink, #111)',
+                    }}
+                  >
+                    {semantierAuthActionPending ? 'Logging out...' : 'Logout'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.assign('/auth/feishu/login')
+                    }}
+                    className="rounded-full px-3 py-1.5 text-xs font-medium text-white transition-colors"
+                    style={{ background: 'var(--color-accent, #6366f1)' }}
+                  >
+                    Login
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

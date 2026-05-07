@@ -1,59 +1,21 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
-import { CLAUDE_API } from './gateway-capabilities'
+import { HERMES_API } from './gateway-capabilities'
 
-/**
- * Optional bearer token for authenticated OpenAI-compatible endpoints
- * (e.g. Codex OAuth, Hermes Agent gateway with API_SERVER_KEY set).
- *
- * Read at call time, not module-load time: under vite-node SSR the
- * top-level `process.env` snapshot can be empty when this module is
- * first evaluated, freezing a `const` to '' even though the env is
- * populated by the time requests actually run. Reading inside the
- * function avoids that.
- *
- * Resolution order:
- * 1. `HERMES_API_TOKEN` env var
- * 2. `CLAUDE_API_TOKEN` env var (back-compat)
- * 3. Codex OAuth access token from `~/.codex/auth.json`
- */
-function getBearerToken(): string {
-  const fromEnv = process.env.HERMES_API_TOKEN || process.env.CLAUDE_API_TOKEN
-  if (fromEnv) return fromEnv
-
-  // Fall back to Codex OAuth token when no env var is set.
-  // This bridges the gap for users who authenticated via `codex login`
-  // but don't have HERMES_API_TOKEN configured.
-  try {
-    const codexAuthPath = join(homedir(), '.codex', 'auth.json')
-    if (existsSync(codexAuthPath)) {
-      const auth = JSON.parse(readFileSync(codexAuthPath, 'utf-8')) as {
-        tokens?: { access_token?: string }
-      }
-      if (auth.tokens?.access_token) return auth.tokens.access_token
-    }
-  } catch {
-    // Silently ignore — no Codex auth available
-  }
-
-  return ''
-}
+/** Optional bearer token for authenticated OpenAI-compatible endpoints (e.g. Codex OAuth). */
+const BEARER_TOKEN = process.env.HERMES_API_TOKEN || ''
 
 /** Cached first available model from /v1/models — used as fallback when no model is specified. */
 let _cachedDefaultModel: string | null = null
 
 async function getDefaultModel(): Promise<string> {
   if (_cachedDefaultModel) return _cachedDefaultModel
-  if (process.env.CLAUDE_DEFAULT_MODEL) {
-    _cachedDefaultModel = process.env.CLAUDE_DEFAULT_MODEL
+  if (process.env.HERMES_DEFAULT_MODEL) {
+    _cachedDefaultModel = process.env.HERMES_DEFAULT_MODEL
     return _cachedDefaultModel
   }
   try {
     const headers: Record<string, string> = {}
-    const bearer = getBearerToken()
-    if (bearer) headers['Authorization'] = `Bearer ${bearer}`
-    const res = await fetch(`${CLAUDE_API}/v1/models`, {
+    if (BEARER_TOKEN) headers['Authorization'] = `Bearer ${BEARER_TOKEN}`
+    const res = await fetch(`${HERMES_API}/v1/models`, {
       headers,
       signal: AbortSignal.timeout(3_000),
     })
@@ -129,19 +91,7 @@ export async function buildRequestBody(
 
 export type StreamChunkType =
   | { type: 'content' | 'reasoning'; text: string }
-  | {
-      type: 'tool'
-      name: string
-      label: string
-      toolCallId?: string
-      // Lifecycle phase from the upstream gateway. Vanilla Hermes Agent
-      // emits 'running' at tool start and 'completed' at tool finish via
-      // the `hermes.tool.progress` SSE event (#16588). Older builds that
-      // sent `claude.tool.progress` did not carry status — we treat
-      // missing/unknown values as a one-shot 'running' so existing flows
-      // keep working.
-      status?: 'running' | 'completed'
-    }
+  | { type: 'tool'; name: string; label: string }
 
 function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
@@ -153,38 +103,20 @@ function readRecord(value: unknown): Record<string, unknown> | null {
     : null
 }
 
-function parseClaudeToolProgressChunk(payload: string): StreamChunkType | null {
+function parseHermesToolProgressChunk(payload: string): StreamChunkType | null {
   try {
     const parsed = JSON.parse(payload) as unknown
     const record = readRecord(parsed)
     if (!record) return null
-    const name =
-      readString(record.tool) || readString(record.name) || 'tool'
+    const name = readString(record.tool) || readString(record.name) || 'tool'
     const emoji = readString(record.emoji)
     const labelText = readString(record.label)
     const label = [emoji, labelText].filter(Boolean).join(' ').trim()
-    const toolCallId =
-      readString(record.toolCallId) ||
-      readString(record.tool_call_id) ||
-      undefined
-    const statusRaw = readString(record.status).toLowerCase()
-    const status =
-      statusRaw === 'running'
-        ? ('running' as const)
-        : statusRaw === 'completed' || statusRaw === 'complete'
-          ? ('completed' as const)
-          : undefined
-    // Accept the chunk as long as we have either a label OR a stable
-    // tool_call_id + status. Vanilla 'completed' events ship without
-    // emoji/label and would otherwise be dropped, leaving cards stuck
-    // in 'running'.
-    if (!label && !toolCallId) return null
+    if (!label) return null
     return {
       type: 'tool',
       name,
-      label: label || name,
-      toolCallId,
-      status,
+      label,
     }
   } catch {
     return null
@@ -214,7 +146,7 @@ export async function* parseOpenAIStream(
       buffer = buffer.slice(boundary + 2)
 
       let eventName = ''
-      const dataLines: string[] = []
+      const dataLines: Array<string> = []
 
       for (const line of rawEvent.split('\n')) {
         const trimmed = line.trim()
@@ -230,11 +162,8 @@ export async function* parseOpenAIStream(
       for (const payload of dataLines) {
         if (!payload || payload === '[DONE]') continue
 
-        if (
-          eventName === 'claude.tool.progress' ||
-          eventName === 'hermes.tool.progress'
-        ) {
-          const toolChunk = parseClaudeToolProgressChunk(payload)
+        if (eventName === 'hermes.tool.progress') {
+          const toolChunk = parseHermesToolProgressChunk(payload)
           if (toolChunk) yield toolChunk
           continue
         }
@@ -279,19 +208,18 @@ export async function openaiChat(
   options: OpenAIChatOptions = {},
 ): Promise<string | AsyncGenerator<StreamChunkType, void, void>> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  const bearer = getBearerToken()
-  if (bearer) {
-    headers['Authorization'] = `Bearer ${bearer}`
+  if (BEARER_TOKEN) {
+    headers['Authorization'] = `Bearer ${BEARER_TOKEN}`
   }
   // Only send session header when authenticated — gateways without
   // API_SERVER_KEY reject this header with an auth error.
-  if (options.sessionId && bearer) {
-    headers['X-Claude-Session-Id'] = options.sessionId
+  if (options.sessionId && BEARER_TOKEN) {
+    headers['X-Hermes-Session-Id'] = options.sessionId
   }
 
   const endpoint = options.baseUrl
     ? `${options.baseUrl.replace(/\/+$/, '')}/chat/completions`
-    : `${CLAUDE_API}/v1/chat/completions`
+    : `${HERMES_API}/v1/chat/completions`
   const response = await fetch(endpoint, {
     method: 'POST',
     headers,

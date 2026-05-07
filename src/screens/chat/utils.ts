@@ -161,17 +161,12 @@ function normalizeTimestamp(value: unknown): number | null {
 }
 
 export function getMessageTimestamp(message: ChatMessage): number {
-  // ChatMessage has `[key: string]: unknown`, so bracket access is safe and
-  // avoids `as any`. `message.timestamp` is the canonical typed field;
-  // the others are alternative shapes used by different backends.
-  // Recovery messages always arrive with `timestamp` set to Date.now() (ms),
-  // which normalizeTimestamp returns as-is, so sort order is always correct.
-  const candidates: Array<unknown> = [
-    message['createdAt'],
-    message['created_at'],
-    message.timestamp,
-    message['time'],
-    message['ts'],
+  const candidates = [
+    (message as any).createdAt,
+    (message as any).created_at,
+    (message as any).timestamp,
+    (message as any).time,
+    (message as any).ts,
   ]
 
   for (const candidate of candidates) {
@@ -216,7 +211,7 @@ export function normalizeSessions(
         : deriveFriendlyIdFromKey(session.friendlyId ?? session.key)
     const friendlyIdCandidate =
       typeof session.friendlyId === 'string' &&
-        session.friendlyId.trim().length > 0
+      session.friendlyId.trim().length > 0
         ? session.friendlyId.trim()
         : deriveFriendlyIdFromKey(key)
 
@@ -230,12 +225,9 @@ export function normalizeSessions(
         : undefined
     const derivedTitle =
       typeof session.derivedTitle === 'string' &&
-        session.derivedTitle.trim().length > 0
+      session.derivedTitle.trim().length > 0
         ? session.derivedTitle.trim()
-        : typeof session.preview === 'string' &&
-          session.preview.trim().length > 0
-          ? session.preview.trim()
-          : undefined
+        : undefined
     const titleStatus = deriveTitleStatus(
       label,
       explicitTitle,
@@ -255,13 +247,16 @@ export function normalizeSessions(
       title: explicitTitle,
       derivedTitle,
       label,
+      status:
+        typeof session.status === 'string' && session.status.trim().length > 0
+          ? session.status.trim().toLowerCase()
+          : undefined,
       updatedAt:
         typeof session.updatedAt === 'number' ? session.updatedAt : undefined,
       lastMessage: session.lastMessage ?? null,
       titleStatus,
       titleSource,
       titleError: session.titleError ?? null,
-      preview: session.preview ?? null,
     }
   })
 }
@@ -282,7 +277,7 @@ export async function readError(res: Response): Promise<string> {
 }
 
 export const missingAuthMessage =
-  'Hermes Agent connection failed. Make sure Hermes Agent is running and HERMES_API_URL is set correctly.'
+  'Hermes Agent connection failed. Make sure Hermes is running and HERMES_API_URL is set correctly.'
 
 export function isMissingAuth(message: string): boolean {
   return message.includes(missingAuthMessage)

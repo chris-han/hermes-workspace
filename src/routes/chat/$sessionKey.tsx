@@ -2,8 +2,10 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
+  NEW_CHAT_FRIENDLY_ID,
+  NEW_CHAT_SESSION_KEY,
   moveHistoryMessages,
-  reconcileSessionDraft,
+  resetNewChatHistory,
 } from '../../screens/chat/chat-queries'
 import { ErrorBoundary } from '@/components/error-boundary'
 
@@ -77,7 +79,7 @@ function ChatRoute() {
   // Clear history cache when navigating to new chat
   useEffect(() => {
     if (isNewChat) {
-      queryClient.removeQueries({ queryKey: ['chat', 'history', 'new', 'new'] })
+      resetNewChatHistory(queryClient)
     }
   }, [isNewChat, queryClient])
 
@@ -87,15 +89,12 @@ function ChatRoute() {
       sessionKey: string
     }) {
       const sourceFriendlyId = activeFriendlyId
-      const sourceSessionKey = forcedSessionKey ?? activeFriendlyId
+      const sourceSessionKey =
+        forcedSessionKey ??
+        (activeFriendlyId === NEW_CHAT_FRIENDLY_ID
+          ? NEW_CHAT_SESSION_KEY
+          : activeFriendlyId)
       moveHistoryMessages(
-        queryClient,
-        sourceFriendlyId,
-        sourceSessionKey,
-        payload.friendlyId,
-        payload.sessionKey,
-      )
-      reconcileSessionDraft(
         queryClient,
         sourceFriendlyId,
         sourceSessionKey,
@@ -109,7 +108,7 @@ function ChatRoute() {
       })
       // Persist last session for refresh recovery
       try {
-        localStorage.setItem('claude-last-session', payload.friendlyId)
+        localStorage.setItem('hermes-last-session', payload.friendlyId)
       } catch {}
       navigate({
         to: '/chat/$sessionKey',

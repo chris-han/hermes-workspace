@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Editor } from '@monaco-editor/react'
 import { createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Folder01Icon } from '@hugeicons/core-free-icons'
 import { usePageTitle } from '@/hooks/use-page-title'
@@ -16,8 +17,13 @@ function note() {
 }
 `
 
+const searchSchema = z.object({
+  path: z.string().trim().min(1).optional(),
+})
+
 export const Route = createFileRoute('/files')({
   ssr: false,
+  validateSearch: searchSchema,
   component: FilesRoute,
   errorComponent: function FilesError({ error }) {
     return (
@@ -53,6 +59,7 @@ export const Route = createFileRoute('/files')({
 
 function FilesRoute() {
   usePageTitle('Files')
+  const search = Route.useSearch()
   const { settings } = useSettings()
   const [isMobile, setIsMobile] = useState(false)
   const [fileExplorerCollapsed, setFileExplorerCollapsed] = useState(false)
@@ -87,6 +94,7 @@ function FilesRoute() {
             setFileExplorerCollapsed((prev) => !prev)
           }}
           onInsertReference={handleInsertReference}
+          focusPath={search.path}
         />
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <header className="flex items-center gap-3 border-b border-primary-200 px-3 py-2 md:px-4 md:py-3">

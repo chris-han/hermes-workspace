@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
-import type { ClaudeJob } from '@/lib/jobs-api'
+import type { HermesJob } from '@/lib/jobs-api'
 
 const SCHEDULE_PRESETS = [
   { label: 'Every 15m', value: 'every 15m' },
@@ -18,7 +18,7 @@ const SCHEDULE_PRESETS = [
 const DELIVERY_OPTIONS = ['local', 'telegram', 'discord'] as const
 
 type EditJobDialogProps = {
-  job: ClaudeJob | null
+  job: HermesJob | null
   open: boolean
   isSubmitting?: boolean
   onOpenChange: (open: boolean) => void
@@ -32,7 +32,7 @@ type EditJobDialogProps = {
   }) => void | Promise<void>
 }
 
-function readScheduleValue(job: ClaudeJob): string {
+function readScheduleValue(job: HermesJob): string {
   if (typeof job.schedule_display === 'string' && job.schedule_display.trim()) {
     return job.schedule_display.trim()
   }
@@ -55,7 +55,7 @@ function readScheduleValue(job: ClaudeJob): string {
   return ''
 }
 
-function getInitialState(job: ClaudeJob | null) {
+function getInitialState(job: HermesJob | null) {
   const repeatTimes = job?.repeat?.times
   const repeatCompleted = job?.repeat?.completed ?? 0
   const remainingRepeats =
@@ -171,16 +171,14 @@ export function EditJobDialog({
             exit={{ opacity: 0, scale: 0.98, y: 10 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
             onSubmit={handleFormSubmit}
-            className="relative z-10 flex max-h-[85vh] w-[min(720px,96vw)] flex-col overflow-hidden rounded-2xl border shadow-2xl"
+            className="relative z-10 flex max-h-[85vh] w-[min(720px,96vw)] flex-col overflow-hidden rounded-2xl border border-border shadow-2xl"
             style={{
               background: 'var(--theme-card)',
-              borderColor: 'var(--theme-border)',
               color: 'var(--theme-text)',
             }}
           >
             <div
-              className="flex items-start justify-between gap-4 border-b px-5 py-4"
-              style={{ borderColor: 'var(--theme-border)' }}
+              className="flex items-start justify-between gap-4 border-b border-border px-5 py-4"
             >
               <div>
                 <h2 className="text-lg font-semibold">Edit Job</h2>
@@ -215,10 +213,9 @@ export function EditJobDialog({
                   }
                   placeholder="Daily research summary"
                   required
-                  className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                  className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                   style={{
                     background: 'var(--theme-input)',
-                    borderColor: 'var(--theme-border)',
                     color: 'var(--theme-text)',
                     boxShadow: '0 0 0 0 transparent',
                   }}
@@ -276,10 +273,9 @@ export function EditJobDialog({
                     }
                     placeholder="every 30m or 0 9 * * *"
                     required
-                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                    className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                     style={{
                       background: 'var(--theme-input)',
-                      borderColor: 'var(--theme-border)',
                       color: 'var(--theme-text)',
                     }}
                   />
@@ -296,13 +292,12 @@ export function EditJobDialog({
                       prompt: event.target.value,
                     }))
                   }
-                  placeholder="What should Hermes Agent do?"
+                  placeholder="What should Hermes do?"
                   required
                   rows={5}
-                  className="w-full resize-none rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                  className="w-full resize-none rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                   style={{
                     background: 'var(--theme-input)',
-                    borderColor: 'var(--theme-border)',
                     color: 'var(--theme-text)',
                   }}
                 />
@@ -330,10 +325,9 @@ export function EditJobDialog({
                       }))
                     }
                     placeholder="research, writing, synthesis"
-                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                    className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                     style={{
                       background: 'var(--theme-input)',
-                      borderColor: 'var(--theme-border)',
                       color: 'var(--theme-text)',
                     }}
                   />
@@ -353,7 +347,7 @@ export function EditJobDialog({
                           onClick={() => toggleDelivery(option)}
                           title={
                             needsGateway
-                              ? `Requires Hermes Agent gateway with ${option} configured`
+                              ? `Requires Hermes Gateway with ${option} configured`
                               : undefined
                           }
                           className="rounded-full border px-3 py-1.5 text-xs font-medium capitalize transition-colors"
@@ -446,10 +440,9 @@ export function EditJobDialog({
                           repeatCount: event.target.value,
                         }))
                       }
-                      className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                      className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                       style={{
                         background: 'var(--theme-input)',
-                        borderColor: 'var(--theme-border)',
                         color: 'var(--theme-text)',
                       }}
                     />
@@ -459,8 +452,7 @@ export function EditJobDialog({
             </div>
 
             <div
-              className="flex items-center justify-end gap-2 border-t px-5 py-4"
-              style={{ borderColor: 'var(--theme-border)' }}
+              className="flex items-center justify-end gap-2 border-t border-border px-5 py-4"
             >
               <button
                 type="button"

@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { getTheme, setTheme } from '@/lib/theme'
@@ -7,8 +6,8 @@ export type SettingsThemeMode = 'system' | 'light' | 'dark'
 export type AccentColor = 'orange' | 'purple' | 'blue' | 'green'
 
 export type StudioSettings = {
-  claudeUrl: string
-  claudeToken: string
+  hermesUrl: string
+  hermesToken: string
   theme: SettingsThemeMode
   accentColor: AccentColor
   editorFontSize: number
@@ -31,8 +30,8 @@ type SettingsState = {
 }
 
 export const defaultStudioSettings: StudioSettings = {
-  claudeUrl: '',
-  claudeToken: '',
+  hermesUrl: '',
+  hermesToken: '',
   theme: 'system',
   accentColor: 'blue',
   editorFontSize: 13,
@@ -66,17 +65,13 @@ export const useSettingsStore = create<SettingsState>()(
       }
     },
     {
-      name: 'claude-settings',
+      name: 'hermes-settings',
       skipHydration: true,
     },
   ),
 )
 
 export function useSettings() {
-  useEffect(() => {
-    void useSettingsStore.persist.rehydrate()
-  }, [])
-
   const settings = useSettingsStore(function selectSettings(state) {
     return state.settings
   })

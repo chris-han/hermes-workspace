@@ -93,7 +93,12 @@ type AlertDialogActionProps = React.ComponentProps<typeof AlertDialog.Close>
 function AlertDialogAction({ className, ...props }: AlertDialogActionProps) {
   return (
     <AlertDialog.Close
-      render={<Button variant="destructive" className={cn(className)} />}
+      render={
+        <Button
+          variant="destructive"
+          className={cn('theme-danger-contrast', className)}
+        />
+      }
       {...props}
     />
   )

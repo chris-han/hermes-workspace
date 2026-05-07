@@ -6,13 +6,12 @@
  *
  * - Probes on first request + re-probes every 30s
  * - Merges discovered models into /api/models response
- * - Auto-writes custom_providers to ~/.hermes/config.yaml if not already configured
+ * - Reads custom_providers from the active Hermes config.yaml
  */
 
 import fs from 'node:fs'
 import path from 'node:path'
-import os from 'node:os'
-import YAML from 'yaml'
+import { resolveHermesConfigPath } from './hermes-home'
 
 // -------------------------------------------------------------------
 // Well-known local providers
@@ -30,7 +29,7 @@ export type LocalProviderDef = {
   apiMode: string
 }
 
-const LOCAL_PROVIDERS: LocalProviderDef[] = [
+const LOCAL_PROVIDERS: Array<LocalProviderDef> = [
   {
     id: 'ollama',
     name: 'Ollama',
@@ -66,7 +65,7 @@ export type DiscoveredModel = {
 export type DiscoveredProvider = {
   def: LocalProviderDef
   online: boolean
-  models: DiscoveredModel[]
+  models: Array<DiscoveredModel>
   lastProbe: number
 }
 
@@ -77,7 +76,7 @@ export type DiscoveredProvider = {
 const PROBE_TTL_MS = 30_000 // re-probe every 30s
 const PROBE_TIMEOUT_MS = 800 // 800ms timeout per probe — local servers respond fast
 
-let discoveryState: Map<string, DiscoveredProvider> = new Map()
+const discoveryState: Map<string, DiscoveredProvider> = new Map()
 let lastProbeAll = 0
 let probePromise: Promise<void> | null = null
 
@@ -109,16 +108,16 @@ async function probeProvider(
         ? payload.models
         : []
 
-    const models: DiscoveredModel[] = rawModels
-      .flatMap((entry: Record<string, unknown>) => {
+    const models: Array<DiscoveredModel> = rawModels
+      .map((entry: Record<string, unknown>) => {
         const id =
           typeof entry.id === 'string'
             ? entry.id
             : typeof entry.name === 'string'
               ? entry.name
               : ''
-        if (!id) return []
-        return [{
+        if (!id) return null
+        return {
           id,
           name: cleanModelName(id),
           provider: def.id,
@@ -127,8 +126,9 @@ async function probeProvider(
             typeof entry.size === 'number'
               ? Math.round(entry.size / 1024 / 1024 / 1024)
               : null,
-        }]
+        }
       })
+      .filter((m: DiscoveredModel | null): m is DiscoveredModel => m !== null)
 
     return { def, online: true, models, lastProbe: Date.now() }
   } catch {
@@ -188,8 +188,8 @@ export async function forceDiscovery(): Promise<void> {
 /**
  * Get all discovered models across all local providers.
  */
-export function getDiscoveredModels(): DiscoveredModel[] {
-  const models: DiscoveredModel[] = []
+export function getDiscoveredModels(): Array<DiscoveredModel> {
+  const models: Array<DiscoveredModel> = []
   for (const provider of discoveryState.values()) {
     if (provider.online) {
       models.push(...provider.models)
@@ -225,9 +225,7 @@ export function getDiscoveryStatus(): Array<{
 /**
  * Get the provider definition for a given ID.
  */
-export function getLocalProviderDef(
-  id: string,
-): LocalProviderDef | undefined {
+export function getLocalProviderDef(id: string): LocalProviderDef | undefined {
   return LOCAL_PROVIDERS.find((def) => def.id === id)
 }
 
@@ -243,39 +241,22 @@ void ensureDiscovery()
 // Config auto-writer
 // -------------------------------------------------------------------
 
-const CONFIG_PATH = path.join(
-  process.env.HERMES_HOME ?? process.env.CLAUDE_HOME ?? path.join(os.homedir(), '.hermes'),
-  'config.yaml',
-)
-
-const loggedWarnings = new Set<string>()
-
-function readYamlConfig(): Record<string, unknown> {
-  try {
-    const raw = fs.readFileSync(CONFIG_PATH, 'utf-8')
-    const parsed = YAML.parse(raw)
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>
-    }
-  } catch {}
-  return {}
-}
+const CONFIG_PATH = resolveHermesConfigPath()
 
 /**
  * Check if a provider is already in custom_providers config.
- * Reads the active profile config using a YAML parser.
+ * Returns true if the provider already has a config entry.
  */
 export function isProviderConfigured(providerId: string): boolean {
   try {
-    const config = readYamlConfig()
-    const customProviders = config.custom_providers
-    if (!Array.isArray(customProviders)) return false
-    return customProviders.some(
-      (entry: unknown) =>
-        entry &&
-        typeof entry === 'object' &&
-        (entry as Record<string, unknown>).name === providerId,
+    const raw = fs.readFileSync(CONFIG_PATH, 'utf-8')
+    // Simple check — look for the provider name in custom_providers
+    // Full YAML parsing would be better but this avoids adding a dep
+    const cpMatch = raw.match(
+      /custom_providers:\s*\n((?:\s+-[\s\S]*?)*)(?=\n\S|\n*$)/,
     )
+    if (!cpMatch) return false
+    return cpMatch[0].includes(`name: ${providerId}`)
   } catch {
     return false
   }
@@ -295,11 +276,8 @@ export function ensureProviderInConfig(providerId: string): boolean {
   const def = LOCAL_PROVIDERS.find((p) => p.id === providerId)
   if (!def) return false
   // Don't auto-write — just signal that config is needed
-  if (!loggedWarnings.has(providerId)) {
-    loggedWarnings.add(providerId)
-    console.log(
-      `[local-discovery] ${def.name} detected but not in custom_providers. Gateway restart needed after adding it.`,
-    )
-  }
+  console.log(
+    `[local-discovery] ${def.name} detected but not in custom_providers. Gateway restart needed after adding it.`,
+  )
   return false
 }

@@ -1,23 +1,31 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../../server/auth-middleware'
 import { readKnowledgePage } from '../../../server/knowledge-browser'
+import {
+  resolveActiveWorkspaceRoot,
+  WorkspaceAuthRequiredError,
+} from '../../../server/workspace-root'
 
 export const Route = createFileRoute('/api/knowledge/read')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
         const url = new URL(request.url)
         const pathParam = url.searchParams.get('path') || ''
 
         try {
-          const { meta, content, backlinks } = readKnowledgePage(pathParam)
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
+          const { meta, content, backlinks } = readKnowledgePage(
+            pathParam,
+            activeWorkspace.path,
+          )
           return json({ page: meta, content, backlinks })
         } catch (error) {
+          if (error instanceof WorkspaceAuthRequiredError) {
+            return json({ error: error.message }, { status: 401 })
+          }
           const message =
             error instanceof Error
               ? error.message

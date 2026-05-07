@@ -7,35 +7,29 @@ import {
   textFromMessage,
 } from '../utils'
 import { MessageActionsBar } from './message-actions-bar'
-import type { ChatAttachment, ChatMessage, ToolCallContent } from '../types'
+import type {
+  A2UiSchema,
+  ChatAttachment,
+  ChatMessage,
+  ToolCallContent,
+} from '../types'
 import type { ToolPart } from '@/components/prompt-kit/tool'
 import { AssistantAvatar, UserAvatar } from '@/components/avatars'
 import { CodeBlock } from '@/components/prompt-kit/code-block'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { Message, MessageContent } from '@/components/prompt-kit/message'
-import {
-  DialogClose,
-  DialogContent,
-  DialogRoot,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { A2UiRenderer } from './a2ui-renderer'
 import {
   Collapsible,
   CollapsiblePanel,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import {
-  selectChatProfileAvatarDataUrl,
-  selectChatProfileDisplayName,
-  useChatSettingsStore,
-} from '@/hooks/use-chat-settings'
+  useResolvedAvatarUrl,
+  useResolvedDisplayName,
+} from '@/hooks/use-resolved-avatar'
 import { cn } from '@/lib/utils'
-import {
-  buildHermesActivitySummary,
-  shouldAutoExpandHermesActivityCard,
-} from './streaming-activity-ui'
-import { TuiActivityCard } from './tui-activity-card'
 
 const WORDS_PER_TICK = 4
 const TICK_INTERVAL_MS = 50
@@ -149,6 +143,7 @@ type MessageItemProps = {
   streamingKey?: string | null
   expandAllToolSections?: boolean
   isLastAssistant?: boolean
+  onA2UiSubmit?: (payload: string) => void
 }
 
 type InlineToolSection = {
@@ -167,20 +162,24 @@ type InlineToolSection = {
 
 export type InlineRenderPlanItem =
   | { kind: 'text'; text: string }
+  | { kind: 'ui'; key: string; schema: A2UiSchema }
   | { kind: 'tool'; section: InlineToolSection }
 
-export type CompactInlineRenderPlanItem =
-  | { kind: 'text'; text: string }
-  | { kind: 'tools'; sections: Array<InlineToolSection> }
+function extractA2UiSchema(part: unknown): A2UiSchema | null {
+  if (!part || typeof part !== 'object') return null
+  const payload = part as Record<string, unknown>
+  const candidate = payload.schema || payload.payload || payload.data
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    return null
+  }
+  return candidate as A2UiSchema
+}
 
 export function buildInlineToolRenderPlan(
   message: ChatMessage,
   toolSections: Array<InlineToolSection>,
 ): Array<InlineRenderPlanItem> {
   const parts = Array.isArray(message.content) ? message.content : []
-  if (parts.length === 0) {
-    return toolSections.map((section) => ({ kind: 'tool' as const, section }))
-  }
 
   const toolSectionsById = new Map(
     toolSections.map((section) => [section.key, section] as const),
@@ -188,11 +187,23 @@ export function buildInlineToolRenderPlan(
   const usedKeys = new Set<string>()
   const plan: Array<InlineRenderPlanItem> = []
 
-  for (const part of parts) {
+  for (let idx = 0; idx < parts.length; idx += 1) {
+    const part = parts[idx]
     if (part.type === 'text') {
       const text = typeof part.text === 'string' ? part.text : ''
       if (text.length > 0) {
         plan.push({ kind: 'text', text })
+      }
+      continue
+    }
+
+    if (part.type === 'a2ui' || part.type === 'uiSchema') {
+      const schema = extractA2UiSchema(part)
+      if (schema) {
+        const key =
+          (typeof (part as any).id === 'string' && (part as any).id) ||
+          `${part.type}-${idx}`
+        plan.push({ kind: 'ui', key, schema })
       }
       continue
     }
@@ -215,32 +226,6 @@ export function buildInlineToolRenderPlan(
   }
 
   return plan
-}
-
-export function compactInlineToolRenderPlan(
-  plan: Array<InlineRenderPlanItem>,
-): Array<CompactInlineRenderPlanItem> {
-  const compactPlan: Array<CompactInlineRenderPlanItem> = []
-  let pendingToolSections: Array<InlineToolSection> = []
-
-  const flushTools = () => {
-    if (pendingToolSections.length === 0) return
-    compactPlan.push({ kind: 'tools', sections: pendingToolSections })
-    pendingToolSections = []
-  }
-
-  for (const item of plan) {
-    if (item.kind === 'tool') {
-      pendingToolSections.push(item.section)
-      continue
-    }
-
-    flushTools()
-    compactPlan.push(item)
-  }
-
-  flushTools()
-  return compactPlan
 }
 
 function extractToolResultText(msg: ChatMessage | undefined): string {
@@ -393,43 +378,6 @@ function normalizeStreamToolPhase(
     return 'error'
   }
   return 'running'
-}
-
-export type AssistantCorruptionWarning = {
-  kind: 'role-prefix' | 'divider-loop'
-  label: string
-  detail: string
-}
-
-export function detectAssistantCorruptionWarning(
-  role: string,
-  text: string,
-): AssistantCorruptionWarning | null {
-  if (role !== 'assistant') return null
-  const trimmed = text.trimStart()
-  const roleMatch = /^(user|assistant|system)\s*(?:\n|:)/i.exec(trimmed)
-  if (roleMatch) {
-    return {
-      kind: 'role-prefix',
-      label: 'Assistant output contains raw transcript role text',
-      detail: `Stored role is assistant, but the content begins with "${roleMatch[1]}". Treat this as generated text, not a real ${roleMatch[1]} turn.`,
-    }
-  }
-
-  if (text.length > 20_000) {
-    const dividerMatches =
-      text.match(/(?:^|\n)\s*(?:[-_=*]{8,}|[─━]{8,})\s*(?=\n|$)/g) ?? []
-    if (dividerMatches.length >= 20) {
-      return {
-        kind: 'divider-loop',
-        label: 'Assistant output looks corrupted',
-        detail:
-          'This very large assistant message contains repeated divider-like lines and may be a generation loop.',
-      }
-    }
-  }
-
-  return null
 }
 
 function readExecNotification(message: ChatMessage): ExecNotification | null {
@@ -997,30 +945,16 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
   const dots = useAnimatedDots()
 
   const result = toolCall.result ?? ''
-  const preview = result.slice(0, 100)
   const detail = result.slice(0, 500)
   const hasMore = result.length > 500
 
-  const borderColor = isDone
-    ? 'color-mix(in srgb, var(--theme-success) 35%, var(--theme-border))'
-    : isError
-      ? 'color-mix(in srgb, var(--theme-danger) 35%, var(--theme-border))'
-      : 'color-mix(in srgb, var(--theme-accent) 50%, var(--theme-border))'
-
-  const leftAccent = isRunning
-    ? 'var(--theme-accent)'
-    : isDone
-      ? 'var(--theme-success)'
-      : 'var(--theme-danger)'
-
   return (
     <div
-      className="rounded-lg border border-primary-200 bg-primary-50 text-[11px] max-w-full overflow-hidden"
+      className="rounded-md text-[11px] max-w-full overflow-hidden"
       style={{
-        borderLeftWidth: '3px',
-        borderLeftColor: isRunning ? '#6366f1' : isDone ? '#22c55e' : '#ef4444',
-        transition: 'border-color 0.3s',
-        boxShadow: isRunning ? '0 0 8px rgba(99,102,241,0.15)' : 'none',
+        background: 'var(--tool-card-bg)',
+        border: '1px solid var(--tool-card-border)',
+        color: 'var(--tool-card-title)',
       }}
     >
       {/* Header row — always clickable */}
@@ -1043,18 +977,18 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
         )}
         <span className="flex-1" />
         {elapsed && (
-          <span className="shrink-0 text-[10px] tabular-nums text-primary-400">
+          <span className="shrink-0 text-[10px] tabular-nums" style={{ color: 'var(--tool-card-muted)' }}>
             {elapsed}
           </span>
         )}
-        {isDone && <span className="shrink-0 text-xs text-green-500">✅</span>}
-        {isError && <span className="shrink-0 text-xs text-red-500">❌</span>}
+        {isDone && <span className="shrink-0 text-xs" style={{ color: 'var(--theme-success)' }}>✓</span>}
+        {isError && <span className="shrink-0 text-xs" style={{ color: 'var(--theme-danger)' }}>✕</span>}
         {isRunning && (
-          <span className="shrink-0 size-1.5 rounded-full animate-pulse bg-indigo-500" />
+          <span className="shrink-0 size-1.5 rounded-full animate-pulse" style={{ background: 'var(--theme-accent)' }} />
         )}
       </button>
       {isRunning && !expanded && (
-        <div className="px-2.5 pb-1.5 text-[10px] text-primary-400">
+        <div className="px-2.5 pb-1.5 text-[10px]" style={{ color: 'var(--tool-card-muted)' }}>
           <span>
             {verb}
             {dots}
@@ -1063,10 +997,7 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
       )}
       {/* Expanded content — args while running, result when done */}
       {expanded && (
-        <div
-          className="border-t"
-          style={{ borderColor: 'var(--theme-border)' }}
-        >
+        <div className="border-t border-border">
           {/* Show args (input) */}
           {toolCall.args != null &&
             typeof toolCall.args === 'object' &&
@@ -1083,10 +1014,7 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
             )}
           {/* Show result when done */}
           {isDone && result && (
-            <div
-              className="px-2.5 py-1.5 border-t"
-              style={{ borderColor: 'var(--theme-border)' }}
-            >
+            <div className="px-2.5 py-1.5 border-t border-border">
               <div className="text-[9px] uppercase tracking-widest opacity-40 mb-0.5">
                 Output
               </div>
@@ -1110,20 +1038,17 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
           {/* Show error */}
           {isError && result && (
             <div className="px-2.5 py-1.5">
-              <div className="text-[9px] uppercase tracking-widest text-red-500 mb-0.5">
+              <div className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: 'var(--theme-danger)' }}>
                 Error
               </div>
-              <pre className="text-[10px] font-mono whitespace-pre-wrap break-words max-h-48 overflow-y-auto text-red-500">
+              <pre className="text-[10px] font-mono whitespace-pre-wrap break-words max-h-48 overflow-y-auto" style={{ color: 'var(--theme-danger)' }}>
                 {result}
               </pre>
             </div>
           )}
           {/* Running indicator when expanded */}
           {isRunning && (
-            <div
-              className="px-2.5 py-1.5 text-[10px] text-primary-400 border-t"
-              style={{ borderColor: 'var(--theme-border)' }}
-            >
+            <div className="px-2.5 py-1.5 text-[10px] border-t border-border">
               <span>
                 {verb}
                 {dots}
@@ -1133,7 +1058,7 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
         </div>
       )}
       {!expanded && isError && result && (
-        <div className="px-2.5 pb-1.5 text-[10px] font-mono truncate text-red-500">
+        <div className="px-2.5 pb-1.5 text-[10px] font-mono truncate" style={{ color: 'var(--theme-danger)' }}>
           {result.slice(0, 80)}
         </div>
       )}
@@ -1152,19 +1077,19 @@ function LifecycleEventCard({
 }) {
   return (
     <div
-      className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px]"
+      className="rounded-lg border px-3 py-1.5 text-[11px]"
       style={{
-        background: 'color-mix(in srgb, var(--theme-card2) 70%, transparent)',
-        borderLeft: `2px solid ${
-          isError
-            ? 'color-mix(in srgb, var(--theme-danger) 60%, var(--theme-border))'
-            : 'color-mix(in srgb, var(--theme-accent) 45%, var(--theme-border))'
-        }`,
+        background: 'var(--theme-card2)',
+        borderColor: isError
+          ? 'color-mix(in srgb, var(--theme-danger) 45%, var(--theme-border))'
+          : 'var(--theme-border)',
         color: 'var(--theme-muted)',
       }}
     >
-      {emoji ? <span className="leading-none opacity-80">{emoji}</span> : null}
-      <span className="truncate">{text}</span>
+      <span className="inline-flex items-center gap-1.5">
+        {emoji ? <span className="leading-none">{emoji}</span> : null}
+        <span>{text}</span>
+      </span>
     </div>
   )
 }
@@ -1261,11 +1186,11 @@ function MarkdownDocumentCard({
   return (
     <div
       className={cn(
-        'w-full max-w-[36rem] overflow-hidden rounded-2xl border border-primary-200 bg-primary-50/70',
+        'w-full max-w-[36rem] overflow-hidden rounded-card theme-border-1 theme-tool-surface',
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-3 border-b border-primary-200 px-3 py-2.5">
+      <div className="flex items-start justify-between gap-3 border-b border-border px-3 py-2.5">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium text-primary-900">
             {title}
@@ -1274,7 +1199,7 @@ function MarkdownDocumentCard({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {hasContent ? (
-            <div className="flex items-center rounded-lg border border-primary-200 bg-primary-100/70 p-0.5">
+            <div className="flex items-center rounded-md p-0.5 theme-border-1 theme-card2-surface">
               <Button
                 type="button"
                 variant="ghost"
@@ -1368,160 +1293,6 @@ function MarkdownMessageCard({ content }: { content: string }) {
   )
 }
 
-type InlineArtifact = {
-  type: string
-  title: string
-  content: string
-}
-
-type InlineArtifactParseResult = {
-  cleanedText: string
-  artifacts: Array<InlineArtifact>
-}
-
-function parseArtifactAttributes(rawAttributes: string): Record<string, string> {
-  const attributes: Record<string, string> = {}
-  const attributeRegex = /(\w+)=(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g
-
-  for (const match of rawAttributes.matchAll(attributeRegex)) {
-    const key = (match[1] || '').trim().toLowerCase()
-    const value = (match[2] || match[3] || match[4] || '').trim()
-    if (key) {
-      attributes[key] = value
-    }
-  }
-
-  return attributes
-}
-
-export function parseInlineArtifacts(text: string): InlineArtifactParseResult {
-  const artifacts: Array<InlineArtifact> = []
-  const cleanedText = text.replace(
-    /<artifact\b([^>]*)>([\s\S]*?)<\/artifact>/gi,
-    (_, rawAttributes: string, rawContent: string) => {
-      const attributes = parseArtifactAttributes(rawAttributes || '')
-      const content = typeof rawContent === 'string' ? rawContent.trim() : ''
-      if (!content) return ''
-      artifacts.push({
-        type: (attributes.type || 'html').trim().toLowerCase(),
-        title: (attributes.title || 'Artifact').trim() || 'Artifact',
-        content,
-      })
-      return ''
-    },
-  )
-
-  return {
-    cleanedText: cleanedText.replace(/\n{3,}/g, '\n\n').trim(),
-    artifacts,
-  }
-}
-
-function summarizeArtifactContent(artifact: InlineArtifact): string {
-  const singleLine = artifact.content.replace(/\s+/g, ' ').trim()
-  if (singleLine.length <= 140) return singleLine
-  return `${singleLine.slice(0, 137)}…`
-}
-
-function artifactLanguage(type: string): string {
-  if (type === 'js' || type === 'javascript') return 'javascript'
-  if (type === 'ts' || type === 'typescript') return 'typescript'
-  if (type === 'md') return 'markdown'
-  if (type === 'py') return 'python'
-  return type
-}
-
-function ArtifactPreviewBody({ artifact }: { artifact: InlineArtifact }) {
-  if (artifact.type === 'html' || artifact.type === 'svg') {
-    return (
-      <iframe
-        title={artifact.title}
-        sandbox="allow-scripts"
-        srcDoc={artifact.content}
-        className="h-[60vh] w-full rounded-lg border"
-        style={{
-          borderColor: 'var(--theme-border)',
-          background: 'white',
-        }}
-      />
-    )
-  }
-
-  if (artifact.type === 'markdown' || artifact.type === 'md') {
-    return (
-      <div
-        className="max-h-[60vh] overflow-auto rounded-lg border p-4"
-        style={{ borderColor: 'var(--theme-border)' }}
-      >
-        <Markdown className="text-sm">{artifact.content}</Markdown>
-      </div>
-    )
-  }
-
-  return (
-    <CodeBlock
-      content={artifact.content}
-      language={artifactLanguage(artifact.type)}
-      className="my-0 max-h-[60vh] overflow-auto"
-    />
-  )
-}
-
-function InlineArtifactCard({ artifact }: { artifact: InlineArtifact }) {
-  const [open, setOpen] = useState(false)
-  const summary = summarizeArtifactContent(artifact)
-
-  return (
-    <>
-      <div
-        className="rounded-xl border p-3"
-        style={{
-          borderColor: 'var(--chat-assistant-border)',
-          background: 'color-mix(in srgb, var(--chat-assistant-bg) 85%, white 15%)',
-        }}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span aria-hidden="true">🧩</span>
-              <span className="truncate text-sm font-semibold">{artifact.title}</span>
-              <span
-                className="rounded-full px-1.5 py-0.5 text-[10px] uppercase tracking-wide"
-                style={{
-                  background: 'var(--theme-card2)',
-                  color: 'var(--theme-muted)',
-                }}
-              >
-                {artifact.type}
-              </span>
-            </div>
-            {summary ? (
-              <p className="mt-2 text-xs opacity-80">{summary}</p>
-            ) : null}
-          </div>
-          <Button type="button" variant="outline" onClick={() => setOpen(true)}>
-            Open
-          </Button>
-        </div>
-      </div>
-      <DialogRoot open={open} onOpenChange={setOpen}>
-        <DialogContent className="w-[min(1100px,96vw)] max-h-[92vh]">
-          <div className="flex items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: 'var(--theme-border)' }}>
-            <div className="min-w-0">
-              <DialogTitle className="truncate text-base">{artifact.title}</DialogTitle>
-              <div className="text-xs uppercase tracking-wide opacity-70">{artifact.type}</div>
-            </div>
-            <DialogClose>Close</DialogClose>
-          </div>
-          <div className="p-4">
-            <ArtifactPreviewBody artifact={artifact} />
-          </div>
-        </DialogContent>
-      </DialogRoot>
-    </>
-  )
-}
-
 const TOOL_ICONS: Record<string, string> = {
   exec: '\u2699',
   terminal: '\u2699',
@@ -1609,6 +1380,12 @@ function InlineToolSectionItem({
     const id = window.setInterval(() => setElapsed((s) => s + 1), 1000)
     return () => window.clearInterval(id)
   }, [isRunning, toolSection.key])
+  const [dots, setDots] = useState(0)
+  useEffect(() => {
+    if (!isRunning) return
+    const id = window.setInterval(() => setDots((d) => (d + 1) % 4), 400)
+    return () => window.clearInterval(id)
+  }, [isRunning, toolSection.key])
   const elapsedLabel =
     elapsed >= 60
       ? `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`
@@ -1632,147 +1409,69 @@ function InlineToolSectionItem({
   const hasInputData =
     toolSection.input && Object.keys(toolSection.input).length > 0
   const hasOutputData = !!(toolSection.outputText || toolSection.errorText)
-  const isArtifact = toolSection.type.startsWith('artifact:')
-  const artifactKind = isArtifact ? toolSection.type.slice('artifact:'.length) : null
-  const artifactTitle =
-    typeof toolSection.input?.title === 'string' && toolSection.input.title.trim()
-      ? toolSection.input.title.trim()
-      : 'Artifact'
-  const artifactPath =
-    typeof toolSection.input?.path === 'string' && toolSection.input.path.trim()
-      ? toolSection.input.path.trim()
-      : ''
-  const artifactPreview =
-    typeof toolSection.preview === 'string' && toolSection.preview.trim()
-      ? toolSection.preview.trim()
-      : ''
+  // Always expandable — show args, output, or at minimum the tool name/state
+  const hasExpandableContent = true
 
   return (
     <div>
+      {/* ── Card — always clickable to expand ── */}
       <div
         className={cn(
-          'overflow-hidden rounded-lg border text-[12px] transition-all',
-          'cursor-pointer hover:border-[var(--theme-accent)]/40',
+          'rounded-md text-[12px] overflow-hidden',
+          'cursor-pointer transition-all',
         )}
         style={{
-          background: 'color-mix(in srgb, var(--theme-card2) 76%, transparent)',
-          borderColor: 'var(--theme-border)',
-          boxShadow: isRunning ? '0 0 0 1px color-mix(in srgb, var(--theme-accent) 18%, transparent)' : undefined,
+          background: 'var(--tool-card-bg)',
+          border: '1px solid var(--tool-card-border)',
+          color: 'var(--tool-card-title)',
         }}
         onClick={() => setOpen((v) => !v)}
         role="button"
         tabIndex={0}
       >
         <div className="flex items-center gap-2 px-3 py-2">
-          <span className="text-sm leading-none shrink-0 opacity-80">{icon}</span>
-          <span className="font-medium text-[12px] text-[var(--theme-text)]">
+          <span className="text-base leading-none shrink-0">{icon}</span>
+          <span className="font-mono font-semibold text-ink text-[13px]">
             {toolDisplayLabel}
           </span>
           {previewLabel && previewLabel !== toolDisplayLabel ? (
-            <span className="truncate text-[10px] min-w-0 text-[var(--theme-muted)]">
+            <span className="truncate opacity-40 text-[10px] font-mono min-w-0">
               {previewLabel}
             </span>
           ) : null}
           <span className="flex-1" />
           {isRunning && (
-            <span className="text-[10px] tabular-nums text-[var(--theme-muted)]">
+            <span className="text-[10px] tabular-nums" style={{ color: 'var(--tool-card-muted)' }}>
               {elapsedLabel}
             </span>
           )}
-          <span
-            className={cn(
-              'rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em]',
-              isRunning
-                ? 'bg-[var(--theme-accent-soft)] text-[var(--theme-accent-strong)]'
-                : isDone
-                  ? 'bg-emerald-500/10 text-emerald-600'
-                  : 'bg-red-500/10 text-red-500',
-            )}
-          >
-            {isRunning ? 'Running' : isDone ? 'Done' : 'Error'}
-          </span>
-          {isRunning && (
-            <span className="size-1.5 rounded-full animate-pulse bg-[var(--theme-accent)]" />
+          {isDone && !isRunning && (
+            <span className="text-xs" style={{ color: 'var(--theme-success)' }}>✓</span>
           )}
-          <span className="text-[8px] opacity-30 ml-0.5">
-            {open ? '▾' : '▸'}
-          </span>
+          {isError && <span className="text-xs" style={{ color: 'var(--theme-danger)' }}>✕</span>}
+          {isRunning && (
+            <span className="size-1.5 rounded-full animate-pulse" style={{ background: 'var(--theme-accent)' }} />
+          )}
+          {hasExpandableContent && (
+            <span className="text-[8px] opacity-30 ml-0.5">
+              {open ? '▾' : '▸'}
+            </span>
+          )}
         </div>
+        {isRunning && (
+          <div className="px-2.5 pb-1.5 text-[10px]" style={{ color: 'var(--tool-card-muted)' }}>
+            {verb}
+            {'.'.repeat(dots)}
+          </div>
+        )}
       </div>
 
+      {/* ── Expanded detail — terminal-style args + output ── */}
       {open && (
-        <div className="mt-1 ml-3 flex flex-col gap-1.5 border-l border-[var(--theme-border)]/70 pb-1 pl-3 animate-in slide-in-from-top-1 duration-150">
-          {isArtifact ? (
-            <div
-              className="overflow-hidden rounded-xl border"
-              style={{
-                borderColor: 'var(--theme-border)',
-                background:
-                  'color-mix(in srgb, var(--theme-accent) 4%, var(--theme-card))',
-              }}
-            >
-              <div className="flex items-start justify-between gap-3 px-3 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm" aria-hidden="true">📄</span>
-                    <span className="truncate text-sm font-semibold text-[var(--theme-text)]">
-                      {artifactTitle}
-                    </span>
-                    {artifactKind ? (
-                      <span
-                        className="rounded-full px-1.5 py-0.5 text-[10px] uppercase tracking-wide"
-                        style={{
-                          background: 'var(--theme-card2)',
-                          color: 'var(--theme-muted)',
-                        }}
-                      >
-                        {artifactKind}
-                      </span>
-                    ) : null}
-                  </div>
-                  {artifactPath ? (
-                    <div
-                      className="mt-1 truncate font-mono text-[11px]"
-                      style={{ color: 'var(--theme-muted)' }}
-                      title={artifactPath}
-                    >
-                      {artifactPath}
-                    </div>
-                  ) : null}
-                </div>
-                {artifactPath ? (
-                  <a
-                    href={artifactPath}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium"
-                    style={{
-                      background: 'var(--theme-card2)',
-                      color: 'var(--theme-text)',
-                    }}
-                  >
-                    Open ↗
-                  </a>
-                ) : null}
-              </div>
-              {artifactPreview ? (
-                <div
-                  className="border-t px-3 py-2 text-xs"
-                  style={{
-                    borderColor: 'var(--theme-border)',
-                    color: 'var(--theme-muted)',
-                    background:
-                      'color-mix(in srgb, var(--theme-bg) 75%, transparent)',
-                  }}
-                >
-                  {artifactPreview}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          {hasInputData && !showRawJson && !isArtifact ? (
+        <div className="mt-1 ml-3 flex flex-col gap-1.5 pb-1 pl-3 animate-in slide-in-from-top-1 duration-150 theme-border-l-1">
+          {hasInputData && !showRawJson ? (
             <div>
-              <div className="text-[9px] uppercase tracking-widest text-primary-500 mb-0.5 font-sans">
+              <div className="text-[9px] uppercase tracking-widest mb-0.5 font-sans" style={{ color: 'var(--tool-card-muted)' }}>
                 Input
               </div>
               {toolSection.type === 'exec' && headerArg ? (
@@ -1796,22 +1495,22 @@ function InlineToolSectionItem({
             </div>
           ) : null}
 
-          {!showRawJson && !isArtifact ? (
+          {!showRawJson ? (
             isError && toolSection.errorText ? (
               <div>
-                <div className="text-[9px] uppercase tracking-widest text-red-500 mb-0.5 font-sans">
+                <div className="text-[9px] uppercase tracking-widest mb-0.5 font-sans" style={{ color: 'var(--theme-danger)' }}>
                   Error
                 </div>
                 <pre
-                  className="max-h-48 overflow-x-auto whitespace-pre-wrap break-words rounded p-2 text-[10px] font-mono text-red-400"
-                  style={{ background: 'var(--code-bg, var(--theme-card))' }}
+                  className="max-h-48 overflow-x-auto whitespace-pre-wrap break-words rounded p-2 text-[10px] font-mono"
+                  style={{ background: 'var(--code-bg, var(--theme-card))', color: 'var(--theme-danger)' }}
                 >
                   {displayedOutputText}
                 </pre>
               </div>
             ) : toolSection.outputText ? (
               <div>
-                <div className="text-[9px] uppercase tracking-widest text-primary-500 mb-0.5 font-sans">
+                <div className="text-[9px] uppercase tracking-widest mb-0.5 font-sans" style={{ color: 'var(--tool-card-muted)' }}>
                   Output
                 </div>
                 <pre
@@ -1837,7 +1536,7 @@ function InlineToolSectionItem({
             </pre>
           )}
 
-          {!isArtifact && (shouldTruncateOutput || toolSection.outputText) && (
+          {(shouldTruncateOutput || toolSection.outputText) && (
             <div className="flex flex-wrap items-center gap-2">
               {shouldTruncateOutput && (
                 <button
@@ -1846,7 +1545,7 @@ function InlineToolSectionItem({
                     e.stopPropagation()
                     setShowFullOutput((v) => !v)
                   }}
-                  className="text-[9px] text-primary-500 hover:text-primary-700"
+                  className="text-[9px]" style={{ color: 'var(--tool-card-muted)' }}
                 >
                   {showFullOutput ? 'less' : 'more'}
                 </button>
@@ -1857,15 +1556,15 @@ function InlineToolSectionItem({
                   e.stopPropagation()
                   setShowRawJson((v) => !v)
                 }}
-                className="text-[9px] text-primary-500 hover:text-primary-700"
+                className="text-[9px]" style={{ color: 'var(--tool-card-muted)' }}
               >
                 {showRawJson ? 'formatted' : 'raw'}
               </button>
             </div>
           )}
           {/* Fallback when no args or output available */}
-          {!isArtifact && !hasInputData && !hasOutputData && !isRunning && (
-            <div className="text-[10px] text-primary-400 italic">
+          {!hasInputData && !hasOutputData && !isRunning && (
+            <div className="text-[10px] italic" style={{ color: 'var(--tool-card-muted)' }}>
               No detail available for this tool call
             </div>
           )}
@@ -1878,81 +1577,11 @@ function InlineToolSectionItem({
 function ToolCallGroup({
   toolSections,
   expandAll,
-  isStreaming,
 }: {
   toolSections: Array<InlineToolSection>
   expandAll?: boolean
   isStreaming?: boolean
 }) {
-  const shouldAutoOpen = shouldAutoExpandHermesActivityCard({
-    isStreaming: Boolean(isStreaming),
-    toolCount: toolSections.length,
-  })
-  const [open, setOpen] = useState(Boolean(expandAll) || shouldAutoOpen)
-  useEffect(() => {
-    if (expandAll || shouldAutoOpen) setOpen(true)
-  }, [expandAll, shouldAutoOpen])
-
-  const summary = buildHermesActivitySummary(toolSections)
-
-  if (toolSections.length > 1 || isStreaming) {
-    return (
-      <div className="my-2 w-full max-w-[min(100%,700px)] overflow-hidden rounded-lg border border-[color-mix(in_srgb,var(--theme-border)_88%,transparent)] bg-[color-mix(in_srgb,var(--theme-card2)_96%,var(--theme-bg)_4%)]">
-        <button
-          type="button"
-          className="flex w-full items-start gap-3 px-3 py-2 text-left text-[12px]"
-          onClick={() => setOpen((value) => !value)}
-        >
-          <span className="mt-0.5 font-mono text-[12px] leading-none text-[var(--theme-accent)]/85">
-            ┊
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--theme-muted)]">
-                Tool calls
-              </span>
-              <span className="rounded-md border border-[var(--theme-border)] px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-[var(--theme-muted)]">
-                {summary.countLabel}
-              </span>
-              <span
-                className={cn(
-                  'rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em]',
-                  summary.errorCount > 0
-                    ? 'bg-red-500/8 text-red-500'
-                    : summary.runningCount > 0 || isStreaming
-                      ? 'bg-[var(--theme-accent-soft)] text-[var(--theme-accent-strong)]'
-                      : 'bg-emerald-500/8 text-emerald-600',
-                )}
-              >
-                {summary.statusLabel}
-              </span>
-              <span className="ml-auto shrink-0 font-mono text-[10px] opacity-45">
-                {open ? '▾' : '▸'}
-              </span>
-            </div>
-            <div className="mt-1 truncate font-mono text-[11px] text-[var(--theme-text)]/76">
-              {summary.collapsedLabel}
-            </div>
-          </div>
-        </button>
-        {open && (
-          <div className="border-t border-[color-mix(in_srgb,var(--theme-border)_82%,transparent)] px-3 pb-2.5 pt-2">
-            <div className="flex flex-col gap-1.5">
-              {toolSections.map((toolSection, index) => (
-                <InlineToolSectionItem
-                  key={toolSection.key || `${toolSection.type}-${index}`}
-                  toolSection={toolSection}
-                  index={index}
-                  forceOpen={expandAll}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col gap-2.5 my-3 w-full max-w-[min(100%,700px)]">
       {toolSections.map((toolSection, index) => (
@@ -1987,12 +1616,11 @@ function MessageItemComponent({
   streamingKey: _streamingKey,
   expandAllToolSections = false,
   isLastAssistant = false,
+  onA2UiSubmit,
 }: MessageItemProps) {
   const role = message.role || 'assistant'
-  const profileDisplayName = useChatSettingsStore(selectChatProfileDisplayName)
-  const profileAvatarDataUrl = useChatSettingsStore(
-    selectChatProfileAvatarDataUrl,
-  )
+  const profileDisplayName = useResolvedDisplayName()
+  const profileAvatarUrl = useResolvedAvatarUrl()
 
   const messageStreamingText =
     typeof message.__streamingText === 'string'
@@ -2065,30 +1693,25 @@ function MessageItemComponent({
   }, [])
 
   // Simulate streaming is only active while words are still being revealed
-  const displayWordCount = countWords(displayText)
-  const revealComplete =
-    revealedWordCount >= displayWordCount && displayWordCount > 0
+  const totalWords = countWords(displayText)
+  const revealComplete = revealedWordCount >= totalWords && totalWords > 0
   const effectiveIsStreaming =
     remoteStreamingActive || (_simulateStreaming && !revealComplete)
-  const assistantDisplayText = effectiveIsStreaming ? revealedText : displayText
-  const assistantCorruptionWarning = useMemo(
-    () => detectAssistantCorruptionWarning(role, assistantDisplayText),
-    [role, assistantDisplayText],
-  )
-  const parsedInlineArtifacts = useMemo(
-    () => parseInlineArtifacts(assistantDisplayText),
-    [assistantDisplayText],
-  )
+  // Remote streams already arrive incrementally from SSE; applying an extra
+  // local word-reveal layer makes markdown headings/tables flicker and break
+  // during stream updates.
+  const assistantDisplayText = remoteStreamingActive
+    ? displayText
+    : effectiveIsStreaming
+      ? revealedText
+      : displayText
   const standaloneMarkdownDocument = useMemo(
-    () =>
-      parsedInlineArtifacts.artifacts.length === 0
-        ? extractStandaloneMarkdownFence(parsedInlineArtifacts.cleanedText)
-        : null,
-    [parsedInlineArtifacts],
+    () => extractStandaloneMarkdownFence(assistantDisplayText),
+    [assistantDisplayText],
   )
 
   useEffect(() => {
-    const nextTotalWords = countWords(displayText)
+    const totalWords = countWords(displayText)
     const previousText = previousTextRef.current
     const previousLength = previousTextLengthRef.current
     const textGrew =
@@ -2096,7 +1719,7 @@ function MessageItemComponent({
       displayText.startsWith(previousText)
     const textChanged = displayText !== previousText
 
-    targetWordCountRef.current = nextTotalWords
+    targetWordCountRef.current = totalWords
     previousTextRef.current = displayText
     previousTextLengthRef.current = displayText.length
 
@@ -2105,12 +1728,12 @@ function MessageItemComponent({
         window.clearInterval(revealTimerRef.current)
         revealTimerRef.current = null
       }
-      setRevealedWordCount(nextTotalWords)
+      setRevealedWordCount(totalWords)
       return
     }
 
     if (textChanged && !textGrew) {
-      setRevealedWordCount(nextTotalWords)
+      setRevealedWordCount(totalWords)
       return
     }
 
@@ -2119,25 +1742,25 @@ function MessageItemComponent({
     }
 
     // Don't start animation if already fully revealed
-    setRevealedWordCount((wordCount) => {
-      if (wordCount >= nextTotalWords) {
-        return wordCount
+    setRevealedWordCount((currentWordCount) => {
+      if (currentWordCount >= totalWords) {
+        return currentWordCount
       }
 
       function tick() {
-        setRevealedWordCount((visibleWordCount) => {
+        setRevealedWordCount((currentWordCount) => {
           const targetWordCount = targetWordCountRef.current
-          if (visibleWordCount >= targetWordCount) {
+          if (currentWordCount >= targetWordCount) {
             if (revealTimerRef.current !== null) {
               window.clearInterval(revealTimerRef.current)
               revealTimerRef.current = null
             }
-            return visibleWordCount
+            return currentWordCount
           }
 
           const nextWordCount = Math.min(
             targetWordCount,
-            visibleWordCount + WORDS_PER_TICK,
+            currentWordCount + WORDS_PER_TICK,
           )
 
           if (
@@ -2153,7 +1776,7 @@ function MessageItemComponent({
       }
 
       revealTimerRef.current = window.setInterval(tick, TICK_INTERVAL_MS)
-      return wordCount
+      return currentWordCount
     })
   }, [displayText, effectiveIsStreaming])
 
@@ -2203,13 +1826,9 @@ function MessageItemComponent({
   const hasInlineImages = inlineImages.length > 0
 
   const hasText = displayText.length > 0
-  const hasRenderableAssistantText =
-    parsedInlineArtifacts.cleanedText.length > 0 ||
-    parsedInlineArtifacts.artifacts.length > 0
   const hasRevealedText = effectiveIsStreaming
-    ? parsedInlineArtifacts.cleanedText.length > 0 ||
-      parsedInlineArtifacts.artifacts.length > 0
-    : hasRenderableAssistantText
+    ? assistantDisplayText.length > 0
+    : hasText
   const canRetryMessage =
     isUser && (hasText || hasAttachments || hasInlineImages)
 
@@ -2384,13 +2003,11 @@ function MessageItemComponent({
     () => buildInlineToolRenderPlan(message, finalToolSections),
     [message, finalToolSections],
   )
-  const compactInlineRenderPlan = useMemo(
-    () => compactInlineToolRenderPlan(inlineRenderPlan),
-    [inlineRenderPlan],
-  )
+  const hasA2UiBlocks = inlineRenderPlan.some((item) => item.kind === 'ui')
   const hasToolCalls = finalToolSections.length > 0
   const shouldRenderMessageBubble =
     hasText ||
+    hasA2UiBlocks ||
     hasAttachments ||
     hasInlineImages ||
     (effectiveIsStreaming && hasRevealedText)
@@ -2500,29 +2117,59 @@ function MessageItemComponent({
         !isUser && isNew && 'animate-[message-fade-in_0.4s_ease-out]',
       )}
     >
-      {/* Grouped tool card above the assistant bubble. Only show once there
-          is real assistant text in the bubble. While streaming with no text,
-          the legacy ThinkingBubble in chat-message-list owns the visual and
-          renders its own branched TuiActivityCard so we don't double up. */}
-      {!isUser &&
-      finalToolSections.length > 0 &&
-      (hasText || !effectiveIsStreaming) ? (
-        <div className="w-full max-w-[var(--chat-content-max-width)] flex">
-          <div className="w-6 shrink-0" aria-hidden />
-          <div className="min-w-0 flex-1">
-            <TuiActivityCard
-              toolSections={finalToolSections}
-              thinking={null}
-              isStreaming={effectiveIsStreaming}
-              expandAll={expandAllToolSections}
-              formatLabel={formatToolDisplayLabel}
-              formatArg={keyArgLabel}
-            />
-          </div>
+      {/* Bridge gap: thinking done but first text token not yet arrived (no tool calls active) */}
+      {effectiveIsStreaming && !thinking && !hasText && !hasStreamToolCalls && (
+        <div className="flex items-center gap-1.5 px-1 py-1">
+          <span className="size-1.5 animate-bounce rounded-full bg-primary-400 [animation-delay:0ms]" />
+          <span className="size-1.5 animate-bounce rounded-full bg-primary-400 [animation-delay:150ms]" />
+          <span className="size-1.5 animate-bounce rounded-full bg-primary-400 [animation-delay:300ms]" />
         </div>
-      ) : null}
+      )}
+
+      {thinking && !hasText && !hasStreamToolCalls && (
+        <div className="w-full max-w-[900px]">
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger className="w-fit">
+              <HugeiconsIcon
+                icon={Idea01Icon}
+                size={20}
+                strokeWidth={1.5}
+                className="opacity-70"
+              />
+              <span>{thinkingStatusLabel}</span>
+              {thinkingElapsedSeconds > 0 ? (
+                <span className="text-xs tabular-nums text-primary-400">
+                  {thinkingElapsedSeconds >= 60
+                    ? `${Math.floor(thinkingElapsedSeconds / 60)}m ${thinkingElapsedSeconds % 60}s`
+                    : `${thinkingElapsedSeconds}s`}
+                </span>
+              ) : null}
+              {effectiveIsStreaming ? (
+                <span className="flex items-center gap-1">
+                  <span className="size-1.5 animate-bounce rounded-full bg-primary-400 [animation-delay:0ms]" />
+                  <span className="size-1.5 animate-bounce rounded-full bg-primary-400 [animation-delay:150ms]" />
+                  <span className="size-1.5 animate-bounce rounded-full bg-primary-400 [animation-delay:300ms]" />
+                </span>
+              ) : null}
+              <HugeiconsIcon
+                icon={ArrowDown01Icon}
+                size={20}
+                strokeWidth={1.5}
+                className="opacity-60 transition-transform duration-150 group-data-panel-open:rotate-180"
+              />
+            </CollapsibleTrigger>
+            <CollapsiblePanel>
+              <div className="rounded-md p-3 theme-border-1 theme-tool-surface">
+                <p className="text-sm text-primary-700 whitespace-pre-wrap text-pretty">
+                  {thinking}
+                </p>
+              </div>
+            </CollapsiblePanel>
+          </Collapsible>
+        </div>
+      )}
       {effectiveIsStreaming && hasLifecycleEvents && !hasToolCalls && (
-        <div className="w-full max-w-[var(--chat-content-max-width)] flex flex-col gap-1">
+        <div className="w-full max-w-[900px] flex flex-col gap-1">
           {effectiveLifecycleEvents.map((event, index) => (
             <LifecycleEventCard
               key={`${event.timestamp}-${index}-${event.text}`}
@@ -2535,8 +2182,8 @@ function MessageItemComponent({
       )}
       {/* Narration messages (tool-call activity) — compact collapsible row */}
       {!isUser && (message as any).__isNarration && hasText && (
-        <div className="w-full max-w-[var(--chat-content-max-width)]">
-          <details className="group/narration rounded-lg border border-primary-200/50 bg-primary-50/30 hover:bg-primary-50 dark:hover:bg-primary-800/50 transition-colors">
+        <div className="w-full max-w-[900px]">
+          <details className="group/narration rounded-md transition-colors theme-border-1 theme-tool-surface">
             <summary className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 list-none [&::-webkit-details-marker]:hidden">
               <span className="size-6 flex items-center justify-center rounded-full bg-accent-500/15 shrink-0">
                 <span className="text-xs">⚡</span>
@@ -2568,7 +2215,7 @@ function MessageItemComponent({
             <UserAvatar
               size={24}
               className="mt-0.5"
-              src={profileAvatarDataUrl}
+              src={profileAvatarUrl}
               alt={profileDisplayName}
             />
           ) : (
@@ -2615,7 +2262,7 @@ function MessageItemComponent({
                         href={source}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block overflow-hidden rounded-lg border border-primary-200 hover:border-primary-400 transition-colors max-w-full"
+                        className="block overflow-hidden rounded-md transition-colors max-w-full theme-border-1"
                       >
                         <img
                           src={source}
@@ -2647,13 +2294,13 @@ function MessageItemComponent({
                       href={source}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex max-w-full items-center gap-2 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-700 hover:border-primary-400"
+                      className="inline-flex max-w-full items-center gap-2 rounded-md px-3 py-2 text-sm theme-border-1 theme-tool-surface"
                     >
                       <span>📄</span>
                       <span className="truncate">
                         {attachment.name || 'Attachment'}
                       </span>
-                      <span className="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] uppercase text-primary-600">
+                      <span className="rounded px-1.5 py-0.5 text-[10px] uppercase" style={{ background: 'var(--theme-card2)', color: 'var(--tool-card-muted)' }}>
                         {ext || 'file'}
                       </span>
                     </a>
@@ -2669,7 +2316,7 @@ function MessageItemComponent({
                     href={img.src}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block overflow-hidden rounded-lg border border-primary-200 hover:border-primary-400 transition-colors max-w-full"
+                    className="block overflow-hidden rounded-md transition-colors max-w-full theme-border-1"
                   >
                     <img
                       src={img.src}
@@ -2681,72 +2328,109 @@ function MessageItemComponent({
                 ))}
               </div>
             )}
+            {!isUser && (hasToolCalls || hasA2UiBlocks) && (
+              <div className="flex flex-col gap-2">
+                {inlineRenderPlan.map((item, index) =>
+                  item.kind === 'tool' ? (
+                    <ToolCallGroup
+                      key={item.section.key || `tool-${index}`}
+                      toolSections={[item.section]}
+                      expandAll={expandAllToolSections}
+                      isStreaming={effectiveIsStreaming}
+                    />
+                  ) : item.kind === 'ui' ? (
+                    <div key={item.key} className="rounded-lg border border-border/70 bg-muted/10 p-3">
+                      <A2UiRenderer
+                        schema={item.schema}
+                        onSubmit={onA2UiSubmit}
+                      />
+                    </div>
+                  ) : item.text.trim().length > 0 ? (
+                    <div key={`text-${index}`} className="relative">
+                      {extractStandaloneMarkdownFence(item.text) ? (
+                        <MarkdownMessageCard
+                          content={extractStandaloneMarkdownFence(item.text)!}
+                        />
+                      ) : (
+                        <MessageContent
+                          markdown
+                          className={cn(
+                            'text-primary-900 bg-transparent w-full text-pretty transition-all duration-100',
+                            effectiveIsStreaming && 'chat-streaming-content',
+                            isUser && 'text-white',
+                          )}
+                        >
+                          {item.text}
+                        </MessageContent>
+                      )}
+                    </div>
+                  ) : null,
+                )}
+              </div>
+            )}
             {hasText &&
+              !(!isUser && hasToolCalls) &&
               (isUser ? (
                 <span className="text-pretty">{displayText}</span>
               ) : hasRevealedText ? (
                 <div className="relative">
-                  {assistantCorruptionWarning ? (
-                    <div
-                      className="mb-3 rounded-xl border px-3 py-2 text-xs"
-                      style={{
-                        borderColor: 'rgba(245, 158, 11, 0.45)',
-                        background: 'rgba(245, 158, 11, 0.12)',
-                        color: 'var(--chat-assistant-foreground)',
-                      }}
-                    >
-                      <div className="font-semibold">
-                        {assistantCorruptionWarning.label}
-                      </div>
-                      <div className="mt-1 opacity-80">
-                        {assistantCorruptionWarning.detail}
-                      </div>
-                    </div>
-                  ) : null}
                   {standaloneMarkdownDocument ? (
                     <MarkdownMessageCard content={standaloneMarkdownDocument} />
-                  ) : parsedInlineArtifacts.cleanedText ? (
+                  ) : (
                     <MessageContent
                       markdown
                       className={cn(
                         'text-primary-900 bg-transparent w-full text-pretty transition-all duration-100',
                         effectiveIsStreaming && 'chat-streaming-content',
+                        isUser && 'text-white',
                       )}
                     >
-                      {parsedInlineArtifacts.cleanedText}
+                      {assistantDisplayText}
                     </MessageContent>
-                  ) : null}
-                  {parsedInlineArtifacts.artifacts.length > 0 ? (
-                    <div className="mt-3 flex flex-col gap-3">
-                      {parsedInlineArtifacts.artifacts.map((artifact, index) => (
-                        <InlineArtifactCard
-                          key={`${artifact.title}-${artifact.type}-${index}`}
-                          artifact={artifact}
-                        />
-                      ))}
-                    </div>
-                  ) : null}
-                  {effectiveIsStreaming && parsedInlineArtifacts.cleanedText ? (
+                  )}
+                  {effectiveIsStreaming && (
                     <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-accent-500 align-text-bottom" />
-                  ) : null}
+                  )}
                 </div>
               ) : null)}
             {/* Sent indicator — message delivered, waiting for response */}
             {isUser && isQueued && (
-              <span
-                className="self-end text-[10px]"
-                style={{
-                  color:
-                    'color-mix(in srgb, var(--chat-user-foreground) 60%, transparent)',
-                }}
-              >
-                Sent
-              </span>
+              <span className="text-[10px] text-white/60 self-end">Sent</span>
             )}
           </div>
         </Message>
       )}
-      {/* Bottom thinking bubble handles empty streaming states; avoid duplicate in-thread working copy. */}
+      {/* Fallback working indicator when streaming with no text and no tool calls */}
+      {effectiveIsStreaming && !hasRevealedText && !hasStreamToolCalls ? (
+        <div
+          className="flex items-center gap-2 pl-1 text-xs"
+          style={{ color: 'var(--theme-muted)' }}
+        >
+          <span
+            className="size-1.5 rounded-full animate-pulse"
+            style={{ background: 'var(--theme-accent)' }}
+          />
+          <span>Working&hellip;</span>
+        </div>
+      ) : null}
+      {/* Retry information if available */}
+      {!isUser && !effectiveIsStreaming ? (() => {
+        const retryMessage = typeof message.retry_message === 'string' ? message.retry_message : null
+        if (retryMessage) {
+          return (
+            <div className="mt-2 rounded-lg border border-amber-200/50 bg-amber-50/30 px-3 py-2 text-[11px] text-amber-700 dark:border-amber-800/30 dark:bg-amber-900/10 dark:text-amber-300">
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 shrink-0 text-lg">⚡</span>
+                <div>
+                  <div className="font-medium">Auto-retry</div>
+                  <div className="mt-1 opacity-90">{retryMessage}</div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+        return null
+      })() : null}
       {hasAssistantMetadata ? (
         <div className="flex flex-wrap justify-end gap-x-2 gap-y-0.5 pl-10 pr-1 mt-0.5 font-mono text-[10px] tabular-nums text-primary-400 leading-relaxed">
           {usageMetadata.inputTokens !== null && (
@@ -2823,6 +2507,9 @@ function areMessagesEqual(
     return false
   }
   if (prevProps.expandAllToolSections !== nextProps.expandAllToolSections) {
+    return false
+  }
+  if (prevProps.onA2UiSubmit !== nextProps.onA2UiSubmit) {
     return false
   }
   if (

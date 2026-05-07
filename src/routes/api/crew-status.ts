@@ -1,12 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../server/auth-middleware'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
-import * as yaml from 'yaml'
-import { BEARER_TOKEN, CLAUDE_API, ensureGatewayProbed } from '../../server/gateway-capabilities'
-import { getClaudeRoot, getProfileClaudeHome, getWorkspaceClaudeHome } from '../../server/claude-paths'
+import { json } from '@tanstack/react-start'
+import { createFileRoute } from '@tanstack/react-router'
+import yaml from 'yaml'
+import {
+  BEARER_TOKEN,
+  HERMES_API,
+  ensureGatewayProbed,
+} from '../../server/gateway-capabilities'
 
 type CrewDefinition = {
   id: string
@@ -33,26 +36,23 @@ function titleCase(value: string): string {
     .join(' ')
 }
 
-function buildCrewDefinitions(): CrewDefinition[] {
-  const profilesDir = join(getClaudeRoot(), 'profiles')
+function buildCrewDefinitions(): Array<CrewDefinition> {
+  const base = join(homedir(), '.hermes')
+  const profilesDir = join(base, 'profiles')
   const dynamicProfiles = existsSync(profilesDir)
     ? readdirSync(profilesDir, { withFileTypes: true })
-        .filter((entry) => {
-          const profilePath = join(profilesDir, entry.name)
-          if (entry.isDirectory()) return true
-          if (!entry.isSymbolicLink()) return false
-          try {
-            return statSync(profilePath).isDirectory()
-          } catch {
-            return false
-          }
-        })
+        .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)
         .sort()
     : []
 
   return [
-    { id: 'workspace', displayName: 'Workspace', role: 'Primary profile', profilePath: null },
+    {
+      id: 'workspace',
+      displayName: 'Workspace',
+      role: 'Primary profile',
+      profilePath: null,
+    },
     ...dynamicProfiles.map((profile) => ({
       id: profile,
       displayName: titleCase(profile),
@@ -62,13 +62,20 @@ function buildCrewDefinitions(): CrewDefinition[] {
   ]
 }
 
-function getClaudeHome(profilePath: string | null): string {
-  return profilePath ? getProfileClaudeHome(profilePath) : getWorkspaceClaudeHome()
+function getHermesHome(profilePath: string | null): string {
+  const base = join(homedir(), '.hermes')
+  return profilePath ? join(base, 'profiles', profilePath) : base
 }
 
-function readGatewayState(claudeHome: string) {
-  const path = join(claudeHome, 'gateway_state.json')
-  if (!existsSync(path)) return { pid: null, gatewayState: 'unknown', platforms: {}, updatedAt: null }
+function readGatewayState(hermesHome: string) {
+  const path = join(hermesHome, 'gateway_state.json')
+  if (!existsSync(path))
+    return {
+      pid: null,
+      gatewayState: 'unknown',
+      platforms: {},
+      updatedAt: null,
+    }
   try {
     const raw = JSON.parse(readFileSync(path, 'utf-8'))
     return {
@@ -78,7 +85,12 @@ function readGatewayState(claudeHome: string) {
       updatedAt: raw.updated_at ?? null,
     }
   } catch {
-    return { pid: null, gatewayState: 'unknown', platforms: {}, updatedAt: null }
+    return {
+      pid: null,
+      gatewayState: 'unknown',
+      platforms: {},
+      updatedAt: null,
+    }
   }
 }
 
@@ -92,8 +104,8 @@ function checkProcessAlive(pid: number | null): boolean {
   }
 }
 
-function readDbStats(claudeHome: string): DbStats {
-  const dbPath = join(claudeHome, 'state.db')
+function readDbStats(hermesHome: string): DbStats {
+  const dbPath = join(hermesHome, 'state.db')
   if (!existsSync(dbPath)) {
     return {
       sessionCount: 0,
@@ -163,11 +175,14 @@ print(json.dumps(out))
   }
 }
 
-function readConfig(claudeHome: string): { model: string; provider: string } {
-  const configPath = join(claudeHome, 'config.yaml')
+function readConfig(hermesHome: string): { model: string; provider: string } {
+  const configPath = join(hermesHome, 'config.yaml')
   if (!existsSync(configPath)) return { model: 'unknown', provider: 'unknown' }
   try {
-    const raw = yaml.parse(readFileSync(configPath, 'utf-8')) as Record<string, unknown>
+    const raw = yaml.parse(readFileSync(configPath, 'utf-8')) as Record<
+      string,
+      unknown
+    >
     const modelVal = raw.model
     const providerVal = raw.provider
 
@@ -188,8 +203,8 @@ function readConfig(claudeHome: string): { model: string; provider: string } {
   }
 }
 
-function readCronJobCount(claudeHome: string): number {
-  const cronPath = join(claudeHome, 'cron', 'jobs.json')
+function readCronJobCount(hermesHome: string): number {
+  const cronPath = join(hermesHome, 'cron', 'jobs.json')
   if (!existsSync(cronPath)) return 0
   try {
     const jobs = JSON.parse(readFileSync(cronPath, 'utf-8'))
@@ -205,13 +220,13 @@ function readCronJobCount(claudeHome: string): number {
 
 async function fetchAssignedTaskCounts(): Promise<Record<string, number>> {
   try {
-    const res = await fetch(`${CLAUDE_API}/api/tasks?include_done=false`, {
+    const res = await fetch(`${HERMES_API}/api/tasks?include_done=false`, {
       signal: AbortSignal.timeout(3_000),
       headers: BEARER_TOKEN ? { Authorization: `Bearer ${BEARER_TOKEN}` } : {},
     })
     if (!res.ok) return {}
 
-    const data = await res.json() as {
+    const data = (await res.json()) as {
       tasks?: Array<{ assignee?: string | null; column?: string | null }>
     }
 
@@ -230,17 +245,13 @@ export const Route = createFileRoute('/api/crew-status')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        await ensureGatewayProbed()
+        ensureGatewayProbed()
         const taskCounts = await fetchAssignedTaskCounts()
         const crewDefinitions = buildCrewDefinitions()
 
         const crew = crewDefinitions.map((member) => {
-          const claudeHome = getClaudeHome(member.profilePath)
-          const profileFound = existsSync(claudeHome)
+          const hermesHome = getHermesHome(member.profilePath)
+          const profileFound = existsSync(hermesHome)
 
           if (!profileFound) {
             return {
@@ -265,9 +276,9 @@ export const Route = createFileRoute('/api/crew-status')({
             }
           }
 
-          const gatewayInfo = readGatewayState(claudeHome)
-          const dbStats = readDbStats(claudeHome)
-          const config = readConfig(claudeHome)
+          const gatewayInfo = readGatewayState(hermesHome)
+          const dbStats = readDbStats(hermesHome)
+          const config = readConfig(hermesHome)
 
           return {
             id: member.id,
@@ -286,7 +297,7 @@ export const Route = createFileRoute('/api/crew-status')({
             toolCallCount: dbStats.toolCallCount,
             totalTokens: dbStats.totalTokens,
             estimatedCostUsd: dbStats.estimatedCostUsd,
-            cronJobCount: readCronJobCount(claudeHome),
+            cronJobCount: readCronJobCount(hermesHome),
             assignedTaskCount: taskCounts[member.id] ?? 0,
           }
         })

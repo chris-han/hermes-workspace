@@ -3,14 +3,14 @@ import {
   Add01Icon,
   ArrowDown01Icon,
   ArrowUp02Icon,
-  AttachmentIcon,
   Cancel01Icon,
   Delete01Icon,
   Mic01Icon,
   StopIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { extractRawText } from 'mammoth'
 import {
   memo,
   useCallback,
@@ -21,12 +21,21 @@ import {
   useRef,
   useState,
 } from 'react'
+import { setLocalModelOverride } from '../chat-screen'
+import {
+  ATTACHMENT_ACCEPT,
+  DOCX_MIME_TYPE,
+  PDF_MIME_TYPE,
+  XLS_MIME_TYPE,
+  XLSX_MIME_TYPE,
+  inferUploadApiDocumentMimeTypeFromFileName,
+  isUploadApiDocumentMimeType,
+} from '../attachment-documents'
 import {
   MODEL_SWITCH_BLOCKED_TOAST,
   getZeroForkModelInfoFlags,
   shouldBlockZeroForkModelSwitch,
 } from './chat-composer-model-switch'
-import { ContextBar } from './context-bar'
 import type { CSSProperties, Ref } from 'react'
 
 import type { ModelCatalogEntry, ModelSwitchResponse } from '@/lib/model-types'
@@ -44,7 +53,6 @@ import { SlashCommandMenu } from '@/components/slash-command-menu'
 import { useSettings } from '@/hooks/use-settings'
 import { MOBILE_TAB_BAR_OFFSET } from '@/components/mobile-tab-bar'
 import { useWorkspaceStore } from '@/stores/workspace-store'
-import { useSessionModelStore } from '@/stores/session-model-store'
 import { Button } from '@/components/ui/button'
 import { usePinnedModels } from '@/hooks/use-pinned-models'
 // import { ModeSelector } from '@/components/mode-selector'
@@ -52,11 +60,6 @@ import { cn } from '@/lib/utils'
 import { useVoiceInput } from '@/hooks/use-voice-input'
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder'
 import { toast } from '@/components/ui/toast'
-import {
-  SEARCH_MODAL_EVENTS,
-  emitSearchModalEvent,
-} from '@/hooks/use-search-modal'
-import { setLocalModelOverride } from '@/screens/chat/local-model-override'
 
 type ChatComposerAttachment = {
   id: string
@@ -68,7 +71,7 @@ type ChatComposerAttachment = {
   kind?: 'image' | 'file' | 'audio'
 }
 
-type ThinkingLevel = 'off' | 'low' | 'medium' | 'high'
+type ThinkingLevel = 'off' | 'low' | 'adaptive'
 
 type ChatComposerProps = {
   onSubmit: (
@@ -91,10 +94,6 @@ type ChatComposerProps = {
   /** Called when user changes thinking level */
   onThinkingLevelChange?: (level: ThinkingLevel) => void
   onAbort?: () => void
-  /** Embedded inside another surface (e.g. Operations card), so mobile composer
-   * must stay inline instead of docking fixed to the viewport bottom. */
-  embedded?: boolean
-  hideModelSelector?: boolean
 }
 
 type ChatComposerHelpers = {
@@ -110,8 +109,7 @@ type ChatComposerHandle = {
 
 function nextThinkingLevel(level: ThinkingLevel): ThinkingLevel {
   if (level === 'off') return 'low'
-  if (level === 'low') return 'medium'
-  if (level === 'medium') return 'high'
+  if (level === 'low') return 'adaptive'
   return 'off'
 }
 
@@ -132,33 +130,6 @@ type GatewayStatusApiResponse = {
   mode?: string
 }
 
-type ProfileSummary = {
-  name: string
-  active?: boolean
-  model?: string
-  provider?: string
-  skillCount?: number
-}
-
-type ProfilesListResponse = {
-  profiles?: Array<ProfileSummary>
-  activeProfile?: string
-}
-
-type WorkspaceEntry = {
-  name: string
-  path: string
-}
-
-type WorkspaceDetectionResponse = {
-  path?: string
-  folderName?: string
-  source?: string
-  isValid?: boolean
-  workspaces?: Array<WorkspaceEntry>
-  last?: string
-}
-
 type ModelInfoApiResponse = {
   gatewayMode?: string | null
   supportsRuntimeSwitching?: boolean | null
@@ -172,15 +143,15 @@ type ModelSwitchNotice = {
   retryProvider?: string
 }
 
-// Models are fetched through the workspace API proxy (/api/models, /api/claude-proxy)
+// Models are fetched through the workspace API proxy (/api/models, /api/hermes-proxy)
 // to support Docker and reverse-proxy deployments where the browser cannot reach
-// the Hermes Agent gateway directly.
+// the Hermes gateway directly.
 
 function readModelText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-type ClaudeCatalogEntry =
+type HermesCatalogEntry =
   | string
   | {
       id: string
@@ -189,22 +160,22 @@ type ClaudeCatalogEntry =
       [key: string]: unknown
     }
 
-function isClaudeCatalogEntry(
-  entry: ClaudeCatalogEntry | null,
-): entry is ClaudeCatalogEntry {
+function isHermesCatalogEntry(
+  entry: HermesCatalogEntry | null,
+): entry is HermesCatalogEntry {
   return entry !== null
 }
 
-type ClaudeProviderOption = {
+type HermesProviderOption = {
   id: string
   label: string
   authenticated: boolean
 }
 
-type ClaudeAvailableModelsResponse = {
+type HermesAvailableModelsResponse = {
   provider: string
   models: Array<{ id: string; description: string }>
-  providers: Array<ClaudeProviderOption>
+  providers: Array<HermesProviderOption>
 }
 
 async function fetchModels(): Promise<{
@@ -213,11 +184,11 @@ async function fetchModels(): Promise<{
   configuredProviders?: Array<string>
   currentProvider?: string
   providerLabels?: Record<string, string>
-  providers?: Array<ClaudeProviderOption>
+  providers?: Array<HermesProviderOption>
 }> {
   // Use the curated /api/models endpoint which returns only models
   // actually configured and available (OCPlatform gateway + local providers).
-  // Previously this hit /api/claude-proxy/api/available-models which returned
+  // Previously this hit /api/hermes-proxy/api/available-models which returned
   // every upstream provider model — flooding the picker with unusable options.
   const response = await fetch('/api/models')
   if (!response.ok) {
@@ -264,7 +235,7 @@ async function fetchModels(): Promise<{
           id,
       }
     })
-    .filter(isClaudeCatalogEntry)
+    .filter(isHermesCatalogEntry)
 
   const configuredProviders = Array.from(
     new Set(
@@ -291,14 +262,14 @@ async function fetchModelsForProvider(
   if (!normalizedProvider) return []
 
   const response = await fetch(
-    `/api/claude-proxy/api/available-models?provider=${encodeURIComponent(normalizedProvider)}`,
+    `/api/hermes-proxy/api/available-models?provider=${encodeURIComponent(normalizedProvider)}`,
   )
   if (!response.ok) {
     throw new Error(`Hermes models request failed (${response.status})`)
   }
 
-  const payload = (await response.json()) as ClaudeAvailableModelsResponse
-  return payload.models.map((model) => ({
+  const payload = (await response.json()) as HermesAvailableModelsResponse
+  return (payload.models || []).map((model) => ({
     id: model.id,
     name: model.id,
     provider: normalizedProvider,
@@ -339,7 +310,7 @@ async function switchModel(
   const patch: Record<string, string> = { model: modelId }
   if (modelProvider) patch.provider = modelProvider
 
-  const response = await fetch('/api/claude-proxy/api/config', {
+  const response = await fetch('/api/hermes-proxy/api/config', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(patch),
@@ -419,6 +390,11 @@ function isTextMimeType(value: string): boolean {
   return normalized.startsWith('text/') || normalized === 'application/json'
 }
 
+function isUploadApiDocumentFile(file: File): boolean {
+  if (isUploadApiDocumentMimeType(file.type)) return true
+  return inferUploadApiDocumentMimeTypeFromFileName(file.name).length > 0
+}
+
 function isImageFile(file: File): boolean {
   if (isImageMimeType(file.type)) return true
   return inferImageMimeTypeFromFileName(file.name).length > 0
@@ -451,6 +427,7 @@ function hasAttachableData(dt: DataTransfer | null): boolean {
         item.kind === 'file' &&
         (isImageMimeType(item.type) ||
           isTextMimeType(item.type) ||
+          isUploadApiDocumentMimeType(item.type) ||
           item.type.trim().length === 0),
     )
   )
@@ -458,7 +435,10 @@ function hasAttachableData(dt: DataTransfer | null): boolean {
   const files = Array.from(dt.files)
   return files.some(
     (file) =>
-      isImageFile(file) || isTextFile(file) || file.type.trim().length === 0,
+      isImageFile(file) ||
+      isTextFile(file) ||
+      isUploadApiDocumentFile(file) ||
+      file.type.trim().length === 0,
   )
 }
 
@@ -651,7 +631,7 @@ function normalizeDraftSessionKey(sessionKey?: string): string {
 }
 
 function toDraftStorageKey(sessionKey?: string): string {
-  return `claude-draft-${normalizeDraftSessionKey(sessionKey)}`
+  return `hermes-draft-${normalizeDraftSessionKey(sessionKey)}`
 }
 
 function readSlashCommandQuery(inputValue: string): string | null {
@@ -728,53 +708,6 @@ async function fetchModelInfo(): Promise<ModelInfoApiResponse | null> {
   return (await response.json()) as ModelInfoApiResponse
 }
 
-async function fetchProfiles(): Promise<ProfilesListResponse> {
-  const response = await fetch('/api/profiles/list')
-  if (!response.ok) {
-    throw new Error(await readResponseError(response))
-  }
-  return (await response.json()) as ProfilesListResponse
-}
-
-async function activateProfile(name: string): Promise<void> {
-  const response = await fetch('/api/profiles/activate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
-  })
-  if (!response.ok) {
-    throw new Error(await readResponseError(response))
-  }
-}
-
-async function fetchWorkspaceContext(): Promise<WorkspaceDetectionResponse> {
-  const response = await fetch('/api/workspace')
-  if (!response.ok) {
-    throw new Error(await readResponseError(response))
-  }
-  return (await response.json()) as WorkspaceDetectionResponse
-}
-
-function shortPathLabel(pathValue: string): string {
-  if (!pathValue) return 'Workspace'
-  const parts = pathValue.replace(/\\/g, '/').split('/').filter(Boolean)
-  return parts.at(-1) || pathValue
-}
-
-function thinkingLabel(level: ThinkingLevel): string {
-  if (level === 'off') return 'None'
-  if (level === 'low') return 'Low'
-  if (level === 'medium') return 'Medium'
-  return 'High'
-}
-
-function profileMeta(profile: ProfileSummary): string {
-  return [profile.model, profile.provider]
-    .map((value) => (typeof value === 'string' ? value.trim() : ''))
-    .filter(Boolean)
-    .join(' · ')
-}
-
 function focusPromptTarget(target: HTMLTextAreaElement | null) {
   if (!target) return
   try {
@@ -798,10 +731,7 @@ function ChatComposerComponent({
   thinkingLevel: externalThinkingLevel,
   onThinkingLevelChange,
   onAbort,
-  embedded = false,
-  hideModelSelector = false,
 }: ChatComposerProps) {
-  const queryClient = useQueryClient()
   const mobileKeyboardInset = useWorkspaceStore((s) => s.mobileKeyboardInset)
   const mobileComposerFocused = useWorkspaceStore(
     (s) => s.mobileComposerFocused,
@@ -827,16 +757,12 @@ function ChatComposerComponent({
   } | null>(null)
   const [focusAfterSubmitTick, setFocusAfterSubmitTick] = useState(0)
   const { settings: composerSettings } = useSettings()
-  const chatNavMode = composerSettings.mobileChatNavMode
+  const chatNavMode = composerSettings.mobileChatNavMode ?? 'dock'
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === 'undefined') return false
     return window.matchMedia('(max-width: 767px)').matches
   })
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false)
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
-  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false)
-  const [isThinkingMenuOpen, setIsThinkingMenuOpen] = useState(false)
-  const [isControlsMenuOpen, setIsControlsMenuOpen] = useState(false)
   const [isProviderSwitcherExpanded, setIsProviderSwitcherExpanded] =
     useState(false)
   const [isMobileActionsMenuOpen, setIsMobileActionsMenuOpen] = useState(false)
@@ -849,7 +775,7 @@ function ChatComposerComponent({
   const [internalThinkingLevel, setInternalThinkingLevel] =
     useState<ThinkingLevel>('low')
   const thinkingLevel = externalThinkingLevel ?? internalThinkingLevel
-  // Thinking toggle removed for Claude (not supported) — keeping state for type compat
+  // Thinking toggle removed for Hermes (not supported) — keeping state for type compat
   const _handleThinkingToggle = useCallback(() => {
     const next = nextThinkingLevel(thinkingLevel)
     if (onThinkingLevelChange) {
@@ -862,15 +788,11 @@ function ChatComposerComponent({
   const promptRef = useRef<HTMLTextAreaElement | null>(null)
   const slashMenuRef = useRef<SlashCommandMenuHandle | null>(null)
   const attachmentInputRef = useRef<HTMLInputElement | null>(null)
-  const profileMenuRef = useRef<HTMLDivElement | null>(null)
   const dragCounterRef = useRef(0)
   const shouldRefocusAfterSendRef = useRef(false)
   const submittingRef = useRef(false)
   const pendingSubmitAfterAttachmentsRef = useRef(false)
   const modelSelectorRef = useRef<HTMLDivElement | null>(null)
-  const workspaceMenuRef = useRef<HTMLDivElement | null>(null)
-  const thinkingMenuRef = useRef<HTMLDivElement | null>(null)
-  const controlsMenuRef = useRef<HTMLDivElement | null>(null)
   const composerWrapperRef = useRef<HTMLDivElement | null>(null)
   const focusFrameRef = useRef<number | null>(null)
 
@@ -878,7 +800,7 @@ function ChatComposerComponent({
   const { pinned, isPinned, togglePin } = usePinnedModels()
 
   const modelsQuery = useQuery({
-    queryKey: ['claude', 'models'],
+    queryKey: ['hermes', 'models'],
     queryFn: fetchModels,
     refetchInterval: 60_000,
     retry: false,
@@ -893,7 +815,7 @@ function ChatComposerComponent({
   )
   const otherProviderModelsQuery = useQuery({
     queryKey: [
-      'claude',
+      'hermes',
       'models',
       'other-providers',
       otherProviders
@@ -921,7 +843,7 @@ function ChatComposerComponent({
     },
   })
   const currentModelQuery = useQuery({
-    queryKey: ['claude', 'session-status-model'],
+    queryKey: ['hermes', 'session-status-model'],
     queryFn: fetchCurrentModelFromStatus,
     refetchInterval: 30_000,
     retry: false,
@@ -943,80 +865,52 @@ function ChatComposerComponent({
     [modelInfoQuery.data],
   )
 
-  const profilesQuery = useQuery({
-    queryKey: ['profiles', 'composer'],
-    queryFn: fetchProfiles,
-    retry: false,
-    staleTime: 15_000,
-  })
-  const workspaceContextQuery = useQuery({
-    queryKey: ['workspace', 'composer-context'],
-    queryFn: fetchWorkspaceContext,
-    retry: false,
-    staleTime: 30_000,
-  })
-  const profileActivateMutation = useMutation({
-    mutationFn: activateProfile,
-    onSuccess: async (_data, profileName) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['profiles'] }),
-        queryClient.invalidateQueries({ queryKey: ['workspace'] }),
-        queryClient.invalidateQueries({ queryKey: ['claude', 'models'] }),
-        queryClient.invalidateQueries({
-          queryKey: ['claude', 'session-status-model'],
-        }),
-      ])
-      setIsProfileMenuOpen(false)
-      toast(`Activated profile ${profileName}`)
-    },
-    onError: (error) => {
-      toast(
-        error instanceof Error ? error.message : 'Failed to activate profile',
-      )
-    },
-  })
-  const workspaceSelectMutation = useMutation({
-    mutationFn: async (workspace: { path: string; name?: string }) => {
-      const response = await fetch('/api/workspace', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(workspace),
-      })
-      if (!response.ok) {
-        throw new Error(await readResponseError(response))
-      }
-      return (await response.json()) as WorkspaceDetectionResponse
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ['workspace', 'composer-context'],
-      })
-      setIsWorkspaceMenuOpen(false)
-    },
-    onError: (error) => {
-      toast(
-        error instanceof Error ? error.message : 'Failed to switch workspace',
-      )
-    },
-  })
-
   // Phase 4.2: (pinned model tracking kept for future use)
   void modelsQuery.data
 
-  // Per-session model override, persisted to localStorage keyed by sessionKey.
-  // Drives both the composer label and the model passed to startStreaming.
-  // Replaces an earlier flow that PATCHed ~/.hermes/config.yaml — that path
-  // 404s and would clobber the global default for every channel anyway.
-  const persistedSessionModel = useSessionModelStore((s) =>
-    s.getModel(sessionKey),
-  )
-  const setPersistedSessionModel = useSessionModelStore((s) => s.setModel)
-
-  // Model switching is now per-session via the persistent store above.
-  // Previously this issued a PATCH /api/hermes-proxy/api/config to write to
-  // ~/.hermes/config.yaml — that endpoint 404s and would clobber the global
-  // default for every channel anyway. The mutation block + retry callback +
-  // dead onError handler were removed alongside it.
+  const modelSwitchMutation = useMutation({
+    mutationFn: async function doSwitchModel(payload: {
+      model: string
+      provider?: string
+      sessionKey?: string
+    }) {
+      return await switchModel(
+        payload.model,
+        payload.provider,
+        payload.sessionKey,
+      )
+    },
+    onSuccess: function onSuccess(payload: ModelSwitchResponse, variables) {
+      const provider = readText(payload.resolved?.modelProvider)
+      const model = readText(payload.resolved?.model)
+      const resolvedModel =
+        provider && model ? `${provider}/${model}` : model || variables.model
+      setModelNotice({
+        tone: 'success',
+        message: `Model switched to ${resolvedModel}`,
+      })
+      setIsModelMenuOpen(false)
+      void currentModelQuery.refetch()
+    },
+    onError: function onError(error, variables) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (isTimeoutErrorMessage(message)) {
+        setModelNotice({
+          tone: 'error',
+          message: 'Request timed out',
+          retryModel: variables.model,
+          retryProvider: variables.provider,
+        })
+        return
+      }
+      setModelNotice({
+        tone: 'error',
+        message: message || 'Failed to switch model',
+        retryModel: variables.model,
+        retryProvider: variables.provider,
+      })
+    },
+  })
 
   const handleModelSelect = useCallback(
     function handleModelSelect(nextModel: string, provider?: string) {
@@ -1037,84 +931,60 @@ function ChatComposerComponent({
         return
       }
       setModelNotice(null)
-      const resolved = getResolvedModelKey(model, provider)
-      // Per-session, browser-local persistence. No global config write —
-      // picking a model here only affects this chat. The actual model is
-      // passed on each request via the chat-completion `model` field.
-      if (normalizedSessionKey) {
-        setPersistedSessionModel(normalizedSessionKey, resolved)
-      }
-      setIsModelMenuOpen(false)
+      setCurrentSelectedModel(getResolvedModelKey(model, provider))
+      modelSwitchMutation.mutate({
+        model,
+        provider,
+        sessionKey: normalizedSessionKey,
+      })
     },
     [
       gatewayModeQuery.data,
+      modelSwitchMutation,
       sessionKey,
-      setPersistedSessionModel,
       zeroForkModelInfoFlags,
     ],
   )
 
-  const handleThinkingSelect = useCallback(
-    function handleThinkingSelect(level: ThinkingLevel) {
-      if (onThinkingLevelChange) {
-        onThinkingLevelChange(level)
-      } else {
-        setInternalThinkingLevel(level)
-      }
-      setIsThinkingMenuOpen(false)
+  const retryModel = modelNotice?.retryModel ?? ''
+  const retryProvider = modelNotice?.retryProvider
+  const handleRetryModelSwitch = useCallback(
+    function handleRetryModelSwitch() {
+      if (!retryModel) return
+      handleModelSelect(retryModel, retryProvider)
     },
-    [onThinkingLevelChange],
+    [handleModelSelect, retryModel, retryProvider],
   )
-
-  const handleOpenWorkspaceManager = useCallback(() => {
-    setIsWorkspaceMenuOpen(false)
-    emitSearchModalEvent(SEARCH_MODAL_EVENTS.TOGGLE_FILE_EXPLORER)
-  }, [])
-
-  const activeProfileName =
-    profilesQuery.data?.activeProfile ||
-    profilesQuery.data?.profiles?.find((profile) => profile.active)?.name ||
-    'default'
-  const activeProfile = profilesQuery.data?.profiles?.find(
-    (profile) => profile.name === activeProfileName,
-  )
-  const workspaceEntries = workspaceContextQuery.data?.workspaces ?? []
-  const detectedWorkspacePath = workspaceContextQuery.data?.path ?? ''
-  const activeWorkspace = workspaceEntries.find(
-    (workspace) => workspace.path === detectedWorkspacePath,
-  )
-  const workspaceButtonLabel =
-    activeWorkspace?.name ||
-    workspaceContextQuery.data?.folderName ||
-    shortPathLabel(detectedWorkspacePath) ||
-    'Workspace'
 
   const currentModel = currentModelQuery.data ?? ''
 
-  // Auto-switch to hermes-agent model on mount (Hermes Workspace uses Hermes Agent)
+  // Auto-switch to hermes-agent model on mount (Hermes Workspace always uses Hermes)
   // Removed: auto-switch to hermes-agent. The workspace respects the
   // model/provider configured in ~/.hermes/config.yaml. Users switch
   // via the model selector or Settings page.
 
-  // When model switches to Claude 4.6 and thinking is 'off', auto-upgrade to medium effort
+  // When model switches to Claude 4.6 and thinking is 'off', auto-upgrade to 'adaptive'
   const prevModelRef = useRef('')
   useEffect(() => {
     if (!currentModel || currentModel === prevModelRef.current) return
     prevModelRef.current = currentModel
     if (isClaude46Model(currentModel) && thinkingLevel === 'off') {
       if (onThinkingLevelChange) {
-        onThinkingLevelChange('medium')
+        onThinkingLevelChange('adaptive')
       } else {
-        setInternalThinkingLevel('medium')
+        setInternalThinkingLevel('adaptive')
       }
     }
   }, [currentModel, thinkingLevel, onThinkingLevelChange])
 
-  const isModelSwitcherDisabled = disabled
+  const isModelSwitcherDisabled = disabled || modelSwitchMutation.isPending
   const draftStorageKey = useMemo(
     () => toDraftStorageKey(sessionKey),
     [sessionKey],
   )
+  const [currentSelectedModel, setCurrentSelectedModel] = useState<
+    string | null
+  >(null)
   // On new chat, currentModel is empty until a session is created.
   // Read the runtime model from the models query (first item is from the current provider).
   const configuredModel = useMemo(() => {
@@ -1123,10 +993,8 @@ function ChatComposerComponent({
     const first = models[0]
     return typeof first === 'string' ? first : first.id || first.name || ''
   }, [modelsQuery.data])
-  // Derive the label directly from the store so navigation between sessions
-  // updates without a render-window flash from a stale React-state mirror.
   const modelButtonLabel =
-    persistedSessionModel || currentModel || configuredModel || '⚕ Hermes Agent'
+    currentSelectedModel || currentModel || configuredModel || '⚕ Hermes Agent'
 
   // Measure composer height and set CSS variable for scroll padding
   useLayoutEffect(() => {
@@ -1219,6 +1087,7 @@ function ChatComposerComponent({
     if (isMobileViewport) return
     // Only focus on focusKey change (session switch), not on every disabled toggle
     focusPrompt()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusKey, isMobileViewport])
 
   useLayoutEffect(() => {
@@ -1237,36 +1106,19 @@ function ChatComposerComponent({
   }, [draftStorageKey])
 
   useEffect(() => {
-    if (
-      !isModelMenuOpen &&
-      !isProfileMenuOpen &&
-      !isThinkingMenuOpen &&
-      !isControlsMenuOpen
-    )
-      return
+    if (!isModelMenuOpen) return
     function handleOutsideClick(event: MouseEvent) {
-      const target = event.target as Node
-      if (controlsMenuRef.current?.contains(target)) return
-      if (modelSelectorRef.current?.contains(target)) return
-      if (profileMenuRef.current?.contains(target)) return
-      if (thinkingMenuRef.current?.contains(target)) return
-      setIsControlsMenuOpen(false)
+      if (!modelSelectorRef.current) return
+      if (modelSelectorRef.current.contains(event.target as Node)) return
       setIsModelMenuOpen(false)
       setIsProviderSwitcherExpanded(false)
-      setIsProfileMenuOpen(false)
-      setIsThinkingMenuOpen(false)
     }
 
     document.addEventListener('mousedown', handleOutsideClick)
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick)
     }
-  }, [
-    isModelMenuOpen,
-    isProfileMenuOpen,
-    isThinkingMenuOpen,
-    isControlsMenuOpen,
-  ])
+  }, [isModelMenuOpen])
 
   const persistDraft = useCallback(
     function persistDraft(nextValue: string) {
@@ -1358,7 +1210,13 @@ function ChatComposerComponent({
           async (file, index): Promise<ChatComposerAttachment | null> => {
             const imageFile = isImageFile(file)
             const textFile = isTextFile(file)
-            if (!imageFile && !textFile && file.type.trim().length > 0) {
+            const uploadApiDocumentFile = isUploadApiDocumentFile(file)
+            if (
+              !imageFile &&
+              !textFile &&
+              !uploadApiDocumentFile &&
+              file.type.trim().length > 0
+            ) {
               return null
             }
 
@@ -1370,7 +1228,54 @@ function ChatComposerComponent({
               return null
             }
 
+            if (uploadApiDocumentFile) {
+              const resolvedMimeType =
+                (isUploadApiDocumentMimeType(file.type)
+                  ? normalizeMimeType(file.type)
+                  : '') || inferUploadApiDocumentMimeTypeFromFileName(file.name)
+
+              if (
+                resolvedMimeType !== PDF_MIME_TYPE &&
+                resolvedMimeType !== DOCX_MIME_TYPE &&
+                resolvedMimeType !== XLS_MIME_TYPE &&
+                resolvedMimeType !== XLSX_MIME_TYPE
+              ) {
+                return null
+              }
+
+              const dataUrl = await readFileAsDataUrl(file)
+              if (!dataUrl) return null
+
+              const fallbackExtension =
+                resolvedMimeType === DOCX_MIME_TYPE
+                  ? 'docx'
+                  : resolvedMimeType === XLS_MIME_TYPE
+                    ? 'xls'
+                    : resolvedMimeType === XLSX_MIME_TYPE
+                      ? 'xlsx'
+                      : 'pdf'
+
+              return {
+                id: crypto.randomUUID(),
+                name:
+                  file.name && file.name.trim().length > 0
+                    ? file.name.trim()
+                    : `attachment-${timestamp}-${index + 1}.${fallbackExtension}`,
+                contentType: resolvedMimeType,
+                size: file.size,
+                dataUrl,
+                kind: 'file',
+              }
+            }
+
             if (textFile) {
+              const inferredMimeType = inferTextMimeTypeFromFileName(file.name)
+              const normalizedMimeType = normalizeMimeType(file.type)
+              const resolvedMimeType =
+                (isTextMimeType(file.type) ? normalizedMimeType : '') ||
+                inferredMimeType ||
+                'text/plain'
+
               const textContent = await readFileAsText(file)
               if (textContent === null) return null
               const name =
@@ -1381,12 +1286,7 @@ function ChatComposerComponent({
               return {
                 id: crypto.randomUUID(),
                 name,
-                contentType:
-                  (isTextMimeType(file.type)
-                    ? normalizeMimeType(file.type)
-                    : '') ||
-                  inferTextMimeTypeFromFileName(name) ||
-                  'text/plain',
+                contentType: resolvedMimeType,
                 size: textBytes,
                 dataUrl: textContent,
                 kind: 'file',
@@ -1882,9 +1782,8 @@ function ChatComposerComponent({
   const effectiveScrollHidden = scrollHidden && !keyboardOrFocusActive
 
   const composerWrapperStyle = useMemo(() => {
-    const chatContentMaxWidth = 'min(var(--chat-content-max-width), 100%)'
-    if (!isMobileViewport || embedded)
-      return { maxWidth: chatContentMaxWidth } as CSSProperties
+    if (!isMobileViewport)
+      return { maxWidth: 'min(768px, 100%)' } as CSSProperties
     const safeArea = 'env(safe-area-inset-bottom, 0px)'
     const tabBarH = 'var(--tabbar-h, 0px)'
     const tf = effectiveScrollHidden ? 'translateY(110%)' : 'translateY(0)'
@@ -1922,36 +1821,30 @@ function ChatComposerComponent({
       WebkitTransform: tf,
       '--mobile-tab-bar-offset': MOBILE_TAB_BAR_OFFSET,
     } as CSSProperties
-  }, [isMobileViewport, keyboardOrFocusActive, effectiveScrollHidden, embedded])
+  }, [isMobileViewport, keyboardOrFocusActive, effectiveScrollHidden])
 
   return (
     <div
       className={cn(
         'no-swipe pointer-events-auto touch-manipulation',
         isMobileViewport
-          ? embedded
-            ? [
-                // Embedded mobile composer: stay inside the card, no fixed bottom.
-                'relative z-40 w-full',
-                'bg-surface border-t border-primary-200/60',
-              ].join(' ')
-            : [
-                'fixed z-[70] transition-all duration-200',
-                chatNavMode === 'dock'
-                  ? [
-                      // iMessage-style: edge-to-edge, docked to bottom
-                      'left-0 right-0',
-                      'bg-surface/95 backdrop-blur-xl',
-                      'border-t border-primary-200/60',
-                    ].join(' ')
-                  : [
-                      // scroll-hide / integrated: floating pill above tab bar
-                      'left-4 right-4',
-                      'bg-surface/95 backdrop-blur-2xl',
-                      'shadow-[0_8px_32px_rgba(0,0,0,0.15)]',
-                      'rounded-[22px]',
-                    ].join(' '),
-              ].join(' ')
+          ? [
+              'fixed z-[70] transition-all duration-200',
+              chatNavMode === 'dock'
+                ? [
+                    // iMessage-style: edge-to-edge, docked to bottom
+                    'left-0 right-0',
+                    'bg-surface/95 backdrop-blur-xl',
+                    'border-t border-primary-200/60',
+                  ].join(' ')
+                : [
+                    // scroll-hide / integrated: floating pill above tab bar
+                    'left-4 right-4',
+                    'bg-surface/95 backdrop-blur-2xl',
+                    'shadow-[0_8px_32px_rgba(0,0,0,0.15)]',
+                    'rounded-[22px]',
+                  ].join(' '),
+            ].join(' ')
           : [
               'relative z-40 shrink-0 w-full mx-auto px-3 pt-2 sm:px-5',
               'bg-surface',
@@ -1968,7 +1861,7 @@ function ChatComposerComponent({
       <input
         ref={attachmentInputRef}
         type="file"
-        accept="image/*,.md,.txt,.json,.csv,.ts,.tsx,.js,.py"
+        accept={ATTACHMENT_ACCEPT}
         multiple
         className="hidden"
         onChange={handleAttachmentInputChange}
@@ -1982,6 +1875,7 @@ function ChatComposerComponent({
         maxHeight={isMobileViewport ? 120 : 240}
         className={cn(
           'relative z-50 transition-all duration-300',
+          !isMobileViewport && '!rounded-2xl',
           // On mobile: remove PromptInput's built-in rounded/bg/padding — outer wrapper owns the container
           isMobileViewport &&
             'py-0 gap-0 !rounded-none !bg-transparent shadow-none outline-none',
@@ -2127,9 +2021,14 @@ function ChatComposerComponent({
                     type="button"
                     onClick={handleAbort}
                     aria-label="Stop generation"
-                    className="size-9 rounded-full bg-red-500 flex items-center justify-center text-white transition-all duration-150"
+                    className="size-9 rounded-full bg-red-500 flex items-center justify-center transition-all duration-150"
                   >
-                    <HugeiconsIcon icon={StopIcon} size={18} strokeWidth={2} />
+                    <HugeiconsIcon
+                      icon={StopIcon}
+                      size={18}
+                      strokeWidth={2}
+                      className="theme-danger-contrast"
+                    />
                   </button>
                 ) : value.trim().length > 0 ||
                   attachments.length > 0 ||
@@ -2139,12 +2038,13 @@ function ChatComposerComponent({
                     onClick={handleSubmit}
                     disabled={submitDisabled}
                     aria-label="Send message"
-                    className="size-9 rounded-full bg-accent-500 flex items-center justify-center text-white transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                    className="size-9 rounded-full theme-accent-fill flex items-center justify-center transition-all duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                   >
                     <HugeiconsIcon
                       icon={ArrowUp02Icon}
                       size={18}
                       strokeWidth={2}
+                      className="theme-accent-icon"
                     />
                   </button>
                 ) : voiceInput.isSupported || voiceRecorder.isSupported ? (
@@ -2197,12 +2097,13 @@ function ChatComposerComponent({
                     onClick={handleSubmit}
                     disabled={submitDisabled}
                     aria-label="Send message"
-                    className="size-9 rounded-full bg-accent-500 flex items-center justify-center text-white transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="size-9 rounded-full theme-accent-fill flex items-center justify-center transition-all duration-150 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <HugeiconsIcon
                       icon={ArrowUp02Icon}
                       size={18}
                       strokeWidth={2}
+                      className="theme-accent-icon"
                     />
                   </button>
                 )}
@@ -2244,7 +2145,7 @@ function ChatComposerComponent({
                         >
                           <span className="rounded-lg bg-orange-100 dark:bg-orange-900/30 p-1.5 text-orange-600 dark:text-orange-400">
                             <HugeiconsIcon
-                              icon={AttachmentIcon}
+                              icon={Add01Icon}
                               size={24}
                               strokeWidth={1.5}
                             />
@@ -2565,7 +2466,7 @@ function ChatComposerComponent({
                     onClick={handleOpenAttachmentPicker}
                   >
                     <HugeiconsIcon
-                      icon={AttachmentIcon}
+                      icon={Add01Icon}
                       size={20}
                       strokeWidth={1.5}
                     />
@@ -2595,282 +2496,199 @@ function ChatComposerComponent({
                   </span>
                 )}
 
-                {!hideModelSelector ? (
-                  <div
-                    className="relative ml-0.5 flex min-w-0 items-center"
-                    ref={controlsMenuRef}
+                <div
+                  className="ml-0.5 md:ml-1 flex min-w-0 items-center"
+                  ref={modelSelectorRef}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setIsModelMenuOpen((prev) => !prev)}
+                    disabled={isModelSwitcherDisabled}
+                    className="inline-flex h-7 max-w-[8rem] items-center rounded-full bg-primary-100/70 px-1.5 md:max-w-none md:px-2.5 text-[11px] font-medium text-primary-600 hover:bg-primary-200/80 dark:hover:bg-primary-800/60 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                    title={modelButtonLabel}
                   >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsControlsMenuOpen((open) => !open)
-                        setIsProfileMenuOpen(false)
-                        setIsThinkingMenuOpen(false)
-                        setIsModelMenuOpen(false)
-                      }}
-                      className="inline-flex h-8 items-center gap-1 rounded-full bg-primary-100/70 px-2 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-200/80 dark:hover:bg-primary-800/60"
-                      title="Chat controls"
-                      aria-label="Chat controls"
-                    >
-                      <svg
-                        width="13"
-                        height="13"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
-                        <line x1="4" y1="6" x2="20" y2="6" />
-                        <line x1="4" y1="12" x2="20" y2="12" />
-                        <line x1="4" y1="18" x2="20" y2="18" />
-                        <circle cx="9" cy="6" r="2" fill="currentColor" stroke="none" />
-                        <circle cx="15" cy="12" r="2" fill="currentColor" stroke="none" />
-                        <circle cx="11" cy="18" r="2" fill="currentColor" stroke="none" />
-                      </svg>
-                      <HugeiconsIcon icon={ArrowDown01Icon} size={11} />
-                    </button>
-                    {isControlsMenuOpen ? (
-                      <div className="absolute bottom-full left-0 z-[190] mb-2 w-[min(32rem,calc(100vw-2rem))] min-w-[18rem] overflow-visible rounded-2xl border border-neutral-200 bg-white p-2 shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150 dark:border-neutral-700 dark:bg-neutral-900">
-                        <div className="mb-2 px-2 pt-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
-                          Chat controls
-                        </div>
-                        <div className="flex flex-wrap items-start gap-2">
-                          <div
-                            className="relative flex min-w-0 items-center"
-                            ref={profileMenuRef}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsProfileMenuOpen((open) => !open)
-                                setIsThinkingMenuOpen(false)
-                                setIsModelMenuOpen(false)
-                              }}
-                              disabled={disabled || profileActivateMutation.isPending}
-                              className="inline-flex h-8 max-w-[8rem] items-center gap-1.5 rounded-full bg-primary-100/70 px-2.5 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-200/80 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-primary-800/60"
-                              title={
-                                activeProfile
-                                  ? `${activeProfile.name}${profileMeta(activeProfile) ? ` · ${profileMeta(activeProfile)}` : ''}`
-                                  : activeProfileName
+                    <span className="max-w-[5.5rem] truncate sm:max-w-[8.5rem] md:max-w-[12rem]">
+                      {modelButtonLabel}
+                    </span>
+                  </button>
+                  {isModelMenuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-[199]"
+                        onClick={() => setIsModelMenuOpen(false)}
+                      />
+                      <div className="absolute bottom-full left-0 mb-2 z-[200] min-w-[16rem] max-w-[calc(100vw-2rem)] sm:max-w-[28rem] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-900 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                        <div className="max-h-[20rem] overflow-y-auto overflow-x-hidden p-1">
+                          {(() => {
+                            const allModels = modelsQuery.data?.models ?? []
+                            const defaultProvider =
+                              modelsQuery.data?.currentProvider ?? ''
+                            if (allModels.length === 0) {
+                              return (
+                                <div className="p-4 text-center text-sm text-neutral-500">
+                                  No models available
+                                </div>
+                              )
+                            }
+                            const parsed = allModels.map((m) => {
+                              const mId = String(
+                                typeof m === 'string'
+                                  ? m
+                                  : m.id || m.model || m.name || 'unknown',
+                              )
+                              const mName = String(
+                                typeof m === 'string'
+                                  ? m
+                                  : m.name ||
+                                      m.displayName ||
+                                      m.label ||
+                                      m.id ||
+                                      m.model ||
+                                      m,
+                              )
+                              const mProvider =
+                                typeof m === 'string'
+                                  ? defaultProvider
+                                  : ((m as Record<string, unknown>)
+                                      .provider as string) || defaultProvider
+                              const isLocal =
+                                typeof m !== 'string' &&
+                                (m as Record<string, unknown>).description ===
+                                  'local'
+                              return {
+                                id: mId,
+                                name: mName,
+                                provider: mProvider,
+                                isLocal,
                               }
-                            >
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                              </svg>
-                              <span className="truncate">{activeProfileName}</span>
-                              <HugeiconsIcon icon={ArrowDown01Icon} size={11} />
-                            </button>
-                            {isProfileMenuOpen && (
-                              <div className="absolute bottom-full left-0 z-[200] mb-2 min-w-[14rem] overflow-hidden rounded-xl border border-neutral-200 bg-white p-1 shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150 dark:border-neutral-700 dark:bg-neutral-900">
-                                <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
-                                  Agent profile
-                                </div>
-                                {(profilesQuery.data?.profiles ?? []).map((profile) => {
-                                  const selected = profile.name === activeProfileName
-                                  return (
-                                    <button
-                                      key={profile.name}
-                                      type="button"
-                                      onClick={() => {
-                                        if (selected) {
-                                          setIsProfileMenuOpen(false)
-                                          return
-                                        }
-                                        profileActivateMutation.mutate(profile.name)
-                                      }}
-                                      className={cn(
-                                        'flex w-full flex-col rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                                        selected
-                                          ? 'bg-neutral-100 text-neutral-950 dark:bg-neutral-800 dark:text-neutral-50'
-                                          : 'text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800/60',
-                                      )}
-                                    >
-                                      <span className="flex items-center gap-2">
-                                        <span className="truncate font-medium">{profile.name}</span>
-                                        {selected ? <span className="text-[10px] text-accent-500">active</span> : null}
-                                      </span>
-                                      {profileMeta(profile) ? <span className="mt-0.5 max-w-[12rem] truncate text-[11px] text-neutral-500">{profileMeta(profile)}</span> : null}
-                                    </button>
-                                  )
-                                })}
-                                {profilesQuery.isError ? <div className="px-3 py-2 text-xs text-red-500">Failed to load profiles</div> : null}
-                              </div>
-                            )}
-                          </div>
-
-                          <div
-                            className="relative flex min-w-0 items-center"
-                            ref={thinkingMenuRef}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsThinkingMenuOpen((open) => !open)
-                                setIsProfileMenuOpen(false)
-                                setIsModelMenuOpen(false)
-                              }}
-                              className={cn(
-                                'inline-flex h-8 items-center gap-1.5 rounded-full bg-primary-100/70 px-2.5 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-200/80 dark:hover:bg-primary-800/60',
-                                thinkingLevel === 'off' && 'opacity-70',
-                              )}
-                              title={`Reasoning effort: ${thinkingLabel(thinkingLevel)}`}
-                            >
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z" />
-                                <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z" />
-                              </svg>
-                              <span>{thinkingLabel(thinkingLevel)}</span>
-                              <HugeiconsIcon icon={ArrowDown01Icon} size={11} />
-                            </button>
-                            {isThinkingMenuOpen && (
-                              <div className="absolute bottom-full left-0 z-[200] mb-2 min-w-[10rem] overflow-hidden rounded-xl border border-neutral-200 bg-white p-1 shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150 dark:border-neutral-700 dark:bg-neutral-900">
-                                {([
-                                  ['off', 'None'],
-                                  ['low', 'Low'],
-                                  ['medium', 'Medium'],
-                                  ['high', 'High'],
-                                ] as Array<[ThinkingLevel, string]>).map(([level, label]) => (
+                            })
+                            const pinnedEntries = parsed.filter((e) =>
+                              isPinned(e.id),
+                            )
+                            const unpinnedGroups = new Map<
+                              string,
+                              typeof parsed
+                            >()
+                            for (const entry of parsed) {
+                              if (isPinned(entry.id)) continue
+                              const group =
+                                unpinnedGroups.get(entry.provider) ?? []
+                              group.push(entry)
+                              unpinnedGroups.set(entry.provider, group)
+                            }
+                            const renderEntry = (entry: (typeof parsed)[0]) => {
+                              const isActive =
+                                entry.id === currentModel ||
+                                `${defaultProvider}/${entry.id}` ===
+                                  currentModel
+                              return (
+                                <div
+                                  key={entry.id}
+                                  className="group relative flex items-center"
+                                >
                                   <button
-                                    key={level}
                                     type="button"
-                                    onClick={() => handleThinkingSelect(level)}
-                                    className={cn(
-                                      'flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                                      thinkingLevel === level
-                                        ? 'bg-neutral-100 text-neutral-950 dark:bg-neutral-800 dark:text-neutral-50'
-                                        : 'text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800/60',
-                                    )}
-                                  >
-                                    <span>{label}</span>
-                                    {thinkingLevel === level ? <span className="h-1.5 w-1.5 rounded-full bg-accent-500" /> : null}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                          <div
-                            className="relative flex min-w-0 items-center"
-                            ref={modelSelectorRef}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsModelMenuOpen((prev) => !prev)
-                                setIsProfileMenuOpen(false)
-                                setIsThinkingMenuOpen(false)
-                              }}
-                              disabled={isModelSwitcherDisabled}
-                              className="inline-flex h-8 max-w-[9rem] items-center rounded-full bg-primary-100/70 px-2 md:max-w-none md:px-3 text-xs font-medium text-primary-600 hover:bg-primary-200/80 dark:hover:bg-primary-800/60 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                              title={modelButtonLabel}
-                            >
-                              <span className="max-w-[5.5rem] truncate sm:max-w-[8.5rem] md:max-w-[12rem]">{modelButtonLabel}</span>
-                            </button>
-                            {isModelMenuOpen && (
-                              <>
-                                <div className="fixed inset-0 z-[199]" onClick={() => setIsModelMenuOpen(false)} />
-                                <div className="absolute bottom-full left-0 mb-2 z-[200] w-[min(28rem,calc(100vw-2rem))] min-w-[18rem] origin-bottom-left overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-900 animate-in fade-in slide-in-from-bottom-2 duration-150">
-                                  <div className="max-h-[20rem] overflow-y-auto overflow-x-hidden p-1">
-                                    {(() => {
-                                      const allModels = modelsQuery.data?.models ?? []
-                                      const defaultProvider = modelsQuery.data?.currentProvider ?? ''
-                                      if (allModels.length === 0) {
-                                        return <div className="p-4 text-center text-sm text-neutral-500">No models available</div>
-                                      }
-                                      const parsed = allModels.map((m) => {
-                                        const mId = String(typeof m === 'string' ? m : m.id || m.model || m.name || 'unknown')
-                                        const mName = String(typeof m === 'string' ? m : m.name || m.displayName || m.label || m.id || m.model || m)
-                                        const mProvider = typeof m === 'string' ? defaultProvider : ((m as Record<string, unknown>).provider as string) || defaultProvider
-                                        const isLocal = typeof m !== 'string' && (m as Record<string, unknown>).description === 'local'
-                                        return { id: mId, name: mName, provider: mProvider, isLocal }
-                                      })
-                                      const pinnedEntries = parsed.filter((e) => isPinned(e.id))
-                                      const unpinnedGroups = new Map<string, typeof parsed>()
-                                      for (const entry of parsed) {
-                                        if (isPinned(entry.id)) continue
-                                        const group = unpinnedGroups.get(entry.provider) ?? []
-                                        group.push(entry)
-                                        unpinnedGroups.set(entry.provider, group)
-                                      }
-                                      const renderEntry = (entry: (typeof parsed)[0]) => {
-                                        const isActive = entry.id === currentModel || `${defaultProvider}/${entry.id}` === currentModel
-                                        return (
-                                          <div key={entry.id} className="group relative flex items-center">
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                handleModelSelect(entry.id, entry.provider || undefined)
-                                                setIsModelMenuOpen(false)
-                                              }}
-                                              className={`flex flex-1 items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors ${
-                                                isActive
-                                                  ? 'border-l-2 border-accent-500 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100'
-                                                  : 'text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800/50'
-                                              }`}
-                                            >
-                                              <span className="flex-1 truncate">{entry.name}</span>
-                                              {entry.isLocal ? <span className="text-[10px] text-neutral-400 px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-700">local</span> : null}
-                                              {isActive ? <span className="h-1.5 w-1.5 rounded-full bg-accent-500" /> : null}
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={(e) => {
-                                                e.stopPropagation()
-                                                togglePin(entry.id)
-                                              }}
-                                              className={`absolute right-2 rounded p-1 transition-opacity ${
-                                                isPinned(entry.id)
-                                                  ? 'text-accent-500 opacity-80 hover:opacity-100'
-                                                  : 'text-neutral-400 opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-accent-500'
-                                              }`}
-                                              aria-label={isPinned(entry.id) ? `Unpin ${entry.name}` : `Pin ${entry.name}`}
-                                            >
-                                              <svg width="12" height="12" viewBox="0 0 24 24" fill={isPinned(entry.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-                                                <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" />
-                                              </svg>
-                                            </button>
-                                          </div>
-                                        )
-                                      }
-                                      return (
-                                        <>
-                                          {pinnedEntries.length > 0 ? (
-                                            <div className="mb-1 border-b border-neutral-200 pb-1 dark:border-neutral-700">
-                                              <div className="mb-1 flex items-center gap-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-500">
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" className="text-accent-500">
-                                                  <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" />
-                                                </svg>
-                                                <span>Pinned</span>
-                                              </div>
-                                              {pinnedEntries.map(renderEntry)}
-                                            </div>
-                                          ) : null}
-                                          {Array.from(unpinnedGroups.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([provider, models]) => (
-                                            <div key={provider}>
-                                              <div className="px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-neutral-400">{provider}</div>
-                                              {models.map(renderEntry)}
-                                            </div>
-                                          ))}
-                                        </>
+                                    onClick={() => {
+                                      handleModelSelect(
+                                        entry.id,
+                                        entry.provider || undefined,
                                       )
-                                    })()}
-                                  </div>
+                                      setIsModelMenuOpen(false)
+                                    }}
+                                    className={`flex flex-1 items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors ${
+                                      isActive
+                                        ? 'border-l-2 border-accent-500 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100'
+                                        : 'text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800/50'
+                                    }`}
+                                  >
+                                    <span className="flex-1 truncate">
+                                      {entry.name}
+                                    </span>
+                                    {entry.isLocal && (
+                                      <span className="text-[10px] text-neutral-400 px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-700">
+                                        local
+                                      </span>
+                                    )}
+                                    {isActive && (
+                                      <span className="h-1.5 w-1.5 rounded-full bg-accent-500" />
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      togglePin(entry.id)
+                                    }}
+                                    className={`absolute right-2 rounded p-1 transition-opacity ${
+                                      isPinned(entry.id)
+                                        ? 'text-accent-500 opacity-80 hover:opacity-100'
+                                        : 'text-neutral-400 opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-accent-500'
+                                    }`}
+                                    aria-label={
+                                      isPinned(entry.id)
+                                        ? `Unpin ${entry.name}`
+                                        : `Pin ${entry.name}`
+                                    }
+                                  >
+                                    <svg
+                                      width="12"
+                                      height="12"
+                                      viewBox="0 0 24 24"
+                                      fill={
+                                        isPinned(entry.id)
+                                          ? 'currentColor'
+                                          : 'none'
+                                      }
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                    >
+                                      <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" />
+                                    </svg>
+                                  </button>
                                 </div>
+                              )
+                            }
+                            return (
+                              <>
+                                {pinnedEntries.length > 0 && (
+                                  <div className="mb-1 border-b border-neutral-200 dark:border-neutral-700 pb-1">
+                                    <div className="mb-1 flex items-center gap-1 px-3 text-[11px] font-medium uppercase tracking-wider text-neutral-500">
+                                      <svg
+                                        width="12"
+                                        height="12"
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        className="text-accent-500"
+                                      >
+                                        <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" />
+                                      </svg>
+                                      <span>Pinned</span>
+                                    </div>
+                                    {pinnedEntries.map(renderEntry)}
+                                  </div>
+                                )}
+                                {Array.from(unpinnedGroups.entries())
+                                  .sort((a, b) => a[0].localeCompare(b[0]))
+                                  .map(([provider, models]) => (
+                                    <div key={provider}>
+                                      <div className="px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-neutral-400">
+                                        {provider}
+                                      </div>
+                                      {models.map(renderEntry)}
+                                    </div>
+                                  ))}
                               </>
-                            )}
-                          </div>
+                            )
+                          })()}
                         </div>
                       </div>
-                    ) : null}
-                  </div>
-                ) : null}
+                    </>
+                  )}
+                </div>
               </div>
               <div className="ml-1 flex shrink-0 items-center gap-0.5 md:gap-1">
-                <ContextBar compact sessionId={sessionKey} />
                 {voiceInput.isSupported || voiceRecorder.isSupported ? (
                   <PromptInputAction
                     tooltip={
@@ -2883,6 +2701,7 @@ function ChatComposerComponent({
                   >
                     <Button
                       onClick={() => {
+                        // Toggle voice input on click
                         if (voiceInput.isListening) {
                           voiceInput.stop()
                         } else if (voiceRecorder.isRecording) {
@@ -2933,13 +2752,14 @@ function ChatComposerComponent({
                       onClick={handleAbort}
                       size="icon-sm"
                       variant="destructive"
-                      className="rounded-md"
+                      className="rounded-full bg-red-500 hover:bg-red-600 theme-danger-contrast"
                       aria-label="Stop generation"
                     >
                       <HugeiconsIcon
                         icon={StopIcon}
                         size={20}
                         strokeWidth={1.5}
+                        className="theme-danger-contrast"
                       />
                     </Button>
                   </PromptInputAction>
@@ -2951,13 +2771,14 @@ function ChatComposerComponent({
                         onClick={handleSubmit}
                         disabled={submitDisabled}
                         size="icon-sm"
-                        className="rounded-full"
+                        className="rounded-full theme-accent-fill hover:opacity-90"
                         aria-label="Send message"
                       >
                         <HugeiconsIcon
                           icon={ArrowUp02Icon}
                           size={20}
                           strokeWidth={1.5}
+                          className="theme-accent-icon"
                         />
                       </Button>
                     </PromptInputAction>

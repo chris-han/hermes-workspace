@@ -36,32 +36,13 @@ export function LoginScreen() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-4">
       <div className="w-full max-w-md">
-        <div className="rounded-2xl bg-primary-100 px-8 py-10 shadow-xl shadow-primary-900/5 ring-1 ring-primary-200">
+        <div className="rounded-2xl bg-white px-8 py-10 shadow-xl shadow-primary-900/5 ring-1 ring-primary-900/5">
           {/* Logo */}
           <div className="mb-8 flex justify-center">
             <div className="flex items-center gap-2.5">
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 100 100"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="text-accent-500"
-              >
-                <path
-                  d="M50 10 L90 30 L90 70 L50 90 L10 70 L10 30 Z"
-                  fill="currentColor"
-                  opacity="0.15"
-                />
-                <path
-                  d="M50 25 L75 38 L75 62 L50 75 L25 62 L25 38 Z"
-                  fill="currentColor"
-                  opacity="0.3"
-                />
-                <circle cx="50" cy="50" r="15" fill="currentColor" />
-              </svg>
-              <h1 className="text-2xl font-bold tracking-tight text-primary-900">
-                Hermes Workspace
+              <img src="/logo.svg" alt="" className="size-8 rounded-lg" />
+              <h1 className="brand-wordmark text-2xl font-bold tracking-tight text-primary-900">
+                semantier
               </h1>
             </div>
           </div>
@@ -82,14 +63,14 @@ export function LoginScreen() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full rounded-lg border border-primary-200 bg-primary-50 px-4 py-2.5 text-primary-900 placeholder-primary-400 outline-none transition-all focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+                className="w-full rounded-lg border border-primary-200 bg-white px-4 py-2.5 text-primary-900 placeholder-primary-400 outline-none transition-all focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
                 disabled={loading}
                 autoFocus
               />
             </div>
 
             {error && (
-              <div className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700 ring-1 ring-red-200 dark:bg-red-950/40 dark:text-red-200 dark:ring-red-800/60">
+              <div className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700 ring-1 ring-red-200">
                 {error}
               </div>
             )}
@@ -113,7 +94,7 @@ export function LoginScreen() {
             rel="noopener noreferrer"
             className="text-accent-500 hover:text-accent-600 transition-colors"
           >
-            Hermes Agent
+            Hermes
           </a>
         </p>
       </div>

@@ -8,28 +8,6 @@ export type ConnectionErrorKind =
   | 'disconnected'
   | 'unknown'
 
-// Markers that indicate an auth failure happened (used to qualify generic
-// keywords like "token" so we don't misclassify network noise).
-const AUTH_FAILURE_MARKERS = [
-  'unauthorized',
-  'unauthenticated',
-  'forbidden',
-  'invalid',
-  'expired',
-  'rejected',
-  'denied',
-  'missing',
-  'no auth',
-  'auth failed',
-  'auth required',
-  '401',
-  '403',
-]
-
-function looksLikeAuthFailure(lower: string): boolean {
-  return AUTH_FAILURE_MARKERS.some((marker) => lower.includes(marker))
-}
-
 export function classifyConnectionError(
   error?: string | Error | null,
   status?: number | null,
@@ -45,18 +23,12 @@ export function classifyConnectionError(
   ) {
     return 'gateway_pairing_required'
   }
-  // Gateway auth rejection: the gateway received our request but refused
-  // the device's auth token. Match on phrases that clearly indicate an
-  // auth failure — generic words like "token" only count when paired with
-  // an auth-failure marker (rejected/invalid/expired/etc.) so that benign
-  // strings like "failed to fetch token from /api/x" don't get misrouted
-  // to a "log in again" prompt.
   if (
     lower.includes('missing gateway auth') ||
     lower.includes('gateway auth') ||
+    lower.includes('token') ||
     lower.includes('forbidden') ||
-    lower.includes('unauthorized') ||
-    (lower.includes('token') && looksLikeAuthFailure(lower))
+    lower.includes('unauthorized')
   ) {
     return 'gateway_auth_rejected'
   }
@@ -100,23 +72,22 @@ export function getConnectionErrorMessage(
       }
     case 'gateway_auth_rejected':
       return {
-        title: 'Gateway rejected this device',
-        description:
-          "The gateway is reachable, but it refused this device's auth token. The token is missing, invalid, or expired.",
-        action:
-          'Re-pair this device with the gateway, or check that the gateway auth token is configured correctly.',
+        title: 'Authentication required',
+        description: 'The gateway rejected this connection.',
+        action: 'Update your gateway token in Settings and try again.',
       }
     case 'gateway_pairing_required':
       return {
         title: 'Pair this device first',
         description: 'This device is not paired with the gateway yet.',
-        action: 'Run `claude pair` on the gateway machine, then reconnect.',
+        action: 'Run `openclaw pair` on the gateway machine, then reconnect.',
       }
     case 'gateway_unreachable':
       return {
         title: 'Gateway unreachable',
-        description: 'Claude cannot reach the configured gateway.',
-        action: 'Check that the gateway is running and the URL is correct.',
+        description: 'ClawSuite cannot reach the configured OpenClaw gateway.',
+        action:
+          'Check that OpenClaw is running and the gateway URL is correct.',
       }
     case 'handshake_failed':
       return {

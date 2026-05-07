@@ -48,4 +48,18 @@ describe('normalizeModelInfoResponse', () => {
       mode: 'enhanced',
     })
   })
+
+  it('does not treat semantier-unicell as enhanced-runtime model switching by default', () => {
+    expect(
+      deriveFallbackModelInfoFromGateway('semantier-unicell', {
+        enhancedChat: false,
+        config: false,
+        sessions: false,
+      }),
+    ).toMatchObject({
+      supportsRuntimeSwitching: null,
+      vanillaAgent: null,
+      mode: null,
+    })
+  })
 })

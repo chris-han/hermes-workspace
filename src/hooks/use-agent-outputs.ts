@@ -1,8 +1,8 @@
 // use-agent-outputs.ts
 //
-// Claude-Workspace stub for the Operations "Outputs" tab.
+// Hermes-Workspace stub for the Operations "Outputs" tab.
 // ControlSuite ships a richer implementation backed by the Codex agent
-// activity feed. Claude does not have that surface yet, so this returns
+// activity feed. Hermes does not have that surface yet, so this returns
 // an empty list and a no-op refresher. Replace with a real hook when we
 // wire up an outputs feed.
 
@@ -44,7 +44,7 @@ export type AgentOutputFilterOption = {
   emoji?: string
 }
 
-const DEFAULT_FILTERS: AgentOutputFilterOption[] = [
+const DEFAULT_FILTERS: Array<AgentOutputFilterOption> = [
   { id: 'all', label: 'All', emoji: '📋' },
   { id: 'ok', label: 'Success', emoji: '✅' },
   { id: 'error', label: 'Errors', emoji: '❌' },
@@ -57,7 +57,7 @@ export function useAgentOutputs(_filter: AgentOutputFilter) {
     // no-op; real implementation will refetch from gateway
   }, [])
   return {
-    outputs: [] as AgentOutput[],
+    outputs: [] as Array<AgentOutput>,
     availableFilters: DEFAULT_FILTERS,
     loading,
     error: null as string | null,

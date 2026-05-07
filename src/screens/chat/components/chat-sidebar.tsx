@@ -4,33 +4,36 @@ import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
   BrainIcon,
-  Building01Icon,
-  Castle02Icon,
   Chat01Icon,
   CheckListIcon,
   Clock01Icon,
   ComputerTerminal01Icon,
+  Copy01Icon,
   DashboardSquare01Icon,
   File01Icon,
-  McpServerIcon,
   MessageMultiple01Icon,
   Moon02Icon,
   PencilEdit02Icon,
+  PinIcon,
+  PinOffIcon,
   PuzzleIcon,
   Rocket01Icon,
   Search01Icon,
   Settings01Icon,
   Sun02Icon,
+  Tick02Icon,
   UserGroupIcon,
   UserMultipleIcon,
 } from '@hugeicons/core-free-icons'
 import { AnimatePresence, motion } from 'motion/react'
+import { useQueryClient } from '@tanstack/react-query'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { CHAT_OPEN_SETTINGS_EVENT } from '../chat-events'
 import { useChatSettings as useSidebarSettings } from '../hooks/use-chat-settings'
 import { useDeleteSession } from '../hooks/use-delete-session'
 import { useRenameSession } from '../hooks/use-rename-session'
+import { exportConversationPdf } from '../export-conversation-pdf'
 import { ProvidersDialog } from './providers-dialog'
 import { SessionRenameDialog } from './sidebar/session-rename-dialog'
 import { SessionDeleteDialog } from './sidebar/session-delete-dialog'
@@ -49,12 +52,13 @@ import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { UserAvatar } from '@/components/avatars'
 import { SEARCH_MODAL_EVENTS, useSearchModal } from '@/hooks/use-search-modal'
+import { useChatSettingsStore } from '@/hooks/use-chat-settings'
 import {
-  selectChatProfileAvatarDataUrl,
-  selectChatProfileDisplayName,
-  selectSidebarHoverExpand,
-  useChatSettingsStore,
-} from '@/hooks/use-chat-settings'
+  useResolvedAvatarUrl,
+  useResolvedDisplayName,
+} from '@/hooks/use-resolved-avatar'
+import { useWorkspaceStore } from '@/stores/workspace-store'
+import { writeTextToClipboard } from '@/lib/clipboard'
 import { StatusDot } from '@/components/status-indicator'
 import {
   MenuContent,
@@ -62,7 +66,13 @@ import {
   MenuRoot,
   MenuTrigger,
 } from '@/components/ui/menu'
+import { toast } from '@/components/ui/toast'
 import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
+import {
+  logoutSemantierAuth,
+  semantierAuthQueryKey,
+  useSemantierAuthStatus,
+} from '@/lib/semantier-auth'
 
 type WorkspaceStats = Record<string, unknown>
 
@@ -73,27 +83,29 @@ function ThemeToggleMini() {
   // Detect dark/light from actual data-theme attribute
   const currentDataTheme =
     typeof document !== 'undefined'
-      ? document.documentElement.getAttribute('data-theme') || 'claude-nous'
-      : 'claude-nous'
+      ? document.documentElement.getAttribute('data-theme') || 'hermes-official'
+      : 'hermes-official'
   const isDark = !currentDataTheme.endsWith('-light')
 
   // Map between dark and light counterparts — must include all theme families
   const LIGHT_DARK_PAIRS: Record<string, string> = {
-    'claude-nous': 'claude-nous-light',
-    'claude-nous-light': 'claude-nous',
-    'claude-official': 'claude-official-light',
-    'claude-official-light': 'claude-official',
-    'claude-classic': 'claude-classic-light',
-    'claude-classic-light': 'claude-classic',
-    'claude-slate': 'claude-slate-light',
-    'claude-slate-light': 'claude-slate',
+    'hermes-nous': 'hermes-nous-light',
+    'hermes-nous-light': 'hermes-nous',
+    'hermes-official': 'hermes-official-light',
+    'hermes-official-light': 'hermes-official',
+    'hermes-classic': 'hermes-classic-light',
+    'hermes-classic-light': 'hermes-classic',
+    'hermes-slate': 'hermes-slate-light',
+    'hermes-slate-light': 'hermes-slate',
+    semantier: 'semantier-light',
+    'semantier-light': 'semantier',
   }
 
   return (
     <button
       type="button"
       onClick={() => {
-        // Fall back to current family rather than dropping the user into claude-official
+        // Fall back to current family rather than dropping the user into hermes-official
         const nextDataTheme =
           LIGHT_DARK_PAIRS[currentDataTheme] ||
           (isDark
@@ -220,19 +232,7 @@ function NavItem({
             {item.label}
           </span>
           {item.badge && item.badge !== 'error-dot' ? (
-            <span
-              className="ml-auto inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-bold leading-none"
-              style={
-                item.badge === 'NEW'
-                  ? {
-                      background: 'linear-gradient(180deg, #fde68a 0%, #fbbf24 50%, #d4a017 100%)',
-                      color: '#0b1320',
-                      boxShadow: '0 0 8px rgba(250,204,21,0.4)',
-                      letterSpacing: '0.08em',
-                    }
-                  : undefined
-              }
-            >
+            <span className="ml-auto inline-flex min-w-6 items-center justify-center rounded-full border border-primary-700 bg-primary-900 px-2 py-0.5 text-[10px] font-semibold leading-none text-primary-300">
               {item.badge}
             </span>
           ) : null}
@@ -331,7 +331,7 @@ function NavItem({
 
 // ── Last-visited route tracking ─────────────────────────────────────────
 
-const LAST_ROUTE_KEY = 'claude-sidebar-last-route'
+const LAST_ROUTE_KEY = 'hermes-sidebar-last-route'
 
 function getLastRoute(section: string): string | null {
   try {
@@ -519,6 +519,8 @@ function usePersistedBool(key: string, defaultValue: boolean) {
 function ChatSidebarComponent({
   sessions,
   activeFriendlyId,
+  creatingSession,
+  onCreateSession,
   isCollapsed,
   onToggleCollapse,
   onSelectSession,
@@ -530,10 +532,8 @@ function ChatSidebarComponent({
 }: ChatSidebarProps) {
   const { settingsOpen, settingsSection, setSettingsOpen, handleOpenSettings } =
     useSidebarSettings()
-  const profileDisplayName = useChatSettingsStore(selectChatProfileDisplayName)
-  const profileAvatarDataUrl = useChatSettingsStore(
-    selectChatProfileAvatarDataUrl,
-  )
+  const profileDisplayName = useResolvedDisplayName()
+  const profileAvatarUrl = useResolvedAvatarUrl()
   const { deleteSession } = useDeleteSession()
   const { renameSession } = useRenameSession()
   const openSearchModal = useSearchModal((state) => state.openModal)
@@ -543,11 +543,16 @@ function ChatSidebarComponent({
       return state.location.pathname
     },
   })
+  const queryClient = useQueryClient()
+  const semantierAuthQuery = useSemantierAuthStatus()
+  const semantierAuth = semantierAuthQuery.data
 
   useEffect(() => {
     function handleOpenSettingsEvent(event: Event) {
       const detail = (event as CustomEvent<ChatOpenSettingsDetail>).detail
-      handleOpenSettings(detail.section === 'appearance' ? 'appearance' : 'claude')
+      handleOpenSettings(
+        detail?.section === 'appearance' ? 'appearance' : 'hermes',
+      )
     }
 
     window.addEventListener(CHAT_OPEN_SETTINGS_EVENT, handleOpenSettingsEvent)
@@ -576,17 +581,13 @@ function ChatSidebarComponent({
     pathname === '/new' || pathname.startsWith('/chat/new')
   const _isSettingsActive = pathname === '/settings'
   const isSkillsActive = pathname === '/skills'
-  const isMcpActive = pathname === '/mcp'
   const isFilesActive = pathname === '/files'
-  const isPlaygroundActive = pathname === '/playground'
-  const isAgoraActive = pathname === '/agora'
   const isTerminalActive = pathname === '/terminal'
   const isJobsActive = pathname === '/jobs'
   const isMemoryActive = pathname === '/memory'
   const isTasksActive = pathname === '/tasks'
   const isConductorActive = pathname === '/conductor'
   const isOperationsActive = pathname === '/operations'
-  const isSwarmActive = pathname === '/swarm' || pathname === '/swarm2'
   const mainRoutes = ['/chat', '/new', '/files', '/terminal']
   const knowledgeRoutes = ['/memory', '/skills']
   const systemRoutes = ['/settings', '/logs']
@@ -608,15 +609,15 @@ function ChatSidebarComponent({
 
   // Collapsible section states
   const [mainExpanded, toggleMain] = usePersistedBool(
-    'claude-sidebar-main-expanded',
+    'hermes-sidebar-main-expanded',
     true,
   )
   const [knowledgeExpanded, toggleKnowledge] = usePersistedBool(
-    'claude-sidebar-knowledge-expanded',
+    'hermes-sidebar-knowledge-expanded',
     true,
   )
   const [_systemExpanded, _toggleSystem] = usePersistedBool(
-    'claude-sidebar-system-expanded',
+    'hermes-sidebar-system-expanded',
     false,
   )
 
@@ -632,9 +633,24 @@ function ChatSidebarComponent({
   const [providersOpen, setProvidersOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isHoverExpanded, setIsHoverExpanded] = useState(false)
-  const sidebarHoverExpand = useChatSettingsStore(selectSidebarHoverExpand)
+  const [semantierAuthActionPending, setSemantierAuthActionPending] =
+    useState(false)
+  const [copiedWorkspaceId, setCopiedWorkspaceId] = useState(false)
+  const sidebarPinned = useWorkspaceStore((s) => s.sidebarPinned)
+  const toggleSidebarPinned = useWorkspaceStore((s) => s.toggleSidebarPinned)
   const sidebarRef = useRef<HTMLElement | null>(null)
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
+
+  async function handleFeishuLogout() {
+    if (semantierAuthActionPending) return
+    setSemantierAuthActionPending(true)
+    try {
+      await logoutSemantierAuth()
+      await queryClient.invalidateQueries({ queryKey: semantierAuthQueryKey })
+    } finally {
+      setSemantierAuthActionPending(false)
+    }
+  }
 
   function handleOpenRename(session: SessionMeta) {
     setRenameSessionKey(session.key)
@@ -666,6 +682,42 @@ function ChatSidebarComponent({
     setDeleteDialogOpen(true)
   }
 
+  async function handleExportPdf(session: SessionMeta) {
+    const sessionKey = (session.key || '').trim()
+    const friendlyId = (session.friendlyId || session.key || '').trim()
+    const title =
+      session.label ||
+      session.title ||
+      session.derivedTitle ||
+      session.friendlyId ||
+      session.key ||
+      'conversation'
+
+    if (!sessionKey && !friendlyId) {
+      toast('Failed to export PDF: missing session id', { type: 'error' })
+      return
+    }
+
+    try {
+      const exported = await exportConversationPdf({
+        sessionLabel: title,
+        sessionKey: sessionKey || friendlyId,
+        friendlyId,
+      })
+      if (!exported) {
+        throw new Error('PDF export is unavailable in this environment')
+      }
+      toast('Conversation exported as PDF', { type: 'success' })
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : 'Failed to export conversation as PDF',
+        { type: 'error' },
+      )
+    }
+  }
+
   function handleConfirmDelete() {
     if (deleteSessionKey && deleteFriendlyId) {
       const isActive = deleteFriendlyId === activeFriendlyId
@@ -688,18 +740,15 @@ function ChatSidebarComponent({
   }, [])
 
   useEffect(() => {
-    if (isMobile || !isCollapsed || !sidebarHoverExpand) {
+    if (isMobile || !isCollapsed) {
       setIsHoverExpanded(false)
     }
-  }, [isCollapsed, isMobile, sidebarHoverExpand])
+  }, [isCollapsed, isMobile])
 
-  const isHoverPreviewExpanded =
-    sidebarHoverExpand && !isMobile && isCollapsed && isHoverExpanded
-  const isVisuallyCollapsed = isCollapsed && !isHoverPreviewExpanded
+  const isVisuallyCollapsed = isCollapsed && !isHoverExpanded
+  const isHoverPreviewExpanded = !isMobile && isCollapsed && isHoverExpanded
 
   function handleSidebarToggle() {
-    // In hover-preview mode, a click should dismiss the preview first;
-    // otherwise toggle the persistent collapsed state.
     if (isHoverPreviewExpanded) {
       setIsHoverExpanded(false)
       return
@@ -795,7 +844,6 @@ function ChatSidebarComponent({
       label: t('nav.chat'),
       active: isChatActive,
     },
-
     {
       kind: 'link',
       to: '/files',
@@ -834,18 +882,10 @@ function ChatSidebarComponent({
     {
       kind: 'link',
       to: '/operations',
-      icon: UserMultipleIcon,
+      icon: UserGroupIcon,
       label: 'Operations',
       active: isOperationsActive,
     },
-    {
-      kind: 'link',
-      to: '/swarm',
-      icon: UserGroupIcon,
-      label: 'Swarm',
-      active: isSwarmActive,
-    },
-
   ]
 
   const knowledgeItems: Array<NavItemDef> = [
@@ -863,13 +903,6 @@ function ChatSidebarComponent({
       label: t('nav.skills'),
       active: isSkillsActive,
       dataTour: 'skills',
-    },
-    {
-      kind: 'link',
-      to: '/mcp',
-      icon: McpServerIcon,
-      label: 'MCP',
-      active: isMcpActive,
     },
     {
       kind: 'link',
@@ -905,12 +938,10 @@ function ChatSidebarComponent({
       data-tour="sidebar-container"
       style={isMobile ? { maxWidth: 360 } : undefined}
       onMouseEnter={() => {
-        if (sidebarHoverExpand && !isMobile && isCollapsed) {
-          setIsHoverExpanded(true)
-        }
+        if (!isMobile && isCollapsed) setIsHoverExpanded(true)
       }}
       onMouseLeave={() => {
-        if (sidebarHoverExpand && !isMobile) setIsHoverExpanded(false)
+        if (!isMobile && !sidebarPinned) setIsHoverExpanded(false)
       }}
       aria-hidden={isMobile && isCollapsed ? true : undefined}
       {...(isMobile && isCollapsed ? { inert: true } : {})}
@@ -937,20 +968,47 @@ function ChatSidebarComponent({
                 )}
               >
                 <img
-                  src="/claude-avatar.webp"
-                  alt="Hermes Agent"
+                  src="/logo.svg"
+                  alt="semantier logo"
                   className="size-6 rounded-lg"
                 />
                 <span
-                  className="text-sm font-semibold tracking-tight"
+                  className="brand-wordmark text-sm font-semibold tracking-tight"
                   style={{ color: 'var(--theme-text)' }}
                 >
-                  Hermes Workspace
+                  semantier
                 </span>
               </Link>
             </motion.div>
           ) : null}
         </AnimatePresence>
+        {!isVisuallyCollapsed && (
+          <TooltipProvider>
+            <TooltipRoot>
+              <TooltipTrigger
+                onClick={toggleSidebarPinned}
+                render={
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={sidebarPinned ? 'Unpin Sidebar' : 'Pin Sidebar'}
+                    className="absolute right-10 top-1/2 shrink-0 -translate-y-1/2 opacity-80 hover:opacity-100"
+                    data-tour="sidebar-pin-toggle"
+                  >
+                    <HugeiconsIcon
+                      icon={sidebarPinned ? PinIcon : PinOffIcon}
+                      size={18}
+                      strokeWidth={1.75}
+                    />
+                  </Button>
+                }
+              />
+              <TooltipContent side="right">
+                {sidebarPinned ? 'Unpin Sidebar' : 'Pin Sidebar'}
+              </TooltipContent>
+            </TooltipRoot>
+          </TooltipProvider>
+        )}
         <TooltipProvider>
           <TooltipRoot>
             <TooltipTrigger
@@ -1007,14 +1065,17 @@ function ChatSidebarComponent({
       {/* ── New Session button ──────────────────────────────────────── */}
       {!isVisuallyCollapsed && (
         <div className="px-2 pb-1">
-          <Link
-            to="/chat/$sessionKey"
-            params={{ sessionKey: 'new' }}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => {
+              if (creatingSession) return
+              onCreateSession()
               onSelectSession?.()
             }}
+            disabled={creatingSession}
             className={cn(
-              buttonVariants({ variant: 'ghost', size: 'sm' }),
               'w-full justify-start gap-2.5 px-3 py-2 text-primary-900 hover:bg-primary-200 dark:hover:bg-primary-800',
               isNewSessionActive &&
                 'bg-accent-500/10 text-accent-500 hover:bg-accent-50 dark:hover:bg-accent-900/300/15',
@@ -1027,48 +1088,8 @@ function ChatSidebarComponent({
               strokeWidth={1.5}
               className="size-5 shrink-0"
             />
-            <span>New Session</span>
-          </Link>
-        </div>
-      )}
-
-      {/* ── HermesWorld featured link (gold castle, NEW badge) ────── */}
-      {/* Hide when VITE_HERMESWORLD_ENABLED is explicitly '0' */}
-      {!isVisuallyCollapsed &&
-        (import.meta as any).env?.VITE_HERMESWORLD_ENABLED !== '0' && (
-        <div className="px-2 pb-2">
-          <Link
-            to="/playground"
-            onClick={() => onSelectSession?.()}
-            className={cn(
-              buttonVariants({ variant: 'ghost', size: 'sm' }),
-              'group w-full justify-start gap-2.5 px-3 py-2 text-primary-900 hover:bg-primary-200 dark:hover:bg-primary-800',
-              isPlaygroundActive &&
-                'bg-accent-500/10 text-accent-500 hover:bg-accent-50 dark:hover:bg-accent-900/300/15',
-            )}
-            data-tour="hermesworld"
-          >
-            <HugeiconsIcon
-              icon={Castle02Icon}
-              size={20}
-              strokeWidth={1.5}
-              className="size-5 shrink-0"
-              style={{ color: '#facc15' }}
-            />
-            <span>HermesWorld</span>
-            <span
-              className="ml-auto inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-bold leading-none"
-              style={{
-                background:
-                  'linear-gradient(180deg, #fde68a 0%, #fbbf24 50%, #d4a017 100%)',
-                color: '#0b1320',
-                boxShadow: '0 0 8px rgba(250,204,21,0.4)',
-                letterSpacing: '0.08em',
-              }}
-            >
-              NEW
-            </span>
-          </Link>
+            <span>{creatingSession ? 'Starting…' : 'New Session'}</span>
+          </Button>
         </div>
       )}
 
@@ -1137,6 +1158,7 @@ function ChatSidebarComponent({
                     sessions={sessions}
                     activeFriendlyId={activeFriendlyId}
                     onSelect={onSelectSession}
+                    onExportPdf={handleExportPdf}
                     onRename={handleOpenRename}
                     onDelete={handleOpenDelete}
                     loading={sessionsLoading}
@@ -1172,7 +1194,7 @@ function ChatSidebarComponent({
             >
               <UserAvatar
                 size={28}
-                src={profileAvatarDataUrl}
+                src={profileAvatarUrl}
                 alt={profileDisplayName}
               />
               <AnimatePresence initial={false} mode="wait">
@@ -1193,9 +1215,88 @@ function ChatSidebarComponent({
               </AnimatePresence>
             </MenuTrigger>
             <MenuContent side="top" align="start" className="min-w-[200px]">
+              {semantierAuthQuery.isLoading ? (
+                <div className="px-2 py-1.5 text-xs text-primary-500 dark:text-neutral-400">
+                  Checking Feishu account...
+                </div>
+              ) : null}
+              {semantierAuth?.feishu_oauth_enabled ? (
+                <>
+                  <div className="px-2 py-1.5 text-xs text-primary-500 dark:text-neutral-400">
+                    {semantierAuth.authenticated && semantierAuth.user ? (
+                      <>
+                        <div className="font-medium text-primary-900 dark:text-neutral-100">
+                          {semantierAuth.user.name}
+                        </div>
+                        {semantierAuth.user.email ? (
+                          <div className="truncate">
+                            {semantierAuth.user.email}
+                          </div>
+                        ) : null}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span
+                            className="truncate max-w-[140px]"
+                            title={semantierAuth.user.user_id}
+                          >
+                            ID: {semantierAuth.user.user_id}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await writeTextToClipboard(
+                                  semantierAuth.user!.user_id,
+                                )
+                                setCopiedWorkspaceId(true)
+                                setTimeout(
+                                  () => setCopiedWorkspaceId(false),
+                                  1500,
+                                )
+                              } catch {
+                                // ignore
+                              }
+                            }}
+                            className="shrink-0 inline-flex items-center justify-center rounded p-0.5 hover:bg-primary-100 dark:hover:bg-neutral-800 transition-colors"
+                            title="Copy workspace ID"
+                          >
+                            <HugeiconsIcon
+                              icon={copiedWorkspaceId ? Tick02Icon : Copy01Icon}
+                              size={12}
+                              strokeWidth={1.5}
+                            />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div>
+                        Guest mode on {semantierAuth.workspace_slug || 'public'}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : null}
+              {semantierAuth?.authenticated ? (
+                <MenuItem
+                  onClick={() => {
+                    void handleFeishuLogout()
+                  }}
+                >
+                  {semantierAuthActionPending ? 'Logging out...' : 'Logout'}
+                </MenuItem>
+              ) : (
+                <MenuItem
+                  disabled={semantierAuthQuery.isLoading}
+                  onClick={() => {
+                    window.location.assign('/auth/feishu/login')
+                  }}
+                >
+                  {semantierAuthQuery.isLoading ? 'Login...' : 'Login'}
+                </MenuItem>
+              )}
+              <div className="my-1 h-px bg-primary-200 dark:bg-neutral-800" />
               <MenuItem
                 onClick={function onOpenSettings() {
-                  handleOpenSettings('claude')
+                  handleOpenSettings('hermes')
                 }}
                 className="justify-between"
               >
@@ -1216,7 +1317,7 @@ function ChatSidebarComponent({
             <div className="flex items-center gap-0.5">
               <button
                 type="button"
-                onClick={() => handleOpenSettings('claude')}
+                onClick={() => handleOpenSettings('hermes')}
                 className="shrink-0 rounded-lg p-1.5 text-primary-400 hover:bg-primary-200 dark:hover:bg-neutral-800 hover:text-primary-600 dark:hover:text-neutral-300 transition-colors"
                 aria-label="Settings"
               >
@@ -1300,6 +1401,7 @@ function areSidebarPropsEqual(
 ): boolean {
   if (prevProps.activeFriendlyId !== nextProps.activeFriendlyId) return false
   if (prevProps.creatingSession !== nextProps.creatingSession) return false
+  if (prevProps.onCreateSession !== nextProps.onCreateSession) return false
   if (prevProps.isCollapsed !== nextProps.isCollapsed) return false
   if (prevProps.sessionsLoading !== nextProps.sessionsLoading) return false
   if (prevProps.sessionsFetching !== nextProps.sessionsFetching) return false

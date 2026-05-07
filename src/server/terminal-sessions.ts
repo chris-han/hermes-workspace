@@ -6,8 +6,8 @@ import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { homedir } from 'node:os'
 import EventEmitter from 'node:events'
+import { formatWorkspaceCwdLabel, resolveWorkspaceCwd } from './workspace-root'
 import type { ChildProcess } from 'node:child_process'
 
 export type TerminalSessionEvent = {
@@ -22,26 +22,7 @@ export type TerminalSession = {
   sendInput: (data: string) => void
   resize: (cols: number, rows: number) => void
   close: () => void
-  /**
-   * Mark that all live SSE listeners have detached. Starts an idle timer that
-   * will reap the PTY if no listener reattaches in time. Lets the session
-   * survive transient disconnects (network blips, browser tab suspension,
-   * HMR reload) without killing the user's shell. See #298.
-   */
-  markDetached: () => void
-  /** Cancel a pending detached-reap timer (called when a new listener attaches). */
-  markAttached: () => void
 }
-
-// How long an unattached PTY session stays alive before it's reaped, in ms.
-// Long enough to absorb tab suspension and short network blips, short enough
-// that abandoned tabs don't pile up forever. Override with HERMES_TERMINAL_DETACH_TTL_MS.
-const DETACH_TTL_MS = (() => {
-  const raw = process.env.HERMES_TERMINAL_DETACH_TTL_MS
-  const parsed = raw ? Number(raw) : NaN
-  if (Number.isFinite(parsed) && parsed > 0) return Math.floor(parsed)
-  return 5 * 60_000 // 5 minutes
-})()
 
 const sessions = new Map<string, TerminalSession>()
 
@@ -55,6 +36,7 @@ const PTY_HELPER = resolve(__dirname_resolved, 'pty-helper.py')
 export function createTerminalSession(params: {
   command?: Array<string>
   cwd?: string
+  workspaceRoot: string
   env?: Record<string, string>
   cols?: number
   rows?: number
@@ -62,20 +44,15 @@ export function createTerminalSession(params: {
   const emitter = new EventEmitter()
   const sessionId = randomUUID()
 
-  const home = process.env.HOME ?? homedir() ?? '/tmp'
+  const workspaceRoot = resolveWorkspaceCwd(params.workspaceRoot, '~')
   const defaultShell =
     process.platform === 'win32'
       ? 'powershell.exe'
       : process.platform === 'darwin'
         ? '/bin/zsh'
         : '/bin/bash'
-  const command = params.command?.length
-    ? params.command
-    : [process.env.SHELL ?? defaultShell]
-  let cwd = params.cwd ?? home
-  if (cwd.startsWith('~')) {
-    cwd = cwd.replace('~', home)
-  }
+  const shell = params.command?.[0] ?? process.env.SHELL ?? defaultShell
+  const cwd = resolveWorkspaceCwd(workspaceRoot, params.cwd)
 
   const cols = params.cols ?? 80
   const rows = params.rows ?? 24
@@ -107,11 +84,15 @@ export function createTerminalSession(params: {
   // Spawn Python PTY helper
   const proc: ChildProcess = spawn(
     'python3',
-    [PTY_HELPER, cwd, String(cols), String(rows), '--', ...command],
+    [PTY_HELPER, shell, cwd, String(cols), String(rows)],
     {
       env: {
         ...process.env,
         ...params.env,
+        HOME: workspaceRoot,
+        HERMES_TERMINAL_ROOT: workspaceRoot,
+        HERMES_TERMINAL_CWD_LABEL: formatWorkspaceCwdLabel(workspaceRoot, cwd),
+        PROMPT_COMMAND: `case "$PWD" in "${workspaceRoot}"|"${workspaceRoot}"/*) ;; *) printf '\n[terminal] blocked: path outside workspace root, returning to %s\n' "${workspaceRoot}" >&2; builtin cd "${workspaceRoot}" ;; esac${process.env.PROMPT_COMMAND ? `;${process.env.PROMPT_COMMAND}` : ''}`,
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
         COLUMNS: String(cols),
@@ -152,8 +133,6 @@ export function createTerminalSession(params: {
     })
   })
 
-  let detachTimer: ReturnType<typeof setTimeout> | null = null
-
   const session: TerminalSession = {
     id: sessionId,
     createdAt: Date.now(),
@@ -177,29 +156,7 @@ export function createTerminalSession(params: {
       }
     },
 
-    markDetached() {
-      if (detachTimer) clearTimeout(detachTimer)
-      detachTimer = setTimeout(() => {
-        detachTimer = null
-        // Only reap if the session is still in the map and the proc is alive.
-        if (sessions.get(sessionId) === session) {
-          session.close()
-        }
-      }, DETACH_TTL_MS)
-    },
-
-    markAttached() {
-      if (detachTimer) {
-        clearTimeout(detachTimer)
-        detachTimer = null
-      }
-    },
-
     close() {
-      if (detachTimer) {
-        clearTimeout(detachTimer)
-        detachTimer = null
-      }
       try {
         proc.kill('SIGTERM')
         setTimeout(() => {

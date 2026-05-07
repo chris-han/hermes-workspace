@@ -16,8 +16,8 @@ import { SEARCH_MODAL_EVENTS } from '@/hooks/use-search-modal'
 
 const POLL_INTERVAL_MS = 10_000
 const PROVIDER_POLL_INTERVAL_MS = 30_000
-const STORAGE_KEY = 'clawsuite-usage-meter-alerts'
-const STATS_VIEW_STORAGE_KEY = 'clawsuite-stats-view'
+const STORAGE_KEY = 'hermes-usage-meter-alerts'
+const STATS_VIEW_STORAGE_KEY = 'hermes-stats-view'
 const THRESHOLDS = [50, 75, 90]
 
 type StatsView = 'session' | 'provider' | 'cost' | 'agents'
@@ -29,7 +29,7 @@ const STATS_VIEW_LABELS: Record<StatsView, string> = {
   agents: 'Agent Activity',
 }
 
-const PREFERRED_PROVIDER_KEY = 'clawsuite-preferred-provider'
+const PREFERRED_PROVIDER_KEY = 'hermes-preferred-provider'
 
 function getStoredPreferredProvider(): string | null {
   if (typeof window === 'undefined') return null
@@ -500,6 +500,7 @@ export function UsageMeter() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err)
       setProviderError(errorMessage)
+      toast('Failed to fetch provider usage', { type: 'error' })
     }
   }, [])
 

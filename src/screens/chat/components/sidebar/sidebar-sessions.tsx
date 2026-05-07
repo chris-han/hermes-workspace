@@ -24,6 +24,7 @@ type SidebarSessionsProps = {
   activeFriendlyId: string
   defaultOpen?: boolean
   onSelect?: () => void
+  onExportPdf: (session: SessionMeta) => void
   onRename: (session: SessionMeta) => void
   onDelete: (session: SessionMeta) => void
   loading: boolean
@@ -37,6 +38,7 @@ export const SidebarSessions = memo(function SidebarSessions({
   activeFriendlyId,
   defaultOpen = true,
   onSelect,
+  onExportPdf,
   onRename,
   onDelete,
   loading,
@@ -92,6 +94,7 @@ export const SidebarSessions = memo(function SidebarSessions({
               isPinned
               onSelect={onSelect}
               onTogglePin={handleTogglePin}
+              onExportPdf={onExportPdf}
               onRename={onRename}
               onDelete={onDelete}
             />
@@ -137,6 +140,7 @@ export const SidebarSessions = memo(function SidebarSessions({
                       isPinned={false}
                       onSelect={onSelect}
                       onTogglePin={handleTogglePin}
+                      onExportPdf={onExportPdf}
                       onRename={onRename}
                       onDelete={onDelete}
                     />
@@ -172,6 +176,7 @@ function areSidebarSessionsEqual(
   if (prev.activeFriendlyId !== next.activeFriendlyId) return false
   if (prev.defaultOpen !== next.defaultOpen) return false
   if (prev.onSelect !== next.onSelect) return false
+  if (prev.onExportPdf !== next.onExportPdf) return false
   if (prev.onRename !== next.onRename) return false
   if (prev.onDelete !== next.onDelete) return false
   if (prev.loading !== next.loading) return false

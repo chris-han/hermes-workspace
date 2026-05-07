@@ -1,32 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatAttachment, ChatMessage } from '../types'
-import { readResolvedSessionHeaders } from '@/lib/send-stream-session-headers'
 import { useChatStore } from '@/stores/chat-store'
 import { pushActivity } from '@/components/inspector/activity-store'
-
-/**
- * Determine whether a stream-resolved session key change should trigger
- * onSessionResolved (which navigates the route). Only bootstrap keys
- * ("new", "main") should promote a backend-returned session ID to the
- * Workspace route identity. Concrete sessions must never be overridden
- * by a backend-derived api-* ID — that causes session splits (#297).
- */
-export function shouldResolveStreamSession({
-  requestedSessionKey,
-  currentSessionKey,
-  resolvedSessionKey,
-}: {
-  requestedSessionKey: string
-  currentSessionKey: string
-  resolvedSessionKey: string
-}): boolean {
-  // No change → nothing to resolve
-  if (resolvedSessionKey === currentSessionKey) return false
-  // Bootstrap keys (new, main) should resolve once to a concrete session
-  if (requestedSessionKey === 'new' || requestedSessionKey === 'main') return true
-  // Concrete session → never promote a different backend ID
-  return false
-}
 
 type StreamingState = {
   isStreaming: boolean
@@ -65,6 +40,45 @@ type PortableHistoryMessage = {
   content: string
 }
 
+function resolveRunIdFromPayload(payload?: unknown): string {
+  const data =
+    payload && typeof payload === 'object'
+      ? (payload as Record<string, unknown>)
+      : null
+  if (!data) return ''
+
+  const explicitRunId =
+    typeof data.runId === 'string'
+      ? data.runId.trim()
+      : typeof data.run_id === 'string'
+        ? data.run_id.trim()
+        : ''
+  if (explicitRunId) return explicitRunId
+
+  const runDir =
+    typeof data.run_dir === 'string'
+      ? data.run_dir.trim()
+      : typeof data.runDir === 'string'
+        ? data.runDir.trim()
+        : ''
+  if (!runDir) return ''
+
+  const normalized = runDir.replace(/\\+/g, '/').replace(/\/+$/, '')
+  const segments = normalized.split('/')
+  return segments[segments.length - 1] || ''
+}
+
+function appendFullReportLink(text: string, payload?: unknown): string {
+  const content = text.trim()
+  const runId = resolveRunIdFromPayload(payload)
+  if (!runId) return content
+  if (content.includes('/runs/') && content.includes(runId)) return content
+  if (!content) {
+    return `[Full report](/runs/${runId})`
+  }
+  return `${content}\n\n[Full report](/runs/${runId})`
+}
+
 type UseStreamingMessageOptions = {
   onStarted?: (payload: { runId: string | null }) => void
   onChunk?: (text: string, fullText: string) => void
@@ -77,13 +91,10 @@ type UseStreamingMessageOptions = {
     friendlyId: string,
     clientId: string,
   ) => void
-  onAbort?: () => void
   onSessionResolved?: (payload: {
     sessionKey: string
     friendlyId: string
   }) => void
-  acceptedTimeoutMs?: number
-  handoffTimeoutMs?: number
 }
 
 export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
@@ -95,10 +106,7 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
     onThinking,
     onTool,
     onMessageAccepted,
-    onAbort,
     onSessionResolved,
-    acceptedTimeoutMs,
-    handoffTimeoutMs,
   } = options
 
   const [state, setState] = useState<StreamingState>({
@@ -120,32 +128,20 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
     typeof setTimeout
   > | null>(null)
   const activeSessionKeyRef = useRef<string>('main')
-  // Monotonically increasing token. Each call to startStreaming bumps this so
-  // any in-flight processStream loop (or pending microtask processing chunks
-  // it has already read into the SSE buffer) can detect that it's stale and
-  // refuse to dispatch its events. Without this, chunks from an aborted stream
-  // can still write into the new session's chat history during the brief
-  // window between abort() and the underlying fetch reader actually stopping.
-  // See #297 (cross-session response contamination).
-  const streamGenerationRef = useRef<number>(0)
   const lifecyclePhaseRef = useRef<StreamLifecyclePhase>('idle')
   const acceptedAtRef = useRef<number | null>(null)
   const lastActivityAtRef = useRef<number | null>(null)
   const handoffTimerRef = useRef<number | null>(null)
   const stepUsageRef = useRef<StepUsagePayload>({})
-  // Captures the sessionKey the caller requested at stream-start time so
-  // SSE `started` events can decide whether a backend-returned session ID
-  // should be promoted to the route identity. Prevents concrete sessions
-  // from being overridden by api-* derivations (#297).
-  const requestedSessionKeyRef = useRef<string>('')
 
   const registerSendStreamRun = useChatStore((s) => s.registerSendStreamRun)
   const unregisterSendStreamRun = useChatStore((s) => s.unregisterSendStreamRun)
   const processStoreEvent = useChatStore((s) => s.processEvent)
   const clearStreamingSession = useChatStore((s) => s.clearStreamingSession)
 
-  const ACCEPTED_NO_ACTIVITY_TIMEOUT_MS = acceptedTimeoutMs ?? 120_000
-  const HANDOFF_NO_ACTIVITY_TIMEOUT_MS = handoffTimeoutMs ?? 300_000
+  // Hermes tool calls can take 60-120s (file reads, terminal commands, web searches)
+  const ACCEPTED_NO_ACTIVITY_TIMEOUT_MS = 120_000
+  const HANDOFF_NO_ACTIVITY_TIMEOUT_MS = 180_000
 
   const stopFrame = useCallback(() => {
     if (frameRef.current !== null) {
@@ -308,24 +304,17 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
   ])
 
   useEffect(
-    function keepAcceptedRunAliveOnUnmount() {
+    function cleanupStreamingOnUnmount() {
       return function cleanup() {
-        if (!eventSourceRef.current || finishedRef.current) return
-
-        // Navigating away from Chat unmounts this hook. Previously this cleanup
-        // aborted /api/send-stream and reset the local stream state, which made
-        // the UI look like Hermes stopped thinking. Leave the accepted request
-        // alive instead: the server-side route deliberately keeps the upstream
-        // Hermes run alive after the browser reader is cancelled, and the
-        // persisted waiting/session state lets the screen recover from history
-        // or active-run polling when the user comes back.
-        lifecyclePhaseRef.current = 'handoff'
-        clearSendStreamRun()
-        clearHandoffTimer()
-        stopFrame()
+        if (eventSourceRef.current) {
+          eventSourceRef.current.abort()
+          eventSourceRef.current = null
+        }
+        finishedRef.current = true
+        resetActiveStreamState()
       }
     },
-    [clearHandoffTimer, clearSendStreamRun, stopFrame],
+    [resetActiveStreamState],
   )
 
   const pushTargetText = useCallback(
@@ -398,7 +387,7 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
         }, 5000)
       }
 
-      const finalText = fullTextRef.current
+      const finalText = appendFullReportLink(fullTextRef.current, payload)
       const thinking = thinkingRef.current
       renderedTextRef.current = finalText
       targetTextRef.current = finalText
@@ -430,30 +419,6 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
     (event: string, data: unknown) => {
       const payload = data as Record<string, unknown>
 
-      // [DEBUG TUI] Log every SSE event so we can see whether tool.* events arrive
-      // from Hermes Agent through Workspace. Toggle off by setting
-      // localStorage.removeItem('hermes:debug:sse')
-      if (
-        typeof window !== 'undefined' &&
-        window.localStorage?.getItem('hermes:debug:sse') === '1'
-      ) {
-        // eslint-disable-next-line no-console
-        console.log(
-          '[hermes-sse]',
-          event,
-          (payload?.name as string) || '',
-          (payload?.phase as string) || '',
-          payload,
-        )
-      }
-
-      // hb_signal/keepalive events from server: just mark activity, never let them
-      // surface as user-visible thinking or tool rows.
-      if (event === 'hb_signal' || event === 'heartbeat' || event === 'keepalive' || event === 'ping') {
-        markActivity()
-        return
-      }
-
       switch (event) {
         case 'started': {
           const resolvedSessionKey =
@@ -465,21 +430,11 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
               ? payload.friendlyId.trim()
               : resolvedSessionKey
           if (resolvedSessionKey !== activeSessionKeyRef.current) {
-            // Guard: only promote backend session IDs for bootstrap keys.
-            // Concrete Workspace sessions must never be overridden (#297).
-            if (
-              shouldResolveStreamSession({
-                requestedSessionKey: requestedSessionKeyRef.current,
-                currentSessionKey: activeSessionKeyRef.current,
-                resolvedSessionKey,
-              })
-            ) {
-              activeSessionKeyRef.current = resolvedSessionKey
-              onSessionResolved?.({
-                sessionKey: resolvedSessionKey,
-                friendlyId: resolvedFriendlyId,
-              })
-            }
+            activeSessionKeyRef.current = resolvedSessionKey
+            onSessionResolved?.({
+              sessionKey: resolvedSessionKey,
+              friendlyId: resolvedFriendlyId,
+            })
           }
           // Register runId so chat-events skips duplicate chunks for this run
           const runId = payload.runId as string | undefined
@@ -546,13 +501,6 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
             (payload as { text?: string; thinking?: string }).text ??
             (payload as { thinking?: string }).thinking ??
             ''
-          // Drop server-side keepalive placeholders that came in as 'thinking'
-          // before the dedicated hb_signal event existed. These are not real
-          // model thinking and would otherwise pollute the TUI activity card.
-          const isKeepalivePlaceholder =
-            typeof thinking === 'string' &&
-            /^still\s+working[\.\u2026]*\s*$/i.test(thinking.trim())
-          if (isKeepalivePlaceholder) break
           if (thinking) {
             markActivity()
             thinkingRef.current = thinking
@@ -641,18 +589,6 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
             phase: 'complete',
             name: `artifact:${kind}`,
             result: path ? `${title} — ${path}` : title,
-            preview:
-              typeof payload.preview === 'string' && payload.preview.trim()
-                ? payload.preview.trim()
-                : undefined,
-            // Preserve the structured artifact metadata so the chat renderer
-            // can show a first-class artifact card instead of degrading the
-            // event to a generic tool row. See #295.
-            args: {
-              title,
-              kind,
-              path: path || undefined,
-            },
             runId: activeRunIdRef.current ?? undefined,
             sessionKey: activeSessionKeyRef.current,
             transport: 'send-stream',
@@ -745,10 +681,6 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
           }
           break
         }
-        case 'heartbeat': {
-          markActivity()
-          break
-        }
         case 'close': {
           if (fullTextRef.current) {
             finishStream()
@@ -759,7 +691,7 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
           ) {
             transitionToHandoff()
           } else {
-            markFailed('Hermes Agent connection closed')
+            markFailed('Hermes connection closed')
           }
           break
         }
@@ -826,15 +758,6 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
       finishedRef.current = false
       resetActiveStreamState(params.sessionKey)
       lifecyclePhaseRef.current = 'requesting'
-      requestedSessionKeyRef.current = params.sessionKey
-
-      // Bump the generation token so any chunks the previous stream had
-      // already buffered but not yet dispatched (after our abort() call)
-      // get rejected when they reach processEvent. The local capture is
-      // what this run will compare against. See #297.
-      streamGenerationRef.current += 1
-      const myGeneration = streamGenerationRef.current
-      const mySessionKey = params.sessionKey
 
       const messageId = `streaming-${Date.now()}`
 
@@ -868,45 +791,53 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
         })
 
         if (!response.ok) {
-          const errorText = await response.text()
-          throw new Error(errorText || 'Stream request failed')
+          const payload = (await response.json().catch(() => null)) as Record<
+            string,
+            unknown
+          > | null
+          const payloadError =
+            typeof payload?.error === 'string' ? payload.error.trim() : ''
+          const payloadMessage =
+            typeof payload?.message === 'string' ? payload.message.trim() : ''
+          const statusPrefix =
+            response.status === 429
+              ? 'Rate limit reached'
+              : response.status === 401 || response.status === 403
+                ? 'Unauthorized'
+                : ''
+          const errorText =
+            payloadError || payloadMessage || response.statusText || ''
+          throw new Error(
+            statusPrefix && errorText
+              ? `${statusPrefix}. ${errorText}`
+              : statusPrefix || errorText || 'Stream request failed',
+          )
         }
 
-        const resolvedHeaders = readResolvedSessionHeaders(response.headers, {
-          sessionKey: params.sessionKey,
-          friendlyId: params.friendlyId || params.sessionKey,
-        })
-        const resolvedSessionKey = resolvedHeaders.sessionKey
-        const resolvedFriendlyId = resolvedHeaders.friendlyId
+        const resolvedSessionKey =
+          response.headers.get('x-hermes-session-key')?.trim() ||
+          params.sessionKey
+        const resolvedFriendlyId =
+          response.headers.get('x-hermes-friendly-id')?.trim() ||
+          resolvedSessionKey
         if (resolvedSessionKey !== activeSessionKeyRef.current) {
-          // Only promote a backend-returned session ID when the original
-          // request was a bootstrap key ("new"/"main"). Concrete Workspace
-          // sessions must never be overridden — that causes splits (#297).
-          if (
-            shouldResolveStreamSession({
-              requestedSessionKey: params.sessionKey,
-              currentSessionKey: activeSessionKeyRef.current,
-              resolvedSessionKey,
-            })
-          ) {
-            activeSessionKeyRef.current = resolvedSessionKey
-            onSessionResolved?.({
-              sessionKey: resolvedSessionKey,
-              friendlyId: resolvedFriendlyId,
-            })
-          }
+          activeSessionKeyRef.current = resolvedSessionKey
+          onSessionResolved?.({
+            sessionKey: resolvedSessionKey,
+            friendlyId: resolvedFriendlyId,
+          })
         }
 
         markAccepted()
         schedulePostAcceptanceTimeout('accepted')
 
-        // HTTP 200 — message accepted by Hermes Agent. Clear optimistic "sending"
-        // status so the Retry timer never fires. Hermes Agent does NOT echo
+        // HTTP 200 — message accepted by Hermes. Clear optimistic "sending"
+        // status so the Retry timer never fires. Hermes does NOT echo
         // user messages via SSE, so this is the only confirmation we get.
         if (params.idempotencyKey && onMessageAccepted) {
           onMessageAccepted(
             activeSessionKeyRef.current,
-            resolvedFriendlyId,
+            activeSessionKeyRef.current,
             params.idempotencyKey,
           )
         }
@@ -924,31 +855,12 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
           const { done, value } = await reader.read()
           if (done) break
 
-          // Guard against stale streams writing into a newer session.
-          // If startStreaming was called again with a different sessionKey,
-          // streamGenerationRef has been bumped; this loop's reads are now
-          // for an aborted/superseded stream and must not dispatch events.
-          // See #297.
-          if (streamGenerationRef.current !== myGeneration) {
-            try {
-              await reader.cancel()
-            } catch {
-              // Reader may already be closed; safe to ignore.
-            }
-            break
-          }
-
           buffer += decoder.decode(value, { stream: true })
           const events = buffer.split('\n\n')
           buffer = events.pop() ?? ''
 
           for (const eventBlock of events) {
             if (!eventBlock.trim()) continue
-
-            // Re-check between events as well — a single read() can yield a
-            // batch of buffered events; if a new stream started mid-batch,
-            // the rest of this batch must be dropped.
-            if (streamGenerationRef.current !== myGeneration) break
 
             const lines = eventBlock.split('\n')
             let currentEvent = ''
@@ -978,17 +890,7 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
           finishStream()
         }
       } catch (err) {
-        if ((err as Error).name === 'AbortError') {
-          eventSourceRef.current = null
-          clearHandoffTimer()
-          clearSendStreamRun()
-          setState((prev) => ({
-            ...prev,
-            isStreaming: false,
-          }))
-          onAbort?.()
-          return
-        }
+        if ((err as Error).name === 'AbortError') return
         const errorMessage = err instanceof Error ? err.message : String(err)
         markFailed(errorMessage)
       }
@@ -997,7 +899,6 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
       finishStream,
       markAccepted,
       markFailed,
-      onAbort,
       onMessageAccepted,
       onSessionResolved,
       processEvent,

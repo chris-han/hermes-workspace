@@ -1,33 +1,35 @@
 import { useNavigate, useRouterState } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   BrainIcon,
-  Building01Icon,
   Cancel01Icon,
-  Castle02Icon,
   Chat01Icon,
   Clock01Icon,
   CommandLineIcon,
   DashboardSquare01Icon,
   File01Icon,
-  McpServerIcon,
   Menu01Icon,
   PuzzleIcon,
-  Rocket01Icon,
   Settings01Icon,
   UserGroupIcon,
-  UserMultipleIcon,
 } from '@hugeicons/core-free-icons'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { hapticTap } from '@/lib/haptics'
 import { getTheme, getThemeVariant, isDarkTheme, setTheme } from '@/lib/theme'
 import {
-  selectChatProfileDisplayName,
-  useChatSettingsStore,
-} from '@/hooks/use-chat-settings'
+  logoutSemantierAuth,
+  semantierAuthQueryKey,
+  useSemantierAuthStatus,
+} from '@/lib/semantier-auth'
+import { UserAvatar } from '@/components/avatars'
+import {
+  useResolvedAvatarUrl,
+  useResolvedDisplayName,
+} from '@/hooks/use-resolved-avatar'
 
-export const MOBILE_HAMBURGER_NAV_ITEMS = [
+const NAV_ITEMS = [
   {
     id: 'chat',
     label: 'Chat',
@@ -41,13 +43,6 @@ export const MOBILE_HAMBURGER_NAV_ITEMS = [
     icon: DashboardSquare01Icon,
     to: '/dashboard',
     match: (p: string) => p.startsWith('/dashboard'),
-  },
-  {
-    id: 'playground',
-    label: 'HermesWorld',
-    icon: Castle02Icon,
-    to: '/playground',
-    match: (p: string) => p.startsWith('/playground'),
   },
   {
     id: 'terminal',
@@ -64,28 +59,6 @@ export const MOBILE_HAMBURGER_NAV_ITEMS = [
     match: (p: string) => p.startsWith('/jobs'),
   },
   {
-    id: 'conductor',
-    label: 'Conductor',
-    icon: Rocket01Icon,
-    to: '/conductor',
-    match: (p: string) => p.startsWith('/conductor'),
-  },
-  {
-    id: 'operations',
-    label: 'Operations',
-    icon: UserMultipleIcon,
-    to: '/operations',
-    match: (p: string) => p.startsWith('/operations'),
-  },
-  {
-    id: 'swarm',
-    label: 'Swarm',
-    icon: UserGroupIcon,
-    to: '/swarm',
-    match: (p: string) => p === '/swarm' || p.startsWith('/swarm2'),
-  },
-
-  {
     id: 'memory',
     label: 'Memory',
     icon: BrainIcon,
@@ -98,13 +71,6 @@ export const MOBILE_HAMBURGER_NAV_ITEMS = [
     icon: PuzzleIcon,
     to: '/skills',
     match: (p: string) => p.startsWith('/skills'),
-  },
-  {
-    id: 'mcp',
-    label: 'MCP',
-    icon: McpServerIcon,
-    to: '/mcp',
-    match: (p: string) => p.startsWith('/mcp'),
   },
   {
     id: 'profiles',
@@ -157,10 +123,27 @@ export function MobileHamburgerMenu() {
   }, [open])
 
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const profileDisplayName = useChatSettingsStore(selectChatProfileDisplayName)
+  const profileDisplayName = useResolvedDisplayName()
+  const profileAvatarUrl = useResolvedAvatarUrl()
+  const semantierAuthQuery = useSemantierAuthStatus()
+  const semantierAuth = semantierAuthQuery.data
+  const [semantierAuthActionPending, setSemantierAuthActionPending] =
+    useState(false)
   const isChatRoute =
     pathname.startsWith('/chat') || pathname === '/new' || pathname === '/'
+
+  async function handleFeishuLogout() {
+    if (semantierAuthActionPending) return
+    setSemantierAuthActionPending(true)
+    try {
+      await logoutSemantierAuth()
+      await queryClient.invalidateQueries({ queryKey: semantierAuthQueryKey })
+    } finally {
+      setSemantierAuthActionPending(false)
+    }
+  }
 
   function handleNav(to: string) {
     hapticTap()
@@ -214,8 +197,8 @@ export function MobileHamburgerMenu() {
         >
           <div className="flex items-center gap-2.5">
             <img
-              src="/claude-avatar.webp"
-              alt="Hermes Agent"
+              src="/logo.svg"
+              alt="semantier logo"
               className="size-8 rounded-xl shrink-0"
             />
             <div className="flex flex-col leading-tight">
@@ -223,7 +206,7 @@ export function MobileHamburgerMenu() {
                 className="font-bold text-[15px] tracking-tight"
                 style={{ color: 'var(--color-ink, #111)' }}
               >
-                Hermes Agent
+                Hermes
               </span>
               <span
                 className="text-[11px]"
@@ -246,7 +229,7 @@ export function MobileHamburgerMenu() {
 
         {/* Nav items */}
         <nav className="flex flex-col gap-1 px-3 pt-4 flex-1">
-          {MOBILE_HAMBURGER_NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const isActive = item.match(pathname)
             return (
               <button
@@ -261,14 +244,10 @@ export function MobileHamburgerMenu() {
                   isActive
                     ? {
                         background:
-                          'var(--theme-accent-subtle, color-mix(in srgb, var(--theme-accent, #6366f1) 12%, transparent))',
-                        color:
-                          'var(--theme-accent, var(--color-accent, #6366f1))',
+                          'var(--color-accent-muted, rgba(99,102,241,0.12))',
+                        color: 'var(--color-accent, #6366f1)',
                       }
-                    : {
-                        color:
-                          'var(--theme-muted, var(--color-ink-muted, #555))',
-                      }
+                    : { color: 'var(--color-ink-muted, #555)' }
                 }
               >
                 <HugeiconsIcon
@@ -289,30 +268,11 @@ export function MobileHamburgerMenu() {
         >
           <div className="flex items-center gap-3 px-2">
             {/* User avatar + name + status dot */}
-            <div
-              className="size-9 rounded-xl shrink-0 flex items-center justify-center"
-              style={{
-                background:
-                  'var(--theme-accent-subtle, color-mix(in srgb, var(--theme-accent, #6366f1) 15%, transparent))',
-              }}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{
-                  color: 'var(--theme-accent, var(--color-accent, #6366f1))',
-                }}
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </div>
+            <UserAvatar
+              size={36}
+              src={profileAvatarUrl}
+              alt={profileDisplayName}
+            />
             <span
               className="text-[15px] font-semibold truncate"
               style={{ color: 'var(--color-ink, #111)' }}
@@ -364,6 +324,54 @@ export function MobileHamburgerMenu() {
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
             </button>
+          </div>
+
+          <div className="mt-3 px-2">
+            {semantierAuthQuery.isLoading ? (
+              <p
+                className="text-xs"
+                style={{ color: 'var(--color-ink-muted, #666)' }}
+              >
+                Checking Feishu account...
+              </p>
+            ) : (
+              <div className="flex items-center gap-2">
+                <p
+                  className="min-w-0 flex-1 truncate text-xs"
+                  style={{ color: 'var(--color-ink-muted, #666)' }}
+                >
+                  {semantierAuth.authenticated && semantierAuth.user
+                    ? `Signed in as ${semantierAuth.user.name}`
+                    : `Guest workspace: ${semantierAuth.workspace_slug || 'public'}`}
+                </p>
+                {semantierAuth.authenticated ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleFeishuLogout()
+                    }}
+                    className="rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+                    style={{
+                      background: 'var(--color-border, #e5e7eb)',
+                      color: 'var(--color-ink, #111)',
+                    }}
+                  >
+                    {semantierAuthActionPending ? 'Logging out...' : 'Logout'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.assign('/auth/feishu/login')
+                    }}
+                    className="rounded-full px-3 py-1.5 text-xs font-medium text-white transition-colors"
+                    style={{ background: 'var(--color-accent, #6366f1)' }}
+                  >
+                    Login
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

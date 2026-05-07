@@ -33,7 +33,7 @@ export const Route = createFileRoute('/api/oauth/device-code')({
                 headers: {
                   'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: 'client_id=claude-cli',
+                body: 'client_id=hermes-cli',
               },
             )
             const data = await res.json()

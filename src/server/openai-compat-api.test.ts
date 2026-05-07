@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { parseOpenAIStream } from './openai-compat-api'
 
-function createStreamResponse(chunks: string[]): Response {
+function createStreamResponse(chunks: Array<string>): Response {
   const encoder = new TextEncoder()
   return new Response(
     new ReadableStream({
@@ -42,7 +42,7 @@ describe('parseOpenAIStream', () => {
 
   it('emits synthetic tool events for Hermes tool progress frames', async () => {
     const response = createStreamResponse([
-      'event: claude.tool.progress\n',
+      'event: hermes.tool.progress\n',
       'data: {"tool":"terminal","emoji":"💻","label":"ls -la"}\n\n',
       'data: [DONE]\n\n',
     ])
@@ -63,9 +63,9 @@ describe('parseOpenAIStream', () => {
 
   it('handles multiple tool events even when frames are split across transport chunks', async () => {
     const response = createStreamResponse([
-      'event: claude.tool.progress\ndata: {"tool":"browser_get_images","emoji":"📖","la',
+      'event: hermes.tool.progress\ndata: {"tool":"browser_get_images","emoji":"📖","la',
       'bel":"scan page"}\n\n',
-      'event: claude.tool.progress\ndata: {"tool":"browser_console","emoji":"🔎","label":"inspect DOM"}\n\n',
+      'event: hermes.tool.progress\ndata: {"tool":"browser_console","emoji":"🔎","label":"inspect DOM"}\n\n',
       'data: {"choices":[{"delta":{"content":"done"}}]}\n\n',
       'data: [DONE]\n\n',
     ])

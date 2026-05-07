@@ -163,6 +163,10 @@ export const useTerminalPanelStore = create<TerminalPanelState>()(
           if (!activeExists) {
             state.activeTabId = state.tabs[0].id
           }
+          state.tabs = state.tabs.map((tab) => ({
+            ...tab,
+            cwd: tab.cwd === '~/.hermes' ? '~' : tab.cwd,
+          }))
         }
       },
     },

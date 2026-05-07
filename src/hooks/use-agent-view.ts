@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type {
@@ -56,8 +56,9 @@ type AgentViewState = {
   setHistoryOpen: (isOpen: boolean) => void
 }
 
-const PANEL_WIDTH_PX = 288
+const PANEL_WIDTH_PX = 320
 const MIN_DESKTOP_WIDTH = 1024
+const AUTO_OPEN_WIDTH = 1440
 const REFRESH_INTERVAL_MS = 5000
 
 function createDemoActiveAgents(): Array<ActiveAgent> {
@@ -145,7 +146,8 @@ function createDemoHistory(): Array<AgentHistoryItem> {
 }
 
 function inferInitialOpenState(): boolean {
-  return false
+  if (typeof window === 'undefined') return true
+  return window.innerWidth >= AUTO_OPEN_WIDTH
 }
 
 function readString(value: unknown): string {
@@ -213,24 +215,19 @@ function readSessionName(session: GatewaySession): string {
 
 function isAgentSession(session: GatewaySession): boolean {
   const key = readSessionKey(session).toLowerCase()
-  const friendlyId = readString(session.friendlyId).toLowerCase()
-  const kind = readString(session.kind).toLowerCase()
-  const label = readString(session.label).toLowerCase()
-  const title = readString(session.title).toLowerCase()
 
-  // The right-side agent panel must only show actual delegated/worker runs.
-  // Normal Workspace chat sessions are also returned by /api/sessions with
-  // kind="chat" and transient api-* keys; treating them as agents creates
-  // phantom personas like "Nova — Security Specialist" during normal sends.
+  // Always exclude main sessions
   if (key === 'main' || key.includes(':main')) return false
+  const friendlyId = readString(session.friendlyId).toLowerCase()
   if (friendlyId === 'main') return false
-  if (kind === 'cron' || key.includes('cron')) return false
-  // Normal chat sessions can have agent-like generated titles and can be
-  // transiently active while streaming, but they are not delegated workers.
-  // Never show them in the agent sidebar.
-  if (kind === 'chat') return false
 
-  return ['agent', 'worker', 'delegate', 'swarm', 'subagent'].includes(kind)
+  // Always exclude cron jobs
+  if (key.includes('cron')) return false
+  const kind = readString(session.kind).toLowerCase()
+  if (kind === 'cron') return false
+
+  // Everything else is an agent session — inclusive by default (#37)
+  return true
 }
 
 function readTaskText(session: GatewaySession): string {
@@ -518,7 +515,7 @@ export function useAgentView(): AgentViewResult {
   const missionSessionMap = useMissionStore((state) => state.agentSessionMap)
 
   const [viewportWidth, setViewportWidth] = useState(() => {
-    if (typeof window === 'undefined') return MIN_DESKTOP_WIDTH
+    if (typeof window === 'undefined') return AUTO_OPEN_WIDTH
     return window.innerWidth
   })
   const [nowMs, setNowMs] = useState(() => Date.now())
@@ -532,6 +529,8 @@ export function useAgentView(): AgentViewResult {
   const [isDemoMode, setIsDemoMode] = useState(false)
   const [isLiveConnected, setIsLiveConnected] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const previousAutoOpenRef = useRef(false)
 
   useEffect(() => {
     function handleResize() {
@@ -612,12 +611,10 @@ export function useAgentView(): AgentViewResult {
       } catch (error) {
         if (isDisposed) return
 
-        // Gateway unreachable — leave the panel empty rather than show fake
-        // demo agents that look like real spawns. Show error message instead.
-        setActiveAgents([])
-        setQueuedAgents([])
-        setHistoryAgents([])
-        setIsDemoMode(false)
+        setActiveAgents(createDemoActiveAgents())
+        setQueuedAgents(createDemoQueue())
+        setHistoryAgents(createDemoHistory())
+        setIsDemoMode(true)
         setIsLiveConnected(false)
         setErrorMessage(
           error instanceof Error ? error.message : 'Gateway unavailable',
@@ -641,7 +638,15 @@ export function useAgentView(): AgentViewResult {
     }
   }, [])
 
-  const shouldAutoOpen = false
+  const shouldAutoOpen = viewportWidth >= AUTO_OPEN_WIDTH
+  useEffect(() => {
+    const isCrossingToLargeDesktop =
+      shouldAutoOpen && previousAutoOpenRef.current !== shouldAutoOpen
+    previousAutoOpenRef.current = shouldAutoOpen
+    if (isCrossingToLargeDesktop) {
+      setOpen(true)
+    }
+  }, [setOpen, shouldAutoOpen])
 
   const isDesktop = viewportWidth >= MIN_DESKTOP_WIDTH
   const panelVisible = isDesktop && isOpen

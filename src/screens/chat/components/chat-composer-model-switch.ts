@@ -1,5 +1,5 @@
 export const MODEL_SWITCH_BLOCKED_TOAST =
-  'Model switching requires the enhanced runtime. Set a default via `claude config set model <id>` — the displayed model reflects your config.'
+  'Model switching requires the enhanced runtime. Set a default via `hermes config set model <id>` — the displayed model reflects your config.'
 
 export type ZeroForkModelInfoFlags = {
   vanillaAgent: boolean

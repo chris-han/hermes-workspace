@@ -21,28 +21,26 @@ export function QuickActions({
 }: QuickActionsProps) {
   return (
     <div className="space-y-4">
-      {recentSearches.length > 0 ? (
-        <div>
-          <div className="mb-2 text-xs font-medium text-muted-foreground">
-            Recent Searches
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {recentSearches.map((entry) => (
-              <button
-                key={entry}
-                type="button"
-                onClick={() => onSelectRecent(entry)}
-                className={cn(
-                  'rounded-md border border-border bg-muted/60 px-2.5 py-1 text-xs text-foreground transition-colors',
-                  'hover:bg-muted',
-                )}
-              >
-                {entry}
-              </button>
-            ))}
-          </div>
+      <div>
+        <div className="mb-2 text-xs font-medium text-muted-foreground">
+          Recent Searches
         </div>
-      ) : null}
+        <div className="flex flex-wrap gap-2">
+          {recentSearches.map((entry) => (
+            <button
+              key={entry}
+              type="button"
+              onClick={() => onSelectRecent(entry)}
+              className={cn(
+                'rounded-md border border-border bg-muted/60 px-2.5 py-1 text-xs text-foreground transition-colors',
+                'hover:bg-muted',
+              )}
+            >
+              {entry}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div>
         <div className="mb-2 text-xs font-medium text-muted-foreground">

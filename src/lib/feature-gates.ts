@@ -8,9 +8,6 @@ export type EnhancedFeature =
   | 'memory'
   | 'config'
   | 'jobs'
-  | 'mcp'
-  | 'mcpFallback'
-  | 'kanban'
 
 const FEATURE_LABELS: Record<EnhancedFeature, string> = {
   sessions: 'Sessions',
@@ -18,9 +15,6 @@ const FEATURE_LABELS: Record<EnhancedFeature, string> = {
   memory: 'Memory',
   config: 'Configuration',
   jobs: 'Jobs',
-  mcp: 'MCP Servers',
-  mcpFallback: 'MCP Servers (config fallback)',
-  kanban: 'Kanban (Hermes plugin)',
 }
 
 function normalizeFeature(
@@ -32,12 +26,9 @@ function normalizeFeature(
     normalized === 'skills' ||
     normalized === 'memory' ||
     normalized === 'config' ||
-    normalized === 'jobs' ||
-    normalized === 'mcp' ||
-    normalized === 'mcpfallback' ||
-    normalized === 'kanban'
+    normalized === 'jobs'
   ) {
-    return normalized === 'mcpfallback' ? 'mcpFallback' : normalized
+    return normalized
   }
 
   return null
@@ -52,7 +43,7 @@ export function getFeatureLabel(feature: EnhancedFeature | string): string {
 export function getUnavailableReason(
   feature: EnhancedFeature | string,
 ): string {
-  return `${getFeatureLabel(feature)} requires a Hermes gateway that exposes the extended APIs. Check that Hermes Agent is installed and running with \`hermes gateway run\`.`
+  return `${getFeatureLabel(feature)} requires a Hermes gateway that exposes the extended APIs. Check that Hermes is installed and running with \`hermes gateway run\`.`
 }
 
 export function createCapabilityUnavailablePayload(

@@ -58,9 +58,9 @@ const PRESETS: Record<string, Array<string>> = {
     braille(D2, D5),
   ],
 
-  // Claude caduceus motion 🦀
+  // Hermes caduceus motion 🦀
   // Open pincer → closing → gripped → releasing
-  claude: [
+  hermes: [
     // Open wide - two "arms" spread
     braille(D1, D4), // tips open
     braille(D1, D2, D4, D5), // arms extending down
@@ -122,7 +122,7 @@ type BrailleSpinnerProps = {
 }
 
 function BrailleSpinnerComponent({
-  preset = 'claude',
+  preset = 'hermes',
   size,
   color,
   speed = 100,
@@ -132,7 +132,7 @@ function BrailleSpinnerComponent({
   const [frame, setFrame] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const frames = PRESETS[preset] ?? PRESETS.claude
+  const frames = PRESETS[preset] ?? PRESETS.hermes
 
   useEffect(() => {
     intervalRef.current = setInterval(() => {
@@ -168,7 +168,7 @@ export { BrailleSpinner, PRESETS as BRAILLE_PRESETS }
 export type { BrailleSpinnerPreset, BrailleSpinnerProps }
 
 // Usage:
-// <BrailleSpinner />                          — default claude animation
+// <BrailleSpinner />                          — default hermes animation
 // <BrailleSpinner preset="braille" />          — classic rotating
 // <BrailleSpinner preset="orbit" size={24} />  — orbiting dot, 24px
-// <BrailleSpinner preset="claude" color="var(--color-primary-500)" speed={120} />
+// <BrailleSpinner preset="hermes" color="var(--color-primary-500)" speed={120} />

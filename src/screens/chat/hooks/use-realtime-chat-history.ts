@@ -8,7 +8,7 @@ import { textFromMessage } from '../utils'
 import type { ChatMessage } from '../types'
 import type { StreamingState } from '../../../stores/chat-store'
 
-const PORTABLE_HISTORY_STORAGE_KEY = 'claude_portable_chat_main'
+const PORTABLE_HISTORY_STORAGE_KEY = 'hermes_portable_chat_main'
 const PORTABLE_HISTORY_LIMIT = 100
 
 /** Read clientId from a message using either camelCase or snake_case field. */
@@ -195,12 +195,13 @@ export function useRealtimeChatHistory({
           const msgText = extractUserMessageText(message)
           if (
             msgText.startsWith('Pre-compaction memory flush') ||
-            msgText.startsWith('Store durable memories now') ||
-            msgText.startsWith('APPEND new content only and do not overwrite') ||
+            msgText.includes('Pre-compaction memory flush') ||
+            msgText.includes('Store durable memories now') ||
+            msgText.includes('APPEND new content only and do not overwrite') ||
             msgText.startsWith('A subagent task') ||
             msgText.startsWith('[Queued announce messages') ||
-            msgText.startsWith('Summarize this naturally for the user') ||
-            (msgText.startsWith('Stats: runtime') &&
+            msgText.includes('Summarize this naturally for the user') ||
+            (msgText.includes('Stats: runtime') &&
               msgText.includes('sessionKey agent:'))
           ) {
             onUserMessage?.(message, source)
@@ -473,7 +474,7 @@ export function useRealtimeChatHistory({
       .join('\n')
       .toLowerCase()
 
-    // Only trigger on Hermes Agent's actual mid-compaction signal.
+    // Only trigger on Hermes's actual mid-compaction signal.
     // "pre-compaction memory flush" and "store durable memories now" are routine
     // heartbeat messages — do NOT match those here.
     if (!textCandidates.includes('compacting context')) return
@@ -490,6 +491,7 @@ export function useRealtimeChatHistory({
     if (!effectiveSessionKey || effectiveSessionKey === 'new' || !enabled)
       return
     syncIntervalRef.current = setInterval(() => {
+      if (connectionState === 'connected') return
       // Don't poll during active streaming — causes flicker/overwrites
       if (streamingStateRef.current !== null) return
       // Guard window: don't poll right after streaming clears — new stream
@@ -504,7 +506,13 @@ export function useRealtimeChatHistory({
     return () => {
       if (syncIntervalRef.current) clearInterval(syncIntervalRef.current)
     }
-  }, [effectiveFriendlyId, effectiveSessionKey, enabled, queryClient])
+  }, [
+    connectionState,
+    effectiveFriendlyId,
+    effectiveSessionKey,
+    enabled,
+    queryClient,
+  ])
 
   // Clear realtime buffer when session changes
   useEffect(() => {

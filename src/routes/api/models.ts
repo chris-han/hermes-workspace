@@ -1,24 +1,12 @@
 import fs from 'node:fs'
-import path from 'node:path'
-import os from 'node:os'
-import YAML from 'yaml'
 import { json } from '@tanstack/react-start'
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
+import { ensureGatewayProbed } from '../../server/hermes-api'
 import {
-  ensureGatewayProbed,
-  getGatewayCapabilities,
-} from '../../server/claude-api'
-import { BEARER_TOKEN, CLAUDE_API } from '../../server/gateway-capabilities'
-import {
-  ensureDiscovery,
-  getDiscoveredModels,
-  ensureProviderInConfig,
-} from '../../server/local-provider-discovery'
-
-const CLAUDE_HOME = process.env.HERMES_HOME ?? process.env.CLAUDE_HOME ?? path.join(os.homedir(), '.hermes')
-const MODELS_PATH = path.join(CLAUDE_HOME, 'models.json')
-const CONFIG_PATH = path.join(CLAUDE_HOME, 'config.yaml')
+  resolveHermesConfigPathFromBackend,
+  resolveHermesPathFromBackend,
+} from '../../server/hermes-home'
+import { WorkspaceAuthRequiredError } from '../../server/workspace-root'
 
 type ModelEntry = {
   provider?: string
@@ -66,167 +54,84 @@ function normalizeModel(entry: unknown): ModelEntry | null {
   }
 }
 
-export function mergeModelEntries(...sources: Array<Array<ModelEntry>>): Array<ModelEntry> {
-  const merged: Array<ModelEntry> = []
-  const seen = new Set<string>()
-
-  for (const source of sources) {
-    for (const model of source) {
-      const normalized = normalizeModel(model)
-      if (!normalized || seen.has(normalized.id)) continue
-      merged.push(normalized)
-      seen.add(normalized.id)
-    }
-  }
-
-  return merged
-}
-
 /**
- * Read user-configured models from active profile's models.json.
+ * Read user-configured models from the active Hermes home models.json.
+ * This is the curated list the user manages via the Hermes CLI or UI.
+ * Each entry has: { id, name, provider, model, baseUrl, createdAt }
  */
-function readClaudeModelsJson(): Array<ModelEntry> {
+function readHermesModelsJson(modelsPath: string): Array<ModelEntry> {
   try {
-    if (!fs.existsSync(MODELS_PATH)) return []
-    const raw = fs.readFileSync(MODELS_PATH, 'utf-8')
+    if (!fs.existsSync(modelsPath)) return []
+    const raw = fs.readFileSync(modelsPath, 'utf-8')
     const entries = JSON.parse(raw)
     if (!Array.isArray(entries)) return []
     return entries
-      .map((entry: unknown): ModelEntry | null => {
-        const record = asRecord(entry)
+      .map((entry: Record<string, unknown>) => {
         // models.json uses "model" field for the model ID
-        const modelId = readString(record.model) || readString(record.id)
+        const modelId = readString(entry.model) || readString(entry.id)
         if (!modelId) return null
         return {
           id: modelId,
-          name: readString(record.name) || modelId,
-          provider: readString(record.provider) || 'unknown',
+          name: readString(entry.name) || modelId,
+          provider: readString(entry.provider) || 'unknown',
         }
       })
-      .filter((entry): entry is ModelEntry => entry !== null)
+      .filter((e: ModelEntry | null): e is ModelEntry => e !== null)
   } catch {
     return []
   }
 }
 
-const DEFAULT_ACCEPTED_TIMEOUT_S = 120
-const DEFAULT_HANDOFF_TIMEOUT_S = 300
-
-function readStreamTimeouts(): { streamAcceptedTimeoutMs: number; streamHandoffTimeoutMs: number } {
-  let acceptedS = DEFAULT_ACCEPTED_TIMEOUT_S
-  let handoffS = DEFAULT_HANDOFF_TIMEOUT_S
-  try {
-    if (fs.existsSync(CONFIG_PATH)) {
-      const parsed = YAML.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'))
-      const ws =
-        parsed && typeof parsed === 'object' && typeof (parsed as Record<string, unknown>).workspace === 'object'
-          ? ((parsed as Record<string, unknown>).workspace as Record<string, unknown>)
-          : {}
-      if (typeof ws.stream_accepted_timeout === 'number' && ws.stream_accepted_timeout > 0)
-        acceptedS = ws.stream_accepted_timeout
-      if (typeof ws.stream_handoff_timeout === 'number' && ws.stream_handoff_timeout > 0)
-        handoffS = ws.stream_handoff_timeout
-    }
-  } catch {
-    // fall through to defaults
-  }
-  const envAccepted = parseInt(process.env.STREAM_ACCEPTED_TIMEOUT_MS ?? '', 10)
-  const envHandoff = parseInt(process.env.STREAM_HANDOFF_TIMEOUT_MS ?? '', 10)
-  return {
-    streamAcceptedTimeoutMs: Number.isFinite(envAccepted) && envAccepted > 0 ? envAccepted : acceptedS * 1000,
-    streamHandoffTimeoutMs: Number.isFinite(envHandoff) && envHandoff > 0 ? envHandoff : handoffS * 1000,
-  }
-}
-
 /**
- * Read the default model from active profile's config.yaml using a proper YAML parser.
+ * Read the default model from the active Hermes config.yaml without a YAML parser.
+ * Looks for "default: <model-id>" under the "model:" section.
  */
-function readClaudeDefaultModel(): ModelEntry | null {
+function readHermesDefaultModel(configPath: string): ModelEntry | null {
   try {
-    if (!fs.existsSync(CONFIG_PATH)) return null
-    const raw = fs.readFileSync(CONFIG_PATH, 'utf-8')
-    const parsed = YAML.parse(raw)
-    if (!parsed || typeof parsed !== 'object') return null
-    const config = parsed as Record<string, unknown>
-    let modelId = ''
-    let provider = ''
-    const modelField = config.model
-    if (typeof modelField === 'string') {
-      modelId = modelField
-      provider = (config.provider as string) || 'unknown'
-    } else if (modelField && typeof modelField === 'object') {
-      const modelObj = modelField as Record<string, unknown>
-      modelId = (modelObj.default as string) || ''
-      provider =
-        (modelObj.provider as string) ||
-        (config.provider as string) ||
-        'unknown'
-    }
-    if (!modelId) return null
+    if (!fs.existsSync(configPath)) return null
+    const raw = fs.readFileSync(configPath, 'utf-8')
+    const defaultMatch = raw.match(/^\s*default:\s*(.+)$/m)
+    const providerMatch = raw.match(/^\s*provider:\s*(.+)$/m)
+    if (!defaultMatch) return null
+    const modelId = defaultMatch[1].trim()
+    const provider = providerMatch ? providerMatch[1].trim() : 'unknown'
     return { id: modelId, name: modelId, provider }
   } catch {
     return null
   }
 }
 
-/**
- * Fallback: fetch models from the hermes-agent /v1/models endpoint.
- */
-async function fetchClaudeModels(): Promise<Array<ModelEntry>> {
-  const headers: Record<string, string> = {}
-  if (BEARER_TOKEN) headers['Authorization'] = `Bearer ${BEARER_TOKEN}`
-  const response = await fetch(`${CLAUDE_API}/v1/models`, { headers })
-  if (!response.ok)
-    throw new Error(`Hermes models request failed (${response.status})`)
-  const payload = asRecord(await response.json())
-  const rawModels = Array.isArray(payload.data)
-    ? payload.data
-    : Array.isArray(payload.models)
-      ? payload.models
-      : []
-  return rawModels
-    .map(normalizeModel)
-    .filter((e): e is ModelEntry => e !== null)
-}
-
 export const Route = createFileRoute('/api/models')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-        await ensureGatewayProbed()
+        ensureGatewayProbed()
 
         try {
-          // Primary: read user-configured models from ~/.hermes/models.json
-          let models = readClaudeModelsJson()
+          const modelsPath = await resolveHermesPathFromBackend(
+            request.headers,
+            'models.json',
+          )
+          const configPath = await resolveHermesConfigPathFromBackend(
+            request.headers,
+          )
+
+          // Primary: read user-configured models from the active Hermes home.
+          let models = readHermesModelsJson(modelsPath)
           let source = 'models.json'
 
-          // Ensure the default model from config.yaml is always first
-          const defaultModel = readClaudeDefaultModel()
+          // Ensure the default model from config.yaml is always included
+          const defaultModel = readHermesDefaultModel(configPath)
           if (defaultModel) {
-            models = models.filter((m) => m.id !== defaultModel.id)
-            models.unshift(defaultModel)
+            const hasDefault = models.some((m) => m.id === defaultModel.id)
+            if (!hasDefault) {
+              models.unshift(defaultModel)
+            }
           }
 
-          // Merge the authoritative Hermes model catalog whenever it is
-          // available. Previously, a non-empty models.json stopped here, so the
-          // Operations picker only showed the local Workspace subset and drifted
-          // from the CLI/backend model universe.
-          if (getGatewayCapabilities().models) {
-            const hermesModels = await fetchClaudeModels()
-            models = mergeModelEntries(models, hermesModels)
-            source = source === 'models.json' ? 'models.json+hermes-agent' : 'hermes-agent'
-          }
-
-          // Merge auto-discovered local models (Ollama, Atomic Chat, etc.)
-          await ensureDiscovery()
-          const localModels = getDiscoveredModels()
-          models = mergeModelEntries(models, localModels)
-          for (const m of localModels) {
-            ensureProviderInConfig(m.provider)
-          }
+          // In semantier-unicell mode, models come exclusively from the agent
+          // wrapper (models.json / config.yaml). No fallback to /v1/models or
+          // local provider discovery is performed.
 
           const configuredProviders = Array.from(
             new Set(
@@ -238,8 +143,6 @@ export const Route = createFileRoute('/api/models')({
             ),
           )
 
-          const streamTimeouts = readStreamTimeouts()
-
           return json({
             ok: true,
             object: 'list',
@@ -247,9 +150,11 @@ export const Route = createFileRoute('/api/models')({
             models,
             configuredProviders,
             source,
-            ...streamTimeouts,
           })
         } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return json({ ok: false, error: err.message }, { status: 401 })
+          }
           return json(
             {
               ok: false,

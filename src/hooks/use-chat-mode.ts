@@ -1,15 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 
-export type ChatMode = 'enhanced-claude' | 'portable' | 'disconnected'
+export type ChatMode = 'enhanced-hermes' | 'portable' | 'disconnected'
 
 interface GatewayStatus {
   capabilities: Record<string, boolean>
-  claudeUrl: string
+  hermesUrl: string
 }
 
 function deriveChatMode(capabilities: Record<string, boolean>): ChatMode {
-  if (capabilities.sessions) return 'enhanced-claude'
-  if (capabilities.chatCompletions || capabilities.health) return 'portable'
+  if (capabilities.semantier) return 'enhanced-hermes'
   return 'disconnected'
 }
 

@@ -1,8 +1,5 @@
 // Module-level local model override — set by composer when user picks a local model
 // Avoids prop threading. Reset when switching back to cloud models.
-export let _localModelOverride = ''
-export function setLocalModelOverride(model: string) { _localModelOverride = model }
-
 import {
   useCallback,
   useEffect,
@@ -14,12 +11,7 @@ import {
 import { useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import {
-  deriveFriendlyIdFromKey,
-  isMissingAuth,
-  readError,
-  textFromMessage,
-} from './utils'
+import { isMissingAuth, textFromMessage } from './utils'
 import {
   advanceStickyStreamingText,
   createOptimisticMessage,
@@ -51,8 +43,6 @@ import { useChatHistory } from './hooks/use-chat-history'
 import { useRealtimeChatHistory } from './hooks/use-realtime-chat-history'
 import { useSmoothStreamingText } from './hooks/use-smooth-streaming-text'
 import { useStreamingMessage } from './hooks/use-streaming-message'
-import { playChatComplete } from '@/lib/sounds'
-import { useChatSettingsStore } from '@/hooks/use-chat-settings'
 import { useActiveRunCheck } from './hooks/use-active-run-check'
 import { useChatMobile } from './hooks/use-chat-mobile'
 import { useChatSessions } from './hooks/use-chat-sessions'
@@ -71,14 +61,14 @@ import type {
   ChatComposerHelpers,
   ThinkingLevel,
 } from './components/chat-composer'
-import type { ApprovalRequest } from '@/screens/gateway/lib/approvals-store'
+import type { ApprovalRequest } from '@/lib/approvals-store'
 import type { ChatAttachment, ChatMessage, SessionMeta } from './types'
 import type { ChatRunCommandDetail } from './chat-events'
 import {
   addApproval,
   loadApprovals,
   saveApprovals,
-} from '@/screens/gateway/lib/approvals-store'
+} from '@/lib/approvals-store'
 import { stripQueuedWrapper } from '@/lib/strip-queued-wrapper'
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/toast'
@@ -88,7 +78,7 @@ import { SEARCH_MODAL_EVENTS } from '@/hooks/use-search-modal'
 import { SIDEBAR_TOGGLE_EVENT } from '@/hooks/use-global-shortcuts'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { TerminalPanel } from '@/components/terminal-panel'
-import { AgentViewPanel } from '@/components/agent-view/agent-view-panel'
+import { InspectorPanel } from '@/components/inspector/inspector-panel'
 import { useTerminalPanelStore } from '@/stores/terminal-panel-store'
 import { useModelSuggestions } from '@/hooks/use-model-suggestions'
 import { ModelSuggestionToast } from '@/components/model-suggestion-toast'
@@ -101,7 +91,18 @@ import { useResearchCard } from '@/hooks/use-research-card'
 // MOBILE_TAB_BAR_OFFSET removed — tab bar always hidden in chat
 import { useTapDebug } from '@/hooks/use-tap-debug'
 import { useChatMode } from '@/hooks/use-chat-mode'
-import { useChatActivityStore, type AgentActivity } from '@/stores/chat-activity-store'
+import {
+  DOCX_MIME_TYPE,
+  fallbackUploadApiDocumentName,
+  isUploadApiDocumentMimeType,
+} from './attachment-documents'
+
+export let _localModelOverride = ''
+export function setLocalModelOverride(model: string) {
+  _localModelOverride = model
+}
+// Activity store removed — not used in Hermes Workspace
+const _noopSetActivity = (_s: string) => {}
 
 type ChatScreenProps = {
   activeFriendlyId: string
@@ -126,6 +127,8 @@ type PortableHistoryMessage = {
   content: string
 }
 
+const PDF_MIME_TYPE = 'application/pdf'
+
 function normalizeMimeType(value: unknown): string {
   if (typeof value !== 'string') return ''
   return value.trim().toLowerCase()
@@ -134,6 +137,15 @@ function normalizeMimeType(value: unknown): string {
 function isImageMimeType(value: unknown): boolean {
   const normalized = normalizeMimeType(value)
   return normalized.startsWith('image/')
+}
+
+function isTextLikeMimeType(value: unknown): boolean {
+  const normalized = normalizeMimeType(value)
+  return (
+    normalized.startsWith('text/') ||
+    normalized === 'application/json' ||
+    normalized === DOCX_MIME_TYPE
+  )
 }
 
 function readDataUrlMimeType(value: unknown): string {
@@ -151,6 +163,117 @@ function stripDataUrlPrefix(value: unknown): string {
     return trimmed.slice(commaIndex + 1).trim()
   }
   return trimmed
+}
+
+function buildFileFromAttachment(attachment: ChatAttachment): File | null {
+  const mimeType =
+    normalizeMimeType(attachment.contentType) ||
+    readDataUrlMimeType(attachment.dataUrl)
+  if (!isUploadApiDocumentMimeType(mimeType)) {
+    return null
+  }
+
+  const rawDataUrl = attachment.dataUrl ?? ''
+  const base64Part = rawDataUrl.startsWith('data:')
+    ? (rawDataUrl.split(',')[1] ?? '')
+    : rawDataUrl
+  if (!base64Part) {
+    return null
+  }
+
+  const binaryStr = atob(base64Part)
+  const bytes = new Uint8Array(binaryStr.length)
+  for (let index = 0; index < binaryStr.length; index += 1) {
+    bytes[index] = binaryStr.charCodeAt(index)
+  }
+
+  const fallbackName = fallbackUploadApiDocumentName(mimeType)
+  return new File([bytes], attachment.name?.trim() || fallbackName, {
+    type: mimeType,
+  })
+}
+
+async function ensureChatSession(label: string): Promise<{
+  sessionKey: string
+  friendlyId: string
+}> {
+  const response = await fetch('/api/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label }),
+  })
+  if (!response.ok) {
+    throw new Error(`Create session failed: ${response.status}`)
+  }
+
+  const payload = (await response.json()) as {
+    ok?: boolean
+    error?: string
+    sessionKey?: string
+    friendlyId?: string
+  }
+  if (!payload.ok || !payload.sessionKey) {
+    throw new Error(payload.error || 'Create session failed')
+  }
+
+  return {
+    sessionKey: payload.sessionKey,
+    friendlyId: payload.friendlyId || payload.sessionKey,
+  }
+}
+
+async function uploadChatDocuments(
+  sessionKey: string,
+  attachments: Array<ChatAttachment>,
+): Promise<Array<string>> {
+  const uploadFiles = attachments
+    .map(buildFileFromAttachment)
+    .filter((file): file is File => file !== null)
+  if (uploadFiles.length === 0) {
+    return []
+  }
+
+  const form = new FormData()
+  form.append('session_id', sessionKey)
+  for (const file of uploadFiles) {
+    form.append('files', file)
+  }
+
+  const response = await fetch('/api/upload/batch', {
+    method: 'POST',
+    body: form,
+  })
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.status}`)
+  }
+
+  const payload = (await response.json()) as {
+    files?: Array<{
+      status?: string
+      filename?: string
+      error?: string
+    }>
+  }
+  if (!Array.isArray(payload.files)) return []
+
+  const failedCount = payload.files.filter(
+    (entry) => (entry.status || '').toLowerCase() !== 'ok',
+  ).length
+  if (failedCount > 0) {
+    toast(
+      failedCount === 1
+        ? '1 file failed to upload. It will not be referenced in this message.'
+        : `${failedCount} files failed to upload. They will not be referenced in this message.`,
+      { type: 'warning' },
+    )
+  }
+
+  const successNames = payload.files
+    .filter((entry) => (entry.status || '').toLowerCase() === 'ok')
+    .map((entry) => entry.filename?.trim() || '')
+    .filter((name) => name.length > 0)
+
+  return successNames
 }
 
 function normalizeMessageValue(value: unknown): string {
@@ -464,7 +587,6 @@ export function ChatScreen({
   const setChatFocusMode = useWorkspaceStore((s) => s.setChatFocusMode)
   const queryClient = useQueryClient()
   const [sending, setSending] = useState(false)
-  const [_creatingSession, setCreatingSession] = useState(false)
   const [sessionsOpen, setSessionsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
@@ -515,7 +637,7 @@ export function ChatScreen({
   // Per-session thinking level — stored in sessionStorage keyed by session
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>(() => {
     if (typeof window === 'undefined') return 'low'
-    const key = `claude-thinking-${activeFriendlyId || 'new'}`
+    const key = `hermes-thinking-${activeFriendlyId || 'new'}`
     const stored = window.sessionStorage.getItem(key)
     if (stored === 'off' || stored === 'low' || stored === 'adaptive')
       return stored
@@ -536,7 +658,7 @@ export function ChatScreen({
   } | null>(null)
   const [fileExplorerCollapsed, setFileExplorerCollapsed] = useState(() => {
     if (typeof window === 'undefined') return true
-    const stored = localStorage.getItem('claude-file-explorer-collapsed')
+    const stored = localStorage.getItem('hermes-file-explorer-collapsed')
     return stored === null ? true : stored === 'true'
   })
   const { isMobile } = useChatMobile(queryClient)
@@ -566,7 +688,13 @@ export function ChatScreen({
     sessionsLoading: _sessionsLoading,
     sessionsFetching: _sessionsFetching,
     refetchSessions: _refetchSessions,
-  } = useChatSessions({ activeFriendlyId, isNewChat, forcedSessionKey })
+  } = useChatSessions({
+    activeFriendlyId,
+    isNewChat,
+    forcedSessionKey,
+    sseConnectionState,
+    waitingForResponse,
+  })
   const {
     historyQuery,
     historyMessages,
@@ -584,7 +712,12 @@ export function ChatScreen({
     activeExists,
     sessionsReady: sessionsQuery.isSuccess,
     queryClient,
-    historyRefetchInterval: sseConnectionState === 'connected' ? 30_000 : 5_000,
+    historyRefetchInterval:
+      sseConnectionState === 'connected'
+        ? false
+        : waitingForResponse
+          ? 5_000
+          : 30_000,
     portableMode: isPortableMode,
   })
 
@@ -595,7 +728,8 @@ export function ChatScreen({
   // If so, re-set waitingForResponse in the store so the UI shows the spinner.
   useActiveRunCheck({
     sessionKey: resolvedSessionKey ?? '',
-    enabled: !isNewChat && Boolean(resolvedSessionKey) && historyQuery.isSuccess,
+    enabled:
+      !isNewChat && Boolean(resolvedSessionKey) && historyQuery.isSuccess,
   })
 
   // Wire SSE realtime stream for instant message delivery
@@ -618,9 +752,9 @@ export function ChatScreen({
       : isNewChat
         ? 'new'
         : resolvedSessionKey ||
-        sessionKeyForHistory ||
-        activeCanonicalKey ||
-        'main',
+          sessionKeyForHistory ||
+          activeCanonicalKey ||
+          'main',
     friendlyId: portableChatFriendlyId,
     historyMessages,
     portableMode: isPortableMode,
@@ -652,7 +786,7 @@ export function ChatScreen({
       if (
         approvalId &&
         currentApprovals.some((entry) => {
-          return entry.status === 'pending' && entry.gatewayApprovalId === approvalId
+          return entry.status === 'pending' && entry.approvalId === approvalId
         })
       ) {
         setPendingApprovals(
@@ -686,15 +820,15 @@ export function ChatScreen({
       const agentId =
         typeof agentIdValue === 'string' && agentIdValue.trim().length > 0
           ? agentIdValue
-          : 'claude'
+          : 'hermes'
 
       addApproval({
         agentId,
         agentName,
         action,
         context,
-        source: 'agent',
-        gatewayApprovalId: approvalId || undefined,
+        source: 'hermes',
+        approvalId: approvalId || undefined,
       })
       setPendingApprovals(
         loadApprovals().filter((entry) => entry.status === 'pending'),
@@ -781,12 +915,12 @@ export function ChatScreen({
       setPendingApprovals(
         nextApprovals.filter((entry) => entry.status === 'pending'),
       )
-      if (!approval.gatewayApprovalId) return
+      if (!approval.approvalId) return
 
       const endpoint =
         status === 'approved'
-          ? `/api/approvals/${approval.gatewayApprovalId}/approve`
-          : `/api/approvals/${approval.gatewayApprovalId}/deny`
+          ? `/api/approvals/${approval.approvalId}/approve`
+          : `/api/approvals/${approval.approvalId}/deny`
       try {
         await fetch(endpoint, { method: 'POST' })
       } catch {
@@ -907,13 +1041,11 @@ export function ChatScreen({
         )
         if (!res.ok) return
         const data = await res.json()
-        if (!data.ok) return
-        // Run not yet registered (gateway lag during silent processing) → keep waiting
-        if (!data.run) return
-        const status = data.run.status
-        // Treat unknown / transient statuses as still-active to avoid premature teardown
-        const terminalStatuses = ['completed', 'failed', 'cancelled', 'error']
-        if (terminalStatuses.includes(status)) {
+        if (
+          !data.ok ||
+          !data.run ||
+          !['accepted', 'active', 'handoff'].includes(data.run.status)
+        ) {
           streamFinish()
           refreshHistoryRef.current()
         }
@@ -947,7 +1079,7 @@ export function ChatScreen({
   })
 
   const currentModelQuery = useQuery({
-    queryKey: ['claude', 'session-status-model'],
+    queryKey: ['hermes', 'session-status-model'],
     queryFn: async () => {
       try {
         const res = await fetch('/api/session-status')
@@ -994,7 +1126,7 @@ export function ChatScreen({
       currentModel.toLowerCase().includes('4-6') ||
       currentModel.toLowerCase().includes('claude-4.6')
     if (is46) {
-      const key = `claude-thinking-${activeFriendlyId || 'new'}`
+      const key = `hermes-thinking-${activeFriendlyId || 'new'}`
       const stored =
         typeof window !== 'undefined'
           ? window.sessionStorage.getItem(key)
@@ -1011,7 +1143,7 @@ export function ChatScreen({
     (level: ThinkingLevel) => {
       setThinkingLevel(level)
       if (typeof window !== 'undefined') {
-        const key = `claude-thinking-${activeFriendlyId || 'new'}`
+        const key = `hermes-thinking-${activeFriendlyId || 'new'}`
         window.sessionStorage.setItem(key, level)
       }
     },
@@ -1095,11 +1227,6 @@ export function ChatScreen({
       setSending(false)
       // Clear waitingForResponse so ThinkingBubble hides and message renders
       streamFinish()
-      // Play notification sound if the user opted in (Settings → Chat).
-      // Read directly from the store to avoid re-creating this callback on every settings change.
-      if (useChatSettingsStore.getState().settings.soundOnChatComplete) {
-        playChatComplete()
-      }
     }, [queryClient, streamFinish]),
     onError: useCallback(
       (messageText: string) => {
@@ -1162,37 +1289,7 @@ export function ChatScreen({
       },
       [queryClient],
     ),
-    onAbort: useCallback(() => {
-      activeSendRef.current = null
-      setSending(false)
-      setPendingGeneration(false)
-      setWaitingForResponse(false)
-    }, [setWaitingForResponse]),
-    acceptedTimeoutMs: modelsQuery.data?.streamAcceptedTimeoutMs,
-    handoffTimeoutMs: modelsQuery.data?.streamHandoffTimeoutMs,
   })
-
-  // Cancel any in-flight stream when the user navigates between sessions or
-  // starts a new chat. Without this, an SSE stream from session A keeps
-  // running after the user navigates away — and any chunks it had already
-  // buffered before our abort takes effect could land in session B (the
-  // newly active session). See #297 (cross-session response contamination).
-  // Note: useStreamingMessage also has its own generation-token guard for
-  // the buffered-chunk race, but cancelling here is the cleaner contract
-  // (an in-flight response that the user navigated away from is no longer
-  // wanted in either session).
-  const navCancelKeyRef = useRef<string | null>(null)
-  useEffect(() => {
-    const navKey = `${activeCanonicalKey ?? ''}::${isNewChat ? 'new' : activeFriendlyId}`
-    if (navCancelKeyRef.current === null) {
-      navCancelKeyRef.current = navKey
-      return
-    }
-    if (navCancelKeyRef.current !== navKey) {
-      navCancelKeyRef.current = navKey
-      cancelStreaming()
-    }
-  }, [activeCanonicalKey, activeFriendlyId, isNewChat, cancelStreaming])
 
   const activeIsRealtimeStreaming = isPortableMode
     ? localIsStreaming
@@ -1204,10 +1301,12 @@ export function ChatScreen({
     activeRealtimeStreamingText,
     activeIsRealtimeStreaming,
   )
-  const stickyStreamingTextRef = useRef<{ runId: string | null; text: string }>({
-    runId: null,
-    text: '',
-  })
+  const stickyStreamingTextRef = useRef<{ runId: string | null; text: string }>(
+    {
+      runId: null,
+      text: '',
+    },
+  )
   stickyStreamingTextRef.current = advanceStickyStreamingText({
     isStreaming: activeIsRealtimeStreaming,
     runId: streamingRunId ?? null,
@@ -1497,9 +1596,7 @@ export function ChatScreen({
   }, [suggestion, resolvedSessionKey, dismiss])
 
   // Sync chat activity to global store for sidebar orchestrator avatar
-  const setLocalActivity = useChatActivityStore(
-    (s) => s.setLocalActivity,
-  ) as (next: AgentActivity) => void
+  const setLocalActivity = _noopSetActivity
   useEffect(() => {
     if (liveToolActivity.length > 0) {
       setLocalActivity('tool-use')
@@ -1518,7 +1615,7 @@ export function ChatScreen({
   ])
 
   const statusQuery = useQuery({
-    queryKey: ['claude', 'status'],
+    queryKey: ['hermes', 'status'],
     queryFn: fetchStatus,
     retry: 2,
     retryDelay: 1000,
@@ -1538,7 +1635,7 @@ export function ChatScreen({
           }
         : statusQuery.data && !statusQuery.data.ok
           ? {
-              message: statusQuery.data.error || 'Hermes Agent unavailable',
+              message: statusQuery.data.error || 'Hermes unavailable',
               status: statusQuery.data.status,
             }
           : null
@@ -1560,9 +1657,9 @@ export function ChatScreen({
     const handleRefreshRequest = () => {
       void historyQuery.refetch()
     }
-    window.addEventListener('claude:chat-refresh', handleRefreshRequest)
+    window.addEventListener('hermes:chat-refresh', handleRefreshRequest)
     return () => {
-      window.removeEventListener('claude:chat-refresh', handleRefreshRequest)
+      window.removeEventListener('hermes:chat-refresh', handleRefreshRequest)
     }
   }, [historyQuery])
 
@@ -1593,9 +1690,9 @@ export function ChatScreen({
     function handleSSEDrop() {
       void historyQuery.refetch()
     }
-    window.addEventListener('claude:sse-dropped', handleSSEDrop)
+    window.addEventListener('hermes:sse-dropped', handleSSEDrop)
     return () => {
-      window.removeEventListener('claude:sse-dropped', handleSSEDrop)
+      window.removeEventListener('hermes:sse-dropped', handleSSEDrop)
     }
   }, [historyQuery])
 
@@ -1665,7 +1762,7 @@ export function ChatScreen({
       : historyError
         ? `Failed to load history. ${historyError}`
         : statusError
-          ? `Hermes Agent unavailable. ${statusError.message}`
+          ? `Hermes unavailable. ${statusError.message}`
           : null
     if (message) setError(message)
   }, [
@@ -1787,7 +1884,7 @@ export function ChatScreen({
    * Response arrives via SSE stream, not via this function.
    */
   const sendMessage = useCallback(
-    function sendMessage(
+    async function sendMessage(
       sessionKey: string,
       friendlyId: string,
       body: string,
@@ -1803,6 +1900,17 @@ export function ChatScreen({
         ...attachment,
         id: attachment.id ?? crypto.randomUUID(),
       }))
+      const uploadApiAttachments = normalizedAttachments.filter(
+        (attachment) => {
+          const mime =
+            normalizeMimeType(attachment.contentType ?? '') ||
+            readDataUrlMimeType(attachment.dataUrl)
+          return (
+            isUploadApiDocumentMimeType(mime) &&
+            (attachment.dataUrl ?? '').length > 0
+          )
+        },
+      )
 
       // Inject text/file attachment content directly into the message body.
       // Servers reliably forward text in the message body; file attachments
@@ -1812,7 +1920,11 @@ export function ChatScreen({
           const mime =
             normalizeMimeType(a.contentType ?? '') ||
             readDataUrlMimeType(a.dataUrl ?? '')
-          return !isImageMimeType(mime) && (a.dataUrl ?? '').length > 0
+          return (
+            isTextLikeMimeType(mime) &&
+            !isUploadApiDocumentMimeType(mime) &&
+            (a.dataUrl ?? '').length > 0
+          )
         })
         .map((a) => {
           const raw = a.dataUrl ?? ''
@@ -1821,7 +1933,16 @@ export function ChatScreen({
             : raw
           return `\n\n<attachment name="${a.name ?? 'file'}">\n${content}\n</attachment>`
         })
-      const enrichedBody = body + textBlocks.join('')
+      const attachmentSummary = normalizedAttachments
+        .map((a) => a.name?.trim())
+        .filter((name): name is string => Boolean(name))
+      const fallbackBody =
+        attachmentSummary.length > 0
+          ? `Please review the attached files: ${attachmentSummary.join(', ')}`
+          : 'Please review the attached content.'
+      const enrichedBodyRaw = body + textBlocks.join('')
+      let enrichedBody =
+        enrichedBodyRaw.trim().length > 0 ? enrichedBodyRaw : fallbackBody
 
       let optimisticClientId = existingClientId
       setResearchResetKey((current) => current + 1)
@@ -1867,41 +1988,64 @@ export function ChatScreen({
 
       // Send a compatibility shape for attachment parsing.
       // Different server/channel versions read different keys.
-      const payloadAttachments = normalizedAttachments.map((attachment) => {
-        const mimeType =
-          normalizeMimeType(attachment.contentType) ||
-          readDataUrlMimeType(attachment.dataUrl)
-        const isImage = isImageMimeType(mimeType)
-        // For text/file attachments, dataUrl holds raw text (not a base64 data URL).
-        // We must base64-encode it so the server can build a valid data: URI.
-        const rawDataUrl = attachment.dataUrl ?? ''
-        let encodedContent: string
-        let finalDataUrl: string
-        if (!isImage && !rawDataUrl.startsWith('data:')) {
-          encodedContent = btoa(unescape(encodeURIComponent(rawDataUrl)))
-          finalDataUrl = mimeType
-            ? `data:${mimeType};base64,${encodedContent}`
-            : `data:text/plain;base64,${encodedContent}`
-        } else {
-          encodedContent = stripDataUrlPrefix(rawDataUrl)
-          finalDataUrl = rawDataUrl
-        }
-        return {
-          id: attachment.id,
-          name: attachment.name,
-          fileName: attachment.name,
-          contentType: mimeType || undefined,
-          mimeType: mimeType || undefined,
-          mediaType: mimeType || undefined,
-          type: isImage ? 'image' : 'file',
-          content: encodedContent,
-          data: encodedContent,
-          base64: encodedContent,
-          dataUrl: finalDataUrl,
-          size: attachment.size,
-        }
-      })
+      const payloadAttachments = normalizedAttachments
+        .filter((attachment) => {
+          const mimeType =
+            normalizeMimeType(attachment.contentType) ||
+            readDataUrlMimeType(attachment.dataUrl)
+          return !isUploadApiDocumentMimeType(mimeType)
+        })
+        .map((attachment) => {
+          const mimeType =
+            normalizeMimeType(attachment.contentType) ||
+            readDataUrlMimeType(attachment.dataUrl)
+          const isImage = isImageMimeType(mimeType)
+          // For text/file attachments, dataUrl holds raw text (not a base64 data URL).
+          // We must base64-encode it so the server can build a valid data: URI.
+          const rawDataUrl = attachment.dataUrl ?? ''
+          let encodedContent: string
+          let finalDataUrl: string
+          if (!isImage && !rawDataUrl.startsWith('data:')) {
+            encodedContent = btoa(unescape(encodeURIComponent(rawDataUrl)))
+            finalDataUrl = mimeType
+              ? `data:${mimeType};base64,${encodedContent}`
+              : `data:text/plain;base64,${encodedContent}`
+          } else {
+            encodedContent = stripDataUrlPrefix(rawDataUrl)
+            finalDataUrl = rawDataUrl
+          }
+          return {
+            id: attachment.id,
+            name: attachment.name,
+            fileName: attachment.name,
+            contentType: mimeType || undefined,
+            mimeType: mimeType || undefined,
+            mediaType: mimeType || undefined,
+            type: isImage ? 'image' : 'file',
+            content: encodedContent,
+            data: encodedContent,
+            base64: encodedContent,
+            dataUrl: finalDataUrl,
+            size: attachment.size,
+          }
+        })
       const history = buildPortableHistory(finalDisplayMessages)
+
+      if (uploadApiAttachments.length > 0) {
+        const uploadedNames = await uploadChatDocuments(
+          sessionKey,
+          uploadApiAttachments,
+        )
+        if (uploadedNames.length > 0) {
+          const refBlock = uploadedNames
+            .map((n) => `Uploaded document: uploads/${n}`)
+            .join('\n')
+          enrichedBody =
+            enrichedBody.trim().length > 0
+              ? `${enrichedBody}\n\n${refBlock}`
+              : refBlock
+        }
+      }
 
       try {
         streamStart()
@@ -2091,7 +2235,7 @@ export function ChatScreen({
 
   useEffect(() => {
     if (false) {
-      // Server connection checks removed — Hermes Agent uses direct API
+      // Server connection checks removed — Hermes uses direct API
       hasSeenDisconnectRef.current = true
       retriedQueuedMessageKeysRef.current.clear()
       return
@@ -2125,53 +2269,11 @@ export function ChatScreen({
       handleRefetch()
     }
 
-    window.addEventListener('claude:health-restored', handleHealthRestored)
+    window.addEventListener('hermes:health-restored', handleHealthRestored)
     return () => {
-      window.removeEventListener('claude:health-restored', handleHealthRestored)
+      window.removeEventListener('hermes:health-restored', handleHealthRestored)
     }
   }, [flushRetryableMessages, handleRefetch])
-
-  const createSessionForMessage = useCallback(
-    async (preferredFriendlyId?: string) => {
-      setCreatingSession(true)
-      try {
-        const res = await fetch('/api/sessions', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(
-            preferredFriendlyId && preferredFriendlyId.trim().length > 0
-              ? { friendlyId: preferredFriendlyId }
-              : {},
-          ),
-        })
-        if (!res.ok) throw new Error(await readError(res))
-
-        const data = (await res.json()) as {
-          sessionKey?: string
-          friendlyId?: string
-        }
-
-        const sessionKey =
-          typeof data.sessionKey === 'string' ? data.sessionKey : ''
-        const friendlyId =
-          typeof data.friendlyId === 'string' &&
-          data.friendlyId.trim().length > 0
-            ? data.friendlyId.trim()
-            : (preferredFriendlyId?.trim() ?? '') ||
-              deriveFriendlyIdFromKey(sessionKey)
-
-        if (!sessionKey || !friendlyId) {
-          throw new Error('Invalid session response')
-        }
-
-        queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
-        return { sessionKey, friendlyId }
-      } finally {
-        setCreatingSession(false)
-      }
-    },
-    [queryClient],
-  )
 
   const upsertSessionInCache = useCallback(
     (friendlyId: string, lastMessage: ChatMessage) => {
@@ -2232,11 +2334,7 @@ export function ChatScreen({
       if (!trimmedCommand.startsWith('/')) return false
 
       if (trimmedCommand === '/new') {
-        // Use the explicit 'new' session sentinel rather than '/chat' alone.
-        // The /chat index route redirects to the last-active session via
-        // localStorage, so navigating to '/chat' would land in the previous
-        // chat instead of opening a fresh one. See #300.
-        navigate({ to: '/chat/$sessionKey', params: { sessionKey: 'new' } })
+        navigate({ to: '/chat' })
         return true
       }
 
@@ -2255,7 +2353,7 @@ export function ChatScreen({
         window.dispatchEvent(
           new CustomEvent(CHAT_OPEN_SETTINGS_EVENT, {
             detail: {
-              section: trimmedCommand === '/skin' ? 'appearance' : 'claude',
+              section: trimmedCommand === '/skin' ? 'appearance' : 'hermes',
             },
           }),
         )
@@ -2332,48 +2430,62 @@ export function ChatScreen({
 
       if (isNewChat) {
         // In portable mode, use 'main' — no server-side sessions exist.
-        // In enhanced mode, create a UUID thread for the sessions API.
-        const threadId = isPortableMode ? 'main' : crypto.randomUUID()
-        const { optimisticMessage } = createOptimisticMessage(
-          trimmedBody,
-          attachmentPayload,
-        )
-        appendHistoryMessage(queryClient, threadId, threadId, optimisticMessage)
-        upsertSessionInCache(threadId, optimisticMessage)
-        setPendingGeneration(true)
-        setSending(true)
-        setWaitingForResponse(true)
+        // In enhanced mode, create the backend session first so document uploads
+        // have a real session-scoped uploads directory.
+        const createLabel =
+          trimmedBody || attachmentPayload[0]?.name?.trim() || 'New Session'
+        const newSession = isPortableMode
+          ? { sessionKey: 'main', friendlyId: 'main' }
+          : undefined
+        void (async () => {
+          try {
+            const resolvedSession =
+              newSession || (await ensureChatSession(createLabel))
+            const { sessionKey, friendlyId } = resolvedSession
+            const { optimisticMessage } = createOptimisticMessage(
+              trimmedBody,
+              attachmentPayload,
+            )
+            appendHistoryMessage(
+              queryClient,
+              friendlyId,
+              sessionKey,
+              optimisticMessage,
+            )
+            upsertSessionInCache(sessionKey, optimisticMessage)
+            setPendingGeneration(true)
+            setSending(true)
+            setWaitingForResponse(true)
+            onSessionResolved?.({ sessionKey, friendlyId })
 
-        if (!isPortableMode) {
-          void createSessionForMessage(threadId).catch((err: unknown) => {
-            if (import.meta.env.DEV) {
-              console.warn('[chat] failed to register new thread', err)
+            sendMessage(
+              sessionKey,
+              friendlyId,
+              trimmedBody,
+              attachmentPayload,
+              fastMode,
+              true,
+              typeof optimisticMessage.clientId === 'string'
+                ? optimisticMessage.clientId
+                : '',
+            )
+            if (!embedded) {
+              navigate({
+                to: '/chat/$sessionKey',
+                params: { sessionKey },
+                replace: true,
+              })
             }
-            void queryClient.invalidateQueries({
-              queryKey: chatQueryKeys.sessions,
-            })
-          })
-        }
-
-        sendMessage(
-          threadId,
-          threadId,
-          trimmedBody,
-          attachmentPayload,
-          fastMode,
-          true,
-          typeof optimisticMessage.clientId === 'string'
-            ? optimisticMessage.clientId
-            : '',
-        )
-        // In portable mode, navigate to /chat/main instead of UUID
-        if (!embedded) {
-          navigate({
-            to: '/chat/$sessionKey',
-            params: { sessionKey: threadId },
-            replace: true,
-          })
-        }
+          } catch (err) {
+            const messageText = err instanceof Error ? err.message : String(err)
+            setSending(false)
+            setPendingGeneration(false)
+            setWaitingForResponse(false)
+            setError(`Failed to send message. ${messageText}`)
+            toast('Failed to send message', { type: 'error' })
+            showErrorToast(messageText)
+          }
+        })()
         return
       }
 
@@ -2391,7 +2503,6 @@ export function ChatScreen({
     [
       activeFriendlyId,
       activeSessionKey,
-      createSessionForMessage,
       forcedSessionKey,
       isNewChat,
       navigate,
@@ -2423,6 +2534,19 @@ export function ChatScreen({
     setPendingGeneration(false)
     setWaitingForResponse(false)
   }, [cancelStreaming, queryClient])
+
+  const handleA2UiSubmit = useCallback(
+    (payload: string) => {
+      const body = payload.trim()
+      if (!body) return
+      send(body, [], false, {
+        reset: () => {},
+        setValue: () => {},
+        setAttachments: () => {},
+      })
+    },
+    [send],
+  )
 
   const runPaletteSlashCommand = useCallback(
     (command: string) => {
@@ -2467,7 +2591,7 @@ export function ChatScreen({
     setFileExplorerCollapsed((prev) => {
       const next = !prev
       if (typeof window !== 'undefined') {
-        localStorage.setItem('claude-file-explorer-collapsed', String(next))
+        localStorage.setItem('hermes-file-explorer-collapsed', String(next))
       }
       return next
     })
@@ -2570,9 +2694,9 @@ export function ChatScreen({
     const handler = () => {
       /* agent view removed */
     }
-    window.addEventListener('claude:chat-agent-details', handler)
+    window.addEventListener('hermes:chat-agent-details', handler)
     return () =>
-      window.removeEventListener('claude:chat-agent-details', handler)
+      window.removeEventListener('hermes:chat-agent-details', handler)
   }, [])
 
   return (
@@ -2590,7 +2714,7 @@ export function ChatScreen({
             ? 'flex min-h-0 w-full flex-col'
             : isMobile
               ? 'flex flex-col'
-              : 'grid grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[minmax(0,1fr)]',
+              : 'grid grid-cols-[auto_1fr] grid-rows-[minmax(0,1fr)]',
         )}
       >
         {hideUi || compact || isFocusMode ? null : isMobile ? null : (
@@ -2603,7 +2727,8 @@ export function ChatScreen({
 
         <main
           className={cn(
-            'flex h-full flex-1 min-h-0 min-w-0 flex-col overflow-hidden transition-[margin-bottom] duration-200',
+            'flex h-full flex-1 min-h-0 min-w-0 flex-col overflow-hidden transition-[margin-right,margin-bottom] duration-200',
+            'mr-0',
             (activeIsRealtimeStreaming || hasPendingGeneration()) &&
               'chat-streaming-glow',
           )}
@@ -2710,6 +2835,7 @@ export function ChatScreen({
             <ChatMessageList
               messages={finalDisplayMessages}
               onRetryMessage={handleRetryMessage}
+              onA2UiSubmit={handleA2UiSubmit}
               onRefresh={handleRefreshHistory}
               loading={historyLoading}
               empty={historyEmpty}
@@ -2766,7 +2892,6 @@ export function ChatScreen({
               }
               wrapperRef={composerRef}
               composerRef={composerHandleRef}
-              embedded={embedded}
               // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runtime safety
               focusKey={`${isNewChat ? 'new' : activeFriendlyId}:${activeCanonicalKey ?? ''}`}
               thinkingLevel={thinkingLevel}
@@ -2774,9 +2899,9 @@ export function ChatScreen({
             />
           ) : null}
         </main>
-        {!compact && !isFocusMode && <AgentViewPanel />}
       </div>
       {!compact && !hideUi && !isMobile && !isFocusMode && <TerminalPanel />}
+      <InspectorPanel />
 
       {suggestion && (
         <ModelSuggestionToast

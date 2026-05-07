@@ -38,15 +38,11 @@ function TooltipContent({
     <Tooltip.Portal>
       <Tooltip.Positioner side={side}>
         <Tooltip.Popup
-          className={cn('rounded-md px-2 py-1 text-xs shadow-lg', className)}
+          className={cn('rounded-md px-2 py-1 text-xs shadow-sm', className)}
           style={{
-            background:
-              'color-mix(in srgb, var(--theme-card) 80%, transparent)',
+            background: 'var(--theme-card)',
             color: 'var(--theme-text)',
-            border:
-              '1px solid color-mix(in srgb, var(--theme-border) 70%, transparent)',
-            backdropFilter: 'blur(18px) saturate(140%)',
-            WebkitBackdropFilter: 'blur(18px) saturate(140%)',
+            border: '1px solid var(--theme-border)',
           }}
         >
           {children}

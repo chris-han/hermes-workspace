@@ -7,6 +7,7 @@ import {
   CheckmarkCircle02Icon,
   CloudIcon,
   ComputerIcon,
+  Message01Icon,
   MessageMultiple01Icon,
   Mic01Icon,
   Moon01Icon,
@@ -15,6 +16,7 @@ import {
   Settings02Icon,
   SparklesIcon,
   Sun01Icon,
+  UserLock01Icon,
   VolumeHighIcon,
 } from '@hugeicons/core-free-icons'
 import { Component, useCallback, useEffect, useState } from 'react'
@@ -23,8 +25,7 @@ import type { AccentColor, SettingsThemeMode } from '@/hooks/use-settings'
 import type { LoaderStyle } from '@/hooks/use-chat-settings'
 import type { BrailleSpinnerPreset } from '@/components/ui/braille-spinner'
 import type { ThemeId } from '@/lib/theme'
-import type {LocaleId} from '@/lib/i18n';
-import { GROQ_STT_MODELS, STT_PROVIDER_OPTIONS } from '@/lib/stt-config'
+import type { LocaleId } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { applyTheme, useSettings } from '@/hooks/use-settings'
@@ -50,6 +51,7 @@ import { applyAccentColor } from '@/lib/accent-colors'
 import { getUnavailableReason } from '@/lib/feature-gates'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { ProviderLogo } from '@/components/provider-logo'
+import { MessagingSettingsScreen } from '@/screens/settings/messaging-settings-screen'
 import {
   DialogClose,
   DialogContent,
@@ -60,12 +62,13 @@ import {
 
 // ── Language ────────────────────────────────────────────────────────────
 
-import { LOCALE_LABELS,  getLocale, setLocale } from '@/lib/i18n'
+import { LOCALE_LABELS, getLocale, setLocale } from '@/lib/i18n'
 
 // ── Types ───────────────────────────────────────────────────────────────
 
 type SectionId =
-  | 'claude'
+  | 'hermes'
+  | 'access_control'
   | 'agent'
   | 'routing'
   | 'voice'
@@ -74,9 +77,11 @@ type SectionId =
   | 'chat'
   | 'notifications'
   | 'language'
+  | 'messaging'
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
-  { id: 'claude', label: 'Model & Provider', icon: CloudIcon },
+  { id: 'hermes', label: 'Model & Provider', icon: CloudIcon },
+  { id: 'access_control', label: 'Access Control', icon: UserLock01Icon },
   { id: 'agent', label: 'Agent', icon: Settings02Icon },
   { id: 'routing', label: 'Smart Routing', icon: SparklesIcon },
   { id: 'voice', label: 'Voice', icon: VolumeHighIcon },
@@ -85,13 +90,15 @@ const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'chat', label: 'Chat', icon: MessageMultiple01Icon },
   { id: 'notifications', label: 'Alerts', icon: Notification03Icon },
   { id: 'language', label: 'Language', icon: MessageMultiple01Icon },
+  { id: 'messaging', label: 'IM Gateway', icon: Message01Icon },
 ]
 
 const DARK_ENTERPRISE_THEMES = new Set<ThemeId>([
-  'claude-nous',
-  'claude-official',
-  'claude-classic',
-  'claude-slate',
+  'hermes-nous',
+  'hermes-official',
+  'hermes-classic',
+  'hermes-slate',
+  'semantier',
 ])
 
 function _isDarkEnterpriseTheme(theme: string | null): theme is ThemeId {
@@ -151,7 +158,12 @@ function Row({
 }
 
 const SETTINGS_CARD_CLASS =
-  'rounded-xl border border-primary-200 bg-primary-50/80 px-4 py-3 shadow-sm'
+  'rounded-xl px-4 py-3'
+
+const getCardStyle = (): React.CSSProperties => ({
+  border: '1px solid var(--theme-border)',
+  backgroundColor: 'var(--theme-card)',
+})
 
 // ── Section components ──────────────────────────────────────────────────
 
@@ -194,8 +206,8 @@ const PROVIDER_CARDS: Array<{
     models: [
       'xiaomi/mimo-v2-pro',
       'xiaomi/mimo-v2-omni',
-      'claude-3-llama-3.1-405b',
-      'claude-3-llama-3.1-70b',
+      'hermes-3-llama-3.1-405b',
+      'hermes-3-llama-3.1-70b',
     ],
     authType: 'oauth',
   },
@@ -246,7 +258,7 @@ const PROVIDER_CARDS: Array<{
     authType: 'api_key',
     envKey: 'XIAOMI_API_KEY',
   },
-  { id: 'custom', name: 'Custom', logo: '', models: [], authType: 'api_key', envKey: 'CUSTOM_API_KEY' },
+  { id: 'custom', name: 'Custom', logo: '', models: [], authType: 'api_key' },
 ]
 
 function HermesContent() {
@@ -263,7 +275,6 @@ function HermesContent() {
   )
   const [memEnabled, setMemEnabled] = useState(true)
   const [userProfileEnabled, setUserProfileEnabled] = useState(true)
-  const [customBaseUrl, setCustomBaseUrl] = useState('')
   const [localDiscovery, setLocalDiscovery] = useState<{
     providers: Array<{
       id: string
@@ -289,7 +300,7 @@ function HermesContent() {
         }
       }
       fetch(
-        `/api/claude-proxy/api/available-models?provider=${encodeURIComponent(providerId)}`,
+        `/api/hermes-proxy/api/available-models?provider=${encodeURIComponent(providerId)}`,
       )
         .then((r) => r.json())
         .then((d: { models?: Array<{ id: string }> }) => {
@@ -314,7 +325,7 @@ function HermesContent() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/claude-config')
+    fetch('/api/hermes-config')
       .then((r) => r.json())
       .then((d: any) => {
         setActiveProvider(d.activeProvider || '')
@@ -330,10 +341,6 @@ function HermesContent() {
             keys[p.envKeys[0]] = p.maskedKeys?.[p.envKeys[0]] || '••••'
         }
         setConfiguredKeys(keys)
-        // Load custom provider config (may be stored as 'custom' or legacy 'manifest')
-        const cfgProviders = (d.config?.providers as Record<string, any>) || {}
-        const customCfg = cfgProviders['custom'] || cfgProviders['manifest'] || {}
-        if (customCfg.base_url) setCustomBaseUrl(customCfg.base_url)
       })
       .catch(() => {})
   }, [])
@@ -345,14 +352,14 @@ function HermesContent() {
     setSaving(true)
     setMsg(null)
     try {
-      const res = await fetch('/api/claude-config', {
+      const res = await fetch('/api/hermes-config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       })
       const r = (await res.json()) as { message?: string }
       setMsg(r.message || 'Saved')
-      const ref = await fetch('/api/claude-config')
+      const ref = await fetch('/api/hermes-config')
       const d = await ref.json()
       setActiveProvider(d.activeProvider || '')
       setActiveModel(d.activeModel || '')
@@ -426,26 +433,10 @@ function HermesContent() {
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {PROVIDER_CARDS.map((p) => {
             const isActive = activeProvider === p.id
-            const localOnline =
-              localDiscovery?.providers.find((lp) => lp.id === p.id)?.online ===
-              true
-            // verified = truly available right now. OAuth status isn't tracked
-            // here, so OAuth providers stay neutral until an actual session
-            // check is wired. Local providers require live discovery hit.
-            const verified =
-              (p.authType === 'none' && localOnline) ||
-              (p.authType === 'api_key' &&
-                !!p.envKey &&
-                !!configuredKeys[p.envKey])
-            const missingKey =
-              p.authType === 'api_key' && !verified && p.id !== 'custom'
-            // hasKey gates click — keep OAuth + local clickable (existing
-            // behaviour) so users can still authenticate via the card.
             const hasKey =
               p.authType === 'none' ||
               p.authType === 'oauth' ||
-              verified ||
-              p.id === 'custom'
+              (p.envKey ? !!configuredKeys[p.envKey] : false)
             return (
               <button
                 key={p.id}
@@ -458,20 +449,21 @@ function HermesContent() {
                   isActive
                     ? 'ring-2 ring-accent-500 shadow-md'
                     : 'hover:brightness-110',
-                  missingKey && 'opacity-60',
+                  !hasKey && p.authType === 'api_key' && 'opacity-60',
                 )}
                 style={cardStyle}
               >
                 <div className="flex w-full items-center justify-between">
                   <ProviderLogo provider={p.id} size={32} />
-                  {/* Single-dot precedence: active > missing-key > verified > none */}
-                  {isActive ? (
+                  {isActive && (
                     <span className="size-2 rounded-full bg-green-500" />
-                  ) : missingKey ? (
-                    <span className="size-2 rounded-full bg-red-500/60" />
-                  ) : verified ? (
+                  )}
+                  {!isActive && hasKey && (
                     <span className="size-2 rounded-full bg-green-500/40" />
-                  ) : null}
+                  )}
+                  {!hasKey && p.authType === 'api_key' && (
+                    <span className="size-2 rounded-full bg-red-500/60" />
+                  )}
                 </div>
                 <span className="text-xs font-semibold mt-1">{p.name}</span>
                 <span className="text-[9px]" style={mutedStyle}>
@@ -528,61 +520,6 @@ function HermesContent() {
                 {model}
               </button>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Custom OpenAI-compatible endpoint fields — Base URL only; API key lives in API Keys section */}
-      {activeProvider === 'custom' && (
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wider" style={mutedStyle}>
-            Custom Endpoint
-          </p>
-          <div className="space-y-1.5">
-            {(() => {
-              const isEditing = editingKey === 'custom_base_url'
-              const hasValue = !!customBaseUrl
-              return (
-                <div className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={cardStyle}>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium">Base URL</div>
-                    <div className="text-[11px] font-mono" style={mutedStyle}>
-                      {isEditing ? (
-                        <input
-                          type="url"
-                          value={customBaseUrl}
-                          onChange={(e) => setCustomBaseUrl(e.target.value)}
-                          placeholder="http://127.0.0.1:38238/v1"
-                          className="w-full rounded border-0 bg-transparent py-0.5 text-[11px] outline-none"
-                          style={{ color: 'var(--theme-text)' }}
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              save({ config: { model: { provider: 'manifest' }, providers: { manifest: { type: 'openai', base_url: customBaseUrl, key_env: 'CUSTOM_API_KEY' } } } })
-                                .then(() => setEditingKey(null))
-                            }
-                            if (e.key === 'Escape') setEditingKey(null)
-                          }}
-                        />
-                      ) : hasValue ? customBaseUrl : 'Not configured'}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={cn('size-2 rounded-full', hasValue ? 'bg-green-500' : 'bg-neutral-500')} />
-                    {isEditing ? (
-                      <>
-                        <button type="button" onClick={() => { save({ config: { model: { provider: 'manifest' }, providers: { manifest: { type: 'openai', base_url: customBaseUrl, key_env: 'CUSTOM_API_KEY' } } } }).then(() => setEditingKey(null)) }} className="text-xs font-medium text-green-400">Save</button>
-                        <button type="button" onClick={() => setEditingKey(null)} className="text-xs" style={mutedStyle}>Cancel</button>
-                      </>
-                    ) : (
-                      <button type="button" onClick={() => setEditingKey('custom_base_url')} className="text-xs font-medium" style={{ color: 'var(--theme-accent)' }}>
-                        {hasValue ? 'Edit' : 'Add'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )
-            })()}
           </div>
         </div>
       )}
@@ -783,7 +720,9 @@ function HermesContent() {
               '—'}
           </span>
           <span style={mutedStyle}>Config</span>
-          <span className="font-mono font-medium">~/.hermes/config.yaml</span>
+          <span className="font-mono font-medium">
+            active Hermes config.yaml
+          </span>
         </div>
       </div>
     </div>
@@ -860,7 +799,7 @@ function _ProfileContent() {
         title="Profile"
         description="Your display identity in chat."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <div className="flex items-center gap-3">
           <UserAvatar size={44} src={cs.avatarDataUrl} alt={displayName} />
           <div>
@@ -873,7 +812,7 @@ function _ProfileContent() {
           </div>
         </div>
       </div>
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Display name" description="Shown in chat and sidebar">
           <div className="w-full max-w-xs">
             <Input
@@ -950,7 +889,7 @@ function AppearanceContent() {
   }
 
   function _handleAccentColorChange(selectedAccent: AccentColor) {
-    localStorage.setItem('claude-accent', selectedAccent)
+    localStorage.setItem('hermes-accent', selectedAccent)
     document.documentElement.setAttribute('data-accent', selectedAccent)
     applyAccentColor(selectedAccent)
     updateSettings({ accentColor: selectedAccent })
@@ -962,7 +901,7 @@ function AppearanceContent() {
         title="Appearance"
         description="Theme and color accents."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
           Theme Mode
         </p>
@@ -990,16 +929,16 @@ function AppearanceContent() {
         </div>
       </div>
       {/* Accent color removed — themes control accent */}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
           Enterprise Theme
         </p>
         <EnterpriseThemePicker />
       </div>
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row
           label="System metrics footer"
-          description="Show a persistent footer with CPU, RAM, disk, and Hermes Agent status."
+          description="Show a persistent footer with CPU, RAM, disk, and Hermes status."
         >
           <Switch
             checked={settings.showSystemMetricsFooter}
@@ -1017,18 +956,18 @@ function AppearanceContent() {
 }
 
 const ENTERPRISE_THEME_FAMILIES: Array<ThemeId> = [
-  'claude-nous',
-  'matrix',
-  'claude-official',
-  'claude-classic',
-  'claude-slate',
+  'hermes-nous',
+  'hermes-official',
+  'hermes-classic',
+  'hermes-slate',
+  'semantier',
 ]
 
 const ENTERPRISE_THEMES = THEMES.map((theme) => ({
   ...theme,
   desc: theme.description,
   preview:
-    theme.id === 'claude-nous'
+    theme.id === 'hermes-nous'
       ? {
           bg: '#041C1C',
           panel: '#06282A',
@@ -1036,7 +975,7 @@ const ENTERPRISE_THEMES = THEMES.map((theme) => ({
           accent: '#FFAC02',
           text: '#FFE6CB',
         }
-      : theme.id === 'claude-nous-light'
+      : theme.id === 'hermes-nous-light'
         ? {
             bg: '#F8FAF8',
             panel: '#FBFDFB',
@@ -1044,39 +983,23 @@ const ENTERPRISE_THEMES = THEMES.map((theme) => ({
             accent: '#2557B7',
             text: '#16315F',
           }
-        : theme.id === 'matrix'
+        : theme.id === 'hermes-official'
           ? {
-              bg: '#020804',
-              panel: '#07130A',
-              border: 'rgba(0,255,65,0.28)',
-              accent: '#00FF41',
-              text: '#D8FFE3',
+              bg: '#0A0E1A',
+              panel: '#11182A',
+              border: '#24304A',
+              accent: '#6366F1',
+              text: '#E6EAF2',
             }
-          : theme.id === 'matrix-light'
+          : theme.id === 'hermes-official-light'
             ? {
-                bg: '#F4FFF6',
-                panel: '#FFFFFF',
-                border: 'rgba(0,126,34,0.2)',
-                accent: '#008F2D',
-                text: '#062A12',
+                bg: '#F7F7F1',
+                panel: '#FAFBF6',
+                border: '#CDD5DA',
+                accent: '#2557B7',
+                text: '#16315F',
               }
-            : theme.id === 'claude-official'
-              ? {
-                  bg: '#0A0E1A',
-                  panel: '#11182A',
-                  border: '#24304A',
-                  accent: '#6366F1',
-                  text: '#E6EAF2',
-                }
-              : theme.id === 'claude-official-light'
-                ? {
-                    bg: '#F7F7F1',
-                    panel: '#FAFBF6',
-                    border: '#CDD5DA',
-                    accent: '#2557B7',
-                    text: '#16315F',
-                  }
-                : theme.id === 'claude-classic'
+            : theme.id === 'hermes-classic'
               ? {
                   bg: '#0d0f12',
                   panel: '#1a1f26',
@@ -1084,7 +1007,7 @@ const ENTERPRISE_THEMES = THEMES.map((theme) => ({
                   accent: '#b98a44',
                   text: '#eceff4',
                 }
-              : theme.id === 'claude-classic-light'
+              : theme.id === 'hermes-classic-light'
                 ? {
                     bg: '#F5F2ED',
                     panel: '#FCFAF7',
@@ -1092,7 +1015,7 @@ const ENTERPRISE_THEMES = THEMES.map((theme) => ({
                     accent: '#b98a44',
                     text: '#1a1f26',
                   }
-                : theme.id === 'claude-slate'
+                : theme.id === 'hermes-slate'
                   ? {
                       bg: '#0d1117',
                       panel: '#1c2128',
@@ -1100,13 +1023,29 @@ const ENTERPRISE_THEMES = THEMES.map((theme) => ({
                       accent: '#7eb8f6',
                       text: '#c9d1d9',
                     }
-                  : {
-                      bg: '#F6F8FA',
-                      panel: '#FFFFFF',
-                      border: '#D0D7DE',
-                      accent: '#3b82f6',
-                      text: '#24292f',
-                    },
+                  : theme.id === 'semantier'
+                    ? {
+                        bg: '#0e0f0c',
+                        panel: '#181916',
+                        border: '#2a2b28',
+                        accent: '#9fe870',
+                        text: '#f0f0ec',
+                      }
+                    : theme.id === 'semantier-light'
+                      ? {
+                          bg: '#f5f5f0',
+                          panel: '#ffffff',
+                          border: '#d5d6d1',
+                          accent: '#163300',
+                          text: '#0e0f0c',
+                        }
+                      : {
+                          bg: '#F6F8FA',
+                          panel: '#FFFFFF',
+                          border: '#D0D7DE',
+                          accent: '#3b82f6',
+                          text: '#24292f',
+                        },
 }))
 
 function ThemeSwatch({
@@ -1152,7 +1091,7 @@ function ThemeSwatch({
 function EnterpriseThemePicker() {
   const { updateSettings } = useSettings()
   const [current, setCurrent] = useState(() => {
-    if (typeof window === 'undefined') return 'claude-nous'
+    if (typeof window === 'undefined') return 'hermes-official'
     return getTheme()
   })
   const currentMode = isDarkTheme(current) ? 'dark' : 'light'
@@ -1250,7 +1189,7 @@ function _LoaderContent() {
   const { settings: cs, updateSettings: updateCS } = useChatSettingsStore()
   const styles: Array<{ value: LoaderStyle; label: string }> = [
     { value: 'dots', label: 'Dots' },
-    { value: 'braille-claude', label: 'Hermes' },
+    { value: 'braille-hermes', label: 'Hermes' },
     { value: 'braille-orbit', label: 'Orbit' },
     { value: 'braille-breathe', label: 'Breathe' },
     { value: 'braille-pulse', label: 'Pulse' },
@@ -1260,7 +1199,7 @@ function _LoaderContent() {
   ]
   function getPreset(s: LoaderStyle): BrailleSpinnerPreset | null {
     const m: Record<string, BrailleSpinnerPreset> = {
-      'braille-claude': 'claude',
+      'braille-hermes': 'hermes',
       'braille-orbit': 'orbit',
       'braille-breathe': 'breathe',
       'braille-pulse': 'pulse',
@@ -1323,7 +1262,7 @@ function ChatContent() {
         title="Chat"
         description="Message visibility and response loader style."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row
           label="Show tool messages"
           description="Display tool call details in assistant responses."
@@ -1344,65 +1283,6 @@ function ChatContent() {
             aria-label="Show reasoning blocks"
           />
         </Row>
-        <Row
-          label="Sound on response complete"
-          description="Play a short sound in the browser when the agent finishes replying."
-        >
-          <Switch
-            checked={cs.soundOnChatComplete}
-            onCheckedChange={(c) => updateCS({ soundOnChatComplete: c })}
-            aria-label="Sound on response complete"
-          />
-        </Row>
-        <Row
-          label="Enter key behavior"
-          description={
-            cs.enterBehavior === 'newline'
-              ? 'Enter inserts a newline. Use ⌘/Ctrl+Enter to send.'
-              : 'Enter sends the message. Use Shift+Enter for a newline.'
-          }
-        >
-          <Switch
-            checked={cs.enterBehavior === 'newline'}
-            onCheckedChange={(c) =>
-              updateCS({ enterBehavior: c ? 'newline' : 'send' })
-            }
-            aria-label="Enter inserts newline instead of sending"
-          />
-        </Row>
-        <Row
-          label="Chat content width"
-          description="Max-width of the message column on wide screens."
-        >
-          <select
-            value={cs.chatWidth}
-            onChange={(e) =>
-              updateCS({
-                chatWidth: e.target.value as 'comfortable' | 'wide' | 'full',
-              })
-            }
-            className="h-8 rounded-md border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400"
-            aria-label="Chat content width"
-          >
-            <option value="comfortable">Comfortable (900px)</option>
-            <option value="wide">Wide (1200px)</option>
-            <option value="full">Full width</option>
-          </select>
-        </Row>
-        <Row
-          label="Expand sidebar on hover"
-          description={
-            cs.sidebarHoverExpand
-              ? 'Collapsed sidebar expands temporarily on hover.'
-              : 'Collapsed sidebar stays at 48px until you click the toggle.'
-          }
-        >
-          <Switch
-            checked={cs.sidebarHoverExpand}
-            onCheckedChange={(c) => updateCS({ sidebarHoverExpand: c })}
-            aria-label="Expand sidebar on hover"
-          />
-        </Row>
       </div>
       {/* Loading animation removed — not relevant for Hermes */}
     </div>
@@ -1417,7 +1297,7 @@ function NotificationsContent() {
         title="Notifications"
         description="Simple alerts and threshold controls."
       />
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Enable alerts">
           <Switch
             checked={settings.notificationsEnabled}
@@ -1470,7 +1350,7 @@ function _AdvancedContent() {
     } else {
       setUrlError(null)
     }
-    updateSettings({ claudeUrl: value })
+    updateSettings({ hermesUrl: value })
   }
 
   async function testConnection() {
@@ -1484,27 +1364,24 @@ function _AdvancedContent() {
     }
   }
 
-  const urlErrorId = 'claude-url-error'
+  const urlErrorId = 'hermes-url-error'
 
   return (
     <div className="space-y-4">
       <SectionHeader
         title="Advanced"
-        description="Hermes Agent endpoint and connectivity."
+        description="Hermes endpoint and connectivity."
       />
-      <div className={SETTINGS_CARD_CLASS}>
-        <Row
-          label="Hermes Agent URL"
-          description="Used for API requests from Studio"
-        >
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
+        <Row label="Hermes URL" description="Used for API requests from Studio">
           <div className="w-full max-w-sm">
             <Input
               type="url"
-              placeholder="https://api.claudeworkspace.app"
-              value={settings.claudeUrl}
+              placeholder="https://api.hermesworkspace.app"
+              value={settings.hermesUrl}
               onChange={(e) => validateAndUpdateUrl(e.target.value)}
               className="h-8 w-full rounded-lg border-primary-200 text-sm"
-              aria-label="Hermes Agent URL"
+              aria-label="Hermes URL"
               aria-invalid={!!urlError}
               aria-describedby={urlError ? urlErrorId : undefined}
             />
@@ -1602,7 +1479,7 @@ function AgentBehaviorContent() {
   const [msg, setMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/claude-config')
+    fetch('/api/hermes-config')
       .then((r) => r.json())
       .then((d: any) => {
         setConfig((d.config?.agent as Record<string, unknown>) || {})
@@ -1613,7 +1490,7 @@ function AgentBehaviorContent() {
   const save = async (key: string, value: unknown) => {
     setMsg(null)
     try {
-      await fetch('/api/claude-config', {
+      await fetch('/api/hermes-config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config: { agent: { [key]: value } } }),
@@ -1644,7 +1521,7 @@ function AgentBehaviorContent() {
           {msg}
         </div>
       )}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row
           label="Max turns"
           description="Maximum agent turns per request (1-100)"
@@ -1684,6 +1561,263 @@ function AgentBehaviorContent() {
   )
 }
 
+type AccessControlRole = 'regular' | 'administrator'
+
+type AccessControlPayload = {
+  hermesHome?: string
+  workspaceHermesHome?: string
+  accessControl?: {
+    role?: string
+    administratorHome?: string
+    defaultAdministratorHome?: string
+  }
+}
+
+function AccessControlContent() {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [role, setRole] = useState<AccessControlRole>('regular')
+  const [administratorHome, setAdministratorHome] = useState('')
+  const [adminHomeInput, setAdminHomeInput] = useState('')
+  const [workspaceHermesHome, setWorkspaceHermesHome] = useState('')
+  const [effectiveHermesHome, setEffectiveHermesHome] = useState('')
+
+  const applyPayload = useCallback((payload: AccessControlPayload) => {
+    const nextRole =
+      payload.accessControl?.role === 'administrator'
+        ? 'administrator'
+        : 'regular'
+    const nextAdminHome =
+      payload.accessControl?.administratorHome ||
+      payload.accessControl?.defaultAdministratorHome ||
+      ''
+    setRole(nextRole)
+    setAdministratorHome(nextAdminHome)
+    setAdminHomeInput(nextAdminHome)
+    setWorkspaceHermesHome(payload.workspaceHermesHome || '')
+    setEffectiveHermesHome(payload.hermesHome || '')
+  }, [])
+
+  const loadAccessControl = useCallback(async () => {
+    setLoading(true)
+    setMsg(null)
+    try {
+      const res = await fetch('/api/paths')
+      const payload = (await res.json()) as AccessControlPayload
+      if (!res.ok) {
+        setMsg('Failed to load access control settings.')
+        return
+      }
+      applyPayload(payload)
+    } catch {
+      setMsg('Failed to load access control settings.')
+    } finally {
+      setLoading(false)
+    }
+  }, [applyPayload])
+
+  useEffect(() => {
+    void loadAccessControl()
+  }, [loadAccessControl])
+
+  const patchAccessControl = async (updates: {
+    role?: AccessControlRole
+    administratorHome?: string
+  }) => {
+    setSaving(true)
+    setMsg(null)
+    try {
+      const res = await fetch('/api/paths', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      const payload = (await res.json()) as AccessControlPayload & {
+        error?: string
+      }
+      if (!res.ok) {
+        setMsg(payload.error || 'Failed to update access control settings.')
+        return
+      }
+      applyPayload(payload)
+      setMsg('Saved')
+      setTimeout(() => setMsg(null), 2500)
+    } catch {
+      setMsg('Failed to update access control settings.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const cardStyle = getCardStyle()
+  const radioStyle: React.CSSProperties = {
+    accentColor: 'var(--theme-accent)',
+  }
+  const mutedStyle: React.CSSProperties = {
+    color: 'var(--theme-muted)',
+  }
+  const pathDisplayStyle: React.CSSProperties = {
+    color: 'var(--theme-text)',
+    backgroundColor: 'transparent',
+    borderBottom: 'none',
+    paddingBottom: 0,
+  }
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        title="Access Control"
+        description="Choose sandboxed regular mode or administrator mode with an explicit Hermes home."
+      />
+
+      {msg && (
+        <div
+          className={cn(
+            'rounded-lg px-3 py-1.5 text-xs font-medium',
+            msg === 'Saved'
+              ? 'bg-green-500/15 text-green-400'
+              : 'bg-red-500/15 text-red-400',
+          )}
+        >
+          {msg}
+        </div>
+      )}
+
+      <div className={SETTINGS_CARD_CLASS} style={cardStyle}>
+        {/* Role Selection with Radio Buttons */}
+        <div className="py-1.5 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
+              Access Level
+            </p>
+            <p className="text-xs" style={mutedStyle}>
+              Regular keeps the current workspace sandbox. Administrator can use a dedicated Hermes home.
+            </p>
+            
+            {/* Radio Button: Regular User */}
+            <label className="flex items-center gap-3 cursor-pointer py-1.5 px-2 rounded-md transition-colors hover:opacity-80">
+              <input
+                type="radio"
+                name="access-role"
+                value="regular"
+                checked={role === 'regular'}
+                onChange={() => void patchAccessControl({ role: 'regular' })}
+                disabled={saving || loading}
+                style={radioStyle}
+                className="w-4 h-4"
+              />
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
+                  Regular User
+                </p>
+                <p className="text-xs" style={mutedStyle}>
+                  Sandboxed workspace home
+                </p>
+              </div>
+            </label>
+
+            {/* Radio Button: Administrator */}
+            <label className="flex items-center gap-3 cursor-pointer py-1.5 px-2 rounded-md transition-colors hover:opacity-80">
+              <input
+                type="radio"
+                name="access-role"
+                value="administrator"
+                checked={role === 'administrator'}
+                onChange={() =>
+                  void patchAccessControl({
+                    role: 'administrator',
+                    administratorHome,
+                  })
+                }
+                disabled={saving || loading}
+                style={radioStyle}
+                className="w-4 h-4"
+              />
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
+                  Administrator
+                </p>
+                <p className="text-xs" style={mutedStyle}>
+                  Custom Hermes home for shared tools
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Workspace Sandbox Home - shown only in regular mode */}
+        {role === 'regular' && (
+          <div className="py-3 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
+              Workspace Sandbox
+            </p>
+            <p className="text-xs mb-2" style={mutedStyle}>
+              Used in regular mode
+            </p>
+            <div
+              className="font-mono text-xs overflow-x-auto"
+              style={pathDisplayStyle}
+            >
+              {workspaceHermesHome || '—'}
+            </div>
+          </div>
+        )}
+
+        {/* Administrator Home - Conditional Input/Display */}
+        {role === 'administrator' && (
+          <div className="py-3 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
+              Administrator Home
+            </p>
+            <p className="text-xs mb-2" style={mutedStyle}>
+              This home manages shared skills, tools, cron jobs, and memories
+            </p>
+            <div className="flex w-full max-w-[30rem] items-center gap-2">
+              <Input
+                value={adminHomeInput}
+                onChange={(e) => setAdminHomeInput(e.target.value)}
+                placeholder="/home/chris/repo/semantier/agent/.hermes"
+                className="h-8 flex-1 rounded-md text-xs font-mono"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={() =>
+                  void patchAccessControl({
+                    role: 'administrator',
+                    administratorHome: adminHomeInput,
+                  })
+                }
+                disabled={saving || loading || adminHomeInput === administratorHome}
+                className="h-8 rounded-md px-3"
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Effective Hermes Home - Text with Dimmed Underline */}
+        <div className="py-3">
+          <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
+            Effective Hermes Home
+          </p>
+          <p className="text-xs mb-2" style={mutedStyle}>
+            Currently active for config and runtime storage
+          </p>
+          <div
+            className="font-mono text-xs overflow-x-auto"
+            style={pathDisplayStyle}
+          >
+            {effectiveHermesHome || '—'}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Smart Routing ───────────────────────────────────────────────────────
 
 function SmartRoutingContent() {
@@ -1692,7 +1826,7 @@ function SmartRoutingContent() {
   const [msg, setMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/claude-config')
+    fetch('/api/hermes-config')
       .then((r) => r.json())
       .then((d: any) => {
         setConfig(
@@ -1711,7 +1845,7 @@ function SmartRoutingContent() {
   const save = async (key: string, value: unknown) => {
     setMsg(null)
     try {
-      await fetch('/api/claude-config', {
+      await fetch('/api/hermes-config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1744,7 +1878,7 @@ function SmartRoutingContent() {
           {msg}
         </div>
       )}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row
           label="Enable smart routing"
           description="Auto-route simple queries"
@@ -1804,7 +1938,7 @@ function VoiceContent() {
   const [msg, setMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/claude-config')
+    fetch('/api/hermes-config')
       .then((r) => r.json())
       .then((d: any) => {
         setTts((d.config?.tts as Record<string, unknown>) || {})
@@ -1816,7 +1950,7 @@ function VoiceContent() {
   const saveTts = async (key: string, value: unknown) => {
     setMsg(null)
     try {
-      await fetch('/api/claude-config', {
+      await fetch('/api/hermes-config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config: { tts: { [key]: value } } }),
@@ -1832,7 +1966,7 @@ function VoiceContent() {
   const saveStt = async (key: string, value: unknown) => {
     setMsg(null)
     try {
-      await fetch('/api/claude-config', {
+      await fetch('/api/hermes-config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config: { stt: { [key]: value } } }),
@@ -1846,9 +1980,6 @@ function VoiceContent() {
   }
 
   const ttsProvider = String(tts.provider || 'edge')
-  const sttProvider = String(stt.provider || 'local')
-  const sttGroq =
-    (stt.groq as Record<string, unknown> | undefined) || {}
 
   return (
     <div className="space-y-4">
@@ -1868,7 +1999,7 @@ function VoiceContent() {
           {msg}
         </div>
       )}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
           Text-to-Speech
         </p>
@@ -1909,7 +2040,7 @@ function VoiceContent() {
           </Row>
         )}
       </div>
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
           Speech-to-Text
         </p>
@@ -1921,47 +2052,14 @@ function VoiceContent() {
         </Row>
         <Row label="STT Provider">
           <select
-            value={sttProvider}
+            value={String(stt.provider || 'local')}
             onChange={(e) => saveStt('provider', e.target.value)}
             className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
           >
-            {STT_PROVIDER_OPTIONS.map((provider) => (
-              <option key={provider.value} value={provider.value}>
-                {provider.label}
-              </option>
-            ))}
+            <option value="local">Local (Whisper)</option>
+            <option value="openai">OpenAI Whisper</option>
           </select>
         </Row>
-        {sttProvider === 'groq' && (
-          <>
-            <Row label="Groq model">
-              <select
-                value={String(sttGroq.model || GROQ_STT_MODELS[0])}
-                onChange={(e) =>
-                  saveStt('groq', {
-                    ...sttGroq,
-                    model: e.target.value,
-                  })
-                }
-                className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-              >
-                {GROQ_STT_MODELS.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
-            </Row>
-            <Row label="Language" description="Optional BCP-47 code, e.g. en or en-US.">
-              <Input
-                value={String(stt.language || '')}
-                onChange={(e) => saveStt('language', e.target.value)}
-                placeholder="auto"
-                className="h-8 w-40"
-              />
-            </Row>
-          </>
-        )}
       </div>
     </div>
   )
@@ -1974,7 +2072,7 @@ function DisplayContent() {
   const [msg, setMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/claude-config')
+    fetch('/api/hermes-config')
       .then((r) => r.json())
       .then((d: any) => {
         setConfig((d.config?.display as Record<string, unknown>) || {})
@@ -1985,7 +2083,7 @@ function DisplayContent() {
   const save = async (key: string, value: unknown) => {
     setMsg(null)
     try {
-      await fetch('/api/claude-config', {
+      await fetch('/api/hermes-config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config: { display: { [key]: value } } }),
@@ -2016,7 +2114,7 @@ function DisplayContent() {
           {msg}
         </div>
       )}
-      <div className={SETTINGS_CARD_CLASS}>
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Personality" description="Agent response style">
           <select
             value={String(config.personality || 'default')}
@@ -2096,7 +2194,8 @@ function LanguageContent() {
 // ── Main Dialog ─────────────────────────────────────────────────────────
 
 const CONTENT_MAP: Record<SectionId, () => React.JSX.Element> = {
-  claude: HermesContent,
+  hermes: HermesContent,
+  access_control: AccessControlContent,
   agent: AgentBehaviorContent,
   routing: SmartRoutingContent,
   voice: VoiceContent,
@@ -2105,6 +2204,7 @@ const CONTENT_MAP: Record<SectionId, () => React.JSX.Element> = {
   chat: ChatContent,
   notifications: NotificationsContent,
   language: LanguageContent,
+  messaging: MessagingSettingsScreen,
 }
 
 type SettingsDialogProps = {
@@ -2116,7 +2216,7 @@ type SettingsDialogProps = {
 export function SettingsDialog({
   open,
   onOpenChange,
-  initialSection = 'claude',
+  initialSection = 'hermes',
 }: SettingsDialogProps) {
   const [active, setActive] = useState<SectionId>(initialSection)
   const [mobileView, setMobileView] = useState<'nav' | 'content'>('nav')
@@ -2144,7 +2244,7 @@ export function SettingsDialog({
                 Settings
               </DialogTitle>
               <DialogDescription className="sr-only">
-                Configure Hermes Workspace
+                Configure Semantier
               </DialogDescription>
             </div>
             <DialogClose

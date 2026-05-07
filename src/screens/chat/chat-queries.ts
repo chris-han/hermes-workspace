@@ -55,6 +55,24 @@ export const chatQueryKeys = {
   },
 } as const
 
+export const NEW_CHAT_FRIENDLY_ID = 'new'
+export const NEW_CHAT_SESSION_KEY = 'main'
+export const NEW_CHAT_HISTORY_QUERY_KEY = chatQueryKeys.history(
+  NEW_CHAT_FRIENDLY_ID,
+  NEW_CHAT_SESSION_KEY,
+)
+
+export function resetNewChatHistory(queryClient: QueryClient) {
+  queryClient.removeQueries({
+    queryKey: NEW_CHAT_HISTORY_QUERY_KEY,
+    exact: true,
+  })
+  queryClient.setQueryData(NEW_CHAT_HISTORY_QUERY_KEY, {
+    sessionKey: NEW_CHAT_SESSION_KEY,
+    messages: [],
+  })
+}
+
 export async function fetchSessions(): Promise<Array<SessionMeta>> {
   const res = await fetch('/api/sessions')
   if (!res.ok) throw new Error(await readError(res))
@@ -65,10 +83,19 @@ export async function fetchSessions(): Promise<Array<SessionMeta>> {
 export async function fetchHistory(payload: {
   sessionKey: string
   friendlyId: string
+  limit?: number
+  sinceTimestamp?: number
 }): Promise<HistoryResponse> {
-  const query = new URLSearchParams({ limit: '1000' })
+  const query = new URLSearchParams({ limit: String(payload.limit ?? 200) })
   if (payload.sessionKey) query.set('sessionKey', payload.sessionKey)
   if (payload.friendlyId) query.set('friendlyId', payload.friendlyId)
+  if (
+    typeof payload.sinceTimestamp === 'number' &&
+    Number.isFinite(payload.sinceTimestamp) &&
+    payload.sinceTimestamp > 0
+  ) {
+    query.set('afterTs', String(Math.floor(payload.sinceTimestamp)))
+  }
   const res = await fetch(`/api/history?${query.toString()}`)
   if (!res.ok) throw new Error(await readError(res))
   return (await res.json()) as HistoryResponse
@@ -470,7 +497,7 @@ export function moveHistoryMessages(
 ) {
   const fromKey = chatQueryKeys.history(fromFriendlyId, fromSessionKey)
   const toKey = chatQueryKeys.history(toFriendlyId, toSessionKey)
-  const fromData = queryClient.getQueryData(fromKey) as Record<string, unknown> | undefined
+  const fromData = queryClient.getQueryData(fromKey)
   if (!fromData) return
   const messages = Array.isArray(fromData.messages) ? fromData.messages : []
   queryClient.setQueryData(toKey, {
@@ -479,77 +506,6 @@ export function moveHistoryMessages(
     messages,
   })
   queryClient.removeQueries({ queryKey: fromKey, exact: true })
-}
-
-export function reconcileSessionDraft(
-  queryClient: QueryClient,
-  fromFriendlyId: string,
-  fromSessionKey: string,
-  toFriendlyId: string,
-  toSessionKey: string,
-) {
-  queryClient.setQueryData(
-    chatQueryKeys.sessions,
-    function reconcile(existing: unknown) {
-      if (!Array.isArray(existing)) return existing
-      const sessions = existing as Array<SessionMeta>
-      const sourceIndex = sessions.findIndex((session) => {
-        return (
-          session.friendlyId === fromFriendlyId ||
-          session.key === fromSessionKey ||
-          session.key === fromFriendlyId
-        )
-      })
-
-      if (sourceIndex === -1) {
-        return sessions
-      }
-
-      const source = sessions[sourceIndex]
-      const targetIndex = sessions.findIndex((session, index) => {
-        if (index === sourceIndex) return false
-        return (
-          session.friendlyId === toFriendlyId ||
-          session.key === toSessionKey ||
-          session.key === toFriendlyId
-        )
-      })
-
-      if (targetIndex === -1) {
-        return sessions.map((session, index) => {
-          if (index !== sourceIndex) return session
-          return {
-            ...session,
-            key: toSessionKey,
-            friendlyId: toFriendlyId,
-          }
-        })
-      }
-
-      return sessions.flatMap((session, index) => {
-        if (index === sourceIndex) return []
-        if (index !== targetIndex) return [session]
-        return [
-          {
-            ...session,
-            key: toSessionKey,
-            friendlyId: toFriendlyId,
-            lastMessage: source.lastMessage ?? session.lastMessage,
-            updatedAt: Math.max(source.updatedAt ?? 0, session.updatedAt ?? 0) ||
-              session.updatedAt ||
-              source.updatedAt,
-            label: session.label ?? source.label,
-            title: session.title ?? source.title,
-            derivedTitle: session.derivedTitle ?? source.derivedTitle,
-            titleStatus:
-              session.titleStatus === 'idle' ? source.titleStatus : session.titleStatus,
-            titleSource: session.titleSource ?? source.titleSource,
-            titleError: session.titleError ?? source.titleError,
-          },
-        ]
-      })
-    },
-  )
 }
 
 export function updateSessionLastMessage(

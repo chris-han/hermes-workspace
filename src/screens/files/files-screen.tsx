@@ -1,4 +1,5 @@
-import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import * as XLSX from 'xlsx'
 import { cn } from '@/lib/utils'
 import { usePageTitle } from '@/hooks/use-page-title'
 import {
@@ -16,7 +17,6 @@ import {
   DialogRoot,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Markdown } from '@/components/prompt-kit/markdown'
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -36,10 +36,6 @@ type FilesListResponse = {
   base: string
   entries: Array<FileEntry>
 }
-
-export const FILE_BROWSER_MODE_LABEL = 'Server workspace'
-export const FILE_BROWSER_REMOTE_HELP =
-  'Files are loaded from the Workspace server via /api/files, so remote deployments show files created by the agent.'
 
 type FileReadResponse = {
   type: 'text' | 'image'
@@ -75,6 +71,8 @@ const IGNORED_DIRS = new Set([
 ])
 
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
+const EXCEL_EXTS = new Set(['xls', 'xlsx', 'xlsm', 'xlsb'])
+const EXCEL_PREVIEW_MAX_ROWS = 200
 const CODE_EXTS = new Set([
   'ts',
   'tsx',
@@ -103,6 +101,10 @@ function isImageFile(name: string): boolean {
   return IMAGE_EXTS.has(getExt(name))
 }
 
+function isExcelFile(name: string): boolean {
+  return EXCEL_EXTS.has(getExt(name))
+}
+
 function isCodeFile(name: string): boolean {
   return CODE_EXTS.has(getExt(name))
 }
@@ -112,13 +114,8 @@ function isMarkdownFile(name: string): boolean {
   return ext === 'md' || ext === 'mdx'
 }
 
-function isHtmlFile(name: string): boolean {
-  const ext = getExt(name)
-  return ext === 'html' || ext === 'htm'
-}
-
 function isEditableFile(name: string): boolean {
-  return !isImageFile(name)
+  return !isImageFile(name) && !isExcelFile(name)
 }
 
 function getFileIcon(entry: FileEntry): string {
@@ -128,6 +125,7 @@ function getFileIcon(entry: FileEntry): string {
   if (ext === 'json') return '📋'
   if (ext === 'ts' || ext === 'tsx' || ext === 'js' || ext === 'jsx')
     return '📜'
+  if (EXCEL_EXTS.has(ext)) return '📊'
   if (IMAGE_EXTS.has(ext)) return '🖼'
   return '📃'
 }
@@ -153,6 +151,86 @@ function getParentPath(pathValue: string): string {
   const parts = pathValue.replace(/\\/g, '/').split('/').filter(Boolean)
   if (parts.length <= 1) return ''
   return parts.slice(0, -1).join('/')
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Simple markdown → HTML (no deps)
+// ──────────────────────────────────────────────────────────────────────────────
+
+function markdownToHtml(md: string): string {
+  let html = md
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  // Fenced code blocks
+  html = html.replace(/```[\w]*\n([\s\S]*?)```/g, (_m, code: string) => {
+    return `<pre class="md-code-block"><code>${code}</code></pre>`
+  })
+
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>')
+
+  // Headers
+  html = html.replace(/^#{6}\s+(.+)$/gm, '<h6 class="md-h6">$1</h6>')
+  html = html.replace(/^#{5}\s+(.+)$/gm, '<h5 class="md-h5">$1</h5>')
+  html = html.replace(/^#{4}\s+(.+)$/gm, '<h4 class="md-h4">$1</h4>')
+  html = html.replace(/^#{3}\s+(.+)$/gm, '<h3 class="md-h3">$1</h3>')
+  html = html.replace(/^#{2}\s+(.+)$/gm, '<h2 class="md-h2">$1</h2>')
+  html = html.replace(/^#{1}\s+(.+)$/gm, '<h1 class="md-h1">$1</h1>')
+
+  // Bold / italic
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>')
+  html = html.replace(/_(.+?)_/g, '<em>$1</em>')
+
+  // Strikethrough
+  html = html.replace(/~~(.+?)~~/g, '<del>$1</del>')
+
+  // Horizontal rules
+  html = html.replace(/^---+$/gm, '<hr class="md-hr" />')
+
+  // Blockquotes (re-escaped)
+  html = html.replace(
+    /^&gt;\s+(.+)$/gm,
+    '<blockquote class="md-blockquote">$1</blockquote>',
+  )
+
+  // Unordered lists
+  html = html.replace(/^[-*+]\s+(.+)$/gm, '<li class="md-li">$1</li>')
+  html = html.replace(
+    /(<li[^>]*>.*<\/li>\n?)+/g,
+    (m) => `<ul class="md-ul">${m}</ul>`,
+  )
+
+  // Links
+  html = html.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>',
+  )
+
+  // Paragraphs
+  const lines = html.split('\n')
+  const result: Array<string> = []
+  for (const line of lines) {
+    if (
+      line.trim() === '' ||
+      line.startsWith('<h') ||
+      line.startsWith('<ul') ||
+      line.startsWith('<ol') ||
+      line.startsWith('<li') ||
+      line.startsWith('<pre') ||
+      line.startsWith('<blockquote') ||
+      line.startsWith('<hr')
+    ) {
+      result.push(line)
+    } else {
+      result.push(`<p class="md-p">${line}</p>`)
+    }
+  }
+  return result.join('\n')
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -272,112 +350,49 @@ const KEYWORDS = new Set([
   'delete',
 ])
 
-type HighlightKind =
-  | 'plain'
-  | 'comment'
-  | 'jsonKey'
-  | 'keyword'
-  | 'number'
-  | 'string'
-  | 'type'
-
-type HighlightToken = {
-  text: string
-  kind: HighlightKind
-}
-
-const HIGHLIGHT_CLASS_BY_KIND: Record<Exclude<HighlightKind, 'plain'>, string> = {
-  comment: 'hl-comment',
-  jsonKey: 'hl-key',
-  keyword: 'hl-kw',
-  number: 'hl-num',
-  string: 'hl-str',
-  type: 'hl-type',
-}
-
-function pushHighlightToken(tokens: Array<HighlightToken>, text: string, kind: HighlightKind = 'plain') {
-  if (!text) return
-  tokens.push({ text, kind })
-}
-
-function tokenizeJson(code: string): Array<HighlightToken> {
-  const tokens: Array<HighlightToken> = []
-  const pattern = /("(?:[^"\\]|\\.)*")(\s*:)?|-?\d+\.?\d*|\b(?:true|false|null)\b/g
-  let lastIndex = 0
-
-  for (const match of code.matchAll(pattern)) {
-    const index = match.index ?? 0
-    pushHighlightToken(tokens, code.slice(lastIndex, index))
-
-    const [value, stringValue, colon] = match
-    if (stringValue) {
-      pushHighlightToken(tokens, stringValue, colon ? 'jsonKey' : 'string')
-      if (colon) pushHighlightToken(tokens, colon)
-    } else if (value === 'true' || value === 'false' || value === 'null') {
-      pushHighlightToken(tokens, value, 'keyword')
-    } else {
-      pushHighlightToken(tokens, value, 'number')
-    }
-
-    lastIndex = index + value.length
-  }
-
-  pushHighlightToken(tokens, code.slice(lastIndex))
-  return tokens
-}
-
-function tokenizeCode(code: string): Array<HighlightToken> {
-  const tokens: Array<HighlightToken> = []
-  const pattern =
-    /\/\/[^\n]*|\/\*[\s\S]*?\*\/|(["'`])(?:(?!\1)[^\\]|\\.)*?\1|(?<![a-zA-Z_$])\b\d+\.?\d*\b|\b[a-zA-Z_$][a-zA-Z0-9_$]*\b/g
-  let lastIndex = 0
-
-  for (const match of code.matchAll(pattern)) {
-    const index = match.index ?? 0
-    const value = match[0]
-    pushHighlightToken(tokens, code.slice(lastIndex, index))
-
-    if (value.startsWith('//') || value.startsWith('/*')) {
-      pushHighlightToken(tokens, value, 'comment')
-    } else if (value.startsWith('"') || value.startsWith("'") || value.startsWith('`')) {
-      pushHighlightToken(tokens, value, 'string')
-    } else if (/^-?\d+\.?\d*$/.test(value)) {
-      pushHighlightToken(tokens, value, 'number')
-    } else if (KEYWORDS.has(value)) {
-      pushHighlightToken(tokens, value, 'keyword')
-    } else if (/^[A-Z]/.test(value)) {
-      pushHighlightToken(tokens, value, 'type')
-    } else {
-      pushHighlightToken(tokens, value)
-    }
-
-    lastIndex = index + value.length
-  }
-
-  pushHighlightToken(tokens, code.slice(lastIndex))
-  return tokens
-}
-
-function highlightCode(code: string, ext: string): Array<ReactNode> {
-  const tokens = ext === 'json' ? tokenizeJson(code) : tokenizeCode(code)
-  return tokens.map((token, index) => {
-    if (token.kind === 'plain') {
-      return <Fragment key={index}>{token.text}</Fragment>
-    }
-
-    return (
-      <span key={index} className={HIGHLIGHT_CLASS_BY_KIND[token.kind]}>
-        {token.text}
-      </span>
-    )
-  })
-}
-
-function highlightCodeContent(code: string, ext: string): Array<ReactNode> {
+function highlightCode(code: string, ext: string): string {
   if (ext === 'json') {
-    return highlightCode(code, 'json')
+    return code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/("(?:[^"\\]|\\.)*")(\s*:)/g, '<span class="hl-key">$1</span>$2')
+      .replace(/:\s*("(?:[^"\\]|\\.)*")/g, ': <span class="hl-str">$1</span>')
+      .replace(/:\s*(-?\d+\.?\d*)/g, ': <span class="hl-num">$1</span>')
+      .replace(/:\s*(true|false|null)/g, ': <span class="hl-kw">$1</span>')
   }
-  return highlightCode(code, ext)
+
+  const escaped = code
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  // Strings (single + double + template)
+  let out = escaped.replace(
+    /(["'`])(?:(?!\1)[^\\]|\\.)*?\1/g,
+    '<span class="hl-str">$&</span>',
+  )
+
+  // Line comments
+  out = out.replace(/(\/\/[^\n]*)/g, '<span class="hl-comment">$1</span>')
+
+  // Block comments
+  out = out.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="hl-comment">$1</span>')
+
+  // Keywords and type names
+  out = out.replace(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b/g, (match) => {
+    if (KEYWORDS.has(match)) return `<span class="hl-kw">${match}</span>`
+    if (/^[A-Z]/.test(match)) return `<span class="hl-type">${match}</span>`
+    return match
+  })
+
+  // Numbers
+  out = out.replace(
+    /(?<![a-zA-Z_$])\b(\d+\.?\d*)\b/g,
+    '<span class="hl-num">$1</span>',
+  )
+
+  return out
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -682,6 +697,14 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
   const [fileError, setFileError] = useState<string | null>(null)
   const [content, setContent] = useState('')
   const [dataUrl, setDataUrl] = useState('')
+  const [excelSheetNames, setExcelSheetNames] = useState<Array<string>>([])
+  const [excelActiveSheet, setExcelActiveSheet] = useState('')
+  const [excelPreviewRows, setExcelPreviewRows] = useState<Array<Array<string>>>(
+    [],
+  )
+  const [excelTotalRows, setExcelTotalRows] = useState(0)
+  const [excelHeaderEnabled, setExcelHeaderEnabled] = useState(true)
+  const [excelHeaderRowIndex, setExcelHeaderRowIndex] = useState(0)
   const [editValue, setEditValue] = useState('')
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -689,18 +712,25 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
   const [rawMode, setRawMode] = useState(false)
   const [showDiff, setShowDiff] = useState(false)
   const prevPathRef = useRef<string | null>(null)
+  const excelWorkbookRef = useRef<XLSX.WorkBook | null>(null)
 
   // Derive file type info (safe regardless of selectedEntry nullity)
   const fileName = selectedEntry?.name ?? ''
   const ext = getExt(fileName)
   const isImage = isImageFile(fileName)
+  const isExcel = isExcelFile(fileName)
   const isMd = isMarkdownFile(fileName)
-  const isHtml = isHtmlFile(fileName)
   const isCode = isCodeFile(fileName)
   const isEditable = isEditableFile(fileName)
 
-  const highlighted = useMemo<Array<ReactNode>>(
-    () => (isCode && !isMd && content ? highlightCodeContent(content, ext) : []),
+  // Always call useMemo unconditionally
+  const mdHtml = useMemo(
+    () => (isMd && !rawMode && content ? markdownToHtml(content) : ''),
+    [isMd, rawMode, content],
+  )
+
+  const highlighted = useMemo(
+    () => (isCode && !isMd && content ? highlightCode(content, ext) : ''),
     [isCode, isMd, content, ext],
   )
 
@@ -709,6 +739,13 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
     setFileError(null)
     setContent('')
     setDataUrl('')
+    setExcelSheetNames([])
+    setExcelActiveSheet('')
+    setExcelPreviewRows([])
+    setExcelTotalRows(0)
+    setExcelHeaderEnabled(true)
+    setExcelHeaderRowIndex(0)
+    excelWorkbookRef.current = null
     setDirty(false)
     setRawMode(false)
     try {
@@ -730,12 +767,131 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
     }
   }, [])
 
+  const loadExcelSheetPreview = useCallback((sheetName: string) => {
+    const workbook = excelWorkbookRef.current
+    if (!workbook) return
+    const worksheet = workbook.Sheets[sheetName]
+    if (!worksheet) {
+      setExcelPreviewRows([])
+      setExcelTotalRows(0)
+      setExcelActiveSheet(sheetName)
+      return
+    }
+
+    const rows = XLSX.utils.sheet_to_json(worksheet, {
+      header: 1,
+      raw: false,
+      defval: '',
+    }) as Array<Array<unknown>>
+
+    const previewRows = rows
+      .slice(0, EXCEL_PREVIEW_MAX_ROWS + 1)
+      .map((row) => row.map((cell) => String(cell ?? '')))
+
+    setExcelPreviewRows(previewRows)
+    setExcelTotalRows(rows.length)
+    setExcelActiveSheet(sheetName)
+    setExcelHeaderEnabled(true)
+    setExcelHeaderRowIndex(0)
+  }, [])
+
+  const loadExcelFile = useCallback(
+    async (path: string) => {
+      setLoadingFile(true)
+      setFileError(null)
+      setContent('')
+      setDataUrl('')
+      setDirty(false)
+      setRawMode(false)
+      try {
+        const res = await fetch(
+          `/api/files?action=download&path=${encodeURIComponent(path)}`,
+        )
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const workbookBuffer = await res.arrayBuffer()
+        const workbook = XLSX.read(workbookBuffer, {
+          type: 'array',
+          cellDates: true,
+        })
+        if (!workbook.SheetNames.length) {
+          throw new Error('Workbook has no sheets')
+        }
+        excelWorkbookRef.current = workbook
+        setExcelSheetNames(workbook.SheetNames)
+        loadExcelSheetPreview(workbook.SheetNames[0])
+      } catch (err) {
+        setFileError(err instanceof Error ? err.message : String(err))
+      } finally {
+        setLoadingFile(false)
+      }
+    },
+    [loadExcelSheetPreview],
+  )
+
   useEffect(() => {
     if (!selectedEntry || selectedEntry.type === 'folder') return
     if (prevPathRef.current === selectedEntry.path) return
     prevPathRef.current = selectedEntry.path
+    if (isExcel) {
+      void loadExcelFile(selectedEntry.path)
+      return
+    }
     void loadFile(selectedEntry.path)
-  }, [selectedEntry, loadFile])
+  }, [selectedEntry, isExcel, loadExcelFile, loadFile])
+
+  const handleDownloadCurrent = useCallback(async () => {
+    if (!selectedEntry || selectedEntry.type === 'folder') return
+    const res = await fetch(
+      `/api/files?action=download&path=${encodeURIComponent(selectedEntry.path)}`,
+    )
+    if (!res.ok) {
+      setFileError(`HTTP ${res.status}`)
+      return
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = selectedEntry.name
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }, [selectedEntry])
+
+  const excelColumnCount = useMemo(
+    () =>
+      excelPreviewRows.reduce(
+        (max, row) => Math.max(max, row.length),
+        0,
+      ),
+    [excelPreviewRows],
+  )
+
+  const excelTableModel = useMemo(() => {
+    if (!excelPreviewRows.length || excelColumnCount === 0) {
+      return { headerCells: [] as Array<string>, bodyRows: [] as Array<Array<string>> }
+    }
+
+    if (!excelHeaderEnabled) {
+      return {
+        headerCells: Array.from({ length: excelColumnCount }, (_, index) => `Column ${index + 1}`),
+        bodyRows: excelPreviewRows,
+      }
+    }
+
+    const safeHeaderRowIndex = Math.min(
+      Math.max(excelHeaderRowIndex, 0),
+      Math.max(excelPreviewRows.length - 1, 0),
+    )
+    const headerSource = excelPreviewRows[safeHeaderRowIndex] || []
+
+    return {
+      headerCells: Array.from(
+        { length: excelColumnCount },
+        (_, index) => headerSource[index] || `Column ${index + 1}`,
+      ),
+      bodyRows: excelPreviewRows.slice(safeHeaderRowIndex + 1),
+    }
+  }, [excelColumnCount, excelHeaderEnabled, excelHeaderRowIndex, excelPreviewRows])
 
   /** Actually write to disk (called after diff confirmation or if nothing changed) */
   const commitSave = useCallback(async (path: string, value: string) => {
@@ -829,13 +985,13 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {(isMd || isHtml) && !isImage && (
+        {isMd && !isImage && (
           <Button
             size="sm"
             variant="outline"
             onClick={() => setRawMode((v) => !v)}
           >
-            {rawMode ? (isHtml ? 'Preview HTML' : 'Preview') : (isHtml ? 'Raw HTML' : 'Raw')}
+            {rawMode ? 'Preview' : 'Raw'}
           </Button>
         )}
         {isEditable && (
@@ -923,6 +1079,133 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
     )
   }
 
+  // Excel preview via SheetJS (xlsx).
+  if (isExcel) {
+    const isTruncated = excelTotalRows > EXCEL_PREVIEW_MAX_ROWS + 1
+
+    return (
+      <>
+        {diffModal}
+        <div className="flex h-full flex-col">
+          {header}
+          <div className="flex flex-1 min-h-0 flex-col overflow-hidden p-3">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-xs text-primary-500 dark:text-neutral-400">
+                Sheet
+              </span>
+              <select
+                value={excelActiveSheet}
+                onChange={(e) => loadExcelSheetPreview(e.target.value)}
+                className="h-8 rounded-md border border-primary-200 bg-white px-2 text-xs text-primary-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+              >
+                {excelSheetNames.map((sheet) => (
+                  <option key={sheet} value={sheet}>
+                    {sheet}
+                  </option>
+                ))}
+              </select>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-xs text-primary-500 dark:text-neutral-400">
+                  {excelTotalRows.toLocaleString()} rows
+                </span>
+                <Button size="sm" variant="outline" onClick={() => void handleDownloadCurrent()}>
+                  Download file
+                </Button>
+              </div>
+            </div>
+
+            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-850">
+              <label className="flex items-center gap-2 text-xs text-primary-700 dark:text-neutral-200">
+                <input
+                  type="checkbox"
+                  checked={excelHeaderEnabled}
+                  onChange={(e) => setExcelHeaderEnabled(e.target.checked)}
+                />
+                Use header row
+              </label>
+              <label className="flex items-center gap-2 text-xs text-primary-700 dark:text-neutral-200">
+                Header row
+                <input
+                  type="number"
+                  min={1}
+                  max={Math.max(excelPreviewRows.length, 1)}
+                  value={excelHeaderRowIndex + 1}
+                  disabled={!excelHeaderEnabled || excelPreviewRows.length === 0}
+                  onChange={(e) => {
+                    const nextRow = Number(e.target.value)
+                    if (!Number.isFinite(nextRow)) return
+                    setExcelHeaderRowIndex(
+                      Math.min(
+                        Math.max(Math.floor(nextRow) - 1, 0),
+                        Math.max(excelPreviewRows.length - 1, 0),
+                      ),
+                    )
+                  }}
+                  className="h-7 w-20 rounded-md border border-primary-200 bg-white px-2 text-xs text-primary-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                />
+              </label>
+              {!excelHeaderEnabled ? (
+                <span className="text-xs text-primary-500 dark:text-neutral-400">
+                  Header disabled. Generic column names are shown.
+                </span>
+              ) : null}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-primary-200 dark:border-neutral-800">
+              {excelPreviewRows.length === 0 ? (
+                <div className="flex h-full min-h-40 items-center justify-center p-6 text-sm text-primary-500 dark:text-neutral-400">
+                  This sheet has no rows.
+                </div>
+              ) : (
+                <table className="w-full border-separate border-spacing-0 text-xs">
+                  {excelHeaderEnabled && (
+                  <thead>
+                    <tr>
+                      {excelTableModel.headerCells.map((cell, index) => (
+                        <th
+                          key={`header-${index}`}
+                          className="sticky top-0 z-20 border-b border-r border-border bg-table-header px-2 py-1.5 text-left font-semibold text-card-foreground shadow-sm"
+                        >
+                          {cell || `Column ${index + 1}`}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  )}
+                  <tbody>
+                    {excelTableModel.bodyRows.map((row, rowIndex) => (
+                      <tr
+                        key={`row-${rowIndex}`}
+                        className={rowIndex % 2 === 0 ? 'excel-preview-row-odd' : 'excel-preview-row-even'}
+                      >
+                        {excelTableModel.headerCells.map((_, colIndex) => (
+                          <td
+                            key={`cell-${rowIndex}-${colIndex}`}
+                            className="excel-preview-cell max-w-[280px] truncate border-r border-b border-border px-2 py-1.5"
+                            title={row[colIndex] || ''}
+                          >
+                            {row[colIndex] || ''}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {isTruncated ? (
+              <p className="mt-2 text-xs text-primary-500 dark:text-neutral-400">
+                Preview is limited to the first {EXCEL_PREVIEW_MAX_ROWS.toLocaleString()} data rows.
+              </p>
+            ) : null}
+          </div>
+          {footer}
+        </div>
+      </>
+    )
+  }
+
   // ── Markdown preview ───────────────────────────────────────────────────────
 
   if (isMd && !rawMode) {
@@ -933,9 +1216,11 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
           {header}
           <ScrollAreaRoot className="flex-1 min-h-0">
             <ScrollAreaViewport>
-              <div className="markdown-preview px-6 py-5 text-sm text-primary-900 dark:text-neutral-200">
-                <Markdown className="gap-3">{content}</Markdown>
-              </div>
+              {/* eslint-disable-next-line react/no-danger */}
+              <div
+                className="markdown-preview px-6 py-5 text-sm text-primary-900 dark:text-neutral-200"
+                dangerouslySetInnerHTML={{ __html: mdHtml }}
+              />
             </ScrollAreaViewport>
             <ScrollAreaScrollbar orientation="vertical">
               <ScrollAreaThumb />
@@ -948,32 +1233,10 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
     )
   }
 
-  // ── HTML preview ───────────────────────────────────────────────────────────
-
-  if (isHtml && !rawMode) {
-    return (
-      <>
-        {diffModal}
-        <div className="flex h-full flex-col">
-          {header}
-          <div className="min-h-0 flex-1 bg-white">
-            <iframe
-              title={`HTML preview: ${selectedEntry.name}`}
-              srcDoc={content}
-              sandbox="allow-same-origin"
-              className="h-full w-full border-0 bg-white"
-            />
-          </div>
-          {footer}
-        </div>
-      </>
-    )
-  }
-
   // ── Code viewer (syntax highlighted) — also raw mode for md ───────────────
 
   if (isCode) {
-    const displayContent = isMd ? highlightCodeContent(content, 'md') : highlighted
+    const displayHtml = isMd ? highlightCode(content, 'md') : highlighted
     return (
       <>
         {diffModal}
@@ -981,9 +1244,11 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
           {header}
           <ScrollAreaRoot className="flex-1 min-h-0">
             <ScrollAreaViewport>
-              <pre className="code-viewer px-4 py-4 text-xs font-mono leading-relaxed text-primary-800 dark:text-neutral-300">
-                <code>{displayContent}</code>
-              </pre>
+              <pre
+                className="code-viewer px-4 py-4 text-xs font-mono leading-relaxed text-primary-800 dark:text-neutral-300"
+                // eslint-disable-next-line react/no-danger
+                dangerouslySetInnerHTML={{ __html: displayHtml }}
+              />
             </ScrollAreaViewport>
             <ScrollAreaScrollbar orientation="vertical">
               <ScrollAreaThumb />
@@ -1058,14 +1323,14 @@ export function FilesScreen() {
       })
       if (!res.ok)
         throw new Error(
-          `HTTP ${res.status} — check that HERMES_WORKSPACE_DIR is set`,
+          `HTTP ${res.status} — could not resolve the active workspace`,
         )
       const data = (await res.json()) as FilesListResponse
       setEntries(Array.isArray(data.entries) ? data.entries : [])
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         setTreeError(
-          'Could not load files — request timed out. Check that HERMES_WORKSPACE_DIR is set.',
+          'Could not load files — request timed out while resolving the active workspace.',
         )
       } else {
         setTreeError(err instanceof Error ? err.message : String(err))
@@ -1235,26 +1500,15 @@ export function FilesScreen() {
         {/* Tree body */}
         <ScrollAreaRoot className="flex-1 min-h-0">
           <ScrollAreaViewport className="px-1 py-1">
-            <div className="mx-2 mb-2 rounded-md border border-primary-200 bg-white/70 px-2 py-1.5 text-[11px] text-primary-500 dark:border-neutral-800 dark:bg-neutral-950/40 dark:text-neutral-400">
-              <span className="font-medium text-primary-700 dark:text-neutral-200">
-                {FILE_BROWSER_MODE_LABEL}
-              </span>{' '}
-              · {FILE_BROWSER_REMOTE_HELP}
-            </div>
             {treeLoading ? (
               <div className="px-3 py-2 text-xs text-primary-400 dark:text-neutral-500">
-                Loading server workspace…
+                Loading…
               </div>
             ) : treeError ? (
-              <div className="space-y-1 px-3 py-2 text-xs text-red-500">
-                <div>{treeError}</div>
-                <div className="text-primary-400 dark:text-neutral-500">
-                  Check the server workspace catalog or HERMES_WORKSPACE_DIR; this browser no longer needs local folder access.
-                </div>
-              </div>
+              <div className="px-3 py-2 text-xs text-red-500">{treeError}</div>
             ) : entries.length === 0 ? (
               <div className="px-3 py-2 text-xs text-primary-400 dark:text-neutral-500">
-                Server workspace is empty. Agent-created files will appear here after they are written to the configured workspace path.
+                Workspace is empty
               </div>
             ) : (
               entries
@@ -1366,7 +1620,7 @@ export function FilesScreen() {
               value={promptValue}
               onChange={(e) => setPromptValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.nativeEvent.isComposing) void handlePromptSubmit()
+                if (e.key === 'Enter') void handlePromptSubmit()
               }}
               className="w-full rounded-md border border-primary-200 dark:border-neutral-700 bg-primary-50 dark:bg-neutral-900 px-3 py-2 text-sm text-primary-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-300"
               autoFocus

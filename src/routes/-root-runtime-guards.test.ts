@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  unregisterServiceWorkers,
-  wrapInlineScript,
-} from './__root'
+import { unregisterServiceWorkers, wrapInlineScript } from './__root'
 
 describe('root runtime guards', () => {
   it('wraps inline scripts in a top-level try/catch', () => {
@@ -19,7 +16,10 @@ describe('root runtime guards', () => {
     await expect(
       unregisterServiceWorkers({
         serviceWorker: { getRegistrations },
-        cachesApi: { keys: vi.fn().mockResolvedValue(['stale']), delete: unregister },
+        cachesApi: {
+          keys: vi.fn().mockResolvedValue(['stale']),
+          delete: unregister,
+        },
       }),
     ).resolves.toBeUndefined()
 

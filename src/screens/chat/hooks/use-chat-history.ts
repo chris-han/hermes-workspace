@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
-import { chatQueryKeys, fetchHistory } from '../chat-queries'
+import {
+  NEW_CHAT_FRIENDLY_ID,
+  NEW_CHAT_SESSION_KEY,
+  chatQueryKeys,
+  fetchHistory,
+} from '../chat-queries'
 import { getMessageTimestamp, textFromMessage } from '../utils'
 import {
   cleanupExpiredPendingSends,
@@ -9,16 +14,12 @@ import {
   persistPendingMessage,
   readPendingMessage,
 } from '../pending-send'
-import {
-  clearRecoveryMessage,
-  readRecoveryMessage,
-} from '../../../stores/chat-store'
 import { useChatSettingsStore } from '../../../hooks/use-chat-settings'
 import type { PendingSendPayload } from '../pending-send'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ChatMessage, HistoryResponse } from '../types'
 
-const PORTABLE_HISTORY_STORAGE_KEY = 'claude_portable_chat_main'
+const PORTABLE_HISTORY_STORAGE_KEY = 'hermes_portable_chat_main'
 const PORTABLE_HISTORY_LIMIT = 100
 
 type UseChatHistoryInput = {
@@ -30,7 +31,7 @@ type UseChatHistoryInput = {
   activeExists: boolean
   sessionsReady: boolean
   queryClient: QueryClient
-  historyRefetchInterval?: number
+  historyRefetchInterval?: number | false
   /** When true, skip all server history fetching (portable mode). */
   portableMode?: boolean
 }
@@ -62,10 +63,38 @@ function readPortableHistory(): HistoryResponse {
   }
 }
 
+function emptyHistoryResponse(sessionKey: string): HistoryResponse {
+  return {
+    sessionKey: sessionKey || 'main',
+    messages: [],
+  }
+}
+
+export function getNewChatHistorySnapshot(
+  queryClient: QueryClient,
+  historyKey: ReadonlyArray<unknown>,
+  sessionKey: string,
+): HistoryResponse {
+  return (
+    queryClient.getQueryData<HistoryResponse>(historyKey) ??
+    emptyHistoryResponse(sessionKey)
+  )
+}
+
 type ExecNotification = {
   name: string
   exitCode: number | null
   ok: boolean | null
+}
+
+function hasA2UiContentBlock(message: ChatMessage): boolean {
+  const content = Array.isArray(message.content) ? message.content : []
+  return content.some((block: any) => {
+    if (!block || typeof block !== 'object') return false
+    if (block.type !== 'a2ui' && block.type !== 'uiSchema') return false
+    const payload = block.schema || block.payload || block.data
+    return !!payload && typeof payload === 'object' && !Array.isArray(payload)
+  })
 }
 
 function coerceExitCode(value: unknown): number | null {
@@ -220,38 +249,6 @@ function hasConfirmedPendingMessage(
   })
 }
 
-/**
- * Extract the best available string ID from a ChatMessage without type-unsafe
- * `as any` casts. ChatMessage carries `[key: string]: unknown` so bracket
- * access is perfectly legal and keeps TypeScript's narrowing intact.
- */
-function extractMsgId(msg: ChatMessage): string {
-  const id =
-    msg['id'] ?? msg['message_id'] ?? msg['clientId'] ?? msg['client_id']
-  return typeof id === 'string' ? id : ''
-}
-
-/** Check whether a history array already contains an equivalent message. */
-function historyContainsMessage(
-  messages: Array<ChatMessage>,
-  candidate: ChatMessage,
-): boolean {
-  if (!candidate.role) return false
-  const candidateText = textFromMessage(candidate).trim()
-  const candidateId = extractMsgId(candidate)
-
-  return messages.some((msg) => {
-    if (msg.role !== candidate.role) return false
-    const msgId = extractMsgId(msg)
-    if (candidateId && msgId && candidateId === msgId) return true
-    if (candidateText) {
-      const msgText = textFromMessage(msg).trim()
-      if (msgText === candidateText) return true
-    }
-    return false
-  })
-}
-
 export function useChatHistory({
   activeFriendlyId,
   activeSessionKey,
@@ -280,7 +277,6 @@ export function useChatHistory({
   )
 
   const sessionKeyForHistory = useMemo(() => {
-    if (isNewChat) return 'new'
     const candidates = [
       normalizedForcedSessionKey,
       normalizedActiveSessionKey,
@@ -290,7 +286,6 @@ export function useChatHistory({
     return match || 'main'
   }, [
     explicitRouteSessionKey,
-    isNewChat,
     normalizedActiveSessionKey,
     normalizedForcedSessionKey,
   ])
@@ -330,49 +325,54 @@ export function useChatHistory({
         return readPortableHistory()
       }
 
+      if (isNewChat) {
+        return getNewChatHistorySnapshot(
+          queryClient,
+          historyKey,
+          effectiveSessionKeyForHistory,
+        )
+      }
+
       const cached = queryClient.getQueryData(historyKey)
-      const optimisticMessages = Array.isArray((cached as any)?.messages)
-        ? (cached as any).messages.filter((message: any) => {
-          if (message.status === 'sending') return true
-          if (message.__optimisticId) return true
-          return Boolean(message.clientId)
-        })
+      const cachedMessages = Array.isArray((cached as any)?.messages)
+        ? ((cached as any).messages as Array<ChatMessage>)
         : []
+      const optimisticMessages = cachedMessages.filter((message: any) => {
+            if (message.status === 'sending') return true
+            if (message.__optimisticId) return true
+            return Boolean(message.clientId)
+          })
+      const latestCachedTs = cachedMessages.reduce((latest, message) => {
+        const ts = getMessageTimestamp(message)
+        return ts > latest ? ts : latest
+      }, 0)
 
       const serverData = await fetchHistory({
         sessionKey: sessionKeyForHistory,
         friendlyId: activeFriendlyId,
+        limit: 200,
+        sinceTimestamp: latestCachedTs > 0 ? latestCachedTs : undefined,
       })
 
-      let dataWithRecovery = serverData
+      const hasDeltaBase = latestCachedTs > 0 && cachedMessages.length > 0
+      const mergedServerMessages = hasDeltaBase
+        ? mergeDeltaHistoryMessages(cachedMessages, serverData.messages)
+        : serverData.messages
 
-      // Merge recovery buffer: if the backend history hasn't caught up with a
-      // recently-streamed assistant message (e.g. after dev refresh), inject it
-      // so the message doesn't vanish from the UI.
-      if (typeof window !== 'undefined') {
-        const recoveryMessage = readRecoveryMessage(sessionKeyForHistory)
-        if (recoveryMessage) {
-          if (historyContainsMessage(serverData.messages, recoveryMessage)) {
-            clearRecoveryMessage(sessionKeyForHistory)
-          } else {
-            const mergedMessages = [...serverData.messages, recoveryMessage]
-            mergedMessages.sort(
-              (a, b) => getMessageTimestamp(a) - getMessageTimestamp(b),
-            )
-            dataWithRecovery = { ...serverData, messages: mergedMessages }
-          }
+      if (!optimisticMessages.length) {
+        return {
+          ...serverData,
+          messages: mergedServerMessages,
         }
       }
 
-      if (!optimisticMessages.length) return dataWithRecovery
-
       const merged = mergeOptimisticHistoryMessages(
-        dataWithRecovery.messages,
+        mergedServerMessages,
         optimisticMessages,
       )
 
       return {
-        ...dataWithRecovery,
+        ...serverData,
         messages: merged,
       }
     },
@@ -384,6 +384,13 @@ export function useChatHistory({
             sessionKey: 'main',
             messages: [],
           }
+        )
+      }
+      if (isNewChat) {
+        return getNewChatHistorySnapshot(
+          queryClient,
+          historyKey,
+          effectiveSessionKeyForHistory,
         )
       }
       return queryClient.getQueryData<HistoryResponse>(historyKey)
@@ -456,8 +463,8 @@ export function useChatHistory({
   const historyMessages = useMemo(() => {
     const messages = persistedPending
       ? mergeOptimisticHistoryMessages(rawHistoryMessages, [
-        persistedPending.optimisticMessage,
-      ])
+          persistedPending.optimisticMessage,
+        ])
       : rawHistoryMessages
     const last = messages[messages.length - 1]
     const lastId =
@@ -487,7 +494,7 @@ export function useChatHistory({
         const text = textFromMessage(msg)
         const execNotification = parseExecNotification(text)
         if (execNotification) {
-          ; (msg as any).__execNotification = execNotification
+          ;(msg as any).__execNotification = execNotification
           return true
         }
         if ((msg as any).__execNotification) {
@@ -496,17 +503,14 @@ export function useChatHistory({
         // Filter out system event forwards (subagent task announcements etc)
         if (text.startsWith('A subagent task')) return false
         if (text.startsWith('[Queued announce messages')) return false
-        // Hide internal system-forwarded prompts only when the whole message is the
-        // system event. Do not hide user-pasted context summaries merely because
-        // they quote these phrases somewhere inside the text.
         if (text.startsWith('Pre-compaction memory flush')) return false
-        if (text.startsWith('Store durable memories now')) return false
-        if (text.startsWith('Summarize this naturally for the user'))
-          return false
-        if (text.startsWith('APPEND new content only and do not overwrite'))
+        if (text.includes('Pre-compaction memory flush')) return false
+        if (text.includes('Store durable memories now')) return false
+        if (text.includes('Summarize this naturally for the user')) return false
+        if (text.includes('APPEND new content only and do not overwrite'))
           return false
         if (
-          text.startsWith('Stats: runtime') &&
+          text.includes('Stats: runtime') &&
           text.includes('sessionKey agent:codex:subagent:')
         )
           return false
@@ -531,7 +535,8 @@ export function useChatHistory({
             typeof c.text === 'string' &&
             c.text.trim().length > 0,
         )
-        if (!hasText) return false
+        const hasA2Ui = hasA2UiContentBlock(msg)
+        if (!hasText && !hasA2Ui) return false
 
         return true
       }
@@ -562,8 +567,9 @@ export function useChatHistory({
           typeof c.text === 'string' &&
           c.text.trim().length > 20,
       )
+      const hasA2Ui = hasA2UiContentBlock(msg)
       // If it has real text content, it's a response — never hide it
-      if (substantialText) continue
+      if (substantialText || hasA2Ui) continue
 
       const hasLater = filtered
         .slice(i + 1)
@@ -574,7 +580,7 @@ export function useChatHistory({
           filtered.splice(i, 1)
           i--
         } else {
-          ; (msg as any).__isNarration = true
+          ;(msg as any).__isNarration = true
         }
       }
     }
@@ -585,13 +591,15 @@ export function useChatHistory({
   const messageCount = useMemo(() => {
     return historyMessages.filter((message) => {
       if (message.role !== 'user' && message.role !== 'assistant') return false
-      return Boolean(textFromMessage(message))
+      if (Boolean(textFromMessage(message))) return true
+      return hasA2UiContentBlock(message)
     }).length
   }, [historyMessages])
 
   const historyError =
     historyQuery.error instanceof Error ? historyQuery.error.message : null
   const resolvedSessionKey = useMemo(() => {
+    if (isNewChat) return NEW_CHAT_SESSION_KEY
     if (normalizedForcedSessionKey) return normalizedForcedSessionKey
     const key = historyQuery.data?.sessionKey
     if (typeof key === 'string' && key.trim().length > 0) {
@@ -603,6 +611,7 @@ export function useChatHistory({
   }, [
     explicitRouteSessionKey,
     historyQuery.data?.sessionKey,
+    isNewChat,
     normalizedActiveSessionKey,
     normalizedForcedSessionKey,
   ])
@@ -705,5 +714,46 @@ function mergeOptimisticHistoryMessages(
     }
   }
 
+  return merged
+}
+
+function mergeDeltaHistoryMessages(
+  existingMessages: Array<ChatMessage>,
+  deltaMessages: Array<ChatMessage>,
+): Array<ChatMessage> {
+  if (!deltaMessages.length) return existingMessages
+
+  const merged = [...existingMessages]
+  const FIVE_SECONDS = 5_000
+
+  for (const incoming of deltaMessages) {
+    const incomingClientId = getMessageClientId(incoming)
+    const incomingRole = incoming.role
+    const incomingText = textFromMessage(incoming).trim()
+    const incomingTs = getMessageTimestamp(incoming)
+
+    const exists = merged.some((existing) => {
+      const existingClientId = getMessageClientId(existing)
+      if (incomingClientId && existingClientId) {
+        return incomingClientId === existingClientId
+      }
+
+      if (incomingRole && existing.role && incomingRole !== existing.role) {
+        return false
+      }
+
+      const existingText = textFromMessage(existing).trim()
+      const existingTs = getMessageTimestamp(existing)
+      if (!incomingText || !existingText) return false
+      if (incomingText !== existingText) return false
+      return Math.abs(existingTs - incomingTs) <= FIVE_SECONDS
+    })
+
+    if (!exists) {
+      merged.push(incoming)
+    }
+  }
+
+  merged.sort((a, b) => getMessageTimestamp(a) - getMessageTimestamp(b))
   return merged
 }

@@ -15,7 +15,13 @@ import {
 import { AnimatePresence, motion } from 'motion/react'
 import type { SessionMeta } from '@/screens/chat/types'
 import { ChatScreen } from '@/screens/chat/chat-screen'
-import { chatQueryKeys, moveHistoryMessages } from '@/screens/chat/chat-queries'
+import {
+  NEW_CHAT_FRIENDLY_ID,
+  NEW_CHAT_SESSION_KEY,
+  chatQueryKeys,
+  moveHistoryMessages,
+  resetNewChatHistory,
+} from '@/screens/chat/chat-queries'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { Button } from '@/components/ui/button'
 import {
@@ -81,8 +87,8 @@ export function ChatPanel() {
     (payload: { friendlyId: string; sessionKey: string }) => {
       moveHistoryMessages(
         queryClient,
-        'new',
-        'new',
+        NEW_CHAT_FRIENDLY_ID,
+        NEW_CHAT_SESSION_KEY,
         payload.friendlyId,
         payload.sessionKey,
       )
@@ -109,8 +115,9 @@ export function ChatPanel() {
 
   const handleNewChat = useCallback(() => {
     setForcedSession(null)
+    resetNewChatHistory(queryClient)
     setChatPanelSessionKey('new')
-  }, [setChatPanelSessionKey])
+  }, [queryClient, setChatPanelSessionKey])
 
   const handleSelectSession = useCallback(
     (friendlyId: string) => {

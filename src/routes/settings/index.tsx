@@ -972,7 +972,7 @@ type HermesConfigData = {
   hermesHome: string
 }
 
-const HERMES_API = process.env.HERMES_API_URL || 'http://127.0.0.1:8642'
+const HERMES_API = process.env.HERMES_API_URL || 'http://127.0.0.1:8899'
 
 type AvailableModelsResponse = {
   provider: string
@@ -1123,7 +1123,7 @@ function HermesConfigSection({
         icon={Settings02Icon}
       >
         <p className="text-sm" style={{ color: 'var(--theme-muted)' }}>
-          Make sure Hermes Agent is running on localhost:8642
+          Make sure the Semantier wrapper is running on localhost:8899
         </p>
       </SettingsSection>
     )

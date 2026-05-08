@@ -63,7 +63,8 @@ curl -fsSL https://raw.githubusercontent.com/outsourc-e/hermes-workspace/main/in
 This installs `hermes-agent` from the local monorepo when available, clones this repo, sets up `.env`, and installs deps. Then:
 
 ```bash
-hermes gateway run                  # terminal 1
+source .venv/bin/activate
+semantier webapi run --replace      # terminal 1
 cd ~/hermes-workspace && pnpm dev   # terminal 2
 ```
 
@@ -88,15 +89,14 @@ Point Hermes Workspace at any backend that supports:
 - `POST /v1/chat/completions`
 - `GET /v1/models` recommended
 
-Example Hermes gateway setup:
+Example Semantier wrapper setup:
 
 ```bash
-cd ../hermes-agent
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e .
-hermes setup
-hermes gateway run
+cd ../semantier-runtime
+uv venv
+source .venv/bin/activate
+uv pip install -e .
+semantier webapi run --replace
 ```
 
 If you're using another OpenAI-compatible server, just note its base URL.
@@ -109,7 +109,7 @@ git clone https://github.com/outsourc-e/hermes-workspace.git
 cd hermes-workspace
 pnpm install
 cp .env.example .env
-printf '\nHERMES_API_URL=http://127.0.0.1:8642\n' >> .env
+printf '\nHERMES_API_URL=http://127.0.0.1:8899\n' >> .env
 pnpm dev                   # Starts on http://localhost:3000
 ```
 
@@ -119,7 +119,7 @@ pnpm dev                   # Starts on http://localhost:3000
 
 ```env
 # OpenAI-compatible backend URL
-HERMES_API_URL=http://127.0.0.1:8642
+HERMES_API_URL=http://127.0.0.1:8899
 
 # Optional provider keys for Hermes gateway-managed config
 ANTHROPIC_API_KEY=your-key-here
@@ -161,7 +161,7 @@ Chat works immediately. Sessions, memory, and skills show "Not Available" — th
 
 ### Enhanced Mode (Full Features)
 
-Route through the Hermes gateway for sessions, memory, skills, jobs, and tools.
+Route through the Semantier wrapper for sessions, memory, skills, jobs, and tools.
 
 Here are two explicit `~/.hermes/config.yaml` examples for the local providers we support directly in the workspace:
 
@@ -197,11 +197,12 @@ You can adapt the same shape for other OpenAI-compatible local runners, but `Ato
 API_SERVER_ENABLED=true
 ```
 
-**3. Start the gateway and workspace:**
+**3. Start the wrapper and workspace:**
 
 ```bash
-hermes gateway run          # Starts on :8642
-HERMES_API_URL=http://127.0.0.1:8642 pnpm dev
+source .venv/bin/activate
+semantier webapi run --replace
+HERMES_API_URL=http://127.0.0.1:8899 pnpm dev
 ```
 
 All workspace features unlock automatically — sessions persist, memory saves across chats, skills are available, and the dashboard shows real usage data.
@@ -407,30 +408,31 @@ Features pending cloud infrastructure:
 
 ### "Workspace loads but chat doesn't work"
 
-The workspace auto-detects your gateway's capabilities on startup. Check your terminal for a line like:
+The workspace auto-detects your backend capabilities on startup. Check your terminal for a line like:
 
 ```
-[gateway] http://127.0.0.1:8642 available: health, models; missing: sessions, skills, memory, config, jobs
-[gateway] Missing Hermes APIs detected. Update Hermes: cd ../hermes-agent && pip install -e . && hermes gateway run
+[gateway] http://127.0.0.1:8899 available: health, models; missing: sessions, skills, memory, config, jobs
+[gateway] Missing wrapper-managed APIs detected. Start semantier webapi from the repo root.
 ```
 
-**Fix:** Upgrade to the latest `hermes-agent` from the local monorepo:
+**Fix:** Start the Semantier wrapper from the repo root:
 
 ```bash
-cd ../hermes-agent && pip install -e .
-hermes gateway run
+cd ../semantier-runtime
+source .venv/bin/activate
+semantier webapi run --replace
 ```
 
-If you were on the old `outsourc-e/hermes-agent` fork, it's no longer needed as of v2 — use the local monorepo copy instead.
+If you were using a direct Hermes gateway workflow before, the workspace should now connect through the Semantier wrapper instead.
 
 ### "Connection refused" or workspace hangs on load
 
-Your Hermes gateway isn't running. Start it:
+Your Semantier backend isn't running. Start it:
 
 ```bash
-cd hermes-agent
+cd ../semantier-runtime
 source .venv/bin/activate
-hermes gateway run
+semantier webapi run --replace
 ```
 
 ### Ollama: chat returns empty or model shows "Offline"
@@ -445,7 +447,7 @@ OLLAMA_ORIGINS=* ollama serve
 
 Use `http://127.0.0.1:11434/v1` (not `localhost`) as the base URL.
 
-Verify: `curl http://localhost:8642/health` should return `{"status": "ok"}`.
+Verify: `curl http://localhost:8899/gateway/channels` should return a JSON capability document.
 
 ### "Using upstream NousResearch/hermes-agent"
 
@@ -472,11 +474,11 @@ If using Docker Compose and getting auth errors:
 
    Look for startup errors or missing API key warnings.
 
-3. **Verify the agent health endpoint:**
+3. **Verify the wrapper endpoint:**
 
    ```bash
-   curl http://localhost:8642/health
-   # Should return: {"status": "ok"}
+   curl http://localhost:8899/gateway/channels
+   # Should return JSON describing the compatible surfaces and upstream base URL
    ```
 
 4. **Restart with fresh containers:**

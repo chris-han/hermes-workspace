@@ -48,43 +48,7 @@ function localServiceLabel(name: string): string {
   return `[${name}]`
 }
 
-/** Resolve the hermes-agent directory using a priority-ordered fallback chain:
- *  1. HERMES_AGENT_PATH env var (explicit override)
- *  2. ../hermes-agent  — sibling clone (standard README setup)
- *  3. ../../hermes-agent — one level up (monorepo / nested workspace)
- *  Returns null if none found.
- */
-function resolveHermesAgentDir(env: Record<string, string>): string | null {
-  const candidates: string[] = []
-
-  if (env.HERMES_AGENT_PATH?.trim()) {
-    candidates.push(env.HERMES_AGENT_PATH.trim())
-  }
-
-  // Resolve relative to the workspace root (parent of hermes-workspace/)
-  const workspaceRoot = dirname(resolve('.'))
-  candidates.push(
-    resolve(workspaceRoot, 'hermes-agent'), // sibling hermes-agent directory
-    resolve(workspaceRoot, '..', 'hermes-agent'), // one level up
-  )
-
-  for (const candidate of candidates) {
-    if (existsSync(resolve(candidate, 'gateway', 'run.py'))) return candidate
-  }
-  return null
-}
-
-/** Resolve the Python executable to use for Hermes backend startup.
- *  Prefers .venv/bin/python inside agentDir, falls back to system python3.
- */
-function resolveHermesPython(agentDir: string): string {
-  const venvPython = resolve(agentDir, '.venv', 'bin', 'python')
-  if (existsSync(venvPython)) return venvPython
-  // uv creates 'venv' not '.venv' sometimes
-  const uvVenv = resolve(agentDir, 'venv', 'bin', 'python')
-  if (existsSync(uvVenv)) return uvVenv
-  return 'python3'
-}
+const SEMANTIER_BACKEND_HEALTH_PATH = '/gateway/channels'
 
 function resolveSemantierAgentDir(env: Record<string, string>): string | null {
   const candidates: string[] = []
@@ -134,7 +98,7 @@ const config = defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const hermesApiUrl = normalizeServiceUrl(
     env.HERMES_API_URL || process.env.HERMES_API_URL,
-    'http://127.0.0.1:8642',
+    'http://127.0.0.1:8899',
   )
   const semantierAgentUrl = normalizeServiceUrl(
     env.SEMANTIER_AGENT_API_URL || process.env.SEMANTIER_AGENT_API_URL,
@@ -146,112 +110,10 @@ const config = defineConfig(({ mode, command }) => {
   )
 
   // Local service auto-start state
-  let hermesGatewayChild: ChildProcess | null = null
-  let hermesGatewayStarted = false
   let semantierBackendChild: ChildProcess | null = null
   let semantierBackendStarted = false
   let hermesDashboardChild: ChildProcess | null = null
   let hermesDashboardStarted = false
-
-  const startHermesGateway = async () => {
-    if (hermesGatewayStarted) return
-    if (!isLoopbackUrl(hermesApiUrl)) {
-      console.log(
-        `${localServiceLabel('hermes-gateway')} Skipping auto-start — using external API: ${hermesApiUrl}`,
-      )
-      hermesGatewayStarted = true
-      return
-    }
-    if (await isHealthyEndpoint(hermesApiUrl, '/health')) {
-      console.log(
-        `${localServiceLabel('hermes-gateway')} Already running — reusing existing process`,
-      )
-      hermesGatewayStarted = true
-      return
-    }
-
-    const agentDir = resolveHermesAgentDir(env)
-    if (!agentDir) {
-      console.warn(
-        `${localServiceLabel('hermes-gateway')} Could not find hermes-agent directory.\n` +
-          '  Set HERMES_AGENT_PATH in .env or clone hermes-agent as a sibling:\n' +
-          '    Ensure hermes-agent exists as a sibling directory (../hermes-agent) or set HERMES_AGENT_PATH in .env',
-      )
-      return
-    }
-
-    const semantierAgentDir = resolveSemantierAgentDir(env)
-    const python = semantierAgentDir
-      ? resolveSemantierPython(semantierAgentDir)
-      : resolveHermesPython(agentDir)
-    const useGatewayRun = existsSync(resolve(agentDir, 'gateway', 'run.py'))
-    const gatewayPort = String(getServicePort(hermesApiUrl, 8642))
-    const commandArgs = useGatewayRun
-      ? ['-m', 'gateway.run']
-      : [
-          '-m',
-          'uvicorn',
-          'webapi.app:app',
-          '--host',
-          '0.0.0.0',
-          '--port',
-          gatewayPort,
-        ]
-
-    const gatewayCwd = semantierAgentDir || agentDir
-    console.log(
-      `${localServiceLabel('hermes-gateway')} Starting from ${gatewayCwd} using ${python} (${useGatewayRun ? 'gateway.run' : `uvicorn :${gatewayPort}`})`,
-    )
-
-    const child = spawn(python, commandArgs, {
-      cwd: gatewayCwd,
-      detached: false, // keep tied to vite process — stops when dev server stops
-      stdio: 'pipe',
-      env: {
-        ...process.env,
-        PYTHONPATH: agentDir
-          ? `${agentDir}${process.env.PYTHONPATH ? `:${process.env.PYTHONPATH}` : ''}`
-          : process.env.PYTHONPATH,
-        PATH: `${resolve(gatewayCwd, '.venv', 'bin')}:${resolve(gatewayCwd, 'venv', 'bin')}:${process.env.PATH || ''}`,
-      },
-    })
-
-    hermesGatewayChild = child
-    hermesGatewayStarted = true
-
-    child.stdout?.on('data', (d: Buffer) => {
-      const line = d.toString().trim()
-      if (line) console.log(`${localServiceLabel('hermes-gateway')} ${line}`)
-    })
-    child.stderr?.on('data', (d: Buffer) => {
-      const line = d.toString().trim()
-      if (line) console.log(`${localServiceLabel('hermes-gateway')} ${line}`)
-    })
-
-    child.on('exit', (code) => {
-      hermesGatewayChild = null
-      hermesGatewayStarted = false
-      if (code !== 0 && code !== null) {
-        console.warn(
-          `${localServiceLabel('hermes-gateway')} Exited with code ${code}`,
-        )
-      }
-    })
-
-    // Wait for healthy
-    for (let i = 0; i < 15; i++) {
-      await new Promise((r) => setTimeout(r, 1000))
-      if (await isHealthyEndpoint(hermesApiUrl, '/health')) {
-        console.log(
-          `${localServiceLabel('hermes-gateway')} ✓ Ready on ${hermesApiUrl}`,
-        )
-        return
-      }
-    }
-    console.warn(
-      `${localServiceLabel('hermes-gateway')} Started but health check timed out — may still be loading`,
-    )
-  }
 
   const startSemantierBackend = async () => {
     if (semantierBackendStarted) return
@@ -262,7 +124,12 @@ const config = defineConfig(({ mode, command }) => {
       semantierBackendStarted = true
       return
     }
-    if (await isHealthyEndpoint(semantierAgentUrl, '/health')) {
+    if (
+      await isHealthyEndpoint(
+        semantierAgentUrl,
+        SEMANTIER_BACKEND_HEALTH_PATH,
+      )
+    ) {
       console.log(
         `${localServiceLabel('semantier-backend')} Already running — reusing existing process`,
       )
@@ -323,7 +190,12 @@ const config = defineConfig(({ mode, command }) => {
 
     for (let i = 0; i < 15; i++) {
       await new Promise((r) => setTimeout(r, 1000))
-      if (await isHealthyEndpoint(semantierAgentUrl, '/health')) {
+      if (
+        await isHealthyEndpoint(
+          semantierAgentUrl,
+          SEMANTIER_BACKEND_HEALTH_PATH,
+        )
+      ) {
         console.log(
           `${localServiceLabel('semantier-backend')} ✓ Ready on ${semantierAgentUrl}`,
         )
@@ -739,7 +611,7 @@ const config = defineConfig(({ mode, command }) => {
               requestPath === '/api/connection-status'
             ) {
               try {
-                // Check for enhanced Hermes gateway first (has /api/sessions)
+                // Check for the single wrapper backend first.
                 const [modelsRes, sessionsRes] = await Promise.all([
                   fetch(`${hermesApiUrl}/v1/models`, {
                     signal: AbortSignal.timeout(3000),
@@ -840,7 +712,6 @@ const config = defineConfig(({ mode, command }) => {
           if (command === 'serve') {
             void startSemantierBackend()
             void startHermesDashboard()
-            void startHermesGateway()
           }
 
           // Shutdown managed child processes when dev server stops.
@@ -860,12 +731,6 @@ const config = defineConfig(({ mode, command }) => {
               hermesDashboardChild.kill('SIGTERM')
               hermesDashboardChild = null
               hermesDashboardStarted = false
-            }
-            if (hermesGatewayChild) {
-              console.log(`${localServiceLabel('hermes-gateway')} Stopping...`)
-              hermesGatewayChild.kill('SIGTERM')
-              hermesGatewayChild = null
-              hermesGatewayStarted = false
             }
           })
 

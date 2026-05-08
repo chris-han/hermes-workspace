@@ -277,7 +277,7 @@ export async function readError(res: Response): Promise<string> {
 }
 
 export const missingAuthMessage =
-  'Hermes Agent connection failed. Make sure Hermes is running and HERMES_API_URL is set correctly.'
+  'Semantier backend connection failed. Make sure semantier webapi is running and HERMES_API_URL is set correctly.'
 
 export function isMissingAuth(message: string): boolean {
   return message.includes(missingAuthMessage)

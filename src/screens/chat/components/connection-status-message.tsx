@@ -55,12 +55,11 @@ function classifyConnectionError(
     }
   }
 
-  if (lower.includes('econnrefused') && lower.includes('8642')) {
+  if (lower.includes('econnrefused') && lower.includes('8899')) {
     return {
-      title: 'Hermes gateway not running',
-      description: 'The Hermes gateway is not running on port 8642.',
-      action:
-        'Run: cd ../hermes-agent && pip install -e . && hermes gateway run',
+      title: 'Semantier backend not running',
+      description: 'The Semantier wrapper is not running on port 8899.',
+      action: 'Run: source .venv/bin/activate && semantier webapi run --replace',
     }
   }
 
@@ -72,9 +71,9 @@ function classifyConnectionError(
     lower.includes('timeout')
   ) {
     return {
-      title: 'Hermes unreachable',
-      description: "Can't connect to Hermes at the configured URL.",
-      action: 'Make sure Hermes is running and the URL is correct.',
+      title: 'Semantier backend unreachable',
+      description: "Can't connect to the Semantier wrapper at the configured URL.",
+      action: 'Make sure semantier webapi is running and the URL is correct.',
     }
   }
 

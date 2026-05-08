@@ -8,9 +8,18 @@ type AvatarProps = {
   alt?: string
 }
 
+export function deriveAvatarInitials(label: string): string {
+  const trimmed = label.trim()
+  if (!trimmed) return '?'
+
+  const firstVisible = Array.from(trimmed).find((char) => /\S/.test(char))
+  if (!firstVisible) return '?'
+  return firstVisible.toUpperCase()
+}
+
 /**
  * User avatar — round image when src is provided;
- * fallback is a round non-filled border circle with a user silhouette.
+ * fallback is a round initials badge derived from the resolved user label.
  */
 function UserAvatarComponent({
   size = 28,
@@ -35,24 +44,28 @@ function UserAvatarComponent({
   return (
     <div
       className={cn(
-        'shrink-0 rounded-full border border-border/70 bg-transparent flex items-center justify-center',
+        'theme-accent-fill theme-accent-icon shrink-0 rounded-full border border-[color:var(--theme-accent-border)] flex items-center justify-center font-medium select-none',
         className,
       )}
       style={{ width: size, height: size }}
+      aria-label={alt}
+      title={alt}
     >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-muted-foreground"
-        style={{ width: size * 0.5, height: size * 0.5 }}
+      <span
+        aria-hidden="true"
+        style={{
+          fontSize: Math.max(11, Math.round(size * 0.4)),
+          lineHeight: `${size}px`,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: size,
+          height: size,
+          textAlign: 'center',
+        }}
       >
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
+        {deriveAvatarInitials(alt)}
+      </span>
     </div>
   )
 }

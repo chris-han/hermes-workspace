@@ -11,23 +11,21 @@ describe('dev startup config', () => {
   it('auto-starts the Semantier backend and Hermes dashboard wrapper', () => {
     const source = readFileSync(VITE_CONFIG_PATH, 'utf-8')
 
-    expect(source).toContain('[semantier-backend]')
-    expect(source).toContain('[hermes-dashboard]')
     expect(source).toContain(
       "const SEMANTIER_BACKEND_HEALTH_PATH = '/gateway/channels'",
     )
-    expect(source).toContain('void startSemantierBackend()')
-    expect(source).toContain('void startHermesDashboard()')
     expect(source).toContain(
       'env.SEMANTIER_AGENT_API_URL || process.env.SEMANTIER_AGENT_API_URL',
     )
     expect(source).toContain("'http://127.0.0.1:8899'")
-    expect(source).toContain(
-      'env.HERMES_DASHBOARD_URL || process.env.HERMES_DASHBOARD_URL',
-    )
     expect(source).not.toContain(
       "isHealthyEndpoint(semantierAgentUrl, '/health')",
     )
     expect(source).not.toContain('void startHermesGateway()')
+    expect(source).not.toContain('SEMANTIER_AGENT_PATH')
+    expect(source).not.toContain('api_server.py')
+    expect(source).not.toContain('hermes_dashboard_wrapper')
+    expect(source).not.toContain('void startSemantierBackend()')
+    expect(source).not.toContain('void startHermesDashboard()')
   })
 })

@@ -152,6 +152,9 @@ export async function resolveHermesHomeFromBackend(
   requestHeaders?: HeadersInit | Headers,
 ): Promise<string> {
   const activeWorkspace = await resolveActiveWorkspaceRoot(requestHeaders)
+  if (activeWorkspace.hermesHome?.trim()) {
+    return path.resolve(activeWorkspace.hermesHome)
+  }
   const accessControl = await readWorkspaceAccessControl(activeWorkspace.path)
   return resolveHermesHomeForWorkspace(activeWorkspace.path, accessControl)
 }

@@ -27,7 +27,7 @@ describe('deriveGatewayModeFromCapabilities', () => {
     ).toBe('semantier-unicell')
   })
 
-  it('keeps zero-fork detection when Semantier is unavailable', () => {
+  it('treats non-Semantier capability sets as disconnected in single-surface mode', () => {
     expect(
       deriveGatewayModeFromCapabilities({
         semantier: { available: false, url: 'http://127.0.0.1:8899' },
@@ -37,10 +37,10 @@ describe('deriveGatewayModeFromCapabilities', () => {
         enhancedChat: false,
         health: true,
       }),
-    ).toBe('zero-fork')
+    ).toBe('disconnected')
   })
 
-  it('falls back to enhanced-fork, portable, and disconnected in order', () => {
+  it('keeps disconnected fallback for legacy non-Semantier capability combinations', () => {
     expect(
       deriveGatewayModeFromCapabilities({
         semantier: { available: false, url: 'http://127.0.0.1:8899' },
@@ -50,7 +50,7 @@ describe('deriveGatewayModeFromCapabilities', () => {
         enhancedChat: true,
         health: true,
       }),
-    ).toBe('enhanced-fork')
+    ).toBe('disconnected')
 
     expect(
       deriveGatewayModeFromCapabilities({
@@ -61,7 +61,7 @@ describe('deriveGatewayModeFromCapabilities', () => {
         enhancedChat: false,
         health: true,
       }),
-    ).toBe('portable')
+    ).toBe('disconnected')
 
     expect(
       deriveGatewayModeFromCapabilities({
@@ -81,26 +81,9 @@ describe('deriveGatewayModeFromCapabilities', () => {
 })
 
 describe('dashboardFetch', () => {
-  it('rejects protected dashboard requests without a workspace Hermes home', async () => {
-    await expect(
-      dashboardFetch('/api/sessions', {
-        headers: { Authorization: 'Bearer test-dashboard-token' },
-      }),
-    ).rejects.toThrow('Workspace Hermes home is required')
-  })
-
-  it('forwards the active workspace hermes home on dashboard requests', async () => {
+  it('routes dashboard API requests through the single backend surface', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          authenticated: true,
-          currentWorkspaceId: 'tenant-123',
-          currentWorkspaceSlug: 'alice',
-          currentWorkspaceRoot: '/repo/workspaces/tenant-123',
-        }),
-      })
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -108,18 +91,13 @@ describe('dashboardFetch', () => {
       })
     globalThis.fetch = fetchMock as typeof fetch
 
-    await dashboardFetch(
-      '/api/sessions',
-      { headers: { Authorization: 'Bearer test-dashboard-token' } },
-      {
-        requestHeaders: { cookie: 'vt_session=session-123' },
-      },
-    )
+    await dashboardFetch('/api/sessions', {}, {
+      requestHeaders: { cookie: 'vt_session=session-123; ignored=value' },
+    })
 
-    const [, dashboardInit] = fetchMock.mock.calls[1]
+    const [dashboardUrl, dashboardInit] = fetchMock.mock.calls[0]
     const headers = new Headers(dashboardInit?.headers)
-    expect(headers.get('X-Hermes-Home')).toBe(
-      '/repo/workspaces/tenant-123/.hermes',
-    )
+    expect(dashboardUrl).toBe('http://127.0.0.1:8899/api/sessions')
+    expect(headers.get('cookie')).toBe('vt_session=session-123')
   })
 })

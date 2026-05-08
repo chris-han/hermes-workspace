@@ -24,7 +24,7 @@ export const Route = createFileRoute('/api/gateway-status')({
           modeSource: getGatewayModeSource(),
           configuredMode: getConfiguredGatewayMode(),
           hermesUrl: HERMES_API,
-          dashboardUrl: HERMES_DASHBOARD_URL,
+          dashboardUrl: HERMES_API,
           semantierUrl: capabilities.semantier.url,
           gateway: {
             available: capabilities.health || capabilities.chatCompletions,

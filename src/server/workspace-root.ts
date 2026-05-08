@@ -20,6 +20,7 @@ type BackendWorkspacePathsPayload = {
   currentWorkspaceId?: unknown
   currentWorkspaceSlug?: unknown
   currentWorkspaceRoot?: unknown
+  currentHermesHome?: unknown
 }
 
 type BackendAuthMePayload = {
@@ -36,6 +37,7 @@ export type ActiveWorkspaceRoot = {
   workspaceId: string
   workspaceSlug: string
   path: string
+  hermesHome?: string
   source: 'backend' | 'auth-fallback' | 'fallback'
 }
 
@@ -89,6 +91,10 @@ async function fetchWorkspaceRootFromBackend(
       ? payload.currentWorkspaceRoot.trim()
       : ''
   if (!workspaceRoot) return null
+  const hermesHome =
+    typeof payload.currentHermesHome === 'string'
+      ? payload.currentHermesHome.trim()
+      : ''
 
   const isAuthenticated = payload.authenticated === true
   const workspaceId =
@@ -115,6 +121,7 @@ async function fetchWorkspaceRootFromBackend(
     workspaceId,
     workspaceSlug,
     path: normalizeWorkspaceRoot(workspaceRoot),
+    hermesHome: hermesHome ? normalizeWorkspaceRoot(hermesHome) : undefined,
     source: 'backend',
   }
 }
@@ -151,6 +158,9 @@ async function fetchAuthenticatedWorkspaceRoot(
     workspaceId: userId,
     workspaceSlug,
     path: normalizeWorkspaceRoot(path.join(REPO_ROOT, 'workspaces', userId)),
+    hermesHome: normalizeWorkspaceRoot(
+      path.join(REPO_ROOT, 'workspaces', userId, '.hermes'),
+    ),
     source: 'auth-fallback',
   }
 }

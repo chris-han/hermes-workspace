@@ -1,23 +1,21 @@
 import {
   SEMANTIER_AGENT_API,
+  SEMANTIER_AGENT_AUTH_COOKIE,
+  buildSemantierAgentProxyHeaders,
   semantierAgentAuthHeaders,
 } from './semantier-agent-api'
-import { resolveHermesHomeFromBackend } from './hermes-home'
 
 /**
  * Semantier unicell architecture — agent wrapper is the only backend.
  */
 
 export let HERMES_API = process.env.HERMES_API_URL || 'http://127.0.0.1:8899'
-export let HERMES_DASHBOARD_URL =
-  process.env.HERMES_DASHBOARD_URL || 'http://127.0.0.1:9119'
+export let HERMES_DASHBOARD_URL = HERMES_API
 
 export const GATEWAY_MODE_OVERRIDE_ENV = 'HERMES_WORKSPACE_MODE'
 
 const PROBE_TIMEOUT_MS = 3_000
 const PROBE_TTL_MS = 120_000
-const DASHBOARD_TOKEN_REGEX =
-  /window\.__HERMES_SESSION_TOKEN__\s*=\s*["'](.+?)["']/
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -110,8 +108,6 @@ let capabilities: GatewayCapabilities = {
 let probePromise: Promise<GatewayCapabilities> | null = null
 let lastProbeAt = 0
 let lastLoggedSummary = ''
-let dashboardTokenPromise: Promise<string> | null = null
-let dashboardTokenCache = ''
 
 function normalizeGatewayModeOverride(
   value: string | undefined,
@@ -131,61 +127,15 @@ function normalizeGatewayModeOverride(
   return null
 }
 
-/** Optional bearer token for authenticated gateway endpoints. */
 export const BEARER_TOKEN = process.env.HERMES_API_TOKEN || ''
 
 function authHeaders(): Record<string, string> {
   return BEARER_TOKEN ? { Authorization: `Bearer ${BEARER_TOKEN}` } : {}
 }
 
-export async function fetchDashboardToken(options?: {
-  force?: boolean
-}): Promise<string> {
-  const force = options?.force === true
-  if (!force && dashboardTokenCache) return dashboardTokenCache
-  if (!force && dashboardTokenPromise) return dashboardTokenPromise
-
-  dashboardTokenPromise = (async () => {
-    // Dashboard injects the session token inline on `/` (root), not on
-    // `/index.html` which serves the raw Vite-built HTML without the token.
-    const res = await fetch(`${HERMES_DASHBOARD_URL}/`, {
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    })
-    if (!res.ok) {
-      throw new Error(`Dashboard index failed: ${res.status}`)
-    }
-    const html = await res.text()
-    const token = html.match(DASHBOARD_TOKEN_REGEX)?.[1]?.trim() || ''
-    if (!token) {
-      throw new Error('Dashboard session token not found in root HTML')
-    }
-    dashboardTokenCache = token
-    return token
-  })()
-
-  try {
-    return await dashboardTokenPromise
-  } finally {
-    dashboardTokenPromise = null
-  }
-}
-
-export async function getDashboardToken(options?: {
-  force?: boolean
-}): Promise<string> {
-  return fetchDashboardToken(options)
-}
-
-export async function dashboardAuthHeaders(options?: {
-  force?: boolean
-}): Promise<Record<string, string>> {
-  const token = await getDashboardToken(options)
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
 function withDashboardBase(path: string): string {
   if (/^https?:\/\//i.test(path)) return path
-  return `${HERMES_DASHBOARD_URL}${path.startsWith('/') ? path : `/${path}`}`
+  return `${HERMES_API}${path.startsWith('/') ? path : `/${path}`}`
 }
 
 export async function dashboardFetch(
@@ -197,53 +147,32 @@ export async function dashboardFetch(
 ): Promise<Response> {
   const requestPath = withDashboardBase(path)
   const method = (init.method || 'GET').toUpperCase()
-  let activeWorkspaceHermesHome: string | null = null
+  const headers = buildSemantierAgentProxyHeaders(init.headers ?? {}, {
+    authHeaders: {
+      ...authHeaders(),
+      ...semantierAgentAuthHeaders(),
+    },
+    forwardBrowserCookies: true,
+    allowedCookieNames: [SEMANTIER_AGENT_AUTH_COOKIE],
+  })
+
   if (options?.requestHeaders) {
-      activeWorkspaceHermesHome = await resolveHermesHomeFromBackend(
-        options.requestHeaders,
-      )
-  }
-  const doFetch = async (forceToken = false) => {
-    const headers = new Headers(init.headers)
-    const isProtected =
-      requestPath.includes('/api/') &&
-      !requestPath.endsWith('/api/status') &&
-      !requestPath.endsWith('/api/config/defaults') &&
-      !requestPath.endsWith('/api/config/schema') &&
-      !requestPath.endsWith('/api/model/info') &&
-      !requestPath.endsWith('/api/dashboard/themes') &&
-      !requestPath.endsWith('/api/dashboard/plugins') &&
-      !requestPath.endsWith('/api/dashboard/plugins/rescan')
-
-    if (isProtected && !activeWorkspaceHermesHome) {
-      throw new Error(
-        `Workspace Hermes home is required for dashboard request: ${path}`,
-      )
-    }
-
-    if (isProtected && !headers.has('Authorization')) {
-      const auth = await dashboardAuthHeaders({ force: forceToken })
-      for (const [key, value] of Object.entries(auth)) {
-        headers.set(key, value)
-      }
-    }
-    if (activeWorkspaceHermesHome && !headers.has('X-Hermes-Home')) {
-      headers.set('X-Hermes-Home', activeWorkspaceHermesHome)
-    }
-
-    return fetch(requestPath, {
-      ...init,
-      method,
-      headers,
+    const forwarded = buildSemantierAgentProxyHeaders(options.requestHeaders, {
+      authHeaders: {},
+      forwardBrowserCookies: true,
+      allowedCookieNames: [SEMANTIER_AGENT_AUTH_COOKIE],
     })
+    const cookie = forwarded.get('cookie')
+    if (cookie && !headers.has('cookie')) {
+      headers.set('cookie', cookie)
+    }
   }
 
-  let res = await doFetch(false)
-  if (res.status === 401) {
-    dashboardTokenCache = ''
-    res = await doFetch(true)
-  }
-  return res
+  return fetch(requestPath, {
+    ...init,
+    method,
+    headers,
+  })
 }
 
 // ── Probing ───────────────────────────────────────────────────────
@@ -258,21 +187,6 @@ async function probe(path: string): Promise<boolean> {
     return true
   } catch {
     return false
-  }
-}
-
-async function probeDashboard(): Promise<{ available: boolean; url: string }> {
-  try {
-    const res = await fetch(`${HERMES_DASHBOARD_URL}/api/status`, {
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    })
-    if (!res.ok) return { available: false, url: HERMES_DASHBOARD_URL }
-    const body = (await res.json()) as { version?: string }
-    if (!body.version) return { available: false, url: HERMES_DASHBOARD_URL }
-    await fetchDashboardToken().catch(() => '')
-    return { available: true, url: HERMES_DASHBOARD_URL }
-  } catch {
-    return { available: false, url: HERMES_DASHBOARD_URL }
   }
 }
 
@@ -310,7 +224,7 @@ function logCapabilities(next: GatewayCapabilities): void {
   else missing.push('semantier')
 
   const mode = getGatewayMode()
-  const summary = `[gateway] gateway=${HERMES_API} dashboard=${next.dashboard.url} mode=${mode} core=[${core.join(', ')}] enhanced=[${enhanced.join(', ')}] missing=[${missing.join(', ')}]`
+  const summary = `[gateway] gateway=${HERMES_API} mode=${mode} core=[${core.join(', ')}] enhanced=[${enhanced.join(', ')}] missing=[${missing.join(', ')}]`
   if (summary === lastLoggedSummary) return
   lastLoggedSummary = summary
   console.log(summary)
@@ -319,25 +233,6 @@ function logCapabilities(next: GatewayCapabilities): void {
 
 function autoDetectGatewayUrl(): void {
   HERMES_API = process.env.HERMES_API_URL || 'http://127.0.0.1:8899'
-}
-
-async function autoDetectDashboardUrl(): Promise<void> {
-  if (process.env.HERMES_DASHBOARD_URL) return
-
-  const candidates = ['http://127.0.0.1:9119']
-  for (const candidate of candidates) {
-    try {
-      const res = await fetch(`${candidate}/api/status`, {
-        signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-      })
-      if (res.ok) {
-        HERMES_DASHBOARD_URL = candidate
-        return
-      }
-    } catch {
-      // continue
-    }
-  }
 }
 
 export function probeGateway(options?: {
@@ -365,7 +260,7 @@ export function probeGateway(options?: {
     memory: true,
     config: false,
     jobs: false,
-    dashboard: { available: false, url: HERMES_DASHBOARD_URL },
+    dashboard: { available: true, url: HERMES_API },
     semantier: { available: true, url: SEMANTIER_AGENT_API },
   }
   lastProbeAt = Date.now()
@@ -438,7 +333,6 @@ export function getConnectionStatus(): ConnectionStatus {
 export function isHermesConnected(): boolean {
   return (
     capabilities.health ||
-    capabilities.dashboard.available ||
     capabilities.semantier.available
   )
 }

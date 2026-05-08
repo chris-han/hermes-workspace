@@ -23,13 +23,23 @@ export const Route = createFileRoute('/api/local-providers')({
 
         const status = getDiscoveryStatus()
         const models = getDiscoveredModels()
+        const configuredById = new Map<string, boolean>(
+          await Promise.all(
+            status.map(
+              async (provider): Promise<readonly [string, boolean]> => [
+                provider.id,
+                await isProviderConfigured(provider.id, request.headers),
+              ],
+            ),
+          ),
+        )
 
         return json({
           ok: true,
           providers: status.map((p) => ({
             ...p,
-            configured: isProviderConfigured(p.id),
-            needsRestart: isProviderConfigured(p.id) ? false : p.online,
+            configured: configuredById.get(p.id) ?? false,
+            needsRestart: (configuredById.get(p.id) ?? false) ? false : p.online,
           })),
           models,
           totalLocalModels: models.length,

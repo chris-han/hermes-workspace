@@ -10,8 +10,10 @@
  */
 
 import fs from 'node:fs'
-import path from 'node:path'
-import { resolveHermesConfigPath } from './hermes-home'
+import {
+  resolveHermesConfigPath,
+  resolveHermesConfigPathFromBackend,
+} from './hermes-home'
 
 // -------------------------------------------------------------------
 // Well-known local providers
@@ -108,8 +110,8 @@ async function probeProvider(
         ? payload.models
         : []
 
-    const models: Array<DiscoveredModel> = rawModels
-      .map((entry: Record<string, unknown>) => {
+    const models = rawModels
+      .map((entry: Record<string, unknown>): DiscoveredModel | null => {
         const id =
           typeof entry.id === 'string'
             ? entry.id
@@ -128,7 +130,7 @@ async function probeProvider(
               : null,
         }
       })
-      .filter((m: DiscoveredModel | null): m is DiscoveredModel => m !== null)
+      .filter((m): m is DiscoveredModel => m !== null)
 
     return { def, online: true, models, lastProbe: Date.now() }
   } catch {
@@ -241,15 +243,37 @@ void ensureDiscovery()
 // Config auto-writer
 // -------------------------------------------------------------------
 
-const CONFIG_PATH = resolveHermesConfigPath()
+async function resolveConfigPath(
+  requestHeaders?: HeadersInit | Headers,
+): Promise<string | null> {
+  if (requestHeaders) {
+    try {
+      return await resolveHermesConfigPathFromBackend(requestHeaders)
+    } catch {
+      return null
+    }
+  }
+
+  try {
+    return resolveHermesConfigPath()
+  } catch {
+    return null
+  }
+}
 
 /**
  * Check if a provider is already in custom_providers config.
  * Returns true if the provider already has a config entry.
  */
-export function isProviderConfigured(providerId: string): boolean {
+export async function isProviderConfigured(
+  providerId: string,
+  requestHeaders?: HeadersInit | Headers,
+): Promise<boolean> {
+  const configPath = await resolveConfigPath(requestHeaders)
+  if (!configPath) return false
+
   try {
-    const raw = fs.readFileSync(CONFIG_PATH, 'utf-8')
+    const raw = fs.readFileSync(configPath, 'utf-8')
     // Simple check — look for the provider name in custom_providers
     // Full YAML parsing would be better but this avoids adding a dep
     const cpMatch = raw.match(
@@ -272,7 +296,6 @@ export function isProviderConfigured(providerId: string): boolean {
  * would be needed.
  */
 export function ensureProviderInConfig(providerId: string): boolean {
-  if (isProviderConfigured(providerId)) return false
   const def = LOCAL_PROVIDERS.find((p) => p.id === providerId)
   if (!def) return false
   // Don't auto-write — just signal that config is needed

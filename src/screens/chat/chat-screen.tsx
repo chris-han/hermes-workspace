@@ -2825,9 +2825,7 @@ export function ChatScreen({
 
           {hideUi ? null : (
             <ContextBar
-              sessionId={
-                activeSession?.key || activeSessionKey || resolvedSessionKey
-              }
+              sessionId={activeSession?.key || activeSessionKey || undefined}
             />
           )}
 

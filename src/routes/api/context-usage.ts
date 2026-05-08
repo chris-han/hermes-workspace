@@ -1,6 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import {  } from '@/server/auth-middleware'
+import {
+  SEMANTIER_AGENT_AUTH_COOKIE,
+  buildSemantierAgentProxyHeaders,
+  semantierAgentAuthHeaders,
+} from '@/server/semantier-agent-api'
 import {
   BEARER_TOKEN,
   HERMES_API,
@@ -47,6 +51,17 @@ function authHeaders(): Record<string, string> {
   return BEARER_TOKEN ? { Authorization: `Bearer ${BEARER_TOKEN}` } : {}
 }
 
+function backendHeaders(requestHeaders: Headers): Headers {
+  return buildSemantierAgentProxyHeaders(requestHeaders, {
+    authHeaders: {
+      ...semantierAgentAuthHeaders(),
+      ...authHeaders(),
+    },
+    forwardBrowserCookies: true,
+    allowedCookieNames: [SEMANTIER_AGENT_AUTH_COOKIE],
+  })
+}
+
 const CHARS_PER_TOKEN = 3.5
 
 export const Route = createFileRoute('/api/context-usage')({
@@ -70,11 +85,12 @@ export const Route = createFileRoute('/api/context-usage')({
                     {
                       signal: AbortSignal.timeout(3000),
                     },
+                    { requestHeaders: request.headers },
                   )
                 : await fetch(
                     `${HERMES_API}/api/sessions/${encodeURIComponent(sessionId)}`,
                     {
-                      headers: authHeaders(),
+                      headers: backendHeaders(request.headers),
                       signal: AbortSignal.timeout(3000),
                     },
                   )
@@ -97,9 +113,9 @@ export const Route = createFileRoute('/api/context-usage')({
               const listRes = capabilities.dashboard.available
                 ? await dashboardFetch('/api/sessions?limit=1', {
                     signal: AbortSignal.timeout(3000),
-                  })
+                  }, { requestHeaders: request.headers })
                 : await fetch(`${HERMES_API}/api/sessions?limit=1`, {
-                    headers: authHeaders(),
+                    headers: backendHeaders(request.headers),
                     signal: AbortSignal.timeout(3000),
                   })
               if (listRes.ok) {
@@ -171,11 +187,12 @@ export const Route = createFileRoute('/api/context-usage')({
                       {
                         signal: AbortSignal.timeout(5000),
                       },
+                      { requestHeaders: request.headers },
                     )
                   : await fetch(
                       `${HERMES_API}/api/sessions/${encodeURIComponent(targetSessionId)}/messages`,
                       {
-                        headers: authHeaders(),
+                        headers: backendHeaders(request.headers),
                         signal: AbortSignal.timeout(5000),
                       },
                     )

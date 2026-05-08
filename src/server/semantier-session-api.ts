@@ -86,6 +86,13 @@ type RawSemantierMessage = {
   metadata?: Record<string, unknown>
 }
 
+type RawSemantierMessagesResponse =
+  | Array<RawSemantierMessage>
+  | {
+      session_id?: string
+      messages?: Array<RawSemantierMessage>
+    }
+
 type RawSemantierSendMessageResponse = {
   message_id?: string
   attempt_id?: string
@@ -339,15 +346,23 @@ export async function getSemantierSessionMessages(
   sessionId: string,
   limit = 200,
 ): Promise<Array<SemantierMessage>> {
-  const payload = await semantierJson<Array<RawSemantierMessage>>(
+  const payload = await semantierJson<RawSemantierMessagesResponse>(
     `/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=${limit}`,
     { method: 'GET' },
     requestHeaders,
   )
-  return payload.map((message) => ({
+  const rows = Array.isArray(payload) ? payload : (payload.messages ?? [])
+  const resolvedSessionId =
+    !Array.isArray(payload) &&
+    typeof payload.session_id === 'string' &&
+    payload.session_id.trim().length > 0
+      ? payload.session_id.trim()
+      : sessionId
+
+  return rows.map((message) => ({
     id: message.id,
     messageId: message.message_id,
-    sessionKey: message.session_id?.trim() || sessionId,
+    sessionKey: message.session_id?.trim() || resolvedSessionId,
     role: message.role || 'assistant',
     content: message.content || '',
     createdAt: message.created_at,

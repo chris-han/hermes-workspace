@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   SemantierSessionApiError,
+  getSemantierSessionMessages,
   isSemantierSessionNotFoundError,
   toSemantierChatMessage,
   toSemantierSessionSummary,
@@ -111,5 +112,44 @@ describe('isSemantierSessionNotFoundError', () => {
     )
 
     expect(isSemantierSessionNotFoundError(error)).toBe(false)
+  })
+})
+
+describe('getSemantierSessionMessages', () => {
+  it('accepts wrapped Hermes message responses', async () => {
+    const originalFetch = global.fetch
+    global.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          session_id: 'sess-123',
+          messages: [
+            {
+              message_id: 'msg-1',
+              role: 'assistant',
+              content: 'Hello',
+              created_at: '2026-04-21T10:05:00Z',
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        },
+      ) as typeof fetch
+
+    try {
+      const messages = await getSemantierSessionMessages(undefined, 'sess-123')
+      expect(messages).toEqual([
+        expect.objectContaining({
+          messageId: 'msg-1',
+          sessionKey: 'sess-123',
+          role: 'assistant',
+          content: 'Hello',
+          createdAt: '2026-04-21T10:05:00Z',
+        }),
+      ])
+    } finally {
+      global.fetch = originalFetch
+    }
   })
 })

@@ -4,6 +4,7 @@ import { json } from '@tanstack/react-start'
 import { requireJsonContentType } from '../../server/rate-limit'
 import {
   createSemantierSession,
+  getSemantierSessionKey,
   isSemantierSessionNotFoundError,
   sendSemantierSessionMessage,
 } from '../../server/semantier-session-api'
@@ -39,7 +40,7 @@ export const Route = createFileRoute('/api/session-send')({
 
           if (SESSION_BOOTSTRAP_KEYS.has(sessionKey)) {
             const session = await createSemantierSession(request.headers)
-            sessionKey = session.session_id
+            sessionKey = getSemantierSessionKey(session) || sessionKey
           }
 
           let result
@@ -54,7 +55,7 @@ export const Route = createFileRoute('/api/session-send')({
               throw error
             }
             const session = await createSemantierSession(request.headers)
-            sessionKey = session.session_id
+            sessionKey = getSemantierSessionKey(session) || sessionKey
             result = await sendSemantierSessionMessage(
               request.headers,
               sessionKey,
@@ -65,7 +66,7 @@ export const Route = createFileRoute('/api/session-send')({
             ok: true,
             sessionKey,
             queued: true,
-            attemptId: result.attempt_id,
+            attemptId: result.attemptId,
           })
         } catch (error) {
           return json(

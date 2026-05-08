@@ -3,6 +3,7 @@ import { mdToPdf } from 'md-to-pdf'
 
 import { resolveSessionKey } from '../../server/session-utils'
 import {
+  getSemantierSessionKey,
   getSemantierSessionMessages,
   isSemantierSessionNotFoundError,
   listSemantierSessions,
@@ -122,7 +123,7 @@ export const Route = createFileRoute('/api/session-export-pdf')({
                 },
               )
             }
-            sessionKey = sessions[0].session_id
+            sessionKey = getSemantierSessionKey(sessions[0]) || 'new'
           }
 
           if (sessionKey === 'new') {

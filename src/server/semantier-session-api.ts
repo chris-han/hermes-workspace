@@ -18,27 +18,76 @@ export class SemantierSessionApiError extends Error {
 }
 
 export type SemantierSession = {
-  session_id: string
+  key: string
+  friendlyId: string
+  label?: string
   title?: string
+  derivedTitle?: string
   status?: string
+  source?: string | null
+  model?: string | null
+  isActive?: boolean
+  messageCount?: number
   channel?: string
-  created_at?: string
-  updated_at?: string
-  last_attempt_id?: string
+  createdAt?: number
+  updatedAt?: number
+  lastAttemptId?: string
 }
 
 export type SemantierMessage = {
-  message_id: string
-  session_id: string
+  id?: number | string
+  messageId?: string
+  sessionKey: string
   role: string
   content: string
-  created_at: string
-  linked_attempt_id?: string
+  createdAt?: string
+  timestamp?: number
+  linkedAttemptId?: string
   metadata?: Record<string, unknown>
 }
 
 export type SemantierSendMessageResponse = {
-  message_id: string
+  messageId?: string
+  attemptId?: string
+}
+
+type SemantierCreateSessionResponse = {
+  ok: boolean
+  sessionKey: string
+  friendlyId: string
+  entry: SemantierSession
+  modelApplied?: boolean
+}
+
+type SemantierUpdateSessionResponse = {
+  ok: boolean
+  sessionKey: string
+  entry: SemantierSession
+}
+
+type RawSemantierSessionDetail = {
+  id?: string
+  session_id?: string
+  title?: string
+  is_active?: boolean
+  started_at?: number
+  last_active?: number
+}
+
+type RawSemantierMessage = {
+  id?: number | string
+  message_id?: string
+  session_id?: string
+  role?: string
+  content?: string
+  created_at?: string
+  timestamp?: number
+  linked_attempt_id?: string
+  metadata?: Record<string, unknown>
+}
+
+type RawSemantierSendMessageResponse = {
+  message_id?: string
   attempt_id?: string
 }
 
@@ -96,27 +145,45 @@ export function isSemantierSessionNotFoundError(error: unknown): boolean {
   return /\bnot found\b/i.test(error.message)
 }
 
-function toMillis(value: string | undefined): number | undefined {
-  if (!value) return undefined
+function toMillis(value: string | number | undefined): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value !== 'string' || !value) return undefined
   const parsed = Date.parse(value)
   return Number.isFinite(parsed) ? parsed : undefined
+}
+
+export function getSemantierSessionKey(session: SemantierSession): string {
+  const candidates = [session.key, session.friendlyId]
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue
+    const trimmed = candidate.trim()
+    if (trimmed) return trimmed
+  }
+  return ''
 }
 
 export function toSemantierSessionSummary(
   session: SemantierSession,
 ): Record<string, unknown> {
-  const key = session.session_id
-  const updatedAt = toMillis(session.updated_at) ?? toMillis(session.created_at)
+  const key = getSemantierSessionKey(session)
+  const label = session.label || session.title || session.derivedTitle || key
+  const updatedAt =
+    toMillis(session.updatedAt) ??
+    toMillis(session.createdAt) ??
+    Date.now()
   return {
     key,
     friendlyId: key,
     kind: 'chat',
     status: session.status || 'idle',
-    label: session.title || key,
-    title: session.title || key,
-    derivedTitle: session.title || key,
+    label,
+    title: session.title || label,
+    derivedTitle: session.derivedTitle || session.title || label,
     updatedAt,
-    createdAt: toMillis(session.created_at) ?? updatedAt ?? Date.now(),
+    createdAt:
+      toMillis(session.createdAt) ??
+      updatedAt ??
+      Date.now(),
   }
 }
 
@@ -124,7 +191,12 @@ export function toSemantierChatMessage(
   message: SemantierMessage,
   historyIndex?: number,
 ): Record<string, unknown> {
-  const timestamp = toMillis(message.created_at) ?? Date.now()
+  const timestamp =
+    (typeof message.timestamp === 'number' && Number.isFinite(message.timestamp)
+      ? message.timestamp * 1000
+      : undefined) ??
+    toMillis(message.createdAt) ??
+    Date.now()
   const content: Array<Record<string, unknown>> = [
     { type: 'text', text: message.content || '' },
   ]
@@ -140,14 +212,18 @@ export function toSemantierChatMessage(
   }
 
   return {
-    id: `msg-${message.message_id}`,
+    id: `msg-${message.messageId || message.id || historyIndex || 'unknown'}`,
     role: message.role,
     content,
     text: message.content || '',
     timestamp,
-    createdAt: message.created_at,
-    sessionKey: message.session_id,
-    linkedAttemptId: message.linked_attempt_id,
+    createdAt:
+      message.createdAt ||
+      (typeof message.timestamp === 'number'
+        ? new Date(message.timestamp * 1000).toISOString()
+        : undefined),
+    sessionKey: message.sessionKey,
+    linkedAttemptId: message.linkedAttemptId,
     metadata: message.metadata,
     ...(typeof historyIndex === 'number'
       ? { __historyIndex: historyIndex }
@@ -170,64 +246,92 @@ export async function getSemantierSession(
   requestHeaders: HeadersInit | Headers | undefined,
   sessionId: string,
 ): Promise<SemantierSession> {
-  return semantierJson<SemantierSession>(
-    `/sessions/${encodeURIComponent(sessionId)}`,
+  const payload = await semantierJson<RawSemantierSessionDetail>(
+    `/api/sessions/${encodeURIComponent(sessionId)}`,
     { method: 'GET' },
     requestHeaders,
   )
+  const key = payload.id?.trim() || payload.session_id?.trim() || sessionId
+  const title = typeof payload.title === 'string' ? payload.title : undefined
+  return {
+    key,
+    friendlyId: key,
+    title,
+    label: title,
+    derivedTitle: title,
+    status:
+      typeof payload.is_active === 'boolean'
+        ? payload.is_active
+          ? 'active'
+          : 'idle'
+        : undefined,
+    createdAt:
+      typeof payload.started_at === 'number'
+        ? Math.floor(payload.started_at * 1000)
+        : undefined,
+    updatedAt:
+      typeof payload.last_active === 'number'
+        ? Math.floor(payload.last_active * 1000)
+        : typeof payload.started_at === 'number'
+          ? Math.floor(payload.started_at * 1000)
+          : undefined,
+  }
 }
 
 export async function createSemantierSession(
   requestHeaders?: HeadersInit | Headers,
   title?: string,
 ): Promise<SemantierSession> {
-  return semantierJson<SemantierSession>(
+  const payload = await semantierJson<SemantierCreateSessionResponse>(
     '/sessions',
     {
       method: 'POST',
       headers: new Headers({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
-        title: title || '',
-        config: { channel: 'web' },
+        label: title || '',
       }),
     },
     requestHeaders,
   )
+  return payload.entry
 }
 
 export async function updateSemantierSession(
   requestHeaders: HeadersInit | Headers | undefined,
   sessionId: string,
   title?: string,
-): Promise<{ status: string; session_id: string }> {
-  return semantierJson<{ status: string; session_id: string }>(
-    `/sessions/${encodeURIComponent(sessionId)}`,
+): Promise<{ status: string; sessionKey: string }> {
+  const payload = await semantierJson<SemantierUpdateSessionResponse>(
+    '/sessions',
     {
       method: 'PATCH',
       headers: new Headers({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ title: title ?? '' }),
+      body: JSON.stringify({ sessionKey: sessionId, label: title ?? '' }),
     },
     requestHeaders,
   )
+  return {
+    status: payload.ok ? 'ok' : 'error',
+    sessionKey: payload.sessionKey,
+  }
 }
 
 export async function deleteSemantierSession(
   requestHeaders: HeadersInit | Headers | undefined,
   sessionId: string,
 ): Promise<{ status: string; deleted: Array<string>; missing: Array<string> }> {
-  return semantierJson<{
-    status: string
-    deleted: Array<string>
-    missing: Array<string>
-  }>(
-    '/sessions/batch-delete',
+  const payload = await semantierJson<{ ok: boolean; sessionKey: string }>(
+    `/sessions?sessionKey=${encodeURIComponent(sessionId)}`,
     {
-      method: 'POST',
-      headers: new Headers({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ session_ids: [sessionId] }),
+      method: 'DELETE',
     },
     requestHeaders,
   )
+  return {
+    status: payload.ok ? 'ok' : 'error',
+    deleted: payload.ok ? [payload.sessionKey] : [],
+    missing: payload.ok ? [] : [sessionId],
+  }
 }
 
 export async function getSemantierSessionMessages(
@@ -235,11 +339,22 @@ export async function getSemantierSessionMessages(
   sessionId: string,
   limit = 200,
 ): Promise<Array<SemantierMessage>> {
-  return semantierJson<Array<SemantierMessage>>(
-    `/sessions/${encodeURIComponent(sessionId)}/messages?limit=${limit}`,
+  const payload = await semantierJson<Array<RawSemantierMessage>>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=${limit}`,
     { method: 'GET' },
     requestHeaders,
   )
+  return payload.map((message) => ({
+    id: message.id,
+    messageId: message.message_id,
+    sessionKey: message.session_id?.trim() || sessionId,
+    role: message.role || 'assistant',
+    content: message.content || '',
+    createdAt: message.created_at,
+    timestamp: message.timestamp,
+    linkedAttemptId: message.linked_attempt_id,
+    metadata: message.metadata,
+  }))
 }
 
 export async function sendSemantierSessionMessage(
@@ -247,7 +362,7 @@ export async function sendSemantierSessionMessage(
   sessionId: string,
   content: string,
 ): Promise<SemantierSendMessageResponse> {
-  return semantierJson<SemantierSendMessageResponse>(
+  const payload = await semantierJson<RawSemantierSendMessageResponse>(
     `/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
       method: 'POST',
@@ -256,6 +371,10 @@ export async function sendSemantierSessionMessage(
     },
     requestHeaders,
   )
+  return {
+    messageId: payload.message_id,
+    attemptId: payload.attempt_id,
+  }
 }
 
 export async function openSemantierSessionEvents(

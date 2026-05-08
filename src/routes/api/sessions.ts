@@ -5,6 +5,7 @@ import { requireJsonContentType } from '../../server/rate-limit'
 import {
   createSemantierSession,
   deleteSemantierSession,
+  getSemantierSessionKey,
   listSemantierSessions,
   toSemantierSessionSummary,
   updateSemantierSession,
@@ -41,8 +42,8 @@ export const Route = createFileRoute('/api/sessions')({
 
           return json({
             ok: true,
-            sessionKey: session.session_id,
-            friendlyId: session.session_id,
+            sessionKey: getSemantierSessionKey(session),
+            friendlyId: getSemantierSessionKey(session),
             entry: toSemantierSessionSummary(session),
             modelApplied: false,
           })

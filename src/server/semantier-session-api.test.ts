@@ -10,10 +10,12 @@ import {
 describe('toSemantierSessionSummary', () => {
   it('maps backend sessions into workspace sidebar summaries', () => {
     const summary = toSemantierSessionSummary({
-      session_id: 'sess-123',
+      key: 'sess-123',
+      friendlyId: 'sess-123',
+      label: 'My Session',
       title: 'My Session',
-      created_at: '2026-04-21T10:00:00Z',
-      updated_at: '2026-04-21T10:05:00Z',
+      createdAt: Date.parse('2026-04-21T10:00:00Z'),
+      updatedAt: Date.parse('2026-04-21T10:05:00Z'),
       status: 'idle',
     })
 
@@ -33,11 +35,11 @@ describe('toSemantierChatMessage', () => {
   it('maps backend messages into chat history items', () => {
     const message = toSemantierChatMessage(
       {
-        message_id: 'msg-1',
-        session_id: 'sess-123',
+        messageId: 'msg-1',
+        sessionKey: 'sess-123',
         role: 'assistant',
         content: 'Hello',
-        created_at: '2026-04-21T10:05:00Z',
+        createdAt: '2026-04-21T10:05:00Z',
       },
       3,
     )
@@ -54,11 +56,11 @@ describe('toSemantierChatMessage', () => {
 
   it('projects metadata ui_schema as an a2ui content block', () => {
     const message = toSemantierChatMessage({
-      message_id: 'msg-2',
-      session_id: 'sess-123',
+      messageId: 'msg-2',
+      sessionKey: 'sess-123',
       role: 'assistant',
       content: '请填写信息',
-      created_at: '2026-04-21T10:06:00Z',
+      createdAt: '2026-04-21T10:06:00Z',
       metadata: {
         ui_schema: {
           version: '1.0',

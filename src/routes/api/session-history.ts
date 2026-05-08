@@ -3,8 +3,10 @@ import { json } from '@tanstack/react-start'
 
 import { resolveSessionKey } from '../../server/session-utils'
 import {
+  getSemantierSessionKey,
   getSemantierSessionMessages,
   isSemantierSessionNotFoundError,
+  listSemantierSessions,
   toSemantierChatMessage,
 } from '../../server/semantier-session-api'
 import {  } from '@/server/auth-middleware'
@@ -29,11 +31,24 @@ export const Route = createFileRoute('/api/session-history')({
             rawSessionKey: key,
             defaultKey: 'main',
           })
+          let sessionKey = resolved.sessionKey
+          if (sessionKey === 'main') {
+            const sessions = await listSemantierSessions(request.headers, 1)
+            if (sessions.length === 0) {
+              return json({
+                ok: true,
+                messages: [],
+                sessionKey: 'new',
+                source: 'semantier',
+              })
+            }
+            sessionKey = getSemantierSessionKey(sessions[0]) || 'new'
+          }
           let rows
           try {
             rows = await getSemantierSessionMessages(
               request.headers,
-              resolved.sessionKey,
+              sessionKey,
               limit,
             )
           } catch (error) {
@@ -53,7 +68,7 @@ export const Route = createFileRoute('/api/session-history')({
             messages: trimmed.map((row, index) =>
               toSemantierChatMessage(row, index),
             ),
-            sessionKey: resolved.sessionKey,
+            sessionKey,
             source: 'semantier',
           })
         } catch (error) {

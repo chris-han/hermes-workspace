@@ -417,7 +417,7 @@ function ThinkingBubble({
             >
               {allTools.slice(0, 4).map((tool) => (
                 <span
-                  key={tool.id}
+                  key={`${tool.name}-${tool.phase}`}
                   className="inline-flex items-center rounded-full bg-primary-200/60 dark:bg-primary-800/30 px-2 py-0.5 text-[10px] font-mono text-primary-500 dark:text-primary-400 select-none"
                 >
                   {tool.name}
@@ -1972,11 +1972,10 @@ function getStableMessageId(message: ChatMessage, index: number): string {
 
 function getRawMessageTimestamp(message: ChatMessage): number | null {
   const candidates = [
-    (message as any).createdAt,
-    (message as any).created_at,
-    (message as any).timestamp,
-    (message as any).time,
-    (message as any).ts,
+    message.createdAt,
+    message.timestamp,
+    (message as Record<string, unknown>).time,
+    (message as Record<string, unknown>).ts,
   ]
   for (const candidate of candidates) {
     if (typeof candidate === 'number' && Number.isFinite(candidate)) {

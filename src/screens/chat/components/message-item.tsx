@@ -339,11 +339,10 @@ function normalizeTimestamp(value: unknown): number | null {
 
 function rawTimestamp(message: ChatMessage): number | null {
   const candidates = [
-    (message as any).createdAt,
-    (message as any).created_at,
-    (message as any).timestamp,
-    (message as any).time,
-    (message as any).ts,
+    message.createdAt,
+    message.timestamp,
+    (message as Record<string, unknown>).time,
+    (message as Record<string, unknown>).ts,
   ]
   for (const candidate of candidates) {
     const normalized = normalizeTimestamp(candidate)

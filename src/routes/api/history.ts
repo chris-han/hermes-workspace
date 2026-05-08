@@ -3,6 +3,7 @@ import { json } from '@tanstack/react-start'
 
 import { resolveSessionKey } from '../../server/session-utils'
 import {
+  getSemantierSessionKey,
   getSemantierSessionMessages,
   isSemantierSessionNotFoundError,
   listSemantierSessions,
@@ -37,7 +38,7 @@ export const Route = createFileRoute('/api/history')({
             if (sessions.length === 0) {
               return json({ sessionKey: 'new', sessionId: 'new', messages: [] })
             }
-            sessionKey = sessions[0].session_id
+            sessionKey = getSemantierSessionKey(sessions[0]) || 'new'
           }
 
           let messages
@@ -58,7 +59,7 @@ export const Route = createFileRoute('/api/history')({
             afterTs === null
               ? boundedMessages
               : boundedMessages.filter((message) => {
-                  const createdAt = Date.parse(message.created_at)
+                  const createdAt = Date.parse(message.createdAt || '')
                   if (!Number.isFinite(createdAt)) return false
                   return createdAt > afterTs
                 })

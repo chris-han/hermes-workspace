@@ -5,6 +5,7 @@ import { resolveSessionKey } from '../../server/session-utils'
 import {
   SemantierSessionApiError,
   createSemantierSession,
+  getSemantierSessionKey,
   isSemantierSessionNotFoundError,
   openSemantierSessionEvents,
   sendSemantierSessionMessage,
@@ -107,7 +108,7 @@ export const Route = createFileRoute('/api/send-stream')({
         try {
           if (SESSION_BOOTSTRAP_KEYS.has(sessionKey)) {
             const session = await createSemantierSession(request.headers)
-            sessionKey = session.session_id
+            sessionKey = getSemantierSessionKey(session) || sessionKey
           }
 
           let sendResult
@@ -122,14 +123,14 @@ export const Route = createFileRoute('/api/send-stream')({
               throw error
             }
             const session = await createSemantierSession(request.headers)
-            sessionKey = session.session_id
+            sessionKey = getSemantierSessionKey(session) || sessionKey
             sendResult = await sendSemantierSessionMessage(
               request.headers,
               sessionKey,
               message,
             )
           }
-          const runId = sendResult.attempt_id || sendResult.message_id
+          const runId = sendResult.attemptId || sendResult.messageId || ''
 
           const encoder = new TextEncoder()
           const abortController = new AbortController()

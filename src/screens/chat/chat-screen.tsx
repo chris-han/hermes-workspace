@@ -479,12 +479,7 @@ function getMessageStatusValue(message: ChatMessage): string {
 
 function getMessageTimestampValue(message: ChatMessage): number | null {
   const raw = message as Record<string, unknown>
-  const candidates = [
-    raw.timestamp,
-    raw.__createdAt,
-    raw.createdAt,
-    raw.created_at,
-  ]
+  const candidates = [raw.timestamp, raw.__createdAt, raw.createdAt]
 
   for (const candidate of candidates) {
     if (typeof candidate === 'number' && Number.isFinite(candidate)) {

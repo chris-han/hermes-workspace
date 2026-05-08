@@ -70,6 +70,11 @@ export type ChatAttachment = {
 export type StreamingStatus = 'idle' | 'streaming' | 'complete' | 'error'
 
 export type ChatMessage = {
+  id?: string
+  messageId?: string
+  createdAt?: string | number
+  sessionKey?: string
+  linkedAttemptId?: string
   role?: string
   content?: Array<MessageContent>
   attachments?: Array<ChatAttachment>

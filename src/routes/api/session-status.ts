@@ -3,6 +3,7 @@ import { json } from '@tanstack/react-start'
 
 import { isSyntheticSessionKey } from '../../server/session-utils'
 import {
+  getSemantierSessionKey,
   getSemantierSession,
   isSemantierSessionNotFoundError,
   listSemantierSessions,
@@ -50,7 +51,7 @@ export const Route = createFileRoute('/api/session-status')({
                 payload: buildIdlePayload(),
               })
             }
-            sessionKey = sessions[0].session_id
+            sessionKey = getSemantierSessionKey(sessions[0]) || 'new'
           }
 
           let session
@@ -65,16 +66,17 @@ export const Route = createFileRoute('/api/session-status')({
             }
             throw error
           }
+          const resolvedSessionKey = getSemantierSessionKey(session) || sessionKey
           const updatedAt =
-            (session.updated_at ? Date.parse(session.updated_at) : undefined) ??
-            (session.created_at ? Date.parse(session.created_at) : undefined) ??
+            (typeof session.updatedAt === 'number' ? session.updatedAt : undefined) ??
+            (typeof session.createdAt === 'number' ? session.createdAt : undefined) ??
             Date.now()
 
           return json({
             ok: true,
             payload: {
               status: session.status || 'idle',
-              sessionKey: session.session_id,
+              sessionKey: resolvedSessionKey,
               sessionLabel: session.title ?? '',
               model: '',
               modelProvider: '',
@@ -83,9 +85,9 @@ export const Route = createFileRoute('/api/session-status')({
               totalTokens: 0,
               sessions: [
                 {
-                  key: session.session_id,
-                  agentId: session.session_id,
-                  label: session.title ?? session.session_id,
+                  key: resolvedSessionKey,
+                  agentId: resolvedSessionKey,
+                  label: session.title ?? resolvedSessionKey,
                   model: '',
                   modelProvider: '',
                   updatedAt,

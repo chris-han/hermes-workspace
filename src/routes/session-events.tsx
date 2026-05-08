@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 import { toast } from '@/components/ui/toast'
 import { usePageTitle } from '@/hooks/use-page-title'
+import type { SessionSummary } from '@/screens/chat/types'
 
 type SessionEventItem = {
   event_id: string
@@ -29,7 +30,7 @@ type SessionEventItem = {
 }
 
 type SessionTrajectoryExport = {
-  session_id: string
+  sessionKey: string
   title: string
   source_file: string
   trajectory: {
@@ -41,14 +42,67 @@ type SessionTrajectoryExport = {
   }
 }
 
-type SessionSummary = {
-  session_id: string
-  title?: string
-  status?: string
-  channel?: string
-  created_at?: string
-  updated_at?: string
-  last_attempt_id?: string
+type SessionEventsSession = SessionSummary & {
+  key: string
+  friendlyId: string
+  createdAt?: number
+  updatedAt?: number
+}
+
+type RawSessionTrajectoryExport = {
+  session_id?: string
+  sessionKey?: string
+  title: string
+  source_file: string
+  trajectory: {
+    conversations: Array<{ from: string; value: string }>
+    timestamp: string
+    model: string
+    completed: boolean
+    metadata?: Record<string, unknown>
+  }
+}
+
+function normalizeSessionRecord(
+  session: SessionSummary | SessionEventsSession,
+): SessionEventsSession {
+  const raw = session as Record<string, unknown>
+  const key =
+    typeof session.key === 'string' && session.key.trim().length > 0
+      ? session.key.trim()
+      : typeof session.friendlyId === 'string' && session.friendlyId.trim().length > 0
+        ? session.friendlyId.trim()
+        : 'main'
+  const friendlyId =
+    typeof session.friendlyId === 'string' && session.friendlyId.trim().length > 0
+      ? session.friendlyId.trim()
+      : key
+
+  return {
+    ...session,
+    key,
+    friendlyId,
+    updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : undefined,
+    createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : undefined,
+  }
+}
+
+function normalizeTrajectoryExport(
+  payload: RawSessionTrajectoryExport,
+  fallbackSessionKey: string,
+): SessionTrajectoryExport {
+  const sessionKey =
+    typeof payload.sessionKey === 'string' && payload.sessionKey.trim().length > 0
+      ? payload.sessionKey.trim()
+      : typeof payload.session_id === 'string' && payload.session_id.trim().length > 0
+        ? payload.session_id.trim()
+        : fallbackSessionKey
+  return {
+    sessionKey,
+    title: payload.title,
+    source_file: payload.source_file,
+    trajectory: payload.trajectory,
+  }
 }
 
 const searchSchema = z.object({
@@ -167,7 +221,7 @@ function SessionEventsRoute() {
   const search = Route.useSearch()
   const sessionId = (search.session || search.friendlyId || '').trim()
 
-  const [sessions, setSessions] = useState<Array<SessionSummary>>([])
+  const [sessions, setSessions] = useState<Array<SessionEventsSession>>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [events, setEvents] = useState<Array<SessionEventItem>>([])
   const [trajectory, setTrajectory] = useState<SessionTrajectoryExport | null>(
@@ -223,7 +277,7 @@ function SessionEventsRoute() {
       controller.signal,
     )
       .then((items) => {
-        setSessions(items)
+        setSessions(items.map(normalizeSessionRecord))
       })
       .catch((nextError: unknown) => {
         if (nextError instanceof Error && nextError.name === 'AbortError') {
@@ -251,7 +305,7 @@ function SessionEventsRoute() {
   useEffect(() => {
     setSelectedSessionIds((previous) =>
       previous.filter((id) =>
-        sessions.some((session) => session.session_id === id),
+        sessions.some((session) => session.key === id),
       ),
     )
   }, [sessions])
@@ -267,15 +321,16 @@ function SessionEventsRoute() {
     if (!sessionId) {
       return sessions
     }
-    if (sessions.some((session) => session.session_id === sessionId)) {
+    if (sessions.some((session) => session.key === sessionId)) {
       return sessions
     }
     return [
-      {
-        session_id: sessionId,
+      normalizeSessionRecord({
+        key: sessionId,
+        friendlyId: sessionId,
         title: sessionId,
         status: 'unknown',
-      },
+      }),
       ...sessions,
     ]
   }, [sessionId, sessions])
@@ -297,14 +352,14 @@ function SessionEventsRoute() {
         `/api/semantier-proxy/sessions/${encodeURIComponent(sessionId)}/event-log?limit=5000`,
         controller.signal,
       ),
-      fetchJson<SessionTrajectoryExport>(
+      fetchJson<RawSessionTrajectoryExport>(
         `/api/semantier-proxy/sessions/${encodeURIComponent(sessionId)}/trajectory`,
         controller.signal,
       ),
     ])
       .then(([eventItems, exportData]) => {
         setEvents(eventItems)
-        setTrajectory(exportData)
+        setTrajectory(normalizeTrajectoryExport(exportData, sessionId))
       })
       .catch((nextError: unknown) => {
         if (nextError instanceof Error && nextError.name === 'AbortError') {
@@ -340,7 +395,7 @@ function SessionEventsRoute() {
   const selectedSessions = useMemo(
     () =>
       sessionsWithCurrent.filter((session) =>
-        selectedSessionIds.includes(session.session_id),
+        selectedSessionIds.includes(session.key),
       ),
     [selectedSessionIds, sessionsWithCurrent],
   )
@@ -348,9 +403,8 @@ function SessionEventsRoute() {
   const sortedSessions = useMemo(() => {
     const copy = [...sessionsWithCurrent]
     copy.sort((left, right) => {
-      const leftTs = Date.parse(left.updated_at || left.created_at || '') || 0
-      const rightTs =
-        Date.parse(right.updated_at || right.created_at || '') || 0
+      const leftTs = left.updatedAt ?? left.createdAt ?? 0
+      const rightTs = right.updatedAt ?? right.createdAt ?? 0
       return timestampSort === 'desc' ? rightTs - leftTs : leftTs - rightTs
     })
     return copy
@@ -380,7 +434,7 @@ function SessionEventsRoute() {
     setSelectedSessionIds((previous) =>
       previous.length === sessionsWithCurrent.length
         ? []
-        : sessionsWithCurrent.map((session) => session.session_id),
+        : sessionsWithCurrent.map((session) => session.key),
     )
   }
 
@@ -393,7 +447,7 @@ function SessionEventsRoute() {
     try {
       const exports = await Promise.all(
         selectedSessionIds.map((id) =>
-          requestJson<SessionTrajectoryExport>(
+          requestJson<RawSessionTrajectoryExport>(
             `/api/semantier-proxy/sessions/${encodeURIComponent(id)}/trajectory`,
           ),
         ),
@@ -404,7 +458,7 @@ function SessionEventsRoute() {
           : 'selected_sessions_atropos_trajectory.jsonl'
       downloadJsonl(
         fileName,
-        exports.map((item) => item.trajectory),
+        exports.map((item) => normalizeTrajectoryExport(item, '').trajectory),
       )
       toast('Atropos JSONL exported', { type: 'success' })
     } catch (nextError) {
@@ -462,7 +516,7 @@ function SessionEventsRoute() {
       })
       const deletedIds = result.deleted || []
       setSessions((previous) =>
-        previous.filter((session) => !deletedIds.includes(session.session_id)),
+        previous.filter((session) => !deletedIds.includes(session.key)),
       )
       setSelectedSessionIds([])
       if (sessionId && deletedIds.includes(sessionId)) {
@@ -675,17 +729,19 @@ function SessionEventsRoute() {
                 </thead>
                 <tbody>
                   {sortedSessions.map((session) => {
-                    const active = session.session_id === sessionId
-                    const selected = selectedSessionIds.includes(
-                      session.session_id,
-                    )
+                    const active = session.key === sessionId
+                    const selected = selectedSessionIds.includes(session.key)
                     const timestamp =
-                      session.updated_at || session.created_at || ''
+                      typeof session.updatedAt === 'number'
+                        ? new Date(session.updatedAt).toLocaleString()
+                        : typeof session.createdAt === 'number'
+                          ? new Date(session.createdAt).toLocaleString()
+                          : ''
 
                     return (
                       <tr
-                        key={session.session_id}
-                        onClick={() => setRouteSession(session.session_id)}
+                        key={session.key}
+                        onClick={() => setRouteSession(session.key)}
                         className={
                           active
                             ? 'cursor-pointer border-t border-primary-200 bg-primary-100/70 transition-colors dark:border-neutral-800 dark:bg-neutral-800/80'
@@ -696,7 +752,7 @@ function SessionEventsRoute() {
                           className="px-3 py-3"
                           onClick={(event) => {
                             event.stopPropagation()
-                            toggleSession(session.session_id)
+                            toggleSession(session.key)
                           }}
                         >
                           <input
@@ -704,7 +760,7 @@ function SessionEventsRoute() {
                             checked={selected}
                             readOnly
                             className="h-4 w-4 rounded border-primary-300 dark:border-neutral-700"
-                            aria-label={`Select ${session.title || session.session_id}`}
+                            aria-label={`Select ${session.title || session.key}`}
                           />
                         </td>
                         <td className="px-3 py-3">
@@ -715,17 +771,15 @@ function SessionEventsRoute() {
                                 : 'truncate font-medium text-primary-950 dark:text-neutral-100'
                             }
                           >
-                            {session.title || session.session_id}
+                            {session.title || session.key}
                           </div>
                         </td>
                         <td className="px-3 py-3 text-xs text-primary-500 dark:text-neutral-500">
-                          <div className="truncate">{session.session_id}</div>
+                          <div className="truncate">{session.key}</div>
                         </td>
                         <td className="px-3 py-3 text-xs text-primary-500 dark:text-neutral-500">
                           <div className="truncate">
-                            {timestamp
-                              ? new Date(timestamp).toLocaleString()
-                              : '—'}
+                            {timestamp || '—'}
                           </div>
                         </td>
                       </tr>
@@ -764,7 +818,7 @@ function SessionEventsRoute() {
                 {trajectory ? (
                   <Link
                     to="/chat/$sessionKey"
-                    params={{ sessionKey: trajectory.session_id }}
+                    params={{ sessionKey: trajectory.sessionKey }}
                     className="text-sm text-primary-700 hover:underline dark:text-neutral-200"
                   >
                     Open chat

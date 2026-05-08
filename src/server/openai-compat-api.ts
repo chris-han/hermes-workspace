@@ -3,37 +3,12 @@ import { HERMES_API } from './gateway-capabilities'
 /** Optional bearer token for authenticated OpenAI-compatible endpoints (e.g. Codex OAuth). */
 const BEARER_TOKEN = process.env.HERMES_API_TOKEN || ''
 
-/** Cached first available model from /v1/models — used as fallback when no model is specified. */
-let _cachedDefaultModel: string | null = null
-
+/** Fallback model ID used when no model is explicitly specified. */
 async function getDefaultModel(): Promise<string> {
-  if (_cachedDefaultModel) return _cachedDefaultModel
-  if (process.env.HERMES_DEFAULT_MODEL) {
-    _cachedDefaultModel = process.env.HERMES_DEFAULT_MODEL
-    return _cachedDefaultModel
-  }
-  try {
-    const headers: Record<string, string> = {}
-    if (BEARER_TOKEN) headers['Authorization'] = `Bearer ${BEARER_TOKEN}`
-    const res = await fetch(`${HERMES_API}/v1/models`, {
-      headers,
-      signal: AbortSignal.timeout(3_000),
-    })
-    if (res.ok) {
-      const data = (await res.json()) as { data?: Array<{ id: string }> }
-      if (data.data && data.data.length > 0) {
-        // Prefer a known-good chat model over the first alphabetical one
-        const preferred = data.data.find((m) =>
-          /qwen|llama|mistral|gemma/i.test(m.id),
-        )
-        _cachedDefaultModel = preferred?.id ?? data.data[0].id
-        return _cachedDefaultModel
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-  return 'default'
+  // In semantier-unicell mode the model is configured via config.yaml and
+  // resolved by the backend. Skip the /v1/models probe — the semantier agent
+  // API does not expose that endpoint and the call always 404s.
+  return process.env.HERMES_DEFAULT_MODEL || 'default'
 }
 
 export type OpenAICompatContentPart =

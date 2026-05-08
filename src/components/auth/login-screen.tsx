@@ -17,27 +17,46 @@ type WeixinLoginStatusResponse = {
   status: string
   redirect_base_url?: string
   authenticated?: boolean
+  profile_completed?: boolean
   user?: {
     user_id: string
     name: string
     workspace_slug: string
     weixin_user_id?: string | null
     auth_provider?: string | null
+    password_login_name?: string | null
+    profile_completed?: boolean
   }
 }
 
+export type PasswordLoginMode = 'local' | 'semantier'
+
 type LoginScreenProps = {
   showPasswordLogin?: boolean
+  showWeixinLogin?: boolean
+  passwordMode?: PasswordLoginMode
 }
 
 export function shouldPollWeixinLoginStatus(status: string): boolean {
   return ['wait', 'scaned', 'scaned_but_redirect'].includes(status)
 }
 
+export function resolvePasswordLoginEndpoint(
+  mode: PasswordLoginMode,
+): '/api/auth' | '/auth/password/login' {
+  return mode === 'local' ? '/api/auth' : '/auth/password/login'
+}
+
 export function LoginScreen({
   showPasswordLogin = false,
+  showWeixinLogin = true,
+  passwordMode = 'semantier',
 }: LoginScreenProps = {}) {
+  const passwordEndpoint = resolvePasswordLoginEndpoint(passwordMode)
+  const isSemantierPasswordMode = passwordMode === 'semantier'
+  const showWeixinQr = showWeixinLogin
   const [password, setPassword] = useState('')
+  const [loginName, setLoginName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [weixinLoading, setWeixinLoading] = useState(false)
@@ -54,10 +73,13 @@ export function LoginScreen({
     setLoading(true)
 
     try {
-      const res = await fetch('/api/auth', {
+      const body = isSemantierPasswordMode
+        ? { login: loginName, password }
+        : { password }
+      const res = await fetch(passwordEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify(body),
       })
 
       const data = await res.json()
@@ -195,21 +217,25 @@ export function LoginScreen({
 
           {/* Title */}
           <h2 className="mb-2 text-center text-lg font-semibold text-primary-900">
-            Sign In
+            {showWeixinQr ? 'Open Your Workspace' : 'Unlock Workspace'}
           </h2>
           <p className="mb-6 text-center text-sm text-primary-600">
-            Use your Weixin account to open the correlated Semantier workspace.
+            {showWeixinQr
+              ? 'Scan with Weixin to create a Semantier workspace or return to the same profile.'
+              : 'Enter the local workspace password to continue.'}
           </p>
 
           <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => void startWeixinLogin()}
-              disabled={weixinLoading}
-              className="w-full rounded-lg bg-[#07C160] px-4 py-2.5 font-medium text-white transition-all hover:bg-[#06AE56] focus:outline-none focus:ring-2 focus:ring-[#07C160]/40 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {weixinLoading ? 'Preparing Weixin QR...' : 'Sign In With Weixin'}
-            </button>
+            {showWeixinQr ? (
+              <button
+                type="button"
+                onClick={() => void startWeixinLogin()}
+                disabled={weixinLoading}
+                className="w-full rounded-lg bg-[#07C160] px-4 py-2.5 font-medium text-white transition-all hover:bg-[#06AE56] focus:outline-none focus:ring-2 focus:ring-[#07C160]/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {weixinLoading ? 'Preparing Weixin QR...' : 'Scan With Weixin'}
+              </button>
+            ) : null}
 
             {weixinMessage ? (
               <div className="rounded-lg bg-primary-50 px-4 py-2.5 text-sm text-primary-700 ring-1 ring-primary-100">
@@ -217,7 +243,7 @@ export function LoginScreen({
               </div>
             ) : null}
 
-            {weixinQrScanData ? (
+            {showWeixinQr && weixinQrScanData ? (
               <div className="rounded-xl border border-primary-200 bg-primary-50/40 p-4">
                 <div className="flex flex-col items-center gap-3">
                   <img
@@ -244,14 +270,30 @@ export function LoginScreen({
 
             {showPasswordLogin ? (
               <>
-                <div className="flex items-center gap-3 py-1">
-                  <div className="h-px flex-1 bg-primary-100" />
-                  <span className="text-xs uppercase tracking-[0.18em] text-primary-400">
-                    Or
-                  </span>
-                  <div className="h-px flex-1 bg-primary-100" />
-                </div>
+                {showWeixinQr ? (
+                  <div className="flex items-center gap-3 py-1">
+                    <div className="h-px flex-1 bg-primary-100" />
+                    <span className="text-xs uppercase tracking-[0.18em] text-primary-400">
+                      Or
+                    </span>
+                    <div className="h-px flex-1 bg-primary-100" />
+                  </div>
+                ) : null}
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {isSemantierPasswordMode ? (
+                    <div>
+                      <input
+                        type="text"
+                        value={loginName}
+                        onChange={(e) => setLoginName(e.target.value)}
+                        placeholder="Login name"
+                        className="w-full rounded-lg border border-primary-200 bg-white px-4 py-2.5 text-primary-900 placeholder-primary-400 outline-none transition-all focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+                        disabled={loading}
+                        autoCapitalize="off"
+                        autoCorrect="off"
+                      />
+                    </div>
+                  ) : null}
                   <div>
                     <input
                       type="password"
@@ -266,7 +308,11 @@ export function LoginScreen({
 
                   <button
                     type="submit"
-                    disabled={loading || !password}
+                    disabled={
+                      loading ||
+                      !password ||
+                      (isSemantierPasswordMode && !loginName.trim())
+                    }
                     className="w-full rounded-lg bg-accent-500 px-4 py-2.5 font-medium text-white transition-all hover:bg-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-500/50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {loading ? 'Authenticating...' : 'Continue With Password'}

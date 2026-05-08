@@ -340,11 +340,11 @@ export function MobileHamburgerMenu() {
                   className="min-w-0 flex-1 truncate text-xs"
                   style={{ color: 'var(--color-ink-muted, #666)' }}
                 >
-                  {semantierAuth.authenticated && semantierAuth.user
+                  {semantierAuth?.authenticated && semantierAuth.user
                     ? `Signed in as ${semantierAuth.user.name}`
-                    : `Guest workspace: ${semantierAuth.workspace_slug || 'public'}`}
+                    : `Guest workspace: ${semantierAuth?.workspace_slug || 'public'}`}
                 </p>
-                {semantierAuth.authenticated ? (
+                {semantierAuth?.authenticated ? (
                   <button
                     type="button"
                     onClick={() => {

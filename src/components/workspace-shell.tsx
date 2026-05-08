@@ -27,6 +27,7 @@ import { useSwipeNavigation } from '@/hooks/use-swipe-navigation'
 import { ChatPanel } from '@/components/chat-panel'
 import { ChatPanelToggle } from '@/components/chat-panel-toggle'
 import { LoginScreen } from '@/components/auth/login-screen'
+import { ProfileCompletionScreen, shouldShowProfileCompletion } from '@/components/auth/profile-completion-screen'
 import { useSemantierAuthStatus } from '@/lib/semantier-auth'
 import { MobileTabBar } from '@/components/mobile-tab-bar'
 import { MobileHamburgerMenu } from '@/components/mobile-hamburger-menu'
@@ -152,6 +153,10 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const semantierAuthRequired = shouldShowSemantierLogin(
     semantierAuthQuery.isLoading,
     semantierAuthQuery.data?.authenticated,
+  )
+  const semantierProfileIncomplete = shouldShowProfileCompletion(
+    semantierAuthQuery.data?.authenticated,
+    semantierAuthQuery.data?.profile_completed,
   )
 
   // Derive active session from URL
@@ -281,7 +286,32 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     (authState.authRequired && !authState.authenticated) ||
     semantierAuthRequired
   ) {
-    return <LoginScreen showPasswordLogin={authState.authRequired} />
+    if (authState.authRequired && !authState.authenticated) {
+      return (
+        <LoginScreen
+          showPasswordLogin
+          showWeixinLogin={false}
+          passwordMode="local"
+        />
+      )
+    }
+    return (
+      <LoginScreen
+        showPasswordLogin={
+          semantierAuthQuery.data?.password_login_enabled === true
+        }
+        showWeixinLogin
+        passwordMode="semantier"
+      />
+    )
+  }
+
+  if (semantierProfileIncomplete) {
+    return (
+      <ProfileCompletionScreen
+        currentName={semantierAuthQuery.data?.user?.name}
+      />
+    )
   }
 
   const shellStyle: React.CSSProperties & Record<'--titlebar-h', string> = {

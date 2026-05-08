@@ -7,11 +7,17 @@ export interface SemantierAuthUser {
   avatar_url?: string | null
   feishu_open_id: string
   workspace_slug: string
+  auth_provider?: string | null
+  weixin_user_id?: string | null
+  password_login_name?: string | null
+  profile_completed?: boolean
 }
 
 export interface SemantierAuthStatus {
   authenticated: boolean
   feishu_oauth_enabled: boolean
+  password_login_enabled?: boolean
+  profile_completed?: boolean
   workspace_slug?: string | null
   user?: SemantierAuthUser | null
 }

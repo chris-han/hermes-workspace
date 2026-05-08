@@ -61,6 +61,13 @@ async function fetchSessions(): Promise<SessionsListResponse> {
       : []
 }
 
+export function shouldShowSemantierLogin(
+  semantierAuthLoading: boolean,
+  semantierAuthenticated: boolean | undefined,
+): boolean {
+  return !semantierAuthLoading && semantierAuthenticated === false
+}
+
 type WorkspaceShellProps = {
   children?: React.ReactNode
 }
@@ -141,6 +148,11 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
       window.location.assign('/auth/feishu/login')
     }
   }, [isClient, semantierAuthQuery.isLoading, semantierAuthQuery.data])
+
+  const semantierAuthRequired = shouldShowSemantierLogin(
+    semantierAuthQuery.isLoading,
+    semantierAuthQuery.data?.authenticated,
+  )
 
   // Derive active session from URL
   const mobilePageTitle = (() => {
@@ -265,8 +277,11 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   }, [isMobile, setSidebarCollapsed, toggleSidebar])
 
   // Show login screen if auth is required and not authenticated
-  if (authState.authRequired && !authState.authenticated) {
-    return <LoginScreen />
+  if (
+    (authState.authRequired && !authState.authenticated) ||
+    semantierAuthRequired
+  ) {
+    return <LoginScreen showPasswordLogin={authState.authRequired} />
   }
 
   const shellStyle: React.CSSProperties & Record<'--titlebar-h', string> = {

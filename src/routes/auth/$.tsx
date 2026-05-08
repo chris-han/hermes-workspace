@@ -6,6 +6,15 @@ import {
   withSemantierAgentBase,
 } from '../../server/semantier-agent-api'
 
+const DEFAULT_AUTH_PROXY_TIMEOUT_MS = 5_000
+const WEIXIN_AUTH_PROXY_TIMEOUT_MS = 20_000
+
+export function getAuthProxyTimeoutMs(targetPath: string): number {
+  return targetPath.startsWith('/auth/weixin/login/')
+    ? WEIXIN_AUTH_PROXY_TIMEOUT_MS
+    : DEFAULT_AUTH_PROXY_TIMEOUT_MS
+}
+
 async function proxyAuthRequest(request: Request, splat: string) {
   const incomingUrl = new URL(request.url)
   const targetPath = splat ? `/auth/${splat}` : '/auth'
@@ -22,7 +31,7 @@ async function proxyAuthRequest(request: Request, splat: string) {
     method: request.method,
     headers,
     redirect: 'manual',
-    signal: AbortSignal.timeout(5_000),
+    signal: AbortSignal.timeout(getAuthProxyTimeoutMs(targetPath)),
   }
 
   if (!['GET', 'HEAD'].includes(request.method.toUpperCase())) {

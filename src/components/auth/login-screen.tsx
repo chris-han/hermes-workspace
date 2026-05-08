@@ -41,6 +41,8 @@ export function shouldPollWeixinLoginStatus(status: string): boolean {
   return ['wait', 'scaned', 'scaned_but_redirect'].includes(status)
 }
 
+export const WEIXIN_LOGIN_POLL_INTERVAL_MS = 1500
+
 export function resolvePasswordLoginEndpoint(
   mode: PasswordLoginMode,
 ): '/api/auth' | '/auth/password/login' {
@@ -66,6 +68,7 @@ export function LoginScreen({
   const [weixinQrScanData, setWeixinQrScanData] = useState('')
   const [weixinMessage, setWeixinMessage] = useState('')
   const [weixinQrDataUrl, setWeixinQrDataUrl] = useState('')
+  const [weixinPollTick, setWeixinPollTick] = useState(0)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -140,6 +143,7 @@ export function LoginScreen({
       if (!res.ok) {
         throw new Error(data.detail || `HTTP ${res.status}`)
       }
+      setError('')
       setWeixinStatus(data.status)
       if (data.redirect_base_url) {
         setWeixinMessage('QR scanned. Confirm login in Weixin.')
@@ -149,6 +153,8 @@ export function LoginScreen({
         setWeixinMessage('QR code expired. Start a new Weixin sign-in.')
       }
       if (data.authenticated) {
+        setWeixinState('')
+        setWeixinStatus('confirmed')
         window.location.reload()
       }
     } catch (err) {
@@ -166,10 +172,12 @@ export function LoginScreen({
       return
     }
     const timer = window.setTimeout(() => {
-      void pollWeixinLogin(weixinState)
-    }, 1500)
+      void pollWeixinLogin(weixinState).finally(() => {
+        setWeixinPollTick((current) => current + 1)
+      })
+    }, WEIXIN_LOGIN_POLL_INTERVAL_MS)
     return () => window.clearTimeout(timer)
-  }, [weixinState, weixinStatus])
+  }, [weixinState, weixinStatus, weixinPollTick])
 
   useEffect(() => {
     let cancelled = false
@@ -332,14 +340,7 @@ export function LoginScreen({
         {/* Footer */}
         <p className="mt-6 text-center text-xs text-primary-500">
           Powered by{' '}
-          <a
-            href="https://github.com/NousResearch/hermes-agent"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent-500 hover:text-accent-600 transition-colors"
-          >
-            Hermes
-          </a>
+            Semantier
         </p>
       </div>
     </div>

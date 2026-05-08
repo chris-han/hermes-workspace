@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   resolvePasswordLoginEndpoint,
   shouldPollWeixinLoginStatus,
+  WEIXIN_LOGIN_POLL_INTERVAL_MS,
 } from './login-screen'
 
 describe('shouldPollWeixinLoginStatus', () => {
@@ -16,6 +17,10 @@ describe('shouldPollWeixinLoginStatus', () => {
     expect(shouldPollWeixinLoginStatus('confirmed')).toBe(false)
     expect(shouldPollWeixinLoginStatus('expired')).toBe(false)
     expect(shouldPollWeixinLoginStatus('failed')).toBe(false)
+  })
+
+  it('uses a repeating poll cadence instead of relying on status transitions', () => {
+    expect(WEIXIN_LOGIN_POLL_INTERVAL_MS).toBe(1500)
   })
 })
 

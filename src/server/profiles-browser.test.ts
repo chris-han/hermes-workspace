@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { listProfiles } from './profiles-browser'
+import { getProfilesRoot, listProfiles } from './profiles-browser'
 
 describe('listProfiles', () => {
   let tempHome: string
@@ -18,6 +18,14 @@ describe('listProfiles', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     fs.rmSync(tempHome, { recursive: true, force: true })
+  })
+
+  it('reads profiles from the active workspace hermes home', () => {
+    const hermesHome = '/repo/workspaces/ws-123/.hermes'
+
+    expect(getProfilesRoot(hermesHome)).toBe(
+      '/repo/workspaces/ws-123/.hermes/profiles',
+    )
   })
 
   it('always includes the default profile even when a named profile is active', () => {
@@ -42,7 +50,7 @@ describe('listProfiles', () => {
       'utf-8',
     )
 
-    const profiles = listProfiles()
+    const profiles = listProfiles(hermesRoot)
     const names = profiles.map((profile) => profile.name)
 
     expect(names).toContain('default')

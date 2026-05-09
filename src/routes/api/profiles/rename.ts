@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
+import path from 'node:path'
 import { renameProfile } from '../../../server/profiles-browser'
 import { requireJsonContentType } from '../../../server/rate-limit'
+import { resolveActiveWorkspaceRoot } from '../../../server/workspace-root'
 
 export const Route = createFileRoute('/api/profiles/rename')({
   server: {
@@ -14,9 +16,12 @@ export const Route = createFileRoute('/api/profiles/rename')({
             oldName?: string
             newName?: string
           }
+          const workspace = await resolveActiveWorkspaceRoot(request.headers)
+          const hermesHome =
+            workspace.hermesHome || path.join(workspace.path, '.hermes')
           return json({
             ok: true,
-            profile: renameProfile(body.oldName || '', body.newName || ''),
+            profile: renameProfile(body.oldName || '', body.newName || '', hermesHome),
           })
         } catch (error) {
           return json(

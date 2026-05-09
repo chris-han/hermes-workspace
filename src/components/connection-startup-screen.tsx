@@ -4,6 +4,13 @@ import { fetchHermesAuthStatus } from '@/lib/hermes-auth'
 
 type Props = { onConnected: (status: AuthStatus) => void }
 
+export function connectedReachabilityStatus(): AuthStatus {
+  return {
+    authenticated: true,
+    authRequired: false,
+  }
+}
+
 declare global {
   interface Window {
     __dismissSplash?: () => void
@@ -27,15 +34,12 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
   useEffect(() => {
     const tryConnect = async () => {
       try {
-        const status = await fetchHermesAuthStatus()
-        onConnectedRef.current(status)
+        await fetchHermesAuthStatus()
+        onConnectedRef.current(connectedReachabilityStatus())
       } catch {
         // Even if auth-check fails, proceed to the app — the backend
         // is assumed to be the agent wrapper at HERMES_API_URL.
-        onConnectedRef.current({
-          authenticated: false,
-          authRequired: false,
-        } as AuthStatus)
+        onConnectedRef.current(connectedReachabilityStatus())
       }
     }
 

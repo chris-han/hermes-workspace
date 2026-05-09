@@ -3,6 +3,7 @@ import {
   DESKTOP_SIDEBAR_BACKDROP_CLASS,
   shouldShowSemantierLogin,
 } from './workspace-shell'
+import { connectedReachabilityStatus } from './connection-startup-screen'
 import { shouldShowProfileCompletion } from './auth/profile-completion-screen'
 
 describe('workspace shell sidebar backdrop', () => {
@@ -33,5 +34,14 @@ describe('shouldShowProfileCompletion', () => {
     expect(shouldShowProfileCompletion(false, false)).toBe(false)
     expect(shouldShowProfileCompletion(true, true)).toBe(false)
     expect(shouldShowProfileCompletion(undefined, false)).toBe(false)
+  })
+})
+
+describe('connectedReachabilityStatus', () => {
+  it('treats the startup auth-check as reachability only', () => {
+    expect(connectedReachabilityStatus()).toEqual({
+      authenticated: true,
+      authRequired: false,
+    })
   })
 })

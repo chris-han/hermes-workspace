@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { json } from '@tanstack/react-start'
 import { createFileRoute } from '@tanstack/react-router'
@@ -10,6 +9,7 @@ import {
   HERMES_API,
   ensureGatewayProbed,
 } from '../../server/gateway-capabilities'
+import { resolveActiveWorkspaceRoot } from '../../server/workspace-root'
 
 type CrewDefinition = {
   id: string
@@ -36,8 +36,7 @@ function titleCase(value: string): string {
     .join(' ')
 }
 
-function buildCrewDefinitions(): Array<CrewDefinition> {
-  const base = join(homedir(), '.hermes')
+export function buildCrewDefinitions(base: string): Array<CrewDefinition> {
   const profilesDir = join(base, 'profiles')
   const dynamicProfiles = existsSync(profilesDir)
     ? readdirSync(profilesDir, { withFileTypes: true })
@@ -62,8 +61,11 @@ function buildCrewDefinitions(): Array<CrewDefinition> {
   ]
 }
 
-function getHermesHome(profilePath: string | null): string {
-  const base = join(homedir(), '.hermes')
+export function getHermesHome(
+  baseHermesHome: string,
+  profilePath: string | null,
+): string {
+  const base = baseHermesHome
   return profilePath ? join(base, 'profiles', profilePath) : base
 }
 
@@ -203,7 +205,7 @@ function readConfig(hermesHome: string): { model: string; provider: string } {
   }
 }
 
-function readCronJobCount(hermesHome: string): number {
+export function readCronJobCount(hermesHome: string): number {
   const cronPath = join(hermesHome, 'cron', 'jobs.json')
   if (!existsSync(cronPath)) return 0
   try {
@@ -247,10 +249,12 @@ export const Route = createFileRoute('/api/crew-status')({
       GET: async ({ request }) => {
         ensureGatewayProbed()
         const taskCounts = await fetchAssignedTaskCounts()
-        const crewDefinitions = buildCrewDefinitions()
+        const workspace = await resolveActiveWorkspaceRoot(request.headers)
+        const baseHermesHome = workspace.hermesHome || join(workspace.path, '.hermes')
+        const crewDefinitions = buildCrewDefinitions(baseHermesHome)
 
         const crew = crewDefinitions.map((member) => {
-          const hermesHome = getHermesHome(member.profilePath)
+          const hermesHome = getHermesHome(baseHermesHome, member.profilePath)
           const profileFound = existsSync(hermesHome)
 
           if (!profileFound) {

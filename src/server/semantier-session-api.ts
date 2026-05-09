@@ -94,8 +94,12 @@ type RawSemantierMessagesResponse =
     }
 
 type RawSemantierSendMessageResponse = {
+  ok?: boolean
+  sessionKey?: string
   message_id?: string
   attempt_id?: string
+  runId?: string
+  run_id?: string
 }
 
 function buildSessionHeaders(requestHeaders?: HeadersInit | Headers): Headers {
@@ -378,44 +382,44 @@ export async function sendSemantierSessionMessage(
   content: string,
 ): Promise<SemantierSendMessageResponse> {
   const payload = await semantierJson<RawSemantierSendMessageResponse>(
-    `/sessions/${encodeURIComponent(sessionId)}/messages`,
+    `/api/sessions/${encodeURIComponent(sessionId)}/chat`,
     {
       method: 'POST',
       headers: new Headers({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({
+        message: content,
+      }),
     },
     requestHeaders,
   )
   return {
     messageId: payload.message_id,
-    attemptId: payload.attempt_id,
+    attemptId: payload.attempt_id ?? payload.run_id ?? payload.runId,
   }
 }
 
-export async function openSemantierSessionEvents(
+export async function openSemantierSessionChatStream(
   requestHeaders: HeadersInit | Headers | undefined,
   sessionId: string,
+  message: string,
   options?: {
-    lastEventId?: string
-    replayExisting?: boolean
+    model?: string
+    systemMessage?: string
     signal?: AbortSignal
   },
 ): Promise<Response> {
   const headers = buildSessionHeaders(requestHeaders)
+  headers.set('content-type', 'application/json')
   headers.set('accept', 'text/event-stream')
-  if (options?.lastEventId?.trim()) {
-    headers.set('Last-Event-ID', options.lastEventId.trim())
-  }
-
-  const search = new URLSearchParams()
-  if (options?.replayExisting) {
-    search.set('replay_existing', 'true')
-  }
-
-  const path = `/sessions/${encodeURIComponent(sessionId)}/events${search.size > 0 ? `?${search.toString()}` : ''}`
+  const path = `/api/sessions/${encodeURIComponent(sessionId)}/chat/stream`
   const response = await fetch(withSemantierAgentBase(path), {
-    method: 'GET',
+    method: 'POST',
     headers,
+    body: JSON.stringify({
+      message,
+      model: options?.model,
+      system_message: options?.systemMessage,
+    }),
     signal: options?.signal,
   })
   if (!response.ok) {

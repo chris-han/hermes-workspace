@@ -17,7 +17,7 @@ export type LocaleId =
 
 export type TranslationKey = keyof typeof EN
 
-const EN = {
+const EN: Record<string, string> = {
   // Nav
   'nav.dashboard': 'Dashboard',
   'nav.chat': 'Chat',

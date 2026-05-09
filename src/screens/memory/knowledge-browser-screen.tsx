@@ -458,7 +458,8 @@ export function KnowledgeBrowserScreen() {
             </button>
 
             <DialogRoot open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <DialogTrigger asChild>
+              <DialogTrigger
+              render={
                 <button
                   type="button"
                   className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-primary-100 dark:hover:bg-neutral-900 theme-border-1"
@@ -475,10 +476,11 @@ export function KnowledgeBrowserScreen() {
                   />
                   <span className="hidden sm:inline">Settings</span>
                 </button>
-              </DialogTrigger>
+              }
+            />
               <DialogContent
                 className="sm:max-w-md theme-border-1"
-                style={{
+                popupStyle={{
                   backgroundColor: 'var(--theme-bg)',
                   color: 'var(--theme-text)',
                 }}

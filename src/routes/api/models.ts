@@ -65,18 +65,18 @@ function readHermesModelsJson(modelsPath: string): Array<ModelEntry> {
     const raw = fs.readFileSync(modelsPath, 'utf-8')
     const entries = JSON.parse(raw)
     if (!Array.isArray(entries)) return []
-    return entries
-      .map((entry: Record<string, unknown>) => {
-        // models.json uses "model" field for the model ID
-        const modelId = readString(entry.model) || readString(entry.id)
-        if (!modelId) return null
-        return {
+    return entries.flatMap((entry: Record<string, unknown>) => {
+      // models.json uses "model" field for the model ID
+      const modelId = readString(entry.model) || readString(entry.id)
+      if (!modelId) return []
+      return [
+        {
           id: modelId,
           name: readString(entry.name) || modelId,
           provider: readString(entry.provider) || 'unknown',
-        }
-      })
-      .filter((e: ModelEntry | null): e is ModelEntry => e !== null)
+        },
+      ]
+    })
   } catch {
     return []
   }

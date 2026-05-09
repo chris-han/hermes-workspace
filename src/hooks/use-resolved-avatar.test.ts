@@ -16,6 +16,7 @@ describe('resolveDisplayName', () => {
           user_id: 'user-123',
           name: 'Alice Zhang',
           workspace_slug: 'demo-workspace',
+          feishu_open_id: '',
           weixin_user_id: 'o9cq8080ok2aVFb...',
         },
       }),
@@ -33,6 +34,7 @@ describe('resolveDisplayName', () => {
           user_id: 'user-123',
           name: 'Alice Zhang',
           workspace_slug: 'demo-workspace',
+          feishu_open_id: '',
           weixin_user_id: 'o9cq8080ok2aVFb...',
         },
       }),
@@ -50,6 +52,7 @@ describe('resolveDisplayName', () => {
           user_id: 'user-123',
           name: 'Alice Zhang',
           workspace_slug: 'demo-workspace',
+          feishu_open_id: '',
         },
       }),
     ).toBe('Alice Zhang')

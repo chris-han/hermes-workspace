@@ -214,7 +214,7 @@ export function SearchModal() {
       badge: getFileBadge(entry.name.split('.').pop() || ''),
       onSelect: () => {
         closeModal()
-        navigate({ to: '/files', search: { open: entry.path } })
+        navigate({ to: '/files', search: { path: entry.path } })
       },
     }))
 

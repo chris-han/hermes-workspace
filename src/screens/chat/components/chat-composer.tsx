@@ -126,6 +126,12 @@ type SessionStatusApiResponse = {
   [key: string]: unknown
 }
 
+type HermesConfigApiResponse = {
+  activeModel?: unknown
+  activeProvider?: unknown
+  [key: string]: unknown
+}
+
 type GatewayStatusApiResponse = {
   mode?: string
 }
@@ -624,6 +630,16 @@ function readModelFromStatusPayload(payload: unknown): string {
   return ''
 }
 
+function readModelFromHermesConfigPayload(payload: unknown): string {
+  if (!isRecord(payload)) return ''
+
+  const activeModel = readText(payload.activeModel)
+  if (!activeModel) return ''
+
+  const activeProvider = readText(payload.activeProvider)
+  return getResolvedModelKey(activeModel, activeProvider)
+}
+
 function normalizeDraftSessionKey(sessionKey?: string): string {
   if (typeof sessionKey !== 'string') return 'new'
   const normalized = sessionKey.trim()
@@ -677,7 +693,18 @@ async function fetchCurrentModelFromStatus(): Promise<string> {
       throw new Error(readText(payload.error) || 'Server unavailable')
     }
 
-    return readModelFromStatusPayload(payload.payload ?? payload)
+    const currentModel = readModelFromStatusPayload(payload.payload ?? payload)
+    if (currentModel) return currentModel
+
+    const configResponse = await fetch('/api/hermes-config', {
+      signal: controller.signal,
+    })
+    if (!configResponse.ok) {
+      throw new Error(await readResponseError(configResponse))
+    }
+
+    const configPayload = (await configResponse.json()) as HermesConfigApiResponse
+    return readModelFromHermesConfigPayload(configPayload)
   } catch (error) {
     if (
       (error instanceof DOMException && error.name === 'AbortError') ||
@@ -994,7 +1021,7 @@ function ChatComposerComponent({
     return typeof first === 'string' ? first : first.id || first.name || ''
   }, [modelsQuery.data])
   const modelButtonLabel =
-    currentSelectedModel || currentModel || configuredModel || '⚕ Hermes Agent'
+    currentSelectedModel || currentModel || configuredModel || 'Semantier Agent'
 
   // Measure composer height and set CSS variable for scroll padding
   useLayoutEffect(() => {
@@ -2832,3 +2859,4 @@ export type {
   ChatComposerHandle,
   ThinkingLevel,
 }
+export { fetchCurrentModelFromStatus, readModelFromHermesConfigPayload, readModelFromStatusPayload }

@@ -710,7 +710,7 @@ export function AgentsScreen({
   const scrollContainerRef = useRef<HTMLElement | null>(null)
   useEffect(() => {
     const el = document.querySelector('main[data-tour="chat-area"]')
-    scrollContainerRef.current = el
+    scrollContainerRef.current = el as HTMLElement | null
   }, [])
 
   // handlePullRefresh defined after queries (see below)
@@ -1863,7 +1863,7 @@ export function AgentsScreen({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => void navigate({ to: '/cron' })}
+                        onClick={() => void navigate({ to: '/cron' as never })}
                       >
                         Open Cron Screen
                       </Button>

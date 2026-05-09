@@ -220,7 +220,7 @@ export function wrapInlineScript(source: string): string {
 
 type ServiceWorkerLike = {
   getRegistrations: () => Promise<
-    Array<{ unregister: () => void | Promise<void> }>
+    ReadonlyArray<{ unregister: () => boolean | void | Promise<boolean | void> }>
   >
 }
 

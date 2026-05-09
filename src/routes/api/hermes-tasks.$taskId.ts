@@ -7,7 +7,7 @@ import {
   updateTask,
 } from '../../server/tasks-store'
 import { WorkspaceAuthRequiredError } from '../../server/workspace-root'
-import type { TaskColumn } from '../../server/tasks-store'
+import type { TaskColumn, TaskPriority } from '../../server/tasks-store'
 
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -45,9 +45,9 @@ export const Route = createFileRoute('/api/hermes-tasks/$taskId')({
               typeof body.description === 'string'
                 ? body.description
                 : undefined,
-            column: typeof body.column === 'string' ? body.column : undefined,
+            column: typeof body.column === 'string' ? (body.column as TaskColumn) : undefined,
             priority:
-              typeof body.priority === 'string' ? body.priority : undefined,
+              typeof body.priority === 'string' ? (body.priority as TaskPriority) : undefined,
             assignee:
               body.assignee === null || typeof body.assignee === 'string'
                 ? body.assignee

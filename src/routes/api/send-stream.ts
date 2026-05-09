@@ -6,12 +6,8 @@ import {
   SemantierSessionApiError,
   createSemantierSession,
   getSemantierSessionKey,
-  isSemantierSessionNotFoundError,
-  openSemantierSessionEvents,
-  sendSemantierSessionMessage,
+  openSemantierSessionChatStream,
 } from '../../server/semantier-session-api'
-import { translateSemantierSessionStreamEvent } from '../../server/semantier-session-stream'
-import { isCurrentRunEvent } from '../../server/stream-event-filter'
 import type { WorkspaceStreamEvent } from '../../server/semantier-session-stream'
 
 const SESSION_BOOTSTRAP_KEYS = new Set(['main', 'new'])
@@ -44,7 +40,11 @@ function parseSseBlock(block: string): { event: string; data: string } | null {
     }
   }
 
-  return event && data ? { event, data } : null
+  return data ? { event: event || 'message', data } : null
+}
+
+function readString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
 }
 
 function encodeSseFrame(event: WorkspaceStreamEvent): string {
@@ -111,26 +111,15 @@ export const Route = createFileRoute('/api/send-stream')({
             sessionKey = getSemantierSessionKey(session) || sessionKey
           }
 
-          let sendResult
-          try {
-            sendResult = await sendSemantierSessionMessage(
-              request.headers,
-              sessionKey,
-              message,
-            )
-          } catch (error) {
-            if (!isSemantierSessionNotFoundError(error)) {
-              throw error
-            }
-            const session = await createSemantierSession(request.headers)
-            sessionKey = getSemantierSessionKey(session) || sessionKey
-            sendResult = await sendSemantierSessionMessage(
-              request.headers,
-              sessionKey,
-              message,
-            )
-          }
-          const runId = sendResult.attemptId || sendResult.messageId || ''
+          const requestedModel =
+            typeof body.model === 'string' ? body.model.trim() : ''
+          const requestedThinking =
+            typeof body.thinking === 'string' ? body.thinking.trim() : ''
+          const runId =
+            (typeof body.idempotencyKey === 'string' &&
+            body.idempotencyKey.trim().length > 0
+              ? body.idempotencyKey.trim()
+              : sessionKey) || sessionKey
 
           const encoder = new TextEncoder()
           const abortController = new AbortController()
@@ -150,14 +139,11 @@ export const Route = createFileRoute('/api/send-stream')({
               })
 
               try {
-                const upstream = await openSemantierSessionEvents(
-                  request.headers,
-                  sessionKey,
-                  {
-                    replayExisting: true,
-                    signal: abortController.signal,
-                  },
-                )
+                const upstream = await openSemantierSessionChatStream(request.headers, sessionKey, message, {
+                  model: requestedModel || undefined,
+                  systemMessage: requestedThinking || undefined,
+                  signal: abortController.signal,
+                })
                 const reader = upstream.body?.getReader()
                 if (!reader) {
                   throw new Error('No response body')
@@ -179,34 +165,100 @@ export const Route = createFileRoute('/api/send-stream')({
                     const frame = parseSseBlock(block)
                     if (!frame) continue
 
-                    let payload: unknown
+                    if (frame.data === '[DONE]') {
+                      push({
+                        event: 'done',
+                        data: {
+                          state: 'complete',
+                          runId,
+                        },
+                      })
+                      finished = true
+                      abortController.abort()
+                      break
+                    }
+
+                    if (frame.event === 'hermes.tool.progress') {
+                      let payload: Record<string, unknown> = {}
+                      try {
+                        payload = JSON.parse(frame.data) as Record<string, unknown>
+                      } catch {
+                        continue
+                      }
+                      const status = readString(payload.status)
+                      push({
+                        event: 'tool',
+                        data: {
+                          phase:
+                            status === 'completed'
+                              ? 'complete'
+                              : status === 'running'
+                                ? 'start'
+                                : 'progress',
+                          name: readString(payload.tool) || 'tool',
+                          preview: readString(payload.label),
+                          toolCallId: readString(payload.toolCallId) || undefined,
+                        },
+                      })
+                      continue
+                    }
+
+                    let payload: Record<string, unknown> = {}
                     try {
-                      payload = JSON.parse(frame.data)
+                      payload = JSON.parse(frame.data) as Record<string, unknown>
                     } catch {
                       continue
                     }
 
-                    if (!isCurrentRunEvent(frame.event, payload, runId)) {
-                      continue
+                    const choices = Array.isArray(payload.choices)
+                      ? (payload.choices as Array<Record<string, unknown>>)
+                      : []
+                    const choice = choices[0] || {}
+                    const delta =
+                      choice.delta && typeof choice.delta === 'object'
+                        ? (choice.delta as Record<string, unknown>)
+                        : {}
+                    const content = readString(delta.content)
+                    const reasoning =
+                      readString(delta.reasoning) ||
+                      readString(delta.reasoning_content)
+                    const finishReason = readString(choice.finish_reason)
+
+                    if (reasoning) {
+                      push({
+                        event: 'thinking',
+                        data: { text: reasoning, runId },
+                      })
+                    }
+                    if (content) {
+                      push({
+                        event: 'chunk',
+                        data: { delta: content, runId },
+                      })
                     }
 
-                    const translated = translateSemantierSessionStreamEvent(
-                      frame.event,
-                      payload,
-                      runId,
-                    )
-                    for (const event of translated) {
-                      push(event)
-                      if (
-                        event.event === 'done' ||
-                        event.event === 'error' ||
-                        event.event === 'complete'
-                      ) {
-                        finished = true
-                      }
+                    if (finishReason && finishReason !== 'error') {
+                      push({
+                        event: 'done',
+                        data: {
+                          state: 'complete',
+                          runId,
+                        },
+                      })
+                      finished = true
+                      abortController.abort()
+                      break
                     }
-
-                    if (finished) {
+                    if (finishReason === 'error') {
+                      push({
+                        event: 'done',
+                        data: {
+                          state: 'error',
+                          errorMessage: 'Stream failed',
+                          runId,
+                        },
+                      })
+                      finished = true
                       abortController.abort()
                       break
                     }

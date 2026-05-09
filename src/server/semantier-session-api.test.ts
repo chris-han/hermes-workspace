@@ -4,6 +4,8 @@ import {
   SemantierSessionApiError,
   getSemantierSessionMessages,
   isSemantierSessionNotFoundError,
+  openSemantierSessionChatStream,
+  sendSemantierSessionMessage,
   toSemantierChatMessage,
   toSemantierSessionSummary,
 } from './semantier-session-api'
@@ -135,7 +137,7 @@ describe('getSemantierSessionMessages', () => {
           status: 200,
           headers: { 'content-type': 'application/json' },
         },
-      ) as typeof fetch
+      )
 
     try {
       const messages = await getSemantierSessionMessages(undefined, 'sess-123')
@@ -148,6 +150,78 @@ describe('getSemantierSessionMessages', () => {
           createdAt: '2026-04-21T10:05:00Z',
         }),
       ])
+    } finally {
+      global.fetch = originalFetch
+    }
+  })
+})
+
+describe('sendSemantierSessionMessage', () => {
+  it('posts to the semantier send endpoint and maps runId to attemptId', async () => {
+    const originalFetch = global.fetch
+    global.fetch = async (input, init) => {
+      expect(String(input)).toContain('/api/sessions/sess-123/chat')
+      expect(init?.method).toBe('POST')
+      expect(init?.body).toBe(
+        JSON.stringify({
+          message: 'Hello',
+        }),
+      )
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          sessionKey: 'sess-123',
+          runId: 'run-abc',
+        }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        },
+      )
+    }
+
+    try {
+      await expect(
+        sendSemantierSessionMessage(undefined, 'sess-123', 'Hello'),
+      ).resolves.toEqual({
+        messageId: undefined,
+        attemptId: 'run-abc',
+      })
+    } finally {
+      global.fetch = originalFetch
+    }
+  })
+})
+
+describe('openSemantierSessionChatStream', () => {
+  it('posts to the workspace chat stream endpoint', async () => {
+    const originalFetch = global.fetch
+    global.fetch = (async (input, init) => {
+      expect(String(input)).toContain('/api/sessions/sess-123/chat/stream')
+      expect(init?.method).toBe('POST')
+      expect(init?.body).toBe(
+        JSON.stringify({
+          message: 'Hello',
+          model: 'gpt-test',
+          system_message: undefined,
+        }),
+      )
+      return new Response('data: [DONE]\n\n', {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      })
+    }) as typeof fetch
+
+    try {
+      const response = await openSemantierSessionChatStream(
+        undefined,
+        'sess-123',
+        'Hello',
+        { model: 'gpt-test' },
+      )
+      expect(response.headers.get('content-type')).toContain(
+        'text/event-stream',
+      )
     } finally {
       global.fetch = originalFetch
     }

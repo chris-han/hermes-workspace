@@ -21,9 +21,9 @@ import { cn } from '@/lib/utils'
 import { writeTextToClipboard } from '@/lib/clipboard'
 import { toast } from '@/components/ui/toast'
 
-type SkillsTab = 'installed' | 'marketplace' | 'toolsets'
+type SkillsTab = 'installed' | 'marketplace' | 'toolsets' | 'plugins'
 type SkillsSort = 'name' | 'category'
-type SkillSourceFilter = 'All' | 'User' | 'Shared' | 'Built-in'
+type SkillSourceFilter = 'All' | 'User' | 'Shared'
 
 type DisplayControl = {
   label: string
@@ -102,6 +102,28 @@ type ToolsetSummary = {
   canModify?: boolean
 }
 
+type PluginSummary = {
+  id: string
+  name: string
+  label: string
+  description: string
+  sourceTier?: string
+  sourceLabel?: string
+  enabled: boolean
+  category: string
+  toolsets: Array<string>
+  tools: Array<string>
+  providesHooks: Array<string>
+  sourcePath: string
+  canModify?: boolean
+}
+
+type PluginsApiResponse = {
+  plugins: Array<PluginSummary>
+  total: number
+  categories: Array<string>
+}
+
 type SkillAction = 'install' | 'uninstall' | 'toggle'
 
 type SkillOverride = {
@@ -165,12 +187,12 @@ const SOURCE_FILTERS: Array<SkillSourceFilter> = [
   'All',
   'User',
   'Shared',
-  'Built-in',
 ]
 
 const TAB_OPTIONS: Array<DisplayControl & { value: SkillsTab }> = [
   { label: 'Installed', value: 'installed' },
   { label: 'Toolsets', value: 'toolsets' },
+  { label: 'Plugins', value: 'plugins' },
   { label: 'Marketplace', value: 'marketplace' },
 ]
 
@@ -184,13 +206,17 @@ function resolveSourceTier(item: {
   canModify?: boolean
 }): string | undefined {
   if (item.sourceTier) return item.sourceTier
-  if (item.builtin) return 'builtin'
   if (item.canEdit || item.canUninstall || item.canModify) return 'workspace'
 
   const sourceLabel = item.sourceLabel?.toLowerCase()
   if (sourceLabel === 'user' || sourceLabel === 'workspace') return 'workspace'
-  if (sourceLabel === 'application shared') return 'application'
-  if (sourceLabel === 'hermes built-in') return 'builtin'
+  if (
+    sourceLabel === 'shared' ||
+    sourceLabel === 'application shared' ||
+    sourceLabel === 'hermes built-in'
+  ) {
+    return 'application'
+  }
 
   const sourcePath = item.sourcePath?.replaceAll('\\', '/')
   if (sourcePath?.includes('/.hermes/skills/')) return 'workspace'
@@ -214,8 +240,7 @@ function matchesSourceFilter(
 
   if (filter === 'All') return true
   if (filter === 'User') return sourceTier === 'workspace'
-  if (filter === 'Built-in') return sourceTier === 'builtin'
-  return sourceTier === 'application' || sourceTier === 'external'
+  return sourceTier !== 'workspace'
 }
 
 function matchesToolsetSearch(
@@ -231,6 +256,25 @@ function matchesToolsetSearch(
     toolset.description,
     toolset.sourceLabel || '',
     ...toolset.tools,
+  ]
+    .join('\n')
+    .toLowerCase()
+    .includes(search)
+}
+
+function matchesPluginSearch(plugin: PluginSummary, rawSearch: string): boolean {
+  const search = rawSearch.trim().toLowerCase()
+  if (!search) return true
+
+  return [
+    plugin.name,
+    plugin.label,
+    plugin.description,
+    plugin.category,
+    plugin.sourceLabel || '',
+    ...plugin.toolsets,
+    ...plugin.tools,
+    ...plugin.providesHooks,
   ]
     .join('\n')
     .toLowerCase()
@@ -370,6 +414,7 @@ export function SkillsScreen() {
     useState('')
   const [sourceFilter, setSourceFilter] = useState<SkillSourceFilter>('All')
   const [category, setCategory] = useState('All')
+  const [pluginCategory, setPluginCategory] = useState('All')
   const [sort, setSort] = useState<SkillsSort>('name')
   const [page, setPage] = useState(1)
   const [pendingAction, setPendingAction] = useState<PendingSkillAction | null>(
@@ -380,6 +425,9 @@ export function SkillsScreen() {
   >({})
   const [selectedSkill, setSelectedSkill] = useState<SkillSummary | null>(null)
   const [selectedToolset, setSelectedToolset] = useState<ToolsetSummary | null>(
+    null,
+  )
+  const [selectedPlugin, setSelectedPlugin] = useState<PluginSummary | null>(
     null,
   )
   const [installConfigValues, setInstallConfigValues] = useState<
@@ -410,7 +458,7 @@ export function SkillsScreen() {
 
   const skillsQuery = useQuery({
     queryKey: ['skills-browser', tab, searchInput, category, page, sort],
-    enabled: tab !== 'toolsets',
+    enabled: tab !== 'toolsets' && tab !== 'plugins',
     queryFn: async function fetchSkills(): Promise<SkillsApiResponse> {
       const params = new URLSearchParams()
       params.set('tab', tab)
@@ -451,6 +499,33 @@ export function SkillsScreen() {
       }
 
       return Array.isArray(payload) ? payload : []
+    },
+  })
+
+  const pluginsQuery = useQuery({
+    queryKey: ['skills-browser', 'plugins'],
+    enabled: tab === 'plugins',
+    queryFn: async function fetchPlugins(): Promise<PluginsApiResponse> {
+      const response = await fetch('/api/plugins')
+      const payload = (await response.json().catch(() => ({}))) as
+        | PluginsApiResponse
+        | { error?: string; detail?: string }
+
+      if (!response.ok) {
+        const record =
+          payload && !Array.isArray(payload)
+            ? (payload as { error?: string; detail?: string })
+            : {}
+        throw new Error(
+          record.error || record.detail || 'Failed to load plugins',
+        )
+      }
+
+      return (payload as PluginsApiResponse) || {
+        plugins: [],
+        total: 0,
+        categories: ['All'],
+      }
     },
   })
 
@@ -581,11 +656,11 @@ export function SkillsScreen() {
           enabled: skill.installed,
           sourceTier:
             skill.source === 'official' || skill.trust_level === 'builtin'
-              ? 'builtin'
+              ? 'application'
               : 'external',
           sourceLabel:
             skill.source === 'official' || skill.trust_level === 'builtin'
-              ? 'Hermes Built-in'
+              ? 'Shared'
               : 'Shared',
           featuredGroup: undefined,
           security: {
@@ -614,6 +689,24 @@ export function SkillsScreen() {
         .sort((left, right) => left.label.localeCompare(right.label))
     },
     [searchInput, sourceFilter, toolsetsQuery.data],
+  )
+
+  const pluginCategories = useMemo(
+    () => pluginsQuery.data?.categories || ['All'],
+    [pluginsQuery.data?.categories],
+  )
+
+  const plugins = useMemo(
+    function resolveVisiblePlugins() {
+      return (pluginsQuery.data?.plugins || [])
+        .filter((plugin) => matchesSourceFilter(plugin, sourceFilter))
+        .filter((plugin) =>
+          pluginCategory === 'All' ? true : plugin.category === pluginCategory,
+        )
+        .filter((plugin) => matchesPluginSearch(plugin, searchInput))
+        .sort((left, right) => left.label.localeCompare(right.label))
+    },
+    [pluginCategory, pluginsQuery.data?.plugins, searchInput, sourceFilter],
   )
 
   const visibleSourceFilters = useMemo(
@@ -762,7 +855,8 @@ export function SkillsScreen() {
     const parsedTab: SkillsTab =
       nextTab === 'installed' ||
       nextTab === 'marketplace' ||
-      nextTab === 'toolsets'
+      nextTab === 'toolsets' ||
+      nextTab === 'plugins'
         ? nextTab
         : 'installed'
 
@@ -771,6 +865,9 @@ export function SkillsScreen() {
     if (parsedTab !== 'installed') {
       setCategory('All')
       setSort('name')
+    }
+    if (parsedTab !== 'plugins') {
+      setPluginCategory('All')
     }
     if (parsedTab === 'marketplace') {
       setSourceFilter('All')
@@ -843,11 +940,11 @@ export function SkillsScreen() {
                 Semantier Marketplace
               </p>
               <h1 className="text-2xl font-medium text-ink text-balance sm:text-3xl">
-                Skills & Toolsets
+                Skills, Toolsets & Plugins
               </h1>
               <p className="text-sm text-primary-500 text-pretty sm:text-base">
                 Discover, install, and inspect workspace skills plus the
-                toolsets available to the active Semantier runtime.
+                toolsets and plugins available to the active Semantier runtime.
               </p>
             </div>
           </div>
@@ -872,6 +969,8 @@ export function SkillsScreen() {
                         ? (skillsQuery.data?.total || 0).toLocaleString()
                         : option.value === 'toolsets'
                           ? (toolsetsQuery.data?.length || 0).toLocaleString()
+                          : option.value === 'plugins'
+                            ? (pluginsQuery.data?.total || 0).toLocaleString()
                           : (
                               hubQuery.data?.total ||
                               hubQuery.data?.results?.length ||
@@ -889,6 +988,8 @@ export function SkillsScreen() {
                   placeholder={
                     tab === 'toolsets'
                       ? 'Search by toolset, source, or tool name'
+                      : tab === 'plugins'
+                        ? 'Search by plugin, category, toolset, or hook'
                       : tab === 'marketplace'
                         ? 'Search Skills Hub, GitHub, and local fallback'
                         : 'Search by name, tags, or description'
@@ -927,6 +1028,23 @@ export function SkillsScreen() {
                     >
                       <option value="name">Name A-Z</option>
                       <option value="category">Category</option>
+                    </select>
+                  ) : null}
+
+                  {tab === 'plugins' ? (
+                    <select
+                      value={pluginCategory}
+                      onChange={(event) => {
+                        setPluginCategory(event.target.value)
+                        setPage(1)
+                      }}
+                      className="h-10 rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none"
+                    >
+                      {pluginCategories.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
                     </select>
                   ) : null}
 
@@ -974,6 +1092,14 @@ export function SkillsScreen() {
                 {toolsetsQuery.error instanceof Error
                   ? toolsetsQuery.error.message
                   : 'Failed to load toolsets.'}
+              </p>
+            ) : null}
+
+            {tab === 'plugins' && pluginsQuery.error ? (
+              <p className="rounded-lg border border-border bg-primary-100/60 px-3 py-2 text-sm text-ink">
+                {pluginsQuery.error instanceof Error
+                  ? pluginsQuery.error.message
+                  : 'Failed to load plugins.'}
               </p>
             ) : null}
 
@@ -1046,6 +1172,14 @@ export function SkillsScreen() {
                 onOpenDetails={setSelectedToolset}
               />
             </TabsPanel>
+
+            <TabsPanel value="plugins" className="pt-2">
+              <PluginsGrid
+                plugins={plugins}
+                loading={pluginsQuery.isPending}
+                onOpenDetails={setSelectedPlugin}
+              />
+            </TabsPanel>
           </Tabs>
         </section>
 
@@ -1084,6 +1218,13 @@ export function SkillsScreen() {
             <span>
               {(toolsetsQuery.data?.length || 0).toLocaleString()} total in
               runtime
+            </span>
+          </footer>
+        ) : tab === 'plugins' ? (
+          <footer className="flex items-center justify-between rounded-card border border-border bg-primary-50/80 px-3 py-2.5 text-sm text-primary-500 tabular-nums">
+            <span>{plugins.length.toLocaleString()} visible plugins</span>
+            <span>
+              {(pluginsQuery.data?.total || 0).toLocaleString()} total in runtime
             </span>
           </footer>
         ) : null}
@@ -1378,6 +1519,134 @@ export function SkillsScreen() {
           ) : null}
         </DialogContent>
       </DialogRoot>
+
+      <DialogRoot
+        open={Boolean(selectedPlugin)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedPlugin(null)
+          }
+        }}
+      >
+        <DialogContent className="rounded-card w-[min(820px,95vw)] border-border bg-primary-50/95 backdrop-blur-sm">
+          {selectedPlugin ? (
+            <div className="flex max-h-[85vh] flex-col">
+              <div className="border-b border-border px-5 py-4">
+                <DialogTitle className="text-balance">
+                  {selectedPlugin.label}
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-pretty">
+                  {selectedPlugin.category} • {selectedPlugin.sourceLabel || 'Plugin'}
+                </DialogDescription>
+              </div>
+
+              <ScrollAreaRoot className="h-[52vh]">
+                <ScrollAreaViewport className="px-5 py-4">
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                        {selectedPlugin.enabled ? 'Enabled' : 'Inactive'}
+                      </span>
+                      <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                        {selectedPlugin.category}
+                      </span>
+                      {selectedPlugin.sourceLabel ? (
+                        <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                          {selectedPlugin.sourceLabel}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <article className="rounded-xl border border-border bg-primary-100/30 p-4 backdrop-blur-sm">
+                      <p className="text-sm leading-relaxed text-primary-600">
+                        {selectedPlugin.description || 'No plugin description provided.'}
+                      </p>
+                    </article>
+
+                    <div className="rounded-xl border border-border bg-primary-100/30 p-4 backdrop-blur-sm">
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-primary-500">
+                        Hook Surfaces
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedPlugin.providesHooks.length > 0 ? (
+                          selectedPlugin.providesHooks.map((hook) => (
+                            <span
+                              key={hook}
+                              className="rounded-md border border-border bg-primary-50/80 px-2 py-0.5 text-xs text-primary-600"
+                            >
+                              {hook}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="rounded-md border border-border bg-primary-50/80 px-2 py-0.5 text-xs text-primary-600">
+                            No hooks declared
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-primary-100/30 p-4 backdrop-blur-sm">
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-primary-500">
+                        Toolsets & Tools
+                      </p>
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedPlugin.toolsets.length > 0 ? (
+                            selectedPlugin.toolsets.map((toolset) => (
+                              <span
+                                key={toolset}
+                                className="rounded-md border border-border bg-primary-50/80 px-2 py-0.5 text-xs text-primary-600"
+                              >
+                                {toolset}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="rounded-md border border-border bg-primary-50/80 px-2 py-0.5 text-xs text-primary-600">
+                              No toolsets exposed
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedPlugin.tools.length > 0 ? (
+                            selectedPlugin.tools.map((tool) => (
+                              <span
+                                key={tool}
+                                className="rounded-md border border-border bg-primary-50/80 px-2 py-0.5 text-xs text-primary-600"
+                              >
+                                {tool}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="rounded-md border border-border bg-primary-50/80 px-2 py-0.5 text-xs text-primary-600">
+                              No callable tools registered
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </ScrollAreaViewport>
+                <ScrollAreaScrollbar>
+                  <ScrollAreaThumb />
+                </ScrollAreaScrollbar>
+              </ScrollAreaRoot>
+
+              <div className="flex items-center justify-between gap-2 border-t border-border px-5 py-3">
+                <p className="text-sm text-primary-500 text-pretty">
+                  Source: <code className="inline-code">{selectedPlugin.sourcePath}</code>
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedPlugin(null)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </DialogRoot>
     </div>
   )
 }
@@ -1401,6 +1670,12 @@ type ToolsetsGridProps = {
   toolsets: Array<ToolsetSummary>
   loading: boolean
   onOpenDetails: (toolset: ToolsetSummary) => void
+}
+
+type PluginsGridProps = {
+  plugins: Array<PluginSummary>
+  loading: boolean
+  onOpenDetails: (plugin: PluginSummary) => void
 }
 
 const SECURITY_BADGE: Record<
@@ -1615,7 +1890,7 @@ function SkillsGrid({
                   {tab === 'installed' ? (
                     <Switch
                       checked={skill.enabled}
-                      disabled={isActing}
+                      disabled={isActing || skill.canModify === false}
                       className="[--thumb-size:1.3125rem]"
                       onCheckedChange={(checked) => onToggle(skill.id, checked)}
                       aria-label={`Toggle ${skill.name}`}
@@ -1802,6 +2077,104 @@ function ToolsetsGrid({ toolsets, loading, onOpenDetails }: ToolsetsGridProps) {
               </Button>
               <span className="text-xs text-primary-500">
                 {toolset.canModify ? 'Editable' : 'Read only'}
+              </span>
+            </div>
+          </motion.article>
+        ))}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function PluginsGrid({ plugins, loading, onOpenDetails }: PluginsGridProps) {
+  if (loading) {
+    return <SkillsSkeleton count={6} />
+  }
+
+  if (plugins.length === 0) {
+    return (
+      <div className="rounded-card border border-dashed border-border bg-primary-100/40 px-4 py-8 text-center">
+        <p className="text-sm font-medium text-primary-700">
+          No plugins found
+        </p>
+        <p className="mt-1 text-xs text-primary-500 text-pretty max-w-sm mx-auto">
+          Try a different source filter, category, or search term.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <AnimatePresence initial={false}>
+        {plugins.map((plugin) => (
+          <motion.article
+            key={plugin.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18 }}
+            className="flex min-h-[220px] flex-col rounded-card border border-border bg-card p-4"
+          >
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <div className="space-y-1">
+                <p className="text-xl leading-none">
+                  {plugin.category === 'Runtime Guard'
+                    ? '🛡️'
+                    : plugin.category === 'Hook Plugin'
+                      ? '🪝'
+                      : plugin.category === 'Tool Provider'
+                        ? '🧰'
+                        : plugin.category === 'Hybrid'
+                          ? '🧩'
+                          : '⚙️'}
+                </p>
+                <h3 className="line-clamp-2 text-base font-medium text-ink text-balance">
+                  {plugin.label}
+                </h3>
+                <p className="line-clamp-1 text-xs text-primary-500">
+                  {plugin.category}
+                </p>
+              </div>
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs tabular-nums',
+                  plugin.enabled
+                    ? 'border-primary/40 bg-primary/15 text-primary'
+                    : 'border-primary-200 bg-primary-100/60 text-primary-500',
+                )}
+              >
+                {plugin.enabled ? 'Enabled' : 'Inactive'}
+              </span>
+            </div>
+
+            <p className="line-clamp-3 min-h-[58px] text-sm text-primary-500 text-pretty">
+              {plugin.description || 'No plugin description provided.'}
+            </p>
+
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {plugin.sourceLabel ? (
+                <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                  {plugin.sourceLabel}
+                </span>
+              ) : null}
+              <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                {plugin.toolsets.length.toLocaleString()} toolsets
+              </span>
+              <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                {plugin.providesHooks.length.toLocaleString()} hooks
+              </span>
+            </div>
+
+            <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenDetails(plugin)}
+              >
+                Details
+              </Button>
+              <span className="text-xs text-primary-500">
+                {plugin.canModify ? 'Editable' : 'Read only'}
               </span>
             </div>
           </motion.article>

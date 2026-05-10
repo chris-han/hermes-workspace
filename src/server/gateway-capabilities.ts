@@ -253,12 +253,16 @@ export function probeGateway(options?: {
     probed: true,
     sessions: false,
     enhancedChat: false,
-    skills: false,
+    // Skills are served through the Semantier wrapper's single backend surface.
+    // Frontend feature gates must stay aligned with the Semantier-backed API routes.
+    skills: true,
     // Memory is always available: workspace reads $HERMES_HOME/MEMORY.md +
     // memory/*.md + memories/*.md directly from the local filesystem.
     // No remote gateway endpoint is required.
     memory: true,
-    config: false,
+    // Configuration is served by the Semantier wrapper through the workspace
+    // API routes, so the settings UI should remain enabled in single-surface mode.
+    config: true,
     jobs: false,
     dashboard: { available: true, url: HERMES_API },
     semantier: { available: true, url: SEMANTIER_AGENT_API },

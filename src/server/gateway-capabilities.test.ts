@@ -4,6 +4,7 @@ import {
   dashboardFetch,
   deriveGatewayModeFromCapabilities,
   getGatewayModeLabel,
+  probeGateway,
 } from './gateway-capabilities'
 
 const originalFetch = globalThis.fetch
@@ -99,5 +100,15 @@ describe('dashboardFetch', () => {
     const headers = new Headers(dashboardInit?.headers)
     expect(dashboardUrl).toBe('http://127.0.0.1:8899/api/sessions')
     expect(headers.get('cookie')).toBe('vt_session=session-123')
+  })
+})
+
+describe('probeGateway', () => {
+  it('exposes settings capabilities when the Semantier single-surface backend is active', () => {
+    const capabilities = probeGateway({ force: true })
+
+    expect(capabilities.semantier.available).toBe(true)
+    expect(capabilities.skills).toBe(true)
+    expect(capabilities.config).toBe(true)
   })
 })

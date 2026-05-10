@@ -43,7 +43,7 @@ export function getFeatureLabel(feature: EnhancedFeature | string): string {
 export function getUnavailableReason(
   feature: EnhancedFeature | string,
 ): string {
-  return `${getFeatureLabel(feature)} requires a Hermes gateway that exposes the extended APIs. Check that Hermes is installed and running with \`hermes gateway run\`.`
+  return `${getFeatureLabel(feature)} requires the Semantier wrapper backend. Check that Semantier is installed and running with \`semantier gateway run --replace\`.`
 }
 
 export function createCapabilityUnavailablePayload(

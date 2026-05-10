@@ -50,6 +50,7 @@ import { useAutoSessionTitle } from './hooks/use-auto-session-title'
 import { useRenameSession } from './hooks/use-rename-session'
 import { useContextAlert } from './hooks/use-context-alert'
 import { ContextBar } from './components/context-bar'
+import { shouldRecoverMissingSessionRoute } from './chat-route-recovery'
 import {
   CHAT_OPEN_SETTINGS_EVENT,
   CHAT_PENDING_COMMAND_STORAGE_KEY,
@@ -1724,8 +1725,24 @@ export function ChatScreen({
     !historyQuery.isFetching &&
     !historyQuery.isSuccess
 
+  const shouldRecoverMissingRoute = shouldRecoverMissingSessionRoute({
+    embedded,
+    isNewChat,
+    forcedSessionKey,
+    activeFriendlyId,
+    activeExists,
+    sessionsReady: sessionsQuery.isSuccess,
+    historyFetching: historyQuery.isFetching,
+    resolvedSessionKey,
+    recentSession: isRecentSession(activeFriendlyId),
+  })
+
   useEffect(() => {
     if (isRedirecting) {
+      if (error) setError(null)
+      return
+    }
+    if (shouldRecoverMissingRoute) {
       if (error) setError(null)
       return
     }
@@ -1769,6 +1786,7 @@ export function ChatScreen({
     navigate,
     sessionsError,
     sessionsQuery.isSuccess,
+    shouldRecoverMissingRoute,
     shouldRedirectToNew,
   ])
 
@@ -1781,7 +1799,18 @@ export function ChatScreen({
     if (!shouldRedirectToNew && sessionsQuery.isSuccess) {
       setIsRedirecting(false)
     }
-  }, [isNewChat, isRedirecting, sessionsQuery.isSuccess, shouldRedirectToNew])
+  }, [
+    isNewChat,
+    isRedirecting,
+    sessionsQuery.isSuccess,
+    shouldRecoverMissingRoute,
+    shouldRedirectToNew,
+  ])
+
+  useEffect(() => {
+    if (!shouldRecoverMissingRoute) return
+    setIsRedirecting(true)
+  }, [shouldRecoverMissingRoute])
 
   useEffect(() => {
     if (embedded) return
@@ -1811,7 +1840,29 @@ export function ChatScreen({
     embedded,
   ])
 
-  const hideUi = shouldRedirectToNew || isRedirecting
+  useEffect(() => {
+    if (!shouldRecoverMissingRoute) return
+    resetPendingSend()
+    clearHistoryMessages(queryClient, activeFriendlyId, sessionKeyForHistory)
+    try {
+      if (localStorage.getItem('hermes-last-session') === activeFriendlyId) {
+        localStorage.removeItem('hermes-last-session')
+      }
+    } catch {}
+    navigate({
+      to: '/chat/$sessionKey',
+      params: { sessionKey: 'new' },
+      replace: true,
+    })
+  }, [
+    activeFriendlyId,
+    navigate,
+    queryClient,
+    sessionKeyForHistory,
+    shouldRecoverMissingRoute,
+  ])
+
+  const hideUi = shouldRedirectToNew || shouldRecoverMissingRoute || isRedirecting
   const isFocusMode = !compact && chatFocusMode
   const showComposer = !isRedirecting
 

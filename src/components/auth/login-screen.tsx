@@ -10,6 +10,8 @@ type WeixinLoginStartResponse = {
   qr_scan_data: string
   base_url: string
   bot_type: string
+  authenticated?: boolean
+  profile_completed?: boolean
 }
 
 type WeixinLoginStatusResponse = {
@@ -115,6 +117,10 @@ export function LoginScreen({
       }
       if (!res.ok) {
         throw new Error(data.detail || `HTTP ${res.status}`)
+      }
+      if (data.authenticated) {
+        window.location.reload()
+        return
       }
       setWeixinState(data.state)
       setWeixinStatus(data.status)

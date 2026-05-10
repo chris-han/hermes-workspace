@@ -702,7 +702,7 @@ The browser does not choose a workspace manually. It enters the workspace resolv
 
 - `vt_session` proves browser identity
 - backend resolves `user_id` and `workspace_id`
-- `hermes-workspace` consumes that result from `/system/paths`
+- `hermes-workspace` consumes that result from `/auth/context`
 - failure to resolve authenticated workspace means login, not fallback
 
 ### Owner Identity Vs Messaging Identity
@@ -832,7 +832,7 @@ These notes exist so the design doc matches the current repo, not an abstract fu
 ### Current Behavioral Contract
 
 - `workspace-shell` must show login when Semantier auth resolves unauthenticated
-- `/system/paths` is the canonical workspace entrypoint
+- `/auth/context` is the canonical auth + workspace entrypoint
 - fallback to public workspace is disabled for browser UX
 - repeat Weixin QR login should return to the same correlated profile
 

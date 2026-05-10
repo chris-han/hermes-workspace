@@ -7,6 +7,8 @@ import {
 import type { SemantierAuthStatus } from '@/lib/semantier-auth'
 import { useSemantierAuthStatus } from '@/lib/semantier-auth'
 
+const ANONYMOUS_DISPLAY_NAME = 'Anonymous'
+
 export function useResolvedAvatarUrl(): string | null {
   const localAvatar = useChatSettingsStore(selectChatProfileAvatarDataUrl)
   const semantierAuth = useSemantierAuthStatus()
@@ -18,6 +20,10 @@ export function resolveDisplayName(
   localName: string,
   auth: SemantierAuthStatus | undefined,
 ): string {
+  if (auth?.authenticated === false) {
+    return ANONYMOUS_DISPLAY_NAME
+  }
+
   const authUser = auth?.user
   const authName = authUser?.name?.trim() || ''
   const localTrimmed = localName.trim()
@@ -40,7 +46,7 @@ export function resolveDisplayName(
     return localName
   }
 
-  return authName || DEFAULT_CHAT_DISPLAY_NAME
+  return authName || ANONYMOUS_DISPLAY_NAME
 }
 
 export function useResolvedDisplayName(): string {

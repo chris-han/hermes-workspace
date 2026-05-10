@@ -5,6 +5,18 @@ import { DEFAULT_CHAT_DISPLAY_NAME } from '@/hooks/use-chat-settings'
 import { resolveDisplayName } from './use-resolved-avatar'
 
 describe('resolveDisplayName', () => {
+  it('shows Anonymous when user is logged out', () => {
+    expect(
+      resolveDisplayName('User', {
+        authenticated: false,
+        feishu_oauth_enabled: false,
+        profile_completed: false,
+        workspace_slug: null,
+        user: null,
+      }),
+    ).toBe('Anonymous')
+  })
+
   it('prefers the completed Semantier profile name over a legacy Weixin identifier', () => {
     expect(
       resolveDisplayName('o9cq8080ok2aVFb...', {

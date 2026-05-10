@@ -51,7 +51,10 @@ import { applyAccentColor } from '@/lib/accent-colors'
 import { getUnavailableReason } from '@/lib/feature-gates'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { ProviderLogo } from '@/components/provider-logo'
-import { MessagingSettingsScreen } from '@/screens/settings/messaging-settings-screen'
+import {
+  MessagingAccountLinkingScreen,
+  MessagingPlatformSettingsScreen,
+} from '@/screens/settings/messaging-settings-screen'
 import {
   DialogClose,
   DialogContent,
@@ -77,7 +80,8 @@ type SectionId =
   | 'chat'
   | 'notifications'
   | 'language'
-  | 'messaging'
+  | 'messaging_accounts'
+  | 'messaging_platforms'
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'hermes', label: 'Model & Provider', icon: CloudIcon },
@@ -90,7 +94,8 @@ const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'chat', label: 'Chat', icon: MessageMultiple01Icon },
   { id: 'notifications', label: 'Alerts', icon: Notification03Icon },
   { id: 'language', label: 'Language', icon: MessageMultiple01Icon },
-  { id: 'messaging', label: 'IM Gateway', icon: Message01Icon },
+  { id: 'messaging_accounts', label: 'Feishu Login', icon: Message01Icon },
+  { id: 'messaging_platforms', label: 'Messaging Platforms', icon: Message01Icon },
 ]
 
 const DARK_ENTERPRISE_THEMES = new Set<ThemeId>([
@@ -2204,7 +2209,8 @@ const CONTENT_MAP: Record<SectionId, () => React.JSX.Element> = {
   chat: ChatContent,
   notifications: NotificationsContent,
   language: LanguageContent,
-  messaging: MessagingSettingsScreen,
+  messaging_accounts: MessagingAccountLinkingScreen,
+  messaging_platforms: MessagingPlatformSettingsScreen,
 }
 
 type SettingsDialogProps = {

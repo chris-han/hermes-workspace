@@ -18,14 +18,15 @@ export interface SemantierAuthStatus {
   feishu_oauth_enabled: boolean
   password_login_enabled?: boolean
   profile_completed?: boolean
+  auth_invalid_reason?: string | null
   workspace_slug?: string | null
   user?: SemantierAuthUser | null
 }
 
-export const semantierAuthQueryKey = ['semantier-auth', 'me'] as const
+export const semantierAuthQueryKey = ['semantier-auth', 'context'] as const
 
 export async function fetchSemantierAuthStatus(): Promise<SemantierAuthStatus> {
-  const response = await fetch('/auth/me', {
+  const response = await fetch('/auth/context', {
     signal: AbortSignal.timeout(5000),
   })
 

@@ -17,6 +17,12 @@ const WORKSPACE_APP_STATE_DIRNAME = '.hermes-workspace'
 
 type BackendWorkspacePathsPayload = {
   authenticated?: unknown
+  workspace?: {
+    id?: unknown
+    slug?: unknown
+    root?: unknown
+    hermes_home?: unknown
+  } | null
   currentWorkspaceId?: unknown
   currentWorkspaceSlug?: unknown
   currentWorkspaceRoot?: unknown
@@ -80,33 +86,45 @@ async function fetchWorkspaceRootFromBackend(
     allowedCookieNames: [SEMANTIER_AGENT_AUTH_COOKIE],
   })
 
-  const response = await fetch(withSemantierAgentBase('/system/paths'), {
+  const response = await fetch(withSemantierAgentBase('/auth/context'), {
     headers,
     signal: AbortSignal.timeout(2_000),
   })
   if (!response.ok) return null
 
   const payload = (await response.json()) as BackendWorkspacePathsPayload
+  const workspace =
+    payload.workspace && typeof payload.workspace === 'object'
+      ? payload.workspace
+      : null
   const workspaceRoot =
-    typeof payload.currentWorkspaceRoot === 'string'
-      ? payload.currentWorkspaceRoot.trim()
+    typeof workspace?.root === 'string'
+      ? workspace.root.trim()
+      : typeof payload.currentWorkspaceRoot === 'string'
+        ? payload.currentWorkspaceRoot.trim()
       : ''
   if (!workspaceRoot) return null
   const hermesHome =
-    typeof payload.currentHermesHome === 'string'
-      ? payload.currentHermesHome.trim()
+    typeof workspace?.hermes_home === 'string'
+      ? workspace.hermes_home.trim()
+      : typeof payload.currentHermesHome === 'string'
+        ? payload.currentHermesHome.trim()
       : ''
 
   const isAuthenticated = payload.authenticated === true
   const workspaceId =
-    typeof payload.currentWorkspaceId === 'string' &&
-    payload.currentWorkspaceId.trim()
-      ? payload.currentWorkspaceId.trim()
+    typeof workspace?.id === 'string' && workspace.id.trim()
+      ? workspace.id.trim()
+      : typeof payload.currentWorkspaceId === 'string' &&
+          payload.currentWorkspaceId.trim()
+        ? payload.currentWorkspaceId.trim()
       : 'public'
   const workspaceSlug =
-    typeof payload.currentWorkspaceSlug === 'string' &&
-    payload.currentWorkspaceSlug.trim()
-      ? payload.currentWorkspaceSlug.trim()
+    typeof workspace?.slug === 'string' && workspace.slug.trim()
+      ? workspace.slug.trim()
+      : typeof payload.currentWorkspaceSlug === 'string' &&
+          payload.currentWorkspaceSlug.trim()
+        ? payload.currentWorkspaceSlug.trim()
       : 'public'
 
   if (!isAuthenticated || workspaceId === 'public') {

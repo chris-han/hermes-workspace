@@ -271,9 +271,16 @@ type SettingsSectionId =
   | 'advanced'
 
 type SettingsNavItem = {
-  id: SettingsSectionId | 'mcp' | 'messaging'
+  id:
+    | SettingsSectionId
+    | 'mcp'
+    | 'messaging_accounts'
+    | 'messaging_platforms'
   label: string
-  to?: '/settings/mcp' | '/settings/messaging'
+  to?:
+    | '/settings/mcp'
+    | '/settings/messaging-accounts'
+    | '/settings/messaging-platforms'
 }
 
 const SETTINGS_NAV_ITEMS: Array<SettingsNavItem> = [
@@ -285,7 +292,16 @@ const SETTINGS_NAV_ITEMS: Array<SettingsNavItem> = [
   { id: 'appearance', label: 'Appearance' },
   { id: 'chat', label: 'Chat' },
   { id: 'notifications', label: 'Notifications' },
-  { id: 'messaging', label: 'Messaging Gateway', to: '/settings/messaging' },
+  {
+    id: 'messaging_accounts',
+    label: 'Feishu Login',
+    to: '/settings/messaging-accounts',
+  },
+  {
+    id: 'messaging_platforms',
+    label: 'Messaging Platforms',
+    to: '/settings/messaging-platforms',
+  },
   { id: 'mcp', label: 'MCP Servers', to: '/settings/mcp' },
   { id: 'language' as SettingsSectionId, label: 'Language' },
 ]

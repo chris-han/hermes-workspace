@@ -72,10 +72,13 @@ describe('resolveActiveWorkspaceRoot', () => {
       ok: true,
       json: async () => ({
         authenticated: true,
-        currentWorkspaceId: 'bb685f18514b4dc89018900bbb4687eb',
-        currentWorkspaceSlug: 'alice_zhang',
-        currentWorkspaceRoot:
-          '/home/chris/repo/semantier/workspaces/bb685f18514b4dc89018900bbb4687eb',
+        workspace: {
+          id: 'bb685f18514b4dc89018900bbb4687eb',
+          slug: 'alice_zhang',
+          root: '/home/chris/repo/semantier/workspaces/bb685f18514b4dc89018900bbb4687eb',
+          hermes_home:
+            '/home/chris/repo/semantier/workspaces/bb685f18514b4dc89018900bbb4687eb/.hermes',
+        },
       }),
     })
     globalThis.fetch = fetchMock as typeof fetch
@@ -113,10 +116,7 @@ describe('resolveActiveWorkspaceRoot', () => {
       ok: true,
       json: async () => ({
         authenticated: false,
-        currentWorkspaceId: 'public',
-        currentWorkspaceSlug: 'public',
-        currentWorkspaceRoot:
-          '/home/chris/repo/semantier/workspaces/public',
+        workspace: null,
       }),
     })
     globalThis.fetch = fetchMock as typeof fetch
@@ -130,7 +130,7 @@ describe('resolveActiveWorkspaceRoot', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      'http://127.0.0.1:8899/system/paths',
+      'http://127.0.0.1:8899/auth/context',
     )
   })
 })

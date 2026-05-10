@@ -10,6 +10,6 @@ describe('getAuthProxyTimeoutMs', () => {
 
   it('keeps the default timeout for other auth routes', () => {
     expect(getAuthProxyTimeoutMs('/auth/password/login')).toBe(5_000)
-    expect(getAuthProxyTimeoutMs('/auth/me')).toBe(5_000)
+    expect(getAuthProxyTimeoutMs('/auth/context')).toBe(5_000)
   })
 })

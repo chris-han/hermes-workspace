@@ -26,6 +26,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as SettingsProvidersRouteImport } from './routes/settings/providers'
+import { Route as SettingsMessagingPlatformsRouteImport } from './routes/settings/messaging-platforms'
+import { Route as SettingsMessagingAccountsRouteImport } from './routes/settings/messaging-accounts'
 import { Route as SettingsMessagingRouteImport } from './routes/settings/messaging'
 import { Route as SettingsMcpRouteImport } from './routes/settings/mcp'
 import { Route as RunsRunIdRouteImport } from './routes/runs/$runId'
@@ -189,6 +191,18 @@ const SettingsProvidersRoute = SettingsProvidersRouteImport.update({
   path: '/providers',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsMessagingPlatformsRoute =
+  SettingsMessagingPlatformsRouteImport.update({
+    id: '/messaging-platforms',
+    path: '/messaging-platforms',
+    getParentRoute: () => SettingsRoute,
+  } as any)
+const SettingsMessagingAccountsRoute =
+  SettingsMessagingAccountsRouteImport.update({
+    id: '/messaging-accounts',
+    path: '/messaging-accounts',
+    getParentRoute: () => SettingsRoute,
+  } as any)
 const SettingsMessagingRoute = SettingsMessagingRouteImport.update({
   id: '/messaging',
   path: '/messaging',
@@ -634,6 +648,8 @@ export interface FileRoutesByFullPath {
   '/runs/$runId': typeof RunsRunIdRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/messaging': typeof SettingsMessagingRoute
+  '/settings/messaging-accounts': typeof SettingsMessagingAccountsRoute
+  '/settings/messaging-platforms': typeof SettingsMessagingPlatformsRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -729,6 +745,8 @@ export interface FileRoutesByTo {
   '/runs/$runId': typeof RunsRunIdRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/messaging': typeof SettingsMessagingRoute
+  '/settings/messaging-accounts': typeof SettingsMessagingAccountsRoute
+  '/settings/messaging-platforms': typeof SettingsMessagingPlatformsRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat': typeof ChatIndexRoute
   '/settings': typeof SettingsIndexRoute
@@ -826,6 +844,8 @@ export interface FileRoutesById {
   '/runs/$runId': typeof RunsRunIdRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/messaging': typeof SettingsMessagingRoute
+  '/settings/messaging-accounts': typeof SettingsMessagingAccountsRoute
+  '/settings/messaging-platforms': typeof SettingsMessagingPlatformsRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -924,6 +944,8 @@ export interface FileRouteTypes {
     | '/runs/$runId'
     | '/settings/mcp'
     | '/settings/messaging'
+    | '/settings/messaging-accounts'
+    | '/settings/messaging-platforms'
     | '/settings/providers'
     | '/chat/'
     | '/settings/'
@@ -1019,6 +1041,8 @@ export interface FileRouteTypes {
     | '/runs/$runId'
     | '/settings/mcp'
     | '/settings/messaging'
+    | '/settings/messaging-accounts'
+    | '/settings/messaging-platforms'
     | '/settings/providers'
     | '/chat'
     | '/settings'
@@ -1115,6 +1139,8 @@ export interface FileRouteTypes {
     | '/runs/$runId'
     | '/settings/mcp'
     | '/settings/messaging'
+    | '/settings/messaging-accounts'
+    | '/settings/messaging-platforms'
     | '/settings/providers'
     | '/chat/'
     | '/settings/'
@@ -1353,6 +1379,20 @@ declare module '@tanstack/react-router' {
       path: '/providers'
       fullPath: '/settings/providers'
       preLoaderRoute: typeof SettingsProvidersRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/messaging-platforms': {
+      id: '/settings/messaging-platforms'
+      path: '/messaging-platforms'
+      fullPath: '/settings/messaging-platforms'
+      preLoaderRoute: typeof SettingsMessagingPlatformsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/messaging-accounts': {
+      id: '/settings/messaging-accounts'
+      path: '/messaging-accounts'
+      fullPath: '/settings/messaging-accounts'
+      preLoaderRoute: typeof SettingsMessagingAccountsRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/messaging': {
@@ -1900,6 +1940,8 @@ declare module '@tanstack/react-router' {
 interface SettingsRouteChildren {
   SettingsMcpRoute: typeof SettingsMcpRoute
   SettingsMessagingRoute: typeof SettingsMessagingRoute
+  SettingsMessagingAccountsRoute: typeof SettingsMessagingAccountsRoute
+  SettingsMessagingPlatformsRoute: typeof SettingsMessagingPlatformsRoute
   SettingsProvidersRoute: typeof SettingsProvidersRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
@@ -1907,6 +1949,8 @@ interface SettingsRouteChildren {
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsMcpRoute: SettingsMcpRoute,
   SettingsMessagingRoute: SettingsMessagingRoute,
+  SettingsMessagingAccountsRoute: SettingsMessagingAccountsRoute,
+  SettingsMessagingPlatformsRoute: SettingsMessagingPlatformsRoute,
   SettingsProvidersRoute: SettingsProvidersRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }

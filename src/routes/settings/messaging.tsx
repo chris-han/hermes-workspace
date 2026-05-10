@@ -5,7 +5,7 @@ import { MessagingSettingsScreen } from '@/screens/settings/messaging-settings-s
 export const Route = createFileRoute('/settings/messaging')({
   ssr: false,
   component: function SettingsMessagingRoute() {
-    usePageTitle('Messaging Gateway')
+    usePageTitle('Messaging Setup')
     return <MessagingSettingsScreen />
   },
 })

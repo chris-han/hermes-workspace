@@ -63,6 +63,22 @@ type FeishuLinkStatusResponse = {
   message?: string
 }
 
+type WeixinPairingStartResponse = {
+  state: string
+  status: string
+  qrcode: string
+  qrcode_url?: string
+  qr_scan_data: string
+  base_url: string
+  bot_type: string
+}
+
+type WeixinPairingStatusResponse = {
+  state: string
+  status: string
+  redirect_base_url?: string
+}
+
 type FeishuDraft = {
   appId: string
   appSecret: string
@@ -102,6 +118,12 @@ const EMPTY_WEIXIN: WeixinDraft = {
   groupPolicy: 'disabled',
   groupAllowFrom: '',
   homeChannel: '',
+}
+
+const WEIXIN_PAIRING_POLL_INTERVAL_MS = 1500
+
+function shouldPollWeixinPairingStatus(status: string): boolean {
+  return ['wait', 'scaned', 'scaned_but_redirect'].includes(status)
 }
 
 function normalizeCommaSeparated(value: string): string {
@@ -169,8 +191,8 @@ function StatusBadge({ configured }: { configured: boolean }) {
       className={cn(
         'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide',
         configured
-          ? 'bg-emerald-200/70 text-emerald-900'
-          : 'bg-primary-200 text-primary-700',
+          ? 'bg-emerald-200/70 text-success'
+          : 'theme-card2 theme-text',
       )}
     >
       {configured ? 'Configured' : 'Not configured'}
@@ -189,9 +211,9 @@ function PageShell({
 }) {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 pt-6 pb-10 sm:px-6">
-      <header className="rounded-2xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm">
-        <h1 className="text-xl font-semibold text-primary-900">{title}</h1>
-        <p className="mt-1 text-sm text-primary-700">{description}</p>
+      <header className="rounded-2xl border theme-border theme-card2 p-5 shadow-sm">
+        <h1 className="text-xl font-semibold theme-text">{title}</h1>
+        <p className="mt-1 text-sm theme-text">{description}</p>
       </header>
       {children}
     </div>
@@ -208,10 +230,10 @@ function SectionCard({
   children: ReactNode
 }) {
   return (
-    <section className="rounded-2xl border border-primary-200 bg-primary-50/70 p-5 shadow-sm">
+    <section className="rounded-2xl border theme-border theme-card2 p-5 shadow-sm">
       <div className="mb-4">
-        <h2 className="text-base font-semibold text-primary-900">{title}</h2>
-        <p className="text-sm text-primary-700">{description}</p>
+        <h2 className="text-base font-semibold theme-text">{title}</h2>
+        <p className="text-sm theme-text">{description}</p>
       </div>
       {children}
     </section>
@@ -228,7 +250,7 @@ function SettingsLink({
   return (
     <Link
       to={to}
-      className="inline-flex items-center rounded-lg border border-primary-300 px-3 py-2 text-sm font-medium text-primary-800 transition-colors hover:bg-primary-100"
+      className="inline-flex items-center rounded-lg border theme-border px-3 py-2 text-sm font-medium theme-text transition-colors hover:theme-card2"
     >
       {label}
     </Link>
@@ -269,6 +291,12 @@ function useMessagingSettingsModel() {
   const [feishu, setFeishu] = useState<FeishuDraft>(EMPTY_FEISHU)
   const [weixin, setWeixin] = useState<WeixinDraft>(EMPTY_WEIXIN)
   const [showWeixinToken, setShowWeixinToken] = useState(false)
+  const [startingWeixinPairing, setStartingWeixinPairing] = useState(false)
+  const [weixinPairingState, setWeixinPairingState] = useState('')
+  const [weixinPairingStatus, setWeixinPairingStatus] = useState('')
+  const [weixinPairingMessage, setWeixinPairingMessage] = useState('')
+  const [weixinPairingQrScanData, setWeixinPairingQrScanData] = useState('')
+  const [weixinPairingQrDataUrl, setWeixinPairingQrDataUrl] = useState('')
   const [validationMessage, setValidationMessage] = useState<Record<PlatformId, string>>({
     feishu: '',
     weixin: '',
@@ -327,6 +355,14 @@ function useMessagingSettingsModel() {
             : String(weixinConfig.group_allow_from ?? ''),
           homeChannel: String(weixinConfig.home_channel ?? ''),
         })
+
+        if (next.weixin.configured) {
+          setWeixinPairingState('')
+          setWeixinPairingStatus('confirmed')
+          setWeixinPairingMessage('Weixin gateway is configured.')
+          setWeixinPairingQrScanData('')
+          setWeixinPairingQrDataUrl('')
+        }
 
         return next
       })
@@ -469,6 +505,127 @@ function useMessagingSettingsModel() {
     }
   }, [feishuLinkAuthorizeUrl])
 
+  async function startWeixinPairingQr() {
+    if (platforms.weixin.configured) {
+      return
+    }
+    setStartingWeixinPairing(true)
+    setWeixinPairingMessage('')
+    try {
+      const response = await requestJson<WeixinPairingStartResponse>(
+        '/auth/weixin/login/start',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        },
+      )
+
+      if (!response.state || !response.qr_scan_data) {
+        throw new Error('Failed to start Weixin QR pairing.')
+      }
+
+      setWeixinPairingState(response.state)
+      setWeixinPairingStatus(response.status || 'wait')
+      setWeixinPairingQrScanData(response.qr_scan_data)
+      setWeixinPairingMessage(
+        'Scan this QR code with Weixin and confirm on your phone.',
+      )
+      toast('Weixin QR pairing started.', { type: 'success' })
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to start Weixin QR pairing.'
+      setWeixinPairingStatus('failed')
+      setWeixinPairingMessage(message)
+      toast(message, { type: 'error' })
+    } finally {
+      setStartingWeixinPairing(false)
+    }
+  }
+
+  async function pollWeixinPairingStatus(state: string) {
+    try {
+      const response = await requestJson<WeixinPairingStatusResponse>(
+        `/auth/weixin/login/status?state=${encodeURIComponent(state)}`,
+      )
+      const nextStatus = response.status || 'wait'
+      setWeixinPairingStatus(nextStatus)
+
+      if (response.redirect_base_url || nextStatus === 'scaned') {
+        setWeixinPairingMessage('QR scanned. Confirm login in Weixin.')
+      } else if (nextStatus === 'expired') {
+        setWeixinPairingMessage('QR code expired. Start a new pairing session.')
+      }
+
+      if (nextStatus === 'confirmed') {
+        setPlatforms((current) => ({
+          ...current,
+          weixin: {
+            ...current.weixin,
+            configured: true,
+          },
+        }))
+        setWeixinPairingState('')
+        setWeixinPairingQrScanData('')
+        setWeixinPairingQrDataUrl('')
+        setWeixinPairingMessage('Weixin gateway paired successfully.')
+        toast('Weixin gateway paired successfully.', { type: 'success' })
+        await loadPlatforms()
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to check Weixin pairing status.'
+      setWeixinPairingStatus('failed')
+      setWeixinPairingMessage(message)
+    }
+  }
+
+  useEffect(() => {
+    if (!weixinPairingState || !shouldPollWeixinPairingStatus(weixinPairingStatus)) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      void pollWeixinPairingStatus(weixinPairingState)
+    }, WEIXIN_PAIRING_POLL_INTERVAL_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [weixinPairingState, weixinPairingStatus])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function buildWeixinPairingQrDataUrl() {
+      if (!weixinPairingQrScanData) {
+        setWeixinPairingQrDataUrl('')
+        return
+      }
+      try {
+        const dataUrl = await QRCode.toDataURL(weixinPairingQrScanData, {
+          width: 320,
+          margin: 1,
+          errorCorrectionLevel: 'M',
+        })
+        if (!cancelled) {
+          setWeixinPairingQrDataUrl(dataUrl)
+        }
+      } catch {
+        if (!cancelled) {
+          setWeixinPairingQrDataUrl('')
+        }
+      }
+    }
+
+    void buildWeixinPairingQrDataUrl()
+    return () => {
+      cancelled = true
+    }
+  }, [weixinPairingQrScanData])
+
   async function validate(platform: PlatformId) {
     setValidatingPlatform(platform)
     try {
@@ -587,12 +744,18 @@ function useMessagingSettingsModel() {
     setFeishu,
     setShowWeixinToken,
     showWeixinToken,
+    startWeixinPairingQr,
+    startingWeixinPairing,
     startFeishuLinkQr,
     startingFeishuLink,
     validate,
     validatingPlatform,
     validationMessage,
     weixin,
+    weixinPairingMessage,
+    weixinPairingQrDataUrl,
+    weixinPairingState,
+    weixinPairingStatus,
   }
 }
 
@@ -602,7 +765,7 @@ function readOnlyValue(value: string): string {
 
 function LoadingState() {
   return (
-    <div className="rounded-2xl border border-primary-200 bg-primary-50/70 p-5 text-sm text-primary-700">
+    <div className="rounded-2xl border theme-border theme-card2 p-5 text-sm theme-text">
       Loading messaging configuration...
     </div>
   )
@@ -620,7 +783,7 @@ function FeishuAccountLinkCard({
       title="Feishu Login"
       description="This is per-user Feishu sign-in pairing. It is only for login identity and is separate from bot configuration."
     >
-      <div className="rounded-lg border border-primary-200 bg-surface p-3">
+      <div className="rounded-lg border theme-border theme-card p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -631,14 +794,14 @@ function FeishuAccountLinkCard({
             {model.startingFeishuLink ? 'Preparing QR...' : 'Link Feishu Login'}
           </Button>
           {linkedOpenId ? (
-            <span className="text-xs text-emerald-700">
+            <span className="text-xs text-success">
               Linked open_id: {linkedOpenId}
             </span>
           ) : (
-            <span className="text-xs text-primary-700">No Feishu account linked yet.</span>
+            <span className="text-xs theme-text">No Feishu account linked yet.</span>
           )}
           {model.feishuLinkStatus ? (
-            <span className="text-xs text-primary-700">
+            <span className="text-xs theme-text">
               Link status: {model.feishuLinkStatus}
             </span>
           ) : null}
@@ -649,9 +812,9 @@ function FeishuAccountLinkCard({
             <img
               src={model.feishuLinkQrDataUrl || ''}
               alt="Feishu login QR code"
-              className="h-40 w-40 rounded-md border border-primary-200 bg-white object-contain"
+              className="h-40 w-40 rounded-md border theme-border theme-card object-contain"
             />
-            <div className="min-w-0 text-xs text-primary-700">
+            <div className="min-w-0 text-xs theme-text">
               <p>Scan this QR with Feishu and approve authorization.</p>
               <p className="mt-1 break-all">
                 OAuth URL:{' '}
@@ -669,7 +832,7 @@ function FeishuAccountLinkCard({
         ) : null}
 
         {model.feishuLinkMessage ? (
-          <p className="mt-2 text-xs text-primary-700">{model.feishuLinkMessage}</p>
+          <p className="mt-2 text-xs theme-text">{model.feishuLinkMessage}</p>
         ) : null}
       </div>
     </SectionCard>
@@ -698,7 +861,7 @@ function FeishuBotConfigCard({
           href={state.docs_url}
           target="_blank"
           rel="noreferrer"
-          className="text-xs font-medium text-primary-700 underline underline-offset-2"
+          className="text-xs font-medium theme-text underline underline-offset-2"
         >
           Open setup docs
         </a>
@@ -706,7 +869,7 @@ function FeishuBotConfigCard({
 
       <div className="grid gap-3 md:grid-cols-2">
         <label className="space-y-1.5">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             App ID
           </span>
           <Input
@@ -721,7 +884,7 @@ function FeishuBotConfigCard({
           />
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             App Secret
           </span>
           <Input
@@ -737,7 +900,7 @@ function FeishuBotConfigCard({
           />
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Domain
           </span>
           <select
@@ -748,14 +911,14 @@ function FeishuBotConfigCard({
                 domain: event.target.value as 'feishu' | 'lark',
               }))
             }
-            className="h-9 rounded-lg border border-primary-200 bg-surface px-3 text-sm text-primary-900"
+            className="h-9 rounded-lg border theme-border theme-card px-3 text-sm theme-text"
           >
             <option value="feishu">Feishu</option>
             <option value="lark">Lark</option>
           </select>
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Connection Mode
           </span>
           <select
@@ -766,7 +929,7 @@ function FeishuBotConfigCard({
                 connectionMode: event.target.value as 'websocket' | 'webhook',
               }))
             }
-            className="h-9 rounded-lg border border-primary-200 bg-surface px-3 text-sm text-primary-900"
+            className="h-9 rounded-lg border theme-border theme-card px-3 text-sm theme-text"
           >
             <option value="websocket">WebSocket</option>
             <option value="webhook">Webhook</option>
@@ -774,14 +937,14 @@ function FeishuBotConfigCard({
         </label>
 
         {state.configured ? (
-          <p className="mt-1 text-xs text-primary-600 md:col-span-2">
+          <p className="mt-1 text-xs theme-muted md:col-span-2">
             Existing credentials are masked. Re-enter the secret value before
             validating or saving updates.
           </p>
         ) : null}
 
         {model.validationMessage.feishu ? (
-          <p className="mt-1 text-xs text-primary-700 md:col-span-2">
+          <p className="mt-1 text-xs theme-text md:col-span-2">
             {model.validationMessage.feishu}
           </p>
         ) : null}
@@ -822,28 +985,89 @@ function WeixinReadOnlyCard({
   model: ReturnType<typeof useMessagingSettingsModel>
 }) {
   const state = model.platforms.weixin
+  const shouldShowPairing = !state.configured
 
   return (
     <SectionCard
       title="Weixin Gateway"
-      description="Weixin is resolved during signup and remains a separate read-only transport view here."
+      description={
+        shouldShowPairing
+          ? 'Pair Weixin gateway by QR scan when no existing gateway config is available.'
+          : 'Weixin is resolved during signup and remains a separate read-only transport view here.'
+      }
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <StatusBadge configured={state.configured} />
-        <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-500">
-          Read only
-        </span>
+        {shouldShowPairing ? (
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
+            QR pairing enabled
+          </span>
+        ) : (
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
+            Read only
+          </span>
+        )}
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      {shouldShowPairing ? (
+        <div className="space-y-3 rounded-lg border theme-border theme-card p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={model.startingWeixinPairing}
+              onClick={() => void model.startWeixinPairingQr()}
+            >
+              {model.startingWeixinPairing ? 'Preparing QR...' : 'Start Weixin QR Pairing'}
+            </Button>
+            {model.weixinPairingStatus === 'expired' ? (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={model.startingWeixinPairing}
+                onClick={() => void model.startWeixinPairingQr()}
+              >
+                Start new QR
+              </Button>
+            ) : null}
+            {model.weixinPairingStatus ? (
+              <span className="text-xs theme-text">
+                Pairing status: {model.weixinPairingStatus}
+              </span>
+            ) : null}
+          </div>
+
+          {model.weixinPairingQrDataUrl ? (
+            <div className="flex flex-col gap-2 md:flex-row md:items-start md:gap-4">
+              <img
+                src={model.weixinPairingQrDataUrl}
+                alt="Weixin gateway pairing QR code"
+                className="h-40 w-40 rounded-md border theme-border theme-card object-contain"
+              />
+              <div className="min-w-0 text-xs theme-text">
+                <p>Scan this QR with Weixin and confirm in the app.</p>
+                {model.weixinPairingState ? (
+                  <p className="mt-1 break-all">Session: {model.weixinPairingState}</p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {model.weixinPairingMessage ? (
+            <p className="text-xs theme-text">{model.weixinPairingMessage}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
         <label className="space-y-1.5">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Account ID
           </span>
           <Input value={readOnlyValue(model.weixin.accountId)} readOnly disabled />
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Token
           </span>
           <div className="relative">
@@ -859,7 +1083,7 @@ function WeixinReadOnlyCard({
                 onClick={() =>
                   model.setShowWeixinToken((current: boolean) => !current)
                 }
-                className="absolute right-1 top-1 inline-flex size-8 items-center justify-center rounded-md text-primary-400 hover:text-primary-600"
+                className="absolute right-1 top-1 inline-flex size-8 items-center justify-center rounded-md theme-muted hover:theme-muted"
                 title={model.showWeixinToken ? 'Hide token' : 'Show token'}
               >
                 <HugeiconsIcon
@@ -872,19 +1096,19 @@ function WeixinReadOnlyCard({
           </div>
         </label>
         <label className="space-y-1.5 md:col-span-2">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Base URL
           </span>
           <Input value={readOnlyValue(model.weixin.baseUrl)} readOnly disabled />
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             DM Policy
           </span>
           <Input value={readOnlyValue(model.weixin.dmPolicy)} readOnly disabled />
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Group Policy
           </span>
           <Input
@@ -894,7 +1118,7 @@ function WeixinReadOnlyCard({
           />
         </label>
         <label className="space-y-1.5 md:col-span-2">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Allowed Users (DM)
           </span>
           <Input
@@ -904,7 +1128,7 @@ function WeixinReadOnlyCard({
           />
         </label>
         <label className="space-y-1.5 md:col-span-2">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Allowed Groups
           </span>
           <Input
@@ -914,13 +1138,13 @@ function WeixinReadOnlyCard({
           />
         </label>
         <label className="space-y-1.5 md:col-span-2">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Home Channel
           </span>
           <Input value={readOnlyValue(model.weixin.homeChannel)} readOnly disabled />
         </label>
         <label className="space-y-1.5 md:col-span-2">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             CDN Base URL
           </span>
           <Input value={readOnlyValue(model.weixin.cdnBaseUrl)} readOnly disabled />
@@ -932,7 +1156,7 @@ function WeixinReadOnlyCard({
           href={state.docs_url}
           target="_blank"
           rel="noreferrer"
-          className="text-xs font-medium text-primary-700 underline underline-offset-2"
+          className="text-xs font-medium theme-text underline underline-offset-2"
         >
           Open setup docs
         </a>
@@ -958,12 +1182,12 @@ export function MessagingSettingsScreen() {
             description="Per-user sign-in pairing for Feishu login. This is not bot setup."
           >
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-primary-200 bg-surface p-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border theme-border theme-card p-3">
                 <div>
-                  <p className="text-sm font-medium text-primary-900">
+                  <p className="text-sm font-medium theme-text">
                     Feishu login status
                   </p>
-                  <p className="text-xs text-primary-700">
+                  <p className="text-xs theme-text">
                     {model.authMe?.user?.feishu_open_id
                       ? `Linked: ${model.authMe.user.feishu_open_id}`
                       : 'Not linked'}
@@ -985,23 +1209,23 @@ export function MessagingSettingsScreen() {
             description="Organization-scoped bot credentials for Feishu and transport status for Weixin."
           >
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-primary-200 bg-surface p-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border theme-border theme-card p-3">
                 <div>
-                  <p className="text-sm font-medium text-primary-900">
+                  <p className="text-sm font-medium theme-text">
                     Feishu bot configuration
                   </p>
-                  <p className="text-xs text-primary-700">
+                  <p className="text-xs theme-text">
                     Shared across users in the same Feishu organization.
                   </p>
                 </div>
                 <StatusBadge configured={model.platforms.feishu.configured} />
               </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-primary-200 bg-surface p-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border theme-border theme-card p-3">
                 <div>
-                  <p className="text-sm font-medium text-primary-900">
+                  <p className="text-sm font-medium theme-text">
                     Weixin gateway
                   </p>
-                  <p className="text-xs text-primary-700">
+                  <p className="text-xs theme-text">
                     Signup-resolved transport settings in read-only mode.
                   </p>
                 </div>

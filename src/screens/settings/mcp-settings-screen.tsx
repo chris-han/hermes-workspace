@@ -1,6 +1,8 @@
 import {
   Add01Icon,
   ArrowLeft01Icon,
+  CloudIcon,
+  ComputerIcon,
   Copy01Icon,
   Delete02Icon,
   Edit01Icon,
@@ -236,7 +238,7 @@ function ServerDialog(props: {
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1.5 md:col-span-2">
-              <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+              <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                 Name
               </span>
               <Input
@@ -261,13 +263,13 @@ function ServerDialog(props: {
                   }))
                 }
               >
-                <TabsList className="rounded-xl border border-primary-200 bg-primary-50 p-1">
+                <TabsList className="rounded-xl border theme-border theme-card2 p-1">
                   <TabsTrigger value="stdio">Stdio</TabsTrigger>
                   <TabsTrigger value="http">HTTP</TabsTrigger>
                 </TabsList>
                 <TabsContent value="stdio" className="mt-4 space-y-4">
                   <label className="space-y-1.5">
-                    <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+                    <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                       Command
                     </span>
                     <Input
@@ -282,7 +284,7 @@ function ServerDialog(props: {
                     />
                   </label>
                   <label className="space-y-1.5">
-                    <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+                    <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                       Args
                     </span>
                     <Input
@@ -297,14 +299,14 @@ function ServerDialog(props: {
                     />
                   </label>
                   <label className="space-y-1.5">
-                    <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+                    <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                       Env Vars
                     </span>
                     <textarea
                       value={draft.envText}
                       rows={4}
                       placeholder={'API_KEY=${MCP_API_KEY}\nLOG_LEVEL=debug'}
-                      className="min-h-[108px] w-full rounded-lg border border-primary-200 bg-surface px-3 py-2 text-sm text-primary-900 outline-none placeholder:text-primary-500"
+                      className="min-h-[108px] w-full rounded-lg border theme-border theme-card px-3 py-2 text-sm theme-text outline-none placeholder:theme-muted"
                       onChange={(event) =>
                         setDraft((current) => ({
                           ...current,
@@ -316,7 +318,7 @@ function ServerDialog(props: {
                 </TabsContent>
                 <TabsContent value="http" className="mt-4 space-y-4">
                   <label className="space-y-1.5">
-                    <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+                    <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                       URL
                     </span>
                     <Input
@@ -331,7 +333,7 @@ function ServerDialog(props: {
                     />
                   </label>
                   <label className="space-y-1.5">
-                    <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+                    <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                       Headers
                     </span>
                     <textarea
@@ -340,7 +342,7 @@ function ServerDialog(props: {
                       placeholder={
                         'Authorization=Bearer ${GITHUB_TOKEN}\nX-Workspace=hermes'
                       }
-                      className="min-h-[108px] w-full rounded-lg border border-primary-200 bg-surface px-3 py-2 text-sm text-primary-900 outline-none placeholder:text-primary-500"
+                      className="min-h-[108px] w-full rounded-lg border theme-border theme-card px-3 py-2 text-sm theme-text outline-none placeholder:theme-muted"
                       onChange={(event) =>
                         setDraft((current) => ({
                           ...current,
@@ -354,7 +356,7 @@ function ServerDialog(props: {
             </div>
 
             <label className="space-y-1.5 md:col-span-2">
-              <span className="text-xs font-medium uppercase tracking-[0.12em] text-primary-600">
+              <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                 Timeout (seconds)
               </span>
               <Input
@@ -520,10 +522,10 @@ export function McpSettingsScreen() {
   }
 
   return (
-    <div className="min-h-full bg-surface">
-      <main className="mx-auto w-full max-w-5xl px-4 py-6 text-primary-900 md:px-6 md:py-8">
+    <div className="min-h-full theme-card">
+      <main className="mx-auto w-full max-w-5xl px-4 py-6 theme-text md:px-6 md:py-8">
         <div className="space-y-5">
-          <header className="rounded-2xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm">
+          <header className="rounded-2xl border theme-border theme-card2 p-5 shadow-sm">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="space-y-2">
                 <Button
@@ -542,13 +544,13 @@ export function McpSettingsScreen() {
                   }
                 />
                 <div>
-                  <h1 className="text-lg font-semibold text-primary-900">
+                  <h1 className="text-lg font-semibold theme-text">
                     MCP Servers
                   </h1>
-                  <p className="mt-1 text-sm text-primary-600">
+                  <p className="mt-1 text-sm theme-muted">
                     Review configured MCP servers, draft changes locally, and
                     copy the YAML into
-                    <code className="mx-1 rounded bg-white px-1.5 py-0.5 font-mono text-xs">
+                    <code className="mx-1 rounded theme-card px-1.5 py-0.5 font-mono text-xs">
                       config.yaml
                     </code>
                     until gateway config writes land.
@@ -563,29 +565,29 @@ export function McpSettingsScreen() {
           </header>
 
           {notice ? (
-            <div className="rounded-2xl border border-primary-200 bg-white px-4 py-3 text-sm text-primary-600 shadow-sm">
+            <div className="rounded-2xl border theme-border theme-card px-4 py-3 text-sm theme-muted shadow-sm">
               {notice}
             </div>
           ) : null}
 
           {isDirty ? (
-            <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm">
+            <div className="rounded-2xl border theme-border bg-muted px-4 py-3 text-sm text-warning shadow-sm">
               You have unsaved changes. Copy the YAML below and paste it into
               your{' '}
-              <code className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-xs">
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
                 config.yaml
               </code>
               .
             </div>
           ) : null}
 
-          <section className="rounded-2xl border border-primary-200 bg-primary-50/80 p-4 shadow-sm md:p-5">
+          <section className="rounded-2xl border theme-border theme-card2 p-4 shadow-sm md:p-5">
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-base font-medium text-primary-900">
+                <h2 className="text-base font-medium theme-text">
                   Configured Servers
                 </h2>
-                <p className="mt-1 text-xs text-primary-600">
+                <p className="mt-1 text-xs theme-muted">
                   {servers.length} server{servers.length === 1 ? '' : 's'} in
                   the current local draft.
                 </p>
@@ -606,7 +608,7 @@ export function McpSettingsScreen() {
                 </Button>
               ) : (
                 <span
-                  className="text-xs text-primary-400"
+                  className="text-xs theme-muted"
                   title="MCP reload not available on this gateway"
                 >
                   Reload unavailable
@@ -615,13 +617,13 @@ export function McpSettingsScreen() {
             </div>
 
             {loading ? (
-              <div className="rounded-xl border border-primary-200 bg-white px-4 py-3 text-sm text-primary-600">
+              <div className="rounded-xl border theme-border theme-card px-4 py-3 text-sm theme-muted">
                 Loading MCP servers...
               </div>
             ) : null}
 
             {!loading && servers.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-primary-300 bg-white px-4 py-8 text-center text-sm text-primary-600">
+              <div className="rounded-xl border border-dashed theme-border theme-card px-4 py-8 text-center text-sm theme-muted">
                 No MCP servers found yet. Add one to generate a starter config
                 snippet.
               </div>
@@ -632,25 +634,28 @@ export function McpSettingsScreen() {
                 {servers.map((server) => (
                   <article
                     key={server.name}
-                    className="rounded-2xl border border-primary-200 bg-white p-4 shadow-sm"
+                    className="rounded-2xl border theme-border theme-card p-4 shadow-sm"
                   >
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0 space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-lg">
-                            {server.transport === 'http' ? '🌐' : '📡'}
-                          </span>
-                          <h3 className="text-sm font-semibold text-primary-900">
+                          <HugeiconsIcon
+                            icon={server.transport === 'http' ? CloudIcon : ComputerIcon}
+                            size={16}
+                            strokeWidth={1.8}
+                            className="theme-text"
+                          />
+                          <h3 className="text-sm font-semibold theme-text">
                             {server.name}
                           </h3>
-                          <span className="rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-primary-700">
+                          <span className="rounded-full border theme-border theme-card2 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide theme-text">
                             {server.transport}
                           </span>
                         </div>
-                        <p className="truncate text-sm text-primary-700">
+                        <p className="truncate text-sm theme-text">
                           {formatServerSummary(server)}
                         </p>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-primary-500">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs theme-muted">
                           <span>
                             timeout:{' '}
                             {server.timeout ? `${server.timeout}s` : 'default'}
@@ -679,7 +684,7 @@ export function McpSettingsScreen() {
                           variant="outline"
                           size="sm"
                           className={cn(
-                            'text-red-600 hover:bg-red-50 hover:text-red-700',
+                            'text-danger hover:bg-muted hover:text-danger',
                           )}
                           onClick={() => {
                             setServers((current) =>
@@ -707,19 +712,19 @@ export function McpSettingsScreen() {
             ) : null}
           </section>
 
-          <section className="rounded-2xl border border-primary-200 bg-primary-50/80 p-4 shadow-sm md:p-5">
+          <section className="rounded-2xl border theme-border theme-card2 p-4 shadow-sm md:p-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
-                <h2 className="text-base font-medium text-primary-900">
+                <h2 className="text-base font-medium theme-text">
                   Generated YAML
                 </h2>
-                <p className="mt-1 text-sm text-primary-600">
+                <p className="mt-1 text-sm theme-muted">
                   Add this to your{' '}
-                  <code className="rounded bg-white px-1.5 py-0.5 font-mono text-xs">
+                  <code className="rounded theme-card px-1.5 py-0.5 font-mono text-xs">
                     config.yaml
                   </code>{' '}
                   under{' '}
-                  <code className="rounded bg-white px-1.5 py-0.5 font-mono text-xs">
+                  <code className="rounded theme-card px-1.5 py-0.5 font-mono text-xs">
                     mcp_servers
                   </code>
                   .
@@ -731,7 +736,7 @@ export function McpSettingsScreen() {
               </Button>
             </div>
 
-            <pre className="mt-4 overflow-x-auto rounded-2xl border border-primary-200 bg-white p-4 text-xs leading-6 text-primary-800">
+            <pre className="mt-4 overflow-x-auto rounded-2xl border theme-border theme-card p-4 text-xs leading-6 theme-text">
               <code>{yamlSnippet}</code>
             </pre>
           </section>

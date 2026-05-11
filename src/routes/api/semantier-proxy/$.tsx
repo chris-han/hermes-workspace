@@ -34,6 +34,17 @@ function shouldForceMessagingJsonUnauthorized(request: Request, splat: string): 
   return !hasCookie(request, SEMANTIER_AGENT_AUTH_COOKIE)
 }
 
+// Paths that may involve gateway restarts and need a longer timeout.
+const LONG_TIMEOUT_PATHS = ['/messaging/weixin/reconnect', '/messaging/weixin/login']
+
+function proxyTimeoutMs(targetPath: string): number {
+  const normalized = targetPath.startsWith('/') ? targetPath : `/${targetPath}`
+  if (LONG_TIMEOUT_PATHS.some((p) => normalized.startsWith(p))) {
+    return 60_000
+  }
+  return 10_000
+}
+
 async function proxyRequest(request: Request, splat: string) {
   const incomingUrl = new URL(request.url)
   const targetPath = splat.startsWith('/') ? splat : `/${splat}`
@@ -50,7 +61,7 @@ async function proxyRequest(request: Request, splat: string) {
     method: request.method,
     headers,
     redirect: 'manual',
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(proxyTimeoutMs(targetPath)),
   }
 
   if (!['GET', 'HEAD'].includes(request.method.toUpperCase())) {

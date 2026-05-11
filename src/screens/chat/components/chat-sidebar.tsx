@@ -16,6 +16,7 @@ import {
   PencilEdit02Icon,
   PinIcon,
   PinOffIcon,
+  Plug01Icon,
   PuzzleIcon,
   Rocket01Icon,
   Search01Icon,
@@ -900,7 +901,7 @@ function ChatSidebarComponent({
     {
       kind: 'link',
       to: '/settings/data-connections',
-      icon: ComputerTerminal01Icon,
+      icon: Plug01Icon,
       label: 'Data Connections',
       active: isDataConnectionsActive,
     },

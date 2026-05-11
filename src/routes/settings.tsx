@@ -1,5 +1,5 @@
 import { Outlet, createFileRoute, useRouterState } from '@tanstack/react-router'
-import { SettingsRouteComponent } from './settings/index'
+import { SettingsScreen } from '@/screens/settings/settings-screen'
 
 export function isBareSettingsPath(pathname: string): boolean {
   return pathname === '/settings'
@@ -13,7 +13,7 @@ export const Route = createFileRoute('/settings')({
     })
 
     if (isBareSettingsPath(pathname)) {
-      return <SettingsRouteComponent />
+      return <SettingsScreen />
     }
 
     return <Outlet />

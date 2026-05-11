@@ -270,6 +270,7 @@ export function ChatPanel() {
                   isNewChat ? handleSessionResolved : undefined
                 }
                 compact
+                embedded
               />
             </div>
           </motion.div>

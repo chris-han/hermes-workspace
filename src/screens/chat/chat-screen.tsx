@@ -1841,6 +1841,7 @@ export function ChatScreen({
   ])
 
   useEffect(() => {
+    if (embedded) return
     if (!shouldRecoverMissingRoute) return
     resetPendingSend()
     clearHistoryMessages(queryClient, activeFriendlyId, sessionKeyForHistory)
@@ -1856,6 +1857,7 @@ export function ChatScreen({
     })
   }, [
     activeFriendlyId,
+    embedded,
     navigate,
     queryClient,
     sessionKeyForHistory,

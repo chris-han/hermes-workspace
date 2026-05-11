@@ -44,4 +44,19 @@ describe('shouldRecoverMissingSessionRoute', () => {
       }),
     ).toBe(false)
   })
+
+  it('does not recover for embedded chat surfaces', () => {
+    expect(
+      shouldRecoverMissingSessionRoute({
+        activeFriendlyId: 'session_9267770bd3be',
+        activeExists: false,
+        sessionsReady: true,
+        historyFetching: false,
+        resolvedSessionKey: 'new',
+        isNewChat: false,
+        recentSession: false,
+        embedded: true,
+      }),
+    ).toBe(false)
+  })
 })

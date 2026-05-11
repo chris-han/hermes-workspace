@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { SETTINGS_NAV_ITEMS } from '@/routes/settings/index'
+import { SETTINGS_NAV_ITEMS } from './settings-screen'
 
 describe('data connections discoverability', () => {
   it('keeps data connections in settings navigation', () => {

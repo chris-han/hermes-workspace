@@ -79,6 +79,10 @@ type WeixinPairingStatusResponse = {
   redirect_base_url?: string
 }
 
+type WeixinReconnectResponse = PlatformState & {
+  reconnect_applied?: boolean
+}
+
 type FeishuDraft = {
   appId: string
   appSecret: string
@@ -250,7 +254,7 @@ function SettingsLink({
   return (
     <Link
       to={to}
-      className="inline-flex items-center rounded-lg border theme-border px-3 py-2 text-sm font-medium theme-text transition-colors hover:theme-card2"
+      className="inline-flex items-center rounded-lg border theme-border px-3 py-2 text-sm font-medium theme-text transition-colors hover:bg-muted"
     >
       {label}
     </Link>
@@ -297,6 +301,7 @@ function useMessagingSettingsModel() {
   const [weixinPairingMessage, setWeixinPairingMessage] = useState('')
   const [weixinPairingQrScanData, setWeixinPairingQrScanData] = useState('')
   const [weixinPairingQrDataUrl, setWeixinPairingQrDataUrl] = useState('')
+  const [reconnectingWeixin, setReconnectingWeixin] = useState(false)
   const [validationMessage, setValidationMessage] = useState<Record<PlatformId, string>>({
     feishu: '',
     weixin: '',
@@ -727,6 +732,37 @@ function useMessagingSettingsModel() {
     }
   }
 
+  async function reconnectWeixinGateway() {
+    if (!platforms.weixin.configured) {
+      return
+    }
+    setReconnectingWeixin(true)
+    try {
+      const response = await requestJson<WeixinReconnectResponse>(
+        '/messaging/weixin/reconnect',
+        {
+          method: 'POST',
+        },
+      )
+      setPlatforms((current) => ({
+        ...current,
+        weixin: {
+          ...current.weixin,
+          ...response,
+          platform: 'weixin',
+        },
+      }))
+      toast('Weixin gateway reconnect applied.', { type: 'success' })
+      await loadPlatforms()
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to reconnect Weixin gateway.'
+      toast(message, { type: 'error' })
+    } finally {
+      setReconnectingWeixin(false)
+    }
+  }
+
   return {
     authMe,
     canValidateFeishu,
@@ -738,6 +774,8 @@ function useMessagingSettingsModel() {
     loadPlatforms,
     loading,
     platforms,
+    reconnectWeixinGateway,
+    reconnectingWeixin,
     remove,
     save,
     savingPlatform,
@@ -986,6 +1024,13 @@ function WeixinReadOnlyCard({
 }) {
   const state = model.platforms.weixin
   const shouldShowPairing = !state.configured
+  const runtimeState = String(state.config?.runtime_session_state ?? '').trim()
+  const runtimeError = String(
+    state.config?.runtime_session_error ?? state.last_error ?? '',
+  ).trim()
+  const runtimeUpdatedAt = String(
+    state.config?.runtime_session_updated_at ?? '',
+  ).trim()
 
   return (
     <SectionCard
@@ -1008,6 +1053,20 @@ function WeixinReadOnlyCard({
           </span>
         )}
       </div>
+
+      {!shouldShowPairing ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border theme-border bg-muted px-3 py-2">
+          <span className="text-xs theme-text">
+            Runtime session: {runtimeState || 'unknown'}
+          </span>
+          {runtimeUpdatedAt ? (
+            <span className="text-xs theme-muted">Updated: {runtimeUpdatedAt}</span>
+          ) : null}
+          {runtimeError ? (
+            <span className="text-xs text-danger">Error: {runtimeError}</span>
+          ) : null}
+        </div>
+      ) : null}
 
       {shouldShowPairing ? (
         <div className="space-y-3 rounded-lg border theme-border theme-card p-3">
@@ -1059,6 +1118,19 @@ function WeixinReadOnlyCard({
         </div>
       ) : null}
 
+      {!shouldShowPairing ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={model.reconnectingWeixin}
+            onClick={() => void model.reconnectWeixinGateway()}
+          >
+            {model.reconnectingWeixin ? 'Reconnecting...' : 'Reconnect gateway'}
+          </Button>
+        </div>
+      ) : null}
+
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <label className="space-y-1.5">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
@@ -1083,7 +1155,7 @@ function WeixinReadOnlyCard({
                 onClick={() =>
                   model.setShowWeixinToken((current: boolean) => !current)
                 }
-                className="absolute right-1 top-1 inline-flex size-8 items-center justify-center rounded-md theme-muted hover:theme-muted"
+                className="absolute right-1 top-1 inline-flex size-8 items-center justify-center rounded-md theme-muted hover:text-foreground"
                 title={model.showWeixinToken ? 'Hide token' : 'Show token'}
               >
                 <HugeiconsIcon

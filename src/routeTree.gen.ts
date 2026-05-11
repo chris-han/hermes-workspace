@@ -30,6 +30,7 @@ import { Route as SettingsMessagingPlatformsRouteImport } from './routes/setting
 import { Route as SettingsMessagingAccountsRouteImport } from './routes/settings/messaging-accounts'
 import { Route as SettingsMessagingRouteImport } from './routes/settings/messaging'
 import { Route as SettingsMcpRouteImport } from './routes/settings/mcp'
+import { Route as SettingsDataConnectionsRouteImport } from './routes/settings/data-connections'
 import { Route as RunsRunIdRouteImport } from './routes/runs/$runId'
 import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
 import { Route as AuthSplatRouteImport } from './routes/auth/$'
@@ -106,6 +107,7 @@ import { Route as ApiKnowledgeConfigRouteImport } from './routes/api/knowledge/c
 import { Route as ApiHermesTasksTaskIdRouteImport } from './routes/api/hermes-tasks.$taskId'
 import { Route as ApiHermesProxySplatRouteImport } from './routes/api/hermes-proxy/$'
 import { Route as ApiHermesJobsJobIdRouteImport } from './routes/api/hermes-jobs.$jobId'
+import { Route as ApiDataConnectionsSummaryRouteImport } from './routes/api/data-connections/summary'
 import { Route as ApiSessionsSessionKeyStatusRouteImport } from './routes/api/sessions/$sessionKey.status'
 import { Route as ApiSessionsSessionKeyActiveRunRouteImport } from './routes/api/sessions/$sessionKey.active-run'
 
@@ -214,6 +216,11 @@ const SettingsMessagingRoute = SettingsMessagingRouteImport.update({
 const SettingsMcpRoute = SettingsMcpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsDataConnectionsRoute = SettingsDataConnectionsRouteImport.update({
+  id: '/data-connections',
+  path: '/data-connections',
   getParentRoute: () => SettingsRoute,
 } as any)
 const RunsRunIdRoute = RunsRunIdRouteImport.update({
@@ -596,6 +603,12 @@ const ApiHermesJobsJobIdRoute = ApiHermesJobsJobIdRouteImport.update({
   path: '/$jobId',
   getParentRoute: () => ApiHermesJobsRoute,
 } as any)
+const ApiDataConnectionsSummaryRoute =
+  ApiDataConnectionsSummaryRouteImport.update({
+    id: '/api/data-connections/summary',
+    path: '/api/data-connections/summary',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiSessionsSessionKeyStatusRoute =
   ApiSessionsSessionKeyStatusRouteImport.update({
     id: '/$sessionKey/status',
@@ -667,6 +680,7 @@ export interface FileRoutesByFullPath {
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/runs/$runId': typeof RunsRunIdRoute
+  '/settings/data-connections': typeof SettingsDataConnectionsRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/messaging': typeof SettingsMessagingRoute
   '/settings/messaging-accounts': typeof SettingsMessagingAccountsRoute
@@ -674,6 +688,7 @@ export interface FileRoutesByFullPath {
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/api/data-connections/summary': typeof ApiDataConnectionsSummaryRoute
   '/api/hermes-jobs/$jobId': typeof ApiHermesJobsJobIdRoute
   '/api/hermes-proxy/$': typeof ApiHermesProxySplatRoute
   '/api/hermes-tasks/$taskId': typeof ApiHermesTasksTaskIdRoute
@@ -767,6 +782,7 @@ export interface FileRoutesByTo {
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/runs/$runId': typeof RunsRunIdRoute
+  '/settings/data-connections': typeof SettingsDataConnectionsRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/messaging': typeof SettingsMessagingRoute
   '/settings/messaging-accounts': typeof SettingsMessagingAccountsRoute
@@ -774,6 +790,7 @@ export interface FileRoutesByTo {
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat': typeof ChatIndexRoute
   '/settings': typeof SettingsIndexRoute
+  '/api/data-connections/summary': typeof ApiDataConnectionsSummaryRoute
   '/api/hermes-jobs/$jobId': typeof ApiHermesJobsJobIdRoute
   '/api/hermes-proxy/$': typeof ApiHermesProxySplatRoute
   '/api/hermes-tasks/$taskId': typeof ApiHermesTasksTaskIdRoute
@@ -869,6 +886,7 @@ export interface FileRoutesById {
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/runs/$runId': typeof RunsRunIdRoute
+  '/settings/data-connections': typeof SettingsDataConnectionsRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/messaging': typeof SettingsMessagingRoute
   '/settings/messaging-accounts': typeof SettingsMessagingAccountsRoute
@@ -876,6 +894,7 @@ export interface FileRoutesById {
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/api/data-connections/summary': typeof ApiDataConnectionsSummaryRoute
   '/api/hermes-jobs/$jobId': typeof ApiHermesJobsJobIdRoute
   '/api/hermes-proxy/$': typeof ApiHermesProxySplatRoute
   '/api/hermes-tasks/$taskId': typeof ApiHermesTasksTaskIdRoute
@@ -972,6 +991,7 @@ export interface FileRouteTypes {
     | '/auth/$'
     | '/chat/$sessionKey'
     | '/runs/$runId'
+    | '/settings/data-connections'
     | '/settings/mcp'
     | '/settings/messaging'
     | '/settings/messaging-accounts'
@@ -979,6 +999,7 @@ export interface FileRouteTypes {
     | '/settings/providers'
     | '/chat/'
     | '/settings/'
+    | '/api/data-connections/summary'
     | '/api/hermes-jobs/$jobId'
     | '/api/hermes-proxy/$'
     | '/api/hermes-tasks/$taskId'
@@ -1072,6 +1093,7 @@ export interface FileRouteTypes {
     | '/auth/$'
     | '/chat/$sessionKey'
     | '/runs/$runId'
+    | '/settings/data-connections'
     | '/settings/mcp'
     | '/settings/messaging'
     | '/settings/messaging-accounts'
@@ -1079,6 +1101,7 @@ export interface FileRouteTypes {
     | '/settings/providers'
     | '/chat'
     | '/settings'
+    | '/api/data-connections/summary'
     | '/api/hermes-jobs/$jobId'
     | '/api/hermes-proxy/$'
     | '/api/hermes-tasks/$taskId'
@@ -1173,6 +1196,7 @@ export interface FileRouteTypes {
     | '/auth/$'
     | '/chat/$sessionKey'
     | '/runs/$runId'
+    | '/settings/data-connections'
     | '/settings/mcp'
     | '/settings/messaging'
     | '/settings/messaging-accounts'
@@ -1180,6 +1204,7 @@ export interface FileRouteTypes {
     | '/settings/providers'
     | '/chat/'
     | '/settings/'
+    | '/api/data-connections/summary'
     | '/api/hermes-jobs/$jobId'
     | '/api/hermes-proxy/$'
     | '/api/hermes-tasks/$taskId'
@@ -1276,6 +1301,7 @@ export interface RootRouteChildren {
   ChatSessionKeyRoute: typeof ChatSessionKeyRoute
   RunsRunIdRoute: typeof RunsRunIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
+  ApiDataConnectionsSummaryRoute: typeof ApiDataConnectionsSummaryRoute
   ApiHermesProxySplatRoute: typeof ApiHermesProxySplatRoute
   ApiKnowledgeConfigRoute: typeof ApiKnowledgeConfigRoute
   ApiKnowledgeGraphRoute: typeof ApiKnowledgeGraphRoute
@@ -1446,6 +1472,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/settings/mcp'
       preLoaderRoute: typeof SettingsMcpRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/data-connections': {
+      id: '/settings/data-connections'
+      path: '/data-connections'
+      fullPath: '/settings/data-connections'
+      preLoaderRoute: typeof SettingsDataConnectionsRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/runs/$runId': {
@@ -1980,6 +2013,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHermesJobsJobIdRouteImport
       parentRoute: typeof ApiHermesJobsRoute
     }
+    '/api/data-connections/summary': {
+      id: '/api/data-connections/summary'
+      path: '/api/data-connections/summary'
+      fullPath: '/api/data-connections/summary'
+      preLoaderRoute: typeof ApiDataConnectionsSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/sessions/$sessionKey/status': {
       id: '/api/sessions/$sessionKey/status'
       path: '/$sessionKey/status'
@@ -1998,6 +2038,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface SettingsRouteChildren {
+  SettingsDataConnectionsRoute: typeof SettingsDataConnectionsRoute
   SettingsMcpRoute: typeof SettingsMcpRoute
   SettingsMessagingRoute: typeof SettingsMessagingRoute
   SettingsMessagingAccountsRoute: typeof SettingsMessagingAccountsRoute
@@ -2007,6 +2048,7 @@ interface SettingsRouteChildren {
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsDataConnectionsRoute: SettingsDataConnectionsRoute,
   SettingsMcpRoute: SettingsMcpRoute,
   SettingsMessagingRoute: SettingsMessagingRoute,
   SettingsMessagingAccountsRoute: SettingsMessagingAccountsRoute,
@@ -2166,6 +2208,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatSessionKeyRoute: ChatSessionKeyRoute,
   RunsRunIdRoute: RunsRunIdRoute,
   ChatIndexRoute: ChatIndexRoute,
+  ApiDataConnectionsSummaryRoute: ApiDataConnectionsSummaryRoute,
   ApiHermesProxySplatRoute: ApiHermesProxySplatRoute,
   ApiKnowledgeConfigRoute: ApiKnowledgeConfigRoute,
   ApiKnowledgeGraphRoute: ApiKnowledgeGraphRoute,

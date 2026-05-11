@@ -581,6 +581,7 @@ function ChatSidebarComponent({
     pathname === '/new' || pathname.startsWith('/chat/new')
   const _isSettingsActive = pathname === '/settings'
   const isSkillsActive = pathname === '/skills'
+  const isDataConnectionsActive = pathname === '/settings/data-connections'
   const isFilesActive = pathname === '/files'
   const isTerminalActive = pathname === '/terminal'
   const isJobsActive = pathname === '/jobs'
@@ -589,7 +590,7 @@ function ChatSidebarComponent({
   const isConductorActive = pathname === '/conductor'
   const isOperationsActive = pathname === '/operations'
   const mainRoutes = ['/chat', '/new', '/files', '/terminal']
-  const knowledgeRoutes = ['/memory', '/skills']
+  const knowledgeRoutes = ['/memory', '/skills', '/settings/data-connections']
   const systemRoutes = ['/settings', '/logs']
 
   useEffect(() => {
@@ -895,6 +896,13 @@ function ChatSidebarComponent({
       icon: BrainIcon,
       label: t('nav.memory'),
       active: isMemoryActive,
+    },
+    {
+      kind: 'link',
+      to: '/settings/data-connections',
+      icon: ComputerTerminal01Icon,
+      label: 'Data Connections',
+      active: isDataConnectionsActive,
     },
     {
       kind: 'link',

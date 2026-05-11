@@ -19,6 +19,7 @@ import type { LoaderStyle } from '@/hooks/use-chat-settings'
 import type { BrailleSpinnerPreset } from '@/components/ui/braille-spinner'
 import type { ThemeId } from '@/lib/theme'
 import type { LocaleId } from '@/lib/i18n'
+import type { CSSProperties } from 'react'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -35,12 +36,11 @@ import { Input } from '@/components/ui/input'
 import { LogoLoader } from '@/components/logo-loader'
 import { BrailleSpinner } from '@/components/ui/braille-spinner'
 import { ThreeDotsSpinner } from '@/components/ui/three-dots-spinner'
-import type { CSSProperties } from 'react'
 // useWorkspaceStore removed — hamburger eliminated on mobile
 
 export const Route = createFileRoute('/settings/')({
   ssr: false,
-  component: SettingsRoute,
+  component: SettingsRouteComponent,
 })
 
 function PageThemeSwatch({
@@ -57,11 +57,13 @@ function PageThemeSwatch({
   return (
     <div
       className="flex h-10 w-full overflow-hidden rounded-md theme-swatch-frame"
-      style={{
-        '--swatch-border': colors.border,
-        '--swatch-bg': colors.bg,
-        '--swatch-panel': colors.panel,
-      } as CSSProperties}
+      style={
+        {
+          '--swatch-border': colors.border,
+          '--swatch-bg': colors.bg,
+          '--swatch-panel': colors.panel,
+        } as CSSProperties
+      }
     >
       <div className="flex h-full w-4 flex-col gap-0.5 p-0.5 theme-swatch-panel">
         {[1, 2, 3].map((i) => (
@@ -274,16 +276,18 @@ type SettingsNavItem = {
   id:
     | SettingsSectionId
     | 'mcp'
+    | 'data_connections'
     | 'messaging_accounts'
     | 'messaging_platforms'
   label: string
   to?:
+    | '/settings/data-connections'
     | '/settings/mcp'
     | '/settings/messaging-accounts'
     | '/settings/messaging-platforms'
 }
 
-const SETTINGS_NAV_ITEMS: Array<SettingsNavItem> = [
+export const SETTINGS_NAV_ITEMS: Array<SettingsNavItem> = [
   { id: 'hermes', label: 'Model & Provider' },
   { id: 'agent', label: 'Agent Behavior' },
   { id: 'routing', label: 'Smart Routing' },
@@ -292,6 +296,11 @@ const SETTINGS_NAV_ITEMS: Array<SettingsNavItem> = [
   { id: 'appearance', label: 'Appearance' },
   { id: 'chat', label: 'Chat' },
   { id: 'notifications', label: 'Notifications' },
+  {
+    id: 'data_connections',
+    label: 'Data Connections',
+    to: '/settings/data-connections',
+  },
   {
     id: 'messaging_accounts',
     label: 'Feishu Login',
@@ -306,7 +315,7 @@ const SETTINGS_NAV_ITEMS: Array<SettingsNavItem> = [
   { id: 'language' as SettingsSectionId, label: 'Language' },
 ]
 
-function SettingsRoute() {
+export function SettingsRouteComponent() {
   usePageTitle('Settings')
   const { settings, updateSettings } = useSettings()
 

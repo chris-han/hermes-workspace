@@ -432,7 +432,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             d.id = 'splash-screen';
             d.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:'+bg+';transition:opacity 0.5s ease;';
             d.innerHTML = '<img src="/logo.svg" alt="semantier logo" style="width:80px;height:80px;margin-bottom:20px;border-radius:16px;filter:drop-shadow(0 8px 32px color-mix(in srgb,'+accent+' 45%, transparent))" />'
-              + '<div style="font-family:\'Autaut Grotesk\',\'Noto Sans SC\',-apple-system,system-ui,\'Segoe UI\',Roboto,Arial,sans-serif;font-size:22px;line-height:1.2;font-weight:600;letter-spacing:-0.02em;color:'+txt+';margin-bottom:8px;text-transform:lowercase;font-feature-settings:\'calt\' 1;">semantier</div>'
+              + '<div style="font-family:Autaut Grotesk,Noto Sans SC,-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;font-size:22px;line-height:1.2;font-weight:600;letter-spacing:-0.02em;color:'+txt+';margin-bottom:8px;text-transform:lowercase;">semantier</div>'
               + '<div style="font:400 14px/1 system-ui,-apple-system,sans-serif;letter-spacing:0.04em;color:'+muted+'">Workspace</div>'
               + '<div style="margin-top:28px;width:140px;height:3px;background:'+(isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')+';border-radius:3px;overflow:hidden;position:relative"><div id=splash-bar style="width:0%;height:100%;background:'+accent+';border-radius:3px;transition:width 0.4s ease"></div></div>';
             document.body.prepend(d);

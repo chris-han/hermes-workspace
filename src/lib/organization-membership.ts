@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 export const DEFAULT_SMB_ORGANIZATION_ID = 'org_smb_cn'
-export const DEFAULT_SMB_ORGANIZATION_NAME = 'SMB Analytics Dataset'
+export const DEFAULT_SMB_ORGANIZATION_NAME = '北京索阳科技有限公司'
 
 export interface OrganizationMembership {
   organization_id: string
@@ -47,7 +47,79 @@ export interface OrganizationSettingsResponse {
   audit_events: Array<OrganizationAuditEvent>
 }
 
+export type EntitlementDecision = 'allow' | 'allow_with_review' | 'deny'
+export type KnowledgeTier = 'T1' | 'T2' | 'T3' | 'T4' | 'T5' | 'T6'
+export type KnowledgeUiAction = 'view' | 'propose' | 'review'
+
+export interface KnowledgeEntitlementCapabilityScope {
+  organization_id?: string | null
+  team_ids?: Array<string>
+  authority_domains?: Array<string>
+  workflow_set?: Array<string>
+  semantic_tier_ceiling?: KnowledgeTier | null
+  resource_classes?: Array<string>
+}
+
+export interface KnowledgeEntitlementGovernanceConditions {
+  review_required?: boolean
+  approver_roles?: Array<string>
+  validator_required?: boolean
+  replay_pin_required?: boolean
+  activation_required?: boolean
+}
+
+export interface KnowledgeEntitlementCapability {
+  capability: string
+  decision: EntitlementDecision
+  scope: KnowledgeEntitlementCapabilityScope
+  governance_conditions?: KnowledgeEntitlementGovernanceConditions
+  source?: {
+    bundle_labels?: Array<string>
+    direct_grant_ids?: Array<string>
+  }
+}
+
+export interface KnowledgeEntitlementUiProjection {
+  tiers: Record<KnowledgeTier, Record<KnowledgeUiAction, EntitlementDecision>>
+  action_mapping: Record<KnowledgeUiAction, string>
+  decision_legend: Record<EntitlementDecision, string>
+}
+
+export interface KnowledgeEntitlementBundlePreviewEntry {
+  tiers: Record<KnowledgeTier, Record<KnowledgeUiAction, EntitlementDecision>>
+}
+
+export interface KnowledgeEntitlementContract {
+  schema_version: string
+  generated_at: string
+  principal: {
+    user_id: string
+    organization_id: string
+    assigned_bundles: Array<string>
+    membership_status: string
+  }
+  organization_context: {
+    organization_id: string
+    official_display_name: string
+    display_name_source: string
+    workspace_id: string | null
+  }
+  effective_capabilities: Array<KnowledgeEntitlementCapability>
+  ui_projection: KnowledgeEntitlementUiProjection
+  bundle_preview: Record<string, KnowledgeEntitlementBundlePreviewEntry>
+  evaluation_metadata: {
+    resolver_version: string
+    policy_mode: string
+    derived_from: {
+      assigned_bundle_labels: Array<string>
+      direct_grants_present: boolean
+    }
+    warnings: Array<string>
+  }
+}
+
 export const organizationSettingsQueryKey = ['organizations', 'me'] as const
+export const knowledgeAccessQueryKey = ['organizations', 'knowledge-access'] as const
 
 type JsonFetcher = typeof fetch
 
@@ -88,6 +160,28 @@ export function useOrganizationSettings() {
   return useQuery({
     queryKey: organizationSettingsQueryKey,
     queryFn: () => fetchOrganizationSettings(),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    retry: false,
+  })
+}
+
+export async function fetchKnowledgeEntitlementContract(
+  fetchImpl: JsonFetcher = fetch,
+): Promise<KnowledgeEntitlementContract> {
+  return readJson<KnowledgeEntitlementContract>(
+    '/organizations/knowledge-access',
+    {
+      signal: AbortSignal.timeout(5000),
+    },
+    fetchImpl,
+  )
+}
+
+export function useKnowledgeEntitlementContract() {
+  return useQuery({
+    queryKey: knowledgeAccessQueryKey,
+    queryFn: () => fetchKnowledgeEntitlementContract(),
     staleTime: 15_000,
     refetchInterval: 30_000,
     retry: false,

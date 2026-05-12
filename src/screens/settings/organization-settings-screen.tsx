@@ -14,8 +14,12 @@ import {
   DEFAULT_SMB_ORGANIZATION_ID,
   DEFAULT_SMB_ORGANIZATION_NAME,
   ensureDefaultSmbOrganization,
+  type EntitlementDecision,
+  type KnowledgeTier,
+  knowledgeAccessQueryKey,
   organizationSettingsQueryKey,
   upsertOrganizationAssociation,
+  useKnowledgeEntitlementContract,
   useOrganizationSettings,
 } from '@/lib/organization-membership'
 import {
@@ -31,6 +35,25 @@ export const ORGANIZATION_SETTINGS_COPY = {
   title: 'Organization Context',
   subtitle:
     'Associate your user with an organization and set the active organization_id used as the default SMB analytics context.',
+}
+
+const KNOWLEDGE_TIERS: Array<KnowledgeTier> = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6']
+const KNOWLEDGE_UI_ACTIONS = ['view', 'propose', 'review'] as const
+
+function entitlementTone(decision: EntitlementDecision): string {
+  if (decision === 'allow') {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300'
+  }
+  if (decision === 'allow_with_review') {
+    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300'
+  }
+  return 'border-primary-200 bg-primary-100/80 text-primary-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300'
+}
+
+function entitlementLabel(decision: EntitlementDecision): string {
+  if (decision === 'allow') return 'Allow'
+  if (decision === 'allow_with_review') return 'Review'
+  return 'Deny'
 }
 
 function membershipTone(status: string): string {
@@ -110,6 +133,7 @@ export function OrganizationSettingsScreen() {
   const [savePending, setSavePending] = useState(false)
   const [defaultPending, setDefaultPending] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const entitlementQuery = useKnowledgeEntitlementContract()
 
   useEffect(() => {
     if (organizationId === DEFAULT_SMB_ORGANIZATION_ID && !organizationName.trim()) {
@@ -121,6 +145,7 @@ export function OrganizationSettingsScreen() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: semantierAuthQueryKey }),
       queryClient.invalidateQueries({ queryKey: organizationSettingsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: knowledgeAccessQueryKey }),
     ])
   }
 
@@ -274,7 +299,7 @@ export function OrganizationSettingsScreen() {
                   id="organization-name"
                   value={organizationName}
                   onChange={(event) => setOrganizationName(event.target.value)}
-                  placeholder="SMB Analytics Dataset"
+                  placeholder={DEFAULT_SMB_ORGANIZATION_NAME}
                 />
                 <p className="text-xs text-primary-500 dark:text-neutral-400">
                   Only used when you create an organization that does not exist yet.
@@ -427,6 +452,142 @@ export function OrganizationSettingsScreen() {
               to create `org_smb_cn` locally and attach it to this user.
             </div>
           )}
+        </section>
+
+        <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
+          <div className="mb-4 flex items-start gap-3">
+            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={20} strokeWidth={1.5} />
+            <div>
+              <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+                Knowledge Access
+              </h2>
+              <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+                Live entitlement projection from the Semantier backend contract. This
+                page shows `view / propose / review` only and does not expose direct
+                activate or execute controls.
+              </p>
+            </div>
+          </div>
+
+          {entitlementQuery.isLoading ? (
+            <div className="text-sm text-primary-600 dark:text-neutral-400">
+              Loading knowledge access contract...
+            </div>
+          ) : entitlementQuery.error instanceof Error ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+              {entitlementQuery.error.message}
+            </div>
+          ) : entitlementQuery.data ? (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {entitlementQuery.data.principal.assigned_bundles.map((bundle) => (
+                  <span
+                    key={bundle}
+                    className="inline-flex rounded-full border border-primary-200 bg-white/80 px-2.5 py-1 font-medium uppercase tracking-wide text-primary-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
+                  >
+                    {bundle}
+                  </span>
+                ))}
+                <span className="inline-flex rounded-full border border-primary-200 bg-white/80 px-2.5 py-1 text-primary-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+                  {entitlementQuery.data.organization_context.official_display_name ||
+                    entitlementQuery.data.organization_context.organization_id}
+                </span>
+                <span className="inline-flex rounded-full border border-primary-200 bg-white/80 px-2.5 py-1 text-primary-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+                  {entitlementQuery.data.schema_version}
+                </span>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-primary-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-900/70">
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-primary-200 dark:border-neutral-800">
+                      <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                        Tier
+                      </th>
+                      {KNOWLEDGE_UI_ACTIONS.map((action) => (
+                        <th
+                          key={action}
+                          className="px-4 py-3 text-left font-semibold capitalize text-primary-900 dark:text-neutral-100"
+                        >
+                          {action}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {KNOWLEDGE_TIERS.map((tier) => {
+                      const tierProjection = entitlementQuery.data?.ui_projection.tiers[tier]
+                      return (
+                        <tr
+                          key={tier}
+                          className="border-b border-primary-100 last:border-b-0 dark:border-neutral-800"
+                        >
+                          <td className="px-4 py-3 font-mono text-xs text-primary-700 dark:text-neutral-300">
+                            {tier}
+                          </td>
+                          {KNOWLEDGE_UI_ACTIONS.map((action) => {
+                            const decision = tierProjection[action]
+                            return (
+                              <td key={action} className="px-4 py-3">
+                                <span
+                                  className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide ${entitlementTone(
+                                    decision,
+                                  )}`}
+                                >
+                                  {entitlementLabel(decision)}
+                                </span>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-3">
+                {Object.entries(entitlementQuery.data.bundle_preview).map(([bundle, preview]) => (
+                  <div
+                    key={bundle}
+                    className="rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70"
+                  >
+                    <div className="text-sm font-semibold uppercase tracking-wide text-primary-900 dark:text-neutral-100">
+                      {bundle}
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {KNOWLEDGE_TIERS.map((tier) => (
+                        <div key={tier} className="flex items-center justify-between gap-3 text-xs">
+                          <span className="font-mono text-primary-600 dark:text-neutral-400">
+                            {tier}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {KNOWLEDGE_UI_ACTIONS.map((action) => (
+                              <span
+                                key={action}
+                                className={`inline-flex rounded-full border px-2 py-0.5 ${entitlementTone(
+                                  preview.tiers[tier][action],
+                                )}`}
+                                title={`${action}: ${preview.tiers[tier][action]}`}
+                              >
+                                {action[0].toUpperCase()}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs text-primary-600 dark:text-neutral-400">
+                `allow_with_review` means you may initiate the path but cannot
+                complete it alone. Final authority still depends on governance
+                conditions in the backend contract.
+              </p>
+            </div>
+          ) : null}
         </section>
       </div>
     </div>

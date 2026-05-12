@@ -9,6 +9,8 @@ import {
 } from '@hugeicons/core-free-icons'
 import { motion } from 'motion/react'
 
+import { useSemantierAuthStatus } from '@/lib/semantier-auth'
+
 type Example = {
   title: string
   desc: string
@@ -22,7 +24,9 @@ type Category = {
   examples: Array<Example>
 }
 
-const CATEGORIES: Array<Category> = [
+type PromptProfile = 'generic' | 'smb_default' | 'apparel_trade'
+
+const GENERIC_CATEGORIES: Array<Category> = [
   {
     label: 'Multi-Market Backtest',
     icon: CodeIcon,
@@ -107,7 +111,7 @@ const CATEGORIES: Array<Category> = [
   },
 ]
 
-const CAPABILITY_CHIPS = [
+const GENERIC_CAPABILITY_CHIPS = [
   '56 Finance Skills',
   '25 Swarm Presets',
   '19 Agent Tools',
@@ -120,6 +124,85 @@ const CAPABILITY_CHIPS = [
   'Factor Analysis & ML',
 ]
 
+const BUSINESS_DEMO_CAPABILITY_CHIPS = [
+  'Bootstrap Demo Dataset',
+  'Multi-Organization Context',
+  'T1-T6 Knowledge Governance',
+  'Business Analytics',
+  'Expense & Journal Workflows',
+  'Tax Report Generation',
+  'Compliance Report Generation',
+  'Organization-Aware Chat Prompts',
+]
+
+const SMB_DEMO_CATEGORIES: Array<Category> = [
+  {
+    label: 'Demo Dataset Walkthrough',
+    icon: BrainIcon,
+    accent: 'var(--theme-accent)',
+    examples: [
+      {
+        title: '营业分析',
+        desc: '查看项目回款、毛利结构、现金压力和经营异常点。',
+        prompt:
+          '基于当前组织的 demo dataset，生成营业分析，重点说明收入结构、项目毛利、回款节奏、现金压力和需要关注的经营异常。',
+      },
+      {
+        title: '日常入账报销',
+        desc: '演示费用报销、入账建议和凭证归类。',
+        prompt:
+          '基于当前组织的 demo dataset，演示日常入账报销流程，给出费用分类、建议会计分录、需要补充的凭证材料和风险提示。',
+      },
+      {
+        title: '报税报告生成',
+        desc: '生成适合当前组织情境的报税准备说明。',
+        prompt:
+          '基于当前组织的 demo dataset，生成报税报告，汇总增值税、企业所得税相关准备事项，并说明本期重点关注项目。',
+      },
+      {
+        title: '合规报告生成',
+        desc: '输出当前组织的经营与财税合规风险摘要。',
+        prompt:
+          '基于当前组织的 demo dataset，生成合规报告，说明发票、合同、报销、资金流和内部控制方面的风险与建议。',
+      },
+    ],
+  },
+]
+
+const APPAREL_TRADE_DEMO_CATEGORIES: Array<Category> = [
+  {
+    label: 'Trade Demo Walkthrough',
+    icon: Globe02Icon,
+    accent: '#b85b31',
+    examples: [
+      {
+        title: '营业分析',
+        desc: '查看平台销售、退货退款、库存周转和毛利变化。',
+        prompt:
+          '基于北京宝库电子商务有限公司的 demo dataset，生成营业分析，重点说明平台销售、退货退款、库存周转、平台手续费和毛利变化。',
+      },
+      {
+        title: '日常入账报销',
+        desc: '演示电商贸易企业的采购、报销和入账处理。',
+        prompt:
+          '基于北京宝库电子商务有限公司的 demo dataset，演示日常入账报销流程，覆盖采购入账、平台费用、员工报销和需要补充的凭证材料。',
+      },
+      {
+        title: '报税报告生成',
+        desc: '聚焦无票采购与进项抵扣风险的报税准备。',
+        prompt:
+          '基于北京宝库电子商务有限公司的 demo dataset，生成报税报告，重点分析无票采购、进项抵扣风险、平台结算口径和本期税务申报准备事项。',
+      },
+      {
+        title: '合规报告生成',
+        desc: '输出贸易型企业的税务与内控风险报告。',
+        prompt:
+          '基于北京宝库电子商务有限公司的 demo dataset，生成合规报告，重点说明无票采购、库存与销售匹配、退款处理、平台结算和税务合规风险。',
+      },
+    ],
+  },
+]
+
 const SHORT_VIEWPORT_HEIGHT = 760
 
 type ChatEmptyStateProps = {
@@ -127,10 +210,56 @@ type ChatEmptyStateProps = {
   compact?: boolean
 }
 
+export function resolveChatEmptyStatePromptProfile(params: {
+  organizationId?: string | null
+  datasetType?: string | null
+  industryCode?: string | null
+}): PromptProfile {
+  const organizationId = params.organizationId?.trim()
+  const datasetType = params.datasetType?.trim()?.toUpperCase()
+  const industryCode = params.industryCode?.trim()
+  if (
+    organizationId === 'org_demo_apparel_trade_cn' ||
+    industryCode === 'apparel_customization_trade'
+  ) {
+    return 'apparel_trade'
+  }
+  if (
+    organizationId === 'org_smb_cn' ||
+    datasetType === 'DEMO' ||
+    datasetType === 'DEFAULT_REALISTIC_SAMPLE'
+  ) {
+    return 'smb_default'
+  }
+  return 'generic'
+}
+
+export function categoriesForPromptProfile(
+  promptProfile: PromptProfile,
+): Array<Category> {
+  if (promptProfile === 'apparel_trade') {
+    return APPAREL_TRADE_DEMO_CATEGORIES
+  }
+  if (promptProfile === 'smb_default') {
+    return SMB_DEMO_CATEGORIES
+  }
+  return GENERIC_CATEGORIES
+}
+
+export function capabilityChipsForPromptProfile(
+  promptProfile: PromptProfile,
+): Array<string> {
+  if (promptProfile === 'generic') {
+    return GENERIC_CAPABILITY_CHIPS
+  }
+  return BUSINESS_DEMO_CAPABILITY_CHIPS
+}
+
 export function ChatEmptyState({
   onSuggestionClick,
   compact = false,
 }: ChatEmptyStateProps) {
+  const authQuery = useSemantierAuthStatus()
   const [isShortViewport, setIsShortViewport] = useState(false)
   const [showAllCategories, setShowAllCategories] = useState(false)
 
@@ -150,8 +279,15 @@ export function ChatEmptyState({
     return () => window.removeEventListener('resize', syncViewportHeight)
   }, [])
 
+  const promptProfile = resolveChatEmptyStatePromptProfile({
+    organizationId: authQuery.data?.organization_id,
+    datasetType: authQuery.data?.dataset_type,
+    industryCode: authQuery.data?.industry_code,
+  })
+  const categories = categoriesForPromptProfile(promptProfile)
+  const capabilityChips = capabilityChipsForPromptProfile(promptProfile)
   const visibleCategories =
-    isShortViewport && !showAllCategories ? CATEGORIES.slice(0, 2) : CATEGORIES
+    isShortViewport && !showAllCategories ? categories.slice(0, 2) : categories
 
   return (
     <motion.div
@@ -192,11 +328,13 @@ export function ChatEmptyState({
               className="font-ui mt-3 text-sm font-medium"
               style={{ color: 'var(--theme-muted)' }}
             >
-              Agent chat · live tools · memory · full observability
+              {promptProfile === 'generic'
+                ? 'Agent chat · live tools · memory · full observability'
+                : 'Choose a demo workflow and inspect the active organization context'}
             </p>
 
             <div className="mt-4 flex max-w-4xl flex-wrap justify-center gap-1.5">
-              {CAPABILITY_CHIPS.map((chip) => (
+              {capabilityChips.map((chip) => (
                 <span
                   key={chip}
                   className="rounded-full px-2.5 py-0.5 text-[11px] theme-border-1"
@@ -218,7 +356,9 @@ export function ChatEmptyState({
             className="mb-3 px-1 text-xs"
             style={{ color: 'var(--theme-muted)' }}
           >
-            Preset starting points
+            {promptProfile === 'generic'
+              ? 'Preset starting points'
+              : 'Demo dataset prompts'}
           </p>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

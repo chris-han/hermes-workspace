@@ -285,7 +285,7 @@ export function OrganizationSettingsScreen() {
                   placeholder="org_smb_cn"
                 />
                 <p className="text-xs text-primary-500 dark:text-neutral-400">
-                  `org_smb_cn` is the seeded SMB analytics dataset organization.
+                  `org_smb_cn` is the seeded 北京索阳科技有限公司 bootstrap organization.
                 </p>
               </div>
               <div className="space-y-2">

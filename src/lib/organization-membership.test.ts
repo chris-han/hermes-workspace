@@ -21,7 +21,7 @@ describe('organization membership helpers', () => {
 
   it('uses org_smb_cn as the SMB default organization id', () => {
     expect(DEFAULT_SMB_ORGANIZATION_ID).toBe('org_smb_cn')
-    expect(DEFAULT_SMB_ORGANIZATION_NAME).toBe('SMB Analytics Dataset')
+    expect(DEFAULT_SMB_ORGANIZATION_NAME).toBe('北京索阳科技有限公司')
   })
 
   it('switches directly when the organization is already a known membership', async () => {
@@ -33,7 +33,7 @@ describe('organization membership helpers', () => {
           memberships: [
             {
               organization_id: 'org_smb_cn',
-              organization_name: 'SMB Analytics Dataset',
+              organization_name: '北京索阳科技有限公司',
               membership_status: 'active',
             },
           ],
@@ -45,7 +45,7 @@ describe('organization membership helpers', () => {
         jsonResponse({
           organization: {
             organization_id: 'org_smb_cn',
-            organization_name: 'SMB Analytics Dataset',
+            organization_name: '北京索阳科技有限公司',
             membership_status: 'active',
           },
           memberships: [],
@@ -97,13 +97,13 @@ describe('organization membership helpers', () => {
         jsonResponse({
           organization: {
             organization_id: 'org_smb_cn',
-            organization_name: 'SMB Analytics Dataset',
+            organization_name: '北京索阳科技有限公司',
             membership_status: 'active',
           },
           memberships: [
             {
               organization_id: 'org_smb_cn',
-              organization_name: 'SMB Analytics Dataset',
+              organization_name: '北京索阳科技有限公司',
               membership_status: 'active',
             },
           ],
@@ -129,7 +129,7 @@ describe('organization membership helpers', () => {
         method: 'POST',
         body: JSON.stringify({
           organization_id: 'org_smb_cn',
-          organization_name: 'SMB Analytics Dataset',
+          organization_name: '北京索阳科技有限公司',
           create: true,
         }),
       }),

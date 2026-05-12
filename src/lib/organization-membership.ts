@@ -6,6 +6,8 @@ export const DEFAULT_SMB_ORGANIZATION_NAME = '北京索阳科技有限公司'
 export interface OrganizationMembership {
   organization_id: string
   organization_name?: string | null
+  dataset_type?: string | null
+  industry_code?: string | null
   membership_status: string
   member_role?: string | null
   sharing_enabled?: boolean
@@ -16,6 +18,8 @@ export interface OrganizationMembership {
 export interface OrganizationContext {
   organization_id?: string | null
   organization_name?: string | null
+  dataset_type?: string | null
+  industry_code?: string | null
   membership_status?: string | null
   member_role?: string | null
   sharing_enabled?: boolean
@@ -26,6 +30,8 @@ export interface OrganizationContext {
 export interface OrganizationMember {
   user_id: string
   name: string
+  dataset_type?: string | null
+  industry_code?: string | null
   membership_status: string
   member_role?: string | null
   sharing_enabled?: boolean
@@ -45,6 +51,18 @@ export interface OrganizationSettingsResponse {
   memberships: Array<OrganizationMembership>
   members: Array<OrganizationMember>
   audit_events: Array<OrganizationAuditEvent>
+}
+
+export interface DemoOrganizationProfile {
+  organization_id: string
+  organization_name: string
+  dataset_type?: string | null
+  industry_code?: string | null
+  dataset_key?: string | null
+  dataset_version?: string | null
+  bootstrap_source?: string | null
+  demo_prompt_profile?: string | null
+  seeded?: boolean
 }
 
 export type EntitlementDecision = 'allow' | 'allow_with_review' | 'deny'
@@ -120,6 +138,10 @@ export interface KnowledgeEntitlementContract {
 
 export const organizationSettingsQueryKey = ['organizations', 'me'] as const
 export const knowledgeAccessQueryKey = ['organizations', 'knowledge-access'] as const
+export const demoOrganizationProfilesQueryKey = [
+  'organizations',
+  'demo-profiles',
+] as const
 
 type JsonFetcher = typeof fetch
 
@@ -184,6 +206,28 @@ export function useKnowledgeEntitlementContract() {
     queryFn: () => fetchKnowledgeEntitlementContract(),
     staleTime: 15_000,
     refetchInterval: 30_000,
+    retry: false,
+  })
+}
+
+export async function fetchDemoOrganizationProfiles(
+  fetchImpl: JsonFetcher = fetch,
+): Promise<Array<DemoOrganizationProfile>> {
+  const payload = await readJson<{ profiles?: Array<DemoOrganizationProfile> }>(
+    '/organizations/demo-profiles',
+    {
+      signal: AbortSignal.timeout(5000),
+    },
+    fetchImpl,
+  )
+  return Array.isArray(payload.profiles) ? payload.profiles : []
+}
+
+export function useDemoOrganizationProfiles() {
+  return useQuery({
+    queryKey: demoOrganizationProfilesQueryKey,
+    queryFn: () => fetchDemoOrganizationProfiles(),
+    staleTime: 60_000,
     retry: false,
   })
 }

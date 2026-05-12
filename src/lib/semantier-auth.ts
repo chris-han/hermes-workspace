@@ -12,6 +12,8 @@ export interface SemantierAuthUser {
   password_login_name?: string | null
   organization_id?: string | null
   organization_name?: string | null
+  dataset_type?: string | null
+  industry_code?: string | null
   membership_status?: string | null
   member_role?: string | null
   sharing_enabled?: boolean
@@ -26,6 +28,8 @@ export interface SemantierAuthStatus {
   password_login_enabled?: boolean
   organization_id?: string | null
   organization_name?: string | null
+  dataset_type?: string | null
+  industry_code?: string | null
   membership_status?: string | null
   member_role?: string | null
   sharing_enabled?: boolean

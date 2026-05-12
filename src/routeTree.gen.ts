@@ -26,12 +26,14 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as SettingsProvidersRouteImport } from './routes/settings/providers'
+import { Route as SettingsOrganizationRouteImport } from './routes/settings/organization'
 import { Route as SettingsMessagingPlatformsRouteImport } from './routes/settings/messaging-platforms'
 import { Route as SettingsMessagingAccountsRouteImport } from './routes/settings/messaging-accounts'
 import { Route as SettingsMessagingRouteImport } from './routes/settings/messaging'
 import { Route as SettingsMcpRouteImport } from './routes/settings/mcp'
 import { Route as SettingsDataConnectionsRouteImport } from './routes/settings/data-connections'
 import { Route as RunsRunIdRouteImport } from './routes/runs/$runId'
+import { Route as OrganizationsSplatRouteImport } from './routes/organizations/$'
 import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
 import { Route as AuthSplatRouteImport } from './routes/auth/$'
 import { Route as ApiWorkspaceRouteImport } from './routes/api/workspace'
@@ -196,6 +198,11 @@ const SettingsProvidersRoute = SettingsProvidersRouteImport.update({
   path: '/providers',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsOrganizationRoute = SettingsOrganizationRouteImport.update({
+  id: '/organization',
+  path: '/organization',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsMessagingPlatformsRoute =
   SettingsMessagingPlatformsRouteImport.update({
     id: '/messaging-platforms',
@@ -226,6 +233,11 @@ const SettingsDataConnectionsRoute = SettingsDataConnectionsRouteImport.update({
 const RunsRunIdRoute = RunsRunIdRouteImport.update({
   id: '/runs/$runId',
   path: '/runs/$runId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrganizationsSplatRoute = OrganizationsSplatRouteImport.update({
+  id: '/organizations/$',
+  path: '/organizations/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatSessionKeyRoute = ChatSessionKeyRouteImport.update({
@@ -679,12 +691,14 @@ export interface FileRoutesByFullPath {
   '/api/workspace': typeof ApiWorkspaceRoute
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/organizations/$': typeof OrganizationsSplatRoute
   '/runs/$runId': typeof RunsRunIdRoute
   '/settings/data-connections': typeof SettingsDataConnectionsRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/messaging': typeof SettingsMessagingRoute
   '/settings/messaging-accounts': typeof SettingsMessagingAccountsRoute
   '/settings/messaging-platforms': typeof SettingsMessagingPlatformsRoute
+  '/settings/organization': typeof SettingsOrganizationRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -781,12 +795,14 @@ export interface FileRoutesByTo {
   '/api/workspace': typeof ApiWorkspaceRoute
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/organizations/$': typeof OrganizationsSplatRoute
   '/runs/$runId': typeof RunsRunIdRoute
   '/settings/data-connections': typeof SettingsDataConnectionsRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/messaging': typeof SettingsMessagingRoute
   '/settings/messaging-accounts': typeof SettingsMessagingAccountsRoute
   '/settings/messaging-platforms': typeof SettingsMessagingPlatformsRoute
+  '/settings/organization': typeof SettingsOrganizationRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat': typeof ChatIndexRoute
   '/settings': typeof SettingsIndexRoute
@@ -885,12 +901,14 @@ export interface FileRoutesById {
   '/api/workspace': typeof ApiWorkspaceRoute
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/organizations/$': typeof OrganizationsSplatRoute
   '/runs/$runId': typeof RunsRunIdRoute
   '/settings/data-connections': typeof SettingsDataConnectionsRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/messaging': typeof SettingsMessagingRoute
   '/settings/messaging-accounts': typeof SettingsMessagingAccountsRoute
   '/settings/messaging-platforms': typeof SettingsMessagingPlatformsRoute
+  '/settings/organization': typeof SettingsOrganizationRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -990,12 +1008,14 @@ export interface FileRouteTypes {
     | '/api/workspace'
     | '/auth/$'
     | '/chat/$sessionKey'
+    | '/organizations/$'
     | '/runs/$runId'
     | '/settings/data-connections'
     | '/settings/mcp'
     | '/settings/messaging'
     | '/settings/messaging-accounts'
     | '/settings/messaging-platforms'
+    | '/settings/organization'
     | '/settings/providers'
     | '/chat/'
     | '/settings/'
@@ -1092,12 +1112,14 @@ export interface FileRouteTypes {
     | '/api/workspace'
     | '/auth/$'
     | '/chat/$sessionKey'
+    | '/organizations/$'
     | '/runs/$runId'
     | '/settings/data-connections'
     | '/settings/mcp'
     | '/settings/messaging'
     | '/settings/messaging-accounts'
     | '/settings/messaging-platforms'
+    | '/settings/organization'
     | '/settings/providers'
     | '/chat'
     | '/settings'
@@ -1195,12 +1217,14 @@ export interface FileRouteTypes {
     | '/api/workspace'
     | '/auth/$'
     | '/chat/$sessionKey'
+    | '/organizations/$'
     | '/runs/$runId'
     | '/settings/data-connections'
     | '/settings/mcp'
     | '/settings/messaging'
     | '/settings/messaging-accounts'
     | '/settings/messaging-platforms'
+    | '/settings/organization'
     | '/settings/providers'
     | '/chat/'
     | '/settings/'
@@ -1299,6 +1323,7 @@ export interface RootRouteChildren {
   ApiWorkspaceRoute: typeof ApiWorkspaceRoute
   AuthSplatRoute: typeof AuthSplatRoute
   ChatSessionKeyRoute: typeof ChatSessionKeyRoute
+  OrganizationsSplatRoute: typeof OrganizationsSplatRoute
   RunsRunIdRoute: typeof RunsRunIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
   ApiDataConnectionsSummaryRoute: typeof ApiDataConnectionsSummaryRoute
@@ -1446,6 +1471,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsProvidersRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/organization': {
+      id: '/settings/organization'
+      path: '/organization'
+      fullPath: '/settings/organization'
+      preLoaderRoute: typeof SettingsOrganizationRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/messaging-platforms': {
       id: '/settings/messaging-platforms'
       path: '/messaging-platforms'
@@ -1486,6 +1518,13 @@ declare module '@tanstack/react-router' {
       path: '/runs/$runId'
       fullPath: '/runs/$runId'
       preLoaderRoute: typeof RunsRunIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/organizations/$': {
+      id: '/organizations/$'
+      path: '/organizations/$'
+      fullPath: '/organizations/$'
+      preLoaderRoute: typeof OrganizationsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat/$sessionKey': {
@@ -2043,6 +2082,7 @@ interface SettingsRouteChildren {
   SettingsMessagingRoute: typeof SettingsMessagingRoute
   SettingsMessagingAccountsRoute: typeof SettingsMessagingAccountsRoute
   SettingsMessagingPlatformsRoute: typeof SettingsMessagingPlatformsRoute
+  SettingsOrganizationRoute: typeof SettingsOrganizationRoute
   SettingsProvidersRoute: typeof SettingsProvidersRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
@@ -2053,6 +2093,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsMessagingRoute: SettingsMessagingRoute,
   SettingsMessagingAccountsRoute: SettingsMessagingAccountsRoute,
   SettingsMessagingPlatformsRoute: SettingsMessagingPlatformsRoute,
+  SettingsOrganizationRoute: SettingsOrganizationRoute,
   SettingsProvidersRoute: SettingsProvidersRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
@@ -2206,6 +2247,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWorkspaceRoute: ApiWorkspaceRoute,
   AuthSplatRoute: AuthSplatRoute,
   ChatSessionKeyRoute: ChatSessionKeyRoute,
+  OrganizationsSplatRoute: OrganizationsSplatRoute,
   RunsRunIdRoute: RunsRunIdRoute,
   ChatIndexRoute: ChatIndexRoute,
   ApiDataConnectionsSummaryRoute: ApiDataConnectionsSummaryRoute,

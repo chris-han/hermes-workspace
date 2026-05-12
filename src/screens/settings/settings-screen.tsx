@@ -271,11 +271,13 @@ type SettingsNavItem = {
   id:
     | SettingsSectionId
     | 'mcp'
+    | 'organization'
     | 'data_connections'
     | 'messaging_accounts'
     | 'messaging_platforms'
   label: string
   to?:
+    | '/settings/organization'
     | '/settings/data-connections'
     | '/settings/mcp'
     | '/settings/messaging-accounts'
@@ -291,6 +293,11 @@ export const SETTINGS_NAV_ITEMS: Array<SettingsNavItem> = [
   { id: 'appearance', label: 'Appearance' },
   { id: 'chat', label: 'Chat' },
   { id: 'notifications', label: 'Notifications' },
+  {
+    id: 'organization',
+    label: 'Organization',
+    to: '/settings/organization',
+  },
   {
     id: 'data_connections',
     label: 'Data Connections',

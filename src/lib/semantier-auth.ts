@@ -10,6 +10,13 @@ export interface SemantierAuthUser {
   auth_provider?: string | null
   weixin_user_id?: string | null
   password_login_name?: string | null
+  organization_id?: string | null
+  organization_name?: string | null
+  membership_status?: string | null
+  member_role?: string | null
+  sharing_enabled?: boolean
+  can_invite_members?: boolean
+  can_change_settings?: boolean
   profile_completed?: boolean
 }
 
@@ -17,6 +24,13 @@ export interface SemantierAuthStatus {
   authenticated: boolean
   feishu_oauth_enabled: boolean
   password_login_enabled?: boolean
+  organization_id?: string | null
+  organization_name?: string | null
+  membership_status?: string | null
+  member_role?: string | null
+  sharing_enabled?: boolean
+  can_invite_members?: boolean
+  can_change_settings?: boolean
   profile_completed?: boolean
   auth_invalid_reason?: string | null
   workspace_slug?: string | null

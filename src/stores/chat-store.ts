@@ -252,6 +252,31 @@ function normalizeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function areSessionKeyAliases(left: string, right: string): boolean {
+  const normalizedLeft = normalizeString(left)
+  const normalizedRight = normalizeString(right)
+  if (!normalizedLeft || !normalizedRight) return false
+  if (normalizedLeft === normalizedRight) return true
+  return (
+    normalizedLeft.endsWith(`:${normalizedRight}`) ||
+    normalizedRight.endsWith(`:${normalizedLeft}`)
+  )
+}
+
+function getRealtimeMessagesForSession(
+  messagesBySession: Map<string, Array<ChatMessage>>,
+  sessionKey: string,
+): Array<ChatMessage> {
+  const exact = messagesBySession.get(sessionKey) ?? []
+  const aliases: Array<ChatMessage> = []
+  for (const [candidateKey, messages] of messagesBySession.entries()) {
+    if (candidateKey === sessionKey) continue
+    if (!areSessionKeyAliases(candidateKey, sessionKey)) continue
+    aliases.push(...messages)
+  }
+  return aliases.length === 0 ? exact : [...exact, ...aliases]
+}
+
 /**
  * Strip <final>...</final> wrapper tags that the server emits as a
  * streaming-completion sentinel in agent chunk events.
@@ -1129,7 +1154,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   mergeHistoryMessages: (sessionKey, historyMessages) => {
-    const realtimeMessages = get().realtimeMessages.get(sessionKey) ?? []
+    const realtimeMessages = getRealtimeMessagesForSession(
+      get().realtimeMessages,
+      sessionKey,
+    )
 
     if (realtimeMessages.length === 0) {
       return sortMessagesChronologically(historyMessages)

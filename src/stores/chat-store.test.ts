@@ -72,4 +72,53 @@ describe('chat-store mergeHistoryMessages', () => {
       'Run directory: /tmp/run/20260422_150534_27_ca822b',
     )
   })
+
+  it('deduplicates assistant stream/history messages across workspace-prefixed session aliases', () => {
+    const internalSessionKey = 'ws-123:session_abc'
+    const externalSessionKey = 'session_abc'
+    const assistantText =
+      '你的公司是 **北京索阳科技有限公司**。\n\n这是当前 governed runtime context 中记录的你所属的活跃组织。'
+
+    const streamedAssistant: ChatMessage = {
+      role: 'assistant',
+      content: [{ type: 'text', text: assistantText }],
+    }
+
+    useChatStore.setState({
+      realtimeMessages: new Map([[internalSessionKey, [streamedAssistant]]]),
+    })
+
+    const historyAssistant: ChatMessage = {
+      role: 'assistant',
+      id: 'msg-history-1',
+      content: [{ type: 'text', text: assistantText }],
+    }
+
+    const merged = useChatStore
+      .getState()
+      .mergeHistoryMessages(externalSessionKey, [historyAssistant])
+
+    expect(merged).toHaveLength(1)
+    expect(textOf(merged[0])).toBe(assistantText)
+  })
+
+  it('uses realtime messages from workspace-prefixed session aliases before history catches up', () => {
+    const internalSessionKey = 'ws-123:session_abc'
+    const externalSessionKey = 'session_abc'
+    const streamedAssistant: ChatMessage = {
+      role: 'assistant',
+      content: [{ type: 'text', text: 'streamed reply' }],
+    }
+
+    useChatStore.setState({
+      realtimeMessages: new Map([[internalSessionKey, [streamedAssistant]]]),
+    })
+
+    const merged = useChatStore
+      .getState()
+      .mergeHistoryMessages(externalSessionKey, [])
+
+    expect(merged).toHaveLength(1)
+    expect(textOf(merged[0])).toBe('streamed reply')
+  })
 })

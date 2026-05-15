@@ -4,24 +4,29 @@ import {
   Building02Icon,
   CheckmarkCircle02Icon,
   Plug01Icon,
+  Search01Icon,
   UserMultipleIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { useEffect, useState } from 'react'
-import type { OrganizationMembership } from '@/lib/organization-membership'
-import { usePageTitle } from '@/hooks/use-page-title'
+import { useEffect, useMemo, useState } from 'react'
+import type {
+  DemoOrganizationProfile,
+  EntitlementDecision,
+  KnowledgeTier,
+  OrganizationMembership,
+} from '@/lib/organization-membership'
 import {
   DEFAULT_SMB_ORGANIZATION_ID,
   DEFAULT_SMB_ORGANIZATION_NAME,
   ensureDefaultSmbOrganization,
-  type EntitlementDecision,
-  type KnowledgeTier,
   knowledgeAccessQueryKey,
   organizationSettingsQueryKey,
   upsertOrganizationAssociation,
+  useDemoOrganizationProfiles,
   useKnowledgeEntitlementContract,
   useOrganizationSettings,
 } from '@/lib/organization-membership'
+import { usePageTitle } from '@/hooks/use-page-title'
 import {
   semantierAuthQueryKey,
   useSemantierAuthStatus,
@@ -37,8 +42,90 @@ export const ORGANIZATION_SETTINGS_COPY = {
     'Associate your user with an organization and set the active organization_id used as the default SMB analytics context.',
 }
 
-const KNOWLEDGE_TIERS: Array<KnowledgeTier> = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6']
+const KNOWLEDGE_TIERS: Array<KnowledgeTier> = [
+  'T1',
+  'T2',
+  'T3',
+  'T4',
+  'T5',
+  'T6',
+]
 const KNOWLEDGE_UI_ACTIONS = ['view', 'propose', 'review'] as const
+
+export interface OrganizationSearchOption {
+  organization_id: string
+  organization_name: string
+  dataset_type?: string | null
+  industry_code?: string | null
+  dataset_key?: string | null
+  dataset_version?: string | null
+  bootstrap_source?: string | null
+  demo_prompt_profile?: string | null
+  membership_status?: string | null
+  member_role?: string | null
+  seeded?: boolean
+}
+
+export function buildOrganizationSearchOptions(
+  memberships: Array<OrganizationMembership>,
+  demoProfiles: Array<DemoOrganizationProfile>,
+): Array<OrganizationSearchOption> {
+  const options = new Map<string, OrganizationSearchOption>()
+
+  for (const profile of demoProfiles) {
+    options.set(profile.organization_id, {
+      ...profile,
+      organization_name: profile.organization_name || profile.organization_id,
+    })
+  }
+
+  for (const membership of memberships) {
+    const existing = options.get(membership.organization_id)
+    options.set(membership.organization_id, {
+      ...existing,
+      ...membership,
+      organization_name:
+        membership.organization_name ||
+        existing?.organization_name ||
+        membership.organization_id,
+      dataset_key: existing?.dataset_key,
+      dataset_version: existing?.dataset_version,
+      bootstrap_source: existing?.bootstrap_source,
+      demo_prompt_profile: existing?.demo_prompt_profile,
+      seeded: existing?.seeded,
+    })
+  }
+
+  return Array.from(options.values()).sort((left, right) =>
+    left.organization_name.localeCompare(right.organization_name, undefined, {
+      sensitivity: 'base',
+    }),
+  )
+}
+
+export function filterOrganizationSearchOptions(
+  options: Array<OrganizationSearchOption>,
+  query: string,
+): Array<OrganizationSearchOption> {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) {
+    return options.slice(0, 6)
+  }
+
+  return options
+    .filter((option) =>
+      [
+        option.organization_name,
+        option.organization_id,
+        option.industry_code,
+        option.dataset_type,
+        option.dataset_key,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedQuery)),
+    )
+    .slice(0, 8)
+}
 
 function entitlementTone(decision: EntitlementDecision): string {
   if (decision === 'allow') {
@@ -64,6 +151,18 @@ function membershipTone(status: string): string {
     return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300'
   }
   return 'border-primary-200 bg-primary-100/80 text-primary-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300'
+}
+
+function organizationOptionTags(
+  option: OrganizationSearchOption,
+): Array<string> {
+  return [
+    option.membership_status ? `membership: ${option.membership_status}` : null,
+    option.member_role ? `role: ${option.member_role}` : null,
+    option.dataset_type,
+    option.industry_code,
+    option.seeded ? 'seeded' : null,
+  ].filter(Boolean) as Array<string>
 }
 
 function OrganizationMembershipCard({
@@ -107,7 +206,9 @@ function OrganizationMembershipCard({
           type="button"
           variant={active ? 'outline' : 'default'}
           size="sm"
-          disabled={active || switching || membership.membership_status !== 'active'}
+          disabled={
+            active || switching || membership.membership_status !== 'active'
+          }
           onClick={() => onActivate(membership.organization_id)}
         >
           {active ? 'Current' : 'Make Active'}
@@ -123,12 +224,17 @@ export function OrganizationSettingsScreen() {
   const queryClient = useQueryClient()
   const authQuery = useSemantierAuthStatus()
   const organizationQuery = useOrganizationSettings()
+  const demoProfilesQuery = useDemoOrganizationProfiles()
   const [organizationId, setOrganizationId] = useState(
     DEFAULT_SMB_ORGANIZATION_ID,
   )
   const [organizationName, setOrganizationName] = useState(
     DEFAULT_SMB_ORGANIZATION_NAME,
   )
+  const [organizationSearch, setOrganizationSearch] = useState('')
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<
+    string | null
+  >(DEFAULT_SMB_ORGANIZATION_ID)
   const [createIfMissing, setCreateIfMissing] = useState(true)
   const [savePending, setSavePending] = useState(false)
   const [defaultPending, setDefaultPending] = useState(false)
@@ -136,7 +242,10 @@ export function OrganizationSettingsScreen() {
   const entitlementQuery = useKnowledgeEntitlementContract()
 
   useEffect(() => {
-    if (organizationId === DEFAULT_SMB_ORGANIZATION_ID && !organizationName.trim()) {
+    if (
+      organizationId === DEFAULT_SMB_ORGANIZATION_ID &&
+      !organizationName.trim()
+    ) {
       setOrganizationName(DEFAULT_SMB_ORGANIZATION_NAME)
     }
   }, [organizationId, organizationName])
@@ -200,11 +309,20 @@ export function OrganizationSettingsScreen() {
     }
   }
 
+  function handleSelectOrganization(option: OrganizationSearchOption) {
+    setOrganizationId(option.organization_id)
+    setOrganizationName(option.organization_name)
+    setSelectedOrganizationId(option.organization_id)
+    setCreateIfMissing(false)
+    setErrorMessage(null)
+  }
+
   async function handleUseSmbDefault() {
     setDefaultPending(true)
     setErrorMessage(null)
     setOrganizationId(DEFAULT_SMB_ORGANIZATION_ID)
     setOrganizationName(DEFAULT_SMB_ORGANIZATION_NAME)
+    setSelectedOrganizationId(DEFAULT_SMB_ORGANIZATION_ID)
     setCreateIfMissing(true)
     try {
       const payload = await ensureDefaultSmbOrganization()
@@ -234,6 +352,19 @@ export function OrganizationSettingsScreen() {
 
   const activeOrganization = authQuery.data?.organization_id
   const memberships = organizationQuery.data?.memberships ?? []
+  const organizationSearchOptions = useMemo(
+    () =>
+      buildOrganizationSearchOptions(memberships, demoProfilesQuery.data ?? []),
+    [memberships, demoProfilesQuery.data],
+  )
+  const visibleOrganizationOptions = useMemo(
+    () =>
+      filterOrganizationSearchOptions(
+        organizationSearchOptions,
+        organizationSearch,
+      ),
+    [organizationSearchOptions, organizationSearch],
+  )
 
   return (
     <div className="min-h-screen bg-surface text-primary-900">
@@ -241,7 +372,11 @@ export function OrganizationSettingsScreen() {
         <header className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
           <div className="flex items-start gap-3">
             <span className="inline-flex size-10 items-center justify-center rounded-2xl border border-primary-200 bg-primary-100/70 dark:border-neutral-800 dark:bg-neutral-900">
-              <HugeiconsIcon icon={Building02Icon} size={20} strokeWidth={1.5} />
+              <HugeiconsIcon
+                icon={Building02Icon}
+                size={20}
+                strokeWidth={1.5}
+              />
             </span>
             <div className="space-y-1">
               <h1 className="text-xl font-semibold text-primary-900 dark:text-neutral-100">
@@ -263,10 +398,88 @@ export function OrganizationSettingsScreen() {
                   Associate Organization
                 </h2>
                 <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
-                  The active organization becomes the default organization_id for
-                  SMB analytics context. Use the SMB dataset default or connect a
-                  different organization explicitly.
+                  The active organization becomes the default organization_id
+                  for SMB analytics context. Use the SMB dataset default or
+                  connect a different organization explicitly.
                 </p>
+              </div>
+            </div>
+
+            <div className="mb-4 rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70">
+              <label
+                className="text-sm font-medium text-primary-900 dark:text-neutral-100"
+                htmlFor="organization-search"
+              >
+                Search Organization Name
+              </label>
+              <div className="relative mt-2">
+                <HugeiconsIcon
+                  icon={Search01Icon}
+                  size={18}
+                  strokeWidth={1.5}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 dark:text-neutral-400"
+                />
+                <Input
+                  id="organization-search"
+                  value={organizationSearch}
+                  onChange={(event) =>
+                    setOrganizationSearch(event.target.value)
+                  }
+                  placeholder="Search by organization name, ID, or dataset"
+                  className="pl-10"
+                />
+              </div>
+              <div className="mt-3 grid gap-2">
+                {demoProfilesQuery.isLoading || organizationQuery.isLoading ? (
+                  <div className="rounded-2xl border border-primary-100 bg-primary-50/70 px-3 py-3 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
+                    Loading organizations...
+                  </div>
+                ) : visibleOrganizationOptions.length > 0 ? (
+                  visibleOrganizationOptions.map((option) => {
+                    const selected =
+                      selectedOrganizationId === option.organization_id ||
+                      organizationId === option.organization_id
+                    return (
+                      <button
+                        key={option.organization_id}
+                        type="button"
+                        className={`flex w-full items-start justify-between gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+                          selected
+                            ? 'border-primary-400 bg-primary-100/80 dark:border-neutral-600 dark:bg-neutral-800'
+                            : 'border-primary-100 bg-primary-50/70 hover:border-primary-300 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600'
+                        }`}
+                        onClick={() => handleSelectOrganization(option)}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                            {option.organization_name}
+                          </span>
+                          <span className="mt-1 block truncate font-mono text-xs text-primary-500 dark:text-neutral-400">
+                            {option.organization_id}
+                          </span>
+                          <span className="mt-2 flex flex-wrap gap-1.5">
+                            {organizationOptionTags(option).map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded-full border border-primary-200 bg-white/80 px-2 py-0.5 text-[11px] font-medium text-primary-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </span>
+                        </span>
+                        <span className="shrink-0 rounded-full border border-primary-200 bg-white px-2.5 py-1 text-xs font-medium text-primary-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
+                          {selected ? 'Selected' : 'Select'}
+                        </span>
+                      </button>
+                    )
+                  })
+                ) : (
+                  <div className="rounded-2xl border border-primary-100 bg-primary-50/70 px-3 py-3 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
+                    No governed organization profile matched this search. Enter
+                    an organization ID and name below to request or create one.
+                  </div>
+                )}
               </div>
             </div>
 
@@ -281,11 +494,15 @@ export function OrganizationSettingsScreen() {
                 <Input
                   id="organization-id"
                   value={organizationId}
-                  onChange={(event) => setOrganizationId(event.target.value)}
+                  onChange={(event) => {
+                    setOrganizationId(event.target.value)
+                    setSelectedOrganizationId(null)
+                  }}
                   placeholder="org_smb_cn"
                 />
                 <p className="text-xs text-primary-500 dark:text-neutral-400">
-                  `org_smb_cn` is the seeded 北京索阳科技有限公司 bootstrap organization.
+                  `org_smb_cn` is the seeded 北京索阳科技有限公司 bootstrap
+                  organization.
                 </p>
               </div>
               <div className="space-y-2">
@@ -298,11 +515,15 @@ export function OrganizationSettingsScreen() {
                 <Input
                   id="organization-name"
                   value={organizationName}
-                  onChange={(event) => setOrganizationName(event.target.value)}
+                  onChange={(event) => {
+                    setOrganizationName(event.target.value)
+                    setSelectedOrganizationId(null)
+                  }}
                   placeholder={DEFAULT_SMB_ORGANIZATION_NAME}
                 />
                 <p className="text-xs text-primary-500 dark:text-neutral-400">
-                  Only used when you create an organization that does not exist yet.
+                  Only used when you create an organization that does not exist
+                  yet.
                 </p>
               </div>
             </div>
@@ -314,8 +535,8 @@ export function OrganizationSettingsScreen() {
                     Create if missing
                   </div>
                   <p className="text-xs text-primary-600 dark:text-neutral-400">
-                    When enabled, Hermes will create the organization locally if it
-                    is not already registered.
+                    When enabled, Hermes will create the organization locally if
+                    it is not already registered.
                   </p>
                 </div>
                 <Switch
@@ -369,7 +590,8 @@ export function OrganizationSettingsScreen() {
                   Current Session Context
                 </h2>
                 <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
-                  This is the active organization attached to the authenticated user.
+                  This is the active organization attached to the authenticated
+                  user.
                 </p>
               </div>
             </div>
@@ -382,7 +604,8 @@ export function OrganizationSettingsScreen() {
               <div className="space-y-3">
                 <div className="rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70">
                   <div className="text-sm font-semibold text-primary-900 dark:text-neutral-100">
-                    {authQuery.data?.organization_name || 'No organization selected'}
+                    {authQuery.data?.organization_name ||
+                      'No organization selected'}
                   </div>
                   <div className="mt-1 text-xs text-primary-500 dark:text-neutral-400">
                     <span className="font-mono">
@@ -415,13 +638,18 @@ export function OrganizationSettingsScreen() {
 
         <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
           <div className="mb-4 flex items-start gap-3">
-            <HugeiconsIcon icon={UserMultipleIcon} size={20} strokeWidth={1.5} />
+            <HugeiconsIcon
+              icon={UserMultipleIcon}
+              size={20}
+              strokeWidth={1.5}
+            />
             <div>
               <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
                 Known Memberships
               </h2>
               <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
-                Switch between active memberships without editing auth records manually.
+                Switch between active memberships without editing auth records
+                manually.
               </p>
             </div>
           </div>
@@ -456,15 +684,19 @@ export function OrganizationSettingsScreen() {
 
         <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
           <div className="mb-4 flex items-start gap-3">
-            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={20} strokeWidth={1.5} />
+            <HugeiconsIcon
+              icon={CheckmarkCircle02Icon}
+              size={20}
+              strokeWidth={1.5}
+            />
             <div>
               <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
                 Knowledge Access
               </h2>
               <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
-                Live entitlement projection from the Semantier backend contract. This
-                page shows `view / propose / review` only and does not expose direct
-                activate or execute controls.
+                Live entitlement projection from the Semantier backend contract.
+                This page shows `view / propose / review` only and does not
+                expose direct activate or execute controls.
               </p>
             </div>
           </div>
@@ -480,16 +712,19 @@ export function OrganizationSettingsScreen() {
           ) : entitlementQuery.data ? (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                {entitlementQuery.data.principal.assigned_bundles.map((bundle) => (
-                  <span
-                    key={bundle}
-                    className="inline-flex rounded-full border border-primary-200 bg-white/80 px-2.5 py-1 font-medium uppercase tracking-wide text-primary-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
-                  >
-                    {bundle}
-                  </span>
-                ))}
+                {entitlementQuery.data.principal.assigned_bundles.map(
+                  (bundle) => (
+                    <span
+                      key={bundle}
+                      className="inline-flex rounded-full border border-primary-200 bg-white/80 px-2.5 py-1 font-medium uppercase tracking-wide text-primary-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
+                    >
+                      {bundle}
+                    </span>
+                  ),
+                )}
                 <span className="inline-flex rounded-full border border-primary-200 bg-white/80 px-2.5 py-1 text-primary-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
-                  {entitlementQuery.data.organization_context.official_display_name ||
+                  {entitlementQuery.data.organization_context
+                    .official_display_name ||
                     entitlementQuery.data.organization_context.organization_id}
                 </span>
                 <span className="inline-flex rounded-full border border-primary-200 bg-white/80 px-2.5 py-1 text-primary-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
@@ -516,7 +751,8 @@ export function OrganizationSettingsScreen() {
                   </thead>
                   <tbody>
                     {KNOWLEDGE_TIERS.map((tier) => {
-                      const tierProjection = entitlementQuery.data?.ui_projection.tiers[tier]
+                      const tierProjection =
+                        entitlementQuery.data.ui_projection.tiers[tier]
                       return (
                         <tr
                           key={tier}
@@ -547,38 +783,43 @@ export function OrganizationSettingsScreen() {
               </div>
 
               <div className="grid gap-3 lg:grid-cols-3">
-                {Object.entries(entitlementQuery.data.bundle_preview).map(([bundle, preview]) => (
-                  <div
-                    key={bundle}
-                    className="rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70"
-                  >
-                    <div className="text-sm font-semibold uppercase tracking-wide text-primary-900 dark:text-neutral-100">
-                      {bundle}
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      {KNOWLEDGE_TIERS.map((tier) => (
-                        <div key={tier} className="flex items-center justify-between gap-3 text-xs">
-                          <span className="font-mono text-primary-600 dark:text-neutral-400">
-                            {tier}
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            {KNOWLEDGE_UI_ACTIONS.map((action) => (
-                              <span
-                                key={action}
-                                className={`inline-flex rounded-full border px-2 py-0.5 ${entitlementTone(
-                                  preview.tiers[tier][action],
-                                )}`}
-                                title={`${action}: ${preview.tiers[tier][action]}`}
-                              >
-                                {action[0].toUpperCase()}
-                              </span>
-                            ))}
+                {Object.entries(entitlementQuery.data.bundle_preview).map(
+                  ([bundle, preview]) => (
+                    <div
+                      key={bundle}
+                      className="rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70"
+                    >
+                      <div className="text-sm font-semibold uppercase tracking-wide text-primary-900 dark:text-neutral-100">
+                        {bundle}
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {KNOWLEDGE_TIERS.map((tier) => (
+                          <div
+                            key={tier}
+                            className="flex items-center justify-between gap-3 text-xs"
+                          >
+                            <span className="font-mono text-primary-600 dark:text-neutral-400">
+                              {tier}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              {KNOWLEDGE_UI_ACTIONS.map((action) => (
+                                <span
+                                  key={action}
+                                  className={`inline-flex rounded-full border px-2 py-0.5 ${entitlementTone(
+                                    preview.tiers[tier][action],
+                                  )}`}
+                                  title={`${action}: ${preview.tiers[tier][action]}`}
+                                >
+                                  {action[0].toUpperCase()}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
 
               <p className="text-xs text-primary-600 dark:text-neutral-400">

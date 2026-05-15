@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildInlineToolRenderPlan } from './message-item'
+import { shouldRenderPrimaryAssistantText } from './message-item'
 import type { ChatMessage } from '../types'
 
 describe('buildInlineToolRenderPlan', () => {
@@ -131,5 +132,47 @@ describe('buildInlineToolRenderPlan', () => {
     const plan = buildInlineToolRenderPlan(message, [])
 
     expect(plan.some((item) => item.kind === 'ui')).toBe(false)
+  })
+})
+
+describe('shouldRenderPrimaryAssistantText', () => {
+  it('renders for user messages', () => {
+    expect(
+      shouldRenderPrimaryAssistantText({
+        isUser: true,
+        hasToolCalls: true,
+        hasA2UiBlocks: true,
+      }),
+    ).toBe(true)
+  })
+
+  it('does not render assistant fallback text when tool calls are present', () => {
+    expect(
+      shouldRenderPrimaryAssistantText({
+        isUser: false,
+        hasToolCalls: true,
+        hasA2UiBlocks: false,
+      }),
+    ).toBe(false)
+  })
+
+  it('does not render assistant fallback text when a2ui blocks are present', () => {
+    expect(
+      shouldRenderPrimaryAssistantText({
+        isUser: false,
+        hasToolCalls: false,
+        hasA2UiBlocks: true,
+      }),
+    ).toBe(false)
+  })
+
+  it('renders assistant fallback text when neither tool calls nor a2ui are present', () => {
+    expect(
+      shouldRenderPrimaryAssistantText({
+        isUser: false,
+        hasToolCalls: false,
+        hasA2UiBlocks: false,
+      }),
+    ).toBe(true)
   })
 })

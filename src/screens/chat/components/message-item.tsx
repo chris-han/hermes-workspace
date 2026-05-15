@@ -165,6 +165,15 @@ export type InlineRenderPlanItem =
   | { kind: 'ui'; key: string; schema: A2UiSchema }
   | { kind: 'tool'; section: InlineToolSection }
 
+export function shouldRenderPrimaryAssistantText(params: {
+  isUser: boolean
+  hasToolCalls: boolean
+  hasA2UiBlocks: boolean
+}): boolean {
+  if (params.isUser) return true
+  return !params.hasToolCalls && !params.hasA2UiBlocks
+}
+
 function extractA2UiSchema(part: unknown): A2UiSchema | null {
   if (!part || typeof part !== 'object') return null
   const payload = part as Record<string, unknown>
@@ -2368,7 +2377,11 @@ function MessageItemComponent({
               </div>
             )}
             {hasText &&
-              !(!isUser && hasToolCalls) &&
+              shouldRenderPrimaryAssistantText({
+                isUser,
+                hasToolCalls,
+                hasA2UiBlocks,
+              }) &&
               (isUser ? (
                 <span className="text-pretty">{displayText}</span>
               ) : hasRevealedText ? (

@@ -77,10 +77,26 @@ type WeixinPairingStatusResponse = {
   state: string
   status: string
   redirect_base_url?: string
+  message?: string
 }
 
-type WeixinReconnectResponse = PlatformState & {
-  reconnect_applied?: boolean
+type WeixinReconnectResponse = {
+  contract_version: string
+  platform: PlatformId
+  adapter_key: string
+  adapter_state: string
+  reconnect_scope: 'adapter'
+  auth_level: 'seamless' | 'grace' | 'step_up'
+  auth_reason:
+    | 'session_valid'
+    | 'grace_window'
+    | 'expired'
+    | 'binding_mismatch'
+    | 'replay_blocked'
+  requires_step_up: boolean
+  grace_expires_at_utc: string | null
+  reconnect_applied: boolean
+  runtime_session_state?: string
 }
 
 type FeishuDraft = {
@@ -302,6 +318,10 @@ function useMessagingSettingsModel() {
   const [weixinPairingQrScanData, setWeixinPairingQrScanData] = useState('')
   const [weixinPairingQrDataUrl, setWeixinPairingQrDataUrl] = useState('')
   const [reconnectingWeixin, setReconnectingWeixin] = useState(false)
+  const [weixinReconnectOutcome, setWeixinReconnectOutcome] =
+    useState<WeixinReconnectResponse | null>(null)
+  const [approvingWeixinPairing, setApprovingWeixinPairing] = useState(false)
+  const [weixinPairingApproveCode, setWeixinPairingApproveCode] = useState('')
   const [validationMessage, setValidationMessage] = useState<Record<PlatformId, string>>({
     feishu: '',
     weixin: '',
@@ -511,11 +531,12 @@ function useMessagingSettingsModel() {
   }, [feishuLinkAuthorizeUrl])
 
   async function startWeixinPairingQr() {
-    if (platforms.weixin.configured) {
+    if (platforms.weixin.configured && weixinReconnectOutcome?.requires_step_up !== true) {
       return
     }
     setStartingWeixinPairing(true)
     setWeixinPairingMessage('')
+    setWeixinReconnectOutcome(null)
     try {
       const response = await requestJson<WeixinPairingStartResponse>(
         '/auth/weixin/login/start',
@@ -562,6 +583,14 @@ function useMessagingSettingsModel() {
         setWeixinPairingMessage('QR scanned. Confirm login in Weixin.')
       } else if (nextStatus === 'expired') {
         setWeixinPairingMessage('QR code expired. Start a new pairing session.')
+      } else if (
+        nextStatus === 'binding_mismatch' ||
+        nextStatus === 'replay_blocked' ||
+        nextStatus === 'failed'
+      ) {
+        setWeixinPairingMessage(
+          response.message || 'This QR session can no longer be used. Start a new pairing session.',
+        )
       }
 
       if (nextStatus === 'confirmed') {
@@ -737,22 +766,54 @@ function useMessagingSettingsModel() {
       return
     }
     setReconnectingWeixin(true)
+    setWeixinReconnectOutcome(null)
     try {
-      const response = await requestJson<WeixinReconnectResponse>(
-        '/messaging/weixin/reconnect',
-        {
-          method: 'POST',
-        },
-      )
+      const res = await fetch('/api/semantier-proxy/messaging/weixin/reconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const response = (await res.json()) as WeixinReconnectResponse & {
+        detail?: string
+      }
+      if (!res.ok) {
+        if (response && typeof response === 'object' && 'auth_level' in response) {
+          setWeixinReconnectOutcome(response)
+          if (response.requires_step_up) {
+            setWeixinPairingMessage(
+              response.auth_reason === 'binding_mismatch'
+                ? 'Session mismatch detected. Start a fresh QR verification.'
+                : 'Session expired. Scan a new Weixin QR code to continue.',
+            )
+            await startWeixinPairingQr()
+          }
+          return
+        }
+        const errorDetail =
+          typeof (response as { detail?: string }).detail === 'string'
+            ? (response as { detail?: string }).detail
+            : undefined
+        throw new Error(errorDetail || `Request failed (${res.status})`)
+      }
+      setWeixinReconnectOutcome(response)
       setPlatforms((current) => ({
         ...current,
         weixin: {
           ...current.weixin,
-          ...response,
           platform: 'weixin',
+          configured: true,
+          config: {
+            ...current.weixin.config,
+            runtime_session_state: response.runtime_session_state || 'active',
+          },
         },
       }))
-      toast('Weixin gateway reconnect applied.', { type: 'success' })
+      toast(
+        response.auth_level === 'grace'
+          ? 'Weixin gateway reconnected inside the grace window.'
+          : 'Weixin gateway reconnect applied.',
+        { type: 'success' },
+      )
       await loadPlatforms()
     } catch (error) {
       const message =
@@ -760,6 +821,33 @@ function useMessagingSettingsModel() {
       toast(message, { type: 'error' })
     } finally {
       setReconnectingWeixin(false)
+    }
+  }
+
+  async function approveWeixinPairingSelf() {
+    const code = weixinPairingApproveCode.trim().toUpperCase()
+    if (!code) {
+      toast('Enter the Weixin pairing code first.', { type: 'error' })
+      return
+    }
+    setApprovingWeixinPairing(true)
+    try {
+      const response = await requestJson<{
+        ok: boolean
+        message: string
+      }>('/messaging/weixin/pairing/approve-self', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+      setWeixinPairingApproveCode('')
+      toast(response.message, { type: 'success' })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to approve Weixin pairing.'
+      toast(message, { type: 'error' })
+    } finally {
+      setApprovingWeixinPairing(false)
     }
   }
 
@@ -776,6 +864,8 @@ function useMessagingSettingsModel() {
     platforms,
     reconnectWeixinGateway,
     reconnectingWeixin,
+    approveWeixinPairingSelf,
+    approvingWeixinPairing,
     remove,
     save,
     savingPlatform,
@@ -790,10 +880,13 @@ function useMessagingSettingsModel() {
     validatingPlatform,
     validationMessage,
     weixin,
+    weixinPairingApproveCode,
+    setWeixinPairingApproveCode,
     weixinPairingMessage,
     weixinPairingQrDataUrl,
     weixinPairingState,
     weixinPairingStatus,
+    weixinReconnectOutcome,
   }
 }
 
@@ -1023,7 +1116,10 @@ function WeixinReadOnlyCard({
   model: ReturnType<typeof useMessagingSettingsModel>
 }) {
   const state = model.platforms.weixin
-  const shouldShowPairing = !state.configured
+  const shouldShowPairing =
+    !state.configured ||
+    Boolean(model.weixinPairingState) ||
+    model.weixinReconnectOutcome?.requires_step_up === true
   const runtimeState = String(state.config?.runtime_session_state ?? '').trim()
   const runtimeError = String(
     state.config?.runtime_session_error ?? state.last_error ?? '',
@@ -1031,6 +1127,7 @@ function WeixinReadOnlyCard({
   const runtimeUpdatedAt = String(
     state.config?.runtime_session_updated_at ?? '',
   ).trim()
+  const reconnectOutcome = model.weixinReconnectOutcome
 
   return (
     <SectionCard
@@ -1128,6 +1225,56 @@ function WeixinReadOnlyCard({
           >
             {model.reconnectingWeixin ? 'Reconnecting...' : 'Reconnect gateway'}
           </Button>
+        </div>
+      ) : null}
+
+      {reconnectOutcome ? (
+        <div className="mt-3 rounded-lg border theme-border theme-card p-3 text-xs theme-text">
+          <div className="flex flex-wrap items-center gap-2">
+            <span>Reconnect: {reconnectOutcome.auth_level}</span>
+            <span>Reason: {reconnectOutcome.auth_reason}</span>
+            <span>Adapter: {reconnectOutcome.adapter_state}</span>
+          </div>
+          {reconnectOutcome.grace_expires_at_utc ? (
+            <p className="mt-1 theme-muted">
+              Grace window ends at {reconnectOutcome.grace_expires_at_utc}
+            </p>
+          ) : null}
+          {reconnectOutcome.requires_step_up ? (
+            <p className="mt-1 text-danger">
+              Step-up required. Start a fresh Weixin QR verification.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!shouldShowPairing ? (
+        <div className="mt-3 rounded-lg border theme-border theme-card p-3">
+          <p className="text-xs font-medium theme-text">
+            Approve your own Weixin pairing code
+          </p>
+          <p className="mt-1 text-xs theme-muted">
+            If the Weixin bot replied with `hermes pairing approve weixin &lt;CODE&gt;`,
+            paste that code here to authorize your current Weixin identity without using the CLI.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={model.weixinPairingApproveCode}
+              placeholder="QCT7G75H"
+              onChange={(event) =>
+                model.setWeixinPairingApproveCode(event.target.value.toUpperCase())
+              }
+              className="sm:max-w-[220px]"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={model.approvingWeixinPairing}
+              onClick={() => void model.approveWeixinPairingSelf()}
+            >
+              {model.approvingWeixinPairing ? 'Approving...' : 'Approve code'}
+            </Button>
+          </div>
         </div>
       ) : null}
 

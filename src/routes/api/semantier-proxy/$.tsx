@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import {
-  SEMANTIER_AGENT_AUTH_COOKIE,
+  allowedSemantierAuthCookieNamesForPath,
   buildSemantierAgentProxyHeaders,
-  buildSemantierAgentProxyResponseHeaders,
+  buildSemantierAgentProxyResponse,
   semantierAgentAuthHeaders,
   withSemantierAgentBase,
 } from '../../../server/semantier-agent-api'
@@ -31,7 +31,7 @@ function shouldForceMessagingJsonUnauthorized(request: Request, splat: string): 
   if (!targetPath.startsWith('/messaging/')) {
     return false
   }
-  return !hasCookie(request, SEMANTIER_AGENT_AUTH_COOKIE)
+  return !hasCookie(request, 'vt_session')
 }
 
 // Paths that may involve gateway restarts and need a longer timeout.
@@ -54,7 +54,7 @@ async function proxyRequest(request: Request, splat: string) {
   const headers = buildSemantierAgentProxyHeaders(request.headers, {
     authHeaders: semantierAgentAuthHeaders(),
     forwardBrowserCookies: true,
-    allowedCookieNames: [SEMANTIER_AGENT_AUTH_COOKIE],
+    allowedCookieNames: allowedSemantierAuthCookieNamesForPath(targetPath),
   })
 
   const init: RequestInit = {
@@ -71,14 +71,7 @@ async function proxyRequest(request: Request, splat: string) {
   try {
     const upstream = await fetch(targetUrl, init)
     const body = await upstream.text()
-    const responseHeaders = buildSemantierAgentProxyResponseHeaders(
-      upstream.headers,
-    )
-
-    return new Response(body, {
-      status: upstream.status,
-      headers: responseHeaders,
-    })
+    return buildSemantierAgentProxyResponse(body, upstream)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Agent backend unreachable'
     return jsonUnauthorizedResponse(message, 503)

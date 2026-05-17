@@ -19,7 +19,7 @@ function makeAssistantMsg(text: string): ChatMessage {
     id: 'a1',
     role: 'assistant',
     content: [{ type: 'text', text }],
-    createdAt: new Date(),
+    createdAt: Date.now(),
   }
 }
 
@@ -69,7 +69,7 @@ describe('textFromMessage — think block stripping (regression #double-reply)',
       id: 'u1',
       role: 'user',
       content: [{ type: 'text', text: '<think>something</think>my question' }],
-      createdAt: new Date(),
+      createdAt: Date.now(),
     }
     // User message should not have think-block stripping applied
     expect(textFromMessage(msg)).toBe('<think>something</think>my question')

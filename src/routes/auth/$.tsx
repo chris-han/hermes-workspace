@@ -1,8 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import {
   SEMANTIER_AGENT_AUTH_COOKIE,
+  SEMANTIER_AGENT_BROWSER_SESSION_COOKIE,
+  allowedSemantierAuthCookieNamesForPath,
   buildSemantierAgentProxyHeaders,
-  buildSemantierAgentProxyResponseHeaders,
+  buildSemantierAgentProxyResponse,
   withSemantierAgentBase,
 } from '../../server/semantier-agent-api'
 
@@ -24,7 +26,7 @@ async function proxyAuthRequest(request: Request, splat: string) {
   const headers = buildSemantierAgentProxyHeaders(request.headers, {
     authHeaders: {},
     forwardBrowserCookies: true,
-    allowedCookieNames: [SEMANTIER_AGENT_AUTH_COOKIE],
+    allowedCookieNames: allowedSemantierAuthCookieNamesForPath(targetPath),
   })
 
   const init: RequestInit = {
@@ -41,11 +43,18 @@ async function proxyAuthRequest(request: Request, splat: string) {
   try {
     const upstream = await fetch(targetUrl, init)
     const body = await upstream.text()
-
-    return new Response(body, {
-      status: upstream.status,
-      headers: buildSemantierAgentProxyResponseHeaders(upstream.headers),
-    })
+    const response = buildSemantierAgentProxyResponse(body, upstream)
+    if (targetPath === '/auth/logout') {
+      response.headers.append(
+        'set-cookie',
+        'vt_session=\"\"; Max-Age=0; Path=/; SameSite=Lax',
+      )
+      response.headers.append(
+        'set-cookie',
+        `${SEMANTIER_AGENT_BROWSER_SESSION_COOKIE}=\"\"; Max-Age=0; Path=/; SameSite=Lax`,
+      )
+    }
+    return response
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Agent backend unreachable'
     return new Response(

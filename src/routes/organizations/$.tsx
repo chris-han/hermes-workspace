@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import {
   SEMANTIER_AGENT_AUTH_COOKIE,
   buildSemantierAgentProxyHeaders,
-  buildSemantierAgentProxyResponseHeaders,
+  buildSemantierAgentProxyResponse,
   semantierAgentAuthHeaders,
   withSemantierAgentBase,
 } from '../../server/semantier-agent-api'
@@ -35,10 +35,7 @@ async function proxyOrganizationRequest(request: Request, splat: string) {
   try {
     const upstream = await fetch(targetUrl, init)
     const body = await upstream.text()
-    return new Response(body, {
-      status: upstream.status,
-      headers: buildSemantierAgentProxyResponseHeaders(upstream.headers),
-    })
+    return buildSemantierAgentProxyResponse(body, upstream)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Agent backend unreachable'
     return new Response(

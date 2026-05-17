@@ -43,6 +43,11 @@ export interface SemantierAuthStatus {
 
 export const semantierAuthQueryKey = ['semantier-auth', 'context'] as const
 
+function clearBrowserCookie(name: string) {
+  if (typeof document === 'undefined') return
+  document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax`
+}
+
 export async function fetchSemantierAuthStatus(): Promise<SemantierAuthStatus> {
   const response = await fetch('/auth/context', {
     signal: AbortSignal.timeout(5000),
@@ -63,6 +68,11 @@ export async function logoutSemantierAuth(): Promise<void> {
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`)
   }
+
+  // Make logout robust even if an intermediate proxy fails to forward all
+  // Set-Cookie headers back to the browser.
+  clearBrowserCookie('vt_session')
+  clearBrowserCookie('vt_browser_session')
 }
 
 export function useSemantierAuthStatus() {

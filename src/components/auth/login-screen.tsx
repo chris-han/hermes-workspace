@@ -18,6 +18,7 @@ type WeixinLoginStatusResponse = {
   state: string
   status: string
   redirect_base_url?: string
+  message?: string
   authenticated?: boolean
   profile_completed?: boolean
   user?: {
@@ -118,10 +119,6 @@ export function LoginScreen({
       if (!res.ok) {
         throw new Error(data.detail || `HTTP ${res.status}`)
       }
-      if (data.authenticated) {
-        window.location.reload()
-        return
-      }
       setWeixinState(data.state)
       setWeixinStatus(data.status)
       setWeixinQrUrl(data.qrcode_url || '')
@@ -157,6 +154,14 @@ export function LoginScreen({
         setWeixinMessage('QR scanned. Confirm login in Weixin.')
       } else if (data.status === 'expired') {
         setWeixinMessage('QR code expired. Start a new Weixin sign-in.')
+      } else if (
+        data.status === 'binding_mismatch' ||
+        data.status === 'replay_blocked' ||
+        data.status === 'failed'
+      ) {
+        setWeixinMessage(
+          data.message || 'This Weixin sign-in session can no longer be used. Start a new sign-in.',
+        )
       }
       if (data.authenticated) {
         setWeixinState('')

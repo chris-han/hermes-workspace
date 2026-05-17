@@ -47,6 +47,16 @@ function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+/** Extract a content delta without trimming internal whitespace.
+ * Leading/trailing spaces in delta.content are significant — they act as
+ * word separators between consecutive tokens. Using readString() (which
+ * calls .trim()) drops leading spaces from deltas like " to", " would",
+ * causing "readyto", "Whatwould" artefacts in the accumulated text.
+ */
+function readDelta(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
 function encodeSseFrame(event: WorkspaceStreamEvent): string {
   return `event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`
 }
@@ -218,7 +228,7 @@ export const Route = createFileRoute('/api/send-stream')({
                       choice.delta && typeof choice.delta === 'object'
                         ? (choice.delta as Record<string, unknown>)
                         : {}
-                    const content = readString(delta.content)
+                    const content = readDelta(delta.content)
                     const reasoning =
                       readString(delta.reasoning) ||
                       readString(delta.reasoning_content)

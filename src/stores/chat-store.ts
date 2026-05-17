@@ -317,6 +317,7 @@ function stripInternalTags(text: string): string {
     .map((part, i) => {
       if (i % 2 === 1) return part // inside code block — leave untouched
       return part
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
         .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
         .replace(/<antThinking>[\s\S]*?<\/antThinking>/gi, '')
         .replace(/<thought>[\s\S]*?<\/thought>/gi, '')

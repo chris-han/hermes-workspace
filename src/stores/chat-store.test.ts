@@ -121,4 +121,40 @@ describe('chat-store mergeHistoryMessages', () => {
     expect(merged).toHaveLength(1)
     expect(textOf(merged[0])).toBe('streamed reply')
   })
+
+  it('deduplicates when history message has raw <think> block but stream message does not (regression #double-reply)', () => {
+    const sessionKey = 'session-think-test'
+    const visibleText = "Hi! I'm ready to help. What would you like to work on?"
+
+    // Streamed message has think blocks already stripped (as emitted by SSE)
+    const streamedAssistant: ChatMessage = {
+      role: 'assistant',
+      content: [{ type: 'text', text: visibleText }],
+    }
+
+    useChatStore.setState({
+      realtimeMessages: new Map([[sessionKey, [streamedAssistant]]]),
+    })
+
+    // History message has raw <think> block stored in content (as saved in session log)
+    const historyAssistant: ChatMessage = {
+      role: 'assistant',
+      id: 'msg-history-think',
+      content: [
+        {
+          type: 'text',
+          text: `<think>\nsome internal reasoning\n</think>\n${visibleText}`,
+        },
+      ],
+    }
+
+    const merged = useChatStore
+      .getState()
+      .mergeHistoryMessages(sessionKey, [historyAssistant])
+
+    // Should deduplicate — not show two messages
+    expect(merged).toHaveLength(1)
+    // The visible text should be present
+    expect(textOf(merged[0])).toContain(visibleText)
+  })
 })

@@ -120,6 +120,18 @@ export function textFromMessage(msg: ChatMessage): string {
     }
   }
 
+  // Strip <think>/<thinking>/<thought> blocks from assistant content.
+  // History messages are stored with raw model output (including think blocks),
+  // while streamed messages have them stripped. Normalising here ensures both
+  // representations produce the same visible text for dedup and display.
+  if (msg.role === 'assistant') {
+    raw = raw
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+      .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+      .trim()
+  }
+
   // Clean user messages (strip system metadata)
   if (msg.role === 'user') {
     return stripChannelPrefix(cleanUserText(raw))

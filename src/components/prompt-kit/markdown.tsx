@@ -44,8 +44,8 @@ export function linkifyRunDirectoryFooter(markdown: string): string {
   if (!markdown) return markdown
 
   return markdown.replace(
-    /^(\s*Run directory:\s*)(\/[^\n]+?)\s*$/gim,
-    (_fullMatch, prefix: string, rawPath: string) => {
+    /^(\s*(?:Run directory:|Report directory:|Artifact saved to:?|File saved to:?|Report saved to:?|报告已保存至[:：]?|报告全文已保存至[:：]?)\s*)(`?)(\/[^\n`]+?)\2\s*$/gim,
+    (_fullMatch, prefix: string, _quote: string, rawPath: string) => {
       if (!rawPath || rawPath.includes('](')) return `${prefix}${rawPath}`
       const targetPath = normalizeFilesTargetPath(rawPath)
       if (!targetPath) return `${prefix}${rawPath}`

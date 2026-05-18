@@ -36,4 +36,22 @@ describe('linkifyRunDirectoryFooter', () => {
       'Run directory: [/tmp/run/20260423](/files?path=runs%2F20260423)'
     expect(linkifyRunDirectoryFooter(line)).toBe(line)
   })
+
+  it('rewrites Chinese saved-report footer into a files deep link', () => {
+    const line =
+      '报告全文已保存至 /home/chris/repo/semantier-runtime/workspaces/ws123/.hermes/sessions/ws123%3Asession_abc/artifacts/tax_report.md'
+
+    expect(linkifyRunDirectoryFooter(line)).toContain(
+      '报告全文已保存至 [/home/chris/repo/semantier-runtime/workspaces/ws123/.hermes/sessions/ws123%3Asession_abc/artifacts/tax_report.md](/files?path=.hermes%2Fsessions%2Fws123%253Asession_abc%2Fartifacts%2Ftax_report.md)',
+    )
+  })
+
+  it('rewrites backticked saved-report footer into a files deep link', () => {
+    const line =
+      'Report saved to: `/home/chris/repo/semantier-runtime/workspaces/ws123/.hermes/sessions/ws123%3Asession_abc/artifacts/tax_report.md`'
+
+    expect(linkifyRunDirectoryFooter(line)).toContain(
+      'Report saved to: [/home/chris/repo/semantier-runtime/workspaces/ws123/.hermes/sessions/ws123%3Asession_abc/artifacts/tax_report.md](/files?path=.hermes%2Fsessions%2Fws123%253Asession_abc%2Fartifacts%2Ftax_report.md)',
+    )
+  })
 })

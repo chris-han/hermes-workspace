@@ -157,4 +157,44 @@ describe('chat-store mergeHistoryMessages', () => {
     // The visible text should be present
     expect(textOf(merged[0])).toContain(visibleText)
   })
+
+  it('collapses realtime assistant duplicates when done message is cleaned but prior message has raw a2ui fence', () => {
+    const sessionKey = 'session-a2ui-dedup'
+    const store = useChatStore.getState()
+
+    store.processEvent({
+      type: 'message',
+      sessionKey,
+      message: {
+        role: 'assistant',
+        content: [
+          {
+            type: 'text',
+            text: 'Please complete the form.\n\n```a2ui\n{"type":"form"}\n```\n\nSubmit when finished.',
+          },
+        ],
+      },
+    })
+
+    store.processEvent({
+      type: 'done',
+      state: 'complete',
+      sessionKey,
+      message: {
+        role: 'assistant',
+        content: [
+          {
+            type: 'text',
+            text: 'Please complete the form.\n\nSubmit when finished.',
+          },
+        ],
+      },
+    })
+
+    const realtimeMessages = useChatStore.getState().getRealtimeMessages(sessionKey)
+    expect(realtimeMessages).toHaveLength(1)
+    expect(textOf(realtimeMessages[0])).toBe(
+      'Please complete the form.\n\nSubmit when finished.',
+    )
+  })
 })

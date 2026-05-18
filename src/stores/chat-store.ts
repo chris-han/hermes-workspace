@@ -607,6 +607,14 @@ function messageMultipartSignature(
   return `${msg.role ?? 'unknown'}:${content}:${attachments}`
 }
 
+function assistantTextsEquivalent(left: string, right: string): boolean {
+  if (!left || !right) return false
+  if (left === right) return true
+  const normalizedLeft = normalizeAssistantDedupText(left)
+  const normalizedRight = normalizeAssistantDedupText(right)
+  return normalizedLeft.length > 0 && normalizedLeft === normalizedRight
+}
+
 const _restoredWaiting = restoreWaitingSessions()
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -805,7 +813,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           if (
             normalizedMessage.role === 'assistant' &&
             newPlainText.length > 20 &&
-            newPlainText === extractMessageText(existing)
+            assistantTextsEquivalent(newPlainText, extractMessageText(existing))
           ) {
             return true
           }
@@ -1067,7 +1075,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
             const existingId = getMessageId(existing)
             if (completeId && existingId && completeId === existingId)
               return true
-            if (completeText && completeText === extractMessageText(existing))
+            if (
+              completeText &&
+              assistantTextsEquivalent(completeText, extractMessageText(existing))
+            )
               return true
             return false
           })
@@ -1087,7 +1098,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
               const existingId = getMessageId(existing)
               if (completeId && existingId && completeId === existingId)
                 return true
-              if (completeText && completeText === extractMessageText(existing))
+              if (
+                completeText &&
+                assistantTextsEquivalent(completeText, extractMessageText(existing))
+              )
                 return true
               return false
             })
@@ -1324,6 +1338,18 @@ function normalizeAssistantDedupText(text: string): string {
   normalized = normalized
     .replace(/\n\s*\[Full report\]\([^\n]*\/runs\/[\w-]+[^\n]*\)\s*$/i, '')
     .trim()
+
+  // Some realtime events still contain raw a2ui/uiSchema code fences while
+  // history stores the same response with those fences stripped. Removing only
+  // these UI fences keeps dedup strict for normal code blocks.
+  normalized = normalized
+    .replace(/```(?:a2ui|uiSchema)\s*[\s\S]*?```/gi, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+
+  // Strip formatting-only whitespace differences so realtime/history variants
+  // of the same assistant turn compare equal during dedup.
+  normalized = normalized.replace(/\s+/g, ' ').trim()
 
   return normalized
 }

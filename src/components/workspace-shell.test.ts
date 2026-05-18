@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   DESKTOP_SIDEBAR_BACKDROP_CLASS,
+  shouldAutoRedirectToFeishuLogin,
   shouldShowSemantierLogin,
 } from './workspace-shell'
 import { connectedReachabilityStatus } from './connection-startup-screen'
@@ -22,6 +23,19 @@ describe('shouldShowSemantierLogin', () => {
     expect(shouldShowSemantierLogin(true, false)).toBe(false)
     expect(shouldShowSemantierLogin(false, true)).toBe(false)
     expect(shouldShowSemantierLogin(false, undefined)).toBe(false)
+  })
+})
+
+describe('shouldAutoRedirectToFeishuLogin', () => {
+  it('redirects only when Feishu OAuth is enabled and user is unauthenticated', () => {
+    expect(shouldAutoRedirectToFeishuLogin(true, false, false)).toBe(true)
+    expect(shouldAutoRedirectToFeishuLogin(false, false, false)).toBe(false)
+    expect(shouldAutoRedirectToFeishuLogin(true, true, false)).toBe(false)
+    expect(shouldAutoRedirectToFeishuLogin(true, undefined, false)).toBe(false)
+  })
+
+  it('does not auto-redirect immediately after explicit logout', () => {
+    expect(shouldAutoRedirectToFeishuLogin(true, false, true)).toBe(false)
   })
 })
 

@@ -28,7 +28,11 @@ import { ChatPanel } from '@/components/chat-panel'
 import { ChatPanelToggle } from '@/components/chat-panel-toggle'
 import { LoginScreen } from '@/components/auth/login-screen'
 import { ProfileCompletionScreen, shouldShowProfileCompletion } from '@/components/auth/profile-completion-screen'
-import { useSemantierAuthStatus } from '@/lib/semantier-auth'
+import {
+  clearFeishuAutoLoginSuppression,
+  isFeishuAutoLoginSuppressed,
+  useSemantierAuthStatus,
+} from '@/lib/semantier-auth'
 import { MobileTabBar } from '@/components/mobile-tab-bar'
 import { MobileHamburgerMenu } from '@/components/mobile-hamburger-menu'
 import { MobilePageHeader } from '@/components/mobile-page-header'
@@ -67,6 +71,18 @@ export function shouldShowSemantierLogin(
   semantierAuthenticated: boolean | undefined,
 ): boolean {
   return !semantierAuthLoading && semantierAuthenticated === false
+}
+
+export function shouldAutoRedirectToFeishuLogin(
+  feishuOauthEnabled: boolean | undefined,
+  semantierAuthenticated: boolean | undefined,
+  autoLoginSuppressed: boolean,
+): boolean {
+  return Boolean(
+    feishuOauthEnabled &&
+      semantierAuthenticated === false &&
+      !autoLoginSuppressed,
+  )
 }
 
 type WorkspaceShellProps = {
@@ -142,7 +158,17 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     if (!isClient) return
     if (semantierAuthQuery.isLoading) return
     const data = semantierAuthQuery.data
-    if (data?.feishu_oauth_enabled && !data.authenticated) {
+    if (data?.authenticated) {
+      clearFeishuAutoLoginSuppression()
+      return
+    }
+    if (
+      shouldAutoRedirectToFeishuLogin(
+        data?.feishu_oauth_enabled,
+        data?.authenticated,
+        isFeishuAutoLoginSuppressed(),
+      )
+    ) {
       // Avoid infinite redirect when already on an auth route
       const path = window.location.pathname
       if (path.startsWith('/auth/')) return

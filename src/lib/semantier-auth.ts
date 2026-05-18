@@ -42,15 +42,34 @@ export interface SemantierAuthStatus {
 }
 
 export const semantierAuthQueryKey = ['semantier-auth', 'context'] as const
+const FEISHU_AUTO_LOGIN_SUPPRESS_KEY =
+  'semantier:feishu-auto-login-suppressed'
 
 function clearBrowserCookie(name: string) {
   if (typeof document === 'undefined') return
   document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax`
 }
 
+export function suppressFeishuAutoLoginAfterLogout() {
+  if (typeof window === 'undefined') return
+  window.sessionStorage.setItem(FEISHU_AUTO_LOGIN_SUPPRESS_KEY, '1')
+}
+
+export function clearFeishuAutoLoginSuppression() {
+  if (typeof window === 'undefined') return
+  window.sessionStorage.removeItem(FEISHU_AUTO_LOGIN_SUPPRESS_KEY)
+}
+
+export function isFeishuAutoLoginSuppressed(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.sessionStorage.getItem(FEISHU_AUTO_LOGIN_SUPPRESS_KEY) === '1'
+}
+
 export async function fetchSemantierAuthStatus(): Promise<SemantierAuthStatus> {
   const response = await fetch('/auth/context', {
     signal: AbortSignal.timeout(5000),
+    cache: 'no-store',
+    credentials: 'same-origin',
   })
 
   if (!response.ok) {
@@ -63,11 +82,15 @@ export async function fetchSemantierAuthStatus(): Promise<SemantierAuthStatus> {
 export async function logoutSemantierAuth(): Promise<void> {
   const response = await fetch('/auth/logout', {
     method: 'POST',
+    cache: 'no-store',
+    credentials: 'same-origin',
   })
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`)
   }
+
+  suppressFeishuAutoLoginAfterLogout()
 
   // Make logout robust even if an intermediate proxy fails to forward all
   // Set-Cookie headers back to the browser.

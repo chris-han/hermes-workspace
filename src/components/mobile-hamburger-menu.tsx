@@ -18,9 +18,12 @@ import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { hapticTap } from '@/lib/haptics'
 import { getTheme, getThemeVariant, isDarkTheme, setTheme } from '@/lib/theme'
+import { toast } from '@/components/ui/toast'
 import {
+  clearFeishuAutoLoginSuppression,
   logoutSemantierAuth,
   semantierAuthQueryKey,
+  type SemantierAuthStatus,
   useSemantierAuthStatus,
 } from '@/lib/semantier-auth'
 import { UserAvatar } from '@/components/avatars'
@@ -139,7 +142,25 @@ export function MobileHamburgerMenu() {
     setSemantierAuthActionPending(true)
     try {
       await logoutSemantierAuth()
-      await queryClient.invalidateQueries({ queryKey: semantierAuthQueryKey })
+      queryClient.setQueryData<SemantierAuthStatus | undefined>(
+        semantierAuthQueryKey,
+        (prev) =>
+          prev
+            ? {
+                ...prev,
+                authenticated: false,
+                user: null,
+                profile_completed: false,
+              }
+            : undefined,
+      )
+      await queryClient.invalidateQueries({
+        queryKey: semantierAuthQueryKey,
+        refetchType: 'all',
+      })
+      toast('Logged out. Auto-login is paused until you click Login.', {
+        type: 'success',
+      })
     } finally {
       setSemantierAuthActionPending(false)
     }
@@ -362,6 +383,7 @@ export function MobileHamburgerMenu() {
                   <button
                     type="button"
                     onClick={() => {
+                      clearFeishuAutoLoginSuppression()
                       window.location.assign('/auth/feishu/login')
                     }}
                     className="rounded-full px-3 py-1.5 text-xs font-medium text-white transition-colors"

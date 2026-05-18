@@ -70,8 +70,10 @@ import {
 import { toast } from '@/components/ui/toast'
 import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
 import {
+  clearFeishuAutoLoginSuppression,
   logoutSemantierAuth,
   semantierAuthQueryKey,
+  type SemantierAuthStatus,
   useSemantierAuthStatus,
 } from '@/lib/semantier-auth'
 
@@ -648,7 +650,25 @@ function ChatSidebarComponent({
     setSemantierAuthActionPending(true)
     try {
       await logoutSemantierAuth()
-      await queryClient.invalidateQueries({ queryKey: semantierAuthQueryKey })
+      queryClient.setQueryData<SemantierAuthStatus | undefined>(
+        semantierAuthQueryKey,
+        (prev) =>
+          prev
+            ? {
+                ...prev,
+                authenticated: false,
+                user: null,
+                profile_completed: false,
+              }
+            : undefined,
+      )
+      await queryClient.invalidateQueries({
+        queryKey: semantierAuthQueryKey,
+        refetchType: 'all',
+      })
+      toast('Logged out. Auto-login is paused until you click Login.', {
+        type: 'success',
+      })
     } finally {
       setSemantierAuthActionPending(false)
     }
@@ -1296,6 +1316,7 @@ function ChatSidebarComponent({
                 <MenuItem
                   disabled={semantierAuthQuery.isLoading}
                   onClick={() => {
+                    clearFeishuAutoLoginSuppression()
                     window.location.assign('/auth/feishu/login')
                   }}
                 >

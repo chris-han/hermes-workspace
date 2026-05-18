@@ -10,6 +10,7 @@ import {
 
 const DEFAULT_AUTH_PROXY_TIMEOUT_MS = 5_000
 const WEIXIN_AUTH_PROXY_TIMEOUT_MS = 20_000
+const LOGOUT_COOKIE_OPTIONS = 'Max-Age=0; Path=/; SameSite=Lax'
 
 export function getAuthProxyTimeoutMs(targetPath: string): number {
   return targetPath.startsWith('/auth/weixin/login/')
@@ -47,11 +48,11 @@ async function proxyAuthRequest(request: Request, splat: string) {
     if (targetPath === '/auth/logout') {
       response.headers.append(
         'set-cookie',
-        'vt_session=\"\"; Max-Age=0; Path=/; SameSite=Lax',
+        `${SEMANTIER_AGENT_BROWSER_SESSION_COOKIE}=""; ${LOGOUT_COOKIE_OPTIONS}`,
       )
       response.headers.append(
         'set-cookie',
-        `${SEMANTIER_AGENT_BROWSER_SESSION_COOKIE}=\"\"; Max-Age=0; Path=/; SameSite=Lax`,
+        `${SEMANTIER_AGENT_AUTH_COOKIE}=""; ${LOGOUT_COOKIE_OPTIONS}`,
       )
     }
     return response

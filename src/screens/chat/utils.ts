@@ -37,7 +37,7 @@ const KNOWN_CHANNELS = [
 function stripChannelPrefix(text: string): string {
   const match = text.match(CHANNEL_PREFIX_REGEX)
   if (!match) return text
-  const bracket = match[1] ?? ''
+  const bracket = match[1]
   // Strip if it contains a timestamp or known channel name
   const hasTimestamp =
     /\d{4}-\d{2}-\d{2}/.test(bracket) || /\d{2}:\d{2}/.test(bracket)
@@ -288,7 +288,7 @@ export async function readError(res: Response): Promise<string> {
 }
 
 export const missingAuthMessage =
-  'Semantier backend connection failed. Make sure semantier webapi is running and HERMES_API_URL is set correctly.'
+  'Semantier backend connection failed. Make sure semantier webapi is running and SEMANTIER_AGENT_API_URL is set correctly.'
 
 export function isMissingAuth(message: string): boolean {
   return message.includes(missingAuthMessage)

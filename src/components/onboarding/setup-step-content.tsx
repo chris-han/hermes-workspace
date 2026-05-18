@@ -104,36 +104,36 @@ export function ConnectionCheckStep({
         {status === 'connected'
           ? 'Your backend is reachable and ready for setup.'
           : status === 'checking'
-            ? 'Checking whether the Semantier agent wrapper is available...'
+            ? 'Checking whether a compatible backend is available...'
             : 'No compatible backend is connected yet.'}
       </p>
 
       {status === 'disconnected' && (
         <div className="mb-6 w-full rounded-2xl border border-red-200 bg-red-50 p-4 text-left">
           <p className="mb-3 text-sm font-medium text-red-700">
-            Make sure the Hermes HTTP API server is enabled:
+            Make sure a compatible backend is running:
           </p>
           <div className="space-y-2">
             <div>
               <p className="text-xs font-medium text-red-700 mb-1">
-                1. Enable the API server in <code>~/.hermes/.env</code>:
+                1. Start or restart your local gateway:
               </p>
               <code className="block overflow-x-auto rounded-lg bg-red-100 px-3 py-2 text-xs text-red-900">
-                API_SERVER_ENABLED=true
+                hermes gateway run
               </code>
             </div>
             <div>
               <p className="text-xs font-medium text-red-700 mb-1">
-                2. Restart the gateway:
+                2. Verify the backend responds on the configured URL:
               </p>
               <code className="block overflow-x-auto rounded-lg bg-red-100 px-3 py-2 text-xs text-red-900">
-                cd hermes-agent && hermes --gateway
+                curl "$SEMANTIER_AGENT_API_URL/health"
               </code>
             </div>
           </div>
           <p className="mt-3 text-xs text-red-700">
-            Or point <code>HERMES_API_URL</code> at the Semantier agent wrapper
-            (default: http://127.0.0.1:8899).
+            Point <code>SEMANTIER_AGENT_API_URL</code> at any compatible
+            backend.
           </p>
           {lastError && (
             <p className="mt-3 text-xs text-red-700">{lastError}</p>

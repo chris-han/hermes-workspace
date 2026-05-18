@@ -9,8 +9,16 @@ import {
  * Semantier unicell architecture — agent wrapper is the only backend.
  */
 
-export let HERMES_API = process.env.HERMES_API_URL || 'http://127.0.0.1:8899'
-export let HERMES_DASHBOARD_URL = HERMES_API
+function resolveGatewayUrl(): string {
+  return (
+    process.env.SEMANTIER_AGENT_API_URL ||
+    process.env.HERMES_API_URL ||
+    'http://127.0.0.1:8899'
+  )
+}
+
+export let HERMES_API = resolveGatewayUrl()
+export const HERMES_DASHBOARD_URL = HERMES_API
 
 export const GATEWAY_MODE_OVERRIDE_ENV = 'HERMES_WORKSPACE_MODE'
 
@@ -105,7 +113,7 @@ let capabilities: GatewayCapabilities = {
   probed: false,
 }
 
-let probePromise: Promise<GatewayCapabilities> | null = null
+const probePromise: Promise<GatewayCapabilities> | null = null
 let lastProbeAt = 0
 let lastLoggedSummary = ''
 
@@ -232,7 +240,7 @@ function logCapabilities(next: GatewayCapabilities): void {
 }
 
 function autoDetectGatewayUrl(): void {
-  HERMES_API = process.env.HERMES_API_URL || 'http://127.0.0.1:8899'
+  HERMES_API = resolveGatewayUrl()
 }
 
 export function probeGateway(options?: {

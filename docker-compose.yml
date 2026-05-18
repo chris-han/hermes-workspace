@@ -17,7 +17,7 @@
 # Troubleshooting:
 #   - See README.md "Docker" troubleshooting section
 #   - Check logs: docker compose logs hermes-agent
-#   - Agent must expose port 8642 with: hermes gateway run
+#   - Agent must expose port 8642 for the workspace service
 
 services:
   # The Hermes AI Agent Gateway
@@ -41,7 +41,7 @@ services:
       - '8642:8642'
 
   # The Hermes Workspace Web UI
-  # Connects to hermes-agent at http://hermes-agent:8642
+  # Connects to hermes-agent through SEMANTIER_AGENT_API_URL
   hermes-workspace:
     build:
       context: .
@@ -53,6 +53,6 @@ services:
       - .env
     environment:
       # Internal Docker network URL (not localhost!)
-      HERMES_API_URL: http://hermes-agent:8642
+      SEMANTIER_AGENT_API_URL: http://hermes-agent:8642
     ports:
       - '3000:3000'

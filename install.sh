@@ -158,10 +158,10 @@ cyan "→ Configuring .env…"
 if [[ ! -f .env ]]; then
   cp .env.example .env
 fi
-if ! grep -q "HERMES_API_URL=" .env 2>/dev/null; then
-  printf '\nHERMES_API_URL=http://127.0.0.1:%s\n' "$GATEWAY_PORT" >> .env
+if ! grep -q "SEMANTIER_AGENT_API_URL=" .env 2>/dev/null; then
+  printf '\nSEMANTIER_AGENT_API_URL=http://127.0.0.1:%s\n' "$GATEWAY_PORT" >> .env
 fi
-green "  .env ready ✓"
+green "  .env ready (SEMANTIER_AGENT_API_URL -> gateway port $GATEWAY_PORT) ✓"
 
 cyan "→ Installing npm deps (pnpm install)…"
 pnpm install --silent
@@ -177,7 +177,7 @@ cat <<EOF
 
 Next steps (two terminals):
 
-  1) Start the Hermes gateway:
+  1) Start a compatible backend gateway:
        hermes gateway run
      (first run may prompt for hermes setup)
 

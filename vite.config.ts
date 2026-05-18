@@ -64,12 +64,11 @@ async function isHealthyEndpoint(url: string, path: string): Promise<boolean> {
 
 const config = defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const hermesApiUrl = normalizeServiceUrl(
-    env.HERMES_API_URL || process.env.HERMES_API_URL,
-    'http://127.0.0.1:8899',
-  )
   const semantierAgentUrl = normalizeServiceUrl(
-    env.SEMANTIER_AGENT_API_URL || process.env.SEMANTIER_AGENT_API_URL,
+    env.SEMANTIER_AGENT_API_URL ||
+      process.env.SEMANTIER_AGENT_API_URL ||
+      env.HERMES_API_URL ||
+      process.env.HERMES_API_URL,
     'http://127.0.0.1:8899',
   )
 
@@ -274,7 +273,7 @@ const config = defineConfig(({ mode, command }) => {
   let proxyTarget = 'http://127.0.0.1:18789'
 
   try {
-    const parsed = new URL(hermesApiUrl)
+    const parsed = new URL(semantierAgentUrl)
     parsed.protocol = parsed.protocol === 'wss:' ? 'https:' : 'http:'
     parsed.pathname = ''
     proxyTarget = parsed.toString().replace(/\/$/, '')
@@ -385,10 +384,10 @@ const config = defineConfig(({ mode, command }) => {
               try {
                 // Check for the single wrapper backend first.
                 const [modelsRes, sessionsRes] = await Promise.all([
-                  fetch(`${hermesApiUrl}/v1/models`, {
+                  fetch(`${semantierAgentUrl}/v1/models`, {
                     signal: AbortSignal.timeout(3000),
                   }).catch(() => null),
-                  fetch(`${hermesApiUrl}/api/sessions?limit=1`, {
+                  fetch(`${semantierAgentUrl}/api/sessions?limit=1`, {
                     signal: AbortSignal.timeout(3000),
                   }).catch(() => null),
                 ])
@@ -401,7 +400,7 @@ const config = defineConfig(({ mode, command }) => {
                     JSON.stringify({
                       ok: true,
                       mode: 'enhanced',
-                      backend: hermesApiUrl,
+                      backend: semantierAgentUrl,
                     }),
                   )
                   return
@@ -413,13 +412,13 @@ const config = defineConfig(({ mode, command }) => {
                     JSON.stringify({
                       ok: true,
                       mode: 'portable',
-                      backend: hermesApiUrl,
+                      backend: semantierAgentUrl,
                     }),
                   )
                   return
                 }
                 // Fall back to /health for full Hermes backends
-                const healthRes = await fetch(`${hermesApiUrl}/health`, {
+                const healthRes = await fetch(`${semantierAgentUrl}/health`, {
                   signal: AbortSignal.timeout(3000),
                 })
                 res.statusCode = healthRes.ok ? 200 : 502
@@ -428,7 +427,7 @@ const config = defineConfig(({ mode, command }) => {
                   JSON.stringify({
                     ok: healthRes.ok,
                     mode: 'enhanced',
-                    backend: hermesApiUrl,
+                    backend: semantierAgentUrl,
                   }),
                 )
               } catch {
@@ -438,7 +437,7 @@ const config = defineConfig(({ mode, command }) => {
                   JSON.stringify({
                     ok: false,
                     mode: 'disconnected',
-                    backend: hermesApiUrl,
+                    backend: semantierAgentUrl,
                   }),
                 )
               }
@@ -533,8 +532,12 @@ const config = defineConfig(({ mode, command }) => {
           // Replace specific env vars first, then the generic fallback
           let result = code
           result = result.replace(
+            /process\.env\.SEMANTIER_AGENT_API_URL/g,
+            JSON.stringify(semantierAgentUrl),
+          )
+          result = result.replace(
             /process\.env\.HERMES_API_URL/g,
-            JSON.stringify(hermesApiUrl),
+            JSON.stringify(semantierAgentUrl),
           )
           result = result.replace(
             /process\.env\.HERMES_API_TOKEN/g,

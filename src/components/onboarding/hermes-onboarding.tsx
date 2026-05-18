@@ -522,8 +522,9 @@ export function HermesOnboarding() {
               />
               <h2 className="text-xl font-bold">Welcome to Semantier</h2>
               <p className="text-sm" style={mutedStyle}>
-                Connects to the Semantier agent wrapper. The wrapper manages
-                the Hermes gateway internally — frontends never connect directly.
+                Connect to a compatible backend through{' '}
+                <code>SEMANTIER_AGENT_API_URL</code>. Hermes Workspace talks to
+                that backend surface directly.
               </p>
               <button
                 onClick={() => {
@@ -546,7 +547,7 @@ export function HermesOnboarding() {
               <h2 className="text-lg font-bold">Connect Your Backend</h2>
               <p className="text-sm" style={mutedStyle}>
                 Start by verifying that Hermes Workspace can reach the
-                Semantier agent wrapper.
+                compatible backend you configured.
               </p>
 
               {backendStatus === 'checking' && (
@@ -591,9 +592,9 @@ export function HermesOnboarding() {
                       Compatible backends
                     </p>
                     <p className="mt-2" style={mutedStyle}>
-                      Connect to the Semantier agent wrapper at{' '}
-                      <code>HERMES_API_URL</code>. The agent wrapper manages
-                      Hermes gateway internally.
+                      Point <code>SEMANTIER_AGENT_API_URL</code> at a
+                      compatible backend such as your local gateway or docker
+                      service.
                     </p>
                     <div
                       className="mt-3 rounded-lg px-3 py-2 font-mono text-[11px]"
@@ -605,7 +606,7 @@ export function HermesOnboarding() {
                       className="mt-2 rounded-lg px-3 py-2 font-mono text-[11px]"
                       style={{ background: 'rgba(0,0,0,0.2)' }}
                     >
-                      hermes --gateway
+                      hermes gateway run
                     </div>
                   </div>
                 </div>

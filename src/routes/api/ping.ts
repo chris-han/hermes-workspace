@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import {
   HERMES_API,
   ensureGatewayProbed,
+  getGatewayMode,
 } from '../../server/gateway-capabilities'
 import { requireLocalOrAuth } from '../../server/auth-middleware'
 
@@ -12,11 +13,19 @@ type PingResponse = {
   hermesUrl: string
 }
 
+export function shouldAllowPingRequest(request: Request, gatewayMode: string) {
+  if (gatewayMode === 'semantier-unicell') {
+    return true
+  }
+  return requireLocalOrAuth(request)
+}
+
 export const Route = createFileRoute('/api/ping')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!requireLocalOrAuth(request)) {
+        const gatewayMode = getGatewayMode()
+        if (!shouldAllowPingRequest(request, gatewayMode)) {
           return Response.json(
             {
               ok: false,

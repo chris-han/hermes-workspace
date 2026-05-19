@@ -19,8 +19,10 @@ import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { initializeSettingsAppearance } from '@/hooks/use-settings'
 import {
   HermesOnboarding,
+  isSemantierBackendReady,
   ONBOARDING_COMPLETE_EVENT,
   ONBOARDING_KEY,
+  persistOnboardingCompletion,
 } from '@/components/onboarding/hermes-onboarding'
 import { ErrorBoundary } from '@/components/error-boundary'
 
@@ -262,8 +264,36 @@ function RootLayout() {
     initializeSettingsAppearance()
 
     const syncOnboardingCompletion = () => {
+      if (typeof window === 'undefined') return
+
+      const sync = async () => {
+        try {
+          if (localStorage.getItem(ONBOARDING_KEY) === 'true') {
+            setOnboardingComplete(true)
+            return
+          }
+
+          const res = await fetch('/api/gateway-status', { cache: 'no-store' })
+          if (res.ok) {
+            const data = (await res.json()) as {
+              mode?: string
+              capabilities?: { health?: boolean }
+            }
+            if (isSemantierBackendReady(data)) {
+              persistOnboardingCompletion()
+              setOnboardingComplete(true)
+              return
+            }
+          }
+        } catch {
+          // Fall through to the manual onboarding flow.
+        }
+
+        setOnboardingComplete(false)
+      }
+
       try {
-        setOnboardingComplete(localStorage.getItem(ONBOARDING_KEY) === 'true')
+        void sync()
       } catch {
         setOnboardingComplete(false)
       }

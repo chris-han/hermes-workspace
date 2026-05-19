@@ -42,6 +42,18 @@ function dispatchOnboardingCompletionChanged(completed: boolean) {
   )
 }
 
+export function isSemantierBackendReady(
+  status: GatewayStatusResponse | null | undefined,
+): boolean {
+  return status?.mode === 'semantier-unicell'
+}
+
+export function persistOnboardingCompletion(): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(ONBOARDING_KEY, 'true')
+  dispatchOnboardingCompletionChanged(true)
+}
+
 type Step = 'welcome' | 'connect' | 'provider' | 'test' | 'done'
 
 type GatewayStatusResponse = {
@@ -447,8 +459,35 @@ export function HermesOnboarding() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (!localStorage.getItem(ONBOARDING_KEY)) {
-      setShow(true)
+    if (localStorage.getItem(ONBOARDING_KEY)) return
+
+    let cancelled = false
+
+    const bootstrapOnboarding = async () => {
+      try {
+        const res = await fetch('/api/gateway-status', {
+          cache: 'no-store',
+        })
+        if (res.ok) {
+          const data = (await res.json()) as GatewayStatusResponse
+          if (isSemantierBackendReady(data)) {
+            persistOnboardingCompletion()
+            return
+          }
+        }
+      } catch {
+        // Fall through to the manual setup screen.
+      }
+
+      if (!cancelled) {
+        setShow(true)
+      }
+    }
+
+    void bootstrapOnboarding()
+
+    return () => {
+      cancelled = true
     }
   }, [])
 
@@ -473,8 +512,7 @@ export function HermesOnboarding() {
   }, [loadCurrentConfig, show])
 
   const complete = useCallback(() => {
-    localStorage.setItem(ONBOARDING_KEY, 'true')
-    dispatchOnboardingCompletionChanged(true)
+    persistOnboardingCompletion()
     setShow(false)
   }, [])
 

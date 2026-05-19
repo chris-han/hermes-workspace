@@ -238,7 +238,7 @@ export function LoginScreen({
           <h2 className="mb-2 text-center text-lg font-semibold text-primary-900">
             {showWeixinQr ? 'Open Your Workspace' : 'Unlock Workspace'}
           </h2>
-          <p className="mb-6 text-center text-sm text-primary-600">
+          <p className="mb-6 text-center text-sm text-primary-800">
             {showWeixinQr
               ? 'Scan with Weixin to create a Semantier workspace or return to the same profile.'
               : 'Enter the local workspace password to continue.'}

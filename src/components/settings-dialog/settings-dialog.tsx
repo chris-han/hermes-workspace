@@ -7,7 +7,6 @@ import {
   CheckmarkCircle02Icon,
   CloudIcon,
   ComputerIcon,
-  Message01Icon,
   MessageMultiple01Icon,
   Mic01Icon,
   Moon01Icon,
@@ -71,7 +70,7 @@ import { LOCALE_LABELS, getLocale, setLocale } from '@/lib/i18n'
 
 type SectionId =
   | 'hermes'
-  | 'access_control'
+  | 'messaging_accounts'
   | 'agent'
   | 'routing'
   | 'voice'
@@ -80,12 +79,11 @@ type SectionId =
   | 'chat'
   | 'notifications'
   | 'language'
-  | 'messaging_accounts'
   | 'messaging_platforms'
 
 const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'hermes', label: 'Model & Provider', icon: CloudIcon },
-  { id: 'access_control', label: 'Access Control', icon: UserLock01Icon },
+  { id: 'messaging_accounts', label: 'User Accounts', icon: UserLock01Icon },
   { id: 'agent', label: 'Agent', icon: Settings02Icon },
   { id: 'routing', label: 'Smart Routing', icon: SparklesIcon },
   { id: 'voice', label: 'Voice', icon: VolumeHighIcon },
@@ -94,7 +92,6 @@ const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'chat', label: 'Chat', icon: MessageMultiple01Icon },
   { id: 'notifications', label: 'Alerts', icon: Notification03Icon },
   { id: 'language', label: 'Language', icon: MessageMultiple01Icon },
-  { id: 'messaging_accounts', label: 'User Accounts', icon: Message01Icon },
 ]
 
 const DARK_ENTERPRISE_THEMES = new Set<ThemeId>([
@@ -2197,9 +2194,18 @@ function LanguageContent() {
 
 // ── Main Dialog ─────────────────────────────────────────────────────────
 
+function UserAccountsContent() {
+  return (
+    <div className="space-y-4">
+      <MessagingAccountLinkingScreen />
+      <AccessControlContent />
+    </div>
+  )
+}
+
 const CONTENT_MAP: Record<SectionId, () => React.JSX.Element> = {
   hermes: HermesContent,
-  access_control: AccessControlContent,
+  messaging_accounts: UserAccountsContent,
   agent: AgentBehaviorContent,
   routing: SmartRoutingContent,
   voice: VoiceContent,
@@ -2208,7 +2214,6 @@ const CONTENT_MAP: Record<SectionId, () => React.JSX.Element> = {
   chat: ChatContent,
   notifications: NotificationsContent,
   language: LanguageContent,
-  messaging_accounts: MessagingAccountLinkingScreen,
   messaging_platforms: MessagingPlatformSettingsScreen,
 }
 

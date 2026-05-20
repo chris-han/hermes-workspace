@@ -35,6 +35,7 @@ export function ChatPanelToggle() {
                 render={
                   <Button
                     size="icon"
+                    variant="ghost"
                     className="size-12 rounded-full bg-accent-500 text-white shadow-lg hover:bg-accent-600 active:scale-95 transition-all"
                     aria-label="Open chat"
                   >

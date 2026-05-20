@@ -94,8 +94,7 @@ const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'chat', label: 'Chat', icon: MessageMultiple01Icon },
   { id: 'notifications', label: 'Alerts', icon: Notification03Icon },
   { id: 'language', label: 'Language', icon: MessageMultiple01Icon },
-  { id: 'messaging_accounts', label: 'Feishu Login', icon: Message01Icon },
-  { id: 'messaging_platforms', label: 'Messaging Platforms', icon: Message01Icon },
+  { id: 'messaging_accounts', label: 'User Accounts', icon: Message01Icon },
 ]
 
 const DARK_ENTERPRISE_THEMES = new Set<ThemeId>([

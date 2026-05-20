@@ -220,25 +220,31 @@ export function LoginScreen({
     }
   }, [weixinQrScanData])
 
+  const weixinTerminalError = ['expired', 'binding_mismatch', 'replay_blocked', 'failed'].includes(weixinStatus)
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
-        <div className="rounded-2xl bg-white px-8 py-10 shadow-xl shadow-primary-900/5 ring-1 ring-primary-900/5">
+        <div className="rounded-card border border-border bg-card p-6 shadow-sm">
           {/* Logo */}
           <div className="mb-8 flex justify-center">
             <div className="flex items-center gap-2.5">
-              <img src="/logo.svg" alt="" className="size-8 rounded-lg" />
-              <h1 className="brand-wordmark text-2xl font-bold tracking-tight text-primary-900">
+              <img
+                src="/logo.svg"
+                alt="semantier logo"
+                className="size-8 rounded-button object-contain shrink-0 bg-transparent"
+              />
+              <h1 className="brand-wordmark text-xl font-bold tracking-tight text-foreground">
                 semantier
               </h1>
             </div>
           </div>
 
           {/* Title */}
-          <h2 className="mb-2 text-center text-lg font-semibold text-primary-900">
+          <h2 className="mb-2 text-center text-base font-semibold text-foreground">
             {showWeixinQr ? 'Open Your Workspace' : 'Unlock Workspace'}
           </h2>
-          <p className="mb-6 text-center text-sm text-primary-800">
+          <p className="mb-6 text-center text-sm text-muted-foreground">
             {showWeixinQr
               ? 'Scan with Weixin to create a Semantier workspace or return to the same profile.'
               : 'Enter the local workspace password to continue.'}
@@ -250,35 +256,45 @@ export function LoginScreen({
                 type="button"
                 onClick={() => void startWeixinLogin()}
                 disabled={weixinLoading}
-                className="w-full rounded-lg bg-[#07C160] px-4 py-2.5 font-medium text-white transition-all hover:bg-[#06AE56] focus:outline-none focus:ring-2 focus:ring-[#07C160]/40 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full cursor-pointer rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {weixinLoading ? 'Preparing Weixin QR...' : 'Scan With Weixin'}
+                {weixinLoading ? 'Preparing Weixin QR...' : 'Sign In With Weixin'}
               </button>
             ) : null}
 
-            {weixinMessage ? (
-              <div className="rounded-lg bg-primary-50 px-4 py-2.5 text-sm text-primary-700 ring-1 ring-primary-100">
-                {weixinMessage}
-              </div>
-            ) : null}
-
             {showWeixinQr && weixinQrScanData ? (
-              <div className="rounded-xl border border-primary-200 bg-primary-50/40 p-4">
+              <div className="rounded-card border border-border bg-muted/50 p-4">
                 <div className="flex flex-col items-center gap-3">
                   <img
                     src={weixinQrDataUrl || weixinQrUrl || ''}
                     alt="Weixin sign-in QR code"
-                    className="h-48 w-48 rounded-md border border-primary-200 bg-white object-contain"
+                    className="h-48 w-48 rounded-md border border-border bg-card object-contain"
                   />
-                  <div className="text-xs text-primary-600">
-                    Status: {weixinStatus || 'wait'}
-                  </div>
+                  {weixinMessage ? (
+                    weixinTerminalError ? (
+                      <button
+                        type="button"
+                        onClick={() => void startWeixinLogin()}
+                        className="text-sm font-medium text-foreground underline-offset-2 hover:underline"
+                      >
+                        {weixinMessage}
+                      </button>
+                    ) : (
+                      <p className="text-center text-sm text-muted-foreground">
+                        {weixinMessage}
+                      </p>
+                    )
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Status: {weixinStatus || 'wait'}
+                    </p>
+                  )}
                   {weixinQrUrl ? (
                     <a
                       href={weixinQrUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs text-accent-600 underline"
+                      className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                     >
                       Open QR link
                     </a>
@@ -291,11 +307,11 @@ export function LoginScreen({
               <>
                 {showWeixinQr ? (
                   <div className="flex items-center gap-3 py-1">
-                    <div className="h-px flex-1 bg-primary-100" />
-                    <span className="text-xs uppercase tracking-[0.18em] text-primary-400">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                       Or
                     </span>
-                    <div className="h-px flex-1 bg-primary-100" />
+                    <div className="h-px flex-1 bg-border" />
                   </div>
                 ) : null}
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -306,7 +322,7 @@ export function LoginScreen({
                         value={loginName}
                         onChange={(e) => setLoginName(e.target.value)}
                         placeholder="Login name"
-                        className="w-full rounded-lg border border-primary-200 bg-white px-4 py-2.5 text-primary-900 placeholder-primary-400 outline-none transition-all focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+                        className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
                         disabled={loading}
                         autoCapitalize="off"
                         autoCorrect="off"
@@ -319,7 +335,7 @@ export function LoginScreen({
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Password"
-                      className="w-full rounded-lg border border-primary-200 bg-white px-4 py-2.5 text-primary-900 placeholder-primary-400 outline-none transition-all focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+                      className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
                       disabled={loading}
                       autoFocus
                     />
@@ -332,7 +348,7 @@ export function LoginScreen({
                       !password ||
                       (isSemantierPasswordMode && !loginName.trim())
                     }
-                    className="w-full rounded-lg bg-accent-500 px-4 py-2.5 font-medium text-white transition-all hover:bg-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full cursor-pointer rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {loading ? 'Authenticating...' : 'Continue With Password'}
                   </button>
@@ -341,7 +357,7 @@ export function LoginScreen({
             ) : null}
 
             {error && (
-              <div className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700 ring-1 ring-red-200">
+              <div className="rounded-card border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 {error}
               </div>
             )}
@@ -349,9 +365,16 @@ export function LoginScreen({
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-xs text-primary-500">
+        <p className="mt-6 text-center text-xs text-muted-foreground">
           Powered by{' '}
+          <a
+            href="https://semantier.com"
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
             Semantier
+          </a>
         </p>
       </div>
     </div>

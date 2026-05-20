@@ -43,6 +43,8 @@ type AuthContextResponse = {
     email?: string | null
     avatar_url?: string | null
     feishu_open_id?: string
+    password_login_name?: string | null
+    profile_completed?: boolean
     workspace_slug?: string
     home_dir_path?: string | null
   } | null
@@ -902,6 +904,123 @@ function LoadingState() {
   )
 }
 
+function UserAccountCard({
+  model,
+}: {
+  model: ReturnType<typeof useMessagingSettingsModel>
+}) {
+  const [displayName, setDisplayName] = useState('')
+  const [loginName, setLoginName] = useState('')
+  const [password, setPassword] = useState('')
+  const [passwordConfirm, setPasswordConfirm] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setDisplayName(model.authMe?.user?.name ?? '')
+    setLoginName(model.authMe?.user?.password_login_name ?? '')
+  }, [model.authMe?.user?.name, model.authMe?.user?.password_login_name])
+
+  async function saveAccount() {
+    const trimmedDisplayName = displayName.trim()
+    const trimmedLoginName = loginName.trim()
+    const trimmedPassword = password.trim()
+    const trimmedPasswordConfirm = passwordConfirm.trim()
+
+    setSaving(true)
+    try {
+      await requestJson<{
+        ok: boolean
+        profile_completed: boolean
+      }>('/auth/profile/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          display_name: trimmedDisplayName,
+          login_name: trimmedLoginName,
+          ...(trimmedPassword
+            ? {
+                password: trimmedPassword,
+                password_confirm: trimmedPasswordConfirm,
+              }
+            : {}),
+        }),
+      })
+      setPassword('')
+      setPasswordConfirm('')
+      await model.loadPlatforms()
+      toast('User account updated.', { type: 'success' })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to update user account.'
+      toast(message, { type: 'error' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <SectionCard
+      title="User Account"
+      description="Manage the local username and password fallback for this Semantier user."
+    >
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="space-y-1.5 md:col-span-2">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
+            Display Name
+          </span>
+          <Input
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            placeholder="Alice Zhang"
+          />
+        </label>
+        <label className="space-y-1.5 md:col-span-2">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
+            Username
+          </span>
+          <Input
+            value={loginName}
+            onChange={(event) => setLoginName(event.target.value)}
+            placeholder="alice"
+            autoCapitalize="off"
+            autoCorrect="off"
+          />
+        </label>
+        <label className="space-y-1.5">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
+            New Password
+          </span>
+          <Input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Leave blank to keep current password"
+          />
+        </label>
+        <label className="space-y-1.5">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
+            Confirm Password
+          </span>
+          <Input
+            type="password"
+            value={passwordConfirm}
+            onChange={(event) => setPasswordConfirm(event.target.value)}
+            placeholder="Repeat new password"
+          />
+        </label>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button type="button" disabled={saving} onClick={() => void saveAccount()}>
+          {saving ? 'Saving...' : 'Save account changes'}
+        </Button>
+        <span className="text-xs theme-muted">
+          Password updates are optional. If provided, the password must be at least 8 characters.
+        </span>
+      </div>
+    </SectionCard>
+  )
+}
+
 function FeishuAccountLinkCard({
   model,
 }: {
@@ -1389,120 +1508,27 @@ export function MessagingSettingsScreen() {
 
   return (
     <PageShell
-      title="Messaging Setup"
-      description="Login pairing and bot pairing are separated now. Choose the page that matches the job you are doing."
+      title="User Accounts"
+      description="Manage your account profile, Feishu sign-in pairing, and platform bot pairing from one page."
     >
-      {model.loading ? <LoadingState /> : null}
-
-      {!model.loading ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          <SectionCard
-            title="Feishu Login"
-            description="Per-user sign-in pairing for Feishu login. This is not bot setup."
-          >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 rounded-xl border theme-border theme-card p-3">
-                <div>
-                  <p className="text-sm font-medium theme-text">
-                    Feishu login status
-                  </p>
-                  <p className="text-xs theme-text">
-                    {model.authMe?.user?.feishu_open_id
-                      ? `Linked: ${model.authMe.user.feishu_open_id}`
-                      : 'Not linked'}
-                  </p>
-                </div>
-                <StatusBadge
-                  configured={Boolean(model.authMe?.user?.feishu_open_id)}
-                />
-              </div>
-              <SettingsLink
-                to="/settings/messaging-accounts"
-                label="Open Feishu login"
-              />
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Platform Bot Pairing"
-            description="Organization-scoped bot credentials for Feishu and transport status for Weixin."
-          >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 rounded-xl border theme-border theme-card p-3">
-                <div>
-                  <p className="text-sm font-medium theme-text">
-                    Feishu bot configuration
-                  </p>
-                  <p className="text-xs theme-text">
-                    Shared across users in the same Feishu organization.
-                  </p>
-                </div>
-                <StatusBadge configured={model.platforms.feishu.configured} />
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl border theme-border theme-card p-3">
-                <div>
-                  <p className="text-sm font-medium theme-text">
-                    Weixin gateway
-                  </p>
-                  <p className="text-xs theme-text">
-                    Signup-resolved transport settings in read-only mode.
-                  </p>
-                </div>
-                <StatusBadge configured={model.platforms.weixin.configured} />
-              </div>
-              <SettingsLink
-                to="/settings/messaging-platforms"
-                label="Open platform config"
-              />
-            </div>
-          </SectionCard>
+      {model.loading ? (
+        <LoadingState />
+      ) : (
+        <div className="grid gap-4">
+          <UserAccountCard model={model} />
+          <WeixinReadOnlyCard model={model} />
+          <FeishuAccountLinkCard model={model} />
+          <FeishuBotConfigCard model={model} />
         </div>
-      ) : null}
+      )}
     </PageShell>
   )
 }
 
 export function MessagingAccountLinkingScreen() {
-  const model = useMessagingSettingsModel()
-
-  return (
-    <PageShell
-      title="Feishu Login"
-      description="This page is only for Feishu sign-in pairing. Bot credentials and shared gateway setup live on a separate page."
-    >
-      <div className="flex justify-end">
-        <SettingsLink
-          to="/settings/messaging-platforms"
-          label="Go to platform config"
-        />
-      </div>
-      {model.loading ? <LoadingState /> : <FeishuAccountLinkCard model={model} />}
-    </PageShell>
-  )
+  return <MessagingSettingsScreen />
 }
 
 export function MessagingPlatformSettingsScreen() {
-  const model = useMessagingSettingsModel()
-
-  return (
-    <PageShell
-      title="Messaging Platform Config"
-      description="This page is for organization and gateway pairing. User login linking is kept separate."
-    >
-      <div className="flex justify-end">
-        <SettingsLink
-          to="/settings/messaging-accounts"
-          label="Go to Feishu login"
-        />
-      </div>
-      {model.loading ? (
-        <LoadingState />
-      ) : (
-        <div className="grid gap-4">
-          <FeishuBotConfigCard model={model} />
-          <WeixinReadOnlyCard model={model} />
-        </div>
-      )}
-    </PageShell>
-  )
+  return <MessagingSettingsScreen />
 }

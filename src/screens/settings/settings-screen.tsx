@@ -305,13 +305,8 @@ export const SETTINGS_NAV_ITEMS: Array<SettingsNavItem> = [
   },
   {
     id: 'messaging_accounts',
-    label: 'Feishu Login',
+    label: 'User Accounts',
     to: '/settings/messaging-accounts',
-  },
-  {
-    id: 'messaging_platforms',
-    label: 'Messaging Platforms',
-    to: '/settings/messaging-platforms',
   },
   { id: 'mcp', label: 'MCP Servers', to: '/settings/mcp' },
   { id: 'language' as SettingsSectionId, label: 'Language' },

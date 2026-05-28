@@ -43,7 +43,7 @@ const APP_CSP = [
 ].join('; ')
 
 const THEME_STORAGE_KEY = 'hermes-theme'
-const DEFAULT_THEME = 'hermes-official'
+const DEFAULT_THEME = 'semantier'
 const VALID_THEMES = [
   'hermes-nous',
   'hermes-nous-light',

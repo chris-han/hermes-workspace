@@ -3,6 +3,7 @@
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   ArrowLeft01Icon,
+  Building02Icon,
   Cancel01Icon,
   CheckmarkCircle02Icon,
   CloudIcon,
@@ -18,8 +19,9 @@ import {
   UserLock01Icon,
   VolumeHighIcon,
 } from '@hugeicons/core-free-icons'
-import { Component, useCallback, useEffect, useState } from 'react'
+import { Component, useCallback, useEffect, useMemo, useState } from 'react'
 import type * as React from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { AccentColor, SettingsThemeMode } from '@/hooks/use-settings'
 import type { LoaderStyle } from '@/hooks/use-chat-settings'
 import type { BrailleSpinnerPreset } from '@/components/ui/braille-spinner'
@@ -51,6 +53,13 @@ import { getUnavailableReason } from '@/lib/feature-gates'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { ProviderLogo } from '@/components/provider-logo'
 import {
+  organizationSettingsQueryKey,
+  updateOrganizationMaterializationPolicy,
+  updateOrganizationMemberRole,
+  useOrganizationSettings,
+} from '@/lib/organization-membership'
+import { semantierAuthQueryKey, useSemantierAuthStatus } from '@/lib/semantier-auth'
+import {
   MessagingAccountLinkingScreen,
   MessagingPlatformSettingsScreen,
 } from '@/screens/settings/messaging-settings-screen'
@@ -71,6 +80,7 @@ import { LOCALE_LABELS, getLocale, setLocale } from '@/lib/i18n'
 type SectionId =
   | 'hermes'
   | 'messaging_accounts'
+  | 'organization'
   | 'agent'
   | 'routing'
   | 'voice'
@@ -84,6 +94,7 @@ type SectionId =
 const SECTIONS: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'hermes', label: 'Model & Provider', icon: CloudIcon },
   { id: 'messaging_accounts', label: 'User Accounts', icon: UserLock01Icon },
+  { id: 'organization', label: 'Organization', icon: Building02Icon },
   { id: 'agent', label: 'Agent', icon: Settings02Icon },
   { id: 'routing', label: 'Smart Routing', icon: SparklesIcon },
   { id: 'voice', label: 'Voice', icon: VolumeHighIcon },
@@ -1092,7 +1103,7 @@ function ThemeSwatch({
 function EnterpriseThemePicker() {
   const { updateSettings } = useSettings()
   const [current, setCurrent] = useState(() => {
-    if (typeof window === 'undefined') return 'hermes-official'
+    if (typeof window === 'undefined') return 'semantier'
     return getTheme()
   })
   const currentMode = isDarkTheme(current) ? 'dark' : 'light'
@@ -1607,12 +1618,12 @@ function AccessControlContent() {
       const res = await fetch('/api/paths')
       const payload = (await res.json()) as AccessControlPayload
       if (!res.ok) {
-        setMsg('Failed to load access control settings.')
+        setMsg('Failed to load runtime home settings.')
         return
       }
       applyPayload(payload)
     } catch {
-      setMsg('Failed to load access control settings.')
+      setMsg('Failed to load runtime home settings.')
     } finally {
       setLoading(false)
     }
@@ -1638,14 +1649,14 @@ function AccessControlContent() {
         error?: string
       }
       if (!res.ok) {
-        setMsg(payload.error || 'Failed to update access control settings.')
+        setMsg(payload.error || 'Failed to update runtime home settings.')
         return
       }
       applyPayload(payload)
       setMsg('Saved')
       setTimeout(() => setMsg(null), 2500)
     } catch {
-      setMsg('Failed to update access control settings.')
+      setMsg('Failed to update runtime home settings.')
     } finally {
       setSaving(false)
     }
@@ -1668,8 +1679,8 @@ function AccessControlContent() {
   return (
     <div className="space-y-4">
       <SectionHeader
-        title="Access Control"
-        description="Choose sandboxed regular mode or administrator mode with an explicit Hermes home."
+        title="Runtime Home Mode"
+        description="Choose workspace sandbox mode or elevated runtime home mode. This does not change organization member_role (owner/admin/member)."
       />
 
       {msg && (
@@ -1690,13 +1701,16 @@ function AccessControlContent() {
         <div className="py-1.5 border-b" style={{ borderColor: 'var(--theme-border)' }}>
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
-              Access Level
+              Runtime Mode
             </p>
             <p className="text-xs" style={mutedStyle}>
-              Regular keeps the current workspace sandbox. Administrator can use a dedicated Hermes home.
+              Workspace mode keeps the current sandbox. Elevated mode can use a dedicated Hermes home.
+            </p>
+            <p className="text-xs" style={mutedStyle}>
+              Organization governance permissions for Materialization mode are configured in Organization Context, not here.
             </p>
             
-            {/* Radio Button: Regular User */}
+            {/* Radio Button: Workspace Mode */}
             <label className="flex items-center gap-3 cursor-pointer py-1.5 px-2 rounded-md transition-colors hover:opacity-80">
               <input
                 type="radio"
@@ -1710,7 +1724,7 @@ function AccessControlContent() {
               />
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
-                  Regular User
+                  Workspace Mode
                 </p>
                 <p className="text-xs" style={mutedStyle}>
                   Sandboxed workspace home
@@ -1718,7 +1732,7 @@ function AccessControlContent() {
               </div>
             </label>
 
-            {/* Radio Button: Administrator */}
+            {/* Radio Button: Elevated Mode */}
             <label className="flex items-center gap-3 cursor-pointer py-1.5 px-2 rounded-md transition-colors hover:opacity-80">
               <input
                 type="radio"
@@ -1737,7 +1751,7 @@ function AccessControlContent() {
               />
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
-                  Administrator
+                  Elevated Mode
                 </p>
                 <p className="text-xs" style={mutedStyle}>
                   Custom Hermes home for shared tools
@@ -1747,14 +1761,14 @@ function AccessControlContent() {
           </div>
         </div>
 
-        {/* Workspace Sandbox Home - shown only in regular mode */}
+        {/* Workspace Sandbox Home - shown only in workspace mode */}
         {role === 'regular' && (
           <div className="py-3 border-b" style={{ borderColor: 'var(--theme-border)' }}>
             <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
               Workspace Sandbox
             </p>
             <p className="text-xs mb-2" style={mutedStyle}>
-              Used in regular mode
+              Used in workspace mode
             </p>
             <div
               className="font-mono text-xs overflow-x-auto"
@@ -1765,11 +1779,11 @@ function AccessControlContent() {
           </div>
         )}
 
-        {/* Administrator Home - Conditional Input/Display */}
+        {/* Elevated Runtime Home - Conditional Input/Display */}
         {role === 'administrator' && (
           <div className="py-3 border-b" style={{ borderColor: 'var(--theme-border)' }}>
             <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
-              Administrator Home
+              Elevated Runtime Home
             </p>
             <p className="text-xs mb-2" style={mutedStyle}>
               This home manages shared skills, tools, cron jobs, and memories
@@ -2203,9 +2217,293 @@ function UserAccountsContent() {
   )
 }
 
+function OrganizationContent() {
+  const queryClient = useQueryClient()
+  const authQuery = useSemantierAuthStatus()
+  const organizationQuery = useOrganizationSettings()
+  const [modePending, setModePending] = useState(false)
+  const [rolePendingUserId, setRolePendingUserId] = useState<string | null>(null)
+  const [policyMode, setPolicyMode] = useState<'AUTO' | 'APPROVAL'>('AUTO')
+  const [msg, setMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    const currentMode =
+      organizationQuery.data?.organization?.t6_materialization_policy
+        ?.default_mode
+    if (currentMode === 'APPROVAL') {
+      setPolicyMode('APPROVAL')
+    } else {
+      setPolicyMode('AUTO')
+    }
+  }, [organizationQuery.data?.organization?.t6_materialization_policy?.default_mode])
+
+  async function refreshOrgContext() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: semantierAuthQueryKey }),
+      queryClient.invalidateQueries({ queryKey: organizationSettingsQueryKey }),
+    ])
+  }
+
+  async function handleSaveMode() {
+    setModePending(true)
+    setMsg(null)
+    try {
+      await updateOrganizationMaterializationPolicy({ default_mode: policyMode })
+      await refreshOrgContext()
+      setMsg('Materialization mode updated')
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : 'Failed to update mode')
+    } finally {
+      setModePending(false)
+    }
+  }
+
+  async function handleRoleUpdate(
+    userId: string,
+    memberRole: 'owner' | 'member',
+  ) {
+    setRolePendingUserId(userId)
+    setMsg(null)
+    try {
+      await updateOrganizationMemberRole({ userId, memberRole })
+      await refreshOrgContext()
+      setMsg('Member role updated')
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : 'Failed to update role')
+    } finally {
+      setRolePendingUserId(null)
+    }
+  }
+
+  const members = organizationQuery.data?.members ?? []
+  const authUser = authQuery.data?.user
+  const authUserId = authUser?.user_id || null
+  const authIdentityCandidates = useMemo(() => {
+    const normalize = (value?: string | null) => value?.trim().toLowerCase() || ''
+    return new Set(
+      [
+        authUser?.user_id,
+        authUser?.weixin_user_id,
+        authUser?.password_login_name,
+        authUser?.email,
+        authUser?.name,
+      ]
+        .map((value) => normalize(value))
+        .filter(Boolean),
+    )
+  }, [
+    authUser?.email,
+    authUser?.name,
+    authUser?.password_login_name,
+    authUser?.user_id,
+    authUser?.weixin_user_id,
+  ])
+  const selfMember =
+    authIdentityCandidates.size > 0 && Array.isArray(members)
+      ? members.find((member) => {
+          const memberIdentityCandidates = [member.user_id, member.name]
+            .map((value) => value?.trim().toLowerCase() || '')
+            .filter(Boolean)
+          return memberIdentityCandidates.some((value) =>
+            authIdentityCandidates.has(value),
+          )
+        }) || null
+      : null
+
+  const orgRole =
+    selfMember?.member_role ||
+    organizationQuery.data?.organization?.member_role ||
+    authQuery.data?.member_role ||
+    'none'
+  const orgMembershipStatus =
+    selfMember?.membership_status ||
+    organizationQuery.data?.organization?.membership_status ||
+    authQuery.data?.membership_status ||
+    'unassigned'
+
+  const derivedCanChangeFromMembership =
+    orgMembershipStatus === 'active' &&
+    (orgRole === 'owner' || orgRole === 'admin')
+  const canChangeSettings =
+    derivedCanChangeFromMembership ||
+    Boolean(
+      organizationQuery.data?.organization?.can_change_settings ??
+        authQuery.data?.can_change_settings,
+    )
+  const canEditRoles = orgMembershipStatus === 'active'
+  const currentRole = orgRole
+  const membershipStatus = orgMembershipStatus
+  const adminContacts = members.filter(
+    (member) =>
+      member.membership_status === 'active' &&
+      (member.member_role === 'owner' || member.member_role === 'admin'),
+  )
+
+  const ownerDisplacedNotifications = (
+    organizationQuery.data?.pending_notifications ?? []
+  ).filter(
+    (event) =>
+      event.event_type === 'membership_role_updated' &&
+      (event.detail?.notification_pending === true),
+  )
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        title="Organization"
+        description="Manage organization role governance and T6 materialization mode."
+      />
+
+      {ownerDisplacedNotifications.length > 0 ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+          Your owner role was transferred to another member. You are now a member of this organization.
+        </div>
+      ) : null}
+
+      {msg ? (
+        <div
+          className={cn(
+            'rounded-lg px-3 py-2 text-xs font-medium',
+            msg.includes('Failed')
+              ? 'bg-red-500/15 text-red-400'
+              : 'bg-green-500/15 text-green-400',
+          )}
+        >
+          {msg}
+        </div>
+      ) : null}
+
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
+        <Row
+          label="Current Membership"
+          description="Role and status are resolved from your active organization membership."
+        >
+          <div className="text-right text-xs text-primary-600 dark:text-neutral-300">
+            <div>role: {currentRole}</div>
+            <div>status: {membershipStatus}</div>
+          </div>
+        </Row>
+      </div>
+
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
+        <Row
+          label="Materialization Default Mode"
+          description="AUTO means auto-approve by default. APPROVAL means human-in-the-loop by default."
+        >
+          <div className="flex items-center gap-2">
+            <select
+              value={policyMode}
+              onChange={(e) =>
+                setPolicyMode(e.target.value === 'APPROVAL' ? 'APPROVAL' : 'AUTO')
+              }
+              disabled={!canChangeSettings || modePending}
+              className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            >
+              <option value="AUTO">AUTO</option>
+              <option value="APPROVAL">APPROVAL</option>
+            </select>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleSaveMode}
+              disabled={!canChangeSettings || modePending}
+            >
+              {modePending ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </Row>
+        {!canChangeSettings ? (
+          <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+            Switching Runtime Home Mode to Elevated does not grant organization governance rights.
+          </p>
+        ) : null}
+      </div>
+
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
+          Organization Roles
+        </p>
+        {adminContacts.length > 0 ? (
+          <div className="mb-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
+            Ask these org admins: {adminContacts.map((member) => member.name).join(', ')}
+          </div>
+        ) : (
+          <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+            No active owner/admin assigned yet. Any active member can assign a single owner.
+          </div>
+        )}
+        {!canEditRoles ? (
+          <p className="mb-2 text-xs text-amber-700 dark:text-amber-300">
+            Role editing disabled. Requires active membership in the selected organization.
+            {' '}Detected role={currentRole}, status={membershipStatus}
+            {authUserId ? `, user=${authUserId}.` : '.'}
+          </p>
+        ) : null}
+        {organizationQuery.isLoading ? (
+          <p className="text-sm text-primary-500 dark:text-neutral-400">Loading members...</p>
+        ) : members.length === 0 ? (
+          <p className="text-sm text-primary-500 dark:text-neutral-400">No members in active organization.</p>
+        ) : (
+          <div className="space-y-2">
+            {members.map((member) => {
+              const currentMemberRole =
+                member.member_role === 'owner' ||
+                member.member_role === 'member'
+                  ? member.member_role
+                  : 'member'
+              return (
+                <div
+                  key={member.user_id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary-200 px-3 py-2 dark:border-neutral-700"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-primary-900 dark:text-neutral-100">
+                      {member.name}
+                    </p>
+                    <p className="truncate text-xs text-primary-500 dark:text-neutral-400">
+                      {member.user_id}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={currentMemberRole}
+                      disabled={!canEditRoles || rolePendingUserId === member.user_id}
+                      onChange={(e) =>
+                        void handleRoleUpdate(
+                          member.user_id,
+                          e.target.value as 'owner' | 'member',
+                        )
+                      }
+                      className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                    >
+                      <option value="owner">owner</option>
+                      <option value="member">member</option>
+                    </select>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
+        <a
+          href="/settings/organization"
+          className="text-sm font-medium text-primary-700 underline underline-offset-2 hover:text-primary-900 dark:text-neutral-200 dark:hover:text-neutral-100"
+        >
+          Open full Organization settings page →
+        </a>
+      </div>
+    </div>
+  )
+}
+
 const CONTENT_MAP: Record<SectionId, () => React.JSX.Element> = {
   hermes: HermesContent,
   messaging_accounts: UserAccountsContent,
+  organization: OrganizationContent,
   agent: AgentBehaviorContent,
   routing: SmartRoutingContent,
   voice: VoiceContent,

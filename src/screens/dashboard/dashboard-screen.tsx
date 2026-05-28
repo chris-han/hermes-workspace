@@ -833,10 +833,10 @@ export function DashboardScreen() {
             }
             const cur =
               document.documentElement.getAttribute('data-theme') ||
-              'hermes-official'
+              'semantier'
             const nextDataTheme =
               LIGHT_DARK_PAIRS[cur] ||
-              (isDark ? 'hermes-official-light' : 'hermes-official')
+              (isDark ? 'semantier-light' : 'semantier')
             import('@/lib/theme').then(({ setTheme }) => {
               setTheme(nextDataTheme as any)
             })

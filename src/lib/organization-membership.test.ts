@@ -3,6 +3,8 @@ import {
   DEFAULT_SMB_ORGANIZATION_ID,
   DEFAULT_SMB_ORGANIZATION_NAME,
   ensureDefaultSmbOrganization,
+  updateOrganizationMaterializationPolicy,
+  updateOrganizationMemberRole,
   upsertOrganizationAssociation,
 } from './organization-membership'
 
@@ -132,6 +134,70 @@ describe('organization membership helpers', () => {
           organization_name: '北京索阳科技有限公司',
           create: true,
         }),
+      }),
+    )
+  })
+
+  it('updates materialization policy through organization endpoint', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      jsonResponse({
+        organization: {
+          organization_id: 'org_smb_cn',
+          t6_materialization_policy: {
+            default_mode: 'AUTO',
+          },
+        },
+        memberships: [],
+        members: [],
+        audit_events: [],
+      }),
+    )
+
+    await updateOrganizationMaterializationPolicy(
+      {
+        default_mode: 'AUTO',
+        auto_allowed_claim_classes: ['invoice.low_risk'],
+      },
+      fetchMock,
+    )
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/organizations/materialization-policy',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          default_mode: 'AUTO',
+          auto_allowed_claim_classes: ['invoice.low_risk'],
+        }),
+      }),
+    )
+  })
+
+  it('updates member role through organization endpoint', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      jsonResponse({
+        organization: {
+          organization_id: 'org_smb_cn',
+        },
+        memberships: [],
+        members: [],
+        audit_events: [],
+      }),
+    )
+
+    await updateOrganizationMemberRole(
+      {
+        userId: 'user-1',
+        memberRole: 'admin',
+      },
+      fetchMock,
+    )
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/organizations/member-role',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ user_id: 'user-1', member_role: 'admin' }),
       }),
     )
   })

@@ -13,6 +13,10 @@ describe('organization settings copy', () => {
     )
     expect(ORGANIZATION_SETTINGS_COPY.subtitle).toContain('organization_id')
   })
+
+  it('keeps organization context messaging focused on governed defaults', () => {
+    expect(ORGANIZATION_SETTINGS_COPY.subtitle).toContain('Associate your user')
+  })
 })
 
 describe('organization search options', () => {

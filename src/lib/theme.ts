@@ -80,7 +80,7 @@ export const THEMES: Array<{
 ]
 
 const STORAGE_KEY = 'hermes-theme'
-const DEFAULT_THEME: ThemeId = 'hermes-official'
+const DEFAULT_THEME: ThemeId = 'semantier'
 const THEME_SET = new Set<ThemeId>(THEMES.map((theme) => theme.id))
 const LIGHT_THEME_MAP: Record<
   Exclude<ThemeId, `${string}-light`>,

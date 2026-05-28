@@ -86,8 +86,8 @@ function ThemeToggleMini() {
   // Detect dark/light from actual data-theme attribute
   const currentDataTheme =
     typeof document !== 'undefined'
-      ? document.documentElement.getAttribute('data-theme') || 'hermes-official'
-      : 'hermes-official'
+      ? document.documentElement.getAttribute('data-theme') || 'semantier'
+      : 'semantier'
   const isDark = !currentDataTheme.endsWith('-light')
 
   // Map between dark and light counterparts — must include all theme families

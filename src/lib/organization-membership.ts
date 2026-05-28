@@ -25,6 +25,19 @@ export interface OrganizationContext {
   sharing_enabled?: boolean
   can_invite_members?: boolean
   can_change_settings?: boolean
+  t6_materialization_policy?: T6MaterializationPolicy | null
+}
+
+export type T6MaterializationMode = 'AUTO' | 'APPROVAL'
+
+export interface T6MaterializationPolicy {
+  default_mode: T6MaterializationMode
+  auto_allowed_claim_classes: Array<string>
+  approval_required_claim_classes: Array<string>
+  confidence_thresholds: Record<string, number>
+  escalation_rules: Record<string, unknown>
+  policy_version_hash?: string
+  updated_at?: string
 }
 
 export interface OrganizationMember {
@@ -51,6 +64,15 @@ export interface OrganizationSettingsResponse {
   memberships: Array<OrganizationMembership>
   members: Array<OrganizationMember>
   audit_events: Array<OrganizationAuditEvent>
+  pending_notifications?: Array<OrganizationAuditEvent>
+}
+
+export interface UpdateOrganizationMaterializationPolicyParams {
+  default_mode?: T6MaterializationMode
+  auto_allowed_claim_classes?: Array<string>
+  approval_required_claim_classes?: Array<string>
+  confidence_thresholds?: Record<string, number>
+  escalation_rules?: Record<string, unknown>
 }
 
 export interface DemoOrganizationProfile {
@@ -323,6 +345,46 @@ export async function ensureDefaultSmbOrganization(
         organization_id: organizationId,
         organization_name: organizationName,
         create: true,
+      }),
+    },
+    fetchImpl,
+  )
+}
+
+export async function updateOrganizationMaterializationPolicy(
+  params: UpdateOrganizationMaterializationPolicyParams,
+  fetchImpl: JsonFetcher = fetch,
+): Promise<OrganizationSettingsResponse> {
+  return readJson<OrganizationSettingsResponse>(
+    '/organizations/materialization-policy',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    },
+    fetchImpl,
+  )
+}
+
+export async function updateOrganizationMemberRole(
+  params: {
+    userId: string
+    memberRole: 'owner' | 'admin' | 'member'
+  },
+  fetchImpl: JsonFetcher = fetch,
+): Promise<OrganizationSettingsResponse> {
+  const userId = params.userId.trim()
+  if (!userId) {
+    throw new Error('user_id required')
+  }
+  return readJson<OrganizationSettingsResponse>(
+    '/organizations/member-role',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        member_role: params.memberRole,
       }),
     },
     fetchImpl,

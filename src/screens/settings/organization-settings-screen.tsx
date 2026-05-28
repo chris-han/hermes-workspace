@@ -14,6 +14,7 @@ import type {
   EntitlementDecision,
   KnowledgeTier,
   OrganizationMembership,
+  T6MaterializationMode,
 } from '@/lib/organization-membership'
 import {
   DEFAULT_SMB_ORGANIZATION_ID,
@@ -21,6 +22,8 @@ import {
   ensureDefaultSmbOrganization,
   knowledgeAccessQueryKey,
   organizationSettingsQueryKey,
+  updateOrganizationMaterializationPolicy,
+  updateOrganizationMemberRole,
   upsertOrganizationAssociation,
   useDemoOrganizationProfiles,
   useKnowledgeEntitlementContract,
@@ -238,6 +241,19 @@ export function OrganizationSettingsScreen() {
   const [createIfMissing, setCreateIfMissing] = useState(true)
   const [savePending, setSavePending] = useState(false)
   const [defaultPending, setDefaultPending] = useState(false)
+  const [policyPending, setPolicyPending] = useState(false)
+  const [rolePendingUserId, setRolePendingUserId] = useState<string | null>(
+    null,
+  )
+  const [policyDefaultMode, setPolicyDefaultMode] =
+    useState<T6MaterializationMode>('AUTO')
+  const [autoAllowedClaimClassesText, setAutoAllowedClaimClassesText] =
+    useState('')
+  const [approvalRequiredClaimClassesText, setApprovalRequiredClaimClassesText] =
+    useState('')
+  const [memberRoleDrafts, setMemberRoleDrafts] = useState<
+    Record<string, 'owner' | 'member'>
+  >({})
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const entitlementQuery = useKnowledgeEntitlementContract()
 
@@ -249,6 +265,53 @@ export function OrganizationSettingsScreen() {
       setOrganizationName(DEFAULT_SMB_ORGANIZATION_NAME)
     }
   }, [organizationId, organizationName])
+
+  useEffect(() => {
+    const policy =
+      organizationQuery.data?.organization?.t6_materialization_policy ?? null
+    if (!policy) {
+      setPolicyDefaultMode('AUTO')
+      setAutoAllowedClaimClassesText('')
+      setApprovalRequiredClaimClassesText('')
+      return
+    }
+    setPolicyDefaultMode(policy.default_mode || 'AUTO')
+    setAutoAllowedClaimClassesText(
+      (policy.auto_allowed_claim_classes ?? []).join(', '),
+    )
+    setApprovalRequiredClaimClassesText(
+      (policy.approval_required_claim_classes ?? []).join(', '),
+    )
+  }, [organizationQuery.data?.organization?.t6_materialization_policy])
+
+  useEffect(() => {
+    const members = organizationQuery.data?.members ?? []
+    if (!Array.isArray(members) || members.length === 0) {
+      setMemberRoleDrafts({})
+      return
+    }
+    const nextDrafts: Record<string, 'owner' | 'member'> = {}
+    for (const member of members) {
+      const role =
+        member.member_role === 'owner' ||
+        member.member_role === 'member'
+          ? member.member_role
+          : 'member'
+      nextDrafts[member.user_id] = role
+    }
+    setMemberRoleDrafts(nextDrafts)
+  }, [organizationQuery.data?.members])
+
+  function parseCommaSeparatedValues(raw: string): Array<string> {
+    return Array.from(
+      new Set(
+        raw
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean),
+      ),
+    )
+  }
 
   async function refreshOrganizationContext() {
     await Promise.all([
@@ -350,8 +413,65 @@ export function OrganizationSettingsScreen() {
     }
   }
 
+  async function handleSaveMaterializationPolicy() {
+    setPolicyPending(true)
+    setErrorMessage(null)
+    try {
+      await updateOrganizationMaterializationPolicy({
+        default_mode: policyDefaultMode,
+        auto_allowed_claim_classes: parseCommaSeparatedValues(
+          autoAllowedClaimClassesText,
+        ),
+        approval_required_claim_classes: parseCommaSeparatedValues(
+          approvalRequiredClaimClassesText,
+        ),
+      })
+      await refreshOrganizationContext()
+      toast('Materialization policy updated', { type: 'success' })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to update policy'
+      setErrorMessage(message)
+      toast(message, { type: 'warning' })
+    } finally {
+      setPolicyPending(false)
+    }
+  }
+
+  async function handleUpdateMemberRole(
+    userId: string,
+    memberRole: 'owner' | 'member',
+  ) {
+    setRolePendingUserId(userId)
+    setErrorMessage(null)
+    try {
+      await updateOrganizationMemberRole({ userId, memberRole })
+      await refreshOrganizationContext()
+      toast('Member role updated', { type: 'success' })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to update role'
+      setErrorMessage(message)
+      toast(message, { type: 'warning' })
+    } finally {
+      setRolePendingUserId(null)
+    }
+  }
+
   const activeOrganization = authQuery.data?.organization_id
   const memberships = organizationQuery.data?.memberships ?? []
+  const members = organizationQuery.data?.members ?? []
+  const currentUserId = authQuery.data?.user?.user_id || null
+  const currentMemberRole = authQuery.data?.member_role || null
+  const canChangeSettings = Boolean(authQuery.data?.can_change_settings)
+  const canEditRoles = authQuery.data?.membership_status === 'active'
+  const policy =
+    organizationQuery.data?.organization?.t6_materialization_policy ?? null
+  const adminContacts = members.filter(
+    (member) =>
+      member.membership_status === 'active' &&
+      (member.member_role === 'owner' || member.member_role === 'admin'),
+  )
   const organizationSearchOptions = useMemo(
     () =>
       buildOrganizationSearchOptions(memberships, demoProfilesQuery.data ?? []),
@@ -634,6 +754,277 @@ export function OrganizationSettingsScreen() {
               </div>
             )}
           </div>
+        </section>
+
+        <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
+          <div className="mb-4 flex items-start gap-3">
+            <HugeiconsIcon
+              icon={CheckmarkCircle02Icon}
+              size={20}
+              strokeWidth={1.5}
+            />
+            <div>
+              <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+                Materialization Governance
+              </h2>
+              <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+                Organization-level policy controls how T6 candidates route by
+                default. The default mode is auto-approve unless your policy
+                requires approval for specific claim classes.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70">
+              <div className="space-y-3">
+                {!canChangeSettings ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                    Mode editing requires an active organization membership with
+                    member role owner or admin. Current status: role=
+                    {currentMemberRole || 'none'}, membership=
+                    {authQuery.data?.membership_status || 'unassigned'}. Access
+                    Control "administrator" mode does not grant organization
+                    governance permissions.
+                  </div>
+                ) : null}
+                <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                  Default Mode
+                </label>
+                <select
+                  value={policyDefaultMode}
+                  onChange={(event) =>
+                    setPolicyDefaultMode(
+                      event.target.value as T6MaterializationMode,
+                    )
+                  }
+                  disabled={!canChangeSettings || policyPending}
+                  className="h-10 w-full rounded-md border border-primary-200 bg-white px-3 text-sm text-primary-900 outline-none ring-primary-200 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                >
+                  <option value="AUTO">AUTO (Auto-approve)</option>
+                  <option value="APPROVAL">APPROVAL (Human in the loop)</option>
+                </select>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                    Auto-Allowed Claim Classes
+                  </label>
+                  <Input
+                    value={autoAllowedClaimClassesText}
+                    onChange={(event) =>
+                      setAutoAllowedClaimClassesText(event.target.value)
+                    }
+                    placeholder="invoice.validation.low_risk, reconciliation.match"
+                    disabled={!canChangeSettings || policyPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                    Approval-Required Claim Classes
+                  </label>
+                  <Input
+                    value={approvalRequiredClaimClassesText}
+                    onChange={(event) =>
+                      setApprovalRequiredClaimClassesText(event.target.value)
+                    }
+                    placeholder="voucher.adjustment.high_impact"
+                    disabled={!canChangeSettings || policyPending}
+                  />
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleSaveMaterializationPolicy}
+                  disabled={!canChangeSettings || policyPending}
+                >
+                  {policyPending ? 'Saving Policy...' : 'Save Policy'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70">
+              <div className="space-y-2 text-sm text-primary-700 dark:text-neutral-300">
+                <div>
+                  <span className="font-semibold text-primary-900 dark:text-neutral-100">
+                    Effective mode:
+                  </span>{' '}
+                  {policy?.default_mode || 'AUTO'}
+                </div>
+                <div className="break-all">
+                  <span className="font-semibold text-primary-900 dark:text-neutral-100">
+                    Policy hash:
+                  </span>{' '}
+                  <span className="font-mono text-xs">
+                    {policy?.policy_version_hash || 'pending'}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-semibold text-primary-900 dark:text-neutral-100">
+                    Updated at:
+                  </span>{' '}
+                  {policy?.updated_at || 'n/a'}
+                </div>
+                <p className="pt-2 text-xs text-primary-600 dark:text-neutral-400">
+                  Auto-approve applies first unless a claim class is explicitly
+                  constrained by approval-required rules.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
+          <div className="mb-4 flex items-start gap-3">
+            <HugeiconsIcon
+              icon={UserMultipleIcon}
+              size={20}
+              strokeWidth={1.5}
+            />
+            <div>
+              <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+                Organization Roles
+              </h2>
+              <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+                Manage roles for members in this organization. Owners can assign
+                owner/member.
+              </p>
+            </div>
+          </div>
+
+          {organizationQuery.isLoading ? (
+            <div className="text-sm text-primary-600 dark:text-neutral-400">
+              Loading members...
+            </div>
+          ) : members.length === 0 ? (
+            <div className="rounded-2xl border border-primary-200 bg-white/80 px-4 py-6 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400">
+              No members found for the active organization.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {adminContacts.length > 0 ? (
+                <div className="rounded-2xl border border-primary-200 bg-white/80 px-4 py-3 text-sm text-primary-700 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-300">
+                  Ask these org admins: {adminContacts.map((member) => member.name).join(', ')}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                  No active owner/admin is assigned yet. Any active member can assign one owner.
+                </div>
+              )}
+
+              {!canEditRoles ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                  Role editing requires active membership in the selected organization.
+                </div>
+              ) : null}
+
+              <div className="overflow-x-auto rounded-2xl border border-primary-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-900/70">
+              <table className="min-w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-primary-200 dark:border-neutral-800">
+                    <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                      Member
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                      Role
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((member) => {
+                    const currentRole =
+                      member.member_role === 'owner' ||
+                      member.member_role === 'member'
+                        ? member.member_role
+                        : 'member'
+                    const draftRole = memberRoleDrafts[member.user_id] || currentRole
+                    const roleChoices: Array<'owner' | 'member'> = [
+                      'owner',
+                      'member',
+                    ]
+                    const roleChanged = draftRole !== currentRole
+                    const roleActionDisabled =
+                      !canEditRoles ||
+                      !roleChanged ||
+                      member.membership_status !== 'active' ||
+                      rolePendingUserId === member.user_id
+
+                    return (
+                      <tr
+                        key={member.user_id}
+                        className="border-b border-primary-100 last:border-b-0 dark:border-neutral-800"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                            {member.name}
+                            {member.user_id === currentUserId ? ' (you)' : ''}
+                          </div>
+                          <div className="mt-1 font-mono text-xs text-primary-500 dark:text-neutral-400">
+                            {member.user_id}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide ${membershipTone(
+                              member.membership_status,
+                            )}`}
+                          >
+                            {member.membership_status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={draftRole}
+                            onChange={(event) =>
+                              setMemberRoleDrafts((current) => ({
+                                ...current,
+                                [member.user_id]: event.target.value as
+                                  | 'owner'
+                                  | 'member',
+                              }))
+                            }
+                            disabled={!canEditRoles || rolePendingUserId === member.user_id}
+                            className="h-9 w-full rounded-md border border-primary-200 bg-white px-2 text-sm text-primary-900 outline-none ring-primary-200 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                          >
+                            {roleChoices.map((role) => (
+                              <option
+                                key={role}
+                                value={role}
+                              >
+                                {role}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={roleActionDisabled}
+                            onClick={() =>
+                              handleUpdateMemberRole(member.user_id, draftRole)
+                            }
+                          >
+                            {rolePendingUserId === member.user_id
+                              ? 'Saving...'
+                              : 'Apply'}
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            </div>
+          )}
         </section>
 
         <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">

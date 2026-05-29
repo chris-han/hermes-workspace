@@ -121,16 +121,16 @@ export function ProfileCompletionScreen({
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white px-8 py-10 shadow-xl shadow-primary-900/5 ring-1 ring-primary-900/5">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md rounded-card border border-border bg-card px-8 py-10 shadow-sm">
         <div className="mb-6 text-center">
-          <h1 className="brand-wordmark text-2xl font-bold tracking-tight text-primary-900">
+          <h1 className="brand-wordmark text-2xl font-bold tracking-tight text-foreground">
             semantier
           </h1>
-          <h2 className="mt-5 text-lg font-semibold text-primary-900">
+          <h2 className="mt-5 text-lg font-semibold text-foreground">
             Finish Your Profile
           </h2>
-          <p className="mt-2 text-sm text-primary-600">
+          <p className="mt-2 text-sm text-muted-foreground">
             Add a name, choose your industry demo dataset, and optionally set a password fallback for this workspace.
           </p>
         </div>
@@ -141,7 +141,7 @@ export function ProfileCompletionScreen({
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="Display name"
-            className="w-full rounded-lg border border-primary-200 bg-white px-4 py-2.5 text-primary-900 placeholder-primary-400 outline-none transition-all focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+            className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
             disabled={loading}
           />
           <input
@@ -149,7 +149,7 @@ export function ProfileCompletionScreen({
             value={loginName}
             onChange={(e) => setLoginName(e.target.value)}
             placeholder="Login name"
-            className="w-full rounded-lg border border-primary-200 bg-white px-4 py-2.5 text-primary-900 placeholder-primary-400 outline-none transition-all focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+            className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
             disabled={loading}
             autoCapitalize="off"
             autoCorrect="off"
@@ -159,7 +159,7 @@ export function ProfileCompletionScreen({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password (optional)"
-            className="w-full rounded-lg border border-primary-200 bg-white px-4 py-2.5 text-primary-900 placeholder-primary-400 outline-none transition-all focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+            className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
             disabled={loading}
           />
           <input
@@ -167,17 +167,17 @@ export function ProfileCompletionScreen({
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
             placeholder="Confirm password"
-            className="w-full rounded-lg border border-primary-200 bg-white px-4 py-2.5 text-primary-900 placeholder-primary-400 outline-none transition-all focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+            className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
             disabled={loading}
           />
           <label className="block space-y-1 text-left">
-            <span className="text-sm font-medium text-primary-800">
+            <span className="text-sm font-medium text-foreground">
               Industry demo dataset
             </span>
             <select
               value={industryCode}
               onChange={(e) => setIndustryCode(e.target.value)}
-              className="w-full rounded-lg border border-primary-200 bg-white px-4 py-2.5 text-primary-900 outline-none transition-all focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+              className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
               disabled={loading || demoProfilesQuery.isLoading}
             >
               {industryOptions.length === 0 ? (
@@ -194,7 +194,7 @@ export function ProfileCompletionScreen({
                 ))
               )}
             </select>
-            <span className="block text-xs text-primary-500">
+            <span className="block text-xs text-muted-foreground">
               Signup lands in <code>/chat/new</code> and loads demo prompts for the selected organization context.
             </span>
           </label>
@@ -202,7 +202,7 @@ export function ProfileCompletionScreen({
           <button
             type="submit"
             disabled={loading || demoProfilesQuery.isLoading}
-            className="w-full rounded-lg bg-accent-500 px-4 py-2.5 font-medium text-white transition-all hover:bg-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-button bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? 'Saving...' : 'Save And Continue'}
           </button>
@@ -210,19 +210,19 @@ export function ProfileCompletionScreen({
             type="button"
             onClick={() => void submitCompletion(undefined, true)}
             disabled={loading || demoProfilesQuery.isLoading}
-            className="w-full rounded-lg border border-primary-200 bg-white px-4 py-2.5 font-medium text-primary-700 transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-button border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-muted hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Continue Without Password
           </button>
         </form>
 
         {demoProfilesQuery.isError ? (
-          <div className="mt-4 rounded-lg bg-amber-50 px-4 py-2.5 text-sm text-amber-800 ring-1 ring-amber-200">
+          <div className="mt-4 rounded-md border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning">
             Failed to load seeded demo organizations. Run the bootstrap dataset before onboarding new users.
           </div>
         ) : null}
         {error ? (
-          <div className="mt-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700 ring-1 ring-red-200">
+          <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
             {error}
           </div>
         ) : null}

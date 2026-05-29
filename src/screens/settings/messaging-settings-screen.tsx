@@ -233,7 +233,7 @@ function PageShell({
 }) {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 pt-6 pb-10 sm:px-6">
-      <header className="rounded-2xl border theme-border theme-card2 p-5 shadow-sm">
+      <header className="rounded-card border theme-border theme-card2 p-5 shadow-sm">
         <h1 className="text-xl font-semibold theme-text">{title}</h1>
         <p className="mt-1 text-sm theme-text">{description}</p>
       </header>
@@ -252,7 +252,7 @@ function SectionCard({
   children: ReactNode
 }) {
   return (
-    <section className="rounded-2xl border theme-border theme-card2 p-5 shadow-sm">
+    <section className="rounded-card border theme-border theme-card2 p-5 shadow-sm">
       <div className="mb-4">
         <h2 className="text-base font-semibold theme-text">{title}</h2>
         <p className="text-sm theme-text">{description}</p>
@@ -272,7 +272,7 @@ function SettingsLink({
   return (
     <Link
       to={to}
-      className="inline-flex items-center rounded-lg border theme-border px-3 py-2 text-sm font-medium theme-text transition-colors hover:bg-muted"
+      className="inline-flex items-center rounded-button border theme-border px-3 py-2 text-sm font-medium theme-text transition-colors hover:bg-muted"
     >
       {label}
     </Link>
@@ -898,7 +898,7 @@ function readOnlyValue(value: string): string {
 
 function LoadingState() {
   return (
-    <div className="rounded-2xl border theme-border theme-card2 p-5 text-sm theme-text">
+    <div className="rounded-card border theme-border theme-card2 p-5 text-sm theme-text">
       Loading messaging configuration...
     </div>
   )
@@ -1033,7 +1033,7 @@ function FeishuAccountLinkCard({
       title="Feishu Login"
       description="This is per-user Feishu sign-in pairing. It is only for login identity and is separate from bot configuration."
     >
-      <div className="rounded-lg border theme-border theme-card p-3">
+      <div className="rounded-md border theme-border theme-card p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -1161,7 +1161,7 @@ function FeishuBotConfigCard({
                 domain: event.target.value as 'feishu' | 'lark',
               }))
             }
-            className="h-9 rounded-lg border theme-border theme-card px-3 text-sm theme-text"
+            className="h-9 rounded-md border theme-border theme-card px-3 text-sm theme-text"
           >
             <option value="feishu">Feishu</option>
             <option value="lark">Lark</option>
@@ -1179,7 +1179,7 @@ function FeishuBotConfigCard({
                 connectionMode: event.target.value as 'websocket' | 'webhook',
               }))
             }
-            className="h-9 rounded-lg border theme-border theme-card px-3 text-sm theme-text"
+            className="h-9 rounded-md border theme-border theme-card px-3 text-sm theme-text"
           >
             <option value="websocket">WebSocket</option>
             <option value="webhook">Webhook</option>
@@ -1271,7 +1271,7 @@ function WeixinReadOnlyCard({
       </div>
 
       {!shouldShowPairing ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border theme-border bg-muted px-3 py-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border theme-border bg-muted px-3 py-2">
           <span className="text-xs theme-text">
             Runtime session: {runtimeState || 'unknown'}
           </span>
@@ -1285,7 +1285,7 @@ function WeixinReadOnlyCard({
       ) : null}
 
       {shouldShowPairing ? (
-        <div className="space-y-3 rounded-lg border theme-border theme-card p-3">
+        <div className="space-y-3 rounded-md border theme-border theme-card p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -1348,7 +1348,7 @@ function WeixinReadOnlyCard({
       ) : null}
 
       {reconnectOutcome ? (
-        <div className="mt-3 rounded-lg border theme-border theme-card p-3 text-xs theme-text">
+        <div className="mt-3 rounded-md border theme-border theme-card p-3 text-xs theme-text">
           <div className="flex flex-wrap items-center gap-2">
             <span>Reconnect: {reconnectOutcome.auth_level}</span>
             <span>Reason: {reconnectOutcome.auth_reason}</span>
@@ -1368,7 +1368,7 @@ function WeixinReadOnlyCard({
       ) : null}
 
       {!shouldShowPairing ? (
-        <div className="mt-3 rounded-lg border theme-border theme-card p-3">
+        <div className="mt-3 rounded-md border theme-border theme-card p-3">
           <p className="text-xs font-medium theme-text">
             Approve your own Weixin pairing code
           </p>

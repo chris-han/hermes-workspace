@@ -20,21 +20,21 @@ export const Route = createFileRoute('/chat/$sessionKey')({
   ssr: false,
   errorComponent: function ChatError({ error, reset }) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-6 text-center bg-primary-50">
+      <div className="flex h-full flex-col items-center justify-center bg-background p-6 text-center text-foreground">
         <div className="max-w-md">
           <div className="mb-4 text-5xl">💬</div>
-          <h2 className="text-xl font-semibold text-primary-900 mb-3">
+          <h2 className="mb-3 text-xl font-semibold text-foreground">
             Chat Error
           </h2>
-          <p className="text-sm text-primary-600 mb-6">
+          <p className="mb-6 text-sm text-muted-foreground">
             {error instanceof Error
               ? error.message
               : 'Failed to load chat session'}
           </p>
-          <div className="flex gap-3 justify-center">
+          <div className="flex justify-center gap-3">
             <button
               onClick={reset}
-              className="px-4 py-2 bg-accent-500 text-white rounded-lg hover:bg-accent-600 transition-colors"
+              className="rounded-button bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 active:scale-95"
             >
               Try Again
             </button>
@@ -43,7 +43,7 @@ export const Route = createFileRoute('/chat/$sessionKey')({
                 if (typeof window !== 'undefined')
                   window.location.href = '/chat'
               }}
-              className="px-4 py-2 border border-primary-300 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors"
+              className="rounded-button border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-muted hover:scale-105 active:scale-95"
             >
               Return to Main
             </button>
@@ -121,7 +121,7 @@ function ChatRoute() {
 
   if (!mounted) {
     return (
-      <div className="flex h-full items-center justify-center text-primary-400">
+      <div className="flex h-full items-center justify-center text-muted-foreground">
         Loading chat…
       </div>
     )
@@ -131,7 +131,7 @@ function ChatRoute() {
     <ErrorBoundary>
       <Suspense
         fallback={
-          <div className="flex h-full items-center justify-center text-primary-400">
+          <div className="flex h-full items-center justify-center text-muted-foreground">
             Loading chat…
           </div>
         }

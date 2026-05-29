@@ -9,9 +9,9 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
+import type { SessionSummary } from '@/screens/chat/types'
 import { toast } from '@/components/ui/toast'
 import { usePageTitle } from '@/hooks/use-page-title'
-import type { SessionSummary } from '@/screens/chat/types'
 
 type SessionEventItem = {
   event_id: string
@@ -40,6 +40,23 @@ type SessionTrajectoryExport = {
     completed: boolean
     metadata?: Record<string, unknown>
   }
+}
+
+type CanonicalSessionLog = {
+  session_id: string
+  session_key?: string
+  title?: string | null
+  display_name?: string | null
+  source?: string | null
+  model?: string | null
+  base_url?: string | null
+  platform?: string | null
+  session_start?: string | null
+  last_updated?: string | null
+  system_prompt?: string | null
+  tools?: Array<unknown>
+  message_count?: number
+  messages?: Array<Record<string, unknown>>
 }
 
 type SessionEventsSession = SessionSummary & {
@@ -206,6 +223,18 @@ function downloadJsonl(filename: string, lines: Array<unknown>) {
   URL.revokeObjectURL(url)
 }
 
+function downloadJson(filename: string, payload: unknown) {
+  const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], {
+    type: 'application/json;charset=utf-8',
+  })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
 function formatEventBody(event: SessionEventItem): string {
   if (event.reasoning) return event.reasoning
   if (event.content) return event.content
@@ -224,9 +253,11 @@ function SessionEventsRoute() {
   const [sessions, setSessions] = useState<Array<SessionEventsSession>>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [events, setEvents] = useState<Array<SessionEventItem>>([])
+  const [eventsUnavailable, setEventsUnavailable] = useState(false)
   const [trajectory, setTrajectory] = useState<SessionTrajectoryExport | null>(
     null,
   )
+  const [sessionDetail, setSessionDetail] = useState<CanonicalSessionLog | null>(null)
   const [selectedSessionIds, setSelectedSessionIds] = useState<Array<string>>(
     [],
   )
@@ -234,36 +265,27 @@ function SessionEventsRoute() {
   const [timestampSort, setTimestampSort] = useState<'desc' | 'asc'>('desc')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [projectionTab, setProjectionTab] = useState<'trajectory' | 'session-json'>('trajectory')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
-  const canonicalSchema = useMemo(
+  const sessionJsonSchema = useMemo(
     () => ({
-      event_id: 'string',
       session_id: 'string',
-      attempt_id: 'string | null',
-      event_type: [
-        'message.created',
-        'assistant.delta',
-        'assistant.reasoning',
-        'tool.call',
-        'tool.result',
-        'tool.progress',
-        'attempt.created',
-        'attempt.started',
-        'attempt.completed',
-        'attempt.failed',
-      ],
-      timestamp: 'ISO-8601 string',
-      role: '"user" | "assistant" | "tool" | "system" | null',
-      content: 'string | null',
-      reasoning: 'string | null',
-      tool: 'string | null',
-      tool_call_id: 'string | null',
-      args: 'Record<string, unknown> | null',
-      status: 'string | null',
-      metadata: 'Record<string, unknown>',
+      session_key: 'string | undefined',
+      title: 'string | null | undefined',
+      display_name: 'string | null | undefined',
+      source: 'string | null | undefined',
+      model: 'string | null | undefined',
+      base_url: 'string | null | undefined',
+      platform: 'string | null | undefined',
+      session_start: 'string | null | undefined',
+      last_updated: 'string | null | undefined',
+      system_prompt: 'string | null | undefined',
+      tools: 'unknown[] | undefined',
+      message_count: 'number',
+      messages: 'Record<string, unknown>[]',
     }),
     [],
   )
@@ -338,7 +360,9 @@ function SessionEventsRoute() {
   useEffect(() => {
     if (!sessionId) {
       setEvents([])
+      setEventsUnavailable(false)
       setTrajectory(null)
+      setSessionDetail(null)
       setError(null)
       return
     }
@@ -347,26 +371,41 @@ function SessionEventsRoute() {
     setLoading(true)
     setError(null)
 
-    Promise.all([
-      fetchJson<Array<SessionEventItem>>(
-        `/api/semantier-proxy/sessions/${encodeURIComponent(sessionId)}/event-log?limit=5000`,
-        controller.signal,
-      ),
-      fetchJson<RawSessionTrajectoryExport>(
-        `/api/semantier-proxy/sessions/${encodeURIComponent(sessionId)}/trajectory`,
-        controller.signal,
-      ),
-    ])
-      .then(([eventItems, exportData]) => {
-        setEvents(eventItems)
-        setTrajectory(normalizeTrajectoryExport(exportData, sessionId))
+    const fetchEventLog = fetchJson<Array<SessionEventItem>>(
+      `/api/semantier-proxy/sessions/${encodeURIComponent(sessionId)}/event-log?limit=5000`,
+      controller.signal,
+    ).then((items) => ({ ok: true as const, data: items })).catch(() => ({ ok: false as const, data: [] as Array<SessionEventItem> }))
+
+    const fetchTrajectory = fetchJson<RawSessionTrajectoryExport>(
+      `/api/semantier-proxy/sessions/${encodeURIComponent(sessionId)}/trajectory`,
+      controller.signal,
+    ).then((d) => ({ ok: true as const, data: d })).catch(() => ({ ok: false as const, data: null }))
+
+    const fetchDetail = fetchJson<CanonicalSessionLog>(
+      `/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionId)}/log`,
+      controller.signal,
+    ).catch(() => null)
+
+    Promise.all([fetchEventLog, fetchTrajectory, fetchDetail])
+      .then(([eventResult, trajectoryResult, detail]) => {
+        if (controller.signal.aborted) return
+        setEvents(eventResult.data)
+        setEventsUnavailable(!eventResult.ok)
+        setTrajectory(
+          trajectoryResult.ok
+            ? normalizeTrajectoryExport(trajectoryResult.data, sessionId)
+            : null,
+        )
+        setSessionDetail(detail)
       })
       .catch((nextError: unknown) => {
         if (nextError instanceof Error && nextError.name === 'AbortError') {
           return
         }
         setEvents([])
+        setEventsUnavailable(false)
         setTrajectory(null)
+        setSessionDetail(null)
         setError(
           nextError instanceof Error
             ? nextError.message
@@ -385,11 +424,11 @@ function SessionEventsRoute() {
   }, [refreshKey, sessionId])
 
   const counts = useMemo(() => {
-    const counts: Record<string, number> = {}
+    const nextCounts: Record<string, number> = {}
     for (const event of events) {
-      counts[event.event_type] = (counts[event.event_type] || 0) + 1
+      nextCounts[event.event_type] = (nextCounts[event.event_type] || 0) + 1
     }
-    return counts
+    return nextCounts
   }, [events])
 
   const selectedSessions = useMemo(
@@ -471,26 +510,30 @@ function SessionEventsRoute() {
     }
   }
 
-  async function exportEvents() {
+  async function exportSessionJson() {
     if (selectedSessionIds.length === 0) return
     try {
-      const groups = await Promise.all(
+      const sessionsToExport = await Promise.all(
         selectedSessionIds.map((id) =>
-          requestJson<Array<SessionEventItem>>(
-            `/api/semantier-proxy/sessions/${encodeURIComponent(id)}/event-log?limit=5000`,
+          requestJson<CanonicalSessionLog>(
+            `/api/semantier-proxy/api/sessions/${encodeURIComponent(id)}/log`,
           ),
         ),
       )
-      const lines = groups.flat()
       const fileName =
         selectedSessionIds.length === 1
-          ? `${selectedSessionIds[0]}_events.jsonl`
-          : 'selected_sessions_events.jsonl'
-      downloadJsonl(fileName, lines)
-      toast('Event log exported', { type: 'success' })
+          ? `${selectedSessionIds[0]}_session.json`
+          : 'selected_sessions_session.json'
+      downloadJson(
+        fileName,
+        selectedSessionIds.length === 1 ? sessionsToExport[0] : sessionsToExport,
+      )
+      toast('Session JSON exported', { type: 'success' })
     } catch (nextError) {
       toast(
-        nextError instanceof Error ? nextError.message : 'Event export failed',
+        nextError instanceof Error
+          ? nextError.message
+          : 'Session JSON export failed',
         { type: 'error' },
       )
     }
@@ -514,7 +557,7 @@ function SessionEventsRoute() {
         method: 'POST',
         body: JSON.stringify({ session_ids: deletingIds }),
       })
-      const deletedIds = result.deleted || []
+      const deletedIds = result.deleted
       setSessions((previous) =>
         previous.filter((session) => !deletedIds.includes(session.key)),
       )
@@ -544,18 +587,18 @@ function SessionEventsRoute() {
   }
 
   return (
-    <div className="min-h-full bg-primary-50/35 px-4 py-4 md:px-6 md:py-6 dark:bg-neutral-950">
+    <div className="min-h-full bg-background px-4 py-4 text-foreground md:px-6 md:py-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="rounded-2xl border border-primary-200 bg-white/95 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+        <section className="rounded-card border border-border bg-card p-5 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary-500 dark:text-neutral-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
                 Session Event Review
               </p>
-              <h1 className="text-2xl font-semibold text-primary-950 dark:text-neutral-100 md:text-3xl">
+              <h1 className="text-2xl font-semibold text-foreground md:text-3xl">
                 Canonical events.jsonl
               </h1>
-              <p className="max-w-3xl text-sm text-primary-700 dark:text-neutral-300">
+              <p className="max-w-3xl text-sm text-muted-foreground">
                 Review the canonical session event log and export the projected
                 Atropos trajectory dataset entry.
               </p>
@@ -565,7 +608,7 @@ function SessionEventsRoute() {
               <button
                 type="button"
                 onClick={() => setShowSchema((previous) => !previous)}
-                className="inline-flex items-center gap-2 rounded-lg border border-primary-200 px-3 py-2 text-sm font-medium text-primary-800 transition-colors hover:bg-primary-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                className="inline-flex items-center gap-2 rounded-button border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-all hover:bg-muted hover:scale-105 active:scale-95"
               >
                 <HugeiconsIcon icon={File01Icon} size={18} strokeWidth={1.5} />
                 {showSchema ? 'Hide schema' : 'View schema'}
@@ -574,7 +617,7 @@ function SessionEventsRoute() {
                 type="button"
                 onClick={() => setRefreshKey((value) => value + 1)}
                 disabled={!sessionId || loading}
-                className="inline-flex items-center gap-2 rounded-lg border border-primary-200 px-3 py-2 text-sm font-medium text-primary-800 transition-colors hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                className="inline-flex items-center gap-2 rounded-button border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-all hover:bg-muted hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <HugeiconsIcon icon={RefreshIcon} size={18} strokeWidth={1.5} />
                 Refresh
@@ -582,28 +625,40 @@ function SessionEventsRoute() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            <div className="rounded-xl border border-primary-200/80 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-950/60">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-500 dark:text-neutral-500">
+          <div className="mt-5 grid gap-3 md:grid-cols-4">
+            <div className="rounded-md border border-border bg-muted/40 p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Session
               </div>
-              <div className="mt-1 truncate text-sm font-medium text-primary-950 dark:text-neutral-100">
+              <div className="mt-1 truncate text-sm font-medium text-foreground">
                 {sessionId || 'No session selected'}
               </div>
             </div>
-            <div className="rounded-xl border border-primary-200/80 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-950/60">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-500 dark:text-neutral-500">
-                Events
+            <div className="rounded-md border border-border bg-muted/40 p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Model
               </div>
-              <div className="mt-1 text-2xl font-semibold text-primary-950 dark:text-neutral-100">
-                {events.length}
+              <div className="mt-1 truncate text-sm font-medium text-foreground">
+                {typeof sessionDetail?.model === 'string' && sessionDetail.model
+                  ? sessionDetail.model
+                  : '—'}
               </div>
             </div>
-            <div className="rounded-xl border border-primary-200/80 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-950/60">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-500 dark:text-neutral-500">
+            {!eventsUnavailable ? (
+              <div className="rounded-md border border-border bg-muted/40 p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Events
+                </div>
+                <div className="mt-1 text-2xl font-semibold text-foreground">
+                  {events.length}
+                </div>
+              </div>
+            ) : null}
+            <div className="rounded-md border border-border bg-muted/40 p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Trajectory
               </div>
-              <div className="mt-1 text-sm font-medium text-primary-950 dark:text-neutral-100">
+              <div className="mt-1 text-sm font-medium text-foreground">
                 {trajectory?.trajectory.completed
                   ? 'Completed export'
                   : trajectory
@@ -615,31 +670,31 @@ function SessionEventsRoute() {
         </section>
 
         {showSchema ? (
-          <section className="rounded-2xl border border-primary-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+          <section className="rounded-card border border-border bg-card p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-semibold text-primary-950 dark:text-neutral-100">
-                  Canonical schema
+                <h2 className="text-sm font-semibold text-foreground">
+                  Session JSON schema
                 </h2>
-                <p className="text-xs text-primary-500 dark:text-neutral-500">
-                  SessionEvent append-only record shape.
+                <p className="text-xs text-muted-foreground">
+                  Canonical workspace session log record shape.
                 </p>
               </div>
             </div>
-            <pre className="overflow-auto whitespace-pre-wrap break-words rounded-lg bg-primary-50/80 p-3 text-[11px] text-primary-900 dark:bg-neutral-950/70 dark:text-neutral-100">
-              {JSON.stringify(canonicalSchema, null, 2)}
+            <pre className="overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
+              {JSON.stringify(sessionJsonSchema, null, 2)}
             </pre>
           </section>
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
-          <section className="rounded-2xl border border-primary-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+          <section className="rounded-card border border-border bg-card p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-primary-950 dark:text-neutral-100">
+                <h2 className="text-sm font-semibold text-foreground">
                   Sessions
                 </h2>
-                <span className="text-xs text-primary-500 dark:text-neutral-500">
+                <span className="text-xs text-muted-foreground">
                   {sessions.length}
                 </span>
               </div>
@@ -650,7 +705,7 @@ function SessionEventsRoute() {
                   disabled={selectedSessionIds.length === 0}
                   title="Delete selected"
                   aria-label="Delete selected"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-destructive/30 bg-card text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <HugeiconsIcon
                     icon={Delete01Icon}
@@ -661,12 +716,12 @@ function SessionEventsRoute() {
                 <button
                   type="button"
                   onClick={() => {
-                    void exportEvents()
+                    void exportSessionJson()
                   }}
                   disabled={selectedSessionIds.length === 0}
-                  title="Export events"
-                  aria-label="Export events"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-primary-200 bg-primary-50/70 text-primary-800 transition-colors hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
+                  title="Export session JSON"
+                  aria-label="Export session JSON"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted/40 text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <HugeiconsIcon
                     icon={File01Icon}
@@ -682,7 +737,7 @@ function SessionEventsRoute() {
                   disabled={selectedSessionIds.length === 0}
                   title="Export Atropos JSONL"
                   aria-label="Export Atropos JSONL"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-primary-200 bg-primary-50/70 text-primary-800 transition-colors hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted/40 text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <HugeiconsIcon
                     icon={Download01Icon}
@@ -693,9 +748,9 @@ function SessionEventsRoute() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-lg border border-primary-200 dark:border-neutral-800">
+            <div className="overflow-hidden rounded-md border border-border">
               <table className="w-full table-fixed border-collapse text-left text-sm">
-                <thead className="bg-primary-50/70 text-xs uppercase tracking-wide text-primary-500 dark:bg-neutral-800 dark:text-neutral-400">
+                <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="w-10 px-3 py-2">
                       <input
@@ -705,7 +760,7 @@ function SessionEventsRoute() {
                           selectedSessionIds.length === sessions.length
                         }
                         onChange={toggleAllSessions}
-                        className="h-4 w-4 rounded border-primary-300 dark:border-neutral-700"
+                        className="h-4 w-4 rounded border-border"
                         aria-label="Select all sessions"
                       />
                     </th>
@@ -715,7 +770,7 @@ function SessionEventsRoute() {
                       <button
                         type="button"
                         onClick={toggleTimestampSort}
-                        className="inline-flex items-center gap-1 text-xs uppercase tracking-wide text-primary-500 hover:text-primary-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                        className="inline-flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground"
                       >
                         Timestamp
                         <HugeiconsIcon
@@ -744,8 +799,8 @@ function SessionEventsRoute() {
                         onClick={() => setRouteSession(session.key)}
                         className={
                           active
-                            ? 'cursor-pointer border-t border-primary-200 bg-primary-100/70 transition-colors dark:border-neutral-800 dark:bg-neutral-800/80'
-                            : 'cursor-pointer border-t border-primary-200 transition-colors hover:bg-primary-50/80 dark:border-neutral-800 dark:hover:bg-neutral-800/50'
+                            ? 'cursor-pointer border-t border-border bg-muted/70 transition-colors'
+                            : 'cursor-pointer border-t border-border transition-colors hover:bg-muted/50'
                         }
                       >
                         <td
@@ -759,7 +814,7 @@ function SessionEventsRoute() {
                             type="checkbox"
                             checked={selected}
                             readOnly
-                            className="h-4 w-4 rounded border-primary-300 dark:border-neutral-700"
+                            className="h-4 w-4 rounded border-border"
                             aria-label={`Select ${session.title || session.key}`}
                           />
                         </td>
@@ -767,17 +822,17 @@ function SessionEventsRoute() {
                           <div
                             className={
                               active
-                                ? 'truncate font-medium text-primary-900 dark:text-neutral-100'
-                                : 'truncate font-medium text-primary-950 dark:text-neutral-100'
+                                ? 'truncate font-medium text-foreground'
+                                : 'truncate font-medium text-foreground'
                             }
                           >
                             {session.title || session.key}
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-xs text-primary-500 dark:text-neutral-500">
+                        <td className="px-3 py-3 text-xs text-muted-foreground">
                           <div className="truncate">{session.key}</div>
                         </td>
-                        <td className="px-3 py-3 text-xs text-primary-500 dark:text-neutral-500">
+                        <td className="px-3 py-3 text-xs text-muted-foreground">
                           <div className="truncate">
                             {timestamp || '—'}
                           </div>
@@ -789,12 +844,12 @@ function SessionEventsRoute() {
               </table>
 
               {sessionsLoading ? (
-                <p className="p-3 text-sm text-primary-500 dark:text-neutral-500">
+                <p className="p-3 text-sm text-muted-foreground">
                   Loading sessions…
                 </p>
               ) : null}
               {!sessionsLoading && sessions.length === 0 ? (
-                <p className="p-3 text-sm text-primary-500 dark:text-neutral-500">
+                <p className="p-3 text-sm text-muted-foreground">
                   No sessions found.
                 </p>
               ) : null}
@@ -802,13 +857,13 @@ function SessionEventsRoute() {
           </section>
 
           <div className="space-y-6">
-            <section className="rounded-2xl border border-primary-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
+            <section className="rounded-card border border-border bg-card p-4 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h2 className="text-sm font-semibold text-primary-950 dark:text-neutral-100">
+                  <h2 className="text-sm font-semibold text-foreground">
                     Summary
                   </h2>
-                  <p className="text-xs text-primary-500 dark:text-neutral-500">
+                  <p className="text-xs text-muted-foreground">
                     {sessionId || 'Select a session'}
                     {selectedSessions.length > 0
                       ? ` · ${selectedSessions.length} selected`
@@ -819,7 +874,7 @@ function SessionEventsRoute() {
                   <Link
                     to="/chat/$sessionKey"
                     params={{ sessionKey: trajectory.sessionKey }}
-                    className="text-sm text-primary-700 hover:underline dark:text-neutral-200"
+                    className="text-sm text-primary hover:underline"
                   >
                     Open chat
                   </Link>
@@ -827,73 +882,118 @@ function SessionEventsRoute() {
               </div>
 
               {loading ? (
-                <p className="text-sm text-primary-500 dark:text-neutral-500">
+                <p className="text-sm text-muted-foreground">
                   Loading canonical events…
                 </p>
               ) : !sessionId ? (
-                <p className="text-sm text-primary-500 dark:text-neutral-500">
+                <p className="text-sm text-muted-foreground">
                   Select a session to inspect its event log.
                 </p>
               ) : error ? (
-                <p className="text-sm text-red-700 dark:text-red-300">
+                <p className="text-sm text-destructive">
                   {error}
                 </p>
               ) : (
                 <div className="grid gap-3 md:grid-cols-3">
-                  <div className="rounded-lg border border-primary-200 p-3 dark:border-neutral-800">
-                    <div className="text-xs uppercase tracking-wide text-primary-500 dark:text-neutral-500">
-                      Events
+                  {!eventsUnavailable ? (
+                    <div className="rounded-md border border-border p-3">
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Events
+                      </div>
+                      <div className="mt-1 text-2xl font-semibold text-foreground">
+                        {events.length}
+                      </div>
                     </div>
-                    <div className="mt-1 text-2xl font-semibold text-primary-950 dark:text-neutral-100">
-                      {events.length}
+                  ) : null}
+                  {!eventsUnavailable ? (
+                    <div className="rounded-md border border-border p-3 md:col-span-2">
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Event types
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {Object.entries(counts).map(([type, count]) => (
+                          <span
+                            key={type}
+                            className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs text-foreground"
+                          >
+                            {type} {count}
+                          </span>
+                        ))}
+                        {Object.keys(counts).length === 0 ? (
+                          <span className="text-sm text-muted-foreground">
+                            No events recorded.
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                  <div className="rounded-lg border border-primary-200 p-3 md:col-span-2 dark:border-neutral-800">
-                    <div className="text-xs uppercase tracking-wide text-primary-500 dark:text-neutral-500">
-                      Event types
+                  ) : null}
+                  <div className="rounded-md border border-border p-3 md:col-span-3">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Session info
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {Object.entries(counts).map(([type, count]) => (
-                        <span
-                          key={type}
-                          className="rounded-full bg-primary-50 px-2.5 py-1 text-xs text-primary-800 dark:bg-neutral-800 dark:text-neutral-100"
-                        >
-                          {type} {count}
+                    <div className="mt-2 flex flex-wrap gap-3">
+                      {sessionDetail ? (
+                        <>
+                          {typeof sessionDetail.model === 'string' && sessionDetail.model ? (
+                            <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs text-foreground">
+                              model: {sessionDetail.model}
+                            </span>
+                          ) : null}
+                          {typeof sessionDetail.platform === 'string' && sessionDetail.platform ? (
+                            <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs text-foreground">
+                              platform: {sessionDetail.platform}
+                            </span>
+                          ) : null}
+                          {typeof sessionDetail.source === 'string' && sessionDetail.source ? (
+                            <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs text-foreground">
+                              source: {sessionDetail.source}
+                            </span>
+                          ) : null}
+                          {typeof sessionDetail.message_count === 'number' ? (
+                            <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs text-foreground">
+                              messages: {sessionDetail.message_count}
+                            </span>
+                          ) : null}
+                          {typeof sessionDetail.last_updated === 'string' && sessionDetail.last_updated ? (
+                            <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs text-foreground">
+                              updated: {new Date(sessionDetail.last_updated).toLocaleString()}
+                            </span>
+                          ) : null}
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          {sessionId ? 'Session detail unavailable.' : 'No session selected.'}
                         </span>
-                      ))}
-                      {Object.keys(counts).length === 0 ? (
-                        <span className="text-sm text-primary-500 dark:text-neutral-500">
-                          No events recorded.
-                        </span>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                 </div>
               )}
             </section>
 
-            <section className="grid gap-6 xl:grid-cols-2">
-              <div className="rounded-2xl border border-primary-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
-                <h2 className="mb-3 text-sm font-semibold text-primary-950 dark:text-neutral-100">
-                  Event log
-                </h2>
-                <div className="max-h-[70vh] space-y-3 overflow-auto pr-1">
-                  {events.map((event) => {
-                    const body = formatEventBody(event)
-                    return (
-                      <div
-                        key={event.event_id}
-                        className="rounded-lg border border-primary-200 p-3 dark:border-neutral-800"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-xs font-medium text-primary-950 dark:text-neutral-100">
+            <section className={eventsUnavailable ? '' : 'grid gap-6 xl:grid-cols-2'}>
+              {!eventsUnavailable ? (
+                <div className="rounded-card border border-border bg-card p-4 shadow-sm">
+                  <h2 className="mb-3 text-sm font-semibold text-foreground">
+                    Event log
+                  </h2>
+                  <div className="max-h-[70vh] space-y-3 overflow-auto pr-1">
+                    {events.map((event) => {
+                      const body = formatEventBody(event)
+                      return (
+                        <div
+                          key={event.event_id}
+                          className="rounded-md border border-border bg-card p-3"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-xs font-medium text-foreground">
                             {event.event_type}
                           </div>
-                          <div className="text-[11px] text-primary-500 dark:text-neutral-500">
+                          <div className="text-[11px] text-muted-foreground">
                             {new Date(event.timestamp).toLocaleString()}
                           </div>
                         </div>
-                        <div className="mt-1 text-[11px] text-primary-500 dark:text-neutral-500">
+                        <div className="mt-1 text-[11px] text-muted-foreground">
                           {event.attempt_id
                             ? `attempt ${event.attempt_id}`
                             : 'session event'}
@@ -901,7 +1001,7 @@ function SessionEventsRoute() {
                           {event.status ? ` · ${event.status}` : ''}
                         </div>
                         {body ? (
-                          <pre className="mt-2 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-primary-50/80 p-2 text-[11px] text-primary-900 dark:bg-neutral-950/70 dark:text-neutral-100">
+                          <pre className="mt-2 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-2 text-[11px] text-foreground">
                             {body}
                           </pre>
                         ) : null}
@@ -909,23 +1009,60 @@ function SessionEventsRoute() {
                     )
                   })}
                   {!loading && sessionId && events.length === 0 ? (
-                    <p className="text-sm text-primary-500 dark:text-neutral-500">
+                    <p className="text-sm text-muted-foreground">
                       No events for this session.
                     </p>
                   ) : null}
                 </div>
               </div>
+              ) : null}
 
-              <div className="rounded-2xl border border-primary-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90">
-                <h2 className="mb-3 text-sm font-semibold text-primary-950 dark:text-neutral-100">
-                  Atropos projection
-                </h2>
+              <div className="rounded-card border border-border bg-card p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-semibold text-foreground">
+                    Atropos projection
+                  </h2>
+                  <div className="flex items-center gap-1 rounded-md border border-border bg-muted p-1">
+                    <button
+                      type="button"
+                      onClick={() => setProjectionTab('trajectory')}
+                      className={
+                        projectionTab === 'trajectory'
+                          ? 'rounded-md bg-card px-3 py-1 text-xs font-medium text-foreground shadow-sm'
+                          : 'rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground'
+                      }
+                    >
+                      trajectory.jsonl
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProjectionTab('session-json')}
+                      className={
+                        projectionTab === 'session-json'
+                          ? 'rounded-md bg-card px-3 py-1 text-xs font-medium text-foreground shadow-sm'
+                          : 'rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground'
+                      }
+                    >
+                      session.json
+                    </button>
+                  </div>
+                </div>
                 <div className="max-h-[70vh] overflow-auto">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words rounded-lg bg-primary-50/80 p-3 text-[11px] text-primary-900 dark:bg-neutral-950/70 dark:text-neutral-100">
-                    {trajectory
-                      ? JSON.stringify(trajectory.trajectory, null, 2)
-                      : 'No trajectory available.'}
-                  </pre>
+                  {projectionTab === 'trajectory' ? (
+                    <pre className="overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
+                      {trajectory
+                        ? JSON.stringify(trajectory.trajectory, null, 2)
+                        : 'No trajectory available.'}
+                    </pre>
+                  ) : (
+                    <pre className="overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
+                      {sessionDetail
+                        ? JSON.stringify(sessionDetail, null, 2)
+                        : sessionId
+                          ? 'Session JSON unavailable.'
+                          : 'No session selected.'}
+                    </pre>
+                  )}
                 </div>
               </div>
             </section>
@@ -934,12 +1071,12 @@ function SessionEventsRoute() {
 
         {showDeleteModal ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md rounded-2xl border border-primary-200 bg-white p-5 shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="w-full max-w-md rounded-card border border-border bg-card p-5 shadow-xl">
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold text-primary-950 dark:text-neutral-100">
+                <h2 className="text-lg font-semibold text-foreground">
                   Delete selected sessions
                 </h2>
-                <p className="text-sm text-primary-500 dark:text-neutral-500">
+                <p className="text-sm text-muted-foreground">
                   Delete {selectedSessionIds.length} selected session
                   {selectedSessionIds.length === 1 ? '' : 's'}? This removes the
                   session records and canonical events.jsonl data.
@@ -950,7 +1087,7 @@ function SessionEventsRoute() {
                   type="button"
                   onClick={() => setShowDeleteModal(false)}
                   disabled={deleting}
-                  className="rounded-lg border border-primary-200 px-3 py-2 text-sm text-primary-950 transition-colors hover:bg-primary-50 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                  className="rounded-button border border-border bg-background px-3 py-2 text-sm text-foreground transition-all hover:bg-muted hover:scale-105 active:scale-95 disabled:opacity-60"
                 >
                   Cancel
                 </button>
@@ -960,7 +1097,7 @@ function SessionEventsRoute() {
                     void deleteSelectedSessions()
                   }}
                   disabled={deleting}
-                  className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+                  className="rounded-button bg-destructive px-3 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-60"
                 >
                   {deleting ? 'Deleting…' : 'Delete'}
                 </button>

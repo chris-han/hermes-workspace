@@ -13,6 +13,7 @@ import tailwindcss from '@tailwindcss/vite'
 // nitro plugin removed (tanstackStart handles server runtime)
 import { defineConfig, loadEnv } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
+import { buildSemantierAgentProbeHeaders } from './src/server/semantier-agent-api'
 
 // ---------------------------------------------------------------------------
 // Local service auto-start helpers
@@ -382,12 +383,22 @@ const config = defineConfig(({ mode, command }) => {
               requestPath === '/api/connection-status'
             ) {
               try {
+                const incomingCookieHeader =
+                  typeof req.headers.cookie === 'string' ? req.headers.cookie : null
                 // Check for the single wrapper backend first.
                 const [modelsRes, sessionsRes] = await Promise.all([
                   fetch(`${semantierAgentUrl}/v1/models`, {
+                    headers: buildSemantierAgentProbeHeaders(
+                      '/v1/models',
+                      incomingCookieHeader,
+                    ),
                     signal: AbortSignal.timeout(3000),
                   }).catch(() => null),
                   fetch(`${semantierAgentUrl}/api/sessions?limit=1`, {
+                    headers: buildSemantierAgentProbeHeaders(
+                      '/api/sessions',
+                      incomingCookieHeader,
+                    ),
                     signal: AbortSignal.timeout(3000),
                   }).catch(() => null),
                 ])

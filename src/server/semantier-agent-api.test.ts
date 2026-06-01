@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   allowedSemantierAuthCookieNamesForPath,
+  buildSemantierAgentProbeHeaders,
   buildSemantierAgentProxyHeaders,
   buildSemantierAgentProxyResponseHeaders,
 } from './semantier-agent-api'
@@ -91,6 +92,15 @@ describe('buildSemantierAgentProxyHeaders', () => {
     expect(headers.get('cookie')).toBe(
       'vt_session=semantier-user-session; vt_browser_session=browser-nonce',
     )
+  })
+
+  it('builds authenticated probe headers from the incoming browser cookie header', () => {
+    const headers = buildSemantierAgentProbeHeaders(
+      '/api/sessions',
+      'hermes-auth=workspace-session; vt_session=semantier-user-session; csrftoken=abc123',
+    )
+
+    expect(headers.get('cookie')).toBe('vt_session=semantier-user-session')
   })
 })
 

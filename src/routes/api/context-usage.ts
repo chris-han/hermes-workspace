@@ -62,6 +62,15 @@ function backendHeaders(requestHeaders: Headers): Headers {
   })
 }
 
+export function hasSemantierSessionCookie(requestHeaders: Headers): boolean {
+  const cookie = requestHeaders.get('cookie')
+  if (!cookie) return false
+  return cookie
+    .split(';')
+    .map((item) => item.trim())
+    .some((item) => item.startsWith(`${SEMANTIER_AGENT_AUTH_COOKIE}=`))
+}
+
 const CHARS_PER_TOKEN = 3.5
 
 export const Route = createFileRoute('/api/context-usage')({
@@ -70,6 +79,19 @@ export const Route = createFileRoute('/api/context-usage')({
       GET: async ({ request }) => {
         const url = new URL(request.url)
         const sessionId = url.searchParams.get('sessionId') || ''
+
+        // Avoid unauthenticated backend probes that only produce noisy 401 logs.
+        if (!hasSemantierSessionCookie(request.headers)) {
+          return json({
+            ok: true,
+            contextPercent: 0,
+            maxTokens: 0,
+            usedTokens: 0,
+            model: '',
+            staticTokens: 0,
+            conversationTokens: 0,
+          })
+        }
 
         try {
           // Step 1: Get session data from Hermes

@@ -6,10 +6,23 @@ import {
   createSemantierSession,
   deleteSemantierSession,
   getSemantierSessionKey,
+  SemantierSessionApiError,
   listSemantierSessions,
   toSemantierSessionSummary,
   updateSemantierSession,
 } from '../../server/semantier-session-api'
+
+export function mapSessionApiErrorToStatus(error: unknown): number {
+  if (error instanceof SemantierSessionApiError) {
+    if (error.status === 401 || error.status === 403) {
+      return error.status
+    }
+    if (error.status >= 400 && error.status < 600) {
+      return 502
+    }
+  }
+  return 500
+}
 
 export const Route = createFileRoute('/api/sessions')({
   server: {
@@ -19,9 +32,10 @@ export const Route = createFileRoute('/api/sessions')({
           const sessions = await listSemantierSessions(request.headers, 50)
           return json({ sessions: sessions.map(toSemantierSessionSummary) })
         } catch (err) {
+          const status = mapSessionApiErrorToStatus(err)
           return json(
             { error: err instanceof Error ? err.message : String(err) },
-            { status: 500 },
+            { status },
           )
         }
       },
@@ -53,7 +67,7 @@ export const Route = createFileRoute('/api/sessions')({
               ok: false,
               error: err instanceof Error ? err.message : String(err),
             },
-            { status: 500 },
+            { status: mapSessionApiErrorToStatus(err) },
           )
         }
       },
@@ -101,7 +115,7 @@ export const Route = createFileRoute('/api/sessions')({
               ok: false,
               error: err instanceof Error ? err.message : String(err),
             },
-            { status: 500 },
+            { status: mapSessionApiErrorToStatus(err) },
           )
         }
       },
@@ -127,7 +141,7 @@ export const Route = createFileRoute('/api/sessions')({
               ok: false,
               error: err instanceof Error ? err.message : String(err),
             },
-            { status: 500 },
+            { status: mapSessionApiErrorToStatus(err) },
           )
         }
       },

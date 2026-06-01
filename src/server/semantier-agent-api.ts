@@ -112,6 +112,20 @@ export function buildSemantierAgentProxyHeaders(
   return headers
 }
 
+export function buildSemantierAgentProbeHeaders(
+  targetPath: string,
+  incomingCookieHeader: string | null,
+): Headers {
+  const incomingHeaders = incomingCookieHeader
+    ? { cookie: incomingCookieHeader }
+    : {}
+  return buildSemantierAgentProxyHeaders(incomingHeaders, {
+    authHeaders: semantierAgentAuthHeaders(),
+    forwardBrowserCookies: true,
+    allowedCookieNames: allowedSemantierAuthCookieNamesForPath(targetPath),
+  })
+}
+
 export function buildSemantierAgentProxyResponseHeaders(
   upstreamHeaders: Headers,
 ): Headers {

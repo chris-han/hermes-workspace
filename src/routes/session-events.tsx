@@ -681,14 +681,14 @@ function SessionEventsRoute() {
                 </p>
               </div>
             </div>
-            <pre className="overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
+            <pre className="min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
               {JSON.stringify(sessionJsonSchema, null, 2)}
             </pre>
           </section>
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
-          <section className="rounded-card border border-border bg-card p-4 shadow-sm">
+          <section className="min-w-0 rounded-card border border-border bg-card p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-semibold text-foreground">
@@ -856,8 +856,8 @@ function SessionEventsRoute() {
             </div>
           </section>
 
-          <div className="space-y-6">
-            <section className="rounded-card border border-border bg-card p-4 shadow-sm">
+          <div className="min-w-0 space-y-6">
+            <section className="min-w-0 rounded-card border border-border bg-card p-4 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="text-sm font-semibold text-foreground">
@@ -971,13 +971,13 @@ function SessionEventsRoute() {
               )}
             </section>
 
-            <section className={eventsUnavailable ? '' : 'grid gap-6 xl:grid-cols-2'}>
+            <section className={eventsUnavailable ? 'min-w-0' : 'grid min-w-0 gap-6 xl:grid-cols-2'}>
               {!eventsUnavailable ? (
-                <div className="rounded-card border border-border bg-card p-4 shadow-sm">
+                <div className="min-w-0 rounded-card border border-border bg-card p-4 shadow-sm">
                   <h2 className="mb-3 text-sm font-semibold text-foreground">
                     Event log
                   </h2>
-                  <div className="max-h-[70vh] space-y-3 overflow-auto pr-1">
+                  <div className="max-h-[70vh] min-w-0 space-y-3 overflow-auto pr-1">
                     {events.map((event) => {
                       const body = formatEventBody(event)
                       return (
@@ -1001,7 +1001,7 @@ function SessionEventsRoute() {
                           {event.status ? ` · ${event.status}` : ''}
                         </div>
                         {body ? (
-                          <pre className="mt-2 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-2 text-[11px] text-foreground">
+                          <pre className="mt-2 min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-2 text-[11px] text-foreground">
                             {body}
                           </pre>
                         ) : null}
@@ -1017,7 +1017,7 @@ function SessionEventsRoute() {
               </div>
               ) : null}
 
-              <div className="rounded-card border border-border bg-card p-4 shadow-sm">
+              <div className="min-w-0 rounded-card border border-border bg-card p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <h2 className="text-sm font-semibold text-foreground">
                     Atropos projection
@@ -1047,15 +1047,15 @@ function SessionEventsRoute() {
                     </button>
                   </div>
                 </div>
-                <div className="max-h-[70vh] overflow-auto">
+                <div className="max-h-[70vh] min-w-0 overflow-auto">
                   {projectionTab === 'trajectory' ? (
-                    <pre className="overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
+                    <pre className="min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
                       {trajectory
                         ? JSON.stringify(trajectory.trajectory, null, 2)
                         : 'No trajectory available.'}
                     </pre>
                   ) : (
-                    <pre className="overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
+                    <pre className="min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
                       {sessionDetail
                         ? JSON.stringify(sessionDetail, null, 2)
                         : sessionId

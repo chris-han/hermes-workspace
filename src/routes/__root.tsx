@@ -133,21 +133,51 @@ export const Route = createRootRoute({
         content:
           'Hermes Agent workspace for chat, tools, files, memory, and jobs.',
       },
+      // Open Graph for WeChat and social sharing
+      {
+        property: 'og:type',
+        content: 'website',
+      },
+      {
+        property: 'og:title',
+        content: 'Hermes Agent | Semantier',
+      },
+      {
+        property: 'og:description',
+        content: 'Hermes Agent workspace for chat, tools, files, memory, and jobs.',
+      },
       {
         property: 'og:image',
-        content: '/cover.png',
+        content: 'https://www.semantier.com/images/logo.png',
       },
       {
-        property: 'og:image:type',
-        content: 'image/png',
+        property: 'og:image:width',
+        content: '1200',
       },
+      {
+        property: 'og:image:height',
+        content: '1200',
+      },
+      {
+        property: 'og:url',
+        content: 'https://www.semantier.com',
+      },
+      // Twitter Card
       {
         name: 'twitter:card',
         content: 'summary_large_image',
       },
       {
+        name: 'twitter:title',
+        content: 'Hermes Agent | Semantier',
+      },
+      {
+        name: 'twitter:description',
+        content: 'Hermes Agent workspace for chat, tools, files, memory, and jobs.',
+      },
+      {
         name: 'twitter:image',
-        content: '/cover.png',
+        content: 'https://www.semantier.com/images/logo.png',
       },
       // PWA meta tags
       {

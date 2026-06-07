@@ -1,6 +1,18 @@
-import { describe, expect, it } from 'vitest'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('@/lib/semantier-auth', () => ({
+  useSemantierAuthStatus: () => ({
+    data: null,
+  }),
+}))
+
+vi.mock('@/lib/organization-membership', () => ({
+  ensureDefaultSmbOrganization: vi.fn(),
+}))
 
 import {
+  ChatEmptyState,
   capabilityChipsForPromptProfile,
   categoriesForPromptProfile,
   resolveChatEmptyStatePromptProfile,
@@ -46,5 +58,17 @@ describe('chat empty state prompt profiles', () => {
     expect(capabilityChipsForPromptProfile(profile)).toContain(
       '56 Finance Skills',
     )
+  })
+
+  it('renders the insights action when runtime props are provided', () => {
+    const markup = renderToStaticMarkup(
+      <ChatEmptyState
+        onRunInsights={() => {}}
+        isRunningInsights
+      />,
+    )
+
+    expect(markup).toContain('正在生成洞察...')
+    expect(markup).toContain('disabled')
   })
 })

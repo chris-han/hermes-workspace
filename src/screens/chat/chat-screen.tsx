@@ -89,6 +89,8 @@ import { ErrorToastContainer, showErrorToast } from '@/components/error-toast'
 // ContextMeter removed — ContextBar (PR #32) replaces it
 import { useChatStore } from '@/stores/chat-store'
 import { useResearchCard } from '@/hooks/use-research-card'
+import { runStreamOnce } from '@/lib/insights-runner'
+import { ensureDefaultSmbOrganization } from '@/lib/organization-membership'
 // MOBILE_TAB_BAR_OFFSET removed — tab bar always hidden in chat
 import { useTapDebug } from '@/hooks/use-tap-debug'
 import { useChatMode } from '@/hooks/use-chat-mode'
@@ -630,6 +632,7 @@ export function ChatScreen({
   >([])
   const [isCompacting, setIsCompacting] = useState(false)
   const [researchResetKey, setResearchResetKey] = useState(0)
+  const [isRunningInsights, setIsRunningInsights] = useState(false)
   // Per-session thinking level — stored in sessionStorage keyed by session
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>(() => {
     if (typeof window === 'undefined') return 'low'
@@ -2747,6 +2750,67 @@ export function ChatScreen({
       window.removeEventListener('hermes:chat-agent-details', handler)
   }, [])
 
+  async function runThreePromptInsights() {
+    setIsRunningInsights(true)
+    try {
+      await ensureDefaultSmbOrganization()
+      const { sessionKey, friendlyId } = await ensureChatSession('索阳示例：三点洞察')
+      const prompts = [
+        '基于当前组织的 demo dataset，生成营业分析，重点说明收入结构、项目毛利、回款节奏、现金压力和需要关注的经营异常。',
+        '基于当前组织的 demo dataset，演示日常入账报销流程，给出费用分类、建议会计分录、需要补充的凭证材料和风险提示。',
+        '基于当前组织的 demo dataset，生成报税报告，汇总增值税、企业所得税相关准备事项，并说明本期重点关注项目。',
+      ]
+
+      const results: Array<string> = []
+      for (const p of prompts) {
+        try {
+          const out = await runStreamOnce({ sessionKey, friendlyId, message: p })
+          results.push(out)
+        } catch (err) {
+          results.push(err instanceof Error ? err.message : String(err))
+        }
+      }
+
+      const bullets = results.map((r) => {
+        const t = String(r || '').trim()
+        if (!t) return '无洞察'
+        const firstLine = t.split('\n').find((l) => l.trim().length > 0) || t
+        const match = firstLine.match(/[^。！？.!?；;]+[。！？.!?；;]?/)
+        return match ? match[0].trim() : firstLine.slice(0, 200)
+      })
+
+      const summaryText = `三点洞察（索阳示例公司）\n\n1. ${bullets[0]}\n\n2. ${bullets[1]}\n\n3. ${bullets[2]}`
+
+      appendHistoryMessage(queryClient, activeFriendlyId || 'new', sessionKey, {
+        role: 'assistant',
+        content: [{ type: 'text' as const, text: summaryText }],
+        timestamp: Date.now(),
+        __streamingStatus: 'complete',
+      })
+
+      try {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('run_insights')
+        window.history.replaceState({}, '', url.toString())
+      } catch {}
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      toast(`生成洞察失败: ${msg}`)
+    } finally {
+      setIsRunningInsights(false)
+    }
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('run_insights')) {
+        void runThreePromptInsights()
+      }
+    } catch {}
+  }, [])
+
   return (
     <div
       className={cn(
@@ -2891,6 +2955,10 @@ export function ChatScreen({
                   onSuggestionClick={(prompt) => {
                     composerHandleRef.current?.setValue(prompt + ' ')
                   }}
+                  onRunInsights={() => {
+                    void runThreePromptInsights()
+                  }}
+                  isRunningInsights={isRunningInsights}
                 />
               }
               notice={null}

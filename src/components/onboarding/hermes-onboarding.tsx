@@ -169,6 +169,8 @@ export function HermesOnboarding() {
   const [configuredModel, setConfiguredModel] = useState('')
   const [demoSeeding, setDemoSeeding] = useState<'idle' | 'seeding' | 'done' | 'error'>('idle')
   const [demoError, setDemoError] = useState('')
+  const [demoInsightsSeeding, setDemoInsightsSeeding] = useState<'idle' | 'seeding' | 'done' | 'error'>('idle')
+  const [demoInsightsError, setDemoInsightsError] = useState('')
 
   const [oauthStep, setOauthStep] = useState<
     'idle' | 'loading' | 'waiting' | 'success' | 'error'
@@ -595,6 +597,25 @@ export function HermesOnboarding() {
                 {demoSeeding === 'seeding' ? '正在准备演示...' : '试用 索阳 示例公司'}
               </button>
               {demoError ? <p className="text-xs text-red-400">{demoError}</p> : null}
+              <button
+                onClick={async () => {
+                  setDemoInsightsSeeding('seeding')
+                  setDemoInsightsError('')
+                  try {
+                    await ensureDefaultSmbOrganization()
+                    persistOnboardingCompletion()
+                    window.location.href = '/chat/new?run_insights=1'
+                  } catch (err) {
+                    setDemoInsightsError(err instanceof Error ? err.message : '演示数据准备失败')
+                    setDemoInsightsSeeding('error')
+                  }
+                }}
+                className="w-full rounded-xl border py-3 text-sm font-semibold mt-2 transition-colors"
+                style={{ borderColor: 'var(--theme-border)' }}
+              >
+                {demoInsightsSeeding === 'seeding' ? '正在准备并生成洞察...' : '试用并生成 3 条示例洞察'}
+              </button>
+              {demoInsightsError ? <p className="text-xs text-red-400">{demoInsightsError}</p> : null}
               <button onClick={complete} className="text-xs" style={mutedStyle}>
                 Skip setup
               </button>

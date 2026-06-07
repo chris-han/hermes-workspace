@@ -11,6 +11,7 @@ import { motion } from 'motion/react'
 
 import { useSemantierAuthStatus } from '@/lib/semantier-auth'
 import { ensureDefaultSmbOrganization } from '@/lib/organization-membership'
+import DemoInsightsRunner from '@/components/demo-insights-runner'
 
 type Example = {
   title: string
@@ -209,6 +210,8 @@ const SHORT_VIEWPORT_HEIGHT = 760
 type ChatEmptyStateProps = {
   onSuggestionClick?: (prompt: string) => void
   compact?: boolean
+  onRunInsights?: () => void
+  isRunningInsights?: boolean
 }
 
 export function resolveChatEmptyStatePromptProfile(params: {
@@ -259,7 +262,10 @@ export function capabilityChipsForPromptProfile(
 export function ChatEmptyState({
   onSuggestionClick,
   compact = false,
+  onRunInsights,
+  isRunningInsights = false,
 }: ChatEmptyStateProps) {
+  const [showDemoRunner, setShowDemoRunner] = useState(false)
   const authQuery = useSemantierAuthStatus()
   const [isShortViewport, setIsShortViewport] = useState(false)
   const [showAllCategories, setShowAllCategories] = useState(false)
@@ -347,7 +353,27 @@ export function ChatEmptyState({
           {seedError ? (
             <p className="mt-2 text-xs text-red-400">{seedError}</p>
           ) : null}
+
+          <div className="mt-3">
+            <button
+              onClick={() => setShowDemoRunner(true)}
+              className="rounded-xl border px-4 py-2 text-sm font-semibold"
+              style={{ borderColor: 'var(--theme-border)' }}
+              disabled={isRunningInsights}
+            >
+              {isRunningInsights ? '正在生成洞察...' : '一键运行 3 条示例分析 — 60 秒获得洞察'}
+            </button>
+          </div>
         </div>
+
+        {showDemoRunner ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setShowDemoRunner(false)} />
+            <div className="relative z-10">
+              <DemoInsightsRunner onClose={() => setShowDemoRunner(false)} />
+            </div>
+          </div>
+        ) : null}
 
         {!compact && (
           <>

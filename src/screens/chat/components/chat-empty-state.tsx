@@ -10,6 +10,7 @@ import {
 import { motion } from 'motion/react'
 
 import { useSemantierAuthStatus } from '@/lib/semantier-auth'
+import { ensureDefaultSmbOrganization } from '@/lib/organization-membership'
 
 type Example = {
   title: string
@@ -284,10 +285,25 @@ export function ChatEmptyState({
     datasetType: authQuery.data?.dataset_type,
     industryCode: authQuery.data?.industry_code,
   })
+  const [seedingDemo, setSeedingDemo] = useState(false)
+  const [seedError, setSeedError] = useState('')
   const categories = categoriesForPromptProfile(promptProfile)
   const capabilityChips = capabilityChipsForPromptProfile(promptProfile)
   const visibleCategories =
     isShortViewport && !showAllCategories ? categories.slice(0, 2) : categories
+
+  async function handleTrySuoYang() {
+    setSeedingDemo(true)
+    setSeedError('')
+    try {
+      await ensureDefaultSmbOrganization()
+      window.location.href = '/chat/new'
+    } catch (err) {
+      setSeedError(err instanceof Error ? err.message : '演示数据准备失败')
+    } finally {
+      setSeedingDemo(false)
+    }
+  }
 
   return (
     <motion.div
@@ -321,6 +337,17 @@ export function ChatEmptyState({
         >
           Begin a session
         </h2>
+        <div className="mt-4">
+          <button
+            onClick={handleTrySuoYang}
+            className="rounded-xl bg-accent-500 px-4 py-2 text-sm font-semibold text-white"
+          >
+            {seedingDemo ? '正在准备演示...' : '试用 索阳 示例公司 — 60 秒获得洞察'}
+          </button>
+          {seedError ? (
+            <p className="mt-2 text-xs text-red-400">{seedError}</p>
+          ) : null}
+        </div>
 
         {!compact && (
           <>

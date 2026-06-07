@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
 import { ProviderLogo } from '@/components/provider-logo'
+import { ensureDefaultSmbOrganization } from '@/lib/organization-membership'
 
 const KNOWN_PROVIDER_PREFIXES = [
   'openrouter',
@@ -166,6 +167,8 @@ export function HermesOnboarding() {
   >('idle')
   const [testMessage, setTestMessage] = useState('')
   const [configuredModel, setConfiguredModel] = useState('')
+  const [demoSeeding, setDemoSeeding] = useState<'idle' | 'seeding' | 'done' | 'error'>('idle')
+  const [demoError, setDemoError] = useState('')
 
   const [oauthStep, setOauthStep] = useState<
     'idle' | 'loading' | 'waiting' | 'success' | 'error'
@@ -573,6 +576,25 @@ export function HermesOnboarding() {
               >
                 Connect Backend
               </button>
+              <button
+                onClick={async () => {
+                  setDemoSeeding('seeding')
+                  setDemoError('')
+                  try {
+                    await ensureDefaultSmbOrganization()
+                    persistOnboardingCompletion()
+                    window.location.href = '/chat/new'
+                  } catch (err) {
+                    setDemoError(err instanceof Error ? err.message : '演示数据准备失败')
+                    setDemoSeeding('error')
+                  }
+                }}
+                className="w-full rounded-xl border py-3 text-sm font-semibold transition-colors"
+                style={{ borderColor: 'var(--theme-border)' }}
+              >
+                {demoSeeding === 'seeding' ? '正在准备演示...' : '试用 索阳 示例公司'}
+              </button>
+              {demoError ? <p className="text-xs text-red-400">{demoError}</p> : null}
               <button onClick={complete} className="text-xs" style={mutedStyle}>
                 Skip setup
               </button>

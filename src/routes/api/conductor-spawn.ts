@@ -151,7 +151,7 @@ async function createHermesJob(payload: {
   })
   const capabilities = ensureGatewayProbed()
   const res = capabilities.dashboard.available
-    ? await dashboardFetch('/api/cron/jobs', {
+    ? await dashboardFetch('/api/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,

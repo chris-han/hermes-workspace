@@ -83,18 +83,20 @@ describe('deriveGatewayModeFromCapabilities', () => {
 
 describe('dashboardFetch', () => {
   it('routes dashboard API requests through the single backend surface', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => '',
-      })
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () => '',
+    })
     globalThis.fetch = fetchMock as typeof fetch
 
-    await dashboardFetch('/api/sessions', {}, {
-      requestHeaders: { cookie: 'vt_session=session-123; ignored=value' },
-    })
+    await dashboardFetch(
+      '/api/sessions',
+      {},
+      {
+        requestHeaders: { cookie: 'vt_session=session-123; ignored=value' },
+      },
+    )
 
     const [dashboardUrl, dashboardInit] = fetchMock.mock.calls[0]
     const headers = new Headers(dashboardInit?.headers)
@@ -110,5 +112,6 @@ describe('probeGateway', () => {
     expect(capabilities.semantier.available).toBe(true)
     expect(capabilities.skills).toBe(true)
     expect(capabilities.config).toBe(true)
+    expect(capabilities.jobs).toBe(true)
   })
 })

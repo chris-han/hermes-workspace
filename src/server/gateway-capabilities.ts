@@ -236,7 +236,6 @@ function logCapabilities(next: GatewayCapabilities): void {
   if (summary === lastLoggedSummary) return
   lastLoggedSummary = summary
   console.log(summary)
-
 }
 
 function autoDetectGatewayUrl(): void {
@@ -271,7 +270,9 @@ export function probeGateway(options?: {
     // Configuration is served by the Semantier wrapper through the workspace
     // API routes, so the settings UI should remain enabled in single-surface mode.
     config: true,
-    jobs: false,
+    // Jobs are served by the Semantier wrapper as authenticated, user/workspace
+    // scoped records.
+    jobs: true,
     dashboard: { available: true, url: HERMES_API },
     semantier: { available: true, url: SEMANTIER_AGENT_API },
   }
@@ -343,10 +344,7 @@ export function getConnectionStatus(): ConnectionStatus {
 }
 
 export function isHermesConnected(): boolean {
-  return (
-    capabilities.health ||
-    capabilities.semantier.available
-  )
+  return capabilities.health || capabilities.semantier.available
 }
 
 void ensureGatewayProbed()

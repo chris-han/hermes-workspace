@@ -35,9 +35,15 @@ export const Route = createFileRoute('/api/hermes-jobs/$jobId')({
 
         if (capabilities.dashboard.available) {
           const dashboardPath = action
-            ? `/api/cron/jobs/${params.jobId}/${action === 'run' ? 'trigger' : action}`
-            : `/api/cron/jobs/${params.jobId}`
-          const res = await dashboardFetch(dashboardPath)
+            ? `/api/jobs/${params.jobId}/${action === 'run' ? 'trigger' : action}`
+            : `/api/jobs/${params.jobId}`
+          const res = await dashboardFetch(
+            dashboardPath,
+            {},
+            {
+              requestHeaders: request.headers,
+            },
+          )
           return new Response(await res.text(), {
             status: res.status,
             headers: { 'Content-Type': 'application/json' },
@@ -64,14 +70,22 @@ export const Route = createFileRoute('/api/hermes-jobs/$jobId')({
         if (capabilities.dashboard.available) {
           const dashboardAction = action === 'run' ? 'trigger' : action
           const dashboardPath = dashboardAction
-            ? `/api/cron/jobs/${params.jobId}/${dashboardAction}`
-            : `/api/cron/jobs/${params.jobId}`
+            ? `/api/jobs/${params.jobId}/${dashboardAction}`
+            : `/api/jobs/${params.jobId}`
           const method = dashboardAction ? 'POST' : 'PUT'
-          const res = await dashboardFetch(dashboardPath, {
-            method,
-            headers: body ? { 'Content-Type': 'application/json' } : undefined,
-            body: body || undefined,
-          })
+          const res = await dashboardFetch(
+            dashboardPath,
+            {
+              method,
+              headers: body
+                ? { 'Content-Type': 'application/json' }
+                : undefined,
+              body: body || undefined,
+            },
+            {
+              requestHeaders: request.headers,
+            },
+          )
           return new Response(await res.text(), {
             status: res.status,
             headers: { 'Content-Type': 'application/json' },
@@ -97,11 +111,15 @@ export const Route = createFileRoute('/api/hermes-jobs/$jobId')({
 
         const body = await request.text()
         const res = capabilities.dashboard.available
-          ? await dashboardFetch(`/api/cron/jobs/${params.jobId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ updates: body ? JSON.parse(body) : {} }),
-            })
+          ? await dashboardFetch(
+              `/api/jobs/${params.jobId}`,
+              {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ updates: body ? JSON.parse(body) : {} }),
+              },
+              { requestHeaders: request.headers },
+            )
           : await fetch(`${HERMES_API}/api/jobs/${params.jobId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -117,9 +135,13 @@ export const Route = createFileRoute('/api/hermes-jobs/$jobId')({
         if (!capabilities.jobs) return notSupported()
 
         const res = capabilities.dashboard.available
-          ? await dashboardFetch(`/api/cron/jobs/${params.jobId}`, {
-              method: 'DELETE',
-            })
+          ? await dashboardFetch(
+              `/api/jobs/${params.jobId}`,
+              {
+                method: 'DELETE',
+              },
+              { requestHeaders: request.headers },
+            )
           : await fetch(`${HERMES_API}/api/jobs/${params.jobId}`, {
               method: 'DELETE',
               headers: authHeaders(),

@@ -33,7 +33,11 @@ export const Route = createFileRoute('/api/hermes-jobs')({
         const url = new URL(request.url)
         const params = url.searchParams.toString()
         const res = capabilities.dashboard.available
-          ? await dashboardFetch(`/api/cron/jobs${params ? `?${params}` : ''}`)
+          ? await dashboardFetch(
+              `/api/jobs${params ? `?${params}` : ''}`,
+              {},
+              { requestHeaders: request.headers },
+            )
           : await fetch(`${HERMES_API}/api/jobs${params ? `?${params}` : ''}`, {
               headers: authHeaders(),
             })
@@ -48,7 +52,8 @@ export const Route = createFileRoute('/api/hermes-jobs')({
           return new Response(
             JSON.stringify({
               ...createCapabilityUnavailablePayload('jobs', {
-                error: 'Gateway does not support /api/jobs in semantier-unicell mode.',
+                error:
+                  'Gateway does not support /api/jobs in semantier-unicell mode.',
               }),
             }),
             { status: 503, headers: { 'Content-Type': 'application/json' } },
@@ -56,11 +61,15 @@ export const Route = createFileRoute('/api/hermes-jobs')({
         }
         const body = await request.text()
         const res = capabilities.dashboard.available
-          ? await dashboardFetch('/api/cron/jobs', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body,
-            })
+          ? await dashboardFetch(
+              '/api/jobs',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body,
+              },
+              { requestHeaders: request.headers },
+            )
           : await fetch(`${HERMES_API}/api/jobs`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', ...authHeaders() },

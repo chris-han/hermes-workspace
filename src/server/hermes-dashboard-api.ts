@@ -292,7 +292,7 @@ export async function deleteEnvVar(key: string): Promise<{ ok: boolean }> {
 }
 
 export async function getCronJobs(): Promise<Array<CronJob>> {
-  return dashboardJson('/api/cron/jobs')
+  return dashboardJson('/api/jobs')
 }
 
 export async function createCronJob(job: {
@@ -301,7 +301,7 @@ export async function createCronJob(job: {
   name?: string
   deliver?: string
 }): Promise<CronJob> {
-  return dashboardJson('/api/cron/jobs', {
+  return dashboardJson('/api/jobs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(job),
@@ -309,25 +309,25 @@ export async function createCronJob(job: {
 }
 
 export async function pauseCronJob(id: string): Promise<CronJob> {
-  return dashboardJson(`/api/cron/jobs/${encodeURIComponent(id)}/pause`, {
+  return dashboardJson(`/api/jobs/${encodeURIComponent(id)}/pause`, {
     method: 'POST',
   })
 }
 
 export async function resumeCronJob(id: string): Promise<CronJob> {
-  return dashboardJson(`/api/cron/jobs/${encodeURIComponent(id)}/resume`, {
+  return dashboardJson(`/api/jobs/${encodeURIComponent(id)}/resume`, {
     method: 'POST',
   })
 }
 
 export async function triggerCronJob(id: string): Promise<CronJob> {
-  return dashboardJson(`/api/cron/jobs/${encodeURIComponent(id)}/trigger`, {
+  return dashboardJson(`/api/jobs/${encodeURIComponent(id)}/trigger`, {
     method: 'POST',
   })
 }
 
 export async function deleteCronJob(id: string): Promise<{ ok: boolean }> {
-  return dashboardJson(`/api/cron/jobs/${encodeURIComponent(id)}`, {
+  return dashboardJson(`/api/jobs/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   })
 }

@@ -174,6 +174,56 @@ export function shouldRenderPrimaryAssistantText(params: {
   return !params.hasToolCalls && !params.hasA2UiBlocks
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function formatTableValue(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value.replace(/\|/g, '\\|')
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  return JSON.stringify(value).replace(/\|/g, '\\|')
+}
+
+export function formatGovernedQueryResultForDisplay(outputText: string): string {
+  const trimmed = outputText.trim()
+  if (!trimmed.startsWith('{')) return outputText
+
+  let payload: unknown
+  try {
+    payload = JSON.parse(trimmed)
+  } catch {
+    return outputText
+  }
+  if (!isRecord(payload)) return outputText
+
+  const columns = Array.isArray(payload.columns)
+    ? payload.columns.filter((column): column is string => typeof column === 'string')
+    : []
+  const rows = Array.isArray(payload.rows) ? payload.rows : []
+  if (columns.length === 0 || rows.length === 0) return outputText
+
+  const displayColumns = Array.isArray(payload.display_columns)
+    ? payload.display_columns.map((column) =>
+        typeof column === 'string' && column.trim() ? column : null,
+      )
+    : []
+  const headers = columns.map((column, index) => displayColumns[index] || column)
+  const tableRows = rows
+    .filter(isRecord)
+    .map((row) => `| ${columns.map((column) => formatTableValue(row[column])).join(' | ')} |`)
+
+  if (tableRows.length === 0) return outputText
+
+  return [
+    `| ${headers.map((header) => header.replace(/\|/g, '\\|')).join(' | ')} |`,
+    `| ${headers.map(() => '---').join(' | ')} |`,
+    ...tableRows,
+  ].join('\n')
+}
+
 function extractA2UiSchema(part: unknown): A2UiSchema | null {
   if (!part || typeof part !== 'object') return null
   const payload = part as Record<string, unknown>
@@ -1375,7 +1425,9 @@ function InlineToolSectionItem({
     toolSection.outputText,
     toolSection.errorText,
   ])
-  const outputText = toolSection.outputText || toolSection.errorText || ''
+  const outputText = formatGovernedQueryResultForDisplay(
+    toolSection.outputText || toolSection.errorText || '',
+  )
   const shouldTruncateOutput = outputText.length > 800
   const displayedOutputText =
     shouldTruncateOutput && !showFullOutput

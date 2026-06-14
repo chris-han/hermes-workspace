@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildInlineToolRenderPlan } from './message-item'
+import {
+  buildInlineToolRenderPlan,
+  formatGovernedQueryResultForDisplay,
+} from './message-item'
 import { shouldRenderPrimaryAssistantText } from './message-item'
 import type { ChatMessage } from '../types'
 
@@ -132,6 +135,41 @@ describe('buildInlineToolRenderPlan', () => {
     const plan = buildInlineToolRenderPlan(message, [])
 
     expect(plan.some((item) => item.kind === 'ui')).toBe(false)
+  })
+})
+
+describe('formatGovernedQueryResultForDisplay', () => {
+  it('renders governed-query display columns while preserving ascii row keys', () => {
+    const rendered = formatGovernedQueryResultForDisplay(
+      JSON.stringify({
+        columns: ['amount_wan'],
+        display_columns: ['金额（万元）'],
+        rows: [{ amount_wan: 12.5 }],
+        column_metadata: {
+          amount_wan: {
+            display_name_zh: '金额（万元）',
+            unit: 'CNY_10K',
+            legacy_alias: 'amount_万',
+          },
+        },
+      }),
+    )
+
+    expect(rendered).toContain('金额（万元）')
+    expect(rendered).toContain('12.5')
+    expect(rendered).not.toContain('amount_万')
+  })
+
+  it('falls back to machine columns when display columns are missing', () => {
+    const rendered = formatGovernedQueryResultForDisplay(
+      JSON.stringify({
+        columns: ['amount_wan'],
+        rows: [{ amount_wan: 12.5 }],
+      }),
+    )
+
+    expect(rendered).toContain('amount_wan')
+    expect(rendered).toContain('12.5')
   })
 })
 

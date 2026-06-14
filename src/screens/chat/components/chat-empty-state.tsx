@@ -145,13 +145,8 @@ const SMB_DEMO_CATEGORIES: Array<Category> = [
     examples: [
       {
         title: '试用 索阳 示例公司 — 60 秒获得洞察',
-        desc: '一键运行 3 条示例分析 — 60 秒获得洞察',
+        desc: '初始化索阳示例公司并进入演示工作区。',
         action: 'seed_demo',
-      },
-      {
-        title: '一键运行 3 条示例分析 — 60 秒获得洞察',
-        desc: '自动依次运行营业分析、日常入账报销和报税报告生成。',
-        action: 'run_demo_insights',
       },
       {
         title: '营业分析',

@@ -34,6 +34,15 @@ export type PersistedRunState = {
   errorMessage?: string
 }
 
+const TERMINAL_RUN_STATUSES = new Set<PersistedRunState['status']>([
+  'complete',
+  'error',
+])
+
+function isTerminalRunStatus(status: PersistedRunState['status']): boolean {
+  return TERMINAL_RUN_STATUSES.has(status)
+}
+
 function encodeSessionKey(sessionKey: string): string {
   return encodeURIComponent(sessionKey || 'main')
 }
@@ -134,7 +143,7 @@ export async function appendRunText(
 ): Promise<PersistedRunState | null> {
   return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => ({
     ...run,
-    status: 'active',
+    status: isTerminalRunStatus(run.status) ? run.status : 'active',
     lastEventAt: Date.now(),
     assistantText: options?.replace ? text : `${run.assistantText}${text}`,
   }))
@@ -148,7 +157,7 @@ export async function setRunThinking(
 ): Promise<PersistedRunState | null> {
   return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => ({
     ...run,
-    status: 'active',
+    status: isTerminalRunStatus(run.status) ? run.status : 'active',
     lastEventAt: Date.now(),
     thinkingText,
   }))
@@ -165,12 +174,19 @@ export async function upsertRunToolCall(
     const idx = nextToolCalls.findIndex((entry) => entry.id === toolCall.id)
     if (idx >= 0) nextToolCalls[idx] = { ...nextToolCalls[idx], ...toolCall }
     else nextToolCalls.push(toolCall)
+    const nextStatus = isTerminalRunStatus(run.status)
+      ? run.status
+      : toolCall.phase === 'error'
+        ? 'error'
+        : 'active'
     return {
       ...run,
-      status: toolCall.phase === 'error' ? 'error' : 'active',
+      status: nextStatus,
       lastEventAt: Date.now(),
       toolCalls: nextToolCalls,
-      ...(toolCall.phase === 'error' && toolCall.result
+      ...(nextStatus === 'error' &&
+      toolCall.phase === 'error' &&
+      toolCall.result
         ? { errorMessage: toolCall.result }
         : {}),
     }
@@ -199,7 +215,10 @@ export async function markRunStatus(
 ): Promise<PersistedRunState | null> {
   return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => ({
     ...run,
-    status,
+    status:
+      isTerminalRunStatus(run.status) && !isTerminalRunStatus(status)
+        ? run.status
+        : status,
     lastEventAt: Date.now(),
     ...(errorMessage ? { errorMessage } : {}),
   }))

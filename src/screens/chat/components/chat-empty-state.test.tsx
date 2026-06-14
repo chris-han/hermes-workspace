@@ -47,7 +47,6 @@ describe('chat empty state prompt profiles', () => {
     expect(profile).toBe('smb_default')
     expect(categoriesForPromptProfile(profile)[0]?.examples.map((item) => item.title)).toEqual([
       '试用 索阳 示例公司 — 60 秒获得洞察',
-      '一键运行 3 条示例分析 — 60 秒获得洞察',
       '营业分析',
       '日常入账报销',
       '报税报告生成',
@@ -75,6 +74,7 @@ describe('chat empty state prompt profiles', () => {
     const markup = renderToStaticMarkup(<ChatEmptyState />)
 
     expect(markup).toContain('试用 索阳 示例公司 — 60 秒获得洞察')
-    expect(markup).toContain('一键运行 3 条示例分析 — 60 秒获得洞察')
+    expect(markup).toContain('初始化索阳示例公司并进入演示工作区。')
+    expect(markup).not.toContain('一键运行 3 条示例分析 — 60 秒获得洞察')
   })
 })

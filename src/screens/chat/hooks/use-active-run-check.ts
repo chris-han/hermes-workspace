@@ -41,14 +41,12 @@ export function useActiveRunCheck({
   sessionKey: string
   enabled: boolean
 }): void {
-  const hasCheckedRef = useRef(false)
-  const sessionKeyRef = useRef(sessionKey)
-  sessionKeyRef.current = sessionKey
+  const checkedSessionKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!enabled || !sessionKey || sessionKey === 'new') return
-    if (hasCheckedRef.current) return
-    hasCheckedRef.current = true
+    if (checkedSessionKeyRef.current === sessionKey) return
+    checkedSessionKeyRef.current = sessionKey
 
     const controller = new AbortController()
 
@@ -81,9 +79,4 @@ export function useActiveRunCheck({
       controller.abort()
     }
   }, [sessionKey, enabled])
-
-  // Reset check flag when session changes
-  useEffect(() => {
-    hasCheckedRef.current = false
-  }, [sessionKey])
 }

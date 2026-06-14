@@ -259,7 +259,9 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
           const store = useChatStore.getState()
           const streamingState =
             store.streamingState.get(activeSessionKeyRef.current) ?? null
-          const lastEventTimestamp = store.lastEventAt
+          const lastEventTimestamp = store.getLastEventAt(
+            activeSessionKeyRef.current,
+          )
           if (
             streamingState !== null ||
             (lastEventTimestamp > 0 &&

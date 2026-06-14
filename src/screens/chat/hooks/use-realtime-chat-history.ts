@@ -145,6 +145,10 @@ export function useRealtimeChatHistory({
     completedStreamingThinkingRef.current = ''
   }, [])
 
+  useEffect(() => {
+    clearCompletedStreaming()
+  }, [clearCompletedStreaming, effectiveSessionKey])
+
   const backfillHistory = useCallback(async () => {
     if (!effectiveSessionKey || effectiveSessionKey === 'new') return
     if (isBackfillingRef.current) return
@@ -384,7 +388,9 @@ export function useRealtimeChatHistory({
 
   const mergeHistoryMessages = useChatStore((s) => s.mergeHistoryMessages)
   const clearSession = useChatStore((s) => s.clearSession)
-  const lastEventAt = useChatStore((s) => s.lastEventAt)
+  const lastEventAt = useChatStore(
+    (s) => s.lastEventAtBySession.get(effectiveSessionKey) ?? 0,
+  )
   const clearRealtimeBuffer = useChatStore((s) => s.clearRealtimeBuffer)
   const realtimeMessages = useChatStore(
     (s) => s.realtimeMessages.get(effectiveSessionKey) ?? EMPTY_MESSAGES,

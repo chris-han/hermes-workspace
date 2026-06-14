@@ -104,6 +104,8 @@ type ChatState = {
   streamingState: Map<string, StreamingState>
   /** Timestamp of last received event */
   lastEventAt: number
+  /** Timestamp of last received event, keyed by sessionKey */
+  lastEventAtBySession: Map<string, number>
   /**
    * RunIds currently being handled by send-stream (the active send SSE).
    * Server-side dedup is the primary defense. This client-side set remains as
@@ -114,6 +116,7 @@ type ChatState = {
   // Actions
   setConnectionState: (state: ConnectionState, error?: string) => void
   processEvent: (event: ChatStreamEvent) => void
+  getLastEventAt: (sessionKey: string) => number
   getRealtimeMessages: (sessionKey: string) => Array<ChatMessage>
   getStreamingState: (sessionKey: string) => StreamingState | null
   clearSession: (sessionKey: string) => void
@@ -623,6 +626,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   realtimeMessages: new Map(),
   streamingState: new Map(),
   lastEventAt: 0,
+  lastEventAtBySession: new Map(),
   sendStreamRunIds: new Set(),
   waitingSessionKeys: _restoredWaiting.keys,
   waitingSessionMeta: _restoredWaiting.meta,
@@ -676,6 +680,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const state = get()
     const sessionKey = event.sessionKey
     const now = Date.now()
+    const markEventAt = () => {
+      const lastEventAtBySession = new Map(get().lastEventAtBySession)
+      lastEventAtBySession.set(sessionKey, now)
+      return { lastEventAt: now, lastEventAtBySession }
+    }
 
     // Skip ALL events for runs being handled by send-stream.
     // send-stream is the authoritative handler for active sends — chat-events
@@ -857,7 +866,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             status: undefined,
           }
           messages.set(sessionKey, sortMessagesChronologically(sessionMessages))
-          set({ realtimeMessages: messages, lastEventAt: now })
+          set({ realtimeMessages: messages, ...markEventAt() })
           break
         }
 
@@ -880,7 +889,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         if (duplicateIndex === -1) {
           sessionMessages.push(incomingMessage)
           messages.set(sessionKey, sortMessagesChronologically(sessionMessages))
-          set({ realtimeMessages: messages, lastEventAt: now })
+          set({ realtimeMessages: messages, ...markEventAt() })
         }
         break
       }
@@ -900,7 +909,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
 
         streamingMap.set(sessionKey, next)
-        set({ streamingState: streamingMap, lastEventAt: now })
+        set({ streamingState: streamingMap, ...markEventAt() })
         persistStreamingState(sessionKey, next)
 
         break
@@ -916,7 +925,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
 
         streamingMap.set(sessionKey, next)
-        set({ streamingState: streamingMap, lastEventAt: now })
+        set({ streamingState: streamingMap, ...markEventAt() })
         persistStreamingState(sessionKey, next)
         break
       }
@@ -935,7 +944,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
 
         streamingMap.set(sessionKey, next)
-        set({ streamingState: streamingMap, lastEventAt: now })
+        set({ streamingState: streamingMap, ...markEventAt() })
         persistStreamingState(sessionKey, next)
         break
       }
@@ -984,7 +993,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
 
         streamingMap.set(sessionKey, next)
-        set({ streamingState: streamingMap, lastEventAt: now })
+        set({ streamingState: streamingMap, ...markEventAt() })
         persistStreamingState(sessionKey, next)
         break
       }
@@ -1077,7 +1086,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
               return true
             if (
               completeText &&
-              assistantTextsEquivalent(completeText, extractMessageText(existing))
+              assistantTextsEquivalent(
+                completeText,
+                extractMessageText(existing),
+              )
             )
               return true
             return false
@@ -1100,7 +1112,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 return true
               if (
                 completeText &&
-                assistantTextsEquivalent(completeText, extractMessageText(existing))
+                assistantTextsEquivalent(
+                  completeText,
+                  extractMessageText(existing),
+                )
               )
                 return true
               return false
@@ -1125,7 +1140,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // DO NOT keep a stub here — it keeps isRealtimeStreaming=true which
         // injects an invisible streaming placeholder that causes a blank gap.
         streamingMap.delete(sessionKey)
-        set({ streamingState: streamingMap, lastEventAt: now })
+        set({ streamingState: streamingMap, ...markEventAt() })
         if (typeof sessionStorage !== 'undefined') {
           sessionStorage.removeItem(`hermes_streaming_${sessionKey}`)
         }
@@ -1138,6 +1153,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     return get().realtimeMessages.get(sessionKey) ?? []
   },
 
+  getLastEventAt: (sessionKey) => {
+    return get().lastEventAtBySession.get(sessionKey) ?? 0
+  },
+
   getStreamingState: (sessionKey) => {
     return get().streamingState.get(sessionKey) ?? null
   },
@@ -1147,7 +1166,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const streaming = new Map(get().streamingState)
     messages.delete(sessionKey)
     streaming.delete(sessionKey)
-    set({ realtimeMessages: messages, streamingState: streaming })
+    const lastEventAtBySession = new Map(get().lastEventAtBySession)
+    lastEventAtBySession.delete(sessionKey)
+    set({
+      realtimeMessages: messages,
+      streamingState: streaming,
+      lastEventAtBySession,
+    })
   },
 
   clearRealtimeBuffer: (sessionKey) => {

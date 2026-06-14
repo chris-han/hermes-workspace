@@ -18,6 +18,7 @@ function resetStoreState() {
     realtimeMessages: new Map(),
     streamingState: new Map(),
     lastEventAt: 0,
+    lastEventAtBySession: new Map(),
     sendStreamRunIds: new Set(),
     waitingSessionKeys: new Set(),
     waitingSessionMeta: {},
@@ -191,10 +192,39 @@ describe('chat-store mergeHistoryMessages', () => {
       },
     })
 
-    const realtimeMessages = useChatStore.getState().getRealtimeMessages(sessionKey)
+    const realtimeMessages = useChatStore
+      .getState()
+      .getRealtimeMessages(sessionKey)
     expect(realtimeMessages).toHaveLength(1)
     expect(textOf(realtimeMessages[0])).toBe(
       'Please complete the form.\n\nSubmit when finished.',
+    )
+  })
+
+  it('tracks event activity by session so unrelated sessions do not refresh active state', () => {
+    const store = useChatStore.getState()
+
+    store.processEvent({
+      type: 'chunk',
+      sessionKey: 'session-a',
+      text: 'A',
+    })
+
+    const sessionAEventAt = useChatStore.getState().getLastEventAt('session-a')
+    expect(sessionAEventAt).toBeGreaterThan(0)
+    expect(useChatStore.getState().getLastEventAt('session-b')).toBe(0)
+
+    store.processEvent({
+      type: 'chunk',
+      sessionKey: 'session-b',
+      text: 'B',
+    })
+
+    expect(useChatStore.getState().getLastEventAt('session-a')).toBe(
+      sessionAEventAt,
+    )
+    expect(useChatStore.getState().getLastEventAt('session-b')).toBeGreaterThan(
+      0,
     )
   })
 })

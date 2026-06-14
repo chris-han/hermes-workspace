@@ -8,6 +8,17 @@ import {
   getSemantierSessionKey,
   openSemantierSessionChatStream,
 } from '../../server/semantier-session-api'
+import {
+  appendRunText,
+  createPersistedRun,
+  markRunStatus,
+  setRunThinking,
+  upsertRunToolCall,
+} from '../../server/run-store'
+import {
+  WorkspaceAuthRequiredError,
+  resolveActiveWorkspaceRoot,
+} from '../../server/workspace-root'
 import type { WorkspaceStreamEvent } from '../../server/semantier-session-stream'
 
 const SESSION_BOOTSTRAP_KEYS = new Set(['main', 'new'])
@@ -130,6 +141,44 @@ export const Route = createFileRoute('/api/send-stream')({
             body.idempotencyKey.trim().length > 0
               ? body.idempotencyKey.trim()
               : sessionKey) || sessionKey
+          let workspaceRoot = ''
+          try {
+            const activeWorkspace = await resolveActiveWorkspaceRoot(
+              request.headers,
+            )
+            workspaceRoot = activeWorkspace.path
+            await createPersistedRun({
+              workspaceRoot,
+              runId,
+              sessionKey,
+              friendlyId: sessionKey,
+            })
+          } catch (error) {
+            if (error instanceof WorkspaceAuthRequiredError) {
+              return buildJsonError(error.message, 401)
+            }
+            return buildJsonError(asMessage(error), 500)
+          }
+
+          const markRun = async (
+            status:
+              | 'accepted'
+              | 'active'
+              | 'handoff'
+              | 'stalled'
+              | 'complete'
+              | 'error',
+            errorMessage?: string,
+          ) => {
+            if (!workspaceRoot) return
+            await markRunStatus(
+              workspaceRoot,
+              sessionKey,
+              runId,
+              status,
+              errorMessage,
+            )
+          }
 
           const encoder = new TextEncoder()
           const abortController = new AbortController()
@@ -149,11 +198,16 @@ export const Route = createFileRoute('/api/send-stream')({
               })
 
               try {
-                const upstream = await openSemantierSessionChatStream(request.headers, sessionKey, message, {
-                  model: requestedModel || undefined,
-                  systemMessage: requestedThinking || undefined,
-                  signal: abortController.signal,
-                })
+                const upstream = await openSemantierSessionChatStream(
+                  request.headers,
+                  sessionKey,
+                  message,
+                  {
+                    model: requestedModel || undefined,
+                    systemMessage: requestedThinking || undefined,
+                    signal: abortController.signal,
+                  },
+                )
                 const reader = upstream.body?.getReader()
                 if (!reader) {
                   throw new Error('No response body')
@@ -176,6 +230,7 @@ export const Route = createFileRoute('/api/send-stream')({
                     if (!frame) continue
 
                     if (frame.data === '[DONE]') {
+                      await markRun('complete')
                       push({
                         event: 'done',
                         data: {
@@ -191,23 +246,44 @@ export const Route = createFileRoute('/api/send-stream')({
                     if (frame.event === 'hermes.tool.progress') {
                       let payload: Record<string, unknown> = {}
                       try {
-                        payload = JSON.parse(frame.data) as Record<string, unknown>
+                        payload = JSON.parse(frame.data) as Record<
+                          string,
+                          unknown
+                        >
                       } catch {
                         continue
                       }
                       const status = readString(payload.status)
+                      const phase =
+                        status === 'completed'
+                          ? 'complete'
+                          : status === 'running'
+                            ? 'start'
+                            : 'progress'
+                      if (workspaceRoot) {
+                        await upsertRunToolCall(
+                          workspaceRoot,
+                          sessionKey,
+                          runId,
+                          {
+                            id:
+                              readString(payload.toolCallId) ||
+                              readString(payload.tool) ||
+                              'tool',
+                            phase,
+                            name: readString(payload.tool) || 'tool',
+                            preview: readString(payload.label),
+                          },
+                        )
+                      }
                       push({
                         event: 'tool',
                         data: {
-                          phase:
-                            status === 'completed'
-                              ? 'complete'
-                              : status === 'running'
-                                ? 'start'
-                                : 'progress',
+                          phase,
                           name: readString(payload.tool) || 'tool',
                           preview: readString(payload.label),
-                          toolCallId: readString(payload.toolCallId) || undefined,
+                          toolCallId:
+                            readString(payload.toolCallId) || undefined,
                         },
                       })
                       continue
@@ -215,7 +291,10 @@ export const Route = createFileRoute('/api/send-stream')({
 
                     let payload: Record<string, unknown> = {}
                     try {
-                      payload = JSON.parse(frame.data) as Record<string, unknown>
+                      payload = JSON.parse(frame.data) as Record<
+                        string,
+                        unknown
+                      >
                     } catch {
                       continue
                     }
@@ -235,12 +314,28 @@ export const Route = createFileRoute('/api/send-stream')({
                     const finishReason = readString(choice.finish_reason)
 
                     if (reasoning) {
+                      if (workspaceRoot) {
+                        await setRunThinking(
+                          workspaceRoot,
+                          sessionKey,
+                          runId,
+                          reasoning,
+                        )
+                      }
                       push({
                         event: 'thinking',
                         data: { text: reasoning, runId },
                       })
                     }
                     if (content) {
+                      if (workspaceRoot) {
+                        await appendRunText(
+                          workspaceRoot,
+                          sessionKey,
+                          runId,
+                          content,
+                        )
+                      }
                       push({
                         event: 'chunk',
                         data: { delta: content, runId },
@@ -248,6 +343,7 @@ export const Route = createFileRoute('/api/send-stream')({
                     }
 
                     if (finishReason && finishReason !== 'error') {
+                      await markRun('complete')
                       push({
                         event: 'done',
                         data: {
@@ -260,6 +356,7 @@ export const Route = createFileRoute('/api/send-stream')({
                       break
                     }
                     if (finishReason === 'error') {
+                      await markRun('error', 'Stream failed')
                       push({
                         event: 'done',
                         data: {
@@ -274,8 +371,12 @@ export const Route = createFileRoute('/api/send-stream')({
                     }
                   }
                 }
+                if (!finished && !abortController.signal.aborted) {
+                  await markRun('complete')
+                }
               } catch (error) {
                 if (!abortController.signal.aborted) {
+                  await markRun('error', asMessage(error))
                   push({
                     event: 'done',
                     data: {
@@ -293,6 +394,7 @@ export const Route = createFileRoute('/api/send-stream')({
               }
             },
             cancel() {
+              void markRun('error', 'Stream canceled')
               abortController.abort()
             },
           })

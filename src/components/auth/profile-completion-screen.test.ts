@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildIndustryOptions,
+  getProfileCompletionCopy,
   industryLabelForCode,
+  resolveAuthLocale,
   shouldShowProfileCompletion,
 } from './profile-completion-screen'
 
@@ -47,5 +49,12 @@ describe('shouldShowProfileCompletion', () => {
     expect(industryLabelForCode('construction')).toBe(
       '建筑工程与项目型服务',
     )
+  })
+
+  it('defaults signup copy to Chinese and supports explicit English', () => {
+    expect(resolveAuthLocale()).toBe('zh')
+    expect(resolveAuthLocale('de')).toBe('zh')
+    expect(getProfileCompletionCopy().title).toBe('完成你的资料')
+    expect(getProfileCompletionCopy('en').title).toBe('Finish Your Profile')
   })
 })

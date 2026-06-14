@@ -604,7 +604,7 @@ export function HermesOnboarding() {
                   try {
                     await ensureDefaultSmbOrganization()
                     persistOnboardingCompletion()
-                    window.location.href = '/chat/new?run_insights=1'
+                    window.location.href = '/chat/new?demo_walkthrough=1'
                   } catch (err) {
                     setDemoInsightsError(err instanceof Error ? err.message : '演示数据准备失败')
                     setDemoInsightsSeeding('error')

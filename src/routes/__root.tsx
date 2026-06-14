@@ -12,7 +12,6 @@ import { SearchModal } from '@/components/search/search-modal'
 import { TerminalShortcutListener } from '@/components/terminal-shortcut-listener'
 import { GlobalShortcutListener } from '@/components/global-shortcut-listener'
 import { WorkspaceShell } from '@/components/workspace-shell'
-import { MobilePromptTrigger } from '@/components/mobile-prompt/MobilePromptTrigger'
 import { Toaster } from '@/components/ui/toast'
 import { OnboardingTour } from '@/components/onboarding/onboarding-tour'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
@@ -388,7 +387,6 @@ function RootLayout() {
           <KeyboardShortcutsModal />
           {rootSurfaceState.showPostOnboardingOverlays ? (
             <>
-              <MobilePromptTrigger />
               <OnboardingTour />
             </>
           ) : null}

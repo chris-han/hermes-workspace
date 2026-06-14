@@ -4,13 +4,13 @@ import { Tabs as TabsPrimitive } from '@base-ui/react/tabs'
 
 import { cn } from '@/lib/utils'
 
-type TabsVariant = 'default' | 'underline'
+type TabsVariant = 'default' | 'line' | 'underline'
 
 function Tabs({ className, ...props }: TabsPrimitive.Root.Props) {
   return (
     <TabsPrimitive.Root
       className={cn(
-        'flex flex-col gap-2 data-[orientation=vertical]:flex-row',
+        'flex flex-col gap-2 overflow-visible data-[orientation=vertical]:flex-row',
         className,
       )}
       data-slot="tabs"
@@ -30,7 +30,7 @@ function TabsList({
   return (
     <TabsPrimitive.List
       className={cn(
-        'relative z-0 flex w-fit items-center justify-center gap-x-0.5 text-primary-600',
+        'relative z-0 flex w-fit items-center justify-center gap-x-0.5 text-primary-600 overflow-visible',
         'data-[orientation=vertical]:flex-col',
         variant === 'default'
           ? 'p-0.5 text-primary-600/80'
@@ -41,11 +41,11 @@ function TabsList({
       {...props}
     >
       {children}
-      <TabsPrimitive.Indicator
+        <TabsPrimitive.Indicator
         className={cn(
           '-translate-y-(--active-tab-bottom) absolute bottom-0 left-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) transition-[width,translate] duration-200 ease-in-out',
-          variant === 'underline'
-            ? 'data-[orientation=vertical]:-translate-x-px z-10 bg-primary-900 data-[orientation=horizontal]:h-0.5 data-[orientation=vertical]:w-0.5 data-[orientation=horizontal]:translate-y-px'
+          variant === 'line' || variant === 'underline'
+            ? 'data-[orientation=vertical]:-translate-x-px z-10 bg-current data-[orientation=horizontal]:h-[3px] data-[orientation=vertical]:w-0.5 data-[orientation=horizontal]:translate-y-px'
             : 'z-0 rounded-md bg-primary-200',
         )}
         data-slot="tab-indicator"

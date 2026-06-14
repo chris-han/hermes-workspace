@@ -1,22 +1,25 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
-
-vi.mock('@/lib/semantier-auth', () => ({
-  useSemantierAuthStatus: () => ({
-    data: null,
-  }),
-}))
-
-vi.mock('@/lib/organization-membership', () => ({
-  ensureDefaultSmbOrganization: vi.fn(),
-}))
-
 import {
   ChatEmptyState,
   capabilityChipsForPromptProfile,
   categoriesForPromptProfile,
   resolveChatEmptyStatePromptProfile,
 } from './chat-empty-state'
+
+vi.mock('@/lib/semantier-auth', () => ({
+  useSemantierAuthStatus: () => ({
+    data: {
+      organization_id: 'org_smb_cn',
+      dataset_type: 'DEFAULT_REALISTIC_SAMPLE',
+      industry_code: null,
+    },
+  }),
+}))
+
+vi.mock('@/lib/organization-membership', () => ({
+  ensureDefaultSmbOrganization: vi.fn(),
+}))
 
 describe('chat empty state prompt profiles', () => {
   it('uses the apparel trade walkthrough for the apparel demo organization', () => {
@@ -42,6 +45,14 @@ describe('chat empty state prompt profiles', () => {
     })
 
     expect(profile).toBe('smb_default')
+    expect(categoriesForPromptProfile(profile)[0]?.examples.map((item) => item.title)).toEqual([
+      '试用 索阳 示例公司 — 60 秒获得洞察',
+      '一键运行 3 条示例分析 — 60 秒获得洞察',
+      '营业分析',
+      '日常入账报销',
+      '报税报告生成',
+      '合规报告生成',
+    ])
     expect(capabilityChipsForPromptProfile(profile)).toContain(
       'Bootstrap Demo Dataset',
     )
@@ -60,15 +71,10 @@ describe('chat empty state prompt profiles', () => {
     )
   })
 
-  it('renders the insights action when runtime props are provided', () => {
-    const markup = renderToStaticMarkup(
-      <ChatEmptyState
-        onRunInsights={() => {}}
-        isRunningInsights
-      />,
-    )
+  it('renders the demo walkthrough actions inside the walkthrough cards', () => {
+    const markup = renderToStaticMarkup(<ChatEmptyState />)
 
-    expect(markup).toContain('正在生成洞察...')
-    expect(markup).toContain('disabled')
+    expect(markup).toContain('试用 索阳 示例公司 — 60 秒获得洞察')
+    expect(markup).toContain('一键运行 3 条示例分析 — 60 秒获得洞察')
   })
 })

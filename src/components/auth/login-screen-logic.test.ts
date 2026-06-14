@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  getLoginScreenCopy,
+  resolveDefaultLoginMethod,
   resolvePasswordLoginEndpoint,
+  resolveAuthLocale,
   shouldPollWeixinLoginStatus,
   WEIXIN_LOGIN_POLL_INTERVAL_MS,
 } from './login-screen'
@@ -33,5 +36,28 @@ describe('resolvePasswordLoginEndpoint', () => {
 
   it('keeps the local route only for local workspace auth mode', () => {
     expect(resolvePasswordLoginEndpoint('local')).toBe('/api/auth')
+  })
+})
+
+describe('resolveDefaultLoginMethod', () => {
+  it('prefers Weixin when both login methods are available', () => {
+    expect(resolveDefaultLoginMethod(true, true)).toBe('weixin')
+  })
+
+  it('falls back to password when Weixin is unavailable', () => {
+    expect(resolveDefaultLoginMethod(false, true)).toBe('password')
+  })
+})
+
+describe('auth locale defaults', () => {
+  it('defaults to Chinese when locale is missing or unsupported', () => {
+    expect(resolveAuthLocale()).toBe('zh')
+    expect(resolveAuthLocale('fr')).toBe('zh')
+    expect(getLoginScreenCopy().weixinSignIn).toBe('使用微信登录')
+  })
+
+  it('uses English copy only when explicitly selected', () => {
+    expect(resolveAuthLocale('en')).toBe('en')
+    expect(getLoginScreenCopy('en').weixinSignIn).toBe('Sign In With Weixin')
   })
 })

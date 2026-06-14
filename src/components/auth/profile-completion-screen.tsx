@@ -22,6 +22,83 @@ type ProfileCompletionResponse = {
   detail?: string
 }
 
+type AuthLocale = 'zh' | 'en'
+
+type ProfileCompletionCopy = {
+  title: string
+  subtitle: string
+  displayNamePlaceholder: string
+  loginNamePlaceholder: string
+  passwordPlaceholder: string
+  confirmPasswordPlaceholder: string
+  industryLabel: string
+  loadingOrganizations: string
+  noOrganizations: string
+  industryHint: string
+  saveButton: string
+  savingButton: string
+  continueWithoutPasswordButton: string
+  loadOrganizationsError: string
+  failedToComplete: string
+  chooseIndustryError: string
+}
+
+const PROFILE_COMPLETION_COPY: Record<AuthLocale, ProfileCompletionCopy> = {
+  zh: {
+    title: '完成你的资料',
+    subtitle:
+      '填写姓名，选择行业演示数据集，并可选设置当前工作区的密码兜底登录。',
+    displayNamePlaceholder: '显示名称',
+    loginNamePlaceholder: '登录名',
+    passwordPlaceholder: '密码（可选）',
+    confirmPasswordPlaceholder: '确认密码',
+    industryLabel: '行业演示数据集',
+    loadingOrganizations: '正在加载演示组织...',
+    noOrganizations: '暂无可用的预置演示组织',
+    industryHint:
+      '注册后会进入 /chat/new，并按所选组织上下文加载演示提示词。',
+    saveButton: '保存并继续',
+    savingButton: '正在保存...',
+    continueWithoutPasswordButton: '跳过密码并继续',
+    loadOrganizationsError:
+      '加载预置演示组织失败，请先运行 bootstrap 数据集再进行新用户引导。',
+    failedToComplete: '完成资料设置失败。',
+    chooseIndustryError: '请选择一个行业以加载匹配的演示数据集。',
+  },
+  en: {
+    title: 'Finish Your Profile',
+    subtitle:
+      'Add a name, choose your industry demo dataset, and optionally set a password fallback for this workspace.',
+    displayNamePlaceholder: 'Display name',
+    loginNamePlaceholder: 'Login name',
+    passwordPlaceholder: 'Password (optional)',
+    confirmPasswordPlaceholder: 'Confirm password',
+    industryLabel: 'Industry demo dataset',
+    loadingOrganizations: 'Loading demo organizations...',
+    noOrganizations: 'No seeded demo organizations available',
+    industryHint:
+      'Signup lands in /chat/new and loads demo prompts for the selected organization context.',
+    saveButton: 'Save And Continue',
+    savingButton: 'Saving...',
+    continueWithoutPasswordButton: 'Continue Without Password',
+    loadOrganizationsError:
+      'Failed to load seeded demo organizations. Run the bootstrap dataset before onboarding new users.',
+    failedToComplete: 'Failed to complete profile setup.',
+    chooseIndustryError:
+      'Choose an industry to load the matching demo dataset.',
+  },
+}
+
+export function resolveAuthLocale(locale?: string | null): AuthLocale {
+  return locale === 'en' ? 'en' : 'zh'
+}
+
+export function getProfileCompletionCopy(
+  locale?: string | null,
+): ProfileCompletionCopy {
+  return PROFILE_COMPLETION_COPY[resolveAuthLocale(locale)]
+}
+
 export function industryLabelForCode(industryCode: string): string {
   switch (industryCode) {
     case 'apparel_customization_trade':
@@ -65,6 +142,8 @@ export function ProfileCompletionScreen({
   currentName,
 }: ProfileCompletionScreenProps) {
   const demoProfilesQuery = useDemoOrganizationProfiles()
+  const [locale, setLocale] = useState<AuthLocale>(resolveAuthLocale())
+  const copy = getProfileCompletionCopy(locale)
   const [displayName, setDisplayName] = useState(currentName ?? '')
   const [loginName, setLoginName] = useState('')
   const [password, setPassword] = useState('')
@@ -84,7 +163,7 @@ export function ProfileCompletionScreen({
   async function submitCompletion(e?: FormEvent, skip = false) {
     e?.preventDefault()
     if (industryOptions.length > 0 && !industryCode) {
-      setError('Choose an industry to load the matching demo dataset.')
+      setError(copy.chooseIndustryError)
       return
     }
     setLoading(true)
@@ -114,7 +193,7 @@ export function ProfileCompletionScreen({
       setError(
         err instanceof Error
           ? err.message
-          : 'Failed to complete profile setup.',
+          : copy.failedToComplete,
       )
       setLoading(false)
     }
@@ -127,11 +206,39 @@ export function ProfileCompletionScreen({
           <h1 className="brand-wordmark text-2xl font-bold tracking-tight text-foreground">
             semantier
           </h1>
+          <div className="mt-4 flex justify-center">
+            <div className="inline-flex rounded-button border border-border bg-background p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setLocale('zh')}
+                className={`rounded-button px-2.5 py-1 transition-colors ${
+                  locale === 'zh'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                aria-pressed={locale === 'zh'}
+              >
+                中文
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocale('en')}
+                className={`rounded-button px-2.5 py-1 transition-colors ${
+                  locale === 'en'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                aria-pressed={locale === 'en'}
+              >
+                English
+              </button>
+            </div>
+          </div>
           <h2 className="mt-5 text-lg font-semibold text-foreground">
-            Finish Your Profile
+            {copy.title}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Add a name, choose your industry demo dataset, and optionally set a password fallback for this workspace.
+            {copy.subtitle}
           </p>
         </div>
 
@@ -140,7 +247,7 @@ export function ProfileCompletionScreen({
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Display name"
+            placeholder={copy.displayNamePlaceholder}
             className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
             disabled={loading}
           />
@@ -148,7 +255,7 @@ export function ProfileCompletionScreen({
             type="text"
             value={loginName}
             onChange={(e) => setLoginName(e.target.value)}
-            placeholder="Login name"
+            placeholder={copy.loginNamePlaceholder}
             className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
             disabled={loading}
             autoCapitalize="off"
@@ -158,7 +265,7 @@ export function ProfileCompletionScreen({
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password (optional)"
+            placeholder={copy.passwordPlaceholder}
             className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
             disabled={loading}
           />
@@ -166,13 +273,13 @@ export function ProfileCompletionScreen({
             type="password"
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
-            placeholder="Confirm password"
+            placeholder={copy.confirmPasswordPlaceholder}
             className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
             disabled={loading}
           />
           <label className="block space-y-1 text-left">
             <span className="text-sm font-medium text-foreground">
-              Industry demo dataset
+              {copy.industryLabel}
             </span>
             <select
               value={industryCode}
@@ -183,8 +290,8 @@ export function ProfileCompletionScreen({
               {industryOptions.length === 0 ? (
                 <option value="">
                   {demoProfilesQuery.isLoading
-                    ? 'Loading demo organizations...'
-                    : 'No seeded demo organizations available'}
+                    ? copy.loadingOrganizations
+                    : copy.noOrganizations}
                 </option>
               ) : (
                 industryOptions.map((option) => (
@@ -195,7 +302,7 @@ export function ProfileCompletionScreen({
               )}
             </select>
             <span className="block text-xs text-muted-foreground">
-              Signup lands in <code>/chat/new</code> and loads demo prompts for the selected organization context.
+              {copy.industryHint}
             </span>
           </label>
 
@@ -204,7 +311,7 @@ export function ProfileCompletionScreen({
             disabled={loading || demoProfilesQuery.isLoading}
             className="w-full rounded-button bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? 'Saving...' : 'Save And Continue'}
+            {loading ? copy.savingButton : copy.saveButton}
           </button>
           <button
             type="button"
@@ -212,13 +319,13 @@ export function ProfileCompletionScreen({
             disabled={loading || demoProfilesQuery.isLoading}
             className="w-full rounded-button border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-muted hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Continue Without Password
+            {copy.continueWithoutPasswordButton}
           </button>
         </form>
 
         {demoProfilesQuery.isError ? (
           <div className="mt-4 rounded-md border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning">
-            Failed to load seeded demo organizations. Run the bootstrap dataset before onboarding new users.
+            {copy.loadOrganizationsError}
           </div>
         ) : null}
         {error ? (

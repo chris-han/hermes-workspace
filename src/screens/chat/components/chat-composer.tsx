@@ -1900,6 +1900,7 @@ function ChatComposerComponent({
         isLoading={isLoading}
         disabled={disabled}
         maxHeight={isMobileViewport ? 120 : 240}
+        data-tour="chat-composer-input"
         className={cn(
           'relative z-50 transition-all duration-300',
           !isMobileViewport && '!rounded-2xl',
@@ -2065,6 +2066,7 @@ function ChatComposerComponent({
                     onClick={handleSubmit}
                     disabled={submitDisabled}
                     aria-label="Send message"
+                    data-tour="chat-composer-send"
                     className="size-9 rounded-full theme-accent-fill flex items-center justify-center transition-all duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                   >
                     <HugeiconsIcon
@@ -2124,6 +2126,7 @@ function ChatComposerComponent({
                     onClick={handleSubmit}
                     disabled={submitDisabled}
                     aria-label="Send message"
+                    data-tour="chat-composer-send"
                     className="size-9 rounded-full theme-accent-fill flex items-center justify-center transition-all duration-150 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <HugeiconsIcon
@@ -2798,6 +2801,7 @@ function ChatComposerComponent({
                         onClick={handleSubmit}
                         disabled={submitDisabled}
                         size="icon-sm"
+                        data-tour="chat-composer-send"
                         className="rounded-full theme-accent-fill hover:opacity-90"
                         aria-label="Send message"
                       >

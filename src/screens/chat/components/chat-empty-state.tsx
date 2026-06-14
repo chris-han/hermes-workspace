@@ -11,12 +11,12 @@ import { motion } from 'motion/react'
 
 import { useSemantierAuthStatus } from '@/lib/semantier-auth'
 import { ensureDefaultSmbOrganization } from '@/lib/organization-membership'
-import DemoInsightsRunner from '@/components/demo-insights-runner'
 
 type Example = {
   title: string
   desc: string
-  prompt: string
+  prompt?: string
+  action?: 'seed_demo' | 'run_demo_insights'
 }
 
 type Category = {
@@ -144,6 +144,16 @@ const SMB_DEMO_CATEGORIES: Array<Category> = [
     accent: 'var(--theme-accent)',
     examples: [
       {
+        title: '试用 索阳 示例公司 — 60 秒获得洞察',
+        desc: '一键运行 3 条示例分析 — 60 秒获得洞察',
+        action: 'seed_demo',
+      },
+      {
+        title: '一键运行 3 条示例分析 — 60 秒获得洞察',
+        desc: '自动依次运行营业分析、日常入账报销和报税报告生成。',
+        action: 'run_demo_insights',
+      },
+      {
         title: '营业分析',
         desc: '查看项目回款、毛利结构、现金压力和经营异常点。',
         prompt:
@@ -210,8 +220,7 @@ const SHORT_VIEWPORT_HEIGHT = 760
 type ChatEmptyStateProps = {
   onSuggestionClick?: (prompt: string) => void
   compact?: boolean
-  onRunInsights?: () => void
-  isRunningInsights?: boolean
+  onStartDemoWalkthrough?: () => void
 }
 
 export function resolveChatEmptyStatePromptProfile(params: {
@@ -220,7 +229,7 @@ export function resolveChatEmptyStatePromptProfile(params: {
   industryCode?: string | null
 }): PromptProfile {
   const organizationId = params.organizationId?.trim()
-  const datasetType = params.datasetType?.trim()?.toUpperCase()
+  const datasetType = params.datasetType?.trim().toUpperCase()
   const industryCode = params.industryCode?.trim()
   if (
     organizationId === 'org_demo_apparel_trade_cn' ||
@@ -262,10 +271,8 @@ export function capabilityChipsForPromptProfile(
 export function ChatEmptyState({
   onSuggestionClick,
   compact = false,
-  onRunInsights,
-  isRunningInsights = false,
+  onStartDemoWalkthrough,
 }: ChatEmptyStateProps) {
-  const [showDemoRunner, setShowDemoRunner] = useState(false)
   const authQuery = useSemantierAuthStatus()
   const [isShortViewport, setIsShortViewport] = useState(false)
   const [showAllCategories, setShowAllCategories] = useState(false)
@@ -303,12 +310,33 @@ export function ChatEmptyState({
     setSeedError('')
     try {
       await ensureDefaultSmbOrganization()
-      window.location.href = '/chat/new'
+      window.location.href = '/chat/new?demo_walkthrough=1'
     } catch (err) {
       setSeedError(err instanceof Error ? err.message : '演示数据准备失败')
     } finally {
       setSeedingDemo(false)
     }
+  }
+
+  function handleExampleSelect(example: Example) {
+    if (example.action === 'seed_demo') {
+      void handleTrySuoYang()
+      return
+    }
+    if (example.action === 'run_demo_insights') {
+      onStartDemoWalkthrough?.()
+      return
+    }
+    if (example.prompt) {
+      onSuggestionClick?.(example.prompt)
+    }
+  }
+
+  function resolveExampleTitle(example: Example) {
+    if (example.action === 'seed_demo' && seedingDemo) {
+      return '正在准备演示...'
+    }
+    return example.title
   }
 
   return (
@@ -343,36 +371,8 @@ export function ChatEmptyState({
         >
           Begin a session
         </h2>
-        <div className="mt-4">
-          <button
-            onClick={handleTrySuoYang}
-            className="rounded-xl bg-accent-500 px-4 py-2 text-sm font-semibold text-white"
-          >
-            {seedingDemo ? '正在准备演示...' : '试用 索阳 示例公司 — 60 秒获得洞察'}
-          </button>
-          {seedError ? (
-            <p className="mt-2 text-xs text-red-400">{seedError}</p>
-          ) : null}
-
-          <div className="mt-3">
-            <button
-              onClick={() => setShowDemoRunner(true)}
-              className="rounded-xl border px-4 py-2 text-sm font-semibold"
-              style={{ borderColor: 'var(--theme-border)' }}
-              disabled={isRunningInsights}
-            >
-              {isRunningInsights ? '正在生成洞察...' : '一键运行 3 条示例分析 — 60 秒获得洞察'}
-            </button>
-          </div>
-        </div>
-
-        {showDemoRunner ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setShowDemoRunner(false)} />
-            <div className="relative z-10">
-              <DemoInsightsRunner onClose={() => setShowDemoRunner(false)} />
-            </div>
-          </div>
+        {seedError ? (
+          <p className="mt-4 text-xs text-red-400">{seedError}</p>
         ) : null}
 
         {!compact && (
@@ -434,7 +434,8 @@ export function ChatEmptyState({
                     <button
                       key={example.title}
                       type="button"
-                      onClick={() => onSuggestionClick?.(example.prompt)}
+                      onClick={() => handleExampleSelect(example)}
+                      disabled={example.action === 'seed_demo' && seedingDemo}
                       className="block w-full cursor-pointer rounded-lg px-3 py-2.5 text-left transition-all theme-border-1"
                       style={{
                         background: 'var(--theme-card)',
@@ -453,7 +454,7 @@ export function ChatEmptyState({
                         className="flex items-center gap-2 text-[13px] font-medium leading-snug sm:text-sm"
                         style={{ color: 'var(--theme-text)' }}
                       >
-                        {example.title}
+                        {resolveExampleTitle(example)}
                         <HugeiconsIcon
                           icon={ArrowUpRight01Icon as any}
                           size={12}

@@ -28,6 +28,7 @@ import {
 import { ChatHeader } from './components/chat-header'
 import { ChatMessageList } from './components/chat-message-list'
 import { ChatEmptyState } from './components/chat-empty-state'
+import { ChatDemoWalkthrough } from './components/chat-demo-walkthrough'
 import { ChatComposer } from './components/chat-composer'
 import { ConnectionStatusMessage } from './components/connection-status-message'
 import {
@@ -56,6 +57,11 @@ import {
   CHAT_PENDING_COMMAND_STORAGE_KEY,
   CHAT_RUN_COMMAND_EVENT,
 } from './chat-events'
+import {
+  DOCX_MIME_TYPE,
+  fallbackUploadApiDocumentName,
+  isUploadApiDocumentMimeType,
+} from './attachment-documents'
 import type {
   ChatComposerAttachment,
   ChatComposerHandle,
@@ -89,16 +95,9 @@ import { ErrorToastContainer, showErrorToast } from '@/components/error-toast'
 // ContextMeter removed — ContextBar (PR #32) replaces it
 import { useChatStore } from '@/stores/chat-store'
 import { useResearchCard } from '@/hooks/use-research-card'
-import { runStreamOnce } from '@/lib/insights-runner'
-import { ensureDefaultSmbOrganization } from '@/lib/organization-membership'
 // MOBILE_TAB_BAR_OFFSET removed — tab bar always hidden in chat
 import { useTapDebug } from '@/hooks/use-tap-debug'
 import { useChatMode } from '@/hooks/use-chat-mode'
-import {
-  DOCX_MIME_TYPE,
-  fallbackUploadApiDocumentName,
-  isUploadApiDocumentMimeType,
-} from './attachment-documents'
 
 export let _localModelOverride = ''
 export function setLocalModelOverride(model: string) {
@@ -106,6 +105,8 @@ export function setLocalModelOverride(model: string) {
 }
 // Activity store removed — not used in Hermes Workspace
 const _noopSetActivity = (_s: string) => {}
+const FIRST_DEMO_WALKTHROUGH_PROMPT =
+  '基于当前组织的 demo dataset，生成营业分析，重点说明收入结构、项目毛利、回款节奏、现金压力和需要关注的经营异常。'
 
 type ChatScreenProps = {
   activeFriendlyId: string
@@ -632,7 +633,8 @@ export function ChatScreen({
   >([])
   const [isCompacting, setIsCompacting] = useState(false)
   const [researchResetKey, setResearchResetKey] = useState(0)
-  const [isRunningInsights, setIsRunningInsights] = useState(false)
+  const [isDemoWalkthroughRunning, setIsDemoWalkthroughRunning] =
+    useState(false)
   // Per-session thinking level — stored in sessionStorage keyed by session
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>(() => {
     if (typeof window === 'undefined') return 'low'
@@ -2450,6 +2452,12 @@ export function ChatScreen({
       const trimmedBody = body.trim()
       if (trimmedBody.length === 0 && attachments.length === 0) return
       if (attachments.length === 0 && handleUiSlashCommand(trimmedBody)) return
+      if (
+        isDemoWalkthroughRunning &&
+        trimmedBody === FIRST_DEMO_WALKTHROUGH_PROMPT
+      ) {
+        setIsDemoWalkthroughRunning(false)
+      }
 
       // Deduplicate sends with identical content within a 500ms window.
       // This prevents double-fire from paste events that trigger multiple send paths.
@@ -2564,6 +2572,7 @@ export function ChatScreen({
       queryClient,
       resolvedSessionKey,
       handleUiSlashCommand,
+      isDemoWalkthroughRunning,
     ],
   )
 
@@ -2674,6 +2683,36 @@ export function ChatScreen({
     composerHandleRef.current?.insertText(reference)
   }, [])
 
+  const startDemoWalkthrough = useCallback(() => {
+    composerHandleRef.current?.setValue(`${FIRST_DEMO_WALKTHROUGH_PROMPT} `)
+
+    if (typeof window === 'undefined') {
+      setIsDemoWalkthroughRunning(true)
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      const composerTarget = document.querySelector(
+        '[data-tour="chat-composer-input"]',
+      )
+      if (composerTarget instanceof HTMLElement) {
+        composerTarget.scrollIntoView({
+          block: 'center',
+          behavior: 'smooth',
+        })
+      }
+
+      const promptTarget = document.querySelector(
+        '[data-tour="chat-composer-input"] textarea',
+      )
+      if (promptTarget instanceof HTMLTextAreaElement) {
+        promptTarget.focus({ preventScroll: true })
+      }
+
+      setIsDemoWalkthroughRunning(true)
+    })
+  }, [])
+
   const historyLoading =
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runtime safety
     (historyQuery.isLoading && !historyQuery.data) || isRedirecting
@@ -2750,66 +2789,22 @@ export function ChatScreen({
       window.removeEventListener('hermes:chat-agent-details', handler)
   }, [])
 
-  async function runThreePromptInsights() {
-    setIsRunningInsights(true)
-    try {
-      await ensureDefaultSmbOrganization()
-      const { sessionKey, friendlyId } = await ensureChatSession('索阳示例：三点洞察')
-      const prompts = [
-        '基于当前组织的 demo dataset，生成营业分析，重点说明收入结构、项目毛利、回款节奏、现金压力和需要关注的经营异常。',
-        '基于当前组织的 demo dataset，演示日常入账报销流程，给出费用分类、建议会计分录、需要补充的凭证材料和风险提示。',
-        '基于当前组织的 demo dataset，生成报税报告，汇总增值税、企业所得税相关准备事项，并说明本期重点关注项目。',
-      ]
-
-      const results: Array<string> = []
-      for (const p of prompts) {
-        try {
-          const out = await runStreamOnce({ sessionKey, friendlyId, message: p })
-          results.push(out)
-        } catch (err) {
-          results.push(err instanceof Error ? err.message : String(err))
-        }
-      }
-
-      const bullets = results.map((r) => {
-        const t = String(r || '').trim()
-        if (!t) return '无洞察'
-        const firstLine = t.split('\n').find((l) => l.trim().length > 0) || t
-        const match = firstLine.match(/[^。！？.!?；;]+[。！？.!?；;]?/)
-        return match ? match[0].trim() : firstLine.slice(0, 200)
-      })
-
-      const summaryText = `三点洞察（索阳示例公司）\n\n1. ${bullets[0]}\n\n2. ${bullets[1]}\n\n3. ${bullets[2]}`
-
-      appendHistoryMessage(queryClient, activeFriendlyId || 'new', sessionKey, {
-        role: 'assistant',
-        content: [{ type: 'text' as const, text: summaryText }],
-        timestamp: Date.now(),
-        __streamingStatus: 'complete',
-      })
-
-      try {
-        const url = new URL(window.location.href)
-        url.searchParams.delete('run_insights')
-        window.history.replaceState({}, '', url.toString())
-      } catch {}
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      toast(`生成洞察失败: ${msg}`)
-    } finally {
-      setIsRunningInsights(false)
-    }
-  }
-
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
       const params = new URLSearchParams(window.location.search)
-      if (params.get('run_insights')) {
-        void runThreePromptInsights()
+      if (params.get('demo_walkthrough') || params.get('run_insights')) {
+        params.delete('demo_walkthrough')
+        params.delete('run_insights')
+        const url = new URL(window.location.href)
+        url.search = params.toString()
+        window.history.replaceState({}, '', url.toString())
+        window.setTimeout(() => {
+          startDemoWalkthrough()
+        }, 150)
       }
     } catch {}
-  }, [])
+  }, [startDemoWalkthrough])
 
   return (
     <div
@@ -2955,10 +2950,7 @@ export function ChatScreen({
                   onSuggestionClick={(prompt) => {
                     composerHandleRef.current?.setValue(prompt + ' ')
                   }}
-                  onRunInsights={() => {
-                    void runThreePromptInsights()
-                  }}
-                  isRunningInsights={isRunningInsights}
+                  onStartDemoWalkthrough={startDemoWalkthrough}
                 />
               }
               notice={null}
@@ -3014,6 +3006,10 @@ export function ChatScreen({
           ) : null}
         </main>
       </div>
+      <ChatDemoWalkthrough
+        run={isDemoWalkthroughRunning}
+        onClose={() => setIsDemoWalkthroughRunning(false)}
+      />
       {!compact && !hideUi && !isMobile && !isFocusMode && <TerminalPanel />}
       <InspectorPanel />
 

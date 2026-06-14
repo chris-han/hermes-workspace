@@ -18,6 +18,13 @@ import {
 } from '@hugeicons/core-free-icons'
 import { CreateJobDialog } from './create-job-dialog'
 import { EditJobDialog } from './edit-job-dialog'
+import {
+  DialogRoot,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from '@/components/ui/dialog'
 import type { HermesJob } from '@/lib/jobs-api'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
@@ -105,7 +112,7 @@ function JobCard({
   onPause: (id: string) => void
   onResume: (id: string) => void
   onTrigger: (id: string) => void
-  onDelete: (id: string) => void
+  onDelete: () => void
   onEdit: (job: HermesJob) => void
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -220,7 +227,7 @@ function JobCard({
             />
           </button>
           <button
-            onClick={() => onDelete(job.id)}
+            onClick={() => onDelete()}
             className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title="Delete"
           >
@@ -295,11 +302,12 @@ export function JobsScreen() {
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [editingJob, setEditingJob] = useState<HermesJob | null>(null)
+  const [deletingJob, setDeletingJob] = useState<HermesJob | null>(null)
 
   const jobsQuery = useQuery({
     queryKey: QUERY_KEY,
     queryFn: fetchJobs,
-    refetchInterval: 30_000,
+    refetchInterval: 5_000,
   })
 
   const pauseMutation = useMutation({
@@ -490,11 +498,7 @@ export function JobsScreen() {
                   onResume={(id) => resumeMutation.mutate(id)}
                   onTrigger={(id) => triggerMutation.mutate(id)}
                   onEdit={(job) => setEditingJob(job)}
-                  onDelete={(id) => {
-                    if (confirm(`Delete job "${job.name}"?`)) {
-                      deleteMutation.mutate(id)
-                    }
-                  }}
+                  onDelete={() => setDeletingJob(job)}
                 />
               ))}
             </AnimatePresence>
@@ -522,6 +526,41 @@ export function JobsScreen() {
           }}
           isSubmitting={updateMutation.isPending}
         />
+        <DialogRoot
+          open={deletingJob !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeletingJob(null)
+          }}
+        >
+          <DialogContent>
+            <div className="p-5">
+              <DialogTitle className="mb-2 text-sm font-semibold">
+                Delete job
+              </DialogTitle>
+              <DialogDescription className="mb-4 text-xs">
+                Delete &ldquo;{deletingJob?.name || '(unnamed)'}&rdquo;? This
+                cannot be undone.
+              </DialogDescription>
+              <div className="flex justify-end gap-2">
+                <DialogClose className="px-3 py-1.5 text-xs">
+                  Cancel
+                </DialogClose>
+                <button
+                  onClick={() => {
+                    if (deletingJob) {
+                      deleteMutation.mutate(deletingJob.id)
+                      setDeletingJob(null)
+                    }
+                  }}
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                  style={{ background: 'var(--theme-danger)' }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </DialogRoot>
       </div>
     </div>
   )

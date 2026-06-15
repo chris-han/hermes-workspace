@@ -1922,6 +1922,7 @@ function MessageItemComponent({
             <button
               type="button"
               onClick={() => onFillInput(value)}
+              title={`Fill chat box with: ${value}`}
               className="inline p-0 align-baseline font-medium text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
             >
               {children}

@@ -18,6 +18,8 @@ export const Route = createFileRoute('/api/skills/hub-search')({
             Math.max(1, Number(url.searchParams.get('limit') || '20')),
           )
           const source = (url.searchParams.get('source') || 'all').trim()
+          const marketplaceUrl =
+            (url.searchParams.get('marketplace_url') || '').trim()
 
           if (!query) {
             return json({ results: [], source: 'idle' })
@@ -33,7 +35,7 @@ export const Route = createFileRoute('/api/skills/hub-search')({
 
           const { stdout } = await execFileAsync(
             'python3',
-            [scriptPath, query, String(limit), source],
+            [scriptPath, query, String(limit), source, marketplaceUrl],
             {
               timeout: 30_000,
               maxBuffer: 1024 * 1024 * 2,

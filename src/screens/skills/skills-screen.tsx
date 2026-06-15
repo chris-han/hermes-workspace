@@ -406,6 +406,44 @@ function buildInstallConfigPayload(
   return payload
 }
 
+function readMarketplaceUrlFromConfig(payload: unknown): string {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return ''
+  }
+
+  const root = payload as Record<string, unknown>
+  const skills = root.skills
+  if (!skills || typeof skills !== 'object' || Array.isArray(skills)) {
+    return ''
+  }
+
+  const value = (skills as Record<string, unknown>).marketplace_url
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function normalizeInstallIdentifier(rawValue: string): string {
+  const value = rawValue.trim()
+  if (!value) return ''
+
+  if (/^https?:\/\/github\.com\//i.test(value)) {
+    const stripped = value
+      .replace(/^https?:\/\/github\.com\//i, '')
+      .replace(/\.git$/i, '')
+      .replace(/^\/+|\/+$/g, '')
+    if (stripped) return stripped
+  }
+
+  if (/^git@github\.com:/i.test(value)) {
+    const stripped = value
+      .replace(/^git@github\.com:/i, '')
+      .replace(/\.git$/i, '')
+      .replace(/^\/+|\/+$/g, '')
+    if (stripped) return stripped
+  }
+
+  return value
+}
+
 export function SkillsScreen() {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<SkillsTab>('installed')
@@ -433,6 +471,9 @@ export function SkillsScreen() {
   const [installConfigValues, setInstallConfigValues] = useState<
     Record<string, string>
   >({})
+  const [marketplaceUrl, setMarketplaceUrl] = useState('')
+  const [marketplaceUrlDraft, setMarketplaceUrlDraft] = useState('')
+  const [directInstallIdentifier, setDirectInstallIdentifier] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
 
   const installConfigSchema = useMemo(
@@ -529,14 +570,41 @@ export function SkillsScreen() {
     },
   })
 
+  const marketplaceConfigQuery = useQuery({
+    queryKey: ['skills-marketplace-config'],
+    queryFn: async function fetchMarketplaceConfig(): Promise<string> {
+      const response = await fetch('/api/config-get')
+      const payload = (await response.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+        payload?: unknown
+      }
+
+      if (!response.ok || payload.ok === false) {
+        throw new Error(payload.error || 'Failed to load marketplace config')
+      }
+
+      return readMarketplaceUrlFromConfig(payload.payload)
+    },
+  })
+
+  useEffect(() => {
+    if (marketplaceConfigQuery.data === undefined) return
+    setMarketplaceUrl(marketplaceConfigQuery.data)
+    setMarketplaceUrlDraft(marketplaceConfigQuery.data)
+  }, [marketplaceConfigQuery.data])
+
   const hubQuery = useQuery({
-    queryKey: ['skills-hub-search', debouncedMarketplaceSearch],
+    queryKey: ['skills-hub-search', debouncedMarketplaceSearch, marketplaceUrl],
     enabled: tab === 'marketplace',
     queryFn: async function fetchHubResults(): Promise<HubSearchResponse> {
       const params = new URLSearchParams()
       params.set('q', debouncedMarketplaceSearch)
       params.set('source', 'all')
       params.set('limit', '20')
+      if (marketplaceUrl) {
+        params.set('marketplace_url', marketplaceUrl)
+      }
 
       const response = await fetch(
         `/api/skills/hub-search?${params.toString()}`,
@@ -851,6 +919,52 @@ export function SkillsScreen() {
     }
   }
 
+  async function saveMarketplaceUrl(nextValue?: string) {
+    const trimmed = (nextValue ?? marketplaceUrlDraft).trim()
+    try {
+      const response = await fetch('/api/config-patch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: 'skills.marketplace_url',
+          value: trimmed,
+        }),
+      })
+      const payload = (await response.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+      }
+      if (!response.ok || payload.ok === false) {
+        throw new Error(payload.error || 'Failed to save marketplace URL')
+      }
+
+      setMarketplaceUrl(trimmed)
+      await queryClient.invalidateQueries({
+        queryKey: ['skills-hub-search'],
+      })
+      toast('Marketplace URL updated.', { type: 'success', icon: '✅' })
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to save marketplace URL'
+      setActionError(message)
+      toast(message, { type: 'error', icon: '❌' })
+    }
+  }
+
+  function installFromIdentifierInput() {
+    const normalized = normalizeInstallIdentifier(directInstallIdentifier)
+    if (!normalized) {
+      toast('Enter a skill identifier or repository path first.', {
+        type: 'warning',
+        icon: '⚠️',
+      })
+      return
+    }
+
+    setDirectInstallIdentifier(normalized)
+    void runSkillAction('install', { skillId: normalized, source: 'github' })
+  }
+
   function handleTabChange(nextTab: string) {
     const parsedTab: SkillsTab =
       nextTab === 'installed' ||
@@ -1121,6 +1235,78 @@ export function SkillsScreen() {
             </TabsPanel>
 
             <TabsPanel value="marketplace" className="space-y-3 pt-2">
+              <div className="grid gap-3 rounded-xl border border-border bg-primary-100/40 p-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-500">
+                    Install From Git Repo
+                  </p>
+                  <input
+                    value={directInstallIdentifier}
+                    onChange={(event) =>
+                      setDirectInstallIdentifier(event.target.value)
+                    }
+                    placeholder="owner/repo/path/to/skill or github URL"
+                    className="h-10 w-full rounded-button border border-border bg-primary-50/90 px-3 text-sm text-ink outline-none"
+                  />
+                  <p className="text-xs text-primary-500">
+                    Uses the same backend install path as marketplace results.
+                  </p>
+                  <div>
+                    <Button
+                      size="sm"
+                      disabled={
+                        pendingAction?.action === 'install' &&
+                        pendingAction.skillId ===
+                          normalizeInstallIdentifier(directInstallIdentifier)
+                      }
+                      onClick={installFromIdentifierInput}
+                    >
+                      Install Identifier
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-500">
+                    Marketplace URL
+                  </p>
+                  <input
+                    value={marketplaceUrlDraft}
+                    onChange={(event) =>
+                      setMarketplaceUrlDraft(event.target.value)
+                    }
+                    placeholder="https://example.com/skills/search"
+                    className="h-10 w-full rounded-button border border-border bg-primary-50/90 px-3 text-sm text-ink outline-none"
+                  />
+                  <p className="text-xs text-primary-500">
+                    Optional custom marketplace endpoint. Leave empty to use
+                    the default Skills Hub search.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={marketplaceConfigQuery.isPending}
+                      onClick={() => {
+                        void saveMarketplaceUrl()
+                      }}
+                    >
+                      Save URL
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setMarketplaceUrlDraft('')
+                        void saveMarketplaceUrl('')
+                      }}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
               {hubQuery.error ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {hubQuery.error instanceof Error

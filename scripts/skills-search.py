@@ -18,12 +18,29 @@ for path in [monorepo_agent, home_agent]:
         sys.path.insert(0, path)
         break
 
-from tools.skills_hub import GitHubAuth, create_source_router, unified_search
+from tools.skills_hub import GitHubAuth, GitHubSource, create_source_router, unified_search
 
 
 def _is_http_url(value: str) -> bool:
     parsed = urlparse(value)
     return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def _github_repo_slug_from_url(value: str) -> str:
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or parsed.netloc.lower() != "github.com":
+        return ""
+
+    parts = [part for part in parsed.path.strip("/").split("/") if part]
+    if len(parts) < 2:
+        return ""
+
+    owner, repo = parts[0], parts[1]
+    if repo.endswith('.git'):
+        repo = repo[:-4]
+    if not owner or not repo:
+        return ""
+    return f"{owner}/{repo}"
 
 
 def _normalize_custom_entry(entry):
@@ -80,6 +97,71 @@ def _matches_custom_query(entry, query: str) -> bool:
         ]
     ).lower()
     return normalized_query in haystack
+
+
+def _search_github_marketplace_repo(query: str, limit: int, repo_slug: str):
+    auth = GitHubAuth()
+    source = GitHubSource(auth=auth)
+    cached = source._get_repo_tree(repo_slug)
+    if cached is None:
+        return {
+            "results": [],
+            "source": f"github-repo:{repo_slug}",
+            "total": 0,
+        }
+
+    _default_branch, tree_entries = cached
+    query_lower = query.strip().lower()
+    normalized = []
+    seen_identifiers = set()
+
+    for entry in tree_entries:
+        path = str(entry.get("path") or "")
+        if entry.get("type") != "blob":
+            continue
+        if not path.startswith("skills/") or not path.endswith("/SKILL.md"):
+            continue
+
+        skill_dir = path[: -len("/SKILL.md")]
+        identifier = f"{repo_slug}/{skill_dir}"
+        if identifier in seen_identifiers:
+            continue
+
+        meta = source.inspect(identifier)
+        if meta is None:
+            continue
+
+        searchable = f"{meta.name} {meta.description} {' '.join(meta.tags)}".lower()
+        if query_lower and query_lower not in searchable:
+            continue
+
+        seen_identifiers.add(identifier)
+        path_parts = skill_dir.split("/")
+        category = path_parts[1] if len(path_parts) >= 3 else "Productivity"
+        normalized.append(
+            {
+                "id": identifier,
+                "name": meta.name,
+                "description": meta.description,
+                "author": repo_slug.split("/", 1)[0],
+                "category": category.capitalize(),
+                "tags": meta.tags or [],
+                "source": "github-repo",
+                "identifier": identifier,
+                "trust_level": getattr(meta, "trust_level", "community"),
+                "repo": f"https://github.com/{repo_slug}",
+                "homepage": f"https://github.com/{repo_slug}/tree/main/{skill_dir}",
+                "installed": False,
+            }
+        )
+        if len(normalized) >= limit:
+            break
+
+    return {
+        "results": normalized,
+        "source": f"github-repo:{repo_slug}",
+        "total": len(normalized),
+    }
 
 
 def _search_custom_marketplace(query: str, limit: int, marketplace_url: str):
@@ -144,6 +226,16 @@ def main():
         return
 
     normalized_marketplace_url = marketplace_url.strip()
+    github_repo_slug = _github_repo_slug_from_url(normalized_marketplace_url)
+    if github_repo_slug:
+        custom_result = _search_github_marketplace_repo(
+            query,
+            limit,
+            github_repo_slug,
+        )
+        print(json.dumps(custom_result))
+        return
+
     if normalized_marketplace_url and _is_http_url(normalized_marketplace_url):
         custom_result = _search_custom_marketplace(
             query,

@@ -165,6 +165,7 @@ type HubSearchResponse = {
 }
 
 const PAGE_LIMIT = 30
+const DEFAULT_MARKETPLACE_URL = 'https://github.com/chris-han/semantier-skills'
 
 const DEFAULT_CATEGORIES = [
   'All',
@@ -408,17 +409,18 @@ function buildInstallConfigPayload(
 
 function readMarketplaceUrlFromConfig(payload: unknown): string {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    return ''
+    return DEFAULT_MARKETPLACE_URL
   }
 
   const root = payload as Record<string, unknown>
   const skills = root.skills
   if (!skills || typeof skills !== 'object' || Array.isArray(skills)) {
-    return ''
+    return DEFAULT_MARKETPLACE_URL
   }
 
   const value = (skills as Record<string, unknown>).marketplace_url
-  return typeof value === 'string' ? value.trim() : ''
+  const normalized = typeof value === 'string' ? value.trim() : ''
+  return normalized || DEFAULT_MARKETPLACE_URL
 }
 
 function normalizeInstallIdentifier(rawValue: string): string {

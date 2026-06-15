@@ -13,6 +13,7 @@ import { OperationsAgentDetail } from './components/operations-agent-detail'
 import { OperationsNewAgentModal } from './components/operations-new-agent-modal'
 import { OperationsSettingsModal } from './components/operations-settings-modal'
 import { FullOutputsView } from './components/full-outputs-view'
+import { MeetingCoordinatorPanel } from './components/meeting-coordinator-panel'
 import { useOperations } from './hooks/use-operations'
 import type { CSSProperties } from 'react'
 import { Button } from '@/components/ui/button'
@@ -175,6 +176,8 @@ export function OperationsScreen() {
             >
               <OrchestratorCard totalAgents={agents.length} />
             </motion.div>
+
+            <MeetingCoordinatorPanel />
 
             <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {agents.map((agent, index) => (

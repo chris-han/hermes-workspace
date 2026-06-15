@@ -116,7 +116,7 @@ export function buildSemantierAgentProbeHeaders(
   targetPath: string,
   incomingCookieHeader: string | null,
 ): Headers {
-  const incomingHeaders = incomingCookieHeader
+  const incomingHeaders: HeadersInit = incomingCookieHeader
     ? { cookie: incomingCookieHeader }
     : {}
   return buildSemantierAgentProxyHeaders(incomingHeaders, {
@@ -171,10 +171,7 @@ export function allowedSemantierAuthCookieNamesForPath(
 ): Array<string> {
   const normalized = targetPath.startsWith('/') ? targetPath : `/${targetPath}`
   if (normalized.startsWith('/auth/weixin/login/')) {
-    return [
-      SEMANTIER_AGENT_AUTH_COOKIE,
-      SEMANTIER_AGENT_BROWSER_SESSION_COOKIE,
-    ]
+    return [SEMANTIER_AGENT_AUTH_COOKIE, SEMANTIER_AGENT_BROWSER_SESSION_COOKIE]
   }
   return [SEMANTIER_AGENT_AUTH_COOKIE]
 }

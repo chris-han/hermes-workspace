@@ -1,7 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import { ensureGatewayProbed } from '../../server/gateway-capabilities'
-import { fetchSemantierSkillsInventory } from '../../server/semantier-skills-api'
+import {
+  checkSemantierSkillUpdates,
+  fetchSemantierSkillsInventory,
+} from '../../server/semantier-skills-api'
 import { createCapabilityUnavailablePayload } from '@/lib/feature-gates'
 
 type SkillsTab = 'installed' | 'marketplace' | 'featured'
@@ -35,6 +38,13 @@ type SkillSummary = {
   canEdit?: boolean
   canUninstall?: boolean
   canModify?: boolean
+  contentHash?: string | null
+  latestHash?: string | null
+  updateStatus?: 'up_to_date' | 'update_available' | 'unavailable'
+  hubIdentifier?: string | null
+  hubSource?: string | null
+  hubUpdatedAt?: string | null
+  canUpdate?: boolean
   featuredGroup?: string
   configFields?: Array<SkillConfigField>
   security: SecurityRisk
@@ -252,6 +262,19 @@ function normalizeSkill(value: unknown): SkillSummary | null {
         : undefined,
     canModify:
       typeof record.canModify === 'boolean' ? record.canModify : undefined,
+    contentHash: readString(record.contentHash) || null,
+    latestHash: readString(record.latestHash) || null,
+    updateStatus:
+      readString(record.updateStatus) === 'up_to_date' ||
+      readString(record.updateStatus) === 'update_available' ||
+      readString(record.updateStatus) === 'unavailable'
+        ? (readString(record.updateStatus) as SkillSummary['updateStatus'])
+        : undefined,
+    hubIdentifier: readString(record.hubIdentifier) || null,
+    hubSource: readString(record.hubSource) || null,
+    hubUpdatedAt: readString(record.hubUpdatedAt) || null,
+    canUpdate:
+      typeof record.canUpdate === 'boolean' ? record.canUpdate : undefined,
     featuredGroup: undefined,
     configFields: normalizeSkillConfigFields(record.configFields),
     security: normalizeSecurity(record.security),
@@ -313,6 +336,15 @@ export const Route = createFileRoute('/api/skills')({
 
         try {
           const url = new URL(request.url)
+          if (url.searchParams.get('check_updates') === '1') {
+            return json(
+              await checkSemantierSkillUpdates(
+                request.headers,
+                url.searchParams.get('name') || undefined,
+              ),
+            )
+          }
+
           const tabParam = url.searchParams.get('tab')
           const tab: SkillsTab =
             tabParam === 'installed' ||

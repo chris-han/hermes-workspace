@@ -26,6 +26,11 @@ export type SemantierSkillInventoryItem = {
   content?: string
   author?: string
   homepage?: string | null
+  contentHash?: string | null
+  hubIdentifier?: string | null
+  hubSource?: string | null
+  hubUpdatedAt?: string | null
+  canUpdate?: boolean
   configFields?: Array<{
     key: string
     label?: string
@@ -52,6 +57,25 @@ export type SemantierSkillInventoryResponse = {
   categories: Array<string>
   workspaceId?: string
   workspaceSlug?: string
+}
+
+export type SemantierSkillUpdateStatus =
+  | 'up_to_date'
+  | 'update_available'
+  | 'unavailable'
+
+export type SemantierSkillUpdateItem = {
+  name: string
+  identifier: string
+  source: string
+  status: SemantierSkillUpdateStatus
+  currentHash?: string
+  latestHash?: string
+}
+
+export type SemantierSkillUpdatesResponse = {
+  ok: boolean
+  updates: Array<SemantierSkillUpdateItem>
 }
 
 export async function fetchSemantierSkillsInventory(
@@ -99,6 +123,46 @@ export async function fetchSemantierSkillsInventory(
       : [],
     workspaceId: (payload as SemantierSkillInventoryResponse).workspaceId,
     workspaceSlug: (payload as SemantierSkillInventoryResponse).workspaceSlug,
+  }
+}
+
+export async function checkSemantierSkillUpdates(
+  requestHeaders?: HeadersInit | Headers,
+  name?: string,
+): Promise<SemantierSkillUpdatesResponse> {
+  const headers = buildSemantierAgentProxyHeaders(requestHeaders ?? {}, {
+    authHeaders: semantierAgentAuthHeaders(),
+    forwardBrowserCookies: true,
+    allowedCookieNames: [SEMANTIER_AGENT_AUTH_COOKIE],
+  })
+
+  const params = new URLSearchParams()
+  if (name?.trim()) {
+    params.set('name', name.trim())
+  }
+  const path = `/system/skills/check-updates${params.size > 0 ? `?${params.toString()}` : ''}`
+  const response = await fetch(withSemantierAgentBase(path), {
+    headers,
+    signal: AbortSignal.timeout(60_000),
+  })
+
+  const payload = (await response.json().catch(() => ({}))) as
+    | SemantierSkillUpdatesResponse
+    | { error?: string; detail?: string }
+
+  if (!response.ok) {
+    throw new Error(
+      ('error' in payload && payload.error) ||
+        ('detail' in payload && payload.detail) ||
+        `Semantier skill update check failed (${response.status})`,
+    )
+  }
+
+  return {
+    ok: Boolean((payload as SemantierSkillUpdatesResponse).ok),
+    updates: Array.isArray((payload as SemantierSkillUpdatesResponse).updates)
+      ? (payload as SemantierSkillUpdatesResponse).updates
+      : [],
   }
 }
 

@@ -75,6 +75,13 @@ type SkillSummary = {
   canEdit?: boolean
   canUninstall?: boolean
   canModify?: boolean
+  contentHash?: string | null
+  latestHash?: string | null
+  updateStatus?: 'up_to_date' | 'update_available' | 'unavailable'
+  hubIdentifier?: string | null
+  hubSource?: string | null
+  hubUpdatedAt?: string | null
+  canUpdate?: boolean
   featuredGroup?: string
   configFields?: Array<SkillConfigField>
   security?: SecurityRisk
@@ -124,7 +131,25 @@ type PluginsApiResponse = {
   categories: Array<string>
 }
 
-type SkillAction = 'install' | 'uninstall' | 'toggle'
+type SkillUpdateStatus = 'up_to_date' | 'update_available' | 'unavailable'
+
+type SkillUpdateSummary = {
+  name: string
+  identifier: string
+  source: string
+  status: SkillUpdateStatus
+  currentHash?: string
+  latestHash?: string
+}
+
+type SkillUpdatesApiResponse = {
+  ok: boolean
+  updates: Array<SkillUpdateSummary>
+  error?: string
+  detail?: string
+}
+
+type SkillAction = 'install' | 'update' | 'uninstall' | 'toggle'
 
 type SkillOverride = {
   installed?: boolean
@@ -316,6 +341,37 @@ function applySkillOverrides(
       ...skill,
       installed: override.installed ?? skill.installed,
       enabled: override.enabled ?? skill.enabled,
+    }
+  })
+}
+
+function applySkillUpdateStatus(
+  skills: Array<SkillSummary>,
+  updates: Array<SkillUpdateSummary>,
+): Array<SkillSummary> {
+  if (updates.length === 0) return skills
+
+  const byName = new Map<string, SkillUpdateSummary>()
+  const byIdentifier = new Map<string, SkillUpdateSummary>()
+  for (const update of updates) {
+    if (update.name) byName.set(update.name, update)
+    if (update.identifier) byIdentifier.set(update.identifier, update)
+  }
+
+  return skills.map((skill) => {
+    const update =
+      (skill.hubIdentifier && byIdentifier.get(skill.hubIdentifier)) ||
+      byName.get(skill.name)
+    if (!update) return skill
+
+    return {
+      ...skill,
+      updateStatus: update.status,
+      contentHash: update.currentHash || skill.contentHash || null,
+      latestHash: update.latestHash || skill.latestHash || null,
+      hubIdentifier: skill.hubIdentifier || update.identifier || null,
+      hubSource: skill.hubSource || update.source || null,
+      canUpdate: skill.canUpdate ?? Boolean(update.identifier),
     }
   })
 }
@@ -619,6 +675,23 @@ export function SkillsScreen() {
     },
   })
 
+  const skillUpdatesQuery = useQuery({
+    queryKey: ['skills-updates'],
+    enabled: tab === 'installed',
+    queryFn: async function fetchSkillUpdates(): Promise<SkillUpdatesApiResponse> {
+      const response = await fetch('/api/skills?check_updates=1')
+      const payload = (await response.json()) as SkillUpdatesApiResponse
+      if (!response.ok) {
+        throw new Error(
+          payload.error || payload.detail || 'Failed to check skill updates',
+        )
+      }
+      return payload
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  })
+
   const categories = useMemo(
     function resolveCategories() {
       const fromApi = skillsQuery.data?.categories
@@ -637,9 +710,9 @@ export function SkillsScreen() {
 
   const skills = useMemo(
     function resolveVisibleSkills() {
-      const sourceSkills = applySkillOverrides(
-        skillsQuery.data?.skills || [],
-        skillOverrides,
+      const sourceSkills = applySkillUpdateStatus(
+        applySkillOverrides(skillsQuery.data?.skills || [], skillOverrides),
+        skillUpdatesQuery.data?.updates || [],
       ).filter((skill) => matchesSourceFilter(skill, sourceFilter))
       const normalizedQuery = searchInput.trim().toLowerCase()
       if (!normalizedQuery) {
@@ -662,7 +735,13 @@ export function SkillsScreen() {
           return entry.skill
         })
     },
-    [searchInput, skillOverrides, skillsQuery.data?.skills, sourceFilter],
+    [
+      searchInput,
+      skillOverrides,
+      skillUpdatesQuery.data?.updates,
+      skillsQuery.data?.skills,
+      sourceFilter,
+    ],
   )
 
   const marketplaceSkills = useMemo<Array<SkillSummary>>(
@@ -804,6 +883,7 @@ export function SkillsScreen() {
     action: SkillAction,
     payload: {
       skillId: string
+      identifier?: string | null
       enabled?: boolean
       source?: HubSkill['source']
       config?: Record<string, unknown>
@@ -814,7 +894,7 @@ export function SkillsScreen() {
 
     try {
       const endpoint =
-        action === 'install'
+        action === 'install' || action === 'update'
           ? '/api/skills/install'
           : action === 'uninstall'
             ? '/api/skills/uninstall'
@@ -827,9 +907,10 @@ export function SkillsScreen() {
           action,
           skillId: payload.skillId,
           name: payload.skillId,
-          identifier: payload.skillId,
+          identifier: payload.identifier || payload.skillId,
           enabled: payload.enabled,
           source: payload.source,
+          force: action === 'update',
           config: payload.config || {},
         }),
       })
@@ -846,7 +927,7 @@ export function SkillsScreen() {
       }
 
       if (
-        (action === 'install' || action === 'uninstall') &&
+        (action === 'install' || action === 'update' || action === 'uninstall') &&
         data.ok === false
       ) {
         if (data.command) {
@@ -862,12 +943,13 @@ export function SkillsScreen() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['skills-browser'] }),
         queryClient.invalidateQueries({ queryKey: ['skills-hub-search'] }),
+        queryClient.invalidateQueries({ queryKey: ['skills-updates'] }),
       ])
       setSkillOverrides(function updateSkillOverrides(current) {
         const next = { ...current }
         const existing = next[payload.skillId] || {}
 
-        if (action === 'install') {
+        if (action === 'install' || action === 'update') {
           next[payload.skillId] = {
             ...existing,
             installed: true,
@@ -893,11 +975,17 @@ export function SkillsScreen() {
       })
       setSelectedSkill(function updateSelectedSkill(current) {
         if (!current || current.id !== payload.skillId) return current
-        if (action === 'install') {
+        if (action === 'install' || action === 'update') {
           return {
             ...current,
             installed: true,
             enabled: true,
+            updateStatus:
+              action === 'update' ? 'up_to_date' : current.updateStatus,
+            contentHash:
+              action === 'update'
+                ? current.latestHash || current.contentHash
+                : current.contentHash,
           }
         }
         if (action === 'uninstall') {
@@ -1220,6 +1308,12 @@ export function SkillsScreen() {
             ) : null}
 
             <TabsPanel value="installed" className="pt-2">
+              {skillUpdatesQuery.error ? (
+                <div className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                  Update check unavailable. Installed content hashes are still
+                  shown from the local skill lock.
+                </div>
+              ) : null}
               <SkillsGrid
                 skills={skills}
                 loading={skillsQuery.isPending}
@@ -1227,6 +1321,12 @@ export function SkillsScreen() {
                 tab="installed"
                 onOpenDetails={setSelectedSkill}
                 onInstall={(skill) => openInstallFlow(skill)}
+                onUpdate={(skill) =>
+                  runSkillAction('update', {
+                    skillId: skill.id,
+                    identifier: skill.hubIdentifier,
+                  })
+                }
                 onUninstall={(skillId) =>
                   runSkillAction('uninstall', { skillId })
                 }
@@ -1344,6 +1444,12 @@ export function SkillsScreen() {
                   )
                   openInstallFlow(skill, hubSkill?.source)
                 }}
+                onUpdate={(skill) =>
+                  runSkillAction('update', {
+                    skillId: skill.id,
+                    identifier: skill.hubIdentifier,
+                  })
+                }
                 onUninstall={(skillId) =>
                   runSkillAction('uninstall', { skillId })
                 }
@@ -1465,6 +1571,17 @@ export function SkillsScreen() {
                     ) : null}
 
                     <div className="flex flex-wrap gap-1.5">
+                      {selectedSkill.contentHash ? (
+                        <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                          Installed hash {selectedSkill.contentHash}
+                        </span>
+                      ) : null}
+                      {selectedSkill.updateStatus === 'update_available' &&
+                      selectedSkill.latestHash ? (
+                        <span className="rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
+                          Latest hash {selectedSkill.latestHash}
+                        </span>
+                      ) : null}
                       {selectedSkill.triggers.length > 0 ? (
                         selectedSkill.triggers.slice(0, 8).map((trigger) => (
                           <span
@@ -1578,23 +1695,45 @@ export function SkillsScreen() {
                 </p>
                 <div className="flex items-center gap-2">
                   {selectedSkill.installed ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={
-                        pendingAction?.skillId === selectedSkill.id ||
-                        selectedSkill.canUninstall === false
-                      }
-                      onClick={() => {
-                        runSkillAction('uninstall', {
-                          skillId: selectedSkill.id,
-                        })
-                      }}
-                    >
-                      {selectedSkill.canUninstall === false
-                        ? 'Read only'
-                        : 'Uninstall'}
-                    </Button>
+                    <>
+                      {selectedSkill.updateStatus === 'update_available' ? (
+                        <Button
+                          size="sm"
+                          disabled={
+                            pendingAction?.skillId === selectedSkill.id ||
+                            !selectedSkill.canUpdate
+                          }
+                          onClick={() => {
+                            runSkillAction('update', {
+                              skillId: selectedSkill.id,
+                              identifier: selectedSkill.hubIdentifier,
+                            })
+                          }}
+                        >
+                          {pendingAction?.skillId === selectedSkill.id &&
+                          pendingAction.action === 'update'
+                            ? 'Updating...'
+                            : 'Update'}
+                        </Button>
+                      ) : null}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={
+                          pendingAction?.skillId === selectedSkill.id ||
+                          selectedSkill.canUninstall === false
+                        }
+                        onClick={() => {
+                          runSkillAction('uninstall', {
+                            skillId: selectedSkill.id,
+                          })
+                        }}
+                      >
+                        {selectedSkill.canUninstall === false
+                          ? 'Read only'
+                          : 'Uninstall'}
+                      </Button>
+                    </>
                   ) : (
                     <Button
                       size="sm"
@@ -1850,6 +1989,7 @@ type SkillsGridProps = {
   }
   onOpenDetails: (skill: SkillSummary) => void
   onInstall: (skill: SkillSummary) => void
+  onUpdate: (skill: SkillSummary) => void
   onUninstall: (skillId: string) => void
   onToggle: (skillId: string, enabled: boolean) => void
 }
@@ -2025,6 +2165,7 @@ function SkillsGrid({
   emptyState,
   onOpenDetails,
   onInstall,
+  onUpdate,
   onUninstall,
   onToggle,
 }: SkillsGridProps) {
@@ -2054,7 +2195,11 @@ function SkillsGrid({
           const isInstalling =
             pendingAction?.skillId === skill.id &&
             pendingAction.action === 'install'
+          const isUpdating =
+            pendingAction?.skillId === skill.id &&
+            pendingAction.action === 'update'
           const canUninstall = skill.canUninstall ?? true
+          const hasUpdate = skill.updateStatus === 'update_available'
 
           return (
             <motion.article
@@ -2094,11 +2239,13 @@ function SkillsGrid({
                           : 'border-primary-200 bg-primary-100/60 text-primary-500',
                     )}
                   >
-                    {isInstalling ? (
+                    {isInstalling || isUpdating ? (
                       <>
                         <InlineSpinner />
-                        Installing…
+                        {isUpdating ? 'Updating...' : 'Installing...'}
                       </>
+                    ) : hasUpdate ? (
+                      'Update available'
                     ) : skill.installed ? (
                       'Installed'
                     ) : (
@@ -2117,6 +2264,16 @@ function SkillsGrid({
                 {skill.sourceLabel ? (
                   <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
                     {skill.sourceLabel}
+                  </span>
+                ) : null}
+                {skill.contentHash ? (
+                  <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                    {skill.contentHash}
+                  </span>
+                ) : null}
+                {hasUpdate && skill.latestHash ? (
+                  <span className="rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
+                    latest {skill.latestHash}
                   </span>
                 ) : null}
                 <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
@@ -2143,6 +2300,15 @@ function SkillsGrid({
 
                 {tab === 'installed' ? (
                   <div className="flex items-center gap-2">
+                    {hasUpdate ? (
+                      <Button
+                        size="sm"
+                        disabled={isActing || !skill.canUpdate}
+                        onClick={() => onUpdate(skill)}
+                      >
+                        {isUpdating ? 'Updating...' : 'Update'}
+                      </Button>
+                    ) : null}
                     <Button
                       variant="outline"
                       size="sm"

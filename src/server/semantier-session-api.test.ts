@@ -20,6 +20,7 @@ describe('toSemantierSessionSummary', () => {
       createdAt: Date.parse('2026-04-21T10:00:00Z'),
       updatedAt: Date.parse('2026-04-21T10:05:00Z'),
       status: 'idle',
+      platform: 'feishu',
     })
 
     expect(summary).toMatchObject({
@@ -29,6 +30,7 @@ describe('toSemantierSessionSummary', () => {
       title: 'My Session',
       derivedTitle: 'My Session',
       status: 'idle',
+      platform: 'feishu',
     })
     expect(summary.updatedAt).toBe(Date.parse('2026-04-21T10:05:00Z'))
   })

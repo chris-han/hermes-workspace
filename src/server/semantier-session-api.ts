@@ -25,6 +25,7 @@ export type SemantierSession = {
   derivedTitle?: string
   status?: string
   source?: string | null
+  platform?: string | null
   model?: string | null
   isActive?: boolean
   messageCount?: number
@@ -195,6 +196,7 @@ export function toSemantierSessionSummary(
       toMillis(session.createdAt) ??
       updatedAt ??
       Date.now(),
+    platform: session.platform,
   }
 }
 

@@ -65,6 +65,13 @@ type FeishuLinkStatusResponse = {
   message?: string
 }
 
+type FeishuLinkDeleteResponse = {
+  ok: boolean
+  status: 'unlinked'
+  feishu_open_id?: string
+  message?: string
+}
+
 type WeixinPairingStartResponse = {
   state: string
   status: string
@@ -331,9 +338,10 @@ function useMessagingSettingsModel() {
   )
   const [authMe, setAuthMe] = useState<AuthContextResponse | null>(null)
   const [startingFeishuLink, setStartingFeishuLink] = useState(false)
+  const [unlinkingFeishu, setUnlinkingFeishu] = useState(false)
   const [feishuLinkState, setFeishuLinkState] = useState('')
   const [feishuLinkStatus, setFeishuLinkStatus] = useState<
-    'pending' | 'linked' | 'expired' | 'failed' | ''
+    'pending' | 'linked' | 'expired' | 'failed' | 'unlinked' | ''
   >('')
   const [feishuLinkMessage, setFeishuLinkMessage] = useState('')
   const [feishuLinkAuthorizeUrl, setFeishuLinkAuthorizeUrl] = useState('')
@@ -517,6 +525,37 @@ function useMessagingSettingsModel() {
           : 'Failed to check Feishu link status.'
       setFeishuLinkStatus('failed')
       setFeishuLinkMessage(message)
+    }
+  }
+
+  async function unlinkFeishuLogin() {
+    if (!window.confirm('Unlink this Feishu login account?')) {
+      return
+    }
+    setUnlinkingFeishu(true)
+    try {
+      const response = await requestJson<FeishuLinkDeleteResponse>(
+        '/auth/feishu/link',
+        {
+          method: 'DELETE',
+        },
+      )
+      setFeishuLinkState('')
+      setFeishuLinkStatus(response.status)
+      setFeishuLinkAuthorizeUrl('')
+      setFeishuLinkQrDataUrl('')
+      setFeishuLinkMessage(response.message || 'Feishu account unlinked.')
+      toast(response.message || 'Feishu account unlinked.', { type: 'success' })
+      await loadAuthMe()
+      await loadPlatforms()
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to unlink Feishu account.'
+      toast(message, { type: 'error' })
+    } finally {
+      setUnlinkingFeishu(false)
     }
   }
 
@@ -905,6 +944,8 @@ function useMessagingSettingsModel() {
     startingWeixinPairing,
     startFeishuLinkQr,
     startingFeishuLink,
+    unlinkFeishuLogin,
+    unlinkingFeishu,
     validate,
     validatingPlatform,
     validationMessage,
@@ -1065,15 +1106,29 @@ function FeishuAccountLinkCard({
           <Button
             type="button"
             variant="outline"
-            disabled={model.startingFeishuLink || Boolean(linkedOpenId)}
+            disabled={
+              model.startingFeishuLink ||
+              model.unlinkingFeishu ||
+              Boolean(linkedOpenId)
+            }
             onClick={() => void model.startFeishuLinkQr()}
           >
             {model.startingFeishuLink ? 'Preparing QR...' : 'Link Feishu Login'}
           </Button>
           {linkedOpenId ? (
-            <span className="text-xs text-success">
-              Linked open_id: {linkedOpenId}
-            </span>
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={model.unlinkingFeishu || model.startingFeishuLink}
+                onClick={() => void model.unlinkFeishuLogin()}
+              >
+                {model.unlinkingFeishu ? 'Unlinking...' : 'Unlink'}
+              </Button>
+              <span className="text-xs text-success">
+                Linked open_id: {linkedOpenId}
+              </span>
+            </>
           ) : (
             <span className="text-xs theme-text">No Feishu account linked yet.</span>
           )}

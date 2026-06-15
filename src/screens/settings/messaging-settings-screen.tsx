@@ -123,6 +123,34 @@ type WeixinDraft = {
   homeChannel: string
 }
 
+export function scheduleFeishuLinkStatusPolling(
+  poll: () => Promise<void> | void,
+  intervalMs = 1500,
+): () => void {
+  let cancelled = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  const schedulePoll = () => {
+    timer = globalThis.setTimeout(async () => {
+      if (cancelled) {
+        return
+      }
+      await poll()
+      if (!cancelled) {
+        schedulePoll()
+      }
+    }, intervalMs)
+  }
+
+  schedulePoll()
+  return () => {
+    cancelled = true
+    if (timer !== undefined) {
+      globalThis.clearTimeout(timer)
+    }
+  }
+}
+
 const EMPTY_FEISHU: FeishuDraft = {
   appId: '',
   appSecret: '',
@@ -496,10 +524,9 @@ function useMessagingSettingsModel() {
     if (!feishuLinkState || feishuLinkStatus !== 'pending') {
       return
     }
-    const timer = window.setTimeout(() => {
-      void pollFeishuLinkStatus(feishuLinkState)
-    }, 1500)
-    return () => window.clearTimeout(timer)
+    return scheduleFeishuLinkStatusPolling(() =>
+      pollFeishuLinkStatus(feishuLinkState),
+    )
   }, [feishuLinkState, feishuLinkStatus])
 
   useEffect(() => {

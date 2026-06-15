@@ -69,6 +69,12 @@ export type ChatAttachment = {
 
 export type StreamingStatus = 'idle' | 'streaming' | 'complete' | 'error'
 
+export type ChatMessageAction = {
+  type: 'fill_input'
+  label: string
+  value: string
+}
+
 export type ChatMessage = {
   id?: string
   messageId?: string
@@ -81,6 +87,7 @@ export type ChatMessage = {
   toolCallId?: string
   toolName?: string
   details?: Record<string, unknown>
+  actions?: Array<ChatMessageAction>
   isError?: boolean
   timestamp?: number
   [key: string]: unknown

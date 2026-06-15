@@ -627,6 +627,7 @@ type ChatMessageListProps = {
   messages: Array<ChatMessage>
   onRetryMessage?: (message: ChatMessage) => void
   onA2UiSubmit?: (payload: string) => void
+  onFillInput?: (value: string) => void
   onRefresh?: () => void | Promise<unknown>
   loading: boolean
   empty: boolean
@@ -666,6 +667,7 @@ function ChatMessageListComponent({
   messages,
   onRetryMessage,
   onA2UiSubmit,
+  onFillInput,
   onRefresh: _onRefresh,
   loading,
   empty,
@@ -1349,6 +1351,7 @@ function ChatMessageListComponent({
             attachedToolMessages={entry.attachedToolMessages}
             onRetryMessage={effectiveOnRetry}
             onA2UiSubmit={onA2UiSubmit}
+            onFillInput={onFillInput}
             toolResultsByCallId={hasToolCalls ? toolResultsByCallId : undefined}
             forceActionsVisible={forceActionsVisible}
             wrapperClassName={spacingClass}
@@ -1384,6 +1387,7 @@ function ChatMessageListComponent({
         attachedToolMessages={entry.attachedToolMessages}
         onRetryMessage={effectiveOnRetry}
         onA2UiSubmit={onA2UiSubmit}
+        onFillInput={onFillInput}
         toolResultsByCallId={hasToolCalls ? toolResultsByCallId : undefined}
         forceActionsVisible={forceActionsVisible}
         wrapperClassName={spacingClass}
@@ -1831,6 +1835,7 @@ function ChatMessageListComponent({
                         attachedToolMessages={entry.attachedToolMessages}
                         onRetryMessage={onRetryMessage}
                         onA2UiSubmit={onA2UiSubmit}
+                        onFillInput={onFillInput}
                         toolResultsByCallId={
                           hasToolCalls ? toolResultsByCallId : undefined
                         }
@@ -1998,6 +2003,7 @@ function areChatMessageListEqual(
     prev.messages === next.messages &&
     prev.onRetryMessage === next.onRetryMessage &&
     prev.onA2UiSubmit === next.onA2UiSubmit &&
+    prev.onFillInput === next.onFillInput &&
     prev.onRefresh === next.onRefresh &&
     prev.loading === next.loading &&
     prev.empty === next.empty &&

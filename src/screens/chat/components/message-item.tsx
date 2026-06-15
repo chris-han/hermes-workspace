@@ -144,6 +144,13 @@ type MessageItemProps = {
   expandAllToolSections?: boolean
   isLastAssistant?: boolean
   onA2UiSubmit?: (payload: string) => void
+  onFillInput?: (value: string) => void
+}
+
+type FillInputAction = {
+  type: 'fill_input'
+  label: string
+  value: string
 }
 
 type InlineToolSection = {
@@ -232,6 +239,41 @@ function extractA2UiSchema(part: unknown): A2UiSchema | null {
     return null
   }
   return candidate as A2UiSchema
+}
+
+function fillInputActionsFromMessage(
+  message: ChatMessage,
+): Array<FillInputAction> {
+  if (!Array.isArray(message.actions)) return []
+  return message.actions.filter(
+    (action): action is FillInputAction =>
+      action.type === 'fill_input' &&
+      typeof action.label === 'string' &&
+      action.label.trim().length > 0 &&
+      typeof action.value === 'string' &&
+      action.value.trim().length > 0,
+  )
+}
+
+function escapeMarkdownLinkText(value: string): string {
+  return value.replace(/([\\[\]])/g, '\\$1')
+}
+
+function withFillInputLinks(
+  text: string,
+  actions: Array<FillInputAction>,
+): string {
+  let nextText = text
+  for (const action of actions) {
+    const label = action.label.trim()
+    if (!label || !nextText.includes(label)) continue
+    const href = `hermes-fill-input:${encodeURIComponent(action.value)}`
+    nextText = nextText.replace(
+      label,
+      `[${escapeMarkdownLinkText(label)}](${href})`,
+    )
+  }
+  return nextText
 }
 
 export function buildInlineToolRenderPlan(
@@ -642,6 +684,7 @@ function messageMetadataSignature(message: ChatMessage): string {
     contextPercent:
       root.contextPercent ?? root.context_percent ?? root.context ?? null,
     usage: root.usage && typeof root.usage === 'object' ? root.usage : null,
+    actions: Array.isArray(message.actions) ? message.actions : null,
   })
 }
 
@@ -1677,6 +1720,7 @@ function MessageItemComponent({
   expandAllToolSections = false,
   isLastAssistant = false,
   onA2UiSubmit,
+  onFillInput,
 }: MessageItemProps) {
   const role = message.role || 'assistant'
   const profileDisplayName = useResolvedDisplayName()
@@ -1860,6 +1904,44 @@ function MessageItemComponent({
       ? remoteStreamingThinking
       : thinkingFromMessage(message)
   const isUser = role === 'user'
+  const fillInputActions = isUser ? [] : fillInputActionsFromMessage(message)
+  const markdownComponents = useMemo(() => {
+    if (fillInputActions.length === 0 || !onFillInput) return undefined
+    return {
+      a: function FillInputLinkComponent({
+        children,
+        href,
+      }: {
+        children?: React.ReactNode
+        href?: string
+      }) {
+        const fillInputPrefix = 'hermes-fill-input:'
+        if (href?.startsWith(fillInputPrefix)) {
+          const value = decodeURIComponent(href.slice(fillInputPrefix.length))
+          return (
+            <button
+              type="button"
+              onClick={() => onFillInput(value)}
+              className="inline p-0 align-baseline font-medium text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
+            >
+              {children}
+            </button>
+          )
+        }
+        const openInNewTab = Boolean(href && /^https?:\/\//i.test(href))
+        return (
+          <a
+            href={href}
+            className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
+            target={openInNewTab ? '_blank' : undefined}
+            rel={openInNewTab ? 'noopener noreferrer' : undefined}
+          >
+            {children}
+          </a>
+        )
+      },
+    }
+  }, [fillInputActions, onFillInput])
   const execNotification = isUser ? readExecNotification(message) : null
   const timestamp = getMessageTimestamp(message)
   const attachments = Array.isArray(message.attachments)
@@ -2414,13 +2496,14 @@ function MessageItemComponent({
                       ) : (
                         <MessageContent
                           markdown
+                          components={markdownComponents}
                           className={cn(
                             'text-primary-900 bg-transparent w-full text-pretty transition-all duration-100',
                             effectiveIsStreaming && 'chat-streaming-content',
                             isUser && 'text-white',
                           )}
                         >
-                          {item.text}
+                          {withFillInputLinks(item.text, fillInputActions)}
                         </MessageContent>
                       )}
                     </div>
@@ -2443,13 +2526,17 @@ function MessageItemComponent({
                   ) : (
                     <MessageContent
                       markdown
+                      components={markdownComponents}
                       className={cn(
                         'text-primary-900 bg-transparent w-full text-pretty transition-all duration-100',
                         effectiveIsStreaming && 'chat-streaming-content',
                         isUser && 'text-white',
                       )}
                     >
-                      {assistantDisplayText}
+                      {withFillInputLinks(
+                        assistantDisplayText,
+                        fillInputActions,
+                      )}
                     </MessageContent>
                   )}
                   {effectiveIsStreaming && (
@@ -2574,6 +2661,9 @@ function areMessagesEqual(
     return false
   }
   if (prevProps.onA2UiSubmit !== nextProps.onA2UiSubmit) {
+    return false
+  }
+  if (prevProps.onFillInput !== nextProps.onFillInput) {
     return false
   }
   if (

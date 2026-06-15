@@ -2683,6 +2683,23 @@ export function ChatScreen({
     composerHandleRef.current?.insertText(reference)
   }, [])
 
+  const handleFillComposerInput = useCallback((value: string) => {
+    composerHandleRef.current?.setValue(`${value.trim()} `)
+
+    if (typeof window === 'undefined') return
+    window.requestAnimationFrame(() => {
+      const composerTarget = document.querySelector(
+        '[data-tour="chat-composer-input"]',
+      )
+      if (composerTarget instanceof HTMLElement) {
+        composerTarget.scrollIntoView({
+          block: 'center',
+          behavior: 'smooth',
+        })
+      }
+    })
+  }, [])
+
   const startDemoWalkthrough = useCallback(() => {
     composerHandleRef.current?.setValue(`${FIRST_DEMO_WALKTHROUGH_PROMPT} `)
 
@@ -2941,6 +2958,7 @@ export function ChatScreen({
               messages={finalDisplayMessages}
               onRetryMessage={handleRetryMessage}
               onA2UiSubmit={handleA2UiSubmit}
+              onFillInput={handleFillComposerInput}
               onRefresh={handleRefreshHistory}
               loading={historyLoading}
               empty={historyEmpty}

@@ -27,6 +27,8 @@ export const Route = createFileRoute('/api/skills/install')({
             skillId?: string
             identifier?: string
             category?: string
+            packageType?: string
+            path?: string
             force?: boolean
             config?: Record<string, unknown>
           }
@@ -42,6 +44,8 @@ export const Route = createFileRoute('/api/skills/install')({
             await installSemantierSkill(request.headers, {
               identifier,
               category: body.category || '',
+              packageType: body.packageType || '',
+              path: body.path || '',
               force: Boolean(body.force),
               config:
                 body.config && typeof body.config === 'object'

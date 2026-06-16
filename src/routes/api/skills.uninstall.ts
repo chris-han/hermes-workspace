@@ -29,6 +29,9 @@ export const Route = createFileRoute('/api/skills/uninstall')({
           const body = (await request.json()) as {
             skillId?: string
             name?: string
+            identifier?: string
+            packageType?: string
+            path?: string
           }
           const name = (body.name || body.skillId || '').trim()
           if (!name) {
@@ -38,22 +41,29 @@ export const Route = createFileRoute('/api/skills/uninstall')({
             )
           }
 
-          const inventory = await fetchSemantierSkillsInventory(request.headers)
-          const skill = inventory.skills.find(
-            (entry) => entry.id === name || entry.name === name,
-          )
-          if (skill && skill.canUninstall === false) {
-            return json(
-              {
-                ok: false,
-                error: 'Only workspace-owned skills can be uninstalled.',
-              },
-              { status: 403 },
+          if ((body.packageType || '').trim() !== 'plugin') {
+            const inventory = await fetchSemantierSkillsInventory(request.headers)
+            const skill = inventory.skills.find(
+              (entry) => entry.id === name || entry.name === name,
             )
+            if (skill && skill.canUninstall === false) {
+              return json(
+                {
+                  ok: false,
+                  error: 'Only workspace-owned skills can be uninstalled.',
+                },
+                { status: 403 },
+              )
+            }
           }
 
           const result = normalizeSkillActionResult(
-            await uninstallSemantierSkill(request.headers, { name }),
+            await uninstallSemantierSkill(request.headers, {
+              name,
+              identifier: (body.identifier || '').trim(),
+              packageType: (body.packageType || '').trim(),
+              path: (body.path || '').trim(),
+            }),
           )
           return json(result)
         } catch (error) {

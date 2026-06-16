@@ -3,6 +3,7 @@
 import json
 import sys
 import os
+from pathlib import PurePosixPath
 from urllib.parse import urlparse
 
 import httpx
@@ -67,6 +68,8 @@ def _normalize_custom_entry(entry):
     return {
         "id": identifier,
         "name": name,
+        "type": str(entry.get("type") or "skill").strip() or "skill",
+        "path": str(entry.get("path") or "").strip() or None,
         "description": str(entry.get("description") or "").strip(),
         "author": str(entry.get("author") or entry.get("publisher") or "Community").strip(),
         "category": str(entry.get("category") or "Productivity").strip(),
@@ -119,11 +122,18 @@ def _search_github_marketplace_repo(query: str, limit: int, repo_slug: str):
         path = str(entry.get("path") or "")
         if entry.get("type") != "blob":
             continue
-        if not path.startswith("skills/") or not path.endswith("/SKILL.md"):
+        package_type = None
+        package_dir = ""
+        if path.startswith("skills/") and path.endswith("/SKILL.md"):
+            package_type = "skill"
+            package_dir = path[: -len("/SKILL.md")]
+        elif path.startswith("plugins/") and path.endswith("/plugin.yaml"):
+            package_type = "plugin"
+            package_dir = path[: -len("/plugin.yaml")]
+        else:
             continue
 
-        skill_dir = path[: -len("/SKILL.md")]
-        identifier = f"{repo_slug}/{skill_dir}"
+        identifier = f"{repo_slug}/{package_dir}"
         if identifier in seen_identifiers:
             continue
 
@@ -136,12 +146,14 @@ def _search_github_marketplace_repo(query: str, limit: int, repo_slug: str):
             continue
 
         seen_identifiers.add(identifier)
-        path_parts = skill_dir.split("/")
-        category = path_parts[1] if len(path_parts) >= 3 else "Productivity"
+        path_parts = PurePosixPath(package_dir).parts
+        category = path_parts[1] if package_type == "skill" and len(path_parts) >= 3 else "Productivity"
         normalized.append(
             {
                 "id": identifier,
                 "name": meta.name,
+                "type": package_type,
+                "path": package_dir,
                 "description": meta.description,
                 "author": repo_slug.split("/", 1)[0],
                 "category": category.capitalize(),
@@ -150,7 +162,7 @@ def _search_github_marketplace_repo(query: str, limit: int, repo_slug: str):
                 "identifier": identifier,
                 "trust_level": getattr(meta, "trust_level", "community"),
                 "repo": f"https://github.com/{repo_slug}",
-                "homepage": f"https://github.com/{repo_slug}/tree/main/{skill_dir}",
+                "homepage": f"https://github.com/{repo_slug}/tree/main/{package_dir}",
                 "installed": False,
             }
         )

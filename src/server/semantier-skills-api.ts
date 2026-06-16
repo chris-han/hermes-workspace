@@ -171,6 +171,8 @@ export async function installSemantierSkill(
   payload: {
     identifier: string
     category?: string
+    packageType?: string
+    path?: string
     force?: boolean
     config?: Record<string, unknown>
   },
@@ -190,6 +192,8 @@ export async function installSemantierSkill(
       body: JSON.stringify({
         identifier: payload.identifier,
         category: payload.category || '',
+        package_type: payload.packageType || '',
+        path: payload.path || '',
         force: Boolean(payload.force),
         config:
           payload.config && Object.keys(payload.config).length > 0
@@ -256,6 +260,9 @@ export async function uninstallSemantierSkill(
   requestHeaders: HeadersInit | Headers,
   payload: {
     name: string
+    identifier?: string
+    packageType?: string
+    path?: string
   },
 ): Promise<Record<string, unknown>> {
   const headers = buildSemantierAgentProxyHeaders(requestHeaders, {
@@ -270,7 +277,12 @@ export async function uninstallSemantierSkill(
     {
       method: 'POST',
       headers,
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        name: payload.name,
+        identifier: payload.identifier || '',
+        package_type: payload.packageType || '',
+        path: payload.path || '',
+      }),
       signal: AbortSignal.timeout(30_000),
     },
   )

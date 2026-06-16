@@ -68,6 +68,8 @@ type SkillSummary = {
   content: string
   fileCount: number
   sourcePath: string
+  packageType?: string
+  packagePath?: string | null
   installed: boolean
   enabled: boolean
   sourceTier?: string
@@ -174,6 +176,8 @@ type HubSkill = {
   stars?: number
   source: string
   identifier?: string
+  type?: string
+  path?: string | null
   trust_level?: string
   repo?: string | null
   installCommand?: string
@@ -801,6 +805,8 @@ export function SkillsScreen() {
             skill.identifier ||
             (typeof homepage === 'string' ? homepage : '') ||
             skill.source,
+          packageType: skill.type || 'skill',
+          packagePath: skill.path || null,
           installed: skill.installed,
           enabled: skill.installed,
           sourceTier:
@@ -884,6 +890,8 @@ export function SkillsScreen() {
     payload: {
       skillId: string
       identifier?: string | null
+      packageType?: string | null
+      path?: string | null
       enabled?: boolean
       source?: HubSkill['source']
       config?: Record<string, unknown>
@@ -908,6 +916,8 @@ export function SkillsScreen() {
           skillId: payload.skillId,
           name: payload.skillId,
           identifier: payload.identifier || payload.skillId,
+          packageType: payload.packageType || 'skill',
+          path: payload.path || '',
           enabled: payload.enabled,
           source: payload.source,
           force: action === 'update',
@@ -1103,7 +1113,13 @@ export function SkillsScreen() {
       return
     }
 
-    void runSkillAction('install', { skillId: skill.id, source })
+    void runSkillAction('install', {
+      skillId: skill.id,
+      identifier: skill.hubIdentifier || skill.id,
+      packageType: skill.packageType || 'skill',
+      path: skill.packagePath || '',
+      source,
+    })
   }
 
   function handleInstallFromDialog(skill: SkillSummary) {
@@ -1130,6 +1146,9 @@ export function SkillsScreen() {
     )
     void runSkillAction('install', {
       skillId: skill.id,
+      identifier: skill.hubIdentifier || skill.id,
+      packageType: skill.packageType || 'skill',
+      path: skill.packagePath || '',
       config: configPayload,
     })
   }
@@ -1451,7 +1470,18 @@ export function SkillsScreen() {
                   })
                 }
                 onUninstall={(skillId) =>
-                  runSkillAction('uninstall', { skillId })
+                  runSkillAction('uninstall', {
+                    skillId,
+                    identifier:
+                      marketplaceSkills.find((entry) => entry.id === skillId)
+                        ?.hubIdentifier || skillId,
+                    packageType:
+                      marketplaceSkills.find((entry) => entry.id === skillId)
+                        ?.packageType || 'skill',
+                    path:
+                      marketplaceSkills.find((entry) => entry.id === skillId)
+                        ?.packagePath || '',
+                  })
                 }
                 onToggle={(skillId, enabled) =>
                   runSkillAction('toggle', { skillId, enabled })
@@ -1726,6 +1756,10 @@ export function SkillsScreen() {
                         onClick={() => {
                           runSkillAction('uninstall', {
                             skillId: selectedSkill.id,
+                            identifier:
+                              selectedSkill.hubIdentifier || selectedSkill.id,
+                            packageType: selectedSkill.packageType || 'skill',
+                            path: selectedSkill.packagePath || '',
                           })
                         }}
                       >

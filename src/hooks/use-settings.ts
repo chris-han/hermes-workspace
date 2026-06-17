@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import type { LocaleId } from '@/lib/i18n'
-import { getLocale, setTheme, syncLocaleFromSettings } from '@/lib/i18n'
-import { getTheme } from '@/lib/theme'
+import { getLocale, syncLocaleFromSettings } from '@/lib/i18n'
+import { getTheme, setTheme } from '@/lib/theme'
 
 const LOCAL_SETTINGS_KEY = 'hermes-settings'
 

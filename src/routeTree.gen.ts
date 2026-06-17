@@ -37,6 +37,7 @@ import { Route as OrganizationsSplatRouteImport } from './routes/organizations/$
 import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
 import { Route as AuthSplatRouteImport } from './routes/auth/$'
 import { Route as ApiWorkspaceRouteImport } from './routes/api/workspace'
+import { Route as ApiUserSettingsRouteImport } from './routes/api/user-settings'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as ApiTerminalStreamRouteImport } from './routes/api/terminal-stream'
 import { Route as ApiTerminalResizeRouteImport } from './routes/api/terminal-resize'
@@ -254,6 +255,11 @@ const AuthSplatRoute = AuthSplatRouteImport.update({
 const ApiWorkspaceRoute = ApiWorkspaceRouteImport.update({
   id: '/api/workspace',
   path: '/api/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUserSettingsRoute = ApiUserSettingsRouteImport.update({
+  id: '/api/user-settings',
+  path: '/api/user-settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiUploadRoute = ApiUploadRouteImport.update({
@@ -695,6 +701,7 @@ export interface FileRoutesByFullPath {
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
   '/api/terminal-stream': typeof ApiTerminalStreamRoute
   '/api/upload': typeof ApiUploadRouteWithChildren
+  '/api/user-settings': typeof ApiUserSettingsRoute
   '/api/workspace': typeof ApiWorkspaceRoute
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
@@ -800,6 +807,7 @@ export interface FileRoutesByTo {
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
   '/api/terminal-stream': typeof ApiTerminalStreamRoute
   '/api/upload': typeof ApiUploadRouteWithChildren
+  '/api/user-settings': typeof ApiUserSettingsRoute
   '/api/workspace': typeof ApiWorkspaceRoute
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
@@ -907,6 +915,7 @@ export interface FileRoutesById {
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
   '/api/terminal-stream': typeof ApiTerminalStreamRoute
   '/api/upload': typeof ApiUploadRouteWithChildren
+  '/api/user-settings': typeof ApiUserSettingsRoute
   '/api/workspace': typeof ApiWorkspaceRoute
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
@@ -1015,6 +1024,7 @@ export interface FileRouteTypes {
     | '/api/terminal-resize'
     | '/api/terminal-stream'
     | '/api/upload'
+    | '/api/user-settings'
     | '/api/workspace'
     | '/auth/$'
     | '/chat/$sessionKey'
@@ -1120,6 +1130,7 @@ export interface FileRouteTypes {
     | '/api/terminal-resize'
     | '/api/terminal-stream'
     | '/api/upload'
+    | '/api/user-settings'
     | '/api/workspace'
     | '/auth/$'
     | '/chat/$sessionKey'
@@ -1226,6 +1237,7 @@ export interface FileRouteTypes {
     | '/api/terminal-resize'
     | '/api/terminal-stream'
     | '/api/upload'
+    | '/api/user-settings'
     | '/api/workspace'
     | '/auth/$'
     | '/chat/$sessionKey'
@@ -1333,6 +1345,7 @@ export interface RootRouteChildren {
   ApiTerminalResizeRoute: typeof ApiTerminalResizeRoute
   ApiTerminalStreamRoute: typeof ApiTerminalStreamRoute
   ApiUploadRoute: typeof ApiUploadRouteWithChildren
+  ApiUserSettingsRoute: typeof ApiUserSettingsRoute
   ApiWorkspaceRoute: typeof ApiWorkspaceRoute
   AuthSplatRoute: typeof AuthSplatRoute
   ChatSessionKeyRoute: typeof ChatSessionKeyRoute
@@ -1559,6 +1572,13 @@ declare module '@tanstack/react-router' {
       path: '/api/workspace'
       fullPath: '/api/workspace'
       preLoaderRoute: typeof ApiWorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/user-settings': {
+      id: '/api/user-settings'
+      path: '/api/user-settings'
+      fullPath: '/api/user-settings'
+      preLoaderRoute: typeof ApiUserSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/upload': {
@@ -2265,6 +2285,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTerminalResizeRoute: ApiTerminalResizeRoute,
   ApiTerminalStreamRoute: ApiTerminalStreamRoute,
   ApiUploadRoute: ApiUploadRouteWithChildren,
+  ApiUserSettingsRoute: ApiUserSettingsRoute,
   ApiWorkspaceRoute: ApiWorkspaceRoute,
   AuthSplatRoute: AuthSplatRoute,
   ChatSessionKeyRoute: ChatSessionKeyRoute,

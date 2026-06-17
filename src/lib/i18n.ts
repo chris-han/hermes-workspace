@@ -205,19 +205,58 @@ export const LOCALE_LABELS: Record<LocaleId, string> = {
 }
 
 const STORAGE_KEY = 'hermes-workspace-locale'
+let currentLocale: LocaleId | null = null
+
+function applyLocaleToClient(id: LocaleId, emitChange: boolean): void {
+  currentLocale = id
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY, id)
+    if (emitChange) {
+      window.dispatchEvent(new CustomEvent('locale-change', { detail: id }))
+    }
+  }
+}
+
+async function persistLocale(id: LocaleId): Promise<void> {
+  try {
+    await fetch('/api/user-settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      keepalive: true,
+      body: JSON.stringify({ settings: { locale: id } }),
+    })
+  } catch {
+    // Best-effort only; the client cache still updates immediately.
+  }
+}
 
 export function getLocale(): LocaleId {
+  if (currentLocale) return currentLocale
   if (typeof window === 'undefined') return 'en'
   const stored = localStorage.getItem(STORAGE_KEY)
-  if (stored && stored in LOCALES) return stored as LocaleId
+  if (stored && stored in LOCALES) {
+    currentLocale = stored as LocaleId
+    return currentLocale
+  }
   const browser = navigator.language.split('-')[0]
-  if (browser in LOCALES) return browser as LocaleId
-  return 'en'
+  if (browser in LOCALES) {
+    currentLocale = browser as LocaleId
+    return currentLocale
+  }
+  currentLocale = 'en'
+  return currentLocale
 }
 
 export function setLocale(id: LocaleId): void {
-  localStorage.setItem(STORAGE_KEY, id)
-  window.dispatchEvent(new CustomEvent('locale-change', { detail: id }))
+  applyLocaleToClient(id, true)
+  if (typeof window !== 'undefined') {
+    void persistLocale(id)
+  }
+}
+
+export function syncLocaleFromSettings(id: LocaleId): void {
+  applyLocaleToClient(id, true)
 }
 
 export function t(key: TranslationKey): string {

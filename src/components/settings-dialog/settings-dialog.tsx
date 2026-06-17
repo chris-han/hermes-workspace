@@ -73,7 +73,7 @@ import {
 
 // ── Language ────────────────────────────────────────────────────────────
 
-import { LOCALE_LABELS, getLocale, setLocale } from '@/lib/i18n'
+import { LOCALE_LABELS } from '@/lib/i18n'
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -2186,9 +2186,9 @@ function LanguageContent() {
         description="Translates navigation, labels, and buttons."
       >
         <select
-          value={getLocale()}
+          value={settings.locale}
           onChange={(e) => {
-            setLocale(e.target.value as LocaleId)
+            updateSettings({ locale: e.target.value as LocaleId })
             window.location.reload()
           }}
           className="h-9 w-full rounded-lg border border-primary-200 dark:border-neutral-700 bg-primary-50 dark:bg-neutral-800 px-3 text-sm text-primary-900 dark:text-neutral-100 outline-none md:max-w-xs"

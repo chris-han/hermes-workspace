@@ -24,7 +24,7 @@ import { usePageTitle } from '@/hooks/use-page-title'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useSettings } from '@/hooks/use-settings'
-import { LOCALE_LABELS, getLocale, setLocale } from '@/lib/i18n'
+import { LOCALE_LABELS } from '@/lib/i18n'
 import { THEMES, getTheme, isDarkTheme, setTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import {
@@ -539,9 +539,9 @@ export function SettingsScreen() {
                 description="Translates navigation, labels, and buttons. Content from the agent remains in the agent's language."
               >
                 <select
-                  value={getLocale()}
+                  value={settings.locale}
                   onChange={(e) => {
-                    setLocale(e.target.value as LocaleId)
+                    updateSettings({ locale: e.target.value as LocaleId })
                     window.location.reload()
                   }}
                   className="h-9 w-full rounded-lg border border-primary-200 dark:border-gray-600 bg-primary-50 dark:bg-gray-800 px-3 text-sm text-primary-900 dark:text-gray-100 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 md:max-w-xs"

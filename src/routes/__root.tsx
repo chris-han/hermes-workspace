@@ -8,6 +8,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import appCss from '../styles.css?url'
 import { getRootSurfaceState } from './-root-layout-state'
+import { getRootLayoutMode } from './-root-layout-utils'
+import { unregisterServiceWorkers, wrapInlineScript } from './-root-runtime-guards'
 import { SearchModal } from '@/components/search/search-modal'
 import { TerminalShortcutListener } from '@/components/terminal-shortcut-listener'
 import { GlobalShortcutListener } from '@/components/global-shortcut-listener'
@@ -238,51 +240,6 @@ export const Route = createRootRoute({
 })
 
 const queryClient = new QueryClient()
-
-export function getRootLayoutMode(
-  onboardingComplete: string | null,
-): 'onboarding' | 'workspace' {
-  return onboardingComplete === 'true' ? 'workspace' : 'onboarding'
-}
-
-export function wrapInlineScript(source: string): string {
-  return `(() => {\n  try {\n${source}\n  } catch (error) {\n    console.error('Inline bootstrap script failed', error)\n  }\n})()`
-}
-
-type ServiceWorkerLike = {
-  getRegistrations: () => Promise<
-    ReadonlyArray<{ unregister: () => boolean | void | Promise<boolean | void> }>
-  >
-}
-
-type CachesLike = {
-  keys: () => Promise<Array<string>>
-  delete: (name: string) => Promise<boolean> | boolean
-}
-
-export async function unregisterServiceWorkers({
-  serviceWorker,
-  cachesApi,
-}: {
-  serviceWorker?: ServiceWorkerLike
-  cachesApi?: CachesLike
-}): Promise<void> {
-  await serviceWorker
-    ?.getRegistrations()
-    .then((registrations) =>
-      Promise.allSettled(
-        registrations.map((registration) => registration.unregister()),
-      ),
-    )
-    .catch(() => undefined)
-
-  await cachesApi
-    ?.keys()
-    .then((names) =>
-      Promise.allSettled(names.map((name) => cachesApi.delete(name))),
-    )
-    .catch(() => undefined)
-}
 
 function RootLayout() {
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(

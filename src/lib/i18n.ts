@@ -21,10 +21,14 @@ const EN: Record<string, string> = {
   // Nav
   'nav.dashboard': 'Dashboard',
   'nav.chat': 'Chat',
+  'nav.search': 'Search',
   'nav.files': 'Files',
   'nav.terminal': 'Terminal',
   'nav.jobs': 'Jobs',
   'nav.tasks': 'Tasks',
+  'nav.conductor': 'Conductor',
+  'nav.operations': 'Operations',
+  'nav.dataConnections': 'Data Connections',
   'nav.memory': 'Memory',
   'nav.skills': 'Skills',
   'nav.profiles': 'Profiles',
@@ -48,6 +52,12 @@ const EN: Record<string, string> = {
   // Jobs
   'jobs.title': 'Jobs',
   'jobs.newJob': 'New Job',
+  // Chat
+  'chat.search': 'Search',
+  'chat.newSession': 'New Session',
+  'chat.startingSession': 'Starting…',
+  'chat.main': 'Main',
+  'chat.knowledge': 'Knowledge',
   // Settings
   'settings.title': 'Settings',
   'settings.language': 'Language',
@@ -65,10 +75,14 @@ const EN: Record<string, string> = {
 const ES: typeof EN = {
   'nav.dashboard': 'Panel',
   'nav.chat': 'Chat',
+  'nav.search': 'Buscar',
   'nav.files': 'Archivos',
   'nav.terminal': 'Terminal',
   'nav.jobs': 'Trabajos',
   'nav.tasks': 'Tareas',
+  'nav.conductor': 'Conductor',
+  'nav.operations': 'Operaciones',
+  'nav.dataConnections': 'Conexiones de datos',
   'nav.memory': 'Memoria',
   'nav.skills': 'Habilidades',
   'nav.profiles': 'Perfiles',
@@ -88,6 +102,11 @@ const ES: typeof EN = {
   'tasks.done': 'Hecho',
   'jobs.title': 'Trabajos',
   'jobs.newJob': 'Nuevo Trabajo',
+  'chat.search': 'Buscar',
+  'chat.newSession': 'Nueva sesión',
+  'chat.startingSession': 'Iniciando…',
+  'chat.main': 'Principal',
+  'chat.knowledge': 'Conocimiento',
   'settings.title': 'Configuración',
   'settings.language': 'Idioma',
   'settings.languageDesc':
@@ -104,10 +123,14 @@ const ES: typeof EN = {
 const FR: typeof EN = {
   'nav.dashboard': 'Tableau de bord',
   'nav.chat': 'Chat',
+  'nav.search': 'Rechercher',
   'nav.files': 'Fichiers',
   'nav.terminal': 'Terminal',
   'nav.jobs': 'Tâches planifiées',
   'nav.tasks': 'Tâches',
+  'nav.conductor': 'Chef d\'orchestre',
+  'nav.operations': 'Opérations',
+  'nav.dataConnections': 'Connexions de données',
   'nav.memory': 'Mémoire',
   'nav.skills': 'Compétences',
   'nav.profiles': 'Profils',
@@ -127,6 +150,11 @@ const FR: typeof EN = {
   'tasks.done': 'Terminé',
   'jobs.title': 'Tâches planifiées',
   'jobs.newJob': 'Nouvelle tâche',
+  'chat.search': 'Rechercher',
+  'chat.newSession': 'Nouvelle session',
+  'chat.startingSession': 'Démarrage…',
+  'chat.main': 'Principal',
+  'chat.knowledge': 'Connaissance',
   'settings.title': 'Paramètres',
   'settings.language': 'Langue',
   'settings.languageDesc':
@@ -143,10 +171,14 @@ const FR: typeof EN = {
 const ZH: typeof EN = {
   'nav.dashboard': '仪表板',
   'nav.chat': '聊天',
+  'nav.search': '搜索',
   'nav.files': '文件',
   'nav.terminal': '终端',
   'nav.jobs': '任务计划',
   'nav.tasks': '任务',
+  'nav.conductor': '指挥中心',
+  'nav.operations': '运营',
+  'nav.dataConnections': '数据连接',
   'nav.memory': '记忆',
   'nav.skills': '技能',
   'nav.profiles': '配置',
@@ -166,6 +198,11 @@ const ZH: typeof EN = {
   'tasks.done': '完成',
   'jobs.title': '任务计划',
   'jobs.newJob': '新建计划',
+  'chat.search': '搜索',
+  'chat.newSession': '新建会话',
+  'chat.startingSession': '正在创建…',
+  'chat.main': '主菜单',
+  'chat.knowledge': '知识',
   'settings.title': '设置',
   'settings.language': '语言',
   'settings.languageDesc': '选择工作区界面显示语言。',
@@ -261,5 +298,7 @@ export function syncLocaleFromSettings(id: LocaleId): void {
 
 export function t(key: TranslationKey): string {
   const locale = getLocale()
-  return LOCALES[locale]?.[key] ?? LOCALES.en[key] ?? key
+  const translations = LOCALES[locale] as Record<string, string | undefined>
+  const fallbackTranslations = LOCALES.en as Record<string, string | undefined>
+  return translations[key] ?? fallbackTranslations[key] ?? key
 }

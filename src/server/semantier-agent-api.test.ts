@@ -94,6 +94,26 @@ describe('buildSemantierAgentProxyHeaders', () => {
     )
   })
 
+  it('preserves the browser binding cookie on Feishu auth routes', () => {
+    const headers = buildSemantierAgentProxyHeaders(
+      {
+        cookie:
+          'hermes-auth=workspace-session; vt_session=semantier-user-session; vt_browser_session=browser-nonce; csrftoken=abc123',
+      },
+      {
+        authHeaders: {},
+        forwardBrowserCookies: true,
+        allowedCookieNames: allowedSemantierAuthCookieNamesForPath(
+          '/auth/feishu/login',
+        ),
+      },
+    )
+
+    expect(headers.get('cookie')).toBe(
+      'vt_session=semantier-user-session; vt_browser_session=browser-nonce',
+    )
+  })
+
   it('builds authenticated probe headers from the incoming browser cookie header', () => {
     const headers = buildSemantierAgentProbeHeaders(
       '/api/sessions',
@@ -123,7 +143,7 @@ describe('buildSemantierAgentProxyResponseHeaders', () => {
     const upstreamHeaders = new Headers({
       'content-type': 'application/json',
       'set-cookie':
-        'vt_session=\"\"; expires=Sun, 17 May 2026 11:40:06 GMT; Max-Age=0; Path=/; SameSite=lax, vt_browser_session=\"\"; expires=Sun, 17 May 2026 11:40:06 GMT; Max-Age=0; Path=/; SameSite=lax',
+        'vt_session=""; expires=Sun, 17 May 2026 11:40:06 GMT; Max-Age=0; Path=/; SameSite=lax, vt_browser_session=""; expires=Sun, 17 May 2026 11:40:06 GMT; Max-Age=0; Path=/; SameSite=lax',
     })
 
     const headers = buildSemantierAgentProxyResponseHeaders(upstreamHeaders)

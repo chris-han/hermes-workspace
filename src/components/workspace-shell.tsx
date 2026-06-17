@@ -51,9 +51,13 @@ const TerminalWorkspace = lazy(() =>
   })),
 )
 
+import {
+  DESKTOP_SIDEBAR_BACKDROP_CLASS,
+  shouldAutoRedirectToFeishuLogin,
+  shouldShowSemantierLogin,
+} from './workspace-shell-utils'
+
 type SessionsListResponse = Array<SessionMeta>
-export const DESKTOP_SIDEBAR_BACKDROP_CLASS =
-  'fixed left-0 bottom-0 top-[var(--titlebar-h,0px)] w-[300px] z-10 bg-black/10 backdrop-blur-[1px]'
 
 async function fetchSessions(): Promise<SessionsListResponse> {
   const res = await fetch('/api/sessions')
@@ -64,25 +68,6 @@ async function fetchSessions(): Promise<SessionsListResponse> {
     : Array.isArray(data)
       ? data
       : []
-}
-
-export function shouldShowSemantierLogin(
-  semantierAuthLoading: boolean,
-  semantierAuthenticated: boolean | undefined,
-): boolean {
-  return !semantierAuthLoading && semantierAuthenticated === false
-}
-
-export function shouldAutoRedirectToFeishuLogin(
-  feishuOauthEnabled: boolean | undefined,
-  semantierAuthenticated: boolean | undefined,
-  autoLoginSuppressed: boolean,
-): boolean {
-  return Boolean(
-    feishuOauthEnabled &&
-      semantierAuthenticated === false &&
-      !autoLoginSuppressed,
-  )
 }
 
 type WorkspaceShellProps = {

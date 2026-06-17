@@ -15,6 +15,7 @@ import {
   UserGroupIcon,
 } from '@hugeicons/core-free-icons'
 import { useEffect, useState } from 'react'
+import type { SemantierAuthStatus } from '@/lib/semantier-auth'
 import { cn } from '@/lib/utils'
 import { hapticTap } from '@/lib/haptics'
 import { getTheme, getThemeVariant, isDarkTheme, setTheme } from '@/lib/theme'
@@ -23,7 +24,6 @@ import {
   clearFeishuAutoLoginSuppression,
   logoutSemantierAuth,
   semantierAuthQueryKey,
-  type SemantierAuthStatus,
   useSemantierAuthStatus,
 } from '@/lib/semantier-auth'
 import { UserAvatar } from '@/components/avatars'
@@ -379,7 +379,7 @@ export function MobileHamburgerMenu() {
                   >
                     {semantierAuthActionPending ? 'Logging out...' : 'Logout'}
                   </button>
-                ) : (
+                ) : semantierAuth?.feishu_oauth_enabled ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -391,7 +391,7 @@ export function MobileHamburgerMenu() {
                   >
                     Login
                   </button>
-                )}
+                ) : null}
               </div>
             )}
           </div>

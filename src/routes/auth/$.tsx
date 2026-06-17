@@ -10,12 +10,17 @@ import {
 
 const DEFAULT_AUTH_PROXY_TIMEOUT_MS = 5_000
 const WEIXIN_AUTH_PROXY_TIMEOUT_MS = 20_000
+const FEISHU_AUTH_PROXY_TIMEOUT_MS = 20_000
 const LOGOUT_COOKIE_OPTIONS = 'Max-Age=0; Path=/; SameSite=Lax'
 
 export function getAuthProxyTimeoutMs(targetPath: string): number {
-  return targetPath.startsWith('/auth/weixin/login/')
-    ? WEIXIN_AUTH_PROXY_TIMEOUT_MS
-    : DEFAULT_AUTH_PROXY_TIMEOUT_MS
+  if (targetPath.startsWith('/auth/weixin/login/')) {
+    return WEIXIN_AUTH_PROXY_TIMEOUT_MS
+  }
+  if (targetPath.startsWith('/auth/feishu/login')) {
+    return FEISHU_AUTH_PROXY_TIMEOUT_MS
+  }
+  return DEFAULT_AUTH_PROXY_TIMEOUT_MS
 }
 
 async function proxyAuthRequest(request: Request, splat: string) {

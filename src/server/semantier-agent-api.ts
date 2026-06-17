@@ -55,12 +55,14 @@ function splitSetCookieHeader(value: string): Array<string> {
 }
 
 function getSetCookieValues(upstreamHeaders: Headers): Array<string> {
-  const headersWithSetCookie = upstreamHeaders as Headers & {
+  const headersWithSetCookie = upstreamHeaders as {
     getSetCookie?: () => Array<string>
   }
-  const setCookies = headersWithSetCookie.getSetCookie?.()
-  if (setCookies && setCookies.length > 0) {
-    return setCookies
+  if (typeof headersWithSetCookie.getSetCookie === 'function') {
+    const setCookies = headersWithSetCookie.getSetCookie()
+    if (setCookies.length > 0) {
+      return setCookies
+    }
   }
   const setCookie = upstreamHeaders.get('set-cookie')
   return setCookie ? splitSetCookieHeader(setCookie) : []
@@ -170,7 +172,12 @@ export function allowedSemantierAuthCookieNamesForPath(
   targetPath: string,
 ): Array<string> {
   const normalized = targetPath.startsWith('/') ? targetPath : `/${targetPath}`
-  if (normalized.startsWith('/auth/weixin/login/')) {
+  if (
+    normalized.startsWith('/auth/weixin/login/') ||
+    normalized === '/auth/weixin/login' ||
+    normalized.startsWith('/auth/feishu/login/') ||
+    normalized === '/auth/feishu/login'
+  ) {
     return [SEMANTIER_AGENT_AUTH_COOKIE, SEMANTIER_AGENT_BROWSER_SESSION_COOKIE]
   }
   return [SEMANTIER_AGENT_AUTH_COOKIE]

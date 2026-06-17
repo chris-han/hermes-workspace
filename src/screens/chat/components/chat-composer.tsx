@@ -21,7 +21,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { setLocalModelOverride } from '../chat-screen'
+import { setLocalModelOverride } from '../model-override'
 import {
   ATTACHMENT_ACCEPT,
   DOCX_MIME_TYPE,
@@ -36,6 +36,10 @@ import {
   getZeroForkModelInfoFlags,
   shouldBlockZeroForkModelSwitch,
 } from './chat-composer-model-switch'
+import {
+  fetchCurrentModelFromStatus,
+  readText,
+} from './chat-current-model'
 import type { CSSProperties, Ref } from 'react'
 
 import type { ModelCatalogEntry, ModelSwitchResponse } from '@/lib/model-types'
@@ -117,19 +121,6 @@ function nextThinkingLevel(level: ThinkingLevel): ThinkingLevel {
 function isClaude46Model(model: string): boolean {
   const normalized = model.toLowerCase()
   return normalized.includes('4-6') || normalized.includes('claude-4.6')
-}
-
-type SessionStatusApiResponse = {
-  ok?: boolean
-  payload?: unknown
-  error?: string
-  [key: string]: unknown
-}
-
-type HermesConfigApiResponse = {
-  activeModel?: unknown
-  activeProvider?: unknown
-  [key: string]: unknown
 }
 
 type GatewayStatusApiResponse = {
@@ -495,10 +486,6 @@ async function readFileAsText(file: File): Promise<string | null> {
   })
 }
 
-function readText(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : ''
-}
-
 function getResolvedModelKey(model: string, provider?: string): string {
   const normalizedModel = model.trim()
   const normalizedProvider = typeof provider === 'string' ? provider.trim() : ''
@@ -597,49 +584,6 @@ async function compressImageToDataUrl(file: File): Promise<string> {
   })
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-}
-
-function readModelFromStatusPayload(payload: unknown): string {
-  if (!isRecord(payload)) return ''
-
-  const directCandidates = [
-    payload.model,
-    payload.currentModel,
-    payload.modelAlias,
-  ]
-  for (const candidate of directCandidates) {
-    const text = readText(candidate)
-    if (text) return text
-  }
-
-  if (isRecord(payload.resolved)) {
-    const provider = readText(payload.resolved.modelProvider)
-    const model = readText(payload.resolved.model)
-    if (provider && model) return `${provider}/${model}`
-    if (model) return model
-  }
-
-  const nestedCandidates = [payload.status, payload.session, payload.payload]
-  for (const nested of nestedCandidates) {
-    const nestedModel = readModelFromStatusPayload(nested)
-    if (nestedModel) return nestedModel
-  }
-
-  return ''
-}
-
-function readModelFromHermesConfigPayload(payload: unknown): string {
-  if (!isRecord(payload)) return ''
-
-  const activeModel = readText(payload.activeModel)
-  if (!activeModel) return ''
-
-  const activeProvider = readText(payload.activeProvider)
-  return getResolvedModelKey(activeModel, activeProvider)
-}
-
 function normalizeDraftSessionKey(sessionKey?: string): string {
   if (typeof sessionKey !== 'string') return 'new'
   const normalized = sessionKey.trim()
@@ -673,48 +617,6 @@ async function readResponseError(response: Response): Promise<string> {
   } catch {
     const text = await response.text().catch(() => '')
     return text || response.statusText || 'Request failed'
-  }
-}
-
-async function fetchCurrentModelFromStatus(): Promise<string> {
-  const controller = new AbortController()
-  const timeout = globalThis.setTimeout(() => controller.abort(), 7000)
-
-  try {
-    const response = await fetch('/api/session-status', {
-      signal: controller.signal,
-    })
-    if (!response.ok) {
-      throw new Error(await readResponseError(response))
-    }
-
-    const payload = (await response.json()) as SessionStatusApiResponse
-    if (payload.ok === false) {
-      throw new Error(readText(payload.error) || 'Server unavailable')
-    }
-
-    const currentModel = readModelFromStatusPayload(payload.payload ?? payload)
-    if (currentModel) return currentModel
-
-    const configResponse = await fetch('/api/hermes-config', {
-      signal: controller.signal,
-    })
-    if (!configResponse.ok) {
-      throw new Error(await readResponseError(configResponse))
-    }
-
-    const configPayload = (await configResponse.json()) as HermesConfigApiResponse
-    return readModelFromHermesConfigPayload(configPayload)
-  } catch (error) {
-    if (
-      (error instanceof DOMException && error.name === 'AbortError') ||
-      (error instanceof Error && error.name === 'AbortError')
-    ) {
-      throw new Error('Request timed out')
-    }
-    throw error
-  } finally {
-    globalThis.clearTimeout(timeout)
   }
 }
 
@@ -2863,4 +2765,3 @@ export type {
   ChatComposerHandle,
   ThinkingLevel,
 }
-export { fetchCurrentModelFromStatus, readModelFromHermesConfigPayload, readModelFromStatusPayload }

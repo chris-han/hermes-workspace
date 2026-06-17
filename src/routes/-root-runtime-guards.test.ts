@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { unregisterServiceWorkers, wrapInlineScript } from './__root'
+import { unregisterServiceWorkers, wrapInlineScript } from './-root-runtime-guards'
 
 describe('root runtime guards', () => {
   it('wraps inline scripts in a top-level try/catch', () => {

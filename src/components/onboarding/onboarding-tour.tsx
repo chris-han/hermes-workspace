@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Joyride, { ACTIONS, STATUS } from 'react-joyride'
+import { shouldCompleteOnboardingTour } from './onboarding-tour-utils'
+import Joyride from 'react-joyride'
 import { tourSteps } from './tour-steps'
 import type { CallBackProps, Styles } from 'react-joyride'
 import { useSettingsStore } from '@/hooks/use-settings'
@@ -15,14 +16,6 @@ const ACCENT_COLORS = {
   purple: '#a855f7',
   blue: '#3b82f6',
   green: '#10b981',
-}
-
-export function shouldCompleteOnboardingTour(
-  action: string,
-  status: string,
-): boolean {
-  const finishedStatuses: Array<string> = [STATUS.FINISHED, STATUS.SKIPPED]
-  return finishedStatuses.includes(status) || action === ACTIONS.CLOSE
 }
 
 export function OnboardingTour() {

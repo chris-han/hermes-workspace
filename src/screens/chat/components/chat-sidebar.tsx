@@ -39,7 +39,6 @@ import { ProvidersDialog } from './providers-dialog'
 import { SessionRenameDialog } from './sidebar/session-rename-dialog'
 import { SessionDeleteDialog } from './sidebar/session-delete-dialog'
 import { SidebarSessions } from './sidebar/sidebar-sessions'
-import type { ChatOpenSettingsDetail } from '../chat-events'
 import type { SessionMeta } from '../types'
 import { t } from '@/lib/i18n'
 import { SettingsDialog } from '@/components/settings-dialog'
@@ -73,7 +72,6 @@ import {
   clearFeishuAutoLoginSuppression,
   logoutSemantierAuth,
   semantierAuthQueryKey,
-  type SemantierAuthStatus,
   useSemantierAuthStatus,
 } from '@/lib/semantier-auth'
 
@@ -177,7 +175,7 @@ export async function fetchWorkspaceStats(): Promise<WorkspaceStats | null> {
   }
 }
 
-export async function fetchWorkspaceProjectShortcuts(): Promise<Array<never>> {
+async function fetchWorkspaceProjectShortcuts(): Promise<Array<never>> {
   return []
 }
 
@@ -548,13 +546,17 @@ function ChatSidebarComponent({
   })
   const queryClient = useQueryClient()
   const semantierAuthQuery = useSemantierAuthStatus()
-  const semantierAuth = semantierAuthQuery.data
+  const semantierAuth =
+    semantierAuthQuery.data ?? {
+      authenticated: false,
+      feishu_oauth_enabled: false,
+    }
 
   useEffect(() => {
     function handleOpenSettingsEvent(event: Event) {
-      const detail = (event as CustomEvent<ChatOpenSettingsDetail>).detail
+      const detail = (event as CustomEvent<{ section?: string }>).detail
       handleOpenSettings(
-        detail?.section === 'appearance' ? 'appearance' : 'hermes',
+        detail.section === 'appearance' ? 'appearance' : 'hermes',
       )
     }
 
@@ -650,9 +652,9 @@ function ChatSidebarComponent({
     setSemantierAuthActionPending(true)
     try {
       await logoutSemantierAuth()
-      queryClient.setQueryData<SemantierAuthStatus | undefined>(
+      queryClient.setQueryData(
         semantierAuthQueryKey,
-        (prev) =>
+        (prev: typeof semantierAuthQuery.data) =>
           prev
             ? {
                 ...prev,
@@ -844,7 +846,7 @@ function ChatSidebarComponent({
   const searchItem: NavItemDef = {
     kind: 'button',
     icon: Search01Icon,
-    label: 'Search',
+    label: t('chat.search'),
     active: isSearchModalOpen,
     onClick: openSearchModal,
   }
@@ -898,14 +900,14 @@ function ChatSidebarComponent({
       kind: 'link',
       to: '/conductor',
       icon: Rocket01Icon,
-      label: 'Conductor',
+      label: t('nav.conductor'),
       active: isConductorActive,
     },
     {
       kind: 'link',
       to: '/operations',
       icon: UserGroupIcon,
-      label: 'Operations',
+      label: t('nav.operations'),
       active: isOperationsActive,
     },
   ]
@@ -922,7 +924,7 @@ function ChatSidebarComponent({
       kind: 'link',
       to: '/settings/data-connections',
       icon: Plug01Icon,
-      label: 'Data Connections',
+      label: t('nav.dataConnections'),
       active: isDataConnectionsActive,
     },
     {
@@ -1117,7 +1119,11 @@ function ChatSidebarComponent({
               strokeWidth={1.5}
               className="size-5 shrink-0"
             />
-            <span>{creatingSession ? 'Starting…' : 'New Session'}</span>
+            <span>
+              {creatingSession
+                ? t('chat.startingSession')
+                : t('chat.newSession')}
+            </span>
           </Button>
         </div>
       )}
@@ -1127,7 +1133,7 @@ function ChatSidebarComponent({
         {/* Navigation sections */}
         <div className={cn('shrink-0 space-y-0.5 px-2', isMobile && 'order-2')}>
           <SectionLabel
-            label="Main"
+            label={t('chat.main')}
             isCollapsed={isVisuallyCollapsed}
             transition={transition}
             collapsible
@@ -1144,7 +1150,7 @@ function ChatSidebarComponent({
           />
 
           <SectionLabel
-            label="Knowledge"
+            label={t('chat.knowledge')}
             isCollapsed={isVisuallyCollapsed}
             transition={transition}
             collapsible
@@ -1249,7 +1255,7 @@ function ChatSidebarComponent({
                   Checking Feishu account...
                 </div>
               ) : null}
-              {semantierAuth?.feishu_oauth_enabled ? (
+              {semantierAuth.feishu_oauth_enabled ? (
                 <>
                   <div className="px-2 py-1.5 text-xs text-primary-500 dark:text-neutral-400">
                     {semantierAuth.authenticated && semantierAuth.user ? (
@@ -1304,7 +1310,7 @@ function ChatSidebarComponent({
                   </div>
                 </>
               ) : null}
-              {semantierAuth?.authenticated ? (
+              {semantierAuth.authenticated ? (
                 <MenuItem
                   onClick={() => {
                     void handleFeishuLogout()
@@ -1312,7 +1318,7 @@ function ChatSidebarComponent({
                 >
                   {semantierAuthActionPending ? 'Logging out...' : 'Logout'}
                 </MenuItem>
-              ) : (
+              ) : semantierAuth.feishu_oauth_enabled ? (
                 <MenuItem
                   disabled={semantierAuthQuery.isLoading}
                   onClick={() => {
@@ -1322,7 +1328,7 @@ function ChatSidebarComponent({
                 >
                   {semantierAuthQuery.isLoading ? 'Login...' : 'Login'}
                 </MenuItem>
-              )}
+              ) : null}
               <div className="my-1 h-px bg-primary-200 dark:bg-neutral-800" />
               <MenuItem
                 onClick={function onOpenSettings() {

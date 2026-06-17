@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shouldCompleteOnboardingTour } from './onboarding-tour'
+import { shouldCompleteOnboardingTour } from './onboarding-tour-utils'
 
 describe('onboarding tour completion logic', () => {
   it('completes the tour when the user closes it', () => {

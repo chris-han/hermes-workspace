@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getRootLayoutMode } from './__root'
+import { getRootLayoutMode } from './-root-layout-utils'
 
 describe('getRootLayoutMode', () => {
   it('shows fullscreen onboarding until onboarding is complete', () => {

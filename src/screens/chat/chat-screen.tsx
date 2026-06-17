@@ -98,11 +98,8 @@ import { useResearchCard } from '@/hooks/use-research-card'
 // MOBILE_TAB_BAR_OFFSET removed — tab bar always hidden in chat
 import { useTapDebug } from '@/hooks/use-tap-debug'
 import { useChatMode } from '@/hooks/use-chat-mode'
+import { _localModelOverride } from './model-override'
 
-export let _localModelOverride = ''
-export function setLocalModelOverride(model: string) {
-  _localModelOverride = model
-}
 // Activity store removed — not used in Hermes Workspace
 const _noopSetActivity = (_s: string) => {}
 const FIRST_DEMO_WALKTHROUGH_PROMPT =

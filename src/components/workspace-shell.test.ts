@@ -3,7 +3,7 @@ import {
   DESKTOP_SIDEBAR_BACKDROP_CLASS,
   shouldAutoRedirectToFeishuLogin,
   shouldShowSemantierLogin,
-} from './workspace-shell'
+} from './workspace-shell-utils'
 import { connectedReachabilityStatus } from './connection-startup-screen'
 import { shouldShowProfileCompletion } from './auth/profile-completion-screen'
 

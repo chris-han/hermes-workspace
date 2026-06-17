@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchCurrentModelFromStatus } from './chat-composer'
+import { fetchCurrentModelFromStatus } from './chat-current-model'
 
 describe('fetchCurrentModelFromStatus', () => {
   afterEach(() => {

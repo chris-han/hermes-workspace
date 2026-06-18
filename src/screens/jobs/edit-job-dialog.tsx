@@ -16,6 +16,11 @@ const SCHEDULE_PRESETS = [
 ] as const
 
 const DELIVERY_OPTIONS = ['local', 'telegram', 'discord'] as const
+type ScheduleMode = 'preset' | 'custom'
+
+function isPresetSchedule(value: string): boolean {
+  return SCHEDULE_PRESETS.some((preset) => preset.value === value)
+}
 
 type EditJobDialogProps = {
   job: HermesJob | null
@@ -56,6 +61,7 @@ function readScheduleValue(job: HermesJob): string {
 }
 
 function getInitialState(job: HermesJob | null) {
+  const scheduleValue = job ? readScheduleValue(job) : 'every 30m'
   const repeatTimes = job?.repeat?.times
   const repeatCompleted = job?.repeat?.completed ?? 0
   const remainingRepeats =
@@ -65,7 +71,10 @@ function getInitialState(job: HermesJob | null) {
 
   return {
     name: job?.name ?? '',
-    schedule: job ? readScheduleValue(job) : 'every 30m',
+    schedule: scheduleValue,
+    scheduleMode: isPresetSchedule(scheduleValue)
+      ? ('preset' as ScheduleMode)
+      : ('custom' as ScheduleMode),
     prompt: job?.prompt ?? '',
     skillsInput: Array.isArray(job?.skills) ? job.skills.join(', ') : '',
     deliver:
@@ -222,64 +231,73 @@ export function EditJobDialog({
                 />
               </section>
 
-              <section className="space-y-3">
+              <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-medium">Schedule</h3>
+                  <h3 className="text-sm font-medium">Interval time</h3>
                   <p
                     className="mt-1 text-xs"
                     style={{ color: 'var(--theme-muted)' }}
                   >
-                    Choose a preset or enter a custom schedule string below.
+                    Pick a preset interval or switch to a custom cron string.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {SCHEDULE_PRESETS.map((preset) => {
-                    const isActive = form.schedule === preset.value
-                    return (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() =>
-                          setForm((current) => ({
-                            ...current,
-                            schedule: preset.value,
-                          }))
-                        }
-                        className="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
-                        style={{
-                          background: isActive
-                            ? 'var(--theme-accent)'
-                            : 'var(--theme-card)',
-                          borderColor: isActive
-                            ? 'var(--theme-accent)'
-                            : 'var(--theme-border)',
-                          color: isActive ? '#fff' : 'var(--theme-text)',
-                        }}
-                      >
-                        {preset.label}
-                      </button>
-                    )
-                  })}
-                </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Custom schedule</label>
-                  <input
-                    value={form.schedule}
-                    onChange={(event) =>
+                  <label className="text-sm font-medium">Interval preset</label>
+                  <select
+                    value={form.scheduleMode === 'preset' ? form.schedule : 'custom'}
+                    onChange={(event) => {
+                      const nextValue = event.target.value
                       setForm((current) => ({
                         ...current,
-                        schedule: event.target.value,
+                        scheduleMode:
+                          nextValue === 'custom' ? 'custom' : 'preset',
+                        schedule:
+                          nextValue === 'custom'
+                            ? current.schedule
+                            : nextValue,
                       }))
-                    }
-                    placeholder="every 30m or 0 9 * * *"
-                    required
+                    }}
                     className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                     style={{
                       background: 'var(--theme-input)',
                       color: 'var(--theme-text)',
                     }}
-                  />
+                  >
+                    {SCHEDULE_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                    <option value="custom">Custom cron</option>
+                  </select>
                 </div>
+                {form.scheduleMode === 'custom' ? (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Custom schedule
+                    </label>
+                    <input
+                      value={form.schedule}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          schedule: event.target.value,
+                        }))
+                      }
+                      placeholder="0 9 * * *"
+                      required
+                      className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                      style={{
+                        background: 'var(--theme-input)',
+                        color: 'var(--theme-text)',
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-2.5 text-xs text-[var(--theme-muted)]">
+                    Interval set to {SCHEDULE_PRESETS.find((preset) => preset.value === form.schedule)?.label ?? form.schedule}
+                  </div>
+                )}
               </section>
 
               <section className="space-y-2">
@@ -373,7 +391,7 @@ export function EditJobDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Repeat</label>
+                  <label className="text-sm font-medium">Repeat time</label>
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -473,7 +491,7 @@ export function EditJobDialog({
                   !form.schedule.trim() ||
                   !form.prompt.trim()
                 }
-                className="rounded-xl px-4 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-50"
+                className="rounded-xl px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-50"
                 style={{ background: 'var(--theme-accent)' }}
               >
                 {isSubmitting ? 'Saving...' : 'Save changes'}

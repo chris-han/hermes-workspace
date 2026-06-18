@@ -133,8 +133,7 @@ function JobCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       className={cn(
-        'rounded-xl border p-4 transition-colors',
-        'bg-[var(--theme-card)] border-[var(--theme-border)]',
+        'rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-sm transition-colors',
         isPaused && 'opacity-60',
       )}
     >
@@ -403,7 +402,7 @@ export function JobsScreen() {
   return (
     <div className="min-h-full overflow-y-auto bg-surface text-ink">
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-4 py-6 pb-[calc(var(--tabbar-h,80px)+1.5rem)] sm:px-6 lg:px-8">
-        <header className="rounded-2xl border border-primary-200 bg-primary-50/85 p-4 backdrop-blur-xl">
+        <header className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-sm backdrop-blur-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <HugeiconsIcon
@@ -436,7 +435,7 @@ export function JobsScreen() {
               </button>
               <button
                 onClick={() => setShowCreate(true)}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                className="flex items-center gap-1.5 rounded-button px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 hover:scale-105 active:scale-95"
                 style={{ background: 'var(--theme-accent)' }}
               >
                 <HugeiconsIcon icon={Add01Icon} size={14} />
@@ -446,7 +445,7 @@ export function JobsScreen() {
           </div>
         </header>
 
-        <div className="rounded-2xl border border-primary-200 bg-primary-50/85 p-4 backdrop-blur-xl">
+        <div className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-sm backdrop-blur-xl">
           <div className="relative">
             <HugeiconsIcon
               icon={Search01Icon}
@@ -552,7 +551,7 @@ export function JobsScreen() {
                       setDeletingJob(null)
                     }
                   }}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-destructive-foreground transition-opacity hover:opacity-90"
                   style={{ background: 'var(--theme-danger)' }}
                 >
                   Delete

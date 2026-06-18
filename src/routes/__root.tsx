@@ -132,7 +132,7 @@ export const Route = createRootRoute({
       {
         name: 'description',
         content:
-          'Hermes Agent workspace for chat, tools, files, memory, and jobs.',
+          'Semantier workspace for chat, tools, files, memory, and jobs.',
       },
       // Open Graph for WeChat and social sharing
       {
@@ -141,11 +141,11 @@ export const Route = createRootRoute({
       },
       {
         property: 'og:title',
-        content: 'Hermes Agent | Semantier',
+        content: 'semantier',
       },
       {
         property: 'og:description',
-        content: 'Hermes Agent workspace for chat, tools, files, memory, and jobs.',
+        content: 'Semantier workspace for chat, tools, files, memory, and jobs.',
       },
       {
         property: 'og:image',
@@ -170,11 +170,11 @@ export const Route = createRootRoute({
       },
       {
         name: 'twitter:title',
-        content: 'Hermes Agent | Semantier',
+        content: 'semantier',
       },
       {
         name: 'twitter:description',
-        content: 'Hermes Agent workspace for chat, tools, files, memory, and jobs.',
+        content: 'Semantier workspace for chat, tools, files, memory, and jobs.',
       },
       {
         name: 'twitter:image',

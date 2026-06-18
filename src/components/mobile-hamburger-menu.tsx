@@ -227,7 +227,7 @@ export function MobileHamburgerMenu() {
                 className="font-bold text-[15px] tracking-tight"
                 style={{ color: 'var(--color-ink, #111)' }}
               >
-                Hermes
+                semantier
               </span>
               <span
                 className="text-[11px]"

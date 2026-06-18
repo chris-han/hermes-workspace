@@ -356,9 +356,9 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
             <div className="flex-1 text-center">
               <span
                 className="text-[13px] font-medium select-none"
-                style={{ color: 'var(--theme-accent, #B98A44)' }}
+                style={{ color: 'var(--theme-accent-text, #9fe870)' }}
               >
-                Hermes
+                semantier
               </span>
             </div>
             {/* Right spacer to balance */}

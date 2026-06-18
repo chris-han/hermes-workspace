@@ -26,6 +26,14 @@ export function MeetingCoordinatorPanel() {
   const deliveryTasks = query.data?.deliveryTasks ?? []
   const scheduler = query.data?.scheduler
 
+  const field = (label: string, value: unknown) =>
+    value === null || value === undefined || value === '' ? null : (
+      <p className="text-xs text-[var(--theme-muted)]">
+        <span className="font-medium text-[var(--theme-muted-2)]">{label}: </span>
+        {String(value)}
+      </p>
+    )
+
   return (
     <section className="rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-[0_16px_50px_var(--theme-shadow)]">
       <div className="flex items-center justify-between gap-3">
@@ -80,12 +88,15 @@ export function MeetingCoordinatorPanel() {
                   <p className="text-sm text-[var(--theme-text)]">
                     {monitor.meeting_title || monitor.monitor_id}
                   </p>
-                  <p className="text-xs text-[var(--theme-muted)]">
-                    {monitor.status}
-                    {monitor.pending_delivery_tasks
-                      ? ` · ${monitor.pending_delivery_tasks} delivery task`
-                      : ''}
-                  </p>
+                  <div className="mt-1 grid gap-1">
+                    {field('status', monitor.status)}
+                    {field('monitor', monitor.monitor_id)}
+                    {field('event', monitor.event_id)}
+                    {field('calendar', monitor.calendar_id)}
+                    {field('cron', monitor.cron_job_id)}
+                    {field('last checked', monitor.last_checked_at)}
+                    {field('pending delivery tasks', monitor.pending_delivery_tasks)}
+                  </div>
                 </div>
               ))
             )}
@@ -107,9 +118,21 @@ export function MeetingCoordinatorPanel() {
                   <p className="text-sm text-[var(--theme-text)]">
                     {task.task_type}
                   </p>
-                  <p className="text-xs text-[var(--theme-muted)]">
-                    {task.status}
-                  </p>
+                  <div className="mt-1 grid gap-1">
+                    {field('delivery task', task.delivery_task_id)}
+                    {field('status', task.status)}
+                    <p className="text-xs text-[var(--theme-muted)]">
+                      <span className="font-medium text-[var(--theme-muted-2)]">
+                        attempts:{' '}
+                      </span>
+                      <span
+                        data-testid={`delivery-task-${task.delivery_task_id}-attempt-count`}
+                      >
+                        {task.attempt_count ?? 0}
+                      </span>
+                    </p>
+                    {field('next attempt', task.next_attempt_at)}
+                  </div>
                   {task.status.startsWith('failed_') ? (
                     <button
                       type="button"

@@ -2,6 +2,10 @@ export type MeetingCoordinatorMonitor = {
   monitor_id: string
   meeting_title?: string
   status: string
+  event_id?: string
+  calendar_id?: string
+  cron_job_id?: string | null
+  last_checked_at?: string | null
   pending_delivery_tasks?: number
 }
 
@@ -9,6 +13,8 @@ export type MeetingCoordinatorDeliveryTask = {
   delivery_task_id: string
   status: string
   task_type: string
+  attempt_count?: number
+  next_attempt_at?: string | null
 }
 
 export type MeetingCoordinatorSchedulerState = {

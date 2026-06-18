@@ -18,14 +18,14 @@ import {
 } from '@hugeicons/core-free-icons'
 import { CreateJobDialog } from './create-job-dialog'
 import { EditJobDialog } from './edit-job-dialog'
-import {
-  DialogRoot,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-  DialogClose,
-} from '@/components/ui/dialog'
 import type { HermesJob } from '@/lib/jobs-api'
+import {
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogRoot,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import {
@@ -100,6 +100,15 @@ function getLastRunStatus(job: HermesJob): {
   }
 }
 
+function formatRepeatPolicy(job: HermesJob): string {
+  const completed = Math.max(0, job.repeat?.completed ?? job.run_count ?? 0)
+  const times = job.repeat?.times
+  if (typeof times !== 'number') return `Forever · ${completed} run${completed === 1 ? '' : 's'}`
+  const remaining = Math.max(0, times - completed)
+  if (times === 1) return remaining > 0 ? 'Once' : 'Once · complete'
+  return `${times} cycles · ${remaining} left`
+}
+
 function JobCard({
   job,
   onPause,
@@ -159,6 +168,8 @@ function JobCard({
           </p>
           <div className="mb-2 flex flex-wrap items-center gap-3 text-[10px] text-[var(--theme-muted)]">
             <span>{job.schedule_display || 'custom'}</span>
+            <span>·</span>
+            <span>{formatRepeatPolicy(job)}</span>
             <span>·</span>
             <span>Next: {formatNextRun(job.next_run_at)}</span>
             <span>·</span>
@@ -380,8 +391,7 @@ export function JobsScreen() {
     const q = search.toLowerCase()
     return jobs.filter(
       (j) =>
-        j.name?.toLowerCase().includes(q) ||
-        j.prompt?.toLowerCase().includes(q),
+        j.name.toLowerCase().includes(q) || j.prompt.toLowerCase().includes(q),
     )
   }, [jobsQuery.data, search])
 
@@ -499,7 +509,7 @@ export function JobsScreen() {
                   onPause={(id) => pauseMutation.mutate(id)}
                   onResume={(id) => resumeMutation.mutate(id)}
                   onTrigger={(id) => triggerMutation.mutate(id)}
-                  onEdit={(job) => setEditingJob(job)}
+                  onEdit={(selectedJob) => setEditingJob(selectedJob)}
                   onDelete={() => setDeletingJob(job)}
                 />
               ))}

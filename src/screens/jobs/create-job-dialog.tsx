@@ -16,6 +16,7 @@ const SCHEDULE_PRESETS = [
 
 const DELIVERY_OPTIONS = ['local', 'telegram', 'discord'] as const
 type ScheduleMode = 'preset' | 'custom'
+type RepeatMode = 'once' | 'limited' | 'forever'
 
 function isPresetSchedule(value: string): boolean {
   return SCHEDULE_PRESETS.some((preset) => preset.value === value)
@@ -43,8 +44,8 @@ function getInitialState() {
     prompt: '',
     skillsInput: '',
     deliver: ['local'] as Array<string>,
-    repeatMode: 'unlimited' as 'unlimited' | 'limited',
-    repeatCount: '1',
+    repeatMode: 'forever' as RepeatMode,
+    repeatCount: '2',
   }
 }
 
@@ -106,9 +107,11 @@ export function CreateJobDialog({
       deliver: form.deliver.length > 0 ? form.deliver : undefined,
       skills: skills.length > 0 ? Array.from(new Set(skills)) : undefined,
       repeat:
-        form.repeatMode === 'limited'
-          ? Math.max(1, Number.parseInt(form.repeatCount, 10) || 1)
-          : undefined,
+        form.repeatMode === 'forever'
+          ? 0
+          : form.repeatMode === 'once'
+            ? 1
+            : Math.max(2, Number.parseInt(form.repeatCount, 10) || 2),
     })
   }
 
@@ -362,33 +365,33 @@ export function CreateJobDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Repeat time</label>
+                  <label className="text-sm font-medium">Repeat cycles</label>
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() =>
                         setForm((current) => ({
                           ...current,
-                          repeatMode: 'unlimited',
+                          repeatMode: 'once',
                         }))
                       }
                       className="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
                       style={{
                         background:
-                          form.repeatMode === 'unlimited'
+                          form.repeatMode === 'once'
                             ? 'var(--theme-accent)'
                             : 'var(--theme-card)',
                         borderColor:
-                          form.repeatMode === 'unlimited'
+                          form.repeatMode === 'once'
                             ? 'var(--theme-accent)'
                             : 'var(--theme-border)',
                         color:
-                          form.repeatMode === 'unlimited'
+                          form.repeatMode === 'once'
                             ? '#fff'
                             : 'var(--theme-text)',
                       }}
                     >
-                      Unlimited
+                      Once
                     </button>
                     <button
                       type="button"
@@ -414,13 +417,39 @@ export function CreateJobDialog({
                             : 'var(--theme-text)',
                       }}
                     >
-                      Set count
+                      Many
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((current) => ({
+                          ...current,
+                          repeatMode: 'forever',
+                        }))
+                      }
+                      className="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+                      style={{
+                        background:
+                          form.repeatMode === 'forever'
+                            ? 'var(--theme-accent)'
+                            : 'var(--theme-card)',
+                        borderColor:
+                          form.repeatMode === 'forever'
+                            ? 'var(--theme-accent)'
+                            : 'var(--theme-border)',
+                        color:
+                          form.repeatMode === 'forever'
+                            ? '#fff'
+                            : 'var(--theme-text)',
+                      }}
+                    >
+                      Forever
                     </button>
                   </div>
                   {form.repeatMode === 'limited' ? (
                     <input
                       type="number"
-                      min={1}
+                      min={2}
                       step={1}
                       value={form.repeatCount}
                       onChange={(event) =>

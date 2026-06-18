@@ -19,8 +19,19 @@ export type HermesJob = {
   updated_at?: string
   deliver?: Array<string>
   skills?: Array<string>
-  repeat?: { times?: number; completed?: number }
+  repeat?: { times?: number | null; completed?: number }
   run_count?: number
+}
+
+export type JobRepeatInput = 0 | number
+
+export type JobInput = {
+  schedule: string
+  prompt: string
+  name?: string
+  deliver?: Array<string>
+  skills?: Array<string>
+  repeat?: JobRepeatInput
 }
 
 export type JobOutput = {
@@ -37,14 +48,7 @@ export async function fetchJobs(): Promise<Array<HermesJob>> {
   return data.jobs ?? []
 }
 
-export async function createJob(input: {
-  schedule: string
-  prompt: string
-  name?: string
-  deliver?: Array<string>
-  skills?: Array<string>
-  repeat?: number
-}): Promise<HermesJob> {
+export async function createJob(input: JobInput): Promise<HermesJob> {
   const res = await fetch(HERMES_API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

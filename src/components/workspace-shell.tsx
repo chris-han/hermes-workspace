@@ -31,6 +31,7 @@ import { ProfileCompletionScreen, shouldShowProfileCompletion } from '@/componen
 import {
   clearFeishuAutoLoginSuppression,
   isFeishuAutoLoginSuppressed,
+  redirectToSemantierLogin,
   useSemantierAuthStatus,
 } from '@/lib/semantier-auth'
 import { MobileTabBar } from '@/components/mobile-tab-bar'
@@ -157,7 +158,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
       // Avoid infinite redirect when already on an auth route
       const path = window.location.pathname
       if (path.startsWith('/auth/')) return
-      window.location.assign('/auth/feishu/login')
+      redirectToSemantierLogin()
     }
   }, [isClient, semantierAuthQuery.isLoading, semantierAuthQuery.data])
 

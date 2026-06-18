@@ -21,8 +21,8 @@ import { hapticTap } from '@/lib/haptics'
 import { getTheme, getThemeVariant, isDarkTheme, setTheme } from '@/lib/theme'
 import { toast } from '@/components/ui/toast'
 import {
-  clearFeishuAutoLoginSuppression,
   logoutSemantierAuth,
+  redirectToSemantierLogin,
   semantierAuthQueryKey,
   useSemantierAuthStatus,
 } from '@/lib/semantier-auth'
@@ -353,7 +353,7 @@ export function MobileHamburgerMenu() {
                 className="text-xs"
                 style={{ color: 'var(--color-ink-muted, #666)' }}
               >
-                Checking Feishu account...
+                Checking account status...
               </p>
             ) : (
               <div className="flex items-center gap-2">
@@ -379,19 +379,18 @@ export function MobileHamburgerMenu() {
                   >
                     {semantierAuthActionPending ? 'Logging out...' : 'Logout'}
                   </button>
-                ) : semantierAuth?.feishu_oauth_enabled ? (
+                ) : (
                   <button
                     type="button"
                     onClick={() => {
-                      clearFeishuAutoLoginSuppression()
-                      window.location.assign('/auth/feishu/login')
+                      redirectToSemantierLogin()
                     }}
                     className="rounded-full px-3 py-1.5 text-xs font-medium text-white transition-colors"
                     style={{ background: 'var(--color-accent, #6366f1)' }}
                   >
                     Login
                   </button>
-                ) : null}
+                )}
               </div>
             )}
           </div>

@@ -107,3 +107,9 @@ export function useSemantierAuthStatus() {
     retry: false,
   })
 }
+
+export function redirectToSemantierLogin() {
+  if (typeof window === 'undefined') return
+  clearFeishuAutoLoginSuppression()
+  window.location.assign('/?login=1')
+}

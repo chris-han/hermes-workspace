@@ -69,8 +69,8 @@ import {
 import { toast } from '@/components/ui/toast'
 import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
 import {
-  clearFeishuAutoLoginSuppression,
   logoutSemantierAuth,
+  redirectToSemantierLogin,
   semantierAuthQueryKey,
   useSemantierAuthStatus,
 } from '@/lib/semantier-auth'
@@ -1252,10 +1252,10 @@ function ChatSidebarComponent({
             <MenuContent side="top" align="start" className="min-w-[200px]">
               {semantierAuthQuery.isLoading ? (
                 <div className="px-2 py-1.5 text-xs text-primary-500 dark:text-neutral-400">
-                  Checking Feishu account...
+                  Checking account status...
                 </div>
               ) : null}
-              {semantierAuth.feishu_oauth_enabled ? (
+              {!semantierAuthQuery.isLoading ? (
                 <>
                   <div className="px-2 py-1.5 text-xs text-primary-500 dark:text-neutral-400">
                     {semantierAuth.authenticated && semantierAuth.user ? (
@@ -1318,17 +1318,16 @@ function ChatSidebarComponent({
                 >
                   {semantierAuthActionPending ? 'Logging out...' : 'Logout'}
                 </MenuItem>
-              ) : semantierAuth.feishu_oauth_enabled ? (
+              ) : (
                 <MenuItem
                   disabled={semantierAuthQuery.isLoading}
                   onClick={() => {
-                    clearFeishuAutoLoginSuppression()
-                    window.location.assign('/auth/feishu/login')
+                    redirectToSemantierLogin()
                   }}
                 >
                   {semantierAuthQuery.isLoading ? 'Login...' : 'Login'}
                 </MenuItem>
-              ) : null}
+              )}
               <div className="my-1 h-px bg-primary-200 dark:bg-neutral-800" />
               <MenuItem
                 onClick={function onOpenSettings() {

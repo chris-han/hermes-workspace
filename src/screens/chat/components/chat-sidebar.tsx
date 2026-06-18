@@ -1001,7 +1001,7 @@ function ChatSidebarComponent({
                 <img
                   src="/logo.svg"
                   alt="semantier logo"
-                  className="size-6 rounded-lg"
+                  className="h-6 w-auto shrink-0 object-contain"
                 />
                 <span
                   className="brand-wordmark text-sm font-semibold tracking-tight"

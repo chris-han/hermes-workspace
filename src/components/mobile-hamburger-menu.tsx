@@ -220,7 +220,7 @@ export function MobileHamburgerMenu() {
             <img
               src="/logo.svg"
               alt="semantier logo"
-              className="size-8 rounded-xl shrink-0"
+              className="h-8 w-auto shrink-0 object-contain"
             />
             <div className="flex flex-col leading-tight">
               <span

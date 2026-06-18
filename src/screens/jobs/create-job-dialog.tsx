@@ -462,8 +462,11 @@ export function CreateJobDialog({
                   !form.schedule.trim() ||
                   !form.prompt.trim()
                 }
-                className="rounded-xl px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-50"
-                style={{ background: 'var(--theme-accent)' }}
+                className="rounded-xl px-4 py-2 text-sm font-medium transition-opacity disabled:opacity-50"
+                style={{
+                  background: 'var(--theme-accent)',
+                  color: 'var(--theme-accent-foreground)',
+                }}
               >
                 {isSubmitting ? 'Creating...' : 'Create'}
               </button>

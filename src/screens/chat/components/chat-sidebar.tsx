@@ -191,12 +191,24 @@ function NavItem({
   onSelectSession?: () => void
 }) {
   const cls = cn(
-    buttonVariants({ variant: 'ghost', size: 'sm' }),
-    'w-full h-auto min-h-11 gap-2.5 py-2 md:min-h-0',
-    isCollapsed ? 'justify-center px-0' : 'justify-start px-3',
-    item.active
-      ? 'bg-accent-500/10 text-accent-500 hover:bg-accent-50 dark:hover:bg-accent-900/300/15'
-      : 'text-primary-900 hover:bg-primary-200 dark:hover:bg-primary-800',
+    // In collapsed mode: fixed 32×32 square centered so scrollbar never affects alignment
+    // In expanded mode: full-width row with text
+    isCollapsed
+      ? cn(
+          'relative flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors',
+          'focus-visible:ring-2 focus-visible:ring-primary-950 focus-visible:ring-offset-2',
+          'disabled:pointer-events-none disabled:opacity-50',
+          item.active
+            ? 'bg-accent-500/10 text-accent-500 hover:bg-accent-50 dark:hover:bg-accent-900/300/15'
+            : 'text-primary-900 hover:bg-primary-200 dark:hover:bg-primary-800',
+        )
+      : cn(
+          buttonVariants({ variant: 'ghost', size: 'sm' }),
+          'w-full h-auto min-h-9 gap-2.5 py-2 justify-start px-3',
+          item.active
+            ? 'bg-accent-500/10 text-accent-500 hover:bg-accent-50 dark:hover:bg-accent-900/300/15'
+            : 'text-primary-900 hover:bg-primary-200 dark:hover:bg-primary-800',
+        ),
   )
 
   const iconEl =
@@ -463,14 +475,14 @@ function CollapsibleSection({
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="overflow-hidden space-y-0.5"
+          className={cn('overflow-hidden space-y-0.5', isCollapsed && 'flex flex-col items-center')}
         >
           {items.map((item) => (
             <motion.div
               key={item.label}
               layout
               transition={{ layout: transition }}
-              className="w-full"
+              className={isCollapsed ? 'flex justify-center w-full' : 'w-full'}
             >
               <NavItem
                 item={item}
@@ -1129,9 +1141,18 @@ function ChatSidebarComponent({
       )}
 
       {/* ── Scrollable body: nav + sessions ─────────────────────────── */}
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin flex flex-col">
+      {/* Single scroll container: nav folds work, scroll extends to footer boundary.
+          Collapsed-mode icons use fixed size-8 so scrollbar width never affects alignment. */}
+      <div className={cn(
+        'flex-1 min-h-0 overflow-y-auto scrollbar-thin flex flex-col',
+        isVisuallyCollapsed ? 'items-center' : '',
+      )}>
         {/* Navigation sections */}
-        <div className={cn('shrink-0 space-y-0.5 px-2', isMobile && 'order-2')}>
+        <div className={cn(
+          'shrink-0 space-y-0.5 w-full',
+          isVisuallyCollapsed ? 'px-0 py-1' : 'px-2',
+          isMobile && 'order-2'
+        )}>
           <SectionLabel
             label={t('chat.main')}
             isCollapsed={isVisuallyCollapsed}
@@ -1177,7 +1198,7 @@ function ChatSidebarComponent({
         </div>
 
         {/* Sessions list */}
-        <div className={cn('shrink-0 mt-1', isMobile && 'order-1')}>
+        <div className={cn('shrink-0 mt-1 w-full', isMobile && 'order-1')}>
           <AnimatePresence initial={false}>
             {!isVisuallyCollapsed && (
               <motion.div
@@ -1210,6 +1231,7 @@ function ChatSidebarComponent({
       {/* end scrollable body */}
 
       {/* ── Footer with User Menu ─────────────────────────────────── */}
+      {/* shrink-0 keeps footer always visible; scroll content above it creates the overflow-toward-footer effect */}
       <div className="px-2 py-2.5 border-t shrink-0 theme-border theme-panel">
         {/* User card + actions */}
         <div

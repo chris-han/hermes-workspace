@@ -193,8 +193,19 @@ function JobCard({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <button
+            onClick={() => setExpanded((current) => !current)}
+            className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+            title={expanded ? 'Hide run history' : 'Show run history'}
+          >
+            <HugeiconsIcon
+              icon={expanded ? ArrowUp01Icon : ArrowDown01Icon}
+              size={14}
+              className="text-[var(--theme-muted)]"
+            />
+          </button>
+          <button
             onClick={() => onTrigger(job.id)}
-            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+            className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title="Run now"
           >
             <HugeiconsIcon
@@ -205,7 +216,7 @@ function JobCard({
           </button>
           <button
             onClick={() => (isPaused ? onResume(job.id) : onPause(job.id))}
-            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+            className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title={isPaused ? 'Resume' : 'Pause'}
           >
             <HugeiconsIcon
@@ -216,7 +227,7 @@ function JobCard({
           </button>
           <button
             onClick={() => onEdit(job)}
-            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+            className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title="Edit"
           >
             <HugeiconsIcon
@@ -225,20 +236,10 @@ function JobCard({
               className="text-[var(--theme-muted)]"
             />
           </button>
-          <button
-            onClick={() => setExpanded((current) => !current)}
-            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
-            title={expanded ? 'Hide run history' : 'Show run history'}
-          >
-            <HugeiconsIcon
-              icon={expanded ? ArrowUp01Icon : ArrowDown01Icon}
-              size={14}
-              className="text-[var(--theme-muted)]"
-            />
-          </button>
+
           <button
             onClick={() => onDelete()}
-            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+            className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title="Delete"
           >
             <HugeiconsIcon
@@ -434,7 +435,7 @@ export function JobsScreen() {
                 onClick={() =>
                   void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
                 }
-                className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+                className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
                 title="Refresh"
               >
                 <HugeiconsIcon
@@ -445,7 +446,7 @@ export function JobsScreen() {
               </button>
               <button
                 onClick={() => setShowCreate(true)}
-                className="flex items-center gap-1.5 rounded-button px-3 py-1.5 text-xs font-medium transition-colors hover:scale-105 active:scale-95"
+                className="flex cursor-pointer items-center gap-1.5 rounded-button px-3 py-1.5 text-xs font-medium transition-colors hover:scale-105 active:scale-95"
                 style={{
                   background: 'var(--theme-accent)',
                   color: 'var(--theme-accent-foreground)',
@@ -564,7 +565,7 @@ export function JobsScreen() {
                       setDeletingJob(null)
                     }
                   }}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-destructive-foreground transition-opacity hover:opacity-90"
+                  className="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium text-destructive-foreground transition-opacity hover:opacity-90"
                   style={{ background: 'var(--theme-danger)' }}
                 >
                   Delete

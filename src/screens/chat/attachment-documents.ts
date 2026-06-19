@@ -1,6 +1,8 @@
 export const DOCX_MIME_TYPE =
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 export const PDF_MIME_TYPE = 'application/pdf'
+export const MARKDOWN_MIME_TYPE = 'text/markdown'
+export const TEXT_MIME_TYPE = 'text/plain'
 export const XLS_MIME_TYPE = 'application/vnd.ms-excel'
 export const XLSX_MIME_TYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -11,6 +13,8 @@ export const ATTACHMENT_ACCEPT =
 const DOCUMENT_EXTENSION_TO_MIME: Record<string, string> = {
   docx: DOCX_MIME_TYPE,
   pdf: PDF_MIME_TYPE,
+  md: MARKDOWN_MIME_TYPE,
+  txt: TEXT_MIME_TYPE,
   xls: XLS_MIME_TYPE,
   xlsx: XLSX_MIME_TYPE,
 }
@@ -35,6 +39,8 @@ export function isUploadApiDocumentMimeType(value: unknown): boolean {
 export function fallbackUploadApiDocumentName(value: unknown): string {
   const mimeType = normalizeMimeType(value)
   if (mimeType === DOCX_MIME_TYPE) return 'document.docx'
+  if (mimeType === MARKDOWN_MIME_TYPE) return 'document.md'
+  if (mimeType === TEXT_MIME_TYPE) return 'document.txt'
   if (mimeType === XLS_MIME_TYPE) return 'document.xls'
   if (mimeType === XLSX_MIME_TYPE) return 'document.xlsx'
   return 'document.pdf'

@@ -25,9 +25,11 @@ import { setLocalModelOverride } from '../model-override'
 import {
   ATTACHMENT_ACCEPT,
   DOCX_MIME_TYPE,
+  MARKDOWN_MIME_TYPE,
   PDF_MIME_TYPE,
-  XLS_MIME_TYPE,
+  TEXT_MIME_TYPE,
   XLSX_MIME_TYPE,
+  XLS_MIME_TYPE,
   inferUploadApiDocumentMimeTypeFromFileName,
   isUploadApiDocumentMimeType,
 } from '../attachment-documents'
@@ -1166,6 +1168,8 @@ function ChatComposerComponent({
               if (
                 resolvedMimeType !== PDF_MIME_TYPE &&
                 resolvedMimeType !== DOCX_MIME_TYPE &&
+                resolvedMimeType !== MARKDOWN_MIME_TYPE &&
+                resolvedMimeType !== TEXT_MIME_TYPE &&
                 resolvedMimeType !== XLS_MIME_TYPE &&
                 resolvedMimeType !== XLSX_MIME_TYPE
               ) {
@@ -1178,11 +1182,15 @@ function ChatComposerComponent({
               const fallbackExtension =
                 resolvedMimeType === DOCX_MIME_TYPE
                   ? 'docx'
-                  : resolvedMimeType === XLS_MIME_TYPE
-                    ? 'xls'
-                    : resolvedMimeType === XLSX_MIME_TYPE
-                      ? 'xlsx'
-                      : 'pdf'
+                  : resolvedMimeType === MARKDOWN_MIME_TYPE
+                    ? 'md'
+                    : resolvedMimeType === TEXT_MIME_TYPE
+                      ? 'txt'
+                      : resolvedMimeType === XLS_MIME_TYPE
+                        ? 'xls'
+                        : resolvedMimeType === XLSX_MIME_TYPE
+                          ? 'xlsx'
+                          : 'pdf'
 
               return {
                 id: crypto.randomUUID(),

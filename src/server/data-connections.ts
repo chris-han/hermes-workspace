@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(SERVER_DIR, '..', '..', '..')
-const DEFAULT_RUNTIME_ROOT = path.join(REPO_ROOT, '.hermes-local')
+const DEFAULT_RUNTIME_ROOT = path.join(REPO_ROOT, '.semantier-home')
 
 export type DataConnectionSurface = {
   kind: 'authoritative' | 'derived' | 'read-only'
@@ -84,7 +84,7 @@ export function buildDataConnectionsSummary(
             'Manifest pinning is required for read-time integrity checks.',
           ]
         : [
-            'Expected artifacts live under .hermes-local/lakehouse.',
+            'Expected artifacts live under .semantier-home/lakehouse.',
             'Run bootstrap/materialization before analytics surfaces are ready.',
           ],
     },

@@ -584,7 +584,6 @@ export function SkillsScreen() {
 
   const toolsetsQuery = useQuery({
     queryKey: ['skills-browser', 'toolsets'],
-    enabled: tab === 'toolsets',
     queryFn: async function fetchToolsets(): Promise<Array<ToolsetSummary>> {
       const response = await fetch('/api/tools/toolsets')
       const payload = (await response.json().catch(() => [])) as
@@ -607,7 +606,6 @@ export function SkillsScreen() {
 
   const pluginsQuery = useQuery({
     queryKey: ['skills-browser', 'plugins'],
-    enabled: tab === 'plugins',
     queryFn: async function fetchPlugins(): Promise<PluginsApiResponse> {
       const response = await fetch('/api/plugins')
       const payload = (await response.json().catch(() => ({}))) as
@@ -655,6 +653,29 @@ export function SkillsScreen() {
     setMarketplaceUrl(marketplaceConfigQuery.data)
     setMarketplaceUrlDraft(marketplaceConfigQuery.data)
   }, [marketplaceConfigQuery.data])
+
+  const installedCountQuery = useQuery({
+    queryKey: ['skills-browser', 'installed-count', searchInput, category, sort],
+    queryFn: async function fetchInstalledSkillCount(): Promise<SkillsApiResponse> {
+      const params = new URLSearchParams()
+      params.set('tab', 'installed')
+      params.set('search', searchInput)
+      params.set('category', category)
+      params.set('page', '1')
+      params.set('limit', '1')
+      params.set('sort', sort)
+
+      const response = await fetch(`/api/skills?${params.toString()}`)
+      const payload = (await response.json()) as SkillsApiResponse & {
+        error?: string
+      }
+      if (!response.ok) {
+        throw new Error(payload.error || 'Failed to fetch installed skill count')
+      }
+      return payload
+    },
+    staleTime: 30_000,
+  })
 
   const hubQuery = useQuery({
     queryKey: ['skills-hub-search', debouncedMarketplaceSearch, marketplaceUrl],
@@ -1189,7 +1210,11 @@ export function SkillsScreen() {
                     <span>{option.label}</span>
                     <span className="tab-badge inline-flex min-w-[1.25rem] items-center justify-center rounded-full border border-border bg-primary-50 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-primary-500 tabular-nums">
                       {option.value === 'installed'
-                        ? (skillsQuery.data?.total || 0).toLocaleString()
+                        ? (
+                            installedCountQuery.data?.total ??
+                            skillsQuery.data?.total ??
+                            0
+                          ).toLocaleString()
                         : option.value === 'toolsets'
                           ? (toolsetsQuery.data?.length || 0).toLocaleString()
                           : option.value === 'plugins'

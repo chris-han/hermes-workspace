@@ -14,6 +14,125 @@ import {
 } from './run-store'
 
 describe('run-store', () => {
+  it('writes run state under the canonical session runs directory', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'run-store-'))
+
+    try {
+      await createPersistedRun({
+        workspaceRoot: root,
+        sessionKey: 'session-a',
+        runId: 'run-a',
+      })
+
+      expect(
+        fs.existsSync(
+          path.join(root, 'sessions', 'session-a', 'runs', 'run-a.json'),
+        ),
+      ).toBe(true)
+      expect(
+        fs.existsSync(
+          path.join(
+            root,
+            '.hermes-workspace',
+            'runs',
+            'session-a',
+            'run-a.json',
+          ),
+        ),
+      ).toBe(false)
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('normalizes workspace-prefixed session keys for run directories', async () => {
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), '3f40097f9d46422a8a56609334c5fb4a-'),
+    )
+    const workspaceRoot = path.join(root, '3f40097f9d46422a8a56609334c5fb4a')
+    const sessionKey = '3f40097f9d46422a8a56609334c5fb4a:session-a'
+
+    try {
+      await createPersistedRun({
+        workspaceRoot,
+        sessionKey,
+        runId: 'run-a',
+      })
+
+      expect(
+        fs.existsSync(
+          path.join(
+            workspaceRoot,
+            'sessions',
+            'session-a',
+            'runs',
+            'run-a.json',
+          ),
+        ),
+      ).toBe(true)
+      expect(
+        fs.existsSync(
+          path.join(
+            workspaceRoot,
+            'sessions',
+            encodeURIComponent(sessionKey),
+            'runs',
+            'run-a.json',
+          ),
+        ),
+      ).toBe(false)
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('reads legacy app-state runs and rewrites updates canonically', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'run-store-'))
+    const legacyDir = path.join(root, '.hermes-workspace', 'runs', 'session-a')
+    const legacyRun = {
+      runId: 'run-a',
+      sessionKey: 'session-a',
+      friendlyId: 'session-a',
+      status: 'active' as const,
+      createdAt: 1,
+      updatedAt: 1,
+      lastEventAt: 1,
+      assistantText: 'legacy',
+      thinkingText: '',
+      toolCalls: [],
+      lifecycleEvents: [],
+    }
+
+    try {
+      fs.mkdirSync(legacyDir, { recursive: true })
+      fs.writeFileSync(
+        path.join(legacyDir, 'run-a.json'),
+        `${JSON.stringify(legacyRun, null, 2)}\n`,
+        'utf8',
+      )
+
+      expect(
+        (await getPersistedRun(root, 'session-a', 'run-a'))?.assistantText,
+      ).toBe('legacy')
+
+      await appendRunText(root, 'session-a', 'run-a', ' promoted')
+
+      const canonicalRunPath = path.join(
+        root,
+        'sessions',
+        'session-a',
+        'runs',
+        'run-a.json',
+      )
+      expect(fs.existsSync(canonicalRunPath)).toBe(true)
+      expect(
+        JSON.parse(fs.readFileSync(canonicalRunPath, 'utf8')).assistantText,
+      ).toBe('legacy promoted')
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it('keeps active runs isolated by session key', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'run-store-'))
 

@@ -24,10 +24,10 @@ describe('normalizeMarkdownHref', () => {
 describe('linkifyRunDirectoryFooter', () => {
   it('rewrites run directory footer into a files deep link', () => {
     const text =
-      'Done.\n\nRun directory: /home/chris/repo/semantier/workspaces/abc123/runs/20260423_174033_06_7be5c1'
+      'Done.\n\nRun directory: /home/chris/repo/semantier/workspaces/abc123/sessions/session_abc/runs/20260423_174033_06_7be5c1'
 
     expect(linkifyRunDirectoryFooter(text)).toContain(
-      'Run directory: [/home/chris/repo/semantier/workspaces/abc123/runs/20260423_174033_06_7be5c1](/files?path=runs%2F20260423_174033_06_7be5c1)',
+      'Run directory: [/home/chris/repo/semantier/workspaces/abc123/sessions/session_abc/runs/20260423_174033_06_7be5c1](/files?path=sessions%2Fsession_abc%2Fruns%2F20260423_174033_06_7be5c1)',
     )
   })
 
@@ -39,19 +39,19 @@ describe('linkifyRunDirectoryFooter', () => {
 
   it('rewrites Chinese saved-report footer into a files deep link', () => {
     const line =
-      '报告全文已保存至 /home/chris/repo/semantier-runtime/workspaces/ws123/.hermes/sessions/ws123%3Asession_abc/artifacts/tax_report.md'
+      '报告全文已保存至 /home/chris/repo/semantier-runtime/workspaces/ws123/sessions/session_abc/artifacts/tax_report.md'
 
     expect(linkifyRunDirectoryFooter(line)).toContain(
-      '报告全文已保存至 [/home/chris/repo/semantier-runtime/workspaces/ws123/.hermes/sessions/ws123%3Asession_abc/artifacts/tax_report.md](/files?path=.hermes%2Fsessions%2Fws123%253Asession_abc%2Fartifacts%2Ftax_report.md)',
+      '报告全文已保存至 [/home/chris/repo/semantier-runtime/workspaces/ws123/sessions/session_abc/artifacts/tax_report.md](/files?path=sessions%2Fsession_abc%2Fartifacts%2Ftax_report.md)',
     )
   })
 
   it('rewrites backticked saved-report footer into a files deep link', () => {
     const line =
-      'Report saved to: `/home/chris/repo/semantier-runtime/workspaces/ws123/.hermes/sessions/ws123%3Asession_abc/artifacts/tax_report.md`'
+      'Report saved to: `/home/chris/repo/semantier-runtime/workspaces/ws123/sessions/session_abc/artifacts/tax_report.md`'
 
     expect(linkifyRunDirectoryFooter(line)).toContain(
-      'Report saved to: [/home/chris/repo/semantier-runtime/workspaces/ws123/.hermes/sessions/ws123%3Asession_abc/artifacts/tax_report.md](/files?path=.hermes%2Fsessions%2Fws123%253Asession_abc%2Fartifacts%2Ftax_report.md)',
+      'Report saved to: [/home/chris/repo/semantier-runtime/workspaces/ws123/sessions/session_abc/artifacts/tax_report.md](/files?path=sessions%2Fsession_abc%2Fartifacts%2Ftax_report.md)',
     )
   })
 })

@@ -73,7 +73,8 @@ describe('translateSemantierSessionStreamEvent', () => {
         'attempt.completed',
         {
           summary: 'Done',
-          run_dir: '/tmp/workspaces/ws-1/runs/20260422_010101_abcd',
+          run_dir:
+            '/tmp/workspaces/ws-1/sessions/session-a/runs/20260422_010101_abcd',
           has_run_artifact: true,
           metrics: { sharpe: 1.2 },
         },
@@ -85,7 +86,8 @@ describe('translateSemantierSessionStreamEvent', () => {
         data: {
           state: 'complete',
           runId: '20260422_010101_abcd',
-          run_dir: '/tmp/workspaces/ws-1/runs/20260422_010101_abcd',
+          run_dir:
+            '/tmp/workspaces/ws-1/sessions/session-a/runs/20260422_010101_abcd',
           has_run_artifact: true,
           summary: 'Done',
           metrics: { sharpe: 1.2 },
@@ -118,7 +120,9 @@ describe('translateSemantierSessionStreamEvent', () => {
     expect(done.event).toBe('done')
     expect(done.data.message).toEqual({
       role: 'assistant',
-      content: [{ type: 'text', text: 'Fill in the form.\n\n\n\nSubmit when ready.' }],
+      content: [
+        { type: 'text', text: 'Fill in the form.\n\n\n\nSubmit when ready.' },
+      ],
     })
   })
 

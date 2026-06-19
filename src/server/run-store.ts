@@ -43,16 +43,41 @@ function isTerminalRunStatus(status: PersistedRunState['status']): boolean {
   return TERMINAL_RUN_STATUSES.has(status)
 }
 
-function encodeSessionKey(sessionKey: string): string {
-  return encodeURIComponent(sessionKey || 'main')
+function rawSessionKey(sessionKey: string): string {
+  return sessionKey || 'main'
 }
 
-function runsRoot(workspaceRoot: string): string {
-  return path.join(resolveWorkspaceAppStateRoot(workspaceRoot), 'runs')
+function localSessionKey(workspaceRoot: string, sessionKey: string): string {
+  const raw = rawSessionKey(sessionKey)
+  const workspaceId = path.basename(path.resolve(workspaceRoot))
+  const workspacePrefix = `${workspaceId}:`
+  return raw.startsWith(workspacePrefix)
+    ? raw.slice(workspacePrefix.length)
+    : raw
 }
 
 function sessionDir(workspaceRoot: string, sessionKey: string): string {
-  return path.join(runsRoot(workspaceRoot), encodeSessionKey(sessionKey))
+  return path.join(
+    workspaceRoot,
+    'sessions',
+    encodeURIComponent(localSessionKey(workspaceRoot, sessionKey)),
+    'runs',
+  )
+}
+
+function legacySessionDirs(
+  workspaceRoot: string,
+  sessionKey: string,
+): Array<string> {
+  const appRunsRoot = path.join(
+    resolveWorkspaceAppStateRoot(workspaceRoot),
+    'runs',
+  )
+  const encodedKeys = new Set([
+    encodeURIComponent(rawSessionKey(sessionKey)),
+    encodeURIComponent(localSessionKey(workspaceRoot, sessionKey)),
+  ])
+  return Array.from(encodedKeys).map((key) => path.join(appRunsRoot, key))
 }
 
 function runPath(
@@ -61,6 +86,19 @@ function runPath(
   runId: string,
 ): string {
   return path.join(sessionDir(workspaceRoot, sessionKey), `${runId}.json`)
+}
+
+function runPathsForRead(
+  workspaceRoot: string,
+  sessionKey: string,
+  runId: string,
+): Array<string> {
+  return [
+    runPath(workspaceRoot, sessionKey, runId),
+    ...legacySessionDirs(workspaceRoot, sessionKey).map((dir) =>
+      path.join(dir, `${runId}.json`),
+    ),
+  ]
 }
 
 async function ensureDir(dir: string): Promise<void> {
@@ -109,15 +147,15 @@ export async function getPersistedRun(
   sessionKey: string,
   runId: string,
 ): Promise<PersistedRunState | null> {
-  try {
-    const raw = await readFile(
-      runPath(workspaceRoot, sessionKey, runId),
-      'utf8',
-    )
-    return JSON.parse(raw) as PersistedRunState
-  } catch {
-    return null
+  for (const candidate of runPathsForRead(workspaceRoot, sessionKey, runId)) {
+    try {
+      const raw = await readFile(candidate, 'utf8')
+      return JSON.parse(raw) as PersistedRunState
+    } catch {
+      continue
+    }
   }
+  return null
 }
 
 export async function updatePersistedRun(
@@ -228,26 +266,34 @@ export async function getActiveRunForSession(
   workspaceRoot: string,
   sessionKey: string,
 ): Promise<PersistedRunState | null> {
-  try {
-    const dir = sessionDir(workspaceRoot, sessionKey)
-    const files = (await readdir(dir)).filter((name) => name.endsWith('.json'))
-    if (files.length === 0) return null
-    const runs = await Promise.all(
-      files.map(async (name) => {
-        try {
-          const raw = await readFile(path.join(dir, name), 'utf8')
-          return JSON.parse(raw) as PersistedRunState
-        } catch {
-          return null
-        }
-      }),
-    )
-    const candidates = runs
-      .filter((run): run is PersistedRunState => Boolean(run))
-      .filter((run) => !['complete', 'error'].includes(run.status))
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-    return candidates[0] ?? null
-  } catch {
-    return null
+  const dirs = [
+    sessionDir(workspaceRoot, sessionKey),
+    ...legacySessionDirs(workspaceRoot, sessionKey),
+  ]
+  const runs: Array<PersistedRunState | null> = []
+  for (const dir of dirs) {
+    try {
+      const files = (await readdir(dir)).filter((name) =>
+        name.endsWith('.json'),
+      )
+      const dirRuns = await Promise.all(
+        files.map(async (name) => {
+          try {
+            const raw = await readFile(path.join(dir, name), 'utf8')
+            return JSON.parse(raw) as PersistedRunState
+          } catch {
+            return null
+          }
+        }),
+      )
+      runs.push(...dirRuns)
+    } catch {
+      continue
+    }
   }
+  const candidates = runs
+    .filter((run): run is PersistedRunState => Boolean(run))
+    .filter((run) => !['complete', 'error'].includes(run.status))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+  return candidates[0] ?? null
 }

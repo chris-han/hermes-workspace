@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { HugeiconsIcon } from '@hugeicons/react'
+import { ArrowDown01Icon } from '@hugeicons/core-free-icons'
 import { AnimatePresence, motion } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
+import {
+  MenuContent,
+  MenuItem,
+  MenuRoot,
+  MenuTrigger,
+} from '@/components/ui/menu'
 import {
   DialogContent,
   DialogDescription,
@@ -194,7 +202,24 @@ type HubSearchResponse = {
 }
 
 const PAGE_LIMIT = 30
-const DEFAULT_MARKETPLACE_URL = 'https://github.com/chris-han/semantier-skills'
+const DEFAULT_MARKETPLACE_URL = ''
+const DEFAULT_MARKETPLACE_DISPLAY_URL =
+  'https://hermes-agent.nousresearch.com/docs/api/skills-index.json'
+const SEMANTIER_MARKETPLACE_URL =
+  'https://github.com/chris-han/semantier-skills'
+
+const MARKETPLACE_URL_PRESETS = [
+  {
+    label: 'Default Marketplace',
+    value: DEFAULT_MARKETPLACE_DISPLAY_URL,
+    resolvedValue: DEFAULT_MARKETPLACE_URL,
+  },
+  {
+    label: 'Semantier Marketplace',
+    value: SEMANTIER_MARKETPLACE_URL,
+    resolvedValue: SEMANTIER_MARKETPLACE_URL,
+  },
+]
 
 const DEFAULT_CATEGORIES = [
   'All',
@@ -483,6 +508,16 @@ function readMarketplaceUrlFromConfig(payload: unknown): string {
   return normalized || DEFAULT_MARKETPLACE_URL
 }
 
+function resolveMarketplaceUrlInput(rawValue: string): string {
+  const value = rawValue.trim()
+  const preset = MARKETPLACE_URL_PRESETS.find((entry) => entry.value === value)
+  return preset ? preset.resolvedValue : value
+}
+
+function displayMarketplaceUrlInput(value: string): string {
+  return value.trim() || DEFAULT_MARKETPLACE_DISPLAY_URL
+}
+
 function normalizeInstallIdentifier(rawValue: string): string {
   const value = rawValue.trim()
   if (!value) return ''
@@ -651,7 +686,7 @@ export function SkillsScreen() {
   useEffect(() => {
     if (marketplaceConfigQuery.data === undefined) return
     setMarketplaceUrl(marketplaceConfigQuery.data)
-    setMarketplaceUrlDraft(marketplaceConfigQuery.data)
+    setMarketplaceUrlDraft(displayMarketplaceUrlInput(marketplaceConfigQuery.data))
   }, [marketplaceConfigQuery.data])
 
   const installedCountQuery = useQuery({
@@ -1041,7 +1076,7 @@ export function SkillsScreen() {
   }
 
   async function saveMarketplaceUrl(nextValue?: string) {
-    const trimmed = (nextValue ?? marketplaceUrlDraft).trim()
+    const trimmed = resolveMarketplaceUrlInput(nextValue ?? marketplaceUrlDraft)
     try {
       const response = await fetch('/api/config-patch', {
         method: 'POST',
@@ -1416,17 +1451,59 @@ export function SkillsScreen() {
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-500">
                     Marketplace URL
                   </p>
-                  <input
-                    value={marketplaceUrlDraft}
-                    onChange={(event) =>
-                      setMarketplaceUrlDraft(event.target.value)
-                    }
-                    placeholder="https://example.com/skills/search"
-                    className="h-10 w-full rounded-button border border-border bg-primary-50/90 px-3 text-sm text-ink outline-none"
-                  />
+                  <div className="flex h-10 w-full overflow-hidden rounded-button border border-border bg-primary-50/90 focus-within:border-primary">
+                    <input
+                      role="combobox"
+                      aria-label="Marketplace URL"
+                      aria-controls="marketplace-url-preset-menu"
+                      value={marketplaceUrlDraft}
+                      onChange={(event) =>
+                        setMarketplaceUrlDraft(event.target.value)
+                      }
+                      placeholder="https://example.com/skills/search"
+                      className="min-w-0 flex-1 bg-transparent px-3 text-sm text-ink outline-none"
+                    />
+                    <MenuRoot>
+                      <MenuTrigger
+                        type="button"
+                        className="flex w-10 shrink-0 items-center justify-center border-l border-border text-primary-600 transition-colors hover:bg-primary-100 hover:text-ink"
+                        aria-label="Select marketplace URL"
+                      >
+                        <HugeiconsIcon
+                          icon={ArrowDown01Icon}
+                          size={18}
+                          strokeWidth={1.6}
+                        />
+                      </MenuTrigger>
+                      <MenuContent
+                        side="bottom"
+                        align="end"
+                        className="w-[min(34rem,calc(100vw-2rem))]"
+                      >
+                        <div id="marketplace-url-preset-menu">
+                          {MARKETPLACE_URL_PRESETS.map((entry) => (
+                            <MenuItem
+                              key={entry.label}
+                              onClick={() => {
+                                setMarketplaceUrlDraft(entry.value)
+                              }}
+                              className="flex-col items-start gap-0.5"
+                            >
+                              <span className="font-medium">
+                                {entry.label}
+                              </span>
+                              <span className="max-w-full truncate text-xs text-primary-500">
+                                {entry.value}
+                              </span>
+                            </MenuItem>
+                          ))}
+                        </div>
+                      </MenuContent>
+                    </MenuRoot>
+                  </div>
                   <p className="text-xs text-primary-500">
-                    Optional custom marketplace endpoint. Leave empty to use
-                    the default Skills Hub search.
+                    Select a preset or enter a custom marketplace endpoint.
+                    The default marketplace uses the built-in Hermes skills index.
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -1443,7 +1520,7 @@ export function SkillsScreen() {
                       size="sm"
                       variant="ghost"
                       onClick={() => {
-                        setMarketplaceUrlDraft('')
+                        setMarketplaceUrlDraft(DEFAULT_MARKETPLACE_DISPLAY_URL)
                         void saveMarketplaceUrl('')
                       }}
                     >

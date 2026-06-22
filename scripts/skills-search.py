@@ -102,9 +102,93 @@ def _matches_custom_query(entry, query: str) -> bool:
     return normalized_query in haystack
 
 
+def _normalize_marketplace_payload(payload, query: str, limit: int, default_source: str):
+    if isinstance(payload, dict):
+        source = str(payload.get("source") or default_source)
+        total = payload.get("total")
+        items = payload.get("results")
+        if not isinstance(items, list):
+            items = payload.get("skills")
+        if not isinstance(items, list):
+            items = payload.get("data")
+        if not isinstance(items, list):
+            items = []
+    elif isinstance(payload, list):
+        source = default_source
+        total = None
+        items = payload
+    else:
+        source = default_source
+        total = None
+        items = []
+
+    normalized = []
+    for item in items:
+        mapped = _normalize_custom_entry(item)
+        if mapped is not None:
+            normalized.append(mapped)
+
+    normalized = [
+        item for item in normalized if _matches_custom_query(item, query)
+    ]
+
+    if isinstance(total, int):
+        total_count = min(total, len(normalized)) if normalized else 0
+    else:
+        total_count = len(normalized)
+
+    return {
+        "results": normalized[:limit],
+        "source": source,
+        "total": total_count,
+    }
+
+
+def _search_github_marketplace_index(query: str, limit: int, repo_slug: str, source):
+    fetch_file = getattr(source, "_fetch_file_content", None)
+    if not callable(fetch_file):
+        return None
+
+    content = fetch_file(repo_slug, "marketplace/index.json")
+    if not content:
+        return None
+
+    try:
+        payload = json.loads(content)
+    except json.JSONDecodeError:
+        return None
+
+    if isinstance(payload, dict):
+        items = payload.get("results")
+        if not isinstance(items, list):
+            items = payload.get("skills")
+        if not isinstance(items, list):
+            items = payload.get("data")
+        if not items:
+            return None
+    elif not payload:
+        return None
+
+    return _normalize_marketplace_payload(
+        payload,
+        query,
+        limit,
+        f"github-marketplace-index:{repo_slug}",
+    )
+
+
 def _search_github_marketplace_repo(query: str, limit: int, repo_slug: str):
     auth = GitHubAuth()
     source = GitHubSource(auth=auth)
+    index_result = _search_github_marketplace_index(
+        query,
+        limit,
+        repo_slug,
+        source,
+    )
+    if index_result is not None:
+        return index_result
+
     cached = source._get_repo_tree(repo_slug)
     if cached is None:
         return {
@@ -185,46 +269,12 @@ def _search_custom_marketplace(query: str, limit: int, marketplace_url: str):
     )
     response.raise_for_status()
     payload = response.json()
-
-    if isinstance(payload, dict):
-        source = str(payload.get("source") or "custom-marketplace")
-        total = payload.get("total")
-        items = payload.get("results")
-        if not isinstance(items, list):
-            items = payload.get("skills")
-        if not isinstance(items, list):
-            items = payload.get("data")
-        if not isinstance(items, list):
-            items = []
-    elif isinstance(payload, list):
-        source = "custom-marketplace"
-        total = None
-        items = payload
-    else:
-        source = "custom-marketplace"
-        total = None
-        items = []
-
-    normalized = []
-    for item in items:
-        mapped = _normalize_custom_entry(item)
-        if mapped is not None:
-            normalized.append(mapped)
-
-    normalized = [
-        item for item in normalized if _matches_custom_query(item, query)
-    ]
-
-    if isinstance(total, int):
-        total_count = min(total, len(normalized)) if normalized else 0
-    else:
-        total_count = len(normalized)
-
-    return {
-        "results": normalized[:limit],
-        "source": source,
-        "total": total_count,
-    }
+    return _normalize_marketplace_payload(
+        payload,
+        query,
+        limit,
+        "custom-marketplace",
+    )
 
 
 def main():

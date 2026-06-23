@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { OrganizationContext } from '@/lib/organization-membership'
 import {
   createImportIdempotencyKey,
+  fetchActiveCompanyDataset,
   fetchCompanyDatasetImports,
   previewCompanyDatasetImport,
   promoteCompanyDatasetImport,
@@ -38,6 +39,7 @@ export function getHighlightedHeaderRow(params: {
 }
 
 export const COMPANY_DATASET_SHEET_COMBOBOX_ROLE = 'combobox'
+export const COMPANY_DATASET_FILTER_DEBOUNCE_MS = 250
 
 export function CompanyDatasetImportPanel({
   organization,
@@ -57,6 +59,11 @@ export function CompanyDatasetImportPanel({
   const [currentImport, setCurrentImport] =
     useState<CompanyDatasetImportRecord | null>(null)
   const [activePreviewSheet, setActivePreviewSheet] = useState('')
+  const [explorerFileId, setExplorerFileId] = useState('all')
+  const [explorerFilterDraft, setExplorerFilterDraft] = useState('')
+  const [explorerFilter, setExplorerFilter] = useState('')
+  const [explorerPage, setExplorerPage] = useState(1)
+  const explorerPageSize = 25
   const sheetDatalistId = 'company-dataset-sheet-options'
   const [uploadKey] = useState(() => createImportIdempotencyKey('upload'))
   const [validateKey] = useState(() => createImportIdempotencyKey('validate'))
@@ -68,6 +75,34 @@ export function CompanyDatasetImportPanel({
     enabled: Boolean(organization?.organization_id),
     retry: false,
   })
+  const datasetQuery = useQuery({
+    queryKey: [
+      'company-dataset-active',
+      explorerFileId,
+      explorerFilter,
+      explorerPage,
+      explorerPageSize,
+    ],
+    queryFn: () =>
+      fetchActiveCompanyDataset({
+        fileId: explorerFileId,
+        filter: explorerFilter,
+        page: explorerPage,
+        pageSize: explorerPageSize,
+      }),
+    enabled: organization?.dataset_type === 'REAL',
+    placeholderData: (previousData) => previousData,
+    retry: false,
+  })
+
+  useEffect(() => {
+    if (explorerFilterDraft === explorerFilter) return undefined
+    const timeout = window.setTimeout(() => {
+      setExplorerFilter(explorerFilterDraft)
+      setExplorerPage(1)
+    }, COMPANY_DATASET_FILTER_DEBOUNCE_MS)
+    return () => window.clearTimeout(timeout)
+  }, [explorerFilter, explorerFilterDraft])
 
   const latestImport = importsQuery.data?.[0] ?? null
   const activeImport = currentImport ?? latestImport
@@ -206,7 +241,20 @@ export function CompanyDatasetImportPanel({
       await queryClient.invalidateQueries({
         queryKey: ['company-dataset-imports'],
       })
-      toast('Promotion started', { type: 'success' })
+      await queryClient.invalidateQueries({
+        queryKey: ['company-dataset-active'],
+      })
+      await queryClient.invalidateQueries({
+        queryKey: ['organizations', 'me'],
+      })
+      toast(
+        record.status === 'promoted'
+          ? 'Promotion completed'
+          : 'Promotion started',
+        {
+          type: record.status === 'promoted' ? 'success' : 'warning',
+        },
+      )
     },
     onError: (error) =>
       toast(error instanceof Error ? error.message : 'Promotion failed', {
@@ -217,6 +265,17 @@ export function CompanyDatasetImportPanel({
   const activePreview = preview?.files
     .flatMap((filePreview) => filePreview.sheets)
     .find((sheet) => sheet.sheet_name === activePreviewSheet)
+  const activeDatasetFile =
+    explorerFileId === 'all'
+      ? undefined
+      : datasetQuery.data?.files.find(
+          (file) => file.file_id === datasetQuery.data?.selected_file_id,
+        )
+  const activeDatasetRows = datasetQuery.data?.rows ?? []
+  const activeDatasetColumns = datasetQuery.data?.columns ?? []
+  const activeDatasetStats =
+    datasetQuery.data?.selected_file_stats ?? datasetQuery.data?.stats
+  const activeDatasetPagination = datasetQuery.data?.pagination
   const highlightedHeaderRow = getHighlightedHeaderRow({
     autoHeader,
     manualHeaderRow: headerRow,
@@ -224,9 +283,9 @@ export function CompanyDatasetImportPanel({
   })
 
   return (
-    <section className="rounded-2xl border border-primary-200 bg-white/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
+    <section className="min-w-0 rounded-2xl border border-primary-200 bg-white/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
             Company Dataset Import
           </h2>
@@ -256,10 +315,10 @@ export function CompanyDatasetImportPanel({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-3">
+      <div className="mt-5 grid min-w-0 gap-4 xl:grid-cols-[minmax(360px,0.95fr)_minmax(420px,1.05fr)]">
+        <div className="min-w-0 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm text-primary-700 dark:text-neutral-300">
+            <label className="min-w-0 text-sm text-primary-700 dark:text-neutral-300">
               Spreadsheet files
               <input
                 type="file"
@@ -274,7 +333,7 @@ export function CompanyDatasetImportPanel({
                 className="mt-1 w-full rounded-xl border border-primary-200 bg-white px-3 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-950"
               />
             </label>
-            <label className="text-sm text-primary-700 dark:text-neutral-300">
+            <label className="min-w-0 text-sm text-primary-700 dark:text-neutral-300">
               Folder or file path
               <input
                 value={sourcePath}
@@ -343,7 +402,7 @@ export function CompanyDatasetImportPanel({
             </button>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="text-sm text-primary-700 dark:text-neutral-300">
+            <div className="min-w-0 text-sm text-primary-700 dark:text-neutral-300">
               <div className="mb-1 flex items-center justify-between gap-3">
                 <label htmlFor="company-dataset-sheets">Sheets</label>
                 <label className="inline-flex items-center gap-2 text-xs font-medium text-primary-600 dark:text-neutral-400">
@@ -384,7 +443,7 @@ export function CompanyDatasetImportPanel({
                 ))}
               </datalist>
             </div>
-            <div className="text-sm text-primary-700 dark:text-neutral-300">
+            <div className="min-w-0 text-sm text-primary-700 dark:text-neutral-300">
               <div className="mb-1 flex items-center justify-between gap-3">
                 <label htmlFor="company-dataset-header-row">
                   Header row <span className="font-normal">(0 = none)</span>
@@ -489,7 +548,7 @@ export function CompanyDatasetImportPanel({
           ) : null}
         </div>
 
-        <div className="rounded-xl border border-primary-200 bg-primary-50/70 p-4 text-sm dark:border-neutral-800 dark:bg-neutral-950/60">
+        <div className="min-w-0 rounded-xl border border-primary-200 bg-primary-50/70 p-4 text-sm dark:border-neutral-800 dark:bg-neutral-950/60">
           {importsQuery.isLoading ? (
             <p className="text-primary-600 dark:text-neutral-400">
               Loading imports...
@@ -497,7 +556,7 @@ export function CompanyDatasetImportPanel({
           ) : activeImport ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-xs">
+                <span className="min-w-0 break-all font-mono text-xs">
                   {activeImport.import_id}
                 </span>
                 <span className="rounded-full border border-primary-200 px-2 py-1 text-xs font-semibold dark:border-neutral-700">
@@ -506,7 +565,7 @@ export function CompanyDatasetImportPanel({
               </div>
               <p className="text-primary-600 dark:text-neutral-400">
                 {activeImport.files?.length ?? 0} source file(s), parser hash{' '}
-                <span className="font-mono">
+                <span className="break-all font-mono">
                   {activeImport.parser_profile_hash}
                 </span>
               </p>
@@ -536,6 +595,169 @@ export function CompanyDatasetImportPanel({
           )}
         </div>
       </div>
+
+      {activeImport?.status === 'promoted' && datasetQuery.data ? (
+        <div className="mt-4 min-w-0 rounded-xl border border-primary-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+          <div className="flex flex-col gap-1 border-b border-primary-200 px-4 py-3 text-xs dark:border-neutral-800 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <span className="font-semibold">Promoted dataset</span>{' '}
+              <span className="break-all font-mono">
+                {datasetQuery.data.dataset_version_id}
+              </span>
+            </div>
+            {activeDatasetFile?.original_filename ? (
+              <span className="font-mono text-primary-600 dark:text-neutral-400">
+                {activeDatasetFile.original_filename}
+              </span>
+            ) : null}
+          </div>
+          <div className="grid gap-2 border-b border-primary-200 p-3 text-xs dark:border-neutral-800 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="rounded-lg border border-primary-200 px-3 py-2 dark:border-neutral-800">
+              <div className="text-primary-600 dark:text-neutral-400">
+                Rows promoted
+              </div>
+              <div className="mt-1 font-mono text-sm font-semibold">
+                {activeDatasetStats?.rows_promoted ?? 0}
+              </div>
+            </div>
+            <div className="rounded-lg border border-primary-200 px-3 py-2 dark:border-neutral-800">
+              <div className="text-primary-600 dark:text-neutral-400">
+                Files promoted
+              </div>
+              <div className="mt-1 font-mono text-sm font-semibold">
+                {activeDatasetStats?.files_promoted ?? 0}
+              </div>
+            </div>
+            <div className="rounded-lg border border-primary-200 px-3 py-2 dark:border-neutral-800">
+              <div className="text-primary-600 dark:text-neutral-400">
+                Deduped
+              </div>
+              <div className="mt-1 font-mono text-sm font-semibold">
+                {activeDatasetStats?.deduped_rows ?? 0}
+              </div>
+            </div>
+            <div className="rounded-lg border border-primary-200 px-3 py-2 dark:border-neutral-800">
+              <div className="text-primary-600 dark:text-neutral-400">
+                Error rows
+              </div>
+              <div className="mt-1 font-mono text-sm font-semibold">
+                {activeDatasetStats?.error_rows ?? 0}
+              </div>
+            </div>
+            <div className="rounded-lg border border-primary-200 px-3 py-2 dark:border-neutral-800">
+              <div className="text-primary-600 dark:text-neutral-400">
+                Fixed rows
+              </div>
+              <div className="mt-1 font-mono text-sm font-semibold">
+                {activeDatasetStats?.fixed_rows ?? 0}
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-3 border-b border-primary-200 p-3 dark:border-neutral-800 lg:grid-cols-[1fr_18rem]">
+            <label className="min-w-0 text-xs font-semibold text-primary-700 dark:text-neutral-300">
+              Source file
+              <select
+                value={explorerFileId}
+                onChange={(event) => {
+                  setExplorerFileId(event.target.value)
+                  setExplorerPage(1)
+                }}
+                className="mt-2 w-full rounded-lg border border-primary-200 bg-white px-3 py-2 text-xs font-normal dark:border-neutral-800 dark:bg-neutral-950"
+              >
+                <option value="all">All files</option>
+                {datasetQuery.data.files.map((file) => (
+                  <option
+                    key={file.file_id || file.original_filename}
+                    value={String(file.file_id || '')}
+                  >
+                    {file.original_filename || file.file_id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="min-w-0 text-xs font-semibold text-primary-700 dark:text-neutral-300">
+              Filter rows
+              <input
+                value={explorerFilterDraft}
+                onChange={(event) => setExplorerFilterDraft(event.target.value)}
+                placeholder="Search any visible value"
+                className="mt-2 w-full rounded-lg border border-primary-200 bg-white px-3 py-2 text-xs font-normal dark:border-neutral-800 dark:bg-neutral-950"
+              />
+            </label>
+          </div>
+          {activeDatasetRows.length > 0 ? (
+            <div className="max-h-[420px] overflow-auto">
+              <table className="w-max min-w-full border-collapse text-xs">
+                <thead className="sticky top-0 z-10 bg-primary-50 dark:bg-neutral-900">
+                  <tr>
+                    {activeDatasetColumns.map((column) => (
+                      <th
+                        key={column}
+                        className="whitespace-nowrap border border-primary-200 px-2 py-2 text-left font-semibold dark:border-neutral-800"
+                      >
+                        {column}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeDatasetRows.slice(0, 12).map((row, rowIndex) => (
+                    <tr key={rowIndex}>
+                      {activeDatasetColumns.map((column) => (
+                        <td
+                          key={`${rowIndex}-${column}`}
+                          className="max-w-56 truncate whitespace-nowrap border border-primary-200 px-2 py-1.5 dark:border-neutral-800"
+                        >
+                          {row[column] || ' '}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="px-4 py-3 text-xs text-primary-600 dark:text-neutral-400">
+              No rows match the current file and filter.
+            </p>
+          )}
+          <div className="flex flex-col gap-2 border-t border-primary-200 px-4 py-3 text-xs dark:border-neutral-800 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-primary-600 dark:text-neutral-400">
+              Page {activeDatasetPagination?.page ?? 1} of{' '}
+              {activeDatasetPagination?.total_pages ?? 1} ·{' '}
+              {activeDatasetPagination?.total_rows ?? 0} matching rows
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={(activeDatasetPagination?.page ?? 1) <= 1}
+                onClick={() => setExplorerPage((page) => Math.max(1, page - 1))}
+                className="rounded-lg border border-primary-200 px-3 py-1 font-semibold disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={
+                  (activeDatasetPagination?.page ?? 1) >=
+                  (activeDatasetPagination?.total_pages ?? 1)
+                }
+                onClick={() =>
+                  setExplorerPage((page) =>
+                    Math.min(
+                      activeDatasetPagination?.total_pages ?? page,
+                      page + 1,
+                    ),
+                  )
+                }
+                className="rounded-lg border border-primary-200 px-3 py-1 font-semibold disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

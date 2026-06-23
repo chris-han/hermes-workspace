@@ -11,11 +11,10 @@ import { useEffect, useState } from 'react'
 import { DataConnectionStatusCard } from './components/data-connection-status-card'
 import { CompanyDatasetImportPanel } from './components/company-dataset-import-panel'
 import {
-  
   KnowledgeSourceForm,
-  createDefaultKnowledgeSourceDraft
+  createDefaultKnowledgeSourceDraft,
 } from './components/knowledge-source-form'
-import type {KnowledgeSourceDraft} from './components/knowledge-source-form';
+import type { KnowledgeSourceDraft } from './components/knowledge-source-form'
 import type { DataConnectionsSummary } from '@/server/data-connections'
 import { toast } from '@/components/ui/toast'
 import { useOrganizationSettings } from '@/lib/organization-membership'
@@ -238,10 +237,6 @@ export function DataConnectionsScreen() {
           ) : null}
         </section>
 
-        <CompanyDatasetImportPanel
-          organization={organizationQuery.data?.organization ?? null}
-        />
-
         <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
           <div className="mb-4">
             <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
@@ -265,6 +260,10 @@ export function DataConnectionsScreen() {
             mode="embedded"
           />
         </section>
+
+        <CompanyDatasetImportPanel
+          organization={organizationQuery.data?.organization ?? null}
+        />
       </div>
     </div>
   )

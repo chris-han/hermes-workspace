@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { DATA_CONNECTIONS_PAGE_COPY } from './data-connections-screen'
 import { KIND_LABELS } from './components/data-connection-status-card'
 import {
+  COMPANY_DATASET_FILTER_DEBOUNCE_MS,
   COMPANY_DATASET_SHEET_COMBOBOX_ROLE,
   canValidateImport,
   getHighlightedHeaderRow,
@@ -62,6 +63,10 @@ describe('data connections page copy', () => {
     expect(COMPANY_DATASET_SHEET_COMBOBOX_ROLE).toBe('combobox')
   })
 
+  it('debounces dataset explorer filtering so typing is not interrupted by refreshes', () => {
+    expect(COMPANY_DATASET_FILTER_DEBOUNCE_MS).toBeGreaterThanOrEqual(200)
+  })
+
   it('only enables validation for imports that can enter validating', () => {
     const baseImport = {
       import_id: 'import_1',
@@ -73,10 +78,12 @@ describe('data connections page copy', () => {
     }
 
     expect(canValidateImport({ ...baseImport, status: 'uploaded' })).toBe(true)
-    expect(canValidateImport({ ...baseImport, status: 'validation_failed' })).toBe(
-      true,
+    expect(
+      canValidateImport({ ...baseImport, status: 'validation_failed' }),
+    ).toBe(true)
+    expect(canValidateImport({ ...baseImport, status: 'validating' })).toBe(
+      false,
     )
-    expect(canValidateImport({ ...baseImport, status: 'validating' })).toBe(false)
     expect(canValidateImport({ ...baseImport, status: 'staged' })).toBe(false)
   })
 })

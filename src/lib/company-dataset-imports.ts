@@ -54,6 +54,49 @@ export interface CompanyDatasetImportPreview {
   suggested_header_rows: Record<string, number>
 }
 
+export interface CompanyDatasetExplorer {
+  dataset_version_id: string
+  organization_id: string
+  import_id: string
+  activated_at?: string | null
+  parser_profile_hash?: string | null
+  stats: {
+    files_promoted: number
+    rows_promoted: number
+    deduped_rows: number
+    error_rows: number
+    fixed_rows: number
+  }
+  files: Array<{
+    file_id?: string | null
+    original_filename?: string | null
+    source_file_hash?: string | null
+    normalized_file_hash?: string | null
+    row_count: number
+    promoted_rows: number
+    deduped_rows: number
+    error_rows: number
+    fixed_rows: number
+  }>
+  selected_file_id?: string | null
+  selected_file_stats: {
+    files_promoted: number
+    rows_promoted: number
+    deduped_rows: number
+    error_rows: number
+    fixed_rows: number
+  }
+  columns: Array<string>
+  rows: Array<Record<string, string>>
+  pagination: {
+    page: number
+    page_size: number
+    total_rows: number
+    total_pages: number
+    filter?: string | null
+  }
+}
+
 const COMPANY_DATASET_IMPORTS_API =
   '/api/semantier-proxy/company-dataset-imports'
 
@@ -114,6 +157,24 @@ export async function fetchCompanyDatasetImports(): Promise<
   return Array.isArray(payload.imports) ? payload.imports : []
 }
 
+export async function fetchActiveCompanyDataset(params?: {
+  fileId?: string
+  page?: number
+  pageSize?: number
+  filter?: string
+}): Promise<CompanyDatasetExplorer | null> {
+  const query = new URLSearchParams()
+  if (params?.fileId) query.set('file_id', params.fileId)
+  if (params?.page) query.set('page', String(params.page))
+  if (params?.pageSize) query.set('page_size', String(params.pageSize))
+  if (params?.filter?.trim()) query.set('filter', params.filter.trim())
+  const suffix = query.toString() ? `?${query.toString()}` : ''
+  const payload = await readJson<{
+    dataset?: CompanyDatasetExplorer | null
+  }>(`${COMPANY_DATASET_IMPORTS_API}/active-dataset${suffix}`)
+  return payload.dataset ?? null
+}
+
 export async function uploadCompanyDatasetImport(params: {
   idempotencyKey: string
   files: Array<File>
@@ -147,10 +208,10 @@ export async function previewCompanyDatasetImport(params: {
       }),
     },
   )
-  const preview =
+  const preview: Partial<CompanyDatasetImportPreview> | null | undefined =
     payload && typeof payload === 'object' && 'preview' in payload
       ? payload.preview
-      : payload
+      : (payload as Partial<CompanyDatasetImportPreview>)
   return {
     files: Array.isArray(preview?.files) ? preview.files : [],
     sheet_names: Array.isArray(preview?.sheet_names) ? preview.sheet_names : [],

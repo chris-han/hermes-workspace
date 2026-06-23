@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 540" font-family="'Source Han Sans SC','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">
+  <defs>
+    <style>
+      .ink{fill:#1a1a1a} .muted{fill:#6b7280} .gold{fill:#b45309}
+      .mono{font-family:ui-monospace,Consolas,monospace}
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="1099" height="539" rx="12" fill="#ffffff" stroke="#b45309" stroke-width="2"/>
+
+  <!-- Header -->
+  <text x="36" y="38" font-size="18" font-weight="700" class="gold">电子凭证会计数据标准 · Implementation Surface by Step</text>
+  <text x="36" y="60" font-size="12" class="muted">MOF Application Guide §五: standard governs  接收 · 验签(验真) · 解析 · 报销 · 入账 · 归档.  Their mapping to the 7-step workflow:</text>
+
+  <!-- Table -->
+  <g transform="translate(36,80)">
+    <!-- Header bar -->
+    <rect x="0" y="0" width="1028" height="36" fill="#b45309"/>
+    <text x="60"  y="22" font-size="12" font-weight="700" fill="white" text-anchor="middle">Workflow Step</text>
+    <text x="240" y="22" font-size="12" font-weight="700" fill="white" text-anchor="middle">Standard Surface</text>
+    <text x="610" y="22" font-size="12" font-weight="700" fill="white" text-anchor="middle">What Must Conform</text>
+    <text x="958" y="22" font-size="12" font-weight="700" fill="white" text-anchor="middle">Implement?</text>
+
+    <!-- Row 1: STEP 1 REQUIRED -->
+    <rect x="0" y="36" width="1028" height="68" fill="#fffbeb" stroke="#d4d4d8"/>
+    <text x="60"  y="60" font-size="12" font-weight="700" class="ink" text-anchor="middle">1. 原始凭证</text>
+    <text x="60"  y="76" font-size="10" class="muted" text-anchor="middle">Source Voucher</text>
+    <text x="240" y="60" font-size="11" class="ink" text-anchor="middle">接收 · 验签 (验真) · 解析</text>
+    <text x="380" y="60" font-size="11" class="ink">Accept XML / OFD / PDF formats (9 voucher families).</text>
+    <text x="380" y="76" font-size="11" class="ink">Verify embedded digital signature; parse with</text>
+    <text x="380" y="92" font-size="11" class="mono gold">pdf-xml-extractor-1.0.jar  /  xbrl-json-1.0.jar</text>
+    <rect x="900" y="56" width="116" height="22" rx="11" fill="#fef3c7" stroke="#f59e0b"/>
+    <text x="958" y="71" font-size="11" font-weight="700" class="gold" text-anchor="middle">REQUIRED</text>
+
+    <!-- Row 2: STEP 2 No -->
+    <rect x="0" y="104" width="1028" height="44" fill="white" stroke="#d4d4d8"/>
+    <text x="60"  y="124" font-size="12" font-weight="700" class="ink" text-anchor="middle">2. 会计分录</text>
+    <text x="60"  y="140" font-size="10" class="muted" text-anchor="middle">Journal Entry</text>
+    <text x="240" y="132" font-size="11" class="muted" text-anchor="middle">—</text>
+    <text x="380" y="132" font-size="11" class="muted">Pure semantic projection. Standard does not constrain this step.</text>
+    <rect x="900" y="120" width="116" height="22" rx="11" fill="#f3f4f6" stroke="#d1d5db"/>
+    <text x="958" y="135" font-size="11" font-weight="700" class="muted" text-anchor="middle">No</text>
+
+    <!-- Row 3: STEP 3 REQUIRED CORE -->
+    <rect x="0" y="148" width="1028" height="84" fill="#fffbeb" stroke="#d4d4d8"/>
+    <rect x="0" y="148" width="1028" height="84" fill="#fef3c7" opacity="0.4"/>
+    <text x="60"  y="174" font-size="12" font-weight="700" class="ink" text-anchor="middle">3. 记账凭证</text>
+    <text x="60"  y="190" font-size="10" class="muted" text-anchor="middle">Journal Voucher</text>
+    <text x="60"  y="208" font-size="9" font-weight="700" class="gold" text-anchor="middle">★ CORE STEP</text>
+    <text x="240" y="174" font-size="11" font-weight="700" class="gold" text-anchor="middle">入账 (核心)</text>
+    <text x="380" y="170" font-size="11" font-weight="700" class="ink">PRIMARY IMPLEMENTATION POINT.</text>
+    <text x="380" y="186" font-size="11" class="ink">After 入账, emit 入账信息结构化数据文件 in XBRL (one per source voucher),</text>
+    <text x="380" y="202" font-size="11" class="ink">populating tuples below:</text>
+    <text x="380" y="218" font-size="11" class="mono gold">InformationOfAccountingDocumentsTuple  ·  InformationOfDebitAndCreditEntryTuple</text>
+    <rect x="884" y="184" width="148" height="22" rx="11" fill="#b45309" stroke="#92400e"/>
+    <text x="958" y="199" font-size="11" font-weight="700" fill="white" text-anchor="middle">REQUIRED · CORE</text>
+
+    <!-- Row 4: STEP 4 REQUIRED -->
+    <rect x="0" y="232" width="1028" height="68" fill="#fffbeb" stroke="#d4d4d8"/>
+    <text x="60"  y="256" font-size="12" font-weight="700" class="ink" text-anchor="middle">4. 会计凭证</text>
+    <text x="60"  y="272" font-size="10" class="muted" text-anchor="middle">Voucher Bundle</text>
+    <text x="240" y="264" font-size="11" class="ink" text-anchor="middle">报销 · 归档</text>
+    <text x="380" y="256" font-size="11" class="ink">Maintain linkage  1 ⇌ N  between 记账凭证, 原始凭证 and 入账信息文件.</text>
+    <text x="380" y="272" font-size="11" class="ink">Per MOF Fig 5-2 / 5-3 — key by InvoiceNumber / 唯一标识 / 回单号.</text>
+    <text x="380" y="288" font-size="11" class="ink">归档 must preserve this cross-link index.</text>
+    <rect x="900" y="252" width="116" height="22" rx="11" fill="#fef3c7" stroke="#f59e0b"/>
+    <text x="958" y="267" font-size="11" font-weight="700" class="gold" text-anchor="middle">REQUIRED</text>
+
+    <!-- Row 5-7: STEPS 5,6,7 No -->
+    <rect x="0" y="300" width="1028" height="40" fill="white" stroke="#d4d4d8"/>
+    <text x="60"  y="320" font-size="12" font-weight="700" class="ink" text-anchor="middle">5. 凭证过账</text>
+    <text x="60"  y="334" font-size="10" class="muted" text-anchor="middle">Posting</text>
+    <text x="240" y="324" font-size="11" class="muted" text-anchor="middle">—</text>
+    <text x="380" y="324" font-size="11" class="muted">Internal posting operation. Not in scope of the data standard.</text>
+    <rect x="900" y="312" width="116" height="22" rx="11" fill="#f3f4f6" stroke="#d1d5db"/>
+    <text x="958" y="327" font-size="11" font-weight="700" class="muted" text-anchor="middle">No</text>
+
+    <rect x="0" y="340" width="1028" height="40" fill="white" stroke="#d4d4d8"/>
+    <text x="60"  y="360" font-size="12" font-weight="700" class="ink" text-anchor="middle">6. 日记账</text>
+    <text x="60"  y="374" font-size="10" class="muted" text-anchor="middle">Journal</text>
+    <text x="240" y="364" font-size="11" class="muted" text-anchor="middle">—</text>
+    <text x="380" y="364" font-size="11" class="muted">Derived view over the posted ledger. Not in scope.</text>
+    <rect x="900" y="352" width="116" height="22" rx="11" fill="#f3f4f6" stroke="#d1d5db"/>
+    <text x="958" y="367" font-size="11" font-weight="700" class="muted" text-anchor="middle">No</text>
+
+    <rect x="0" y="380" width="1028" height="40" fill="white" stroke="#d4d4d8"/>
+    <text x="60"  y="400" font-size="12" font-weight="700" class="ink" text-anchor="middle">7. 总账</text>
+    <text x="60"  y="414" font-size="10" class="muted" text-anchor="middle">General Ledger</text>
+    <text x="240" y="404" font-size="11" class="muted" text-anchor="middle">—</text>
+    <text x="380" y="404" font-size="11" class="muted">Derived view over the posted ledger. Not in scope.</text>
+    <rect x="900" y="392" width="116" height="22" rx="11" fill="#f3f4f6" stroke="#d1d5db"/>
+    <text x="958" y="407" font-size="11" font-weight="700" class="muted" text-anchor="middle">No</text>
+  </g>
+
+  <!-- Bottom line -->
+  <line x1="36" y1="514" x2="1064" y2="514" stroke="#d4d4d8"/>
+  <text x="36" y="514" font-size="12" class="ink" font-weight="700">Bottom line ▸ </text>
+  <text x="124" y="514" font-size="12" class="ink">
+    Implement at <tspan class="gold" font-weight="700">Steps 1, 3, 4</tspan> — accept conforming inbound formats, emit XBRL 入账信息结构化数据文件 on 入账, persist the cross-link index for 归档.
+  </text>
+  <text x="36" y="530" font-size="12" class="ink">
+    The rest of the workflow (<tspan class="muted">会计分录 → 过账 → 日记账 → 总账</tspan>) is internal and unconstrained by the standard.
+  </text>
+</svg>

@@ -16,6 +16,7 @@ const MIME_TYPES = {
   '.css': 'text/css',
   '.html': 'text/html',
   '.json': 'application/json',
+  '.md': 'text/markdown',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -50,11 +51,25 @@ async function tryServeStatic(req, res) {
 
   try {
     const fileStat = await stat(filePath)
-    if (!fileStat.isFile()) return false
+    const staticFilePath = fileStat.isDirectory()
+      ? join(filePath, 'index.html')
+      : filePath
 
-    const ext = extname(filePath).toLowerCase()
+    if (fileStat.isDirectory()) {
+      if (!pathname.endsWith('/')) {
+        res.writeHead(308, { Location: `${pathname}/${url.search}` })
+        res.end()
+        return true
+      }
+      const indexStat = await stat(staticFilePath)
+      if (!indexStat.isFile()) return false
+    } else if (!fileStat.isFile()) {
+      return false
+    }
+
+    const ext = extname(staticFilePath).toLowerCase()
     const contentType = MIME_TYPES[ext] || 'application/octet-stream'
-    const data = await readFile(filePath)
+    const data = await readFile(staticFilePath)
 
     const headers = {
       'Content-Type': contentType,

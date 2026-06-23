@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 660" font-family="'Source Han Sans SC','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">
+  <defs>
+    <style>
+      .ink{fill:#1a1a1a} .muted{fill:#6b7280} .red{fill:#991b1b} .gold{fill:#b45309}
+      .req-fill{fill:#fef3c7} .req-stroke{stroke:#f59e0b}
+      .mono{font-family:ui-monospace,Consolas,monospace}
+      .serif{font-family:'Source Han Serif SC','Noto Serif CJK SC',serif}
+    </style>
+    <pattern id="qr" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="4" height="4" fill="black"/>
+      <rect x="4" y="4" width="4" height="4" fill="black"/>
+    </pattern>
+  </defs>
+
+  <!-- Outer card -->
+  <rect x="0.5" y="0.5" width="899" height="659" rx="12" fill="#ffffff" stroke="#d4d4d8"/>
+  <!-- Required indicator left bar -->
+  <rect x="0.5" y="0.5" width="6" height="659" rx="3" fill="#f59e0b"/>
+
+  <!-- Header -->
+  <rect x="7" y="1" width="892" height="56" fill="#fcfcfa" stroke="#d4d4d8" stroke-width="0" />
+  <line x1="7" y1="57" x2="899" y2="57" stroke="#d4d4d8"/>
+  <circle cx="40" cy="29" r="13" fill="#1a1a1a"/>
+  <text x="40" y="34" font-size="14" fill="#fff" text-anchor="middle" font-weight="700">1</text>
+  <text x="62" y="34" font-size="17" font-weight="600" class="ink">经济业务发生 · 原始凭证</text>
+  <text x="290" y="34" font-size="13" class="muted">Source Voucher</text>
+  <!-- Badge -->
+  <rect x="745" y="16" width="142" height="22" rx="4" class="req-fill" stroke="#f59e0b"/>
+  <text x="816" y="31" font-size="11" font-weight="700" letter-spacing="1" class="gold" text-anchor="middle">STANDARD REQUIRED</text>
+
+  <!-- Invoice body -->
+  <g transform="translate(90,82)">
+    <rect x="0" y="0" width="720" height="500" fill="#fffaf5" stroke="#991b1b" stroke-width="2"/>
+
+    <!-- Invoice title -->
+    <text x="360" y="34" font-size="22" font-weight="700" letter-spacing="6" class="red serif" text-anchor="middle">电子发票 (普通发票)</text>
+    <text x="360" y="54" font-size="11" class="muted" text-anchor="middle">XML · 内嵌税务机关数字签名 · 符合 GB/T 42965.1-2023</text>
+    <line x1="20" y1="68" x2="700" y2="68" stroke="#991b1b" stroke-dasharray="4 3"/>
+
+    <!-- Meta -->
+    <text x="24" y="92" font-size="12" class="ink">发票号码: <tspan font-weight="700">22442000000921300354</tspan></text>
+    <text x="696" y="92" font-size="12" class="ink" text-anchor="end">开票日期: <tspan font-weight="700">2022-07-15</tspan></text>
+
+    <!-- Parties block -->
+    <rect x="24" y="106" width="672" height="74" fill="white" stroke="#991b1b"/>
+    <line x1="360" y1="106" x2="360" y2="180" stroke="#991b1b"/>
+    <text x="38" y="124" font-size="11" class="muted">购买方</text>
+    <text x="38" y="143" font-size="13" class="ink">广州市万福布艺有限公司</text>
+    <text x="38" y="163" font-size="11" class="mono ink">91440101MA5CLEH08W</text>
+    <text x="374" y="124" font-size="11" class="muted">销售方</text>
+    <text x="374" y="143" font-size="13" class="ink">广州市兆丰商贸有限公司</text>
+    <text x="374" y="163" font-size="11" class="mono ink">91440101MA5CLQ731R</text>
+
+    <!-- Line item table -->
+    <g transform="translate(24,196)">
+      <rect x="0" y="0" width="672" height="68" fill="white" stroke="#991b1b"/>
+      <rect x="0" y="0" width="672" height="24" fill="#fde2d3" stroke="#991b1b"/>
+      <!-- columns: 项目名称 | 规格 | 数量 | 单价 | 金额 | 税率 | 税额 -->
+      <line x1="240" y1="0" x2="240" y2="68" stroke="#991b1b"/>
+      <line x1="310" y1="0" x2="310" y2="68" stroke="#991b1b"/>
+      <line x1="360" y1="0" x2="360" y2="68" stroke="#991b1b"/>
+      <line x1="430" y1="0" x2="430" y2="68" stroke="#991b1b"/>
+      <line x1="520" y1="0" x2="520" y2="68" stroke="#991b1b"/>
+      <line x1="580" y1="0" x2="580" y2="68" stroke="#991b1b"/>
+      <line x1="0" y1="24" x2="672" y2="24" stroke="#991b1b"/>
+
+      <text x="10" y="16" font-size="11" class="ink">项目名称</text>
+      <text x="275" y="16" font-size="11" class="ink" text-anchor="middle">规格</text>
+      <text x="335" y="16" font-size="11" class="ink" text-anchor="middle">数量</text>
+      <text x="395" y="16" font-size="11" class="ink" text-anchor="middle">单价</text>
+      <text x="475" y="16" font-size="11" class="ink" text-anchor="middle">金额</text>
+      <text x="550" y="16" font-size="11" class="ink" text-anchor="middle">税率</text>
+      <text x="626" y="16" font-size="11" class="ink" text-anchor="middle">税额</text>
+
+      <text x="10" y="48" font-size="12" class="ink">办公用品 · A4 复印纸</text>
+      <text x="275" y="48" font-size="12" class="mono ink" text-anchor="middle">500 张</text>
+      <text x="335" y="48" font-size="12" class="mono ink" text-anchor="middle">10</text>
+      <text x="395" y="48" font-size="12" class="mono ink" text-anchor="middle">50.00</text>
+      <text x="475" y="48" font-size="12" class="mono ink" text-anchor="middle">500.00</text>
+      <text x="550" y="48" font-size="12" class="mono ink" text-anchor="middle">0%</text>
+      <text x="626" y="48" font-size="12" class="mono ink" text-anchor="middle">0.00</text>
+    </g>
+
+    <!-- Total -->
+    <line x1="24" y1="280" x2="696" y2="280" stroke="#6b7280" stroke-dasharray="3 3"/>
+    <text x="34" y="300" font-size="13" class="ink">价税合计 (大写)  <tspan font-weight="700">伍佰元整</tspan></text>
+    <text x="686" y="300" font-size="14" class="ink" text-anchor="end">¥ <tspan font-weight="700" font-size="16">500.00</tspan></text>
+
+    <!-- Footer -->
+    <text x="34" y="338" font-size="11" class="muted">合同号: <tspan class="ink">202207159977</tspan></text>
+    <text x="34" y="356" font-size="11" class="muted">银行电子回单号: <tspan class="ink mono">6FE0-4D2C-66EA</tspan></text>
+
+    <!-- QR code -->
+    <g transform="translate(320,326)">
+      <rect x="0" y="0" width="72" height="72" fill="white" stroke="#1a1a1a"/>
+      <rect x="3" y="3" width="66" height="66" fill="url(#qr)" opacity="0.85"/>
+      <rect x="3" y="3" width="20" height="20" fill="white" stroke="#1a1a1a" stroke-width="3"/>
+      <rect x="49" y="3" width="20" height="20" fill="white" stroke="#1a1a1a" stroke-width="3"/>
+      <rect x="3" y="49" width="20" height="20" fill="white" stroke="#1a1a1a" stroke-width="3"/>
+      <rect x="9" y="9" width="8" height="8" fill="#1a1a1a"/>
+      <rect x="55" y="9" width="8" height="8" fill="#1a1a1a"/>
+      <rect x="9" y="55" width="8" height="8" fill="#1a1a1a"/>
+    </g>
+
+    <!-- Signature stamp -->
+    <g transform="translate(580,330)" opacity="0.9">
+      <circle cx="40" cy="40" r="38" fill="none" stroke="#b91c1c" stroke-width="3"/>
+      <circle cx="40" cy="40" r="34" fill="none" stroke="#b91c1c" stroke-width="1"/>
+      <text transform="rotate(-12, 40, 40)" x="40" y="34" font-size="11" font-weight="700" class="red" text-anchor="middle">国家税务总局</text>
+      <text transform="rotate(-12, 40, 40)" x="40" y="50" font-size="10" font-weight="700" class="red" text-anchor="middle">数字签名</text>
+      <text transform="rotate(-12, 40, 40)" x="40" y="64" font-size="8" class="red" text-anchor="middle">VERIFIED</text>
+    </g>
+
+    <!-- Caption inside invoice -->
+    <line x1="24" y1="436" x2="696" y2="436" stroke="#991b1b" stroke-dasharray="2 4"/>
+    <text x="360" y="458" font-size="11" class="muted" text-anchor="middle">FORMAT: XML  ·  TAXONOMY: einv_ord_receiver  ·  SIGNATURE: 税务机关</text>
+    <text x="360" y="478" font-size="11" class="muted" text-anchor="middle">RECEIVER MUST: 接收 (Receive) → 验签 (Verify Signature) → 验真 (Authenticate) → 解析 (Parse)</text>
+  </g>
+
+  <!-- Caption -->
+  <text x="450" y="614" font-size="11" class="muted" text-anchor="middle" font-style="italic">
+    Fig 1 · Inbound electronic source voucher — 数电发票 in XML with embedded digital signature.
+  </text>
+  <text x="450" y="630" font-size="11" class="muted" text-anchor="middle" font-style="italic">
+    本张为记账凭证 #07654 的源 A; 源 B (铁路客票) 与源 C (银行回单) 各以同样方式独立接收/验签/解析。
+  </text>
+</svg>

@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 740" font-family="'Source Han Sans SC','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">
+  <defs>
+    <style>
+      .ink{fill:#1a1a1a} .muted{fill:#6b7280} .gold{fill:#b45309}
+      .mono{font-family:ui-monospace,Consolas,monospace}
+      .tag{fill:#93c5fd} .attr{fill:#fcd34d} .val{fill:#86efac} .com{fill:#94a3b8}
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="1099" height="739" rx="12" fill="#ffffff" stroke="#d4d4d8"/>
+  <rect x="0.5" y="0.5" width="6" height="739" rx="3" fill="#f59e0b"/>
+
+  <!-- Header -->
+  <rect x="7" y="1" width="1092" height="56" fill="#fcfcfa"/>
+  <line x1="7" y1="57" x2="1099" y2="57" stroke="#d4d4d8"/>
+  <circle cx="40" cy="29" r="13" fill="#1a1a1a"/>
+  <text x="40" y="34" font-size="14" fill="#fff" text-anchor="middle" font-weight="700">3</text>
+  <text x="62" y="34" font-size="17" font-weight="600" class="ink">凭证生成 · 记账凭证</text>
+  <text x="248" y="34" font-size="13" class="muted">Journal Voucher</text>
+  <rect x="940" y="16" width="148" height="22" rx="4" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="1014" y="31" font-size="11" font-weight="700" letter-spacing="1" class="gold" text-anchor="middle">REQUIRED · CORE</text>
+
+  <!-- Column labels -->
+  <text x="36" y="82" font-size="11" font-weight="700" class="muted" letter-spacing="1">A · HUMAN-READABLE FORM (合并后)</text>
+  <text x="600" y="82" font-size="11" font-weight="700" class="muted" letter-spacing="1">B · 入账信息结构化数据文件 (XBRL) — 每张原始凭证一份</text>
+
+  <!-- A: Voucher form -->
+  <g transform="translate(36,96)">
+    <rect x="0" y="0" width="540" height="600" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+    <!-- Title -->
+    <text x="270" y="34" font-size="22" font-weight="700" letter-spacing="10" class="ink" text-anchor="middle">记账凭证</text>
+    <line x1="20" y1="48" x2="520" y2="48" stroke="#1a1a1a"/>
+
+    <!-- Meta -->
+    <text x="20" y="72" font-size="12" class="ink">凭证号: <tspan font-weight="700">付款凭证 07654</tspan></text>
+    <text x="270" y="72" font-size="12" class="ink" text-anchor="middle">记账日期: <tspan font-weight="700">2022-07-16</tspan></text>
+    <text x="520" y="72" font-size="12" class="ink" text-anchor="end">期间: <tspan font-weight="700">2022-07</tspan></text>
+
+    <!-- Table -->
+    <g transform="translate(16,90)">
+      <rect x="0" y="0" width="508" height="276" fill="white" stroke="#1a1a1a"/>
+      <rect x="0" y="0" width="508" height="28" fill="#f1f5f9" stroke="#1a1a1a"/>
+      <line x1="160" y1="0" x2="160" y2="276" stroke="#1a1a1a"/>
+      <line x1="260" y1="0" x2="260" y2="276" stroke="#1a1a1a"/>
+      <line x1="350" y1="0" x2="350" y2="276" stroke="#1a1a1a"/>
+      <line x1="430" y1="0" x2="430" y2="276" stroke="#1a1a1a"/>
+      <line x1="0" y1="28" x2="508" y2="28" stroke="#1a1a1a"/>
+      <line x1="0" y1="80" x2="508" y2="80" stroke="#1a1a1a"/>
+      <line x1="0" y1="132" x2="508" y2="132" stroke="#1a1a1a"/>
+      <line x1="0" y1="184" x2="508" y2="184" stroke="#1a1a1a"/>
+      <line x1="0" y1="220" x2="508" y2="220" stroke="#1a1a1a"/>
+
+      <text x="80" y="18" font-size="11" font-weight="600" class="ink" text-anchor="middle">摘要</text>
+      <text x="210" y="18" font-size="11" font-weight="600" class="ink" text-anchor="middle">总账科目</text>
+      <text x="305" y="18" font-size="11" font-weight="600" class="ink" text-anchor="middle">明细科目</text>
+      <text x="390" y="18" font-size="11" font-weight="600" class="ink" text-anchor="middle">借方</text>
+      <text x="469" y="18" font-size="11" font-weight="600" class="ink" text-anchor="middle">贷方</text>
+
+      <!-- Row 1: 借 办公费 (源 A) -->
+      <text x="80"  y="50" font-size="11" class="ink" text-anchor="middle">购办公用品 (源 A)</text>
+      <text x="80"  y="66" font-size="9" class="muted" text-anchor="middle">数电发票 #…0354</text>
+      <text x="210" y="55" font-size="12" class="ink" text-anchor="middle">管理费用</text>
+      <text x="305" y="55" font-size="12" class="ink" text-anchor="middle">办公费</text>
+      <text x="424" y="55" font-size="12" class="mono ink" text-anchor="end">500.00</text>
+      <text x="500" y="55" font-size="12" class="mono muted" text-anchor="end">—</text>
+
+      <!-- Row 2: 借 差旅费 (源 B) -->
+      <text x="80"  y="102" font-size="11" class="ink" text-anchor="middle">差旅·交通 (源 B)</text>
+      <text x="80"  y="118" font-size="9" class="muted" text-anchor="middle">铁路客票 #25E1234567</text>
+      <text x="210" y="107" font-size="12" class="ink" text-anchor="middle">管理费用</text>
+      <text x="305" y="107" font-size="12" class="ink" text-anchor="middle">差旅费</text>
+      <text x="424" y="107" font-size="12" class="mono ink" text-anchor="end">800.00</text>
+      <text x="500" y="107" font-size="12" class="mono muted" text-anchor="end">—</text>
+
+      <!-- Row 3: 贷 银行存款 (源 C) -->
+      <text x="80"  y="154" font-size="11" class="ink" text-anchor="middle">合并支付 (源 C)</text>
+      <text x="80"  y="170" font-size="9" class="muted" text-anchor="middle">银行回单 #6FE0…66EA</text>
+      <text x="210" y="159" font-size="12" class="ink" text-anchor="middle">银行存款</text>
+      <text x="305" y="159" font-size="12" class="ink" text-anchor="middle">工行 6FE0</text>
+      <text x="424" y="159" font-size="12" class="mono muted" text-anchor="end">—</text>
+      <text x="500" y="159" font-size="12" class="mono ink" text-anchor="end">1,300.00</text>
+
+      <!-- empty row -->
+      <text x="305" y="206" font-size="11" class="muted" text-anchor="middle" font-style="italic">— blank —</text>
+
+      <!-- Totals -->
+      <rect x="0" y="220" width="350" height="56" fill="#fafaf9" stroke="none"/>
+      <text x="305" y="254" font-size="12" font-weight="700" class="ink" text-anchor="end">合计</text>
+      <text x="424" y="254" font-size="13" font-weight="700" class="mono ink" text-anchor="end">1,300.00</text>
+      <text x="500" y="254" font-size="13" font-weight="700" class="mono ink" text-anchor="end">1,300.00</text>
+    </g>
+
+    <!-- Footer -->
+    <text x="20" y="402" font-size="11" class="muted">制单人: <tspan class="ink" font-weight="600">李</tspan></text>
+    <text x="156" y="402" font-size="11" class="muted">审核人: <tspan class="ink" font-weight="600">王</tspan></text>
+    <text x="290" y="402" font-size="11" class="muted">记账人: <tspan class="ink" font-weight="600">张</tspan></text>
+    <text x="430" y="402" font-size="11" class="muted">附件: <tspan class="ink" font-weight="600">3 张</tspan></text>
+
+    <!-- Linkage note -->
+    <line x1="20" y1="424" x2="520" y2="424" stroke="#d4d4d8"/>
+    <rect x="20" y="438" width="500" height="144" rx="6" fill="#fffbeb" stroke="#f59e0b"/>
+    <text x="36" y="460" font-size="11" font-weight="700" class="gold">⚠  Required link back to source vouchers (3 张原始凭证)</text>
+    <text x="36" y="482" font-size="11" class="mono ink">  A · 数电发票 #22442000000921300354  →  einv_ord_receiver.xml</text>
+    <text x="36" y="500" font-size="11" class="mono ink">  B · 铁路电子客票 #25E1234567        →  rai_ord_receiver.xml</text>
+    <text x="36" y="518" font-size="11" class="mono ink">  C · 银行电子回单 #6FE0-4D2C-66EA    →  bker_ord_receiver.xml</text>
+    <line x1="36" y1="532" x2="504" y2="532" stroke="#fde68a"/>
+    <text x="36" y="552" font-size="10" class="muted" font-style="italic">
+      每张原始凭证一份入账信息结构化数据文件,均挂同一 NumberOfAccountingDocuments = 07654,
+    </text>
+    <text x="36" y="566" font-size="10" class="muted" font-style="italic">
+      合并后的 借/贷 总额由本记账凭证主表呈现 → 归档时三份 XBRL + 主表一并保存。
+    </text>
+  </g>
+
+  <!-- B: XBRL code -->
+  <g transform="translate(596,96)">
+    <rect x="0" y="0" width="468" height="600" rx="6" fill="#1e293b"/>
+    <text x="16" y="24" font-size="11" class="com mono">&lt;!-- 源 A · einv_ord_receiver.xml (本文件,数电发票 ¥500 子分录) --&gt;</text>
+    <g class="mono" font-size="11">
+      <text x="16" y="46"><tspan>&lt;</tspan><tspan class="tag">xbrl</tspan> <tspan class="attr">xmlns:einv</tspan>=<tspan class="val">"…/einv"</tspan>&gt;</text>
+      <text x="32" y="64">&lt;<tspan class="tag">context</tspan> <tspan class="attr">id</tspan>=<tspan class="val">"c1"</tspan>&gt;</text>
+      <text x="48" y="82">&lt;<tspan class="tag">identifier</tspan>&gt;<tspan class="val">91440101MA5CLEH08W</tspan>&lt;/&gt;</text>
+      <text x="48" y="100">&lt;<tspan class="tag">period</tspan>&gt;<tspan class="val">2022-07-16</tspan>&lt;/&gt;</text>
+      <text x="32" y="118">&lt;/<tspan class="tag">context</tspan>&gt;</text>
+
+      <text x="16" y="142">&lt;<tspan class="tag">einv:InvoiceNumber</tspan>&gt;<tspan class="val">22442000000921300354</tspan>&lt;/&gt;</text>
+      <text x="16" y="160">&lt;<tspan class="tag">einv:NameOfAccountingEntity</tspan>&gt;</text>
+      <text x="32" y="178"><tspan class="val">广州市万福布艺有限公司</tspan>&lt;/&gt;</text>
+
+      <text x="16" y="204" fill="#fbbf24">&lt;<tspan class="tag">einv:InformationOfAccountingDocumentsTuple</tspan>&gt;</text>
+      <text x="32" y="222">&lt;<tspan class="tag">einv:NumberOfAccountingDocuments</tspan>&gt;<tspan class="val">07654</tspan>&lt;/&gt;</text>
+      <text x="32" y="240">&lt;<tspan class="tag">einv:PostingDate</tspan>&gt;<tspan class="val">2022-07-16</tspan>&lt;/&gt;</text>
+      <text x="32" y="258">&lt;<tspan class="tag">einv:AccountingPeriod</tspan>&gt;<tspan class="val">2022-07</tspan>&lt;/&gt;</text>
+
+      <text x="32" y="284" fill="#fbbf24">&lt;<tspan class="tag">einv:InformationOfDebitAndCreditEntryTuple</tspan>&gt;</text>
+      <text x="48" y="302">&lt;<tspan class="tag">einv:DebitOrCredit</tspan>&gt;<tspan class="val">借方</tspan>&lt;/&gt;</text>
+      <text x="48" y="320">&lt;<tspan class="tag">einv:NameOfGeneralLedgerSubject</tspan>&gt;<tspan class="val">管理费用</tspan>&lt;/&gt;</text>
+      <text x="48" y="338">&lt;<tspan class="tag">einv:RecordedAmount</tspan> <tspan class="attr">unitRef</tspan>=<tspan class="val">"CNY"</tspan>&gt;<tspan class="val">500.00</tspan>&lt;/&gt;</text>
+      <text x="32" y="356" fill="#fbbf24">&lt;/&gt;</text>
+
+      <text x="32" y="380" fill="#fbbf24">&lt;<tspan class="tag">einv:InformationOfDebitAndCreditEntryTuple</tspan>&gt;</text>
+      <text x="48" y="398">&lt;<tspan class="tag">einv:DebitOrCredit</tspan>&gt;<tspan class="val">贷方</tspan>&lt;/&gt;</text>
+      <text x="48" y="416">&lt;<tspan class="tag">einv:NameOfGeneralLedgerSubject</tspan>&gt;<tspan class="val">银行存款</tspan>&lt;/&gt;</text>
+      <text x="48" y="434">&lt;<tspan class="tag">einv:RecordedAmount</tspan> <tspan class="attr">unitRef</tspan>=<tspan class="val">"CNY"</tspan>&gt;<tspan class="val">500.00</tspan>&lt;/&gt;</text>
+      <text x="32" y="452" fill="#fbbf24">&lt;/&gt;</text>
+      <text x="16" y="470" fill="#fbbf24">&lt;/<tspan class="tag">einv:InformationOfAccountingDocumentsTuple</tspan>&gt;</text>
+      <text x="0" y="494">&lt;/<tspan class="tag">xbrl</tspan>&gt;</text>
+    </g>
+
+    <!-- Footer note: 同一 NumberOfAccountingDocuments 把三份文件捆在一起 -->
+    <line x1="16" y1="514" x2="452" y2="514" stroke="#475569"/>
+    <text x="16" y="534" font-size="10" class="com mono">同一 NumberOfAccountingDocuments=07654 把三份文件捆在一起:</text>
+    <text x="16" y="552" font-size="10" class="mono"><tspan class="attr">rai:</tspan><tspan class="val">…</tspan>  铁路客票 → 借 管理费用 800 / 贷 银行存款 800</text>
+    <text x="16" y="570" font-size="10" class="mono"><tspan class="attr">bker:</tspan><tspan class="val">…</tspan>  银行回单 → 仅描述合并支付 ¥1,300 流出</text>
+    <text x="16" y="588" font-size="10" class="com mono">三文件子分录加总 = 主表 借/贷 各 1,300 ✓</text>
+  </g>
+
+  <!-- Caption -->
+  <text x="550" y="722" font-size="11" class="muted" text-anchor="middle" font-style="italic">
+    Fig 3 · 一张记账凭证主表 + N 份 XBRL 入账信息文件 (每张原始凭证一份),共用 NumberOfAccountingDocuments 形成捆绑索引。
+  </text>
+</svg>

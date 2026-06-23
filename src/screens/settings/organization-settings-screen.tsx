@@ -811,11 +811,11 @@ export function OrganizationSettingsScreen() {
                     setOrganizationId(event.target.value)
                     setSelectedOrganizationId(null)
                   }}
-                  placeholder="org_smb_cn"
+                  placeholder={DEFAULT_SMB_ORGANIZATION_ID}
                 />
                 <p className="text-xs text-primary-500 dark:text-neutral-400">
-                  `org_smb_cn` is the seeded 北京索阳科技有限公司 bootstrap
-                  organization.
+                  `{DEFAULT_SMB_ORGANIZATION_ID}` is the seeded
+                  北京索阳科技有限公司 bootstrap organization.
                 </p>
               </div>
               <div className="space-y-2">
@@ -1268,7 +1268,8 @@ export function OrganizationSettingsScreen() {
           ) : (
             <div className="rounded-2xl border border-primary-200 bg-white/80 px-4 py-6 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400">
               No organization memberships exist yet. Use the SMB dataset default
-              to create `org_smb_cn` locally and attach it to this user.
+              to create `{DEFAULT_SMB_ORGANIZATION_ID}` locally and attach it to
+              this user.
             </div>
           )}
         </section>

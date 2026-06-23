@@ -24,7 +24,7 @@ describe('organization search options', () => {
     const options = buildOrganizationSearchOptions(
       [
         {
-          organization_id: 'org_smb_cn',
+          organization_id: 'org_construction_3_year_cn',
           organization_name: '北京索阳科技有限公司',
           membership_status: 'active',
           member_role: 'owner',
@@ -32,7 +32,7 @@ describe('organization search options', () => {
       ],
       [
         {
-          organization_id: 'org_smb_cn',
+          organization_id: 'org_construction_3_year_cn',
           organization_name: '北京索阳科技有限公司',
           dataset_type: 'smb',
           industry_code: 'CN-SMB',
@@ -53,7 +53,7 @@ describe('organization search options', () => {
     expect(options).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          organization_id: 'org_smb_cn',
+          organization_id: 'org_construction_3_year_cn',
           organization_name: '北京索阳科技有限公司',
           membership_status: 'active',
           member_role: 'owner',
@@ -73,7 +73,7 @@ describe('organization search options', () => {
       [],
       [
         {
-          organization_id: 'org_smb_cn',
+          organization_id: 'org_construction_3_year_cn',
           organization_name: '北京索阳科技有限公司',
           dataset_type: 'smb',
           industry_code: 'CN-SMB',
@@ -97,7 +97,7 @@ describe('organization search options', () => {
     })
     expect(filterOrganizationSearchOptions(options, 'CN-SMB')[0]).toMatchObject(
       {
-        organization_id: 'org_smb_cn',
+        organization_id: 'org_construction_3_year_cn',
       },
     )
   })

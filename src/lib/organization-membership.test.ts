@@ -25,8 +25,8 @@ describe('organization membership helpers', () => {
     vi.restoreAllMocks()
   })
 
-  it('uses org_smb_cn as the SMB default organization id', () => {
-    expect(DEFAULT_SMB_ORGANIZATION_ID).toBe('org_smb_cn')
+  it('uses org_construction_3_year_cn as the SMB default organization id', () => {
+    expect(DEFAULT_SMB_ORGANIZATION_ID).toBe('org_construction_3_year_cn')
     expect(DEFAULT_SMB_ORGANIZATION_NAME).toBe('北京索阳科技有限公司')
   })
 
@@ -38,7 +38,7 @@ describe('organization membership helpers', () => {
           organization: null,
           memberships: [
             {
-              organization_id: 'org_smb_cn',
+              organization_id: 'org_construction_3_year_cn',
               organization_name: '北京索阳科技有限公司',
               membership_status: 'active',
             },
@@ -50,7 +50,7 @@ describe('organization membership helpers', () => {
       .mockResolvedValueOnce(
         jsonResponse({
           organization: {
-            organization_id: 'org_smb_cn',
+            organization_id: 'org_construction_3_year_cn',
             organization_name: '北京索阳科技有限公司',
             membership_status: 'active',
           },
@@ -62,7 +62,7 @@ describe('organization membership helpers', () => {
 
     await upsertOrganizationAssociation(
       {
-        organizationId: 'org_smb_cn',
+        organizationId: 'org_construction_3_year_cn',
         createIfMissing: false,
       },
       fetchMock,
@@ -80,7 +80,7 @@ describe('organization membership helpers', () => {
       '/organizations/switch',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ organization_id: 'org_smb_cn' }),
+        body: JSON.stringify({ organization_id: 'org_construction_3_year_cn' }),
       }),
     )
   })
@@ -112,13 +112,15 @@ describe('organization membership helpers', () => {
   it('classifies demo and real organization contexts', () => {
     expect(
       isDemoOrganizationContext({
-        organization_id: 'org_smb_cn',
+        organization_id: 'org_construction_3_year_cn',
         dataset_type: 'DEMO',
       }),
     ).toBe(true)
-    expect(isDemoOrganizationContext({ organization_id: 'org_smb_cn' })).toBe(
-      true,
-    )
+    expect(
+      isDemoOrganizationContext({
+        organization_id: 'org_construction_3_year_cn',
+      }),
+    ).toBe(true)
     expect(isRealOrganizationContext({ dataset_type: 'REAL' })).toBe(true)
     expect(isRealOrganizationContext({ dataset_type: 'DEMO' })).toBe(false)
   })
@@ -128,7 +130,7 @@ describe('organization membership helpers', () => {
       findRealCompanyMembership(
         [
           {
-            organization_id: 'org_smb_cn',
+            organization_id: 'org_construction_3_year_cn',
             dataset_type: 'DEMO',
             membership_status: 'active',
           },
@@ -138,7 +140,7 @@ describe('organization membership helpers', () => {
             membership_status: 'active',
           },
         ],
-        'org_smb_cn',
+        'org_construction_3_year_cn',
       )?.organization_id,
     ).toBe('org_real_1')
   })
@@ -160,13 +162,13 @@ describe('organization membership helpers', () => {
       .mockResolvedValueOnce(
         jsonResponse({
           organization: {
-            organization_id: 'org_smb_cn',
+            organization_id: 'org_construction_3_year_cn',
             organization_name: '北京索阳科技有限公司',
             membership_status: 'active',
           },
           memberships: [
             {
-              organization_id: 'org_smb_cn',
+              organization_id: 'org_construction_3_year_cn',
               organization_name: '北京索阳科技有限公司',
               membership_status: 'active',
             },
@@ -183,7 +185,7 @@ describe('organization membership helpers', () => {
       '/organizations/join',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ organization_id: 'org_smb_cn' }),
+        body: JSON.stringify({ organization_id: 'org_construction_3_year_cn' }),
       }),
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -192,7 +194,7 @@ describe('organization membership helpers', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
-          organization_id: 'org_smb_cn',
+          organization_id: 'org_construction_3_year_cn',
           organization_name: '北京索阳科技有限公司',
           create: true,
         }),
@@ -204,7 +206,7 @@ describe('organization membership helpers', () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
       jsonResponse({
         organization: {
-          organization_id: 'org_smb_cn',
+          organization_id: 'org_construction_3_year_cn',
           t6_materialization_policy: {
             default_mode: 'AUTO',
           },
@@ -239,7 +241,7 @@ describe('organization membership helpers', () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
       jsonResponse({
         organization: {
-          organization_id: 'org_smb_cn',
+          organization_id: 'org_construction_3_year_cn',
         },
         memberships: [],
         members: [],

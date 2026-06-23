@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-export const DEFAULT_SMB_ORGANIZATION_ID = 'org_smb_cn'
+export const DEFAULT_SMB_ORGANIZATION_ID = 'org_construction_3_year_cn'
 export const DEFAULT_SMB_ORGANIZATION_NAME = '北京索阳科技有限公司'
 
 export interface OrganizationMembership {

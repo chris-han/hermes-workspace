@@ -233,7 +233,7 @@ export function resolveChatEmptyStatePromptProfile(params: {
     return 'apparel_trade'
   }
   if (
-    organizationId === 'org_smb_cn' ||
+    organizationId === 'org_construction_3_year_cn' ||
     datasetType === 'DEMO' ||
     datasetType === 'DEFAULT_REALISTIC_SAMPLE'
   ) {

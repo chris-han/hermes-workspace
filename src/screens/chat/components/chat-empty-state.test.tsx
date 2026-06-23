@@ -10,7 +10,7 @@ import {
 vi.mock('@/lib/semantier-auth', () => ({
   useSemantierAuthStatus: () => ({
     data: {
-      organization_id: 'org_smb_cn',
+      organization_id: 'org_construction_3_year_cn',
       dataset_type: 'DEFAULT_REALISTIC_SAMPLE',
       industry_code: null,
     },
@@ -30,22 +30,25 @@ describe('chat empty state prompt profiles', () => {
     })
 
     expect(profile).toBe('apparel_trade')
-    expect(categoriesForPromptProfile(profile)[0]?.examples.map((item) => item.title)).toEqual([
-      '营业分析',
-      '日常入账报销',
-      '报税报告生成',
-      '合规报告生成',
-    ])
+    expect(
+      categoriesForPromptProfile(profile)[0]?.examples.map(
+        (item) => item.title,
+      ),
+    ).toEqual(['营业分析', '日常入账报销', '报税报告生成', '合规报告生成'])
   })
 
   it('uses the SMB walkthrough for the seeded default realistic sample org', () => {
     const profile = resolveChatEmptyStatePromptProfile({
-      organizationId: 'org_smb_cn',
+      organizationId: 'org_construction_3_year_cn',
       datasetType: 'DEFAULT_REALISTIC_SAMPLE',
     })
 
     expect(profile).toBe('smb_default')
-    expect(categoriesForPromptProfile(profile)[0]?.examples.map((item) => item.title)).toEqual([
+    expect(
+      categoriesForPromptProfile(profile)[0]?.examples.map(
+        (item) => item.title,
+      ),
+    ).toEqual([
       '试用 索阳 示例公司 — 60 秒获得洞察',
       '营业分析',
       '日常入账报销',

@@ -72,6 +72,8 @@ describe('resolveActiveWorkspaceRoot', () => {
       ok: true,
       json: async () => ({
         authenticated: true,
+        organization_id: 'Soyon_Real',
+        dataset_type: 'REAL',
         workspace: {
           id: 'bb685f18514b4dc89018900bbb4687eb',
           slug: 'alice_zhang',
@@ -90,6 +92,8 @@ describe('resolveActiveWorkspaceRoot', () => {
 
     expect(result.authenticated).toBe(true)
     expect(result.workspaceId).toBe('bb685f18514b4dc89018900bbb4687eb')
+    expect(result.organizationId).toBe('Soyon_Real')
+    expect(result.datasetType).toBe('REAL')
     expect(result.path).toBe(
       path.resolve(
         '/home/chris/repo/semantier/workspaces/bb685f18514b4dc89018900bbb4687eb',

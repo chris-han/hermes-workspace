@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { SETTINGS_NAV_ITEMS } from './settings-screen'
+import {
+  REAL_COMPANY_SETTINGS_COPY,
+  SETTINGS_NAV_ITEMS,
+} from './settings-screen'
 
 describe('data connections discoverability', () => {
   it('keeps organization settings in navigation before data connections', () => {
@@ -23,5 +26,16 @@ describe('data connections discoverability', () => {
           item.to === '/settings/data-connections',
       ),
     ).toBe(true)
+  })
+
+  it('exposes real-company switching from the main settings screen', () => {
+    expect(REAL_COMPANY_SETTINGS_COPY.title).toBe('Company context')
+    expect(REAL_COMPANY_SETTINGS_COPY.switchAction).toBe(
+      'Switch to real company',
+    )
+    expect(REAL_COMPANY_SETTINGS_COPY.switchDemoAction).toBe(
+      'Switch to demo company',
+    )
+    expect(REAL_COMPANY_SETTINGS_COPY.importAction).toBe('Open dataset import')
   })
 })

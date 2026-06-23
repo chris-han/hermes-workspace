@@ -17,6 +17,8 @@ const WORKSPACE_APP_STATE_DIRNAME = '.hermes-workspace'
 
 type BackendWorkspacePathsPayload = {
   authenticated?: unknown
+  dataset_type?: unknown
+  organization_id?: unknown
   workspace?: {
     id?: unknown
     slug?: unknown
@@ -35,6 +37,8 @@ export type ActiveWorkspaceRoot = {
   workspaceSlug: string
   path: string
   hermesHome?: string
+  organizationId?: string
+  datasetType?: string
   source: 'backend' | 'fallback'
 }
 
@@ -59,7 +63,9 @@ export class WorkspaceAuthRequiredError extends Error {
 }
 
 function fallbackWorkspaceRoot(): never {
-  throw new WorkspaceAuthRequiredError('Public workspace is disabled. Please log in.')
+  throw new WorkspaceAuthRequiredError(
+    'Public workspace is disabled. Please log in.',
+  )
 }
 
 function cacheKeyFromHeaders(headers?: HeadersInit | Headers): string {
@@ -102,30 +108,39 @@ async function fetchWorkspaceRootFromBackend(
       ? workspace.root.trim()
       : typeof payload.currentWorkspaceRoot === 'string'
         ? payload.currentWorkspaceRoot.trim()
-      : ''
+        : ''
   if (!workspaceRoot) return null
   const hermesHome =
     typeof workspace?.hermes_home === 'string'
       ? workspace.hermes_home.trim()
       : typeof payload.currentHermesHome === 'string'
         ? payload.currentHermesHome.trim()
-      : ''
+        : ''
 
   const isAuthenticated = payload.authenticated === true
+  const organizationId =
+    typeof payload.organization_id === 'string' &&
+    payload.organization_id.trim()
+      ? payload.organization_id.trim()
+      : undefined
+  const datasetType =
+    typeof payload.dataset_type === 'string' && payload.dataset_type.trim()
+      ? payload.dataset_type.trim()
+      : undefined
   const workspaceId =
     typeof workspace?.id === 'string' && workspace.id.trim()
       ? workspace.id.trim()
       : typeof payload.currentWorkspaceId === 'string' &&
           payload.currentWorkspaceId.trim()
         ? payload.currentWorkspaceId.trim()
-      : 'public'
+        : 'public'
   const workspaceSlug =
     typeof workspace?.slug === 'string' && workspace.slug.trim()
       ? workspace.slug.trim()
       : typeof payload.currentWorkspaceSlug === 'string' &&
           payload.currentWorkspaceSlug.trim()
         ? payload.currentWorkspaceSlug.trim()
-      : 'public'
+        : 'public'
 
   if (!isAuthenticated || workspaceId === 'public') {
     throw new WorkspaceAuthRequiredError()
@@ -137,6 +152,8 @@ async function fetchWorkspaceRootFromBackend(
     workspaceSlug,
     path: normalizeWorkspaceRoot(workspaceRoot),
     hermesHome: hermesHome ? normalizeWorkspaceRoot(hermesHome) : undefined,
+    organizationId,
+    datasetType,
     source: 'backend',
   }
 }

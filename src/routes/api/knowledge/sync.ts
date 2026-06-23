@@ -1,6 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { readKnowledgeBaseConfig } from '../../../server/knowledge-config'
+import {
+  normalizeKnowledgeBaseConfigForWorkspace,
+  readKnowledgeBaseConfig,
+} from '../../../server/knowledge-config'
 import { syncKnowledgeSource } from '../../../server/knowledge-browser'
 import type { KnowledgeBaseConfig } from '../../../server/knowledge-config'
 import {
@@ -24,24 +27,24 @@ export const Route = createFileRoute('/api/knowledge/sync')({
         }
 
         try {
-          let workspaceRoot = ''
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
+          const workspaceRoot = activeWorkspace.path
           if (config) {
-            const activeWorkspace = await resolveActiveWorkspaceRoot(
-              request.headers,
-            )
-            workspaceRoot = activeWorkspace.path
             const { writeKnowledgeBaseConfig } =
               await import('../../../server/knowledge-config')
-            writeKnowledgeBaseConfig(config, workspaceRoot)
+            writeKnowledgeBaseConfig(
+              normalizeKnowledgeBaseConfigForWorkspace(config, workspaceRoot, {
+                datasetType: activeWorkspace.datasetType,
+              }),
+              workspaceRoot,
+            )
           }
 
-          if (!workspaceRoot) {
-            const activeWorkspace = await resolveActiveWorkspaceRoot(
-              request.headers,
-            )
-            workspaceRoot = activeWorkspace.path
-          }
-          const result = await syncKnowledgeSource(workspaceRoot)
+          const result = await syncKnowledgeSource(workspaceRoot, {
+            datasetType: activeWorkspace.datasetType,
+          })
           return json(result)
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {
@@ -63,7 +66,9 @@ export const Route = createFileRoute('/api/knowledge/sync')({
           const activeWorkspace = await resolveActiveWorkspaceRoot(
             request.headers,
           )
-          const config = readKnowledgeBaseConfig(activeWorkspace.path)
+          const config = readKnowledgeBaseConfig(activeWorkspace.path, {
+            datasetType: activeWorkspace.datasetType,
+          })
           return json({ source: config.source })
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {

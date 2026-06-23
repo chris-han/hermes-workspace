@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { scheduleFeishuLinkStatusPolling } from './messaging-settings-screen'
+import {
+  scheduleFeishuLinkStatusPolling,
+  shouldAutoRefreshWeixinPairingQr,
+} from './messaging-settings-screen'
 
 describe('Feishu link status polling', () => {
   afterEach(() => {
@@ -23,5 +26,14 @@ describe('Feishu link status polling', () => {
     cleanup()
     await vi.advanceTimersByTimeAsync(500)
     expect(poll).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('Weixin pairing QR refresh', () => {
+  it('refreshes expired or consumed QR sessions automatically', () => {
+    expect(shouldAutoRefreshWeixinPairingQr('expired')).toBe(true)
+    expect(shouldAutoRefreshWeixinPairingQr('replay_blocked')).toBe(true)
+    expect(shouldAutoRefreshWeixinPairingQr('wait')).toBe(false)
+    expect(shouldAutoRefreshWeixinPairingQr('confirmed')).toBe(false)
   })
 })

@@ -20,6 +20,10 @@ export interface OrganizationContext {
   organization_name?: string | null
   dataset_type?: string | null
   industry_code?: string | null
+  authority_state?: string | null
+  active_dataset_version_id?: string | null
+  fiscal_year_start_month?: number | null
+  local_currency?: string | null
   membership_status?: string | null
   member_role?: string | null
   sharing_enabled?: boolean
@@ -159,7 +163,10 @@ export interface KnowledgeEntitlementContract {
 }
 
 export const organizationSettingsQueryKey = ['organizations', 'me'] as const
-export const knowledgeAccessQueryKey = ['organizations', 'knowledge-access'] as const
+export const knowledgeAccessQueryKey = [
+  'organizations',
+  'knowledge-access',
+] as const
 export const demoOrganizationProfilesQueryKey = [
   'organizations',
   'demo-profiles',
@@ -298,6 +305,89 @@ export async function upsertOrganizationAssociation(
   )
 }
 
+export function isDemoOrganizationContext(
+  organization:
+    | Pick<OrganizationContext, 'dataset_type' | 'organization_id'>
+    | null
+    | undefined,
+): boolean {
+  const datasetType = String(organization?.dataset_type || '').toUpperCase()
+  return (
+    datasetType === 'DEMO' ||
+    organization?.organization_id === DEFAULT_SMB_ORGANIZATION_ID
+  )
+}
+
+export function isRealOrganizationContext(
+  organization: Pick<OrganizationContext, 'dataset_type'> | null | undefined,
+): boolean {
+  return String(organization?.dataset_type || '').toUpperCase() === 'REAL'
+}
+
+export function findRealCompanyMembership(
+  memberships: Array<OrganizationMembership>,
+  activeOrganizationId?: string | null,
+): OrganizationMembership | null {
+  return (
+    memberships.find(
+      (membership) =>
+        String(membership.dataset_type || '').toUpperCase() === 'REAL' &&
+        membership.membership_status === 'active' &&
+        membership.organization_id !== activeOrganizationId,
+    ) || null
+  )
+}
+
+export async function switchOrganization(
+  organizationId: string,
+  fetchImpl: JsonFetcher = fetch,
+): Promise<OrganizationSettingsResponse> {
+  const normalizedOrganizationId = organizationId.trim()
+  if (!normalizedOrganizationId) {
+    throw new Error('organization_id required')
+  }
+  return readJson<OrganizationSettingsResponse>(
+    '/organizations/switch',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ organization_id: normalizedOrganizationId }),
+    },
+    fetchImpl,
+  )
+}
+
+export async function createRealCompanyOrganization(
+  params: {
+    companyDisplayName: string
+    organizationId?: string | null
+    industryCode?: string | null
+    fiscalYearStartMonth?: number | null
+    localCurrency?: string | null
+  },
+  fetchImpl: JsonFetcher = fetch,
+): Promise<OrganizationSettingsResponse & { landing_route?: string }> {
+  const companyDisplayName = params.companyDisplayName.trim()
+  if (!companyDisplayName) {
+    throw new Error('company_display_name required')
+  }
+  return readJson<OrganizationSettingsResponse & { landing_route?: string }>(
+    '/organizations/real-company',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        company_display_name: companyDisplayName,
+        organization_id: params.organizationId?.trim() || undefined,
+        industry_code: params.industryCode?.trim() || undefined,
+        fiscal_year_start_month: params.fiscalYearStartMonth || undefined,
+        local_currency: params.localCurrency?.trim() || undefined,
+      }),
+    },
+    fetchImpl,
+  )
+}
+
 export async function ensureDefaultSmbOrganization(
   fetchImpl: JsonFetcher = fetch,
 ): Promise<OrganizationSettingsResponse> {
@@ -331,7 +421,10 @@ export async function ensureDefaultSmbOrganization(
       fetchImpl,
     )
   } catch (error) {
-    if (!(error instanceof Error) || error.message !== 'organization not found') {
+    if (
+      !(error instanceof Error) ||
+      error.message !== 'organization not found'
+    ) {
       throw error
     }
   }

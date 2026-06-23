@@ -22,14 +22,18 @@ export const Route = createFileRoute('/api/knowledge/list')({
             request.headers,
           )
           const workspaceRoot = activeWorkspace.path
-          const config = readKnowledgeBaseConfig(workspaceRoot)
+          const context = { datasetType: activeWorkspace.datasetType }
+          const config = readKnowledgeBaseConfig(workspaceRoot, context)
           const source = config.source
-          const exists = knowledgeRootExists(workspaceRoot)
+          const exists = knowledgeRootExists(workspaceRoot, context)
           return json({
-            pages: exists ? listKnowledgePages(workspaceRoot) : [],
+            pages: exists ? listKnowledgePages(workspaceRoot, context) : [],
             exists,
             source,
-            knowledgeRoot: getKnowledgeBaseEffectiveRoot(workspaceRoot),
+            knowledgeRoot: getKnowledgeBaseEffectiveRoot(
+              workspaceRoot,
+              context,
+            ),
           })
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {

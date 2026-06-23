@@ -183,6 +183,10 @@ function shouldPollWeixinPairingStatus(status: string): boolean {
   return ['wait', 'scaned', 'scaned_but_redirect'].includes(status)
 }
 
+export function shouldAutoRefreshWeixinPairingQr(status: string): boolean {
+  return status === 'expired' || status === 'replay_blocked'
+}
+
 function normalizeCommaSeparated(value: string): string {
   return value
     .split(',')
@@ -209,11 +213,17 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const contentType = response.headers.get('content-type')?.toLowerCase() || ''
   const text = await response.text()
   const isJson = contentType.includes('application/json')
-  let payload: (T & { detail?: string; error?: string }) | null = null
+  let payload:
+    | (T & { detail?: string; error?: string; message?: string })
+    | null = null
 
   if (text && isJson) {
     try {
-      payload = JSON.parse(text) as T & { detail?: string; error?: string }
+      payload = JSON.parse(text) as T & {
+        detail?: string
+        error?: string
+        message?: string
+      }
     } catch {
       throw new Error('API returned malformed JSON response.')
     }
@@ -232,6 +242,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     const detail =
       (payload && typeof payload.detail === 'string' && payload.detail) ||
       (payload && typeof payload.error === 'string' && payload.error) ||
+      (payload && typeof payload.message === 'string' && payload.message) ||
       `Request failed (${response.status})`
     throw new Error(detail)
   }
@@ -315,27 +326,28 @@ function SettingsLink({
 }
 
 function useMessagingSettingsModel() {
-  const [platforms, setPlatforms] = useState<Record<PlatformId, PlatformState>>({
-    feishu: {
-      platform: 'feishu',
-      configured: false,
-      docs_url:
-        'https://hermes-agent.nousresearch.com/docs/user-guide/messaging/feishu',
-      config: {},
+  const [platforms, setPlatforms] = useState<Record<PlatformId, PlatformState>>(
+    {
+      feishu: {
+        platform: 'feishu',
+        configured: false,
+        docs_url:
+          'https://hermes-agent.nousresearch.com/docs/user-guide/messaging/feishu',
+        config: {},
+      },
+      weixin: {
+        platform: 'weixin',
+        configured: false,
+        docs_url:
+          'https://hermes-agent.nousresearch.com/docs/user-guide/messaging/weixin',
+        config: {},
+      },
     },
-    weixin: {
-      platform: 'weixin',
-      configured: false,
-      docs_url:
-        'https://hermes-agent.nousresearch.com/docs/user-guide/messaging/weixin',
-      config: {},
-    },
-  })
+  )
   const [loading, setLoading] = useState(true)
   const [savingPlatform, setSavingPlatform] = useState<PlatformId | null>(null)
-  const [validatingPlatform, setValidatingPlatform] = useState<PlatformId | null>(
-    null,
-  )
+  const [validatingPlatform, setValidatingPlatform] =
+    useState<PlatformId | null>(null)
   const [authMe, setAuthMe] = useState<AuthContextResponse | null>(null)
   const [startingFeishuLink, setStartingFeishuLink] = useState(false)
   const [unlinkingFeishu, setUnlinkingFeishu] = useState(false)
@@ -360,7 +372,9 @@ function useMessagingSettingsModel() {
     useState<WeixinReconnectResponse | null>(null)
   const [approvingWeixinPairing, setApprovingWeixinPairing] = useState(false)
   const [weixinPairingApproveCode, setWeixinPairingApproveCode] = useState('')
-  const [validationMessage, setValidationMessage] = useState<Record<PlatformId, string>>({
+  const [validationMessage, setValidationMessage] = useState<
+    Record<PlatformId, string>
+  >({
     feishu: '',
     weixin: '',
   })
@@ -385,7 +399,9 @@ function useMessagingSettingsModel() {
           appSecret: '',
           domain: feishuConfig.domain === 'lark' ? 'lark' : 'feishu',
           connectionMode:
-            feishuConfig.connection_mode === 'webhook' ? 'webhook' : 'websocket',
+            feishuConfig.connection_mode === 'webhook'
+              ? 'webhook'
+              : 'websocket',
         })
 
         const weixinConfig = next.weixin.config
@@ -396,23 +412,19 @@ function useMessagingSettingsModel() {
             weixinConfig.base_url ?? 'https://ilinkai.weixin.qq.com',
           ),
           cdnBaseUrl: String(weixinConfig.cdn_base_url ?? ''),
-          dmPolicy: (
-            ['open', 'allowlist', 'disabled', 'pairing'].includes(
-              String(weixinConfig.dm_policy),
-            )
-              ? String(weixinConfig.dm_policy)
-              : 'pairing'
-          ) as WeixinDmPolicy,
+          dmPolicy: (['open', 'allowlist', 'disabled', 'pairing'].includes(
+            String(weixinConfig.dm_policy),
+          )
+            ? String(weixinConfig.dm_policy)
+            : 'pairing') as WeixinDmPolicy,
           allowFrom: Array.isArray(weixinConfig.allow_from)
             ? (weixinConfig.allow_from as string[]).join(', ')
             : String(weixinConfig.allow_from ?? ''),
-          groupPolicy: (
-            ['open', 'allowlist', 'disabled'].includes(
-              String(weixinConfig.group_policy),
-            )
-              ? String(weixinConfig.group_policy)
-              : 'disabled'
-          ) as WeixinGroupPolicy,
+          groupPolicy: (['open', 'allowlist', 'disabled'].includes(
+            String(weixinConfig.group_policy),
+          )
+            ? String(weixinConfig.group_policy)
+            : 'disabled') as WeixinGroupPolicy,
           groupAllowFrom: Array.isArray(weixinConfig.group_allow_from)
             ? (weixinConfig.group_allow_from as string[]).join(', ')
             : String(weixinConfig.group_allow_from ?? ''),
@@ -474,7 +486,9 @@ function useMessagingSettingsModel() {
         setFeishuLinkAuthorizeUrl('')
         setFeishuLinkQrDataUrl('')
         setFeishuLinkMessage('This account is already linked with Feishu.')
-        toast('This account is already linked with Feishu.', { type: 'success' })
+        toast('This account is already linked with Feishu.', {
+          type: 'success',
+        })
         await loadAuthMe()
         await loadPlatforms()
         return
@@ -598,8 +612,12 @@ function useMessagingSettingsModel() {
     }
   }, [feishuLinkAuthorizeUrl])
 
-  async function startWeixinPairingQr() {
-    if (platforms.weixin.configured && weixinReconnectOutcome?.requires_step_up !== true) {
+  async function startWeixinPairingQr(forceRefresh = false) {
+    if (
+      !forceRefresh &&
+      platforms.weixin.configured &&
+      weixinReconnectOutcome?.requires_step_up !== true
+    ) {
       return
     }
     setStartingWeixinPairing(true)
@@ -650,14 +668,21 @@ function useMessagingSettingsModel() {
       if (response.redirect_base_url || nextStatus === 'scaned') {
         setWeixinPairingMessage('QR scanned. Confirm login in Weixin.')
       } else if (nextStatus === 'expired') {
-        setWeixinPairingMessage('QR code expired. Start a new pairing session.')
+        setWeixinPairingMessage(
+          'QR code expired. Refreshing pairing session...',
+        )
+        if (shouldAutoRefreshWeixinPairingQr(nextStatus)) {
+          await startWeixinPairingQr(true)
+          return
+        }
       } else if (
         nextStatus === 'binding_mismatch' ||
         nextStatus === 'replay_blocked' ||
         nextStatus === 'failed'
       ) {
         setWeixinPairingMessage(
-          response.message || 'This QR session can no longer be used. Start a new pairing session.',
+          response.message ||
+            'This QR session can no longer be used. Start a new pairing session.',
         )
       }
 
@@ -681,13 +706,23 @@ function useMessagingSettingsModel() {
         error instanceof Error
           ? error.message
           : 'Failed to check Weixin pairing status.'
+      if (message.includes('already been consumed')) {
+        setWeixinPairingMessage(
+          'QR session expired. Refreshing pairing session...',
+        )
+        await startWeixinPairingQr(true)
+        return
+      }
       setWeixinPairingStatus('failed')
       setWeixinPairingMessage(message)
     }
   }
 
   useEffect(() => {
-    if (!weixinPairingState || !shouldPollWeixinPairingStatus(weixinPairingStatus)) {
+    if (
+      !weixinPairingState ||
+      !shouldPollWeixinPairingStatus(weixinPairingStatus)
+    ) {
       return
     }
 
@@ -753,7 +788,9 @@ function useMessagingSettingsModel() {
         ...current,
         [platform]: response.summary,
       }))
-      toast(`${platformTitle(platform)} validation passed.`, { type: 'success' })
+      toast(`${platformTitle(platform)} validation passed.`, {
+        type: 'success',
+      })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Validation failed.'
@@ -779,14 +816,13 @@ function useMessagingSettingsModel() {
         },
       }
 
-      const result = await requestJson<PlatformState & { gateway_applied?: boolean }>(
-        `/messaging/${platform}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        },
-      )
+      const result = await requestJson<
+        PlatformState & { gateway_applied?: boolean }
+      >(`/messaging/${platform}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
 
       const gatewayNote = result.gateway_applied
         ? ' Gateway config updated; restart gateway to activate changes.'
@@ -836,16 +872,23 @@ function useMessagingSettingsModel() {
     setReconnectingWeixin(true)
     setWeixinReconnectOutcome(null)
     try {
-      const res = await fetch('/api/semantier-proxy/messaging/weixin/reconnect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
+      const res = await fetch(
+        '/api/semantier-proxy/messaging/weixin/reconnect',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        },
+      )
       const response = (await res.json()) as WeixinReconnectResponse & {
         detail?: string
       }
       if (!res.ok) {
-        if (response && typeof response === 'object' && 'auth_level' in response) {
+        if (
+          response &&
+          typeof response === 'object' &&
+          'auth_level' in response
+        ) {
           setWeixinReconnectOutcome(response)
           if (response.requires_step_up) {
             setWeixinPairingMessage(
@@ -885,7 +928,9 @@ function useMessagingSettingsModel() {
       await loadPlatforms()
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Failed to reconnect Weixin gateway.'
+        error instanceof Error
+          ? error.message
+          : 'Failed to reconnect Weixin gateway.'
       toast(message, { type: 'error' })
     } finally {
       setReconnectingWeixin(false)
@@ -912,7 +957,9 @@ function useMessagingSettingsModel() {
       toast(response.message, { type: 'success' })
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Failed to approve Weixin pairing.'
+        error instanceof Error
+          ? error.message
+          : 'Failed to approve Weixin pairing.'
       toast(message, { type: 'error' })
     } finally {
       setApprovingWeixinPairing(false)
@@ -1019,7 +1066,9 @@ function UserAccountCard({
       toast('User account updated.', { type: 'success' })
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Failed to update user account.'
+        error instanceof Error
+          ? error.message
+          : 'Failed to update user account.'
       toast(message, { type: 'error' })
     } finally {
       setSaving(false)
@@ -1078,11 +1127,16 @@ function UserAccountCard({
         </label>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button type="button" disabled={saving} onClick={() => void saveAccount()}>
+        <Button
+          type="button"
+          disabled={saving}
+          onClick={() => void saveAccount()}
+        >
           {saving ? 'Saving...' : 'Save account changes'}
         </Button>
         <span className="text-xs theme-muted">
-          Password updates are optional. If provided, the password must be at least 8 characters.
+          Password updates are optional. If provided, the password must be at
+          least 8 characters.
         </span>
       </div>
     </SectionCard>
@@ -1130,7 +1184,9 @@ function FeishuAccountLinkCard({
               </span>
             </>
           ) : (
-            <span className="text-xs theme-text">No Feishu account linked yet.</span>
+            <span className="text-xs theme-text">
+              No Feishu account linked yet.
+            </span>
           )}
           {model.feishuLinkStatus ? (
             <span className="text-xs theme-text">
@@ -1358,7 +1414,9 @@ function WeixinReadOnlyCard({
             Runtime session: {runtimeState || 'unknown'}
           </span>
           {runtimeUpdatedAt ? (
-            <span className="text-xs theme-muted">Updated: {runtimeUpdatedAt}</span>
+            <span className="text-xs theme-muted">
+              Updated: {runtimeUpdatedAt}
+            </span>
           ) : null}
           {runtimeError ? (
             <span className="text-xs text-danger">Error: {runtimeError}</span>
@@ -1375,7 +1433,9 @@ function WeixinReadOnlyCard({
               disabled={model.startingWeixinPairing}
               onClick={() => void model.startWeixinPairingQr()}
             >
-              {model.startingWeixinPairing ? 'Preparing QR...' : 'Start Weixin QR Pairing'}
+              {model.startingWeixinPairing
+                ? 'Preparing QR...'
+                : 'Start Weixin QR Pairing'}
             </Button>
             {model.weixinPairingStatus === 'expired' ? (
               <Button
@@ -1404,7 +1464,9 @@ function WeixinReadOnlyCard({
               <div className="min-w-0 text-xs theme-text">
                 <p>Scan this QR with Weixin and confirm in the app.</p>
                 {model.weixinPairingState ? (
-                  <p className="mt-1 break-all">Session: {model.weixinPairingState}</p>
+                  <p className="mt-1 break-all">
+                    Session: {model.weixinPairingState}
+                  </p>
                 ) : null}
               </div>
             </div>
@@ -1455,15 +1517,18 @@ function WeixinReadOnlyCard({
             Approve your own Weixin pairing code
           </p>
           <p className="mt-1 text-xs theme-muted">
-            If the Weixin bot replied with `hermes pairing approve weixin &lt;CODE&gt;`,
-            paste that code here to authorize your current Weixin identity without using the CLI.
+            If the Weixin bot replied with `hermes pairing approve weixin
+            &lt;CODE&gt;`, paste that code here to authorize your current Weixin
+            identity without using the CLI.
           </p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Input
               value={model.weixinPairingApproveCode}
               placeholder="QCT7G75H"
               onChange={(event) =>
-                model.setWeixinPairingApproveCode(event.target.value.toUpperCase())
+                model.setWeixinPairingApproveCode(
+                  event.target.value.toUpperCase(),
+                )
               }
               className="sm:max-w-[220px]"
             />
@@ -1484,7 +1549,11 @@ function WeixinReadOnlyCard({
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Account ID
           </span>
-          <Input value={readOnlyValue(model.weixin.accountId)} readOnly disabled />
+          <Input
+            value={readOnlyValue(model.weixin.accountId)}
+            readOnly
+            disabled
+          />
         </label>
         <label className="space-y-1.5">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
@@ -1519,13 +1588,21 @@ function WeixinReadOnlyCard({
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Base URL
           </span>
-          <Input value={readOnlyValue(model.weixin.baseUrl)} readOnly disabled />
+          <Input
+            value={readOnlyValue(model.weixin.baseUrl)}
+            readOnly
+            disabled
+          />
         </label>
         <label className="space-y-1.5">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             DM Policy
           </span>
-          <Input value={readOnlyValue(model.weixin.dmPolicy)} readOnly disabled />
+          <Input
+            value={readOnlyValue(model.weixin.dmPolicy)}
+            readOnly
+            disabled
+          />
         </label>
         <label className="space-y-1.5">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
@@ -1552,7 +1629,9 @@ function WeixinReadOnlyCard({
             Allowed Groups
           </span>
           <Input
-            value={readOnlyValue(normalizeConfigList(model.weixin.groupAllowFrom))}
+            value={readOnlyValue(
+              normalizeConfigList(model.weixin.groupAllowFrom),
+            )}
             readOnly
             disabled
           />
@@ -1561,13 +1640,21 @@ function WeixinReadOnlyCard({
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Home Channel
           </span>
-          <Input value={readOnlyValue(model.weixin.homeChannel)} readOnly disabled />
+          <Input
+            value={readOnlyValue(model.weixin.homeChannel)}
+            readOnly
+            disabled
+          />
         </label>
         <label className="space-y-1.5 md:col-span-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             CDN Base URL
           </span>
-          <Input value={readOnlyValue(model.weixin.cdnBaseUrl)} readOnly disabled />
+          <Input
+            value={readOnlyValue(model.weixin.cdnBaseUrl)}
+            readOnly
+            disabled
+          />
         </label>
       </div>
 

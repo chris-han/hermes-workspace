@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { resolveWorkspaceAppStateRoot } from './workspace-root'
 
 export type KnowledgeBaseSource =
@@ -15,6 +16,18 @@ const DEFAULT_CONFIG: KnowledgeBaseConfig = {
   source: { type: 'local', path: '' },
 }
 
+type KnowledgeConfigContext = {
+  datasetType?: string | null
+}
+
+const REPO_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+)
+const REPO_BOOTSTRAP_ROOT = path.join(REPO_ROOT, 'bootstrap')
+
 function getConfigPath(workspaceRoot?: string): string {
   if (workspaceRoot) {
     const appStateRoot = resolveWorkspaceAppStateRoot(workspaceRoot)
@@ -24,20 +37,78 @@ function getConfigPath(workspaceRoot?: string): string {
   return path.join(hermesHome, 'knowledge-config.json')
 }
 
-export function readKnowledgeBaseConfig(workspaceRoot?: string): KnowledgeBaseConfig {
+function defaultWorkspaceKnowledgePath(workspaceRoot: string): string {
+  return path.join(workspaceRoot, 'knowledge-base')
+}
+
+function isRealCompanyContext(context?: KnowledgeConfigContext): boolean {
+  return String(context?.datasetType || '').toUpperCase() === 'REAL'
+}
+
+function localPathInsideWorkspace(
+  configuredPath: string,
+  workspaceRoot: string,
+): boolean {
+  const resolved = resolveConfiguredLocalPath(configuredPath, workspaceRoot)
+  if (!resolved) return true
+  const relative = path.relative(path.resolve(workspaceRoot), resolved)
+  return !relative.startsWith('..') && !path.isAbsolute(relative)
+}
+
+function isRepoBootstrapLocalPath(
+  configuredPath: string,
+  workspaceRoot?: string,
+): boolean {
+  const resolved = resolveConfiguredLocalPath(configuredPath, workspaceRoot)
+  if (!resolved) return false
+  const relative = path.relative(REPO_BOOTSTRAP_ROOT, resolved)
+  return !relative.startsWith('..') && !path.isAbsolute(relative)
+}
+
+export function normalizeKnowledgeBaseConfigForWorkspace(
+  config: KnowledgeBaseConfig,
+  workspaceRoot?: string,
+  context?: KnowledgeConfigContext,
+): KnowledgeBaseConfig {
+  if (!workspaceRoot || !isRealCompanyContext(context)) return config
+  if (config.source.type !== 'local') return config
+  if (
+    !config.source.path.trim() ||
+    isRepoBootstrapLocalPath(config.source.path, workspaceRoot) ||
+    !localPathInsideWorkspace(config.source.path, workspaceRoot)
+  ) {
+    return {
+      source: {
+        type: 'local',
+        path: defaultWorkspaceKnowledgePath(workspaceRoot),
+      },
+    }
+  }
+  return config
+}
+
+export function readKnowledgeBaseConfig(
+  workspaceRoot?: string,
+  context?: KnowledgeConfigContext,
+): KnowledgeBaseConfig {
   const configPath = getConfigPath(workspaceRoot)
+  let config = DEFAULT_CONFIG
   try {
     if (fs.existsSync(configPath)) {
       const raw = fs.readFileSync(configPath, 'utf-8')
       const parsed = JSON.parse(raw) as Partial<KnowledgeBaseConfig>
-      return {
+      config = {
         source: parsed.source ?? DEFAULT_CONFIG.source,
       }
     }
   } catch {
     // ignore parse errors, use default
   }
-  return DEFAULT_CONFIG
+  return normalizeKnowledgeBaseConfigForWorkspace(
+    config,
+    workspaceRoot,
+    context,
+  )
 }
 
 export function writeKnowledgeBaseConfig(
@@ -70,8 +141,11 @@ function resolveConfiguredLocalPath(
   return path.resolve(trimmed)
 }
 
-export function getKnowledgeBaseEffectiveRoot(workspaceRoot?: string): string {
-  const config = readKnowledgeBaseConfig(workspaceRoot)
+export function getKnowledgeBaseEffectiveRoot(
+  workspaceRoot?: string,
+  context?: KnowledgeConfigContext,
+): string {
+  const config = readKnowledgeBaseConfig(workspaceRoot, context)
   if (config.source.type === 'local') {
     const configuredRoot = resolveConfiguredLocalPath(
       config.source.path,

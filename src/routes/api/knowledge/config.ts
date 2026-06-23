@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import {
+  normalizeKnowledgeBaseConfigForWorkspace,
   readKnowledgeBaseConfig,
   writeKnowledgeBaseConfig,
 } from '../../../server/knowledge-config'
@@ -18,7 +19,11 @@ export const Route = createFileRoute('/api/knowledge/config')({
           const activeWorkspace = await resolveActiveWorkspaceRoot(
             request.headers,
           )
-          return json({ config: readKnowledgeBaseConfig(activeWorkspace.path) })
+          return json({
+            config: readKnowledgeBaseConfig(activeWorkspace.path, {
+              datasetType: activeWorkspace.datasetType,
+            }),
+          })
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {
             return json({ error: error.message }, { status: 401 })
@@ -41,12 +46,19 @@ export const Route = createFileRoute('/api/knowledge/config')({
           )
           const workspaceRoot = activeWorkspace.path
           const body = (await request.json()) as Partial<KnowledgeBaseConfig>
-          const current = readKnowledgeBaseConfig(workspaceRoot)
+          const current = readKnowledgeBaseConfig(workspaceRoot, {
+            datasetType: activeWorkspace.datasetType,
+          })
           const next: KnowledgeBaseConfig = {
             source: body.source ?? current.source,
           }
-          writeKnowledgeBaseConfig(next, workspaceRoot)
-          return json({ config: next })
+          const normalized = normalizeKnowledgeBaseConfigForWorkspace(
+            next,
+            workspaceRoot,
+            { datasetType: activeWorkspace.datasetType },
+          )
+          writeKnowledgeBaseConfig(normalized, workspaceRoot)
+          return json({ config: normalized })
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {
             return json({ error: error.message }, { status: 401 })

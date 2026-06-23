@@ -3,6 +3,10 @@ import {
   DEFAULT_SMB_ORGANIZATION_ID,
   DEFAULT_SMB_ORGANIZATION_NAME,
   ensureDefaultSmbOrganization,
+  findRealCompanyMembership,
+  isDemoOrganizationContext,
+  isRealOrganizationContext,
+  switchOrganization,
   updateOrganizationMaterializationPolicy,
   updateOrganizationMemberRole,
   upsertOrganizationAssociation,
@@ -79,6 +83,64 @@ describe('organization membership helpers', () => {
         body: JSON.stringify({ organization_id: 'org_smb_cn' }),
       }),
     )
+  })
+
+  it('switches to a requested organization without joining', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      jsonResponse({
+        organization: {
+          organization_id: 'org_real_1',
+          membership_status: 'active',
+        },
+        memberships: [],
+        members: [],
+        audit_events: [],
+      }),
+    )
+
+    await switchOrganization('org_real_1', fetchMock)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/organizations/switch',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ organization_id: 'org_real_1' }),
+      }),
+    )
+  })
+
+  it('classifies demo and real organization contexts', () => {
+    expect(
+      isDemoOrganizationContext({
+        organization_id: 'org_smb_cn',
+        dataset_type: 'DEMO',
+      }),
+    ).toBe(true)
+    expect(isDemoOrganizationContext({ organization_id: 'org_smb_cn' })).toBe(
+      true,
+    )
+    expect(isRealOrganizationContext({ dataset_type: 'REAL' })).toBe(true)
+    expect(isRealOrganizationContext({ dataset_type: 'DEMO' })).toBe(false)
+  })
+
+  it('finds an active real company membership outside the active org', () => {
+    expect(
+      findRealCompanyMembership(
+        [
+          {
+            organization_id: 'org_smb_cn',
+            dataset_type: 'DEMO',
+            membership_status: 'active',
+          },
+          {
+            organization_id: 'org_real_1',
+            dataset_type: 'REAL',
+            membership_status: 'active',
+          },
+        ],
+        'org_smb_cn',
+      )?.organization_id,
+    ).toBe('org_real_1')
   })
 
   it('creates the SMB default organization when it is not registered yet', async () => {

@@ -14,6 +14,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import { Link } from '@tanstack/react-router'
 import { useCallback, useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type * as React from 'react'
 import type { LoaderStyle } from '@/hooks/use-chat-settings'
 import type { BrailleSpinnerPreset } from '@/components/ui/braille-spinner'
@@ -27,6 +28,17 @@ import { useSettings } from '@/hooks/use-settings'
 import { LOCALE_LABELS } from '@/lib/i18n'
 import { THEMES, getTheme, isDarkTheme, setTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
+import {
+  ensureDefaultSmbOrganization,
+  findRealCompanyMembership,
+  isRealOrganizationContext,
+  knowledgeAccessQueryKey,
+  organizationSettingsQueryKey,
+  switchOrganization,
+  useOrganizationSettings,
+} from '@/lib/organization-membership'
+import { semantierAuthQueryKey } from '@/lib/semantier-auth'
+import { toast } from '@/components/ui/toast'
 import {
   getChatProfileDisplayName,
   useChatSettingsStore,
@@ -312,9 +324,19 @@ export const SETTINGS_NAV_ITEMS: Array<SettingsNavItem> = [
   { id: 'language' as SettingsSectionId, label: 'Language' },
 ]
 
+export const REAL_COMPANY_SETTINGS_COPY = {
+  title: 'Company context',
+  switchAction: 'Switch to real company',
+  switchDemoAction: 'Switch to demo company',
+  importAction: 'Open dataset import',
+}
+
 export function SettingsScreen() {
   usePageTitle('Settings')
+  const queryClient = useQueryClient()
   const { settings, updateSettings } = useSettings()
+  const organizationQuery = useOrganizationSettings()
+  const [companySwitchPending, setCompanySwitchPending] = useState(false)
 
   // Phase 4.2: Fetch models for preferred model dropdowns
   const [availableModels, setAvailableModels] = useState<
@@ -348,6 +370,56 @@ export function SettingsScreen() {
 
   const [activeSection, setActiveSection] =
     useState<SettingsSectionId>('hermes')
+  const activeOrganization = organizationQuery.data?.organization ?? null
+  const realCompanyMembership = findRealCompanyMembership(
+    organizationQuery.data?.memberships ?? [],
+    activeOrganization?.organization_id,
+  )
+
+  async function refreshOrganizationContext() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: semantierAuthQueryKey }),
+      queryClient.invalidateQueries({ queryKey: organizationSettingsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: knowledgeAccessQueryKey }),
+    ])
+  }
+
+  async function handleSwitchToDemoCompany() {
+    setCompanySwitchPending(true)
+    try {
+      await ensureDefaultSmbOrganization()
+      await refreshOrganizationContext()
+      toast('Demo company context activated', { type: 'success' })
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : 'Failed to switch to demo company',
+        { type: 'warning' },
+      )
+    } finally {
+      setCompanySwitchPending(false)
+    }
+  }
+
+  async function handleSwitchToRealCompany() {
+    if (!realCompanyMembership) return
+    setCompanySwitchPending(true)
+    try {
+      await switchOrganization(realCompanyMembership.organization_id)
+      await refreshOrganizationContext()
+      toast('Real company context activated', { type: 'success' })
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : 'Failed to switch to real company',
+        { type: 'warning' },
+      )
+    } finally {
+      setCompanySwitchPending(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-surface text-primary-900">
@@ -426,6 +498,64 @@ export function SettingsScreen() {
 
         {/* Content area */}
         <div className="flex-1 min-w-0 flex flex-col gap-4">
+          <section className="rounded-2xl border border-primary-200 bg-white/80 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                  {REAL_COMPANY_SETTINGS_COPY.title}
+                </div>
+                <div className="mt-1 truncate text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                  {organizationQuery.data?.organization?.organization_name ||
+                    organizationQuery.data?.organization?.organization_id ||
+                    'No active organization'}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                  <span className="rounded-full border border-primary-200 px-2 py-1 font-semibold dark:border-neutral-700">
+                    {organizationQuery.data?.organization?.dataset_type ||
+                      (organizationQuery.isLoading ? 'LOADING' : 'NO_DATASET')}
+                  </span>
+                  <span className="rounded-full border border-primary-200 px-2 py-1 font-semibold dark:border-neutral-700">
+                    {organizationQuery.data?.organization?.authority_state ||
+                      'REAL_EMPTY'}
+                  </span>
+                </div>
+              </div>
+              {isRealOrganizationContext(activeOrganization) ? (
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSwitchToDemoCompany}
+                    disabled={companySwitchPending}
+                  >
+                    {REAL_COMPANY_SETTINGS_COPY.switchDemoAction}
+                  </Button>
+                  <Link
+                    to="/settings/data-connections"
+                    className="inline-flex items-center justify-center rounded-xl border border-primary-300 px-3 py-2 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                  >
+                    {REAL_COMPANY_SETTINGS_COPY.importAction}
+                  </Link>
+                </div>
+              ) : realCompanyMembership ? (
+                <Button
+                  type="button"
+                  onClick={handleSwitchToRealCompany}
+                  disabled={companySwitchPending}
+                >
+                  {REAL_COMPANY_SETTINGS_COPY.switchAction}
+                </Button>
+              ) : (
+                <Link
+                  to="/settings/organization"
+                  className="inline-flex shrink-0 items-center justify-center rounded-xl bg-primary-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
+                >
+                  {REAL_COMPANY_SETTINGS_COPY.switchAction}
+                </Link>
+              )}
+            </div>
+          </section>
+
           {/* ── Hermes Agent ──────────────────────────────────── */}
           {activeSection === 'hermes' && (
             <HermesConfigSection activeView="hermes" />
@@ -1148,8 +1278,8 @@ function HermesConfigSection({
         icon={Settings02Icon}
       >
         <p className="text-sm" style={{ color: 'var(--theme-muted)' }}>
-          Make sure the backend configured by <code>SEMANTIER_AGENT_API_URL</code>{' '}
-          is running and reachable.
+          Make sure the backend configured by{' '}
+          <code>SEMANTIER_AGENT_API_URL</code> is running and reachable.
         </p>
       </SettingsSection>
     )

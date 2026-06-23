@@ -20,6 +20,7 @@ export const Route = createFileRoute('/api/knowledge/read')({
           const { meta, content, backlinks } = readKnowledgePage(
             pathParam,
             activeWorkspace.path,
+            { datasetType: activeWorkspace.datasetType },
           )
           return json({ page: meta, content, backlinks })
         } catch (error) {

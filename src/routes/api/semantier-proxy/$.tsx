@@ -7,10 +7,7 @@ import {
   withSemantierAgentBase,
 } from '../../../server/semantier-agent-api'
 
-function jsonUnauthorizedResponse(
-  message = 'Unauthorized',
-  status = 401,
-) {
+function jsonUnauthorizedResponse(message = 'Unauthorized', status = 401) {
   return new Response(JSON.stringify({ ok: false, error: message }), {
     status,
     headers: { 'content-type': 'application/json' },
@@ -26,7 +23,10 @@ function hasCookie(request: Request, name: string): boolean {
     .some((item) => item.startsWith(`${name}=`))
 }
 
-function shouldForceMessagingJsonUnauthorized(request: Request, splat: string): boolean {
+function shouldForceMessagingJsonUnauthorized(
+  request: Request,
+  splat: string,
+): boolean {
   const targetPath = splat.startsWith('/') ? splat : `/${splat}`
   if (!targetPath.startsWith('/messaging/')) {
     return false
@@ -35,7 +35,10 @@ function shouldForceMessagingJsonUnauthorized(request: Request, splat: string): 
 }
 
 // Paths that may involve gateway restarts and need a longer timeout.
-const LONG_TIMEOUT_PATHS = ['/messaging/weixin/reconnect', '/messaging/weixin/login']
+const LONG_TIMEOUT_PATHS = [
+  '/messaging/weixin/reconnect',
+  '/messaging/weixin/login',
+]
 
 function proxyTimeoutMs(targetPath: string): number {
   const normalized = targetPath.startsWith('/') ? targetPath : `/${targetPath}`
@@ -65,7 +68,7 @@ async function proxyRequest(request: Request, splat: string) {
   }
 
   if (!['GET', 'HEAD'].includes(request.method.toUpperCase())) {
-    init.body = await request.text()
+    init.body = await request.arrayBuffer()
   }
 
   try {
@@ -73,7 +76,8 @@ async function proxyRequest(request: Request, splat: string) {
     const body = await upstream.text()
     return buildSemantierAgentProxyResponse(body, upstream)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Agent backend unreachable'
+    const message =
+      err instanceof Error ? err.message : 'Agent backend unreachable'
     return jsonUnauthorizedResponse(message, 503)
   }
 }
@@ -82,31 +86,41 @@ export const Route = createFileRoute('/api/semantier-proxy/$')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        if (shouldForceMessagingJsonUnauthorized(request, params._splat || '')) {
+        if (
+          shouldForceMessagingJsonUnauthorized(request, params._splat || '')
+        ) {
           return jsonUnauthorizedResponse()
         }
         return proxyRequest(request, params._splat || '')
       },
       POST: async ({ request, params }) => {
-        if (shouldForceMessagingJsonUnauthorized(request, params._splat || '')) {
+        if (
+          shouldForceMessagingJsonUnauthorized(request, params._splat || '')
+        ) {
           return jsonUnauthorizedResponse()
         }
         return proxyRequest(request, params._splat || '')
       },
       PATCH: async ({ request, params }) => {
-        if (shouldForceMessagingJsonUnauthorized(request, params._splat || '')) {
+        if (
+          shouldForceMessagingJsonUnauthorized(request, params._splat || '')
+        ) {
           return jsonUnauthorizedResponse()
         }
         return proxyRequest(request, params._splat || '')
       },
       PUT: async ({ request, params }) => {
-        if (shouldForceMessagingJsonUnauthorized(request, params._splat || '')) {
+        if (
+          shouldForceMessagingJsonUnauthorized(request, params._splat || '')
+        ) {
           return jsonUnauthorizedResponse()
         }
         return proxyRequest(request, params._splat || '')
       },
       DELETE: async ({ request, params }) => {
-        if (shouldForceMessagingJsonUnauthorized(request, params._splat || '')) {
+        if (
+          shouldForceMessagingJsonUnauthorized(request, params._splat || '')
+        ) {
           return jsonUnauthorizedResponse()
         }
         return proxyRequest(request, params._splat || '')

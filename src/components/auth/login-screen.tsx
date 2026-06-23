@@ -120,7 +120,8 @@ const LOGIN_SCREEN_COPY: Record<AuthLocale, LoginScreenCopy> = {
     continueWithPassword: 'Continue With Password',
     invalidPassword: 'Invalid password',
     authFailed: 'Authentication failed. Please try again.',
-    preparingQrMessage: 'Scan this QR code with Weixin and confirm on your phone.',
+    preparingQrMessage:
+      'Scan this QR code with Weixin and confirm on your phone.',
     qrScannedMessage: 'QR scanned. Confirm login in Weixin.',
     qrExpiredMessage: 'QR code expired. Start a new Weixin sign-in.',
     signInSessionExpiredMessage:
@@ -142,6 +143,10 @@ export function getLoginScreenCopy(locale?: string | null): LoginScreenCopy {
 
 export function shouldPollWeixinLoginStatus(status: string): boolean {
   return ['wait', 'scaned', 'scaned_but_redirect'].includes(status)
+}
+
+export function shouldAutoRefreshWeixinLoginQr(status: string): boolean {
+  return status === 'expired'
 }
 
 export const WEIXIN_LOGIN_POLL_INTERVAL_MS = 1500
@@ -188,7 +193,9 @@ export function LoginScreen({
   const showMethodTabs = showWeixinLogin && showPasswordLogin
 
   useEffect(() => {
-    setActiveMethod(resolveDefaultLoginMethod(showWeixinLogin, showPasswordLogin))
+    setActiveMethod(
+      resolveDefaultLoginMethod(showWeixinLogin, showPasswordLogin),
+    )
   }, [showPasswordLogin, showWeixinLogin])
 
   useEffect(() => {
@@ -249,11 +256,7 @@ export function LoginScreen({
       setWeixinQrScanData(data.qr_scan_data)
       setWeixinMessage(copy.preparingQrMessage)
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : copy.startWeixinFailed,
-      )
+      setError(err instanceof Error ? err.message : copy.startWeixinFailed)
     } finally {
       setWeixinLoading(false)
     }
@@ -268,6 +271,16 @@ export function LoginScreen({
         detail?: string
       }
       if (!res.ok) {
+        if (
+          res.status === 409 &&
+          (data.status === 'replay_blocked' ||
+            data.message?.includes('already been consumed') ||
+            data.detail?.includes('already been consumed'))
+        ) {
+          setWeixinMessage(copy.preparingQrMessage)
+          await startWeixinLogin()
+          return
+        }
         throw new Error(data.detail || `HTTP ${res.status}`)
       }
       setError('')
@@ -278,14 +291,16 @@ export function LoginScreen({
         setWeixinMessage(copy.qrScannedMessage)
       } else if (data.status === 'expired') {
         setWeixinMessage(copy.qrExpiredMessage)
+        if (shouldAutoRefreshWeixinLoginQr(data.status)) {
+          await startWeixinLogin()
+          return
+        }
       } else if (
         data.status === 'binding_mismatch' ||
         data.status === 'replay_blocked' ||
         data.status === 'failed'
       ) {
-        setWeixinMessage(
-          data.message || copy.signInSessionExpiredMessage,
-        )
+        setWeixinMessage(data.message || copy.signInSessionExpiredMessage)
       }
       if (data.authenticated) {
         setWeixinState('')
@@ -293,11 +308,7 @@ export function LoginScreen({
         window.location.reload()
       }
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : copy.checkWeixinFailed,
-      )
+      setError(err instanceof Error ? err.message : copy.checkWeixinFailed)
     }
   }
 
@@ -344,7 +355,12 @@ export function LoginScreen({
     }
   }, [weixinQrScanData])
 
-  const weixinTerminalError = ['expired', 'binding_mismatch', 'replay_blocked', 'failed'].includes(weixinStatus)
+  const weixinTerminalError = [
+    'expired',
+    'binding_mismatch',
+    'replay_blocked',
+    'failed',
+  ].includes(weixinStatus)
   const weixinQrExpired = weixinStatus === 'expired'
 
   function handleMethodChange(value: string) {
@@ -402,7 +418,11 @@ export function LoginScreen({
 
           <div className="space-y-4">
             {showMethodTabs ? (
-              <Tabs value={activeMethod} onValueChange={handleMethodChange} className="gap-4">
+              <Tabs
+                value={activeMethod}
+                onValueChange={handleMethodChange}
+                className="gap-4"
+              >
                 <TabsList
                   variant="line"
                   className="flex w-full justify-center gap-8 bg-transparent p-0"
@@ -468,7 +488,8 @@ export function LoginScreen({
                           )
                         ) : (
                           <p className="text-xs text-muted-foreground">
-                            {copy.statusLabel}: {weixinStatus || copy.statusWait}
+                            {copy.statusLabel}:{' '}
+                            {weixinStatus || copy.statusWait}
                           </p>
                         )}
                         {weixinQrUrl ? (
@@ -485,7 +506,9 @@ export function LoginScreen({
                     </div>
                   ) : null}
 
-                  {weixinTerminalError && !weixinLoading && !weixinQrScanData ? (
+                  {weixinTerminalError &&
+                  !weixinLoading &&
+                  !weixinQrScanData ? (
                     <button
                       type="button"
                       onClick={() => void startWeixinLogin()}
@@ -533,7 +556,9 @@ export function LoginScreen({
                       }
                       className="w-full cursor-pointer rounded-button bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {loading ? copy.authenticating : copy.continueWithPassword}
+                      {loading
+                        ? copy.authenticating
+                        : copy.continueWithPassword}
                     </button>
                   </form>
                 </TabsContent>

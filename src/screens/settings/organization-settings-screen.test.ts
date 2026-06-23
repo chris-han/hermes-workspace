@@ -6,16 +6,16 @@ import {
 } from './organization-settings-screen'
 
 describe('organization settings copy', () => {
-  it('describes the active org as SMB analytics default context', () => {
+  it('describes demo-to-real company onboarding', () => {
     expect(ORGANIZATION_SETTINGS_COPY.title).toBe('Organization Context')
     expect(ORGANIZATION_SETTINGS_COPY.subtitle).toContain(
-      'default SMB analytics context',
+      'governed bootstrap demo organization',
     )
-    expect(ORGANIZATION_SETTINGS_COPY.subtitle).toContain('organization_id')
+    expect(ORGANIZATION_SETTINGS_COPY.subtitle).toContain('real company')
   })
 
   it('keeps organization context messaging focused on governed defaults', () => {
-    expect(ORGANIZATION_SETTINGS_COPY.subtitle).toContain('Associate your user')
+    expect(ORGANIZATION_SETTINGS_COPY.subtitle).toContain('governed')
   })
 })
 

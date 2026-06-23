@@ -9,6 +9,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useEffect, useState } from 'react'
 import { DataConnectionStatusCard } from './components/data-connection-status-card'
+import { CompanyDatasetImportPanel } from './components/company-dataset-import-panel'
 import {
   
   KnowledgeSourceForm,
@@ -17,6 +18,7 @@ import {
 import type {KnowledgeSourceDraft} from './components/knowledge-source-form';
 import type { DataConnectionsSummary } from '@/server/data-connections'
 import { toast } from '@/components/ui/toast'
+import { useOrganizationSettings } from '@/lib/organization-membership'
 
 type SummaryResponse = {
   ok?: boolean
@@ -68,6 +70,7 @@ export function DataConnectionsScreen() {
     queryKey: ['knowledge', 'config'],
     queryFn: () => readJson<KnowledgeConfigResponse>('/api/knowledge/config'),
   })
+  const organizationQuery = useOrganizationSettings()
 
   useEffect(() => {
     const source = knowledgeConfigQuery.data?.config?.source
@@ -234,6 +237,10 @@ export function DataConnectionsScreen() {
             </div>
           ) : null}
         </section>
+
+        <CompanyDatasetImportPanel
+          organization={organizationQuery.data?.organization ?? null}
+        />
 
         <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
           <div className="mb-4">

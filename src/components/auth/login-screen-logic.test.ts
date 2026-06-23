@@ -5,6 +5,7 @@ import {
   resolveDefaultLoginMethod,
   resolvePasswordLoginEndpoint,
   resolveAuthLocale,
+  shouldAutoRefreshWeixinLoginQr,
   shouldPollWeixinLoginStatus,
   WEIXIN_LOGIN_POLL_INTERVAL_MS,
 } from './login-screen'
@@ -20,6 +21,12 @@ describe('shouldPollWeixinLoginStatus', () => {
     expect(shouldPollWeixinLoginStatus('confirmed')).toBe(false)
     expect(shouldPollWeixinLoginStatus('expired')).toBe(false)
     expect(shouldPollWeixinLoginStatus('failed')).toBe(false)
+  })
+
+  it('marks expired QR sessions for automatic refresh', () => {
+    expect(shouldAutoRefreshWeixinLoginQr('expired')).toBe(true)
+    expect(shouldAutoRefreshWeixinLoginQr('wait')).toBe(false)
+    expect(shouldAutoRefreshWeixinLoginQr('confirmed')).toBe(false)
   })
 
   it('uses a repeating poll cadence instead of relying on status transitions', () => {

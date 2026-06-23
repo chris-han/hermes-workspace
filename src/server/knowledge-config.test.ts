@@ -69,4 +69,44 @@ describe('knowledge-config workspace scoping', () => {
       path.resolve(workspaceB, 'knowledge-base'),
     )
   })
+
+  it('uses workspace-local knowledge base for real company when config is blank', () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-config-real-default-')
+    createdRoots.push(workspaceRoot)
+
+    expect(
+      readKnowledgeBaseConfig(workspaceRoot, { datasetType: 'REAL' }).source,
+    ).toEqual({
+      type: 'local',
+      path: path.join(workspaceRoot, 'knowledge-base'),
+    })
+  })
+
+  it('does not expose repo bootstrap source for real company workspaces', () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-config-real-bootstrap-')
+    createdRoots.push(workspaceRoot)
+    const repoBootstrapPath = path.resolve(
+      process.cwd(),
+      '..',
+      'bootstrap',
+      'common_knowledge',
+    )
+
+    writeKnowledgeBaseConfig(
+      {
+        source: {
+          type: 'local',
+          path: repoBootstrapPath,
+        },
+      },
+      workspaceRoot,
+    )
+
+    expect(
+      readKnowledgeBaseConfig(workspaceRoot, { datasetType: 'REAL' }).source,
+    ).toEqual({
+      type: 'local',
+      path: path.join(workspaceRoot, 'knowledge-base'),
+    })
+  })
 })

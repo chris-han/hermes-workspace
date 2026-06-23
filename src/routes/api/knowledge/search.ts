@@ -17,7 +17,11 @@ export const Route = createFileRoute('/api/knowledge/search')({
           const activeWorkspace = await resolveActiveWorkspaceRoot(
             request.headers,
           )
-          return json({ results: searchKnowledgePages(query, activeWorkspace.path) })
+          return json({
+            results: searchKnowledgePages(query, activeWorkspace.path, {
+              datasetType: activeWorkspace.datasetType,
+            }),
+          })
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {
             return json({ error: error.message }, { status: 401 })

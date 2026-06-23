@@ -19,7 +19,10 @@ import type {
 import {
   DEFAULT_SMB_ORGANIZATION_ID,
   DEFAULT_SMB_ORGANIZATION_NAME,
+  createRealCompanyOrganization,
   ensureDefaultSmbOrganization,
+  findRealCompanyMembership,
+  isRealOrganizationContext,
   knowledgeAccessQueryKey,
   organizationSettingsQueryKey,
   updateOrganizationMaterializationPolicy,
@@ -42,7 +45,7 @@ import { toast } from '@/components/ui/toast'
 export const ORGANIZATION_SETTINGS_COPY = {
   title: 'Organization Context',
   subtitle:
-    'Associate your user with an organization and set the active organization_id used as the default SMB analytics context.',
+    'Start from the governed bootstrap demo organization, then switch to a real company when you are ready to stage company data.',
 }
 
 const KNOWLEDGE_TIERS: Array<KnowledgeTier> = [
@@ -241,6 +244,13 @@ export function OrganizationSettingsScreen() {
   const [createIfMissing, setCreateIfMissing] = useState(true)
   const [savePending, setSavePending] = useState(false)
   const [defaultPending, setDefaultPending] = useState(false)
+  const [realCompanyOpen, setRealCompanyOpen] = useState(false)
+  const [realCompanyPending, setRealCompanyPending] = useState(false)
+  const [realCompanyName, setRealCompanyName] = useState('')
+  const [realCompanySlug, setRealCompanySlug] = useState('')
+  const [realCompanyIndustryCode, setRealCompanyIndustryCode] = useState('')
+  const [realCompanyFiscalMonth, setRealCompanyFiscalMonth] = useState(1)
+  const [realCompanyCurrency, setRealCompanyCurrency] = useState('CNY')
   const [policyPending, setPolicyPending] = useState(false)
   const [rolePendingUserId, setRolePendingUserId] = useState<string | null>(
     null,
@@ -249,8 +259,10 @@ export function OrganizationSettingsScreen() {
     useState<T6MaterializationMode>('AUTO')
   const [autoAllowedClaimClassesText, setAutoAllowedClaimClassesText] =
     useState('')
-  const [approvalRequiredClaimClassesText, setApprovalRequiredClaimClassesText] =
-    useState('')
+  const [
+    approvalRequiredClaimClassesText,
+    setApprovalRequiredClaimClassesText,
+  ] = useState('')
   const [memberRoleDrafts, setMemberRoleDrafts] = useState<
     Record<string, 'owner' | 'member'>
   >({})
@@ -293,8 +305,7 @@ export function OrganizationSettingsScreen() {
     const nextDrafts: Record<string, 'owner' | 'member'> = {}
     for (const member of members) {
       const role =
-        member.member_role === 'owner' ||
-        member.member_role === 'member'
+        member.member_role === 'owner' || member.member_role === 'member'
           ? member.member_role
           : 'member'
       nextDrafts[member.user_id] = role
@@ -413,6 +424,34 @@ export function OrganizationSettingsScreen() {
     }
   }
 
+  async function handleCreateRealCompany() {
+    setRealCompanyPending(true)
+    setErrorMessage(null)
+    try {
+      const payload = await createRealCompanyOrganization({
+        companyDisplayName: realCompanyName,
+        organizationId: realCompanySlug,
+        industryCode: realCompanyIndustryCode,
+        fiscalYearStartMonth: realCompanyFiscalMonth,
+        localCurrency: realCompanyCurrency,
+      })
+      await refreshOrganizationContext()
+      setRealCompanyOpen(false)
+      toast('Real company context activated', { type: 'success' })
+      window.location.assign(
+        payload.landing_route ||
+          '/settings/data-connections?import=company-dataset',
+      )
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to create real company'
+      setErrorMessage(message)
+      toast(message, { type: 'warning' })
+    } finally {
+      setRealCompanyPending(false)
+    }
+  }
+
   async function handleSaveMaterializationPolicy() {
     setPolicyPending(true)
     setErrorMessage(null)
@@ -460,6 +499,11 @@ export function OrganizationSettingsScreen() {
 
   const activeOrganization = authQuery.data?.organization_id
   const memberships = organizationQuery.data?.memberships ?? []
+  const activeOrganizationContext = organizationQuery.data?.organization ?? null
+  const realCompanyMembership = findRealCompanyMembership(
+    memberships,
+    activeOrganizationContext?.organization_id || activeOrganization,
+  )
   const members = organizationQuery.data?.members ?? []
   const currentUserId = authQuery.data?.user?.user_id || null
   const currentMemberRole = authQuery.data?.member_role || null
@@ -509,6 +553,154 @@ export function OrganizationSettingsScreen() {
           </div>
         </header>
 
+        <section className="rounded-3xl border border-primary-200 bg-white/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                Active Company
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-primary-900 dark:text-neutral-100">
+                {organizationQuery.data?.organization?.organization_name ||
+                  authQuery.data?.organization_name ||
+                  'No organization selected'}
+              </h2>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full border border-primary-200 px-2 py-1 font-mono dark:border-neutral-700">
+                  {organizationQuery.data?.organization?.organization_id ||
+                    authQuery.data?.organization_id ||
+                    'unassigned'}
+                </span>
+                <span className="rounded-full border border-primary-200 px-2 py-1 font-semibold dark:border-neutral-700">
+                  {organizationQuery.data?.organization?.dataset_type ||
+                    'NO_DATASET'}
+                </span>
+                <span className="rounded-full border border-primary-200 px-2 py-1 font-semibold dark:border-neutral-700">
+                  {organizationQuery.data?.organization?.authority_state ||
+                    'REAL_EMPTY'}
+                </span>
+                {organizationQuery.data?.organization
+                  ?.active_dataset_version_id ? (
+                  <span className="rounded-full border border-emerald-200 px-2 py-1 font-mono text-emerald-700 dark:border-emerald-900 dark:text-emerald-300">
+                    {
+                      organizationQuery.data.organization
+                        .active_dataset_version_id
+                    }
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            {isRealOrganizationContext(activeOrganizationContext) ? (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleUseSmbDefault}
+                  disabled={defaultPending || savePending}
+                >
+                  Switch to demo company
+                </Button>
+                <Link
+                  to="/settings/data-connections"
+                  search={{ import: 'company-dataset' }}
+                  className="rounded-xl border border-primary-300 px-3 py-2 text-sm font-semibold text-primary-700 dark:border-neutral-700 dark:text-neutral-200"
+                >
+                  Open dataset import
+                </Link>
+              </div>
+            ) : realCompanyMembership ? (
+              <Button
+                type="button"
+                onClick={() =>
+                  handleActivate(realCompanyMembership.organization_id)
+                }
+                disabled={savePending || defaultPending}
+              >
+                Switch to real company
+              </Button>
+            ) : (
+              <Button type="button" onClick={() => setRealCompanyOpen(true)}>
+                Switch to real company
+              </Button>
+            )}
+          </div>
+
+          {realCompanyOpen ? (
+            <div className="mt-5 grid gap-3 rounded-2xl border border-primary-200 bg-primary-50/70 p-4 dark:border-neutral-800 dark:bg-neutral-950/60 md:grid-cols-2">
+              <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                Company display name
+                <Input
+                  value={realCompanyName}
+                  onChange={(event) => setRealCompanyName(event.target.value)}
+                  placeholder="Soyon Technology"
+                  className="mt-1"
+                />
+              </label>
+              <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                Organization slug
+                <Input
+                  value={realCompanySlug}
+                  onChange={(event) => setRealCompanySlug(event.target.value)}
+                  placeholder="soyon"
+                  className="mt-1"
+                />
+              </label>
+              <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                Industry code
+                <Input
+                  value={realCompanyIndustryCode}
+                  onChange={(event) =>
+                    setRealCompanyIndustryCode(event.target.value)
+                  }
+                  placeholder="software_services"
+                  className="mt-1"
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                  Fiscal month
+                  <Input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={realCompanyFiscalMonth}
+                    onChange={(event) =>
+                      setRealCompanyFiscalMonth(Number(event.target.value) || 1)
+                    }
+                    className="mt-1"
+                  />
+                </label>
+                <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                  Currency
+                  <Input
+                    value={realCompanyCurrency}
+                    onChange={(event) =>
+                      setRealCompanyCurrency(event.target.value)
+                    }
+                    className="mt-1"
+                  />
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-2 md:col-span-2">
+                <Button
+                  type="button"
+                  onClick={handleCreateRealCompany}
+                  disabled={realCompanyPending}
+                >
+                  Create and switch
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRealCompanyOpen(false)}
+                  disabled={realCompanyPending}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </section>
+
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
           <div className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
             <div className="mb-4 flex items-start gap-3">
@@ -519,8 +711,9 @@ export function OrganizationSettingsScreen() {
                 </h2>
                 <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
                   The active organization becomes the default organization_id
-                  for SMB analytics context. Use the SMB dataset default or
-                  connect a different organization explicitly.
+                  for governed chat and analytics context. Use the bootstrap
+                  demo organization or connect a different organization
+                  explicitly.
                 </p>
               </div>
             </div>
@@ -904,125 +1097,132 @@ export function OrganizationSettingsScreen() {
             <div className="space-y-3">
               {adminContacts.length > 0 ? (
                 <div className="rounded-2xl border border-primary-200 bg-white/80 px-4 py-3 text-sm text-primary-700 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-300">
-                  Ask these org admins: {adminContacts.map((member) => member.name).join(', ')}
+                  Ask these org admins:{' '}
+                  {adminContacts.map((member) => member.name).join(', ')}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
-                  No active owner/admin is assigned yet. Any active member can assign one owner.
+                  No active owner/admin is assigned yet. Any active member can
+                  assign one owner.
                 </div>
               )}
 
               {!canEditRoles ? (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
-                  Role editing requires active membership in the selected organization.
+                  Role editing requires active membership in the selected
+                  organization.
                 </div>
               ) : null}
 
               <div className="overflow-x-auto rounded-2xl border border-primary-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-900/70">
-              <table className="min-w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-primary-200 dark:border-neutral-800">
-                    <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
-                      Member
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
-                      Role
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {members.map((member) => {
-                    const currentRole =
-                      member.member_role === 'owner' ||
-                      member.member_role === 'member'
-                        ? member.member_role
-                        : 'member'
-                    const draftRole = memberRoleDrafts[member.user_id] || currentRole
-                    const roleChoices: Array<'owner' | 'member'> = [
-                      'owner',
-                      'member',
-                    ]
-                    const roleChanged = draftRole !== currentRole
-                    const roleActionDisabled =
-                      !canEditRoles ||
-                      !roleChanged ||
-                      member.membership_status !== 'active' ||
-                      rolePendingUserId === member.user_id
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-primary-200 dark:border-neutral-800">
+                      <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                        Member
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                        Role
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {members.map((member) => {
+                      const currentRole =
+                        member.member_role === 'owner' ||
+                        member.member_role === 'member'
+                          ? member.member_role
+                          : 'member'
+                      const draftRole =
+                        memberRoleDrafts[member.user_id] || currentRole
+                      const roleChoices: Array<'owner' | 'member'> = [
+                        'owner',
+                        'member',
+                      ]
+                      const roleChanged = draftRole !== currentRole
+                      const roleActionDisabled =
+                        !canEditRoles ||
+                        !roleChanged ||
+                        member.membership_status !== 'active' ||
+                        rolePendingUserId === member.user_id
 
-                    return (
-                      <tr
-                        key={member.user_id}
-                        className="border-b border-primary-100 last:border-b-0 dark:border-neutral-800"
-                      >
-                        <td className="px-4 py-3">
-                          <div className="text-sm font-semibold text-primary-900 dark:text-neutral-100">
-                            {member.name}
-                            {member.user_id === currentUserId ? ' (you)' : ''}
-                          </div>
-                          <div className="mt-1 font-mono text-xs text-primary-500 dark:text-neutral-400">
-                            {member.user_id}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide ${membershipTone(
-                              member.membership_status,
-                            )}`}
-                          >
-                            {member.membership_status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <select
-                            value={draftRole}
-                            onChange={(event) =>
-                              setMemberRoleDrafts((current) => ({
-                                ...current,
-                                [member.user_id]: event.target.value as
-                                  | 'owner'
-                                  | 'member',
-                              }))
-                            }
-                            disabled={!canEditRoles || rolePendingUserId === member.user_id}
-                            className="h-9 w-full rounded-md border border-primary-200 bg-white px-2 text-sm text-primary-900 outline-none ring-primary-200 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-                          >
-                            {roleChoices.map((role) => (
-                              <option
-                                key={role}
-                                value={role}
-                              >
-                                {role}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={roleActionDisabled}
-                            onClick={() =>
-                              handleUpdateMemberRole(member.user_id, draftRole)
-                            }
-                          >
-                            {rolePendingUserId === member.user_id
-                              ? 'Saving...'
-                              : 'Apply'}
-                          </Button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                      return (
+                        <tr
+                          key={member.user_id}
+                          className="border-b border-primary-100 last:border-b-0 dark:border-neutral-800"
+                        >
+                          <td className="px-4 py-3">
+                            <div className="text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                              {member.name}
+                              {member.user_id === currentUserId ? ' (you)' : ''}
+                            </div>
+                            <div className="mt-1 font-mono text-xs text-primary-500 dark:text-neutral-400">
+                              {member.user_id}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide ${membershipTone(
+                                member.membership_status,
+                              )}`}
+                            >
+                              {member.membership_status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={draftRole}
+                              onChange={(event) =>
+                                setMemberRoleDrafts((current) => ({
+                                  ...current,
+                                  [member.user_id]: event.target.value as
+                                    | 'owner'
+                                    | 'member',
+                                }))
+                              }
+                              disabled={
+                                !canEditRoles ||
+                                rolePendingUserId === member.user_id
+                              }
+                              className="h-9 w-full rounded-md border border-primary-200 bg-white px-2 text-sm text-primary-900 outline-none ring-primary-200 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                            >
+                              {roleChoices.map((role) => (
+                                <option key={role} value={role}>
+                                  {role}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={roleActionDisabled}
+                              onClick={() =>
+                                handleUpdateMemberRole(
+                                  member.user_id,
+                                  draftRole,
+                                )
+                              }
+                            >
+                              {rolePendingUserId === member.user_id
+                                ? 'Saving...'
+                                : 'Apply'}
+                            </Button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </section>

@@ -8,6 +8,10 @@ import {
 } from './knowledge-config'
 import type { KnowledgeBaseSource } from './knowledge-config'
 
+type KnowledgeBrowserContext = {
+  datasetType?: string | null
+}
+
 export type WikiPageMeta = {
   path: string
   name: string
@@ -266,8 +270,11 @@ class GitHubKnowledgeProvider {
 
 // ─── Config-aware root resolution ──────────────────────────────────────────────
 
-function getKnowledgeRoot(workspaceRoot?: string): string {
-  const config = readKnowledgeBaseConfig(workspaceRoot)
+function getKnowledgeRoot(
+  workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
+): string {
+  const config = readKnowledgeBaseConfig(workspaceRoot, context)
   const source = config.source
 
   if (source.type === 'github') {
@@ -280,19 +287,22 @@ function getKnowledgeRoot(workspaceRoot?: string): string {
   }
 
   // local
-  const configuredRoot = getKnowledgeBaseEffectiveRoot(workspaceRoot)
+  const configuredRoot = getKnowledgeBaseEffectiveRoot(workspaceRoot, context)
   if (configuredRoot) {
     return configuredRoot
   }
   return getLegacyKnowledgeRoot(workspaceRoot)
 }
 
-export function knowledgeRootExists(workspaceRoot?: string): boolean {
+export function knowledgeRootExists(
+  workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
+): boolean {
   try {
-    const root = getKnowledgeRoot(workspaceRoot)
+    const root = getKnowledgeRoot(workspaceRoot, context)
     if (!root) return false
     // For GitHub, check cache; for local, check filesystem
-    const config = readKnowledgeBaseConfig(workspaceRoot)
+    const config = readKnowledgeBaseConfig(workspaceRoot, context)
     if (config.source.type === 'github') {
       const provider = new GitHubKnowledgeProvider(
         config.source.repo,
@@ -307,16 +317,22 @@ export function knowledgeRootExists(workspaceRoot?: string): boolean {
   }
 }
 
-function getKnowledgeSource(workspaceRoot?: string): KnowledgeBaseSource {
-  return readKnowledgeBaseConfig(workspaceRoot).source
+function getKnowledgeSource(
+  workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
+): KnowledgeBaseSource {
+  return readKnowledgeBaseConfig(workspaceRoot, context).source
 }
 
-export async function syncKnowledgeSource(workspaceRoot?: string): Promise<{
+export async function syncKnowledgeSource(
+  workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
+): Promise<{
   source: KnowledgeBaseSource
   success: boolean
   error?: string
 }> {
-  const source = getKnowledgeSource(workspaceRoot)
+  const source = getKnowledgeSource(workspaceRoot, context)
   if (source.type !== 'github') {
     return { source, success: true }
   }
@@ -354,12 +370,13 @@ function normalizeRelativeKnowledgePath(input: string): string {
 function resolveKnowledgeFilePath(
   relativePath: string,
   workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
 ): {
   fullPath: string
   relativePath: string
 } {
   const safeRelativePath = normalizeRelativeKnowledgePath(relativePath)
-  const knowledgeRoot = path.resolve(getKnowledgeRoot(workspaceRoot))
+  const knowledgeRoot = path.resolve(getKnowledgeRoot(workspaceRoot, context))
   const fullPath = path.resolve(knowledgeRoot, safeRelativePath)
   const relativeFromRoot = path.relative(knowledgeRoot, fullPath)
   if (relativeFromRoot.startsWith('..') || path.isAbsolute(relativeFromRoot)) {
@@ -460,8 +477,11 @@ function walkKnowledgeDir(
   }
 }
 
-function getParsedKnowledgePages(workspaceRoot?: string): Array<ParsedKnowledgePage> {
-  const knowledgeRoot = path.resolve(getKnowledgeRoot(workspaceRoot))
+function getParsedKnowledgePages(
+  workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
+): Array<ParsedKnowledgePage> {
+  const knowledgeRoot = path.resolve(getKnowledgeRoot(workspaceRoot, context))
   if (!fs.existsSync(knowledgeRoot)) return []
 
   const results: Array<ParsedKnowledgePage> = []
@@ -508,33 +528,45 @@ function createWikilinkResolver(
   }
 }
 
-export function listKnowledgePages(workspaceRoot?: string): Array<WikiPageMeta> {
-  return getParsedKnowledgePages(workspaceRoot).map((page) => page.meta)
+export function listKnowledgePages(
+  workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
+): Array<WikiPageMeta> {
+  return getParsedKnowledgePages(workspaceRoot, context).map(
+    (page) => page.meta,
+  )
 }
 
 export function resolveWikilink(
   linkText: string,
   workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
 ): string | null {
-  return createWikilinkResolver(getParsedKnowledgePages(workspaceRoot))(linkText)
+  return createWikilinkResolver(
+    getParsedKnowledgePages(workspaceRoot, context),
+  )(linkText)
 }
 
 export function readKnowledgePage(
   relativePath: string,
   workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
 ): {
   meta: WikiPageMeta
   content: string
   backlinks: Array<string>
 } {
-  const { fullPath, relativePath: safeRelativePath } =
-    resolveKnowledgeFilePath(relativePath, workspaceRoot)
+  const { fullPath, relativePath: safeRelativePath } = resolveKnowledgeFilePath(
+    relativePath,
+    workspaceRoot,
+    context,
+  )
   const parsed = readParsedKnowledgeFile(fullPath, safeRelativePath)
   if (!parsed) {
     throw new Error(`ENOENT: Knowledge page not found: ${safeRelativePath}`)
   }
 
-  const pages = getParsedKnowledgePages(workspaceRoot)
+  const pages = getParsedKnowledgePages(workspaceRoot, context)
   const resolveLink = createWikilinkResolver(pages)
   const backlinks = pages
     .filter((page) => page.meta.path !== safeRelativePath)
@@ -559,6 +591,7 @@ function escapeRegex(s: string): string {
 export function searchKnowledgePages(
   query: string,
   workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
 ): Array<{ path: string; title: string; line: number; text: string }> {
   const needle = query.trim()
   if (!needle) return []
@@ -570,7 +603,7 @@ export function searchKnowledgePages(
     line: number
     text: string
   }> = []
-  const pages = getParsedKnowledgePages(workspaceRoot)
+  const pages = getParsedKnowledgePages(workspaceRoot, context)
 
   for (const page of pages) {
     const lines = page.raw.split(/\r?\n/)
@@ -590,8 +623,11 @@ export function searchKnowledgePages(
   return matches
 }
 
-export function buildKnowledgeGraph(workspaceRoot?: string): KnowledgeGraph {
-  const pages = getParsedKnowledgePages(workspaceRoot)
+export function buildKnowledgeGraph(
+  workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
+): KnowledgeGraph {
+  const pages = getParsedKnowledgePages(workspaceRoot, context)
   const resolveLink = createWikilinkResolver(pages)
   const edges = new Map<string, WikiLink>()
 

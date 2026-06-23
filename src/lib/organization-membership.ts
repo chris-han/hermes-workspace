@@ -20,7 +20,13 @@ export interface OrganizationContext {
   organization_name?: string | null
   dataset_type?: string | null
   industry_code?: string | null
+  setup_status?: string | null
+  blocking_reasons?: Array<string>
+  next_actions?: Array<string>
+  setup_counts?: Record<string, number>
   authority_state?: string | null
+  authority_state_deprecated?: boolean
+  authority_state_remove_after?: string | null
   active_dataset_version_id?: string | null
   fiscal_year_start_month?: number | null
   local_currency?: string | null

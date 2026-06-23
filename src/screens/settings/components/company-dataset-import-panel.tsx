@@ -28,6 +28,45 @@ export function canValidateImport(record: CompanyDatasetImportRecord | null) {
   return record?.status === 'uploaded' || record?.status === 'validation_failed'
 }
 
+export function getOrganizationSetupStatus(
+  organization: Pick<
+    OrganizationContext,
+    'setup_status' | 'authority_state' | 'dataset_type'
+  > | null,
+) {
+  if (organization?.dataset_type === 'REAL') {
+    return organization.setup_status || 'REAL_EMPTY'
+  }
+  return organization?.setup_status || organization?.authority_state || 'DEMO_ACTIVE'
+}
+
+export const REAL_SETUP_STATUS_DISPLAY_LABELS: Record<string, string> = {
+  REAL_EMPTY: 'No promoted source dataset',
+  REAL_IMPORTED: 'Source promoted, setup not started',
+  REAL_REA_ADMISSION_REQUIRED: 'REA admission required',
+  LEGACY_REAL_CLAIMS_UNVERSIONED: 'Legacy claims migration required',
+  REAL_COA_REQUIRED: 'Chart of accounts required',
+  REAL_PROJECTION_REQUIRED: 'Projection required',
+  REAL_LIFECYCLE_MATERIALIZATION_REQUIRED: 'Lifecycle materialization required',
+  REAL_LAKEHOUSE_STALE: 'Lakehouse refresh required',
+  REAL_SETUP_FAILED: 'Setup failed',
+  REAL_READY: 'Analytics ready',
+}
+
+export function getRealSetupStatusLabel(setupStatus: string) {
+  return REAL_SETUP_STATUS_DISPLAY_LABELS[setupStatus] ?? setupStatus
+}
+
+export function realSetupStatusUsesAuthorityState(
+  organization: Pick<
+    OrganizationContext,
+    'setup_status' | 'authority_state' | 'dataset_type'
+  > | null,
+) {
+  if (organization?.dataset_type !== 'REAL') return false
+  return !organization.setup_status && Boolean(organization.authority_state)
+}
+
 export function getHighlightedHeaderRow(params: {
   autoHeader: boolean
   manualHeaderRow: number
@@ -110,6 +149,10 @@ export function CompanyDatasetImportPanel({
     organization?.dataset_type === 'REAL' &&
     organization?.membership_status === 'active'
   const canPromote = canImport && Boolean(organization?.can_change_settings)
+  const setupStatus = getOrganizationSetupStatus(organization)
+  const setupStatusLabel = getRealSetupStatusLabel(setupStatus)
+  const blockingReasons = organization?.blocking_reasons ?? []
+  const nextActions = organization?.next_actions ?? []
   const hasImportSource = files.length > 0 || Boolean(sourcePath.trim())
   const selectedSheetNames = useMemo(
     () =>
@@ -301,7 +344,7 @@ export function CompanyDatasetImportPanel({
             {organization?.dataset_type || 'NO_ORG'}
           </span>
           <span className="rounded-full border border-primary-200 px-2 py-1 font-semibold dark:border-neutral-700">
-            {organization?.authority_state || 'REAL_EMPTY'}
+            {setupStatus}
           </span>
           {organization?.active_dataset_version_id ? (
             <span className="rounded-full border border-emerald-200 px-2 py-1 font-mono text-emerald-700 dark:border-emerald-900 dark:text-emerald-300">
@@ -314,6 +357,46 @@ export function CompanyDatasetImportPanel({
           )}
         </div>
       </div>
+
+      {organization?.dataset_type === 'REAL' ? (
+        <div className="mt-4 rounded-xl border border-primary-200 bg-primary-50/70 p-3 text-sm dark:border-neutral-800 dark:bg-neutral-950/60">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="font-semibold text-primary-900 dark:text-neutral-100">
+                {setupStatusLabel}
+              </div>
+              <p className="mt-1 text-primary-600 dark:text-neutral-400">
+                Promoted source files become analytics-ready only after REA
+                admission, COA/projection, lifecycle materialization, and
+                lakehouse refresh complete.
+              </p>
+            </div>
+            {organization.authority_state_deprecated ? (
+              <span className="rounded-full border border-amber-200 px-2 py-1 text-xs font-semibold text-amber-700 dark:border-amber-900 dark:text-amber-300">
+                setup_status authoritative
+              </span>
+            ) : null}
+          </div>
+          {blockingReasons.length ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {blockingReasons.map((reason) => (
+                <span
+                  key={reason}
+                  className="rounded-full border border-amber-200 px-2 py-1 text-xs font-semibold text-amber-700 dark:border-amber-900 dark:text-amber-300"
+                >
+                  {reason}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {nextActions.length ? (
+            <div className="mt-3 text-xs text-primary-600 dark:text-neutral-400">
+              Next actions:{' '}
+              <span className="font-mono">{nextActions.join(', ')}</span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-5 grid min-w-0 gap-4 xl:grid-cols-[minmax(360px,0.95fr)_minmax(420px,1.05fr)]">
         <div className="min-w-0 space-y-3">

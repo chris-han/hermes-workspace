@@ -6,8 +6,11 @@ import {
   COMPANY_DATASET_FILTER_DEBOUNCE_MS,
   COMPANY_DATASET_SHEET_COMBOBOX_ROLE,
   canValidateImport,
+  getOrganizationSetupStatus,
+  getRealSetupStatusLabel,
   getHighlightedHeaderRow,
   isPromotingStale,
+  realSetupStatusUsesAuthorityState,
 } from './components/company-dataset-import-panel'
 
 describe('data connections page copy', () => {
@@ -85,5 +88,37 @@ describe('data connections page copy', () => {
       false,
     )
     expect(canValidateImport({ ...baseImport, status: 'staged' })).toBe(false)
+  })
+
+  it('uses setup_status as the real-company readiness source', () => {
+    expect(
+      getOrganizationSetupStatus({
+        dataset_type: 'REAL',
+        setup_status: 'REAL_REA_ADMISSION_REQUIRED',
+        authority_state: 'REAL_PROMOTED',
+      }),
+    ).toBe('REAL_REA_ADMISSION_REQUIRED')
+    expect(
+      realSetupStatusUsesAuthorityState({
+        dataset_type: 'REAL',
+        setup_status: 'REAL_REA_ADMISSION_REQUIRED',
+        authority_state: 'REAL_PROMOTED',
+      }),
+    ).toBe(false)
+  })
+
+  it('labels promoted real sources as setup blockers until admission is complete', () => {
+    expect(getRealSetupStatusLabel('REAL_IMPORTED')).toBe(
+      'Source promoted, setup not started',
+    )
+    expect(getRealSetupStatusLabel('REAL_REA_ADMISSION_REQUIRED')).toBe(
+      'REA admission required',
+    )
+    expect(getRealSetupStatusLabel('REAL_COA_REQUIRED')).toBe(
+      'Chart of accounts required',
+    )
+    expect(getRealSetupStatusLabel('REAL_PROJECTION_REQUIRED')).toBe(
+      'Projection required',
+    )
   })
 })

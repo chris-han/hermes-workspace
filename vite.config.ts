@@ -367,6 +367,12 @@ const config = defineConfig(({ mode, command }) => {
 
           server.middlewares.use(async (req, res, next) => {
             const requestPath = req.url?.split('?')[0]
+            const isMarkdownDocumentRequest =
+              req.method === 'GET' &&
+              !!requestPath?.startsWith('/training/') &&
+              requestPath.endsWith('.md') &&
+              req.headers['sec-fetch-dest'] === 'document'
+
             if (req.method === 'GET' && requestPath === '/training') {
               const query = req.url?.includes('?')
                 ? `?${req.url.split('?').slice(1).join('?')}`
@@ -377,7 +383,10 @@ const config = defineConfig(({ mode, command }) => {
               return
             }
 
-            if (req.method === 'GET' && requestPath === '/training/') {
+            if (
+              (req.method === 'GET' && requestPath === '/training/') ||
+              isMarkdownDocumentRequest
+            ) {
               try {
                 const html = readFileSync(trainingIndexPath, 'utf-8')
                 const transformedHtml = await server.transformIndexHtml(

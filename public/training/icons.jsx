@@ -16,6 +16,7 @@ const IconSearch = (props) => createIcon(<><circle cx="11" cy="11" r="8" /><line
 const IconTerminal = (props) => createIcon(<><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></>, { size: props?.size || 16 });
 const IconMessage = (props) => createIcon(<><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></>, { size: props?.size || 16 });
 const IconCode = (props) => createIcon(<><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>, { size: props?.size || 16 });
+const IconClose = (props) => createIcon(<><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>, { size: props?.size || 16 });
 const IconLogo = (props) => createIcon(<><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></>, { size: props?.size || 20, strokeWidth: 2.2 });
 
 Object.assign(window, {
@@ -28,5 +29,6 @@ Object.assign(window, {
   IconTerminal,
   IconMessage,
   IconCode,
+  IconClose,
   IconLogo,
 });

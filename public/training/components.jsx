@@ -2,7 +2,32 @@
 
 const { useState, useMemo, useEffect, useRef } = React;
 
-function MarkdownRenderer({ markdown, theme = 'light' }) {
+function normalizeMarkdownPath(href, basePath = '') {
+  if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return null;
+
+  try {
+    const trainingPrefix = document.baseURI || `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}`;
+    const baseDir = basePath.includes('/') ? basePath.split('/').slice(0, -1).join('/') : '';
+    const baseUrl = baseDir ? `${trainingPrefix}${baseDir}/` : trainingPrefix;
+    const url = new URL(href, baseUrl);
+    if (url.origin !== window.location.origin) return null;
+
+    const trainingPath = new URL(trainingPrefix).pathname;
+    if (!url.pathname.startsWith(trainingPath)) return null;
+
+    const relativePath = decodeURIComponent(url.pathname.slice(trainingPath.length)).replace(/^\/+/, '');
+    if (!relativePath.endsWith('.md') || relativePath.includes('..')) return null;
+    return relativePath;
+  } catch (e) {
+    return null;
+  }
+}
+
+function getTrainingBasePath() {
+  return new URL(document.baseURI || `${window.location.origin}/training/`).pathname;
+}
+
+function MarkdownRenderer({ markdown, theme = 'light', onOpenMarkdown, sourcePath = '' }) {
   const containerRef = useRef(null);
   const html = useMemo(() => {
     if (!markdown) return '';
@@ -85,7 +110,19 @@ function MarkdownRenderer({ markdown, theme = 'light' }) {
     });
   }, [html, theme, mermaidThemeVariables]);
 
-  return <div key={theme} ref={containerRef} className="markdown-body" dangerouslySetInnerHTML={{ __html: html }} />;
+  const handleClick = (event) => {
+    if (!onOpenMarkdown) return;
+    const link = event.target.closest ? event.target.closest('a') : null;
+    if (!link) return;
+
+    const localMarkdownPath = normalizeMarkdownPath(link.getAttribute('href'), sourcePath);
+    if (!localMarkdownPath) return;
+
+    event.preventDefault();
+    onOpenMarkdown(localMarkdownPath, link.textContent || localMarkdownPath);
+  };
+
+  return <div key={`${theme}:${sourcePath}`} ref={containerRef} className="markdown-body" onClick={handleClick} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 function Badge({ children, variant = 'default' }) {
@@ -346,7 +383,84 @@ function PlaybookIndex({ playbooks, onSelect }) {
   );
 }
 
+function DocumentViewer({ document, theme, onClose, onOpenMarkdown }) {
+  if (!document) return null;
+
+  return (
+    <div className="card document-viewer">
+      <div className="document-viewer-header">
+        <div>
+          <div className="document-viewer-label">Rendered Markdown</div>
+          <h2>{document.title}</h2>
+          <p>{document.path}</p>
+        </div>
+        <Button variant="ghost" className="btn-icon" onClick={onClose} icon={IconClose} aria-label="关闭文档" />
+      </div>
+      {document.loading ? (
+        <div className="document-viewer-state">加载文档中…</div>
+      ) : document.error ? (
+        <div className="document-viewer-state document-viewer-error">{document.error}</div>
+      ) : (
+        <MarkdownRenderer
+          markdown={document.markdown}
+          theme={theme}
+          sourcePath={document.path}
+          onOpenMarkdown={onOpenMarkdown}
+        />
+      )}
+    </div>
+  );
+}
+
 function LessonContent({ lesson, onToggleComplete, isComplete, theme, onSelect, playbooks }) {
+  const [document, setDocument] = useState(null);
+  const documentRef = useRef(null);
+  const loadedInitialDocumentRef = useRef(null);
+
+  const openMarkdownDocument = async (path, title, options = {}) => {
+    setDocument({
+      path,
+      title: title || path,
+      markdown: '',
+      loading: true,
+      error: null,
+    });
+    window.requestAnimationFrame(() => {
+      documentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    if (options.updateUrl !== false) {
+      window.history.pushState(null, '', `${getTrainingBasePath()}${path}`);
+    }
+
+    try {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`无法加载 ${path}: ${res.status}`);
+      const markdown = await res.text();
+      setDocument({
+        path,
+        title: title || path,
+        markdown,
+        loading: false,
+        error: null,
+      });
+    } catch (error) {
+      setDocument({
+        path,
+        title: title || path,
+        markdown: '',
+        loading: false,
+        error: error.message || '文档加载失败',
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!lesson?.initialDocumentPath) return;
+    if (loadedInitialDocumentRef.current === lesson.initialDocumentPath) return;
+    loadedInitialDocumentRef.current = lesson.initialDocumentPath;
+    openMarkdownDocument(lesson.initialDocumentPath, lesson.initialDocumentPath, { updateUrl: false });
+  }, [lesson?.initialDocumentPath]);
+
   if (!lesson) {
     return (
       <div className="empty-state">
@@ -387,8 +501,24 @@ function LessonContent({ lesson, onToggleComplete, isComplete, theme, onSelect, 
         </div>
       ) : null}
 
+      <div ref={documentRef}>
+        <DocumentViewer
+          document={document}
+          theme={theme}
+          onClose={() => {
+            setDocument(null);
+            window.history.pushState(null, '', getTrainingBasePath());
+          }}
+          onOpenMarkdown={openMarkdownDocument}
+        />
+      </div>
+
       <div className="card">
-        <MarkdownRenderer markdown={lesson.markdown} theme={theme} />
+        <MarkdownRenderer
+          markdown={lesson.markdown}
+          theme={theme}
+          onOpenMarkdown={openMarkdownDocument}
+        />
       </div>
 
       <DiscussionCard questions={lesson.discussion} />
@@ -413,4 +543,5 @@ Object.assign(window, {
   DiscussionCard,
   ObjectivesCard,
   PlaybookIndex,
+  DocumentViewer,
 });

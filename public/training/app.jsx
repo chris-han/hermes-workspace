@@ -21,6 +21,14 @@ function useLocalStorage(key, initial) {
   return [value, setValue];
 }
 
+function getInitialDocumentPath() {
+  const basePath = new URL(document.baseURI || `${window.location.origin}/training/`).pathname;
+  if (!window.location.pathname.startsWith(basePath)) return null;
+  const relativePath = decodeURIComponent(window.location.pathname.slice(basePath.length));
+  if (!relativePath.endsWith('.md') || relativePath.includes('..')) return null;
+  return relativePath;
+}
+
 function App() {
   const [courseware, setCourseware] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,6 +38,7 @@ function App() {
   const [search, setSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dark, setDark] = useLocalStorage('courseware-theme-dark', false);
+  const initialDocumentPath = useMemo(() => getInitialDocumentPath(), []);
 
   useEffect(() => {
     loadCourseware()
@@ -60,6 +69,10 @@ function App() {
   }, [courseware]);
 
   const selectedLesson = useMemo(() => allLessons.find((l) => l.id === selectedId) || null, [allLessons, selectedId]);
+  const lessonForDisplay = useMemo(() => {
+    if (!selectedLesson) return null;
+    return initialDocumentPath ? { ...selectedLesson, initialDocumentPath } : selectedLesson;
+  }, [selectedLesson, initialDocumentPath]);
 
   const handleToggleComplete = (id) => {
     setCompletedIds((prev) => {
@@ -111,7 +124,7 @@ function App() {
         </header>
         <div className="content-scroll">
           <LessonContent
-            lesson={selectedLesson}
+            lesson={lessonForDisplay}
             isComplete={completedIds.includes(selectedId)}
             onToggleComplete={handleToggleComplete}
             onSelect={setSelectedId}

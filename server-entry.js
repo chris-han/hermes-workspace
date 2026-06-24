@@ -44,7 +44,16 @@ async function tryServeStatic(req, res) {
   // Prevent directory traversal
   if (pathname.includes('..')) return false
 
-  const filePath = join(CLIENT_DIR, pathname)
+  const isTrainingMarkdownDocumentRequest =
+    req.method === 'GET' &&
+    pathname.startsWith('/training/') &&
+    pathname.endsWith('.md') &&
+    req.headers['sec-fetch-dest'] === 'document'
+
+  const filePath = join(
+    CLIENT_DIR,
+    isTrainingMarkdownDocumentRequest ? '/training/index.html' : pathname,
+  )
 
   // Make sure the resolved path is within CLIENT_DIR
   if (!filePath.startsWith(CLIENT_DIR)) return false

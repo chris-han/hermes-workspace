@@ -367,10 +367,17 @@ const config = defineConfig(({ mode, command }) => {
 
           server.middlewares.use(async (req, res, next) => {
             const requestPath = req.url?.split('?')[0]
-            if (
-              req.method === 'GET' &&
-              (requestPath === '/training' || requestPath === '/training/')
-            ) {
+            if (req.method === 'GET' && requestPath === '/training') {
+              const query = req.url?.includes('?')
+                ? `?${req.url.split('?').slice(1).join('?')}`
+                : ''
+              res.statusCode = 308
+              res.setHeader('location', `/training/${query}`)
+              res.end()
+              return
+            }
+
+            if (req.method === 'GET' && requestPath === '/training/') {
               try {
                 const html = readFileSync(trainingIndexPath, 'utf-8')
                 const transformedHtml = await server.transformIndexHtml(

@@ -1,7 +1,7 @@
 import { URL, fileURLToPath } from 'node:url'
 import { execSync, spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import net from 'node:net'
 import { resolve, dirname } from 'node:path'
 import os from 'node:os'
@@ -360,6 +360,38 @@ const config = defineConfig(({ mode, command }) => {
         projects: ['./tsconfig.json'],
       }),
       tailwindcss(),
+      {
+        name: 'training-static-index',
+        configureServer(server) {
+          const trainingIndexPath = resolve('public/training/index.html')
+
+          server.middlewares.use(async (req, res, next) => {
+            const requestPath = req.url?.split('?')[0]
+            if (
+              req.method === 'GET' &&
+              (requestPath === '/training' || requestPath === '/training/')
+            ) {
+              try {
+                const html = readFileSync(trainingIndexPath, 'utf-8')
+                const transformedHtml = await server.transformIndexHtml(
+                  '/training/index.html',
+                  html,
+                  req.originalUrl,
+                )
+                res.statusCode = 200
+                res.setHeader('content-type', 'text/html; charset=utf-8')
+                res.end(transformedHtml)
+                return
+              } catch (error) {
+                next(error)
+                return
+              }
+            }
+
+            next()
+          })
+        },
+      },
       tanstackStart(),
       viteReact(),
       {

@@ -142,14 +142,13 @@ describe('formatGovernedQueryResultForDisplay', () => {
   it('renders governed-query display columns while preserving ascii row keys', () => {
     const rendered = formatGovernedQueryResultForDisplay(
       JSON.stringify({
-        columns: ['amount_wan'],
+        columns: ['amount_10k'],
         display_columns: ['金额（万元）'],
-        rows: [{ amount_wan: 12.5 }],
+        rows: [{ amount_10k: 12.5 }],
         column_metadata: {
-          amount_wan: {
+          amount_10k: {
             display_name_zh: '金额（万元）',
             unit: 'CNY_10K',
-            legacy_alias: 'amount_万',
           },
         },
       }),
@@ -157,18 +156,18 @@ describe('formatGovernedQueryResultForDisplay', () => {
 
     expect(rendered).toContain('金额（万元）')
     expect(rendered).toContain('12.5')
-    expect(rendered).not.toContain('amount_万')
+    expect(rendered).not.toContain('amount_10k')
   })
 
   it('falls back to machine columns when display columns are missing', () => {
     const rendered = formatGovernedQueryResultForDisplay(
       JSON.stringify({
-        columns: ['amount_wan'],
-        rows: [{ amount_wan: 12.5 }],
+        columns: ['amount_10k'],
+        rows: [{ amount_10k: 12.5 }],
       }),
     )
 
-    expect(rendered).toContain('amount_wan')
+    expect(rendered).toContain('amount_10k')
     expect(rendered).toContain('12.5')
   })
 })

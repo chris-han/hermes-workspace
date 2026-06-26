@@ -166,8 +166,8 @@ audit, governance, or external verification depends on.
 
 Legacy non-ASCII identifiers may be read only through explicit compatibility
 aliases or migration code. New runtime writes and new governed query surfaces
-must prefer ASCII identifiers such as amount_wan, debit_wan, credit_wan, and
-net_wan, with localized labels carried separately.
+must prefer ASCII identifiers such as amount_10k, debit_10k, credit_10k, and
+net_10k, with localized labels carried separately.
 ```
 
 Wrapper prompt limitation and enforcement choice:

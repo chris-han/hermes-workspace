@@ -386,7 +386,13 @@ type SessionLogPayload = {
 }
 
 function LogsTab() {
-  const sessionKey = useWorkspaceStore((s) => s.chatPanelSessionKey)
+  const resolvedSessionKey = useActivityStore((s) => s.resolvedSessionKey)
+  const workspaceSessionKey = useWorkspaceStore((s) => s.chatPanelSessionKey)
+  // Prefer the key resolved from streaming (guaranteed real); fall back to the
+  // workspace store only if it doesn't look like a bootstrap sentinel.
+  const BOOTSTRAP_KEYS = new Set(['main', 'new', ''])
+  const sessionKey = resolvedSessionKey
+    ?? (!BOOTSTRAP_KEYS.has(workspaceSessionKey) ? workspaceSessionKey : null)
   const [log, setLog] = useState<SessionLogPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -396,8 +402,7 @@ function LogsTab() {
     if (!sessionKey) {
       setLoading(false)
       return
-    }
-    let cancelled = false
+    }    let cancelled = false
     setLoading(true)
     setError(null)
     fetch(
@@ -433,7 +438,10 @@ function LogsTab() {
     <div className="space-y-2 p-3 overflow-auto max-h-[calc(100vh-140px)]">
       {loading && <LoadingState text="Loading session log…" />}
       {!loading && error && <ErrorState text={`Session log: ${error}`} />}
-      {!loading && !error && !log && (
+      {!loading && !error && !log && !sessionKey && (
+        <EmptyState text="Start a conversation to see session logs" />
+      )}
+      {!loading && !error && !log && sessionKey && (
         <EmptyState text="No session log available" />
       )}
 

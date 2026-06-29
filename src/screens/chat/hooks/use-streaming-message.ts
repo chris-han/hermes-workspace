@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatAttachment, ChatMessage } from '../types'
 import { useChatStore } from '@/stores/chat-store'
-import { pushActivity } from '@/components/inspector/activity-store'
+import { pushActivity, setActivitySessionKey } from '@/components/inspector/activity-store'
 
 type StreamingState = {
   isStreaming: boolean
@@ -450,6 +450,12 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
             time: new Date().toLocaleTimeString(),
             text: 'Assistant started',
           })
+          // Record the resolved session key so the Inspector Logs tab can
+          // fetch the correct session log without depending on the workspace
+          // store's chatPanelSessionKey (which may still be 'main' / 'new').
+          if (activeSessionKeyRef.current) {
+            setActivitySessionKey(activeSessionKeyRef.current)
+          }
           processStoreEvent({
             type: 'chunk',
             text: '',

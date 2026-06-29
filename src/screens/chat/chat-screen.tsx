@@ -86,6 +86,7 @@ import { SIDEBAR_TOGGLE_EVENT } from '@/hooks/use-global-shortcuts'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { TerminalPanel } from '@/components/terminal-panel'
 import { InspectorPanel } from '@/components/inspector/inspector-panel'
+import { setActivitySessionKey } from '@/components/inspector/activity-store'
 import { useTerminalPanelStore } from '@/stores/terminal-panel-store'
 import { useModelSuggestions } from '@/hooks/use-model-suggestions'
 import { ModelSuggestionToast } from '@/components/model-suggestion-toast'
@@ -721,6 +722,12 @@ export function ChatScreen({
 
   // Keep the waiting-state ref in sync with the resolved session key
   sessionKeyForWaiting.current = resolvedSessionKey
+
+  // Keep Inspector Logs tab session context available even after route hops.
+  useEffect(() => {
+    if (!resolvedSessionKey) return
+    setActivitySessionKey(resolvedSessionKey)
+  }, [resolvedSessionKey])
 
   // On remount, check if the server still has an active run for this session.
   // If so, re-set waitingForResponse in the store so the UI shows the spinner.

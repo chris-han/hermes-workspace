@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { create } from 'zustand'
 import { useActivityStore } from './activity-store'
 import type { ActivityEvent } from './activity-store'
@@ -693,9 +694,6 @@ function LogsTab() {
   const sessionKeyLabel = String(
     log?.session_key ?? log?.session_id ?? sessionKey ?? '',
   )
-  const sessionEventsHref = sessionKeyLabel
-    ? `/session-events?session=${encodeURIComponent(sessionKeyLabel)}&friendlyId=${encodeURIComponent(sessionKeyLabel)}`
-    : ''
 
   return (
     <div className="space-y-2 p-3 overflow-auto max-h-[calc(100vh-140px)]">
@@ -737,22 +735,36 @@ function LogsTab() {
         </button>
       </div>
 
-      <a
-        href={sessionEventsHref || undefined}
-        className="block rounded px-2 py-1 text-xs text-center hover:opacity-80 transition-opacity"
-        style={{
-          background: 'var(--theme-card2)',
-          color: sessionEventsHref
-            ? 'var(--theme-accent)'
-            : 'var(--theme-muted)',
-          border: '1px solid var(--theme-border)',
-          pointerEvents: sessionEventsHref ? 'auto' : 'none',
-          opacity: sessionEventsHref ? 1 : 0.6,
-        }}
-        aria-disabled={!sessionEventsHref}
-      >
-        Open Session Event Review
-      </a>
+      {sessionKeyLabel ? (
+        <Link
+          to="/session-events"
+          search={{
+            session: sessionKeyLabel,
+            friendlyId: sessionKeyLabel,
+          }}
+          className="block rounded px-2 py-1 text-xs text-center hover:opacity-80 transition-opacity"
+          style={{
+            background: 'var(--theme-card2)',
+            color: 'var(--theme-accent)',
+            border: '1px solid var(--theme-border)',
+          }}
+        >
+          Open Session Event Review
+        </Link>
+      ) : (
+        <div
+          className="block rounded px-2 py-1 text-xs text-center"
+          style={{
+            background: 'var(--theme-card2)',
+            color: 'var(--theme-muted)',
+            border: '1px solid var(--theme-border)',
+            opacity: 0.6,
+          }}
+          aria-disabled="true"
+        >
+          Open Session Event Review
+        </div>
+      )}
 
       {!loading && log && (
         <>

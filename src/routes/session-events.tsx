@@ -384,10 +384,14 @@ function SessionEventsRoute() {
     const fetchDetail = fetchJson<CanonicalSessionLog>(
       `/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionId)}/log`,
       controller.signal,
-    ).catch(() => null)
+    ).then((d) => ({ ok: true as const, data: d, error: null })).catch((err: unknown) => ({
+      ok: false as const,
+      data: null,
+      error: err instanceof Error ? err.message : 'Session detail unavailable',
+    }))
 
     Promise.all([fetchEventLog, fetchTrajectory, fetchDetail])
-      .then(([eventResult, trajectoryResult, detail]) => {
+      .then(([eventResult, trajectoryResult, detailResult]) => {
         if (controller.signal.aborted) return
         setEvents(eventResult.data)
         setEventsUnavailable(!eventResult.ok)
@@ -396,7 +400,10 @@ function SessionEventsRoute() {
             ? normalizeTrajectoryExport(trajectoryResult.data, sessionId)
             : null,
         )
-        setSessionDetail(detail)
+        setSessionDetail(detailResult.data)
+        if (!detailResult.ok && detailResult.error) {
+          setError(detailResult.error)
+        }
       })
       .catch((nextError: unknown) => {
         if (nextError instanceof Error && nextError.name === 'AbortError') {

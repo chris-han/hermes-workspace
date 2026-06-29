@@ -595,6 +595,53 @@ type SessionLogPayload = {
   messages?: Array<Record<string, unknown>>
 }
 
+function extractFriendlyMessageText(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) {
+    if (content && typeof content === 'object') {
+      const text = (content as Record<string, unknown>).text
+      if (typeof text === 'string') return text
+    }
+    return ''
+  }
+
+  const lines: Array<string> = []
+  for (const part of content as Array<Record<string, unknown>>) {
+    const type = typeof part.type === 'string' ? part.type : ''
+    if (type === 'text' && typeof part.text === 'string') {
+      lines.push(part.text)
+      continue
+    }
+    if (type === 'thinking' && typeof part.thinking === 'string') {
+      lines.push(`[thinking] ${part.thinking}`)
+      continue
+    }
+    if (type === 'toolCall') {
+      const name = typeof part.name === 'string' ? part.name : 'tool'
+      const args =
+        part.arguments && typeof part.arguments === 'object'
+          ? JSON.stringify(part.arguments)
+          : ''
+      lines.push(`[tool:${name}]${args ? ` ${args}` : ''}`)
+      continue
+    }
+    if (typeof part.text === 'string') {
+      lines.push(part.text)
+    }
+  }
+  return lines.join('\n').trim()
+}
+
+function extractMessageTimestamp(msg: Record<string, unknown>): string {
+  const value = msg.timestamp ?? msg.createdAt ?? msg.time ?? msg.ts
+  if (typeof value === 'string' && value.trim()) return value
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const ms = value < 1_000_000_000_000 ? value * 1000 : value
+    return new Date(ms).toISOString()
+  }
+  return ''
+}
+
 function LogsTab() {
   const resolvedSessionKey = useActivityStore((s) => s.resolvedSessionKey)
   const workspaceSessionKey = useWorkspaceStore((s) => s.chatPanelSessionKey)
@@ -607,6 +654,7 @@ function LogsTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [showRaw, setShowRaw] = useState(false)
 
   useEffect(() => {
     if (!sessionKey) {
@@ -642,7 +690,12 @@ function LogsTab() {
   }, [sessionKey, refreshKey])
 
   const messages = Array.isArray(log?.messages) ? log.messages : []
-  const recentMessages = messages.slice(-8)
+  const sessionKeyLabel = String(
+    log?.session_key ?? log?.session_id ?? sessionKey ?? '',
+  )
+  const sessionEventsHref = sessionKeyLabel
+    ? `/session-events?session=${encodeURIComponent(sessionKeyLabel)}&friendlyId=${encodeURIComponent(sessionKeyLabel)}`
+    : ''
 
   return (
     <div className="space-y-2 p-3 overflow-auto max-h-[calc(100vh-140px)]">
@@ -655,129 +708,183 @@ function LogsTab() {
         <EmptyState text="No session log available" />
       )}
 
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setShowRaw((prev) => !prev)}
+          className="flex-1 rounded px-2 py-1 text-xs hover:opacity-80 transition-opacity"
+          style={{
+            background: 'var(--theme-card2)',
+            color: 'var(--theme-muted)',
+            border: '1px solid var(--theme-border)',
+          }}
+          disabled={loading || !log}
+        >
+          {showRaw ? 'Friendly View' : 'Raw View'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setRefreshKey((k) => k + 1)}
+          className="flex-1 rounded px-2 py-1 text-xs hover:opacity-80 transition-opacity"
+          style={{
+            background: 'var(--theme-card2)',
+            color: 'var(--theme-muted)',
+            border: '1px solid var(--theme-border)',
+          }}
+          disabled={loading}
+        >
+          ↺ Refresh
+        </button>
+      </div>
+
+      <a
+        href={sessionEventsHref || undefined}
+        className="block rounded px-2 py-1 text-xs text-center hover:opacity-80 transition-opacity"
+        style={{
+          background: 'var(--theme-card2)',
+          color: sessionEventsHref
+            ? 'var(--theme-accent)'
+            : 'var(--theme-muted)',
+          border: '1px solid var(--theme-border)',
+          pointerEvents: sessionEventsHref ? 'auto' : 'none',
+          opacity: sessionEventsHref ? 1 : 0.6,
+        }}
+        aria-disabled={!sessionEventsHref}
+      >
+        Open Session Event Review
+      </a>
+
       {!loading && log && (
         <>
-          {/* Session metadata */}
-          <div
-            className="rounded-lg px-3 py-2 text-xs leading-relaxed"
-            style={{
-              backgroundColor: 'var(--theme-card)',
-              border: '1px solid var(--theme-border)',
-              color: 'var(--theme-text)',
-            }}
-          >
-            <p
-              className="text-[10px] uppercase tracking-wider font-semibold mb-1"
-              style={{ color: 'var(--theme-accent)' }}
+          {showRaw ? (
+            <pre
+              className="max-h-[calc(100vh-230px)] overflow-auto rounded px-2 py-2 text-[11px]"
+              style={{
+                background: 'var(--theme-card)',
+                color: 'var(--theme-text)',
+                border: '1px solid var(--theme-border)',
+              }}
             >
-              Session
-            </p>
-            <div>
-              <span style={{ color: 'var(--theme-muted)' }}>Key: </span>
-              <span className="font-mono break-all">
-                {String(log.session_key ?? log.session_id ?? sessionKey)}
-              </span>
-            </div>
-            {log.model && (
-              <div>
-                <span style={{ color: 'var(--theme-muted)' }}>Model: </span>
-                {log.model}
-              </div>
-            )}
-            {typeof log.message_count === 'number' && (
-              <div>
-                <span style={{ color: 'var(--theme-muted)' }}>Messages: </span>
-                {log.message_count}
-              </div>
-            )}
-            {Array.isArray(log.tools) && log.tools.length > 0 && (
-              <div>
-                <span style={{ color: 'var(--theme-muted)' }}>Tools: </span>
-                {log.tools.length} registered
-              </div>
-            )}
-            {log.session_start && (
-              <div>
-                <span style={{ color: 'var(--theme-muted)' }}>Started: </span>
-                {log.session_start}
-              </div>
-            )}
-            {log.last_updated && (
-              <div>
-                <span style={{ color: 'var(--theme-muted)' }}>Updated: </span>
-                {log.last_updated}
-              </div>
-            )}
-          </div>
-
-          {/* Recent messages */}
-          {recentMessages.length > 0 && (
-            <div className="space-y-1">
-              <p
-                className="text-[10px] uppercase tracking-wider font-semibold"
-                style={{ color: 'var(--theme-accent)' }}
+              {JSON.stringify(log, null, 2)}
+            </pre>
+          ) : (
+            <>
+              <div
+                className="rounded-lg px-3 py-2 text-xs leading-relaxed"
+                style={{
+                  backgroundColor: 'var(--theme-card)',
+                  border: '1px solid var(--theme-border)',
+                  color: 'var(--theme-text)',
+                }}
               >
-                Recent Messages ({recentMessages.length} of {messages.length})
-              </p>
-              {recentMessages.map((msg, i) => {
-                const role = String(msg.role ?? 'unknown')
-                const content = msg.content
-                let preview = ''
-                if (typeof content === 'string') {
-                  preview = content.slice(0, 150)
-                } else if (Array.isArray(content)) {
-                  const part = (
-                    content as Array<Record<string, unknown>>
-                  ).find((p) => p?.type === 'text' || typeof p?.text === 'string')
-                  preview =
-                    typeof part?.text === 'string' ? part.text.slice(0, 150) : ''
-                }
-                return (
-                  <div
-                    key={i}
-                    className="rounded px-2 py-1.5 text-xs"
-                    style={{ background: 'var(--theme-card2)' }}
-                  >
-                    <span
-                      className="font-semibold"
-                      style={{
-                        color:
-                          role === 'user'
-                            ? 'var(--theme-accent)'
-                            : 'var(--theme-text)',
-                      }}
-                    >
-                      {role}
-                    </span>
-                    {preview && (
-                      <p
-                        className="mt-0.5 truncate"
-                        style={{ color: 'var(--theme-muted)' }}
-                      >
-                        {preview}
-                      </p>
-                    )}
+                <p
+                  className="text-[10px] uppercase tracking-wider font-semibold mb-1"
+                  style={{ color: 'var(--theme-accent)' }}
+                >
+                  Session
+                </p>
+                <div>
+                  <span style={{ color: 'var(--theme-muted)' }}>Key: </span>
+                  <span className="font-mono break-all">{sessionKeyLabel}</span>
+                </div>
+                {log.model && (
+                  <div>
+                    <span style={{ color: 'var(--theme-muted)' }}>Model: </span>
+                    {log.model}
                   </div>
-                )
-              })}
-            </div>
+                )}
+                <div>
+                  <span style={{ color: 'var(--theme-muted)' }}>Messages: </span>
+                  {messages.length}
+                </div>
+                {Array.isArray(log.tools) && log.tools.length > 0 && (
+                  <div>
+                    <span style={{ color: 'var(--theme-muted)' }}>Tools: </span>
+                    {log.tools.length} registered
+                  </div>
+                )}
+                {log.session_start && (
+                  <div>
+                    <span style={{ color: 'var(--theme-muted)' }}>Started: </span>
+                    {log.session_start}
+                  </div>
+                )}
+                {log.last_updated && (
+                  <div>
+                    <span style={{ color: 'var(--theme-muted)' }}>Updated: </span>
+                    {log.last_updated}
+                  </div>
+                )}
+              </div>
+
+              {messages.length > 0 ? (
+                <div className="space-y-1.5">
+                  <p
+                    className="text-[10px] uppercase tracking-wider font-semibold"
+                    style={{ color: 'var(--theme-accent)' }}
+                  >
+                    Full Messages ({messages.length})
+                  </p>
+                  {messages.map((msg, i) => {
+                    const role = String(msg.role ?? 'unknown')
+                    const timestamp = extractMessageTimestamp(msg)
+                    const text = extractFriendlyMessageText(msg.content)
+                    const fallbackJson = JSON.stringify(msg, null, 2)
+
+                    return (
+                      <div
+                        key={i}
+                        className="rounded px-2 py-1.5 text-xs"
+                        style={{ background: 'var(--theme-card2)' }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="font-semibold uppercase"
+                            style={{
+                              color:
+                                role === 'user'
+                                  ? 'var(--theme-accent)'
+                                  : 'var(--theme-text)',
+                            }}
+                          >
+                            {role}
+                          </span>
+                          <span
+                            className="text-[10px] ml-auto"
+                            style={{ color: 'var(--theme-muted)' }}
+                          >
+                            #{i + 1}
+                          </span>
+                        </div>
+                        {timestamp ? (
+                          <div
+                            className="text-[10px] mt-0.5"
+                            style={{ color: 'var(--theme-muted)' }}
+                          >
+                            {timestamp}
+                          </div>
+                        ) : null}
+                        <pre
+                          className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded px-2 py-1 text-[11px]"
+                          style={{
+                            background: 'var(--theme-card)',
+                            border: '1px solid var(--theme-border)',
+                            color: 'var(--theme-text)',
+                          }}
+                        >
+                          {text || fallbackJson}
+                        </pre>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <EmptyState text="No messages recorded in this session log" />
+              )}
+            </>
           )}
         </>
       )}
-
-      <button
-        type="button"
-        onClick={() => setRefreshKey((k) => k + 1)}
-        className="w-full rounded px-2 py-1 text-xs hover:opacity-80 transition-opacity"
-        style={{
-          background: 'var(--theme-card2)',
-          color: 'var(--theme-muted)',
-          border: '1px solid var(--theme-border)',
-        }}
-        disabled={loading}
-      >
-        ↺ Refresh
-      </button>
     </div>
   )
 }

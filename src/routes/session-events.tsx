@@ -935,8 +935,34 @@ function SessionEventsRoute() {
                     </div>
                   ) : null}
                   <div className="rounded-md border border-border p-3 md:col-span-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Session info
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Session info
+                      </div>
+                      <div className="flex w-fit items-center gap-1 rounded-md border border-border bg-muted p-1">
+                        <button
+                          type="button"
+                          onClick={() => setProjectionTab('trajectory')}
+                          className={
+                            projectionTab === 'trajectory'
+                              ? 'rounded-md bg-card px-3 py-1 text-xs font-medium text-foreground shadow-sm'
+                              : 'rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground'
+                          }
+                        >
+                          trajectory.jsonl
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProjectionTab('session-json')}
+                          className={
+                            projectionTab === 'session-json'
+                              ? 'rounded-md bg-card px-3 py-1 text-xs font-medium text-foreground shadow-sm'
+                              : 'rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground'
+                          }
+                        >
+                          session.json
+                        </button>
+                      </div>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-3">
                       {sessionDetail ? (
@@ -971,6 +997,23 @@ function SessionEventsRoute() {
                         <span className="text-sm text-muted-foreground">
                           {sessionId ? 'Session detail unavailable.' : 'No session selected.'}
                         </span>
+                      )}
+                    </div>
+                    <div className="mt-3 max-h-[70vh] min-w-0 overflow-auto">
+                      {projectionTab === 'trajectory' ? (
+                        <pre className="min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
+                          {trajectory
+                            ? JSON.stringify(trajectory.trajectory, null, 2)
+                            : 'No trajectory available.'}
+                        </pre>
+                      ) : (
+                        <pre className="min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
+                          {sessionDetail
+                            ? JSON.stringify(sessionDetail, null, 2)
+                            : sessionId
+                              ? 'Session JSON unavailable.'
+                              : 'No session selected.'}
+                        </pre>
                       )}
                     </div>
                   </div>
@@ -1023,55 +1066,6 @@ function SessionEventsRoute() {
                 </div>
               </div>
               ) : null}
-
-              <div className="min-w-0 rounded-card border border-border bg-card p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-semibold text-foreground">
-                    Atropos projection
-                  </h2>
-                  <div className="flex items-center gap-1 rounded-md border border-border bg-muted p-1">
-                    <button
-                      type="button"
-                      onClick={() => setProjectionTab('trajectory')}
-                      className={
-                        projectionTab === 'trajectory'
-                          ? 'rounded-md bg-card px-3 py-1 text-xs font-medium text-foreground shadow-sm'
-                          : 'rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground'
-                      }
-                    >
-                      trajectory.jsonl
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setProjectionTab('session-json')}
-                      className={
-                        projectionTab === 'session-json'
-                          ? 'rounded-md bg-card px-3 py-1 text-xs font-medium text-foreground shadow-sm'
-                          : 'rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground'
-                      }
-                    >
-                      session.json
-                    </button>
-                  </div>
-                </div>
-                <div className="max-h-[70vh] min-w-0 overflow-auto">
-                  {projectionTab === 'trajectory' ? (
-                    <pre className="min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
-                      {trajectory
-                        ? JSON.stringify(trajectory.trajectory, null, 2)
-                        : 'No trajectory available.'}
-                    </pre>
-                  ) : (
-                    <pre className="min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-[11px] text-foreground">
-                      {sessionDetail
-                        ? JSON.stringify(sessionDetail, null, 2)
-                        : sessionId
-                          ? 'Session JSON unavailable.'
-                          : 'No session selected.'}
-                    </pre>
-                  )}
-                </div>
-              </div>
             </section>
           </div>
         </div>

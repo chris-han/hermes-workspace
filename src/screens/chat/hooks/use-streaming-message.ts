@@ -449,6 +449,11 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
             type: 'assistant_start',
             time: new Date().toLocaleTimeString(),
             text: 'Assistant started',
+            details: {
+              event: 'started',
+              runId: runId ?? null,
+              sessionKey: activeSessionKeyRef.current,
+            },
           })
           // Record the resolved session key so the Inspector Logs tab can
           // fetch the correct session log without depending on the workspace
@@ -565,6 +570,24 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
               time: new Date().toLocaleTimeString(),
               text: `${toolName} (${phase})`,
               ...(eventPath ? { path: eventPath } : {}),
+              details: {
+                event: 'tool',
+                toolName,
+                phase,
+                toolCallId:
+                  typeof payload.toolCallId === 'string'
+                    ? payload.toolCallId
+                    : null,
+                args:
+                  payload.args && typeof payload.args === 'object'
+                    ? payload.args
+                    : null,
+                preview:
+                  typeof payload.preview === 'string' ? payload.preview : null,
+                result:
+                  typeof payload.result === 'string' ? payload.result : null,
+                runId: activeRunIdRef.current ?? null,
+              },
             })
           }
           processStoreEvent({
@@ -606,6 +629,13 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
             type: 'artifact',
             time: new Date().toLocaleTimeString(),
             text: path ? `${title} — ${path}` : title,
+            details: {
+              event: 'artifact',
+              kind,
+              title,
+              path: path || null,
+              runId: activeRunIdRef.current ?? null,
+            },
           })
           processStoreEvent({
             type: 'tool',
@@ -656,6 +686,12 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
             type: 'assistant_complete',
             time: new Date().toLocaleTimeString(),
             text: doneState === 'error' ? `Error: ${errorMessage}` : 'Complete',
+            details: {
+              event: 'done',
+              state: doneState ?? 'final',
+              errorMessage: errorMessage ?? null,
+              runId: activeRunIdRef.current ?? null,
+            },
           })
           processStoreEvent({
             type: 'done',

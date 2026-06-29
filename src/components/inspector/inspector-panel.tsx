@@ -112,11 +112,191 @@ function EmptyState({ text }: { text: string }) {
   )
 }
 
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string
+  value: string | null | undefined
+}) {
+  if (!value) return null
+  return (
+    <div className="flex items-start gap-2 text-[11px]">
+      <span
+        className="min-w-[72px] shrink-0 uppercase tracking-wide"
+        style={{ color: 'var(--theme-muted)' }}
+      >
+        {label}
+      </span>
+      <span className="break-all" style={{ color: 'var(--theme-text)' }}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
+function JsonDetailBlock({
+  label,
+  value,
+}: {
+  label: string
+  value: unknown
+}) {
+  if (value === null || value === undefined) return null
+  const text =
+    typeof value === 'string' ? value : JSON.stringify(value, null, 2) || ''
+  if (!text.trim()) return null
+  return (
+    <div className="space-y-1">
+      <div
+        className="text-[10px] uppercase tracking-wide"
+        style={{ color: 'var(--theme-muted)' }}
+      >
+        {label}
+      </div>
+      <pre
+        className="max-h-48 overflow-auto rounded px-2 py-1.5 text-[11px]"
+        style={{
+          background: 'var(--theme-card)',
+          color: 'var(--theme-text)',
+          border: '1px solid var(--theme-border)',
+        }}
+      >
+        {text}
+      </pre>
+    </div>
+  )
+}
+
+function ActivityExpandedDetails({ event }: { event: ActivityEvent }) {
+  const details = event.details ?? {}
+  const eventType =
+    typeof details.event === 'string' && details.event.trim().length > 0
+      ? details.event.trim()
+      : event.type
+  const hasStructuredDetails = Object.keys(details).length > 0
+
+  if (eventType === 'tool') {
+    const toolName =
+      typeof details.toolName === 'string' ? details.toolName : event.text
+    const phase = typeof details.phase === 'string' ? details.phase : null
+    const toolCallId =
+      typeof details.toolCallId === 'string' ? details.toolCallId : null
+    const runId = typeof details.runId === 'string' ? details.runId : null
+    const preview = typeof details.preview === 'string' ? details.preview : null
+    return (
+      <div className="space-y-2">
+        <DetailRow label="tool" value={toolName} />
+        <DetailRow label="phase" value={phase} />
+        <DetailRow label="call id" value={toolCallId} />
+        <DetailRow label="run id" value={runId} />
+        <DetailRow label="path" value={event.path ?? null} />
+        <DetailRow label="preview" value={preview} />
+        <JsonDetailBlock label="args" value={details.args} />
+        <JsonDetailBlock label="result" value={details.result} />
+      </div>
+    )
+  }
+
+  if (eventType === 'started') {
+    const sessionKey =
+      typeof details.sessionKey === 'string' ? details.sessionKey : null
+    const runId = typeof details.runId === 'string' ? details.runId : null
+    return (
+      <div className="space-y-2">
+        <DetailRow label="status" value="started" />
+        <DetailRow label="session" value={sessionKey} />
+        <DetailRow label="run id" value={runId} />
+      </div>
+    )
+  }
+
+  if (eventType === 'artifact') {
+    const kind = typeof details.kind === 'string' ? details.kind : null
+    const title = typeof details.title === 'string' ? details.title : event.text
+    const path =
+      typeof details.path === 'string' ? details.path : (event.path ?? null)
+    const runId = typeof details.runId === 'string' ? details.runId : null
+    return (
+      <div className="space-y-2">
+        <DetailRow label="artifact" value={title} />
+        <DetailRow label="kind" value={kind} />
+        <DetailRow label="path" value={path} />
+        <DetailRow label="run id" value={runId} />
+      </div>
+    )
+  }
+
+  if (eventType === 'done') {
+    const state = typeof details.state === 'string' ? details.state : null
+    const errorMessage =
+      typeof details.errorMessage === 'string' ? details.errorMessage : null
+    const runId = typeof details.runId === 'string' ? details.runId : null
+    return (
+      <div className="space-y-2">
+        <DetailRow label="status" value={state || 'complete'} />
+        <DetailRow label="run id" value={runId} />
+        <DetailRow label="error" value={errorMessage} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      <DetailRow label="type" value={event.type} />
+      <DetailRow label="text" value={event.text} />
+      <DetailRow label="path" value={event.path ?? null} />
+      <DetailRow label="time" value={event.time} />
+      {hasStructuredDetails ? (
+        <JsonDetailBlock label="raw" value={details} />
+      ) : null}
+    </div>
+  )
+}
+
+function ActivityExpandedPanel({ event }: { event: ActivityEvent }) {
+  const [showRaw, setShowRaw] = useState(false)
+  const fallbackPayload = {
+    type: event.type,
+    text: event.text,
+    path: event.path ?? null,
+    time: event.time,
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => setShowRaw((prev) => !prev)}
+          className="rounded px-2 py-0.5 text-[10px]"
+          style={{
+            color: 'var(--theme-muted)',
+            border: '1px solid var(--theme-border)',
+            background: 'var(--theme-card2)',
+          }}
+        >
+          {showRaw ? 'Friendly' : 'Raw'}
+        </button>
+      </div>
+      {showRaw ? (
+        <JsonDetailBlock
+          label="event"
+          value={event.details ?? fallbackPayload}
+        />
+      ) : (
+        <ActivityExpandedDetails event={event} />
+      )}
+    </div>
+  )
+}
+
 // ── Activity Tab ──────────────────────────────────────────────────────────────
 
 function ActivityTab() {
   const events = useActivityStore((s) => s.events)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
@@ -124,6 +304,13 @@ function ActivityTab() {
 
   if (events.length === 0) {
     return <EmptyState text="No activity yet — start a conversation" />
+  }
+
+  const toggleExpanded = (key: string) => {
+    setExpandedKeys((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }))
   }
 
   return (
@@ -134,21 +321,44 @@ function ActivityTab() {
       {events.map((event: ActivityEvent, i: number) => (
         <div
           key={i}
-          className="flex items-start gap-2 rounded-md px-2 py-1.5 text-xs"
+          className="rounded-md text-xs"
           style={{ background: 'var(--theme-card2)' }}
         >
-          <span
-            style={{ color: 'var(--theme-accent)', fontFamily: 'monospace' }}
+          <button
+            type="button"
+            onClick={() => toggleExpanded(`${event.time}-${i}`)}
+            className="w-full flex items-start gap-2 px-2 py-1.5 text-left"
           >
-            {event.time}
-          </span>
-          <span style={{ color: 'var(--theme-muted)' }}>{event.type}</span>
-          <span
-            className="ml-auto truncate"
-            style={{ color: 'var(--theme-text)' }}
-          >
-            {event.path ?? event.text}
-          </span>
+            <span
+              style={{ color: 'var(--theme-accent)', fontFamily: 'monospace' }}
+            >
+              {event.time}
+            </span>
+            <span style={{ color: 'var(--theme-muted)' }}>{event.type}</span>
+            <span
+              className="ml-auto truncate"
+              style={{ color: 'var(--theme-text)' }}
+            >
+              {event.path ?? event.text}
+            </span>
+            <span
+              className="ml-1 shrink-0"
+              style={{ color: 'var(--theme-muted)' }}
+            >
+              {expandedKeys[`${event.time}-${i}`] ? '▾' : '▸'}
+            </span>
+          </button>
+          {expandedKeys[`${event.time}-${i}`] ? (
+            <div
+              className="mx-2 mb-2 rounded px-2 py-2"
+              style={{
+                background: 'var(--theme-card)',
+                border: '1px solid var(--theme-border)',
+              }}
+            >
+              <ActivityExpandedPanel event={event} />
+            </div>
+          ) : null}
         </div>
       ))}
     </div>

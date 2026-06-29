@@ -226,35 +226,13 @@ function ThinkingBubble({
   researchCard,
   isCompacting = false,
 }: ThinkingBubbleProps) {
-  const allTools = useMemo(
-    () =>
-      liveToolActivity.length > 0
-        ? liveToolActivity.map((t) => ({
-            name: t.name,
-            phase: 'calling' as const,
-          }))
-        : activeToolCalls.map((t) => ({ name: t.name, phase: t.phase })),
-    [activeToolCalls, liveToolActivity],
-  )
-
-  // Derive the most recent active tool name
-  const activeToolName = useMemo(() => {
-    // liveToolActivity is ordered newest-first
-    if (liveToolActivity.length > 0) return liveToolActivity[0].name
-    // activeToolCalls: prefer 'calling'/'start' phase, fall back to most recent
-    const calling = activeToolCalls.find(
-      (tc) => tc.phase === 'calling' || tc.phase === 'start',
-    )
-    if (calling) return calling.name
-    if (activeToolCalls.length > 0)
-      return activeToolCalls[activeToolCalls.length - 1].name
-    return null
-  }, [activeToolCalls, liveToolActivity])
+  const hasActiveToolWork =
+    liveToolActivity.length > 0 || activeToolCalls.length > 0
 
   const statusLabel = isCompacting
     ? 'Compacting context...'
-    : activeToolName
-      ? getToolStatusLabel(activeToolName)
+    : hasActiveToolWork
+      ? 'Working…'
       : 'Thinking…'
 
   // Elapsed time counter — resets when the status label changes (new tool)
@@ -407,29 +385,7 @@ function ThinkingBubble({
             </span>
           ) : null}
 
-          {activeToolName && !isCompacting ? (
-            <div
-              style={{
-                opacity: visible ? 1 : 0,
-                transition: 'opacity 300ms ease',
-              }}
-              className="flex flex-wrap gap-1.5"
-            >
-              {allTools.slice(0, 4).map((tool) => (
-                <span
-                  key={`${tool.name}-${tool.phase}`}
-                  className="inline-flex items-center rounded-full bg-primary-200/60 dark:bg-primary-800/30 px-2 py-0.5 text-[10px] font-mono text-primary-500 dark:text-primary-400 select-none"
-                >
-                  {tool.name}
-                </span>
-              ))}
-              {allTools.length > 4 ? (
-                <span className="inline-flex items-center rounded-full bg-primary-200/40 dark:bg-primary-800/20 px-2 py-0.5 text-[10px] text-primary-400 dark:text-primary-500 select-none">
-                  +{allTools.length - 4} more
-                </span>
-              ) : null}
-            </div>
-          ) : null}
+          {null}
         </div>
 
         {expandedResearchCard && !expandedResearchCard.collapsed ? (

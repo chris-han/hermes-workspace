@@ -6,6 +6,8 @@ export type ActivityEvent = {
   text: string
   /** Actual filesystem path for file_read / file_write events */
   path?: string
+  /** Optional payload rendered in Inspector Activity expanded view */
+  details?: Record<string, unknown>
 }
 
 type ActivityState = {

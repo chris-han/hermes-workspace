@@ -178,7 +178,7 @@ export function shouldRenderPrimaryAssistantText(params: {
   hasA2UiBlocks: boolean
 }): boolean {
   if (params.isUser) return true
-  return !params.hasToolCalls && !params.hasA2UiBlocks
+  return !params.hasA2UiBlocks
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -2323,34 +2323,7 @@ function MessageItemComponent({
           ))}
         </div>
       )}
-      {/* Narration messages (tool-call activity) — compact collapsible row */}
-      {!isUser && (message as any).__isNarration && hasText && (
-        <div className="w-full max-w-[900px]">
-          <details className="group/narration rounded-md transition-colors theme-border-1 theme-tool-surface">
-            <summary className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 list-none [&::-webkit-details-marker]:hidden">
-              <span className="size-6 flex items-center justify-center rounded-full bg-accent-500/15 shrink-0">
-                <span className="text-xs">⚡</span>
-              </span>
-              <span className="text-xs font-medium truncate flex-1 text-primary-700">
-                {displayText.slice(0, 120)}
-                {displayText.length > 120 ? '...' : ''}
-              </span>
-              <HugeiconsIcon
-                icon={ArrowDown01Icon}
-                size={16}
-                strokeWidth={1.5}
-                className="text-primary-400 shrink-0 transition-transform group-open/narration:rotate-180"
-              />
-            </summary>
-            <div className="px-3 pb-3 pt-1 text-[13px] text-primary-600 whitespace-pre-wrap text-pretty max-h-[400px] overflow-y-auto">
-              {displayText}
-            </div>
-          </details>
-        </div>
-      )}
-      {/* Tool calls now render inline inside the assistant bubble, not above it */}
-
-      {shouldRenderMessageBubble && !(message as any).__isNarration && (
+      {shouldRenderMessageBubble && (
         <Message
           className={cn('gap-2 md:gap-3', isUser ? 'flex-row-reverse' : '')}
         >
@@ -2471,17 +2444,10 @@ function MessageItemComponent({
                 ))}
               </div>
             )}
-            {!isUser && (hasToolCalls || hasA2UiBlocks) && (
+            {!isUser && hasA2UiBlocks && (
               <div className="flex flex-col gap-2">
                 {inlineRenderPlan.map((item, index) =>
-                  item.kind === 'tool' ? (
-                    <ToolCallGroup
-                      key={item.section.key || `tool-${index}`}
-                      toolSections={[item.section]}
-                      expandAll={expandAllToolSections}
-                      isStreaming={effectiveIsStreaming}
-                    />
-                  ) : item.kind === 'ui' ? (
+                  item.kind === 'ui' ? (
                     <div key={item.key} className="rounded-lg border border-border/70 bg-muted/10 p-3">
                       <A2UiRenderer
                         schema={item.schema}

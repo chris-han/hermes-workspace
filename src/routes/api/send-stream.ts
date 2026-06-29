@@ -12,6 +12,7 @@ import {
   appendRunText,
   createPersistedRun,
   markRunStatus,
+  persistRunTrajectory,
   setRunThinking,
   upsertRunToolCall,
 } from '../../server/run-store'
@@ -152,6 +153,7 @@ export const Route = createFileRoute('/api/send-stream')({
               runId,
               sessionKey,
               friendlyId: sessionKey,
+              model: requestedModel || undefined,
             })
           } catch (error) {
             if (error instanceof WorkspaceAuthRequiredError) {
@@ -178,6 +180,9 @@ export const Route = createFileRoute('/api/send-stream')({
               status,
               errorMessage,
             )
+            if (status === 'complete') {
+              await persistRunTrajectory(workspaceRoot, sessionKey, runId)
+            }
           }
 
           const encoder = new TextEncoder()

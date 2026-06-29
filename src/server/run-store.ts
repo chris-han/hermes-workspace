@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import { resolveWorkspaceAppStateRoot } from './workspace-root'
@@ -23,6 +23,7 @@ export type PersistedRunState = {
   runId: string
   sessionKey: string
   friendlyId: string
+  model?: string
   status: 'accepted' | 'active' | 'handoff' | 'stalled' | 'complete' | 'error'
   createdAt: number
   updatedAt: number
@@ -32,6 +33,7 @@ export type PersistedRunState = {
   toolCalls: Array<PersistedRunToolCall>
   lifecycleEvents: Array<PersistedRunLifecycleEvent>
   errorMessage?: string
+  trajectoryPersistedAt?: number
 }
 
 const TERMINAL_RUN_STATUSES = new Set<PersistedRunState['status']>([
@@ -88,6 +90,18 @@ function runPath(
   return path.join(sessionDir(workspaceRoot, sessionKey), `${runId}.json`)
 }
 
+function trajectoryPath(workspaceRoot: string, sessionKey: string): string {
+  const local = localSessionKey(workspaceRoot, sessionKey)
+  const fileName = local.startsWith('session_')
+    ? `${local}.trajectory.jsonl`
+    : `session_${local}.trajectory.jsonl`
+  return path.join(workspaceRoot, 'sessions', encodeURIComponent(local), 'logs', fileName)
+}
+
+function toUtcIsoTimestamp(value: number): string {
+  return new Date(value).toISOString()
+}
+
 function runPathsForRead(
   workspaceRoot: string,
   sessionKey: string,
@@ -123,12 +137,14 @@ export async function createPersistedRun(input: {
   runId: string
   sessionKey: string
   friendlyId?: string
+  model?: string
 }): Promise<PersistedRunState> {
   const now = Date.now()
   const run: PersistedRunState = {
     runId: input.runId,
     sessionKey: input.sessionKey,
     friendlyId: input.friendlyId || input.sessionKey,
+    model: input.model?.trim() ? input.model.trim() : undefined,
     status: 'accepted',
     createdAt: now,
     updatedAt: now,
@@ -140,6 +156,44 @@ export async function createPersistedRun(input: {
   }
   await writeRun(input.workspaceRoot, run)
   return run
+}
+
+export async function persistRunTrajectory(
+  workspaceRoot: string,
+  sessionKey: string,
+  runId: string,
+): Promise<boolean> {
+  const run = await getPersistedRun(workspaceRoot, sessionKey, runId)
+  if (!run) return false
+  if (run.status !== 'complete') return false
+  if (typeof run.trajectoryPersistedAt === 'number' && run.trajectoryPersistedAt > 0) {
+    return false
+  }
+
+  const conversations: Array<{ from: string; value: string }> = []
+  const thinking = run.thinkingText.trim()
+  const assistant = run.assistantText.trim()
+  if (thinking) conversations.push({ from: 'assistant', value: thinking })
+  if (assistant) conversations.push({ from: 'assistant', value: assistant })
+
+  const trajectoryRecord = {
+    runId: run.runId,
+    sessionKey: run.sessionKey,
+    conversations,
+    model: run.model?.trim() || '',
+    completed: true,
+    timestamp: toUtcIsoTimestamp(run.updatedAt || run.createdAt),
+  }
+
+  const outPath = trajectoryPath(workspaceRoot, sessionKey)
+  await ensureDir(path.dirname(outPath))
+  await appendFile(outPath, `${JSON.stringify(trajectoryRecord, null, 0)}\n`, 'utf8')
+
+  await updatePersistedRun(workspaceRoot, sessionKey, runId, (current) => ({
+    ...current,
+    trajectoryPersistedAt: Date.now(),
+  }))
+  return true
 }
 
 export async function getPersistedRun(

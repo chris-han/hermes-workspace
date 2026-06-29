@@ -9,6 +9,7 @@ import {
   getActiveRunForSession,
   getPersistedRun,
   markRunStatus,
+  persistRunTrajectory,
   setRunThinking,
   upsertRunToolCall,
 } from './run-store'
@@ -183,6 +184,89 @@ describe('run-store', () => {
       expect(run?.assistantText).toBe('final text late text')
       expect(run?.thinkingText).toBe('late thinking')
       expect(await getActiveRunForSession(root, sessionKey)).toBeNull()
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('persists a trajectory jsonl record on completed runs with model', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'run-store-'))
+    const sessionKey = 'session_abc123'
+    const runId = 'run-trajectory-a'
+
+    try {
+      await createPersistedRun({
+        workspaceRoot: root,
+        sessionKey,
+        runId,
+        model: 'qwen3.5-plus',
+      })
+      await setRunThinking(root, sessionKey, runId, 'thinking step')
+      await appendRunText(root, sessionKey, runId, 'final answer')
+      await markRunStatus(root, sessionKey, runId, 'complete')
+
+      const wrote = await persistRunTrajectory(root, sessionKey, runId)
+      expect(wrote).toBe(true)
+
+      const trajectoryPath = path.join(
+        root,
+        'sessions',
+        sessionKey,
+        'logs',
+        `${sessionKey}.trajectory.jsonl`,
+      )
+      expect(fs.existsSync(trajectoryPath)).toBe(true)
+
+      const lines = fs
+        .readFileSync(trajectoryPath, 'utf8')
+        .split('\n')
+        .filter((line) => line.trim().length > 0)
+      expect(lines.length).toBe(1)
+
+      const payload = JSON.parse(lines[0]) as {
+        runId: string
+        sessionKey: string
+        model: string
+        completed: boolean
+        conversations: Array<{ from: string; value: string }>
+        timestamp: string
+      }
+      expect(payload.runId).toBe(runId)
+      expect(payload.sessionKey).toBe(sessionKey)
+      expect(payload.model).toBe('qwen3.5-plus')
+      expect(payload.completed).toBe(true)
+      expect(payload.conversations.length).toBe(2)
+      expect(payload.timestamp.endsWith('Z')).toBe(true)
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('does not append duplicate trajectory records for the same run', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'run-store-'))
+    const sessionKey = 'session_dup1'
+    const runId = 'run-dup-a'
+
+    try {
+      await createPersistedRun({ workspaceRoot: root, sessionKey, runId })
+      await appendRunText(root, sessionKey, runId, 'done')
+      await markRunStatus(root, sessionKey, runId, 'complete')
+
+      expect(await persistRunTrajectory(root, sessionKey, runId)).toBe(true)
+      expect(await persistRunTrajectory(root, sessionKey, runId)).toBe(false)
+
+      const trajectoryPath = path.join(
+        root,
+        'sessions',
+        sessionKey,
+        'logs',
+        `${sessionKey}.trajectory.jsonl`,
+      )
+      const lines = fs
+        .readFileSync(trajectoryPath, 'utf8')
+        .split('\n')
+        .filter((line) => line.trim().length > 0)
+      expect(lines.length).toBe(1)
     } finally {
       fs.rmSync(root, { recursive: true, force: true })
     }

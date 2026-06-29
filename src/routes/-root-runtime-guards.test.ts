@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  registerAppServiceWorker,
-  wrapInlineScript,
-} from './__root'
+import { unregisterServiceWorkers, wrapInlineScript } from './-root-runtime-guards'
 
 describe('root runtime guards', () => {
   it('wraps inline scripts in a top-level try/catch', () => {
@@ -12,18 +9,21 @@ describe('root runtime guards', () => {
     expect(wrapped).toContain("console.error('Inline bootstrap script failed'")
   })
 
-  it('clears old caches and registers the network-only PWA service worker', async () => {
-    const register = vi.fn().mockResolvedValue(undefined)
-    const deleteCache = vi.fn().mockResolvedValue(true)
+  it('swallows getRegistrations rejections', async () => {
+    const getRegistrations = vi.fn().mockRejectedValue(new Error('boom'))
+    const unregister = vi.fn()
 
     await expect(
-      registerAppServiceWorker({
-        serviceWorker: { register },
-        cachesApi: { keys: vi.fn().mockResolvedValue(['stale']), delete: deleteCache },
+      unregisterServiceWorkers({
+        serviceWorker: { getRegistrations },
+        cachesApi: {
+          keys: vi.fn().mockResolvedValue(['stale']),
+          delete: unregister,
+        },
       }),
     ).resolves.toBeUndefined()
 
-    expect(deleteCache).toHaveBeenCalledWith('stale')
-    expect(register).toHaveBeenCalledWith('/sw.js', { scope: '/' })
+    expect(getRegistrations).toHaveBeenCalledTimes(1)
+    expect(unregister).toHaveBeenCalledWith('stale')
   })
 })

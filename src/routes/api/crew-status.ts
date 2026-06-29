@@ -1,23 +1,20 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../server/auth-middleware'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
-import * as yaml from 'yaml'
-import { BEARER_TOKEN, CLAUDE_API, ensureGatewayProbed } from '../../server/gateway-capabilities'
-import { getClaudeRoot, getProfileClaudeHome, getWorkspaceClaudeHome } from '../../server/claude-paths'
-import { formatSwarmWorkerLabel, rosterByWorkerId, type SwarmRosterWorker } from '../../server/swarm-roster'
+import { json } from '@tanstack/react-start'
+import { createFileRoute } from '@tanstack/react-router'
+import yaml from 'yaml'
+import {
+  BEARER_TOKEN,
+  HERMES_API,
+  ensureGatewayProbed,
+} from '../../server/gateway-capabilities'
+import { resolveActiveWorkspaceRoot } from '../../server/workspace-root'
 
 type CrewDefinition = {
   id: string
   displayName: string
-  humanLabel: string
   role: string
-  specialty?: string
-  mission?: string
-  skills?: Array<string>
-  capabilities?: Array<string>
   profilePath: string | null
 }
 
@@ -39,54 +36,48 @@ function titleCase(value: string): string {
     .join(' ')
 }
 
-function buildCrewDefinitionFromRoster(profile: string, worker: SwarmRosterWorker | null | undefined): CrewDefinition {
-  const displayName = worker?.name || titleCase(profile)
-  const role = worker?.role || 'Profile'
-  return {
-    id: profile,
-    displayName,
-    humanLabel: formatSwarmWorkerLabel(profile, worker),
-    role,
-    specialty: worker?.specialty || undefined,
-    mission: worker?.mission || undefined,
-    skills: worker?.skills?.length ? worker.skills : undefined,
-    capabilities: worker?.capabilities?.length ? worker.capabilities : undefined,
-    profilePath: profile,
-  }
-}
-
-function buildCrewDefinitions(): CrewDefinition[] {
-  const profilesDir = join(getClaudeRoot(), 'profiles')
+export function buildCrewDefinitions(base: string): Array<CrewDefinition> {
+  const profilesDir = join(base, 'profiles')
   const dynamicProfiles = existsSync(profilesDir)
     ? readdirSync(profilesDir, { withFileTypes: true })
-        .filter((entry) => {
-          const profilePath = join(profilesDir, entry.name)
-          if (entry.isDirectory()) return true
-          if (!entry.isSymbolicLink()) return false
-          try {
-            return statSync(profilePath).isDirectory()
-          } catch {
-            return false
-          }
-        })
+        .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)
         .sort()
     : []
 
-  const roster = rosterByWorkerId(dynamicProfiles)
   return [
-    { id: 'workspace', displayName: 'Workspace', humanLabel: 'Workspace — Primary profile', role: 'Primary profile', profilePath: null },
-    ...dynamicProfiles.map((profile) => buildCrewDefinitionFromRoster(profile, /^swarm\d+$/i.test(profile) ? roster.get(profile) : null)),
+    {
+      id: 'workspace',
+      displayName: 'Workspace',
+      role: 'Primary profile',
+      profilePath: null,
+    },
+    ...dynamicProfiles.map((profile) => ({
+      id: profile,
+      displayName: titleCase(profile),
+      role: 'Profile',
+      profilePath: profile,
+    })),
   ]
 }
 
-function getClaudeHome(profilePath: string | null): string {
-  return profilePath ? getProfileClaudeHome(profilePath) : getWorkspaceClaudeHome()
+export function getHermesHome(
+  baseHermesHome: string,
+  profilePath: string | null,
+): string {
+  const base = baseHermesHome
+  return profilePath ? join(base, 'profiles', profilePath) : base
 }
 
-function readGatewayState(claudeHome: string) {
-  const path = join(claudeHome, 'gateway_state.json')
-  if (!existsSync(path)) return { pid: null, gatewayState: 'unknown', platforms: {}, updatedAt: null }
+function readGatewayState(hermesHome: string) {
+  const path = join(hermesHome, 'gateway_state.json')
+  if (!existsSync(path))
+    return {
+      pid: null,
+      gatewayState: 'unknown',
+      platforms: {},
+      updatedAt: null,
+    }
   try {
     const raw = JSON.parse(readFileSync(path, 'utf-8'))
     return {
@@ -96,7 +87,12 @@ function readGatewayState(claudeHome: string) {
       updatedAt: raw.updated_at ?? null,
     }
   } catch {
-    return { pid: null, gatewayState: 'unknown', platforms: {}, updatedAt: null }
+    return {
+      pid: null,
+      gatewayState: 'unknown',
+      platforms: {},
+      updatedAt: null,
+    }
   }
 }
 
@@ -110,8 +106,8 @@ function checkProcessAlive(pid: number | null): boolean {
   }
 }
 
-function readDbStats(claudeHome: string): DbStats {
-  const dbPath = join(claudeHome, 'state.db')
+function readDbStats(hermesHome: string): DbStats {
+  const dbPath = join(hermesHome, 'state.db')
   if (!existsSync(dbPath)) {
     return {
       sessionCount: 0,
@@ -181,11 +177,14 @@ print(json.dumps(out))
   }
 }
 
-function readConfig(claudeHome: string): { model: string; provider: string } {
-  const configPath = join(claudeHome, 'config.yaml')
+function readConfig(hermesHome: string): { model: string; provider: string } {
+  const configPath = join(hermesHome, 'config.yaml')
   if (!existsSync(configPath)) return { model: 'unknown', provider: 'unknown' }
   try {
-    const raw = yaml.parse(readFileSync(configPath, 'utf-8')) as Record<string, unknown>
+    const raw = yaml.parse(readFileSync(configPath, 'utf-8')) as Record<
+      string,
+      unknown
+    >
     const modelVal = raw.model
     const providerVal = raw.provider
 
@@ -206,8 +205,8 @@ function readConfig(claudeHome: string): { model: string; provider: string } {
   }
 }
 
-function readCronJobCount(claudeHome: string): number {
-  const cronPath = join(claudeHome, 'cron', 'jobs.json')
+export function readCronJobCount(hermesHome: string): number {
+  const cronPath = join(hermesHome, 'cron', 'jobs.json')
   if (!existsSync(cronPath)) return 0
   try {
     const jobs = JSON.parse(readFileSync(cronPath, 'utf-8'))
@@ -223,13 +222,13 @@ function readCronJobCount(claudeHome: string): number {
 
 async function fetchAssignedTaskCounts(): Promise<Record<string, number>> {
   try {
-    const res = await fetch(`${CLAUDE_API}/api/tasks?include_done=false`, {
+    const res = await fetch(`${HERMES_API}/api/tasks?include_done=false`, {
       signal: AbortSignal.timeout(3_000),
       headers: BEARER_TOKEN ? { Authorization: `Bearer ${BEARER_TOKEN}` } : {},
     })
     if (!res.ok) return {}
 
-    const data = await res.json() as {
+    const data = (await res.json()) as {
       tasks?: Array<{ assignee?: string | null; column?: string | null }>
     }
 
@@ -248,28 +247,21 @@ export const Route = createFileRoute('/api/crew-status')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        await ensureGatewayProbed()
+        ensureGatewayProbed()
         const taskCounts = await fetchAssignedTaskCounts()
-        const crewDefinitions = buildCrewDefinitions()
+        const workspace = await resolveActiveWorkspaceRoot(request.headers)
+        const baseHermesHome = workspace.hermesHome || join(workspace.path, '.hermes')
+        const crewDefinitions = buildCrewDefinitions(baseHermesHome)
 
         const crew = crewDefinitions.map((member) => {
-          const claudeHome = getClaudeHome(member.profilePath)
-          const profileFound = existsSync(claudeHome)
+          const hermesHome = getHermesHome(baseHermesHome, member.profilePath)
+          const profileFound = existsSync(hermesHome)
 
           if (!profileFound) {
             return {
               id: member.id,
               displayName: member.displayName,
-              humanLabel: member.humanLabel,
               role: member.role,
-              specialty: member.specialty,
-              mission: member.mission,
-              skills: member.skills,
-              capabilities: member.capabilities,
               profileFound: false,
               gatewayState: 'unknown',
               processAlive: false,
@@ -288,19 +280,14 @@ export const Route = createFileRoute('/api/crew-status')({
             }
           }
 
-          const gatewayInfo = readGatewayState(claudeHome)
-          const dbStats = readDbStats(claudeHome)
-          const config = readConfig(claudeHome)
+          const gatewayInfo = readGatewayState(hermesHome)
+          const dbStats = readDbStats(hermesHome)
+          const config = readConfig(hermesHome)
 
           return {
             id: member.id,
             displayName: member.displayName,
-            humanLabel: member.humanLabel,
             role: member.role,
-            specialty: member.specialty,
-            mission: member.mission,
-            skills: member.skills,
-            capabilities: member.capabilities,
             profileFound: true,
             gatewayState: gatewayInfo.gatewayState,
             processAlive: checkProcessAlive(gatewayInfo.pid),
@@ -314,7 +301,7 @@ export const Route = createFileRoute('/api/crew-status')({
             toolCallCount: dbStats.toolCallCount,
             totalTokens: dbStats.totalTokens,
             estimatedCostUsd: dbStats.estimatedCostUsd,
-            cronJobCount: readCronJobCount(claudeHome),
+            cronJobCount: readCronJobCount(hermesHome),
             assignedTaskCount: taskCounts[member.id] ?? 0,
           }
         })

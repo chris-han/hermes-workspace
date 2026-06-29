@@ -10,9 +10,9 @@ type ConnectionStatus = {
   chatReady: boolean
   modelConfigured: boolean
   activeModel: string
-  chatMode: 'enhanced-claude' | 'portable' | 'disconnected'
+  chatMode: 'enhanced-hermes' | 'portable' | 'disconnected'
   capabilities: Record<string, boolean>
-  claudeUrl: string
+  hermesUrl: string
 }
 
 async function fetchConnectionStatus(): Promise<ConnectionStatus> {
@@ -30,7 +30,7 @@ async function fetchConnectionStatus(): Promise<ConnectionStatus> {
       activeModel: '',
       chatMode: 'disconnected',
       capabilities: {},
-      claudeUrl: '',
+      hermesUrl: '',
     }
   }
   return response.json() as Promise<ConnectionStatus>
@@ -80,11 +80,10 @@ function buildTooltip(
   const parts: Array<string> = [`Backend: ${label}`]
   if (data.detail) parts.push(data.detail)
   if (data.status === 'partial') {
-    if (!data.chatReady) parts.push('Missing /v1/chat/completions')
     if (!data.modelConfigured) parts.push('No model selected')
   }
   if (data.status === 'enhanced') {
-    parts.push('Hermes Agent gateway enhancements detected')
+    parts.push('Hermes gateway enhancements detected')
   }
   if (data.activeModel) parts.push(`Model: ${data.activeModel}`)
   return parts.join(' · ')
@@ -96,7 +95,7 @@ function buildTooltip(
  */
 export function StatusDot() {
   const { data, isLoading } = useQuery({
-    queryKey: ['claude', 'connection-status'],
+    queryKey: ['hermes', 'connection-status'],
     queryFn: fetchConnectionStatus,
     refetchInterval: 15_000,
     retry: false,
@@ -127,7 +126,7 @@ export function StatusIndicator({
   inline?: boolean
 }) {
   const { data, isLoading } = useQuery({
-    queryKey: ['claude', 'connection-status'],
+    queryKey: ['hermes', 'connection-status'],
     queryFn: fetchConnectionStatus,
     refetchInterval: 15_000,
     retry: false,

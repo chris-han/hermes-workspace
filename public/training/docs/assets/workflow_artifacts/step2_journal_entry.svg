@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 440" font-family="'Source Han Sans SC','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">
+  <defs>
+    <style>
+      .ink{fill:#1a1a1a} .muted{fill:#6b7280} .accent{fill:#0c4a6e} .gold{fill:#b45309}
+      .mono{font-family:ui-monospace,Consolas,monospace}
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="899" height="439" rx="12" fill="#ffffff" stroke="#d4d4d8"/>
+  <rect x="0.5" y="0.5" width="6" height="439" rx="3" fill="#38bdf8"/>
+
+  <!-- Header -->
+  <rect x="7" y="1" width="892" height="56" fill="#fcfcfa"/>
+  <line x1="7" y1="57" x2="899" y2="57" stroke="#d4d4d8"/>
+  <circle cx="40" cy="29" r="13" fill="#1a1a1a"/>
+  <text x="40" y="34" font-size="14" fill="#fff" text-anchor="middle" font-weight="700">2</text>
+  <text x="62" y="34" font-size="17" font-weight="600" class="ink">会计确认与编制 · 会计分录</text>
+  <text x="298" y="34" font-size="13" class="muted">Journal Entry</text>
+  <rect x="800" y="16" width="87" height="22" rx="4" fill="#e0f2fe" stroke="#7dd3fc"/>
+  <text x="843" y="31" font-size="11" font-weight="700" letter-spacing="1" fill="#0c4a6e" text-anchor="middle">DERIVED</text>
+
+  <!-- Per-source sub-entries table (the bundle principle: each 原始凭证 → its own balanced sub-entry) -->
+  <g transform="translate(60,80)">
+    <text x="0" y="14" font-size="11" font-weight="700" class="gold" letter-spacing="1">① 按源凭证拆分的子分录 — each 原始凭证 contributes a balanced pair</text>
+
+    <rect x="0" y="24" width="780" height="120" fill="white" stroke="#d4d4d8"/>
+    <!-- Header row -->
+    <rect x="0" y="24" width="780" height="28" fill="#f1f5f9"/>
+    <line x1="0" y1="52" x2="780" y2="52" stroke="#d4d4d8"/>
+    <line x1="220" y1="24" x2="220" y2="144" stroke="#d4d4d8"/>
+    <line x1="430" y1="24" x2="430" y2="144" stroke="#d4d4d8"/>
+    <line x1="540" y1="24" x2="540" y2="144" stroke="#d4d4d8"/>
+    <line x1="660" y1="24" x2="660" y2="144" stroke="#d4d4d8"/>
+
+    <text x="110" y="42" font-size="11" font-weight="700" class="ink" text-anchor="middle">源凭证 (原始凭证)</text>
+    <text x="325" y="42" font-size="11" font-weight="700" class="ink" text-anchor="middle">借方科目</text>
+    <text x="485" y="42" font-size="11" font-weight="700" class="ink" text-anchor="middle">借方</text>
+    <text x="600" y="42" font-size="11" font-weight="700" class="ink" text-anchor="middle">贷方科目</text>
+    <text x="720" y="42" font-size="11" font-weight="700" class="ink" text-anchor="middle">贷方</text>
+
+    <!-- Row A -->
+    <text x="10" y="74" font-size="11" class="ink"><tspan class="gold" font-weight="700">A</tspan>  数电发票 #22442…0354</text>
+    <text x="230" y="74" font-size="11" class="accent">管理费用 · 办公费</text>
+    <text x="530" y="74" font-size="11" class="mono ink" text-anchor="end">500.00</text>
+    <text x="550" y="74" font-size="11" class="accent">银行存款 · 工行 6FE0</text>
+    <text x="750" y="74" font-size="11" class="mono ink" text-anchor="end">500.00</text>
+    <line x1="0" y1="84" x2="780" y2="84" stroke="#f3f4f6"/>
+
+    <!-- Row B -->
+    <text x="10" y="104" font-size="11" class="ink"><tspan class="gold" font-weight="700">B</tspan>  铁路电子客票 #25E1234567</text>
+    <text x="230" y="104" font-size="11" class="accent">管理费用 · 差旅费</text>
+    <text x="530" y="104" font-size="11" class="mono ink" text-anchor="end">800.00</text>
+    <text x="550" y="104" font-size="11" class="accent">银行存款 · 工行 6FE0</text>
+    <text x="750" y="104" font-size="11" class="mono ink" text-anchor="end">800.00</text>
+    <line x1="0" y1="114" x2="780" y2="114" stroke="#f3f4f6"/>
+
+    <!-- Footer note for C -->
+    <text x="10" y="134" font-size="10" class="muted" font-style="italic">
+      <tspan class="gold" font-weight="700">C</tspan>  银行电子回单 #6FE0-4D2C-66EA  —  支付凭据,不另增子分录,与上方贷方合并核对
+    </text>
+  </g>
+
+  <!-- Consolidated voucher entry -->
+  <g transform="translate(60,236)">
+    <text x="0" y="14" font-size="11" font-weight="700" class="gold" letter-spacing="1">② 合并后的记账凭证分录 — sum into one 记账凭证 #07654</text>
+
+    <rect x="0" y="24" width="780" height="96" fill="white" stroke="#1a1a1a"/>
+    <rect x="0" y="24" width="780" height="28" fill="#1a1a1a"/>
+    <line x1="390" y1="24" x2="390" y2="120" stroke="#1a1a1a"/>
+    <text x="195" y="42" font-size="12" font-weight="600" fill="white" text-anchor="middle">借方</text>
+    <text x="585" y="42" font-size="12" font-weight="600" fill="white" text-anchor="middle">贷方</text>
+
+    <text x="14" y="74" font-size="12" class="accent">管理费用 · 办公费</text>
+    <text x="376" y="74" font-size="12" class="mono ink" text-anchor="end">500.00</text>
+    <text x="14" y="94" font-size="12" class="accent">管理费用 · 差旅费</text>
+    <text x="376" y="94" font-size="12" class="mono ink" text-anchor="end">800.00</text>
+
+    <text x="404" y="74" font-size="12" class="accent">银行存款 · 工行 6FE0</text>
+    <text x="766" y="74" font-size="12" class="mono ink" text-anchor="end">1,300.00</text>
+
+    <line x1="0" y1="100" x2="780" y2="100" stroke="#d4d4d8"/>
+    <text x="14" y="116" font-size="11" font-weight="700" class="ink">合计</text>
+    <text x="376" y="116" font-size="12" font-weight="700" class="mono ink" text-anchor="end">1,300.00</text>
+    <text x="404" y="116" font-size="11" font-weight="700" class="ink">合计</text>
+    <text x="766" y="116" font-size="12" font-weight="700" class="mono ink" text-anchor="end">1,300.00</text>
+  </g>
+
+  <!-- Balance badge -->
+  <g transform="translate(350,372)">
+    <rect x="0" y="0" width="200" height="22" rx="11" fill="#dcfce7" stroke="#15803d"/>
+    <text x="100" y="15" font-size="11" font-weight="600" fill="#15803d" text-anchor="middle">借 = 贷  ✓ balanced</text>
+  </g>
+
+  <!-- Caption -->
+  <text x="450" y="416" font-size="11" class="muted" text-anchor="middle" font-style="italic">
+    Fig 2 · 捆绑原则: 每张原始凭证产生一对独立平衡的子分录; 共享同一支付凭证时贷方可合并 → 形成一张记账凭证。
+  </text>
+</svg>

@@ -8,9 +8,6 @@ export type EnhancedFeature =
   | 'memory'
   | 'config'
   | 'jobs'
-  | 'mcp'
-  | 'mcpFallback'
-  | 'kanban'
 
 const FEATURE_LABELS: Record<EnhancedFeature, string> = {
   sessions: 'Sessions',
@@ -18,20 +15,6 @@ const FEATURE_LABELS: Record<EnhancedFeature, string> = {
   memory: 'Memory',
   config: 'Configuration',
   jobs: 'Jobs',
-  mcp: 'MCP Servers',
-  mcpFallback: 'MCP Servers (config fallback)',
-  kanban: 'Kanban (Hermes plugin)',
-}
-
-const FEATURE_PROBES: Record<EnhancedFeature, Array<string>> = {
-  sessions: ['/api/sessions'],
-  skills: ['/api/gateway-status', '/api/skills'],
-  memory: ['/api/gateway-status', '/api/memory/list'],
-  config: ['/api/gateway-status', '/api/claude-config'],
-  jobs: ['/api/gateway-status', '/api/claude-jobs'],
-  mcp: ['/api/gateway-status', '/api/mcp'],
-  mcpFallback: ['/api/gateway-status', '/api/mcp'],
-  kanban: ['/api/gateway-status', '/api/swarm-kanban'],
 }
 
 function normalizeFeature(
@@ -43,12 +26,9 @@ function normalizeFeature(
     normalized === 'skills' ||
     normalized === 'memory' ||
     normalized === 'config' ||
-    normalized === 'jobs' ||
-    normalized === 'mcp' ||
-    normalized === 'mcpfallback' ||
-    normalized === 'kanban'
+    normalized === 'jobs'
   ) {
-    return normalized === 'mcpfallback' ? 'mcpFallback' : normalized
+    return normalized
   }
 
   return null
@@ -63,11 +43,7 @@ export function getFeatureLabel(feature: EnhancedFeature | string): string {
 export function getUnavailableReason(
   feature: EnhancedFeature | string,
 ): string {
-  const normalized = normalizeFeature(feature)
-  const probes = normalized
-    ? FEATURE_PROBES[normalized].join(' or ')
-    : '/api/gateway-status'
-  return `${getFeatureLabel(feature)} is not reachable through the local Hermes Workspace probes yet. Verify ${probes} before starting another gateway; if those endpoints pass, refresh or reprobe the Workspace UI.`
+  return `${getFeatureLabel(feature)} requires the Semantier wrapper backend. Check that Semantier is installed and running with \`semantier gateway run --replace\`.`
 }
 
 export function createCapabilityUnavailablePayload(

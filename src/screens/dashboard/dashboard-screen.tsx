@@ -1,14 +1,3 @@
-import {
-  BubbleChatAddIcon,
-  CheckmarkCircle02Icon,
-  ConsoleIcon,
-  Edit02Icon,
-  Moon02Icon,
-  PuzzleIcon,
-  Settings02Icon,
-  Sun02Icon,
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
@@ -21,40 +10,16 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { AchievementsCard } from './components/achievements-card'
-import { ActiveModelKpi } from './components/active-model-kpi'
-import { AnalyticsChartCard } from './components/analytics-chart-card'
-import { AttentionMarquee } from './components/attention-marquee'
-import { CacheEfficiencyCard } from './components/cache-efficiency-card'
-import { CostLedgerCard } from './components/cost-ledger-card'
-import { EditModePanel } from './components/edit-mode-panel'
-import { HeroMetrics } from './components/hero-metrics'
-import { LogsTailCard } from './components/logs-tail-card'
-import { OperatorTipCard } from './components/operator-tip-card'
-import { OpsStrip } from './components/ops-strip'
-import { ProviderMixCard } from './components/provider-mix-card'
-import { SessionsIntelligenceCard } from './components/sessions-intelligence-card'
-import { SkillsUsageCard } from './components/skills-usage-card'
-import { TokenMixHourCard } from './components/token-mix-hour-card'
-import { TopModelsCard } from './components/top-models-card'
-import { VelocityCard } from './components/velocity-card'
-import { WidgetShell } from './components/widget-shell'
-import { normalizeDashboardSessionsPayload } from './lib/sessions-query'
-import { useDashboardLayout } from './lib/use-dashboard-layout'
-import type { SessionRowData } from './components/sessions-intelligence-card'
-import type { AnalyticsPeriod } from './components/analytics-chart-card'
+import { HugeiconsIcon } from '@hugeicons/react'
+import { Moon02Icon, Sun02Icon } from '@hugeicons/core-free-icons'
 import type { ReactNode } from 'react'
-import type { ClaudeSession } from '@/server/claude-api'
-import type { DashboardOverview } from '@/server/dashboard-aggregator'
+import type { HermesSession } from '@/server/hermes-api'
+import { chatQueryKeys } from '@/screens/chat/chat-queries'
 import { getUnavailableReason } from '@/lib/feature-gates'
-import { cn } from '@/lib/utils'
-import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
-import { openHamburgerMenu } from '@/components/mobile-hamburger-menu'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
-
-// `IconSvgObject` isn't exported from @hugeicons/react; reuse the
-// inferred type from a real icon import for prop typing.
-type HugeIcon = typeof Settings02Icon
+import { cn } from '@/lib/utils'
+import { openHamburgerMenu } from '@/components/mobile-hamburger-menu'
+import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -175,7 +140,10 @@ function EnhancedBadge({ label = 'Enhanced API' }: { label?: string }) {
       className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]"
       style={{
         border: `1px solid ${themeColor('--theme-accent-border', 'rgba(245, 158, 11, 0.28)')}`,
-        background: themeColor('--theme-accent-subtle', 'rgba(245, 158, 11, 0.12)'),
+        background: themeColor(
+          '--theme-accent-subtle',
+          'rgba(245, 158, 11, 0.12)',
+        ),
         color: themeColor('--theme-accent', '#f59e0b'),
       }}
     >
@@ -202,6 +170,48 @@ function UnavailableWidget({
         <p className="text-sm text-muted">{description}</p>
       </div>
     </GlassCard>
+  )
+}
+
+// ── System Glance (status bar) ───────────────────
+
+function SystemGlance({
+  sessions,
+  connected,
+  model,
+  provider,
+  tokens,
+  cost,
+}: {
+  sessions: number
+  connected: boolean
+  model: string
+  provider: string
+  tokens: string
+  cost: string
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-5 py-2.5 backdrop-blur-sm">
+      <span
+        className={cn(
+          'size-2 shrink-0 rounded-full',
+          connected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500',
+        )}
+      />
+      <div className="flex flex-1 items-center gap-x-4 overflow-x-auto">
+        <span className="text-xs font-medium text-ink">{model}</span>
+        <span className="text-muted">·</span>
+        <span className="text-xs text-neutral-500">{provider}</span>
+        <span className="text-muted">·</span>
+        <span className="text-xs text-neutral-500">{sessions} sessions</span>
+        <span className="text-muted">·</span>
+        <span className="text-xs font-bold tabular-nums text-ink">
+          {tokens} tokens
+        </span>
+        <span className="text-muted">·</span>
+        <span className="text-xs text-neutral-400">{cost}</span>
+      </div>
+    </div>
   )
 }
 
@@ -249,7 +259,7 @@ function ActivityChart({
   sessions,
   palette,
 }: {
-  sessions: Array<ClaudeSession>
+  sessions: Array<HermesSession>
   palette: ReturnType<typeof readDashboardPalette>
 }) {
   const chartData = useMemo(() => {
@@ -300,15 +310,35 @@ function ActivityChart({
           >
             <defs>
               <linearGradient id="g-sessions" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={palette.accent} stopOpacity={0.3} />
-                <stop offset="100%" stopColor={palette.accent} stopOpacity={0} />
+                <stop
+                  offset="0%"
+                  stopColor={palette.accent}
+                  stopOpacity={0.3}
+                />
+                <stop
+                  offset="100%"
+                  stopColor={palette.accent}
+                  stopOpacity={0}
+                />
               </linearGradient>
               <linearGradient id="g-messages" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={palette.success} stopOpacity={0.2} />
-                <stop offset="100%" stopColor={palette.success} stopOpacity={0} />
+                <stop
+                  offset="0%"
+                  stopColor={palette.success}
+                  stopOpacity={0.2}
+                />
+                <stop
+                  offset="100%"
+                  stopColor={palette.success}
+                  stopOpacity={0}
+                />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={palette.border} opacity={0.45} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={palette.border}
+              opacity={0.45}
+            />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 10, fill: palette.muted }}
@@ -364,13 +394,126 @@ function ActivityChart({
       </div>
       <div className="mt-2 flex items-center gap-5 text-[10px] text-muted">
         <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full" style={{ background: palette.accent }} />
+          <span
+            className="size-2 rounded-full"
+            style={{ background: palette.accent }}
+          />
           Sessions
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full" style={{ background: palette.success }} />
+          <span
+            className="size-2 rounded-full"
+            style={{ background: palette.success }}
+          />
           Messages
         </span>
+      </div>
+    </GlassCard>
+  )
+}
+
+// ── Model Card ───────────────────────────────────────────────────
+
+function ModelCard({
+  palette,
+}: {
+  palette: ReturnType<typeof readDashboardPalette>
+}) {
+  const sessionsAvailable = useFeatureAvailable('sessions')
+  const configAvailable = useFeatureAvailable('config')
+  const configQuery = useQuery({
+    queryKey: ['hermes-config'],
+    queryFn: async () => {
+      const res = await fetch('/api/hermes-config')
+      if (!res.ok) return null
+      return res.json() as Promise<Record<string, unknown>>
+    },
+    staleTime: 30_000,
+    enabled: configAvailable,
+  })
+  const config = configQuery.data as Record<string, unknown> | undefined
+  const modelName = (config?.activeModel ?? '—') as string
+  const provider = (config?.activeProvider ?? '—') as string
+  const configBlock = config?.config as Record<string, unknown> | undefined
+  const modelBlock = configBlock?.model as Record<string, unknown> | undefined
+  const baseUrl = (modelBlock?.base_url ??
+    configBlock?.base_url ??
+    '') as string
+  const connected = sessionsAvailable
+  const fallbackBlock = config?.fallback_model as
+    | Record<string, unknown>
+    | undefined
+  const fallbackModel = fallbackBlock?.model as string | undefined
+
+  if (!configAvailable) {
+    return (
+      <UnavailableWidget
+        title="Model"
+        description={getUnavailableReason('config')}
+      />
+    )
+  }
+
+  return (
+    <GlassCard
+      title="Model"
+      titleRight={
+        <span
+          className={cn(
+            'inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full',
+            connected
+              ? 'text-emerald-400 bg-emerald-500/10'
+              : 'text-red-400 bg-red-500/10',
+          )}
+        >
+          <span
+            className={cn(
+              'size-1.5 rounded-full',
+              connected ? 'bg-emerald-500' : 'bg-red-500',
+            )}
+          />
+          {connected ? 'Online' : 'Offline'}
+        </span>
+      }
+      accentColor={connected ? palette.success : palette.danger}
+      className="h-full"
+    >
+      <div className="space-y-2">
+        <div className="flex items-center gap-3 rounded-lg p-2.5 bg-[var(--theme-card2)] border border-[var(--theme-border)]">
+          <div
+            className="flex size-7 items-center justify-center rounded-md text-sm"
+            style={{
+              background: alpha(palette.accent, 0.1),
+              color: palette.accent,
+            }}
+          >
+            🤖
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-mono text-[13px] font-bold text-ink truncate">
+              {typeof modelName === 'string' ? modelName : '—'}
+            </div>
+            <div className="text-[10px] text-muted font-mono truncate">
+              {provider}
+              {baseUrl ? ` · ${baseUrl}` : ''}
+            </div>
+          </div>
+        </div>
+        {fallbackModel && (
+          <div className="flex items-center gap-3 rounded-lg p-2.5 bg-[var(--theme-card2)] border border-[var(--theme-border)]">
+            <div className="flex size-7 items-center justify-center rounded-md bg-amber-500/10 text-sm">
+              🔄
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-mono text-[13px] text-ink truncate">
+                {fallbackModel}
+              </div>
+              <div className="text-[10px] text-muted font-mono truncate">
+                {(fallbackBlock?.provider as string) ?? ''}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </GlassCard>
   )
@@ -380,18 +523,16 @@ function ActivityChart({
 
 function SkillsWidget({
   palette,
-  onOpen,
-  usage,
 }: {
   palette: ReturnType<typeof readDashboardPalette>
-  onOpen: () => void
-  usage: DashboardOverview['skillsUsage']
 }) {
   const skillsAvailable = useFeatureAvailable('skills')
   const skillsQuery = useQuery({
-    queryKey: ['claude-skills'],
+    queryKey: ['hermes-skills'],
     queryFn: async () => {
-      const res = await fetch('/api/skills?tab=installed&limit=200&summary=search')
+      const res = await fetch(
+        '/api/skills?tab=installed&limit=8&summary=search',
+      )
       if (!res.ok) return []
       const data = await res.json()
       return (data?.skills ?? []) as Array<Record<string, unknown>>
@@ -411,102 +552,39 @@ function SkillsWidget({
     )
   }
 
-  // Summary view per Hermes Agent feedback: 'don’t enumerate, summarise.'
-  // Prefer real usage signal from /api/analytics/usage when present
-  // (counts what the agent *actually used*, not just what's installed).
-  const installed = skills.length
-  const enabled = skills.filter((s) => s.enabled !== false).length
-  const usedThisWindow = usage?.distinctSkills ?? null
-  const topUsed = usage?.topSkills[0]
-  const topInstalled =
-    skills.find((s) => s.enabled !== false) ?? skills.at(0)
-  const topName = topUsed?.skill ?? String(topInstalled?.name ?? '—')
-
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="group relative flex w-full flex-col gap-1.5 overflow-hidden rounded-xl border px-4 py-3 text-left transition-colors hover:bg-[var(--theme-card)]/80"
-      style={{
-        background: 'var(--theme-card)',
-        borderColor: 'var(--theme-border)',
-      }}
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[2px]"
-        style={{
-          background: `linear-gradient(90deg, ${palette.warning}, ${palette.warning}50, transparent)`,
-        }}
-      />
-      <div className="flex items-center justify-between">
-        <h3
-          className="text-[10px] font-semibold uppercase tracking-[0.18em]"
-          style={{ color: 'var(--theme-muted)' }}
-        >
-          Skills
-        </h3>
-        <span
-          className="font-mono text-[9px] uppercase tracking-[0.15em]"
-          style={{ color: 'var(--theme-muted)' }}
-        >
-          manage →
+    <GlassCard
+      title="Skills"
+      titleRight={
+        <span className="text-[10px] text-muted">
+          {skills.length} installed
         </span>
-      </div>
-      <div
-        className="font-mono text-2xl font-bold tabular-nums leading-none"
-        style={{ color: 'var(--theme-text)' }}
-      >
-        {installed}
-      </div>
-      <div
-        className="font-mono text-[10px] uppercase tracking-[0.1em]"
-        style={{ color: 'var(--theme-muted)' }}
-      >
-        {installed === 0
-          ? 'no skills installed'
-          : usedThisWindow !== null && usedThisWindow > 0
-            ? `${enabled} enabled · ${usedThisWindow} used · top: ${topName}`
-            : `${enabled} enabled · top: ${topName}`}
-      </div>
-    </button>
-  )
-}
-
-// ── Secondary action (smaller, monochrome) ─────────────────────
-
-function SecondaryAction({
-  label,
-  icon,
-  onClick,
-  disabled,
-}: {
-  label: string
-  icon: HugeIcon
-  onClick: () => void
-  disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="group inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold uppercase tracking-[0.05em] transition-all hover:scale-[1.015] hover:bg-[var(--theme-card)]/70 hover:text-[var(--theme-text)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-      style={{
-        borderColor: 'var(--theme-border)',
-        color: 'var(--theme-muted)',
-        background:
-          'linear-gradient(135deg, color-mix(in srgb, var(--theme-card) 80%, transparent), transparent)',
-      }}
+      }
+      accentColor={palette.warning}
     >
-      <HugeiconsIcon
-        icon={icon}
-        size={14}
-        strokeWidth={1.6}
-        className="transition-colors group-hover:text-[var(--theme-accent)]"
-      />
-      <span>{label}</span>
-    </button>
+      {skills.length === 0 ? (
+        <div className="text-xs text-neutral-400 py-4 text-center">
+          No skills installed
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {skills.slice(0, 6).map((skill, i) => (
+            <div
+              key={String(skill.name ?? i)}
+              className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-[var(--theme-card2)] transition-colors"
+            >
+              <span className="text-xs">📦</span>
+              <span className="text-xs font-medium text-ink truncate flex-1">
+                {String(skill.name ?? 'Unnamed')}
+              </span>
+              {skill.enabled !== false && (
+                <span className="size-1.5 rounded-full bg-emerald-500/60" />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </GlassCard>
   )
 }
 
@@ -575,7 +653,7 @@ function SessionRow({
   onClick,
   palette,
 }: {
-  session: ClaudeSession
+  session: HermesSession
   maxTokens: number
   onClick: () => void
   palette: ReturnType<typeof readDashboardPalette>
@@ -632,100 +710,37 @@ function SessionRow({
 
 export function DashboardScreen() {
   const navigate = useNavigate()
+  const sessionsAvailable = useFeatureAvailable('sessions')
   const skillsAvailable = useFeatureAvailable('skills')
   const sessionsQuery = useQuery({
     // Use a dedicated query key — NOT chatQueryKeys.sessions — to avoid
     // cache collisions with the chat sidebar which fetches fewer sessions
     // and overwrites the dashboard's larger dataset.
     // Also use the workspace proxy (/api/sessions) rather than the server-side
-    // listSessions() — the latter calls the gateway via CLAUDE_API which is
+    // listSessions() — the latter calls the gateway via HERMES_API which is
     // only available server-side and returns nothing when called from the client.
-    // Do not gate this direct proof behind /api/gateway-status. That probe can
-    // be stale/loading while /api/sessions already works, which made the
-    // dashboard show a bogus “Enhanced API required” warning even though
-    // sessions were healthy.
     queryKey: ['dashboard', 'sessions'],
     queryFn: async () => {
       const res = await fetch('/api/sessions?limit=200&offset=0')
-      if (!res.ok) {
-        throw new Error(`Sessions API returned HTTP ${res.status}`)
+      if (!res.ok) return []
+      const data = (await res.json()) as {
+        sessions?: Array<Record<string, unknown>>
       }
-      const data = await res.json()
-      return normalizeDashboardSessionsPayload(data)
-    },
-    staleTime: 10_000,
-    refetchInterval: 30_000,
-    retry: 1,
-  })
-
-  const sessionsResult = sessionsQuery.data
-
-  // Raw rows from the sessions endpoint. Used both for hero stats
-  // (count/tokens) and for the SessionsIntelligenceCard below.
-  const rawSessions = sessionsResult?.sessions ?? []
-  const sessionsUnavailable = Boolean(sessionsResult?.unavailable)
-  const sessionsUnavailableMessage =
-    sessionsResult?.message ?? getUnavailableReason('sessions')
-
-  // Adapter shape kept for the legacy fallbacks that still reference
-  // ClaudeSession (HeroMetrics fallback path, etc.).
-  const sessions = useMemo(
-    () =>
-      rawSessions.map((s) => ({
+      return (data.sessions ?? []).map((s) => ({
         id: (s.key ?? s.id) as string,
         started_at: s.startedAt ? (s.startedAt as number) / 1000 : undefined,
         message_count: (s.message_count as number | undefined) ?? 0,
         tool_call_count: (s.tool_call_count as number | undefined) ?? 0,
         input_tokens: (s.tokenCount as number | undefined) ?? 0,
         output_tokens: 0,
-      })) as Array<ClaudeSession>,
-    [rawSessions],
-  )
+      })) as Array<HermesSession>
+    },
+    staleTime: 10_000,
+    refetchInterval: 30_000,
+    enabled: sessionsAvailable,
+  })
 
-  // Enriched rows for the Sessions Intelligence card. Keeps the rich
-  // fields (`derivedTitle`, `kind`, `status`, `source`, `updatedAt`,
-  // etc.) the legacy adapter dropped.
-  const sessionRows: Array<SessionRowData> = useMemo(
-    () =>
-      [...rawSessions]
-        .sort(
-          (a, b) =>
-            ((b.updatedAt as number | undefined) ??
-              (b.startedAt as number | undefined) ??
-              0) -
-            ((a.updatedAt as number | undefined) ??
-              (a.startedAt as number | undefined) ??
-              0),
-        )
-        .slice(0, 12)
-        .map((s) => ({
-          key: String(s.key ?? s.id ?? ''),
-          title:
-            (s.derivedTitle as string | undefined) ||
-            (s.title as string | undefined) ||
-            (s.preview as string | undefined) ||
-            String(s.key ?? ''),
-          kind: String(s.kind ?? 'chat'),
-          status: String(s.status ?? ''),
-          source: (s.source as string | undefined) ?? null,
-          model: (s.model as string | undefined) ?? null,
-          messageCount:
-            ((s.messageCount as number | undefined) ??
-              (s.message_count as number | undefined) ??
-              0),
-          toolCallCount:
-            ((s.toolCallCount as number | undefined) ??
-              (s.tool_call_count as number | undefined) ??
-              0),
-          tokenCount:
-            ((s.tokenCount as number | undefined) ??
-              (s.totalTokens as number | undefined) ??
-              0),
-          startedAt: (s.startedAt as number | undefined) ?? null,
-          updatedAt: (s.updatedAt as number | undefined) ?? null,
-        })),
-    [rawSessions],
-  )
+  const sessions = sessionsQuery.data ?? []
 
   const stats = useMemo(() => {
     let totalMessages = 0,
@@ -761,66 +776,7 @@ export function DashboardScreen() {
     return max
   }, [recentSessions])
 
-  // Skills count for the SkillsUsageCard sub-text. Cheap query, used
-  // only for the "X of Y used" microcopy.
-  const skillsCountQuery = useQuery({
-    queryKey: ['dashboard', 'skills-count'],
-    queryFn: async () => {
-      const res = await fetch(
-        '/api/skills?tab=installed&limit=200&summary=search',
-      )
-      if (!res.ok) return 0
-      const data = (await res.json()) as {
-        skills?: Array<unknown>
-      }
-      return data.skills?.length ?? 0
-    },
-    staleTime: 60_000,
-    enabled: skillsAvailable,
-  })
-  const skillsInstalled = skillsCountQuery.data ?? 0
-
-  // Per-user widget visibility + edit-mode state (localStorage backed).
-  const layout = useDashboardLayout()
-
-  // Period selector for analytics; persists across navigation via
-  // localStorage so refreshes don't reset the operator's preference.
-  const [period, setPeriod] = useState<AnalyticsPeriod>(() => {
-    if (typeof window === 'undefined') return 30
-    const stored = window.localStorage.getItem('dashboard.analyticsPeriod')
-    const n = Number(stored)
-    if (n === 7 || n === 14 || n === 30) return n
-    return 30
-  })
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(
-        'dashboard.analyticsPeriod',
-        String(period),
-      )
-    }
-  }, [period])
-
-  // Aggregate dashboard overview — surfaces the data the native
-  // Hermes dashboard exposes (status, platforms, cron, achievements,
-  // model info, analytics) in a single round trip with per-section
-  // graceful fallbacks. Each card renders only when its slice resolves.
-  const overviewQuery = useQuery<DashboardOverview>({
-    queryKey: ['dashboard', 'overview', period],
-    queryFn: async () => {
-      // achievements=5 (instead of 3) gives the Achievements rail
-      // card enough vertical mass to fill the gap below Top Models.
-      const res = await fetch(
-        `/api/dashboard/overview?days=${period}&achievements=5`,
-      )
-      if (!res.ok) throw new Error(`overview ${res.status}`)
-      return (await res.json()) as DashboardOverview
-    },
-    staleTime: 5_000,
-    refetchInterval: 30_000,
-  })
-  const overview = overviewQuery.data ?? null
-
+  const costEstimate = `~$${((stats.totalTokens / 1_000_000) * 5).toFixed(2)}`
   const palette = useDashboardPalette()
 
   const updateSettings = useSettingsStore((state) => state.updateSettings)
@@ -833,15 +789,30 @@ export function DashboardScreen() {
   return (
     <div className="min-h-full">
       {/* Floating mobile nav: hamburger left, theme toggle right */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-2 h-12" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      <div
+        className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-2 h-12"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
         <button
           type="button"
           aria-label="Open navigation menu"
           onClick={openHamburgerMenu}
           className="flex items-center justify-center w-11 h-11 rounded-xl active:bg-white/10 transition-colors touch-manipulation"
         >
-          <svg width="20" height="16" viewBox="0 0 20 16" fill="none" className="opacity-70" style={{ color: 'var(--color-ink, #111)' }}>
-            <path d="M1 1.5H19M1 8H19M1 14.5H13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <svg
+            width="20"
+            height="16"
+            viewBox="0 0 20 16"
+            fill="none"
+            className="opacity-70"
+            style={{ color: 'var(--color-ink, #111)' }}
+          >
+            <path
+              d="M1 1.5H19M1 8H19M1 14.5H13"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            />
           </svg>
         </button>
         <button
@@ -849,18 +820,26 @@ export function DashboardScreen() {
           aria-label="Toggle theme"
           onClick={() => {
             const LIGHT_DARK_PAIRS: Record<string, string> = {
-              'claude-nous': 'claude-nous-light',
-              'claude-nous-light': 'claude-nous',
-              'claude-official': 'claude-official-light',
-              'claude-official-light': 'claude-official',
-              'claude-classic': 'claude-classic-light',
-              'claude-classic-light': 'claude-classic',
-              'claude-slate': 'claude-slate-light',
-              'claude-slate-light': 'claude-slate',
+              'hermes-nous': 'hermes-nous-light',
+              'hermes-nous-light': 'hermes-nous',
+              'hermes-official': 'hermes-official-light',
+              'hermes-official-light': 'hermes-official',
+              'hermes-classic': 'hermes-classic-light',
+              'hermes-classic-light': 'hermes-classic',
+              'hermes-slate': 'hermes-slate-light',
+              'hermes-slate-light': 'hermes-slate',
+              semantier: 'semantier-light',
+              'semantier-light': 'semantier',
             }
-            const cur = document.documentElement.getAttribute('data-theme') || 'claude-official'
-            const nextDataTheme = LIGHT_DARK_PAIRS[cur] || (isDark ? 'claude-official-light' : 'claude-official')
-            import('@/lib/theme').then(({ setTheme }) => { setTheme(nextDataTheme as any) })
+            const cur =
+              document.documentElement.getAttribute('data-theme') ||
+              'semantier'
+            const nextDataTheme =
+              LIGHT_DARK_PAIRS[cur] ||
+              (isDark ? 'semantier-light' : 'semantier')
+            import('@/lib/theme').then(({ setTheme }) => {
+              setTheme(nextDataTheme as any)
+            })
             const nextMode = nextDataTheme.endsWith('-light') ? 'light' : 'dark'
             applyTheme(nextMode)
             updateSettings({ theme: nextMode })
@@ -869,334 +848,173 @@ export function DashboardScreen() {
           className="flex items-center justify-center w-11 h-11 rounded-xl active:bg-white/10 transition-colors touch-manipulation"
           style={{ color: 'var(--theme-muted)' }}
         >
-          <HugeiconsIcon icon={isDark ? Sun02Icon : Moon02Icon} size={20} strokeWidth={1.5} />
+          <HugeiconsIcon
+            icon={isDark ? Sun02Icon : Moon02Icon}
+            size={20}
+            strokeWidth={1.5}
+          />
         </button>
       </div>
       <div className="px-4 pt-14 md:pt-4 py-4 md:px-8 md:py-6 lg:px-10 space-y-5 pb-28">
-      {/* ── Header: brand lockup left, action cluster right.
-           Iteration 010: dropped redundant "Dashboard" eyebrow (the
-           page IS the dashboard); promoted "Hermes Workspace" to
-           the primary heading at a larger weight. Logo bumped from
-           36px → 44px and gets a soft accent glow + ring so the
-           lockup commands the left side instead of feeling like
-           filler before the action cluster. Kept anchored left
-           (not centered) on purpose: ops dashboards put brand left
-           + actions right because that's the spatial hierarchy
-           operators expect (Linear, Vercel, Datadog all do this). */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          <span
-            className="relative inline-flex shrink-0 items-center justify-center rounded-xl border"
+        {/* ── Header: Hermes Logo + Quick Actions ── */}
+        <div className="flex flex-col items-center gap-3 py-3">
+          <img
+            src="/logo.svg"
+            alt="semantier logo"
+            className="relative size-20 rounded-xl"
             style={{
-              width: 44,
-              height: 44,
-              borderColor:
-                'color-mix(in srgb, var(--theme-accent) 35%, var(--theme-border))',
-              background:
-                'linear-gradient(135deg, color-mix(in srgb, var(--theme-accent) 14%, var(--theme-card)), var(--theme-card))',
-              boxShadow:
-                '0 0 0 4px color-mix(in srgb, var(--theme-accent) 6%, transparent)',
+              border: '0px solid var(--theme-border)',
+              padding: '4px',
+              background: 'var(--theme-card)',
             }}
+          />
+          <p
+            className="brand-wordmark text-[11px] font-semibold"
+            style={{ color: 'var(--theme-muted)' }}
           >
-            <img
-              src="/claude-avatar.webp"
-              alt="Hermes Workspace logo"
-              className="size-8 rounded-md"
-              style={{ background: 'transparent' }}
+            semantier
+          </p>
+          <div className="mt-1 grid w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4">
+            <QuickAction
+              label="New Chat"
+              icon="💬"
+              accentColor={palette.accent}
+              onClick={() =>
+                navigate({
+                  to: '/chat/$sessionKey',
+                  params: { sessionKey: 'new' },
+                })
+              }
             />
-          </span>
-          {/* Iter 011: dropped the 'Operator console · vX.Y.Z'
-              eyebrow. The gateway version is already on the OpsStrip
-              (♦ GATEWAY V0.12.0), so the eyebrow was duplicating it.
-              Single bold lockup feels cleaner; vertical centering on
-              the lockup matches the height of the action cluster on
-              the right so they don't visually drift. */}
-          <div className="flex flex-col justify-center">
-            <h1
-              className="text-2xl font-bold tracking-tight"
-              style={{
-                color: 'var(--theme-text)',
-                letterSpacing: '-0.015em',
-                lineHeight: 1.1,
-              }}
-            >
-              Hermes Workspace
-            </h1>
+            <QuickAction
+              label="Terminal"
+              icon="💻"
+              accentColor={palette.success}
+              onClick={() => navigate({ to: '/terminal' })}
+            />
+            <QuickAction
+              label="Skills"
+              icon="🧩"
+              accentColor={palette.warning}
+              onClick={() => navigate({ to: '/skills' })}
+              disabled={!skillsAvailable}
+              badge={!skillsAvailable ? 'Enhanced' : undefined}
+            />
+            <QuickAction
+              label="Settings"
+              icon="⚙️"
+              accentColor={palette.accentSecondary}
+              onClick={() => navigate({ to: '/settings' })}
+            />
           </div>
         </div>
-        {/* Action row: hierarchy per Hermes Agent review.
-           New Chat is primary (full button + accent), Terminal +
-           Skills are secondary, Settings collapses to icon-only. */}
-        <div className="flex w-full flex-wrap items-center gap-2 lg:justify-end lg:max-w-xl">
-          <button
-            type="button"
-            onClick={() =>
-              navigate({
-                to: '/chat/$sessionKey',
-                params: { sessionKey: 'new' },
-              })
-            }
-            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.05em] transition-all hover:scale-[1.02] active:scale-[0.99] sm:px-3.5 sm:py-2 sm:text-sm"
-            style={{
-              background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentSecondary})`,
-              color: 'var(--theme-on-accent, white)',
-              boxShadow: `0 6px 18px -8px ${palette.accent}aa, inset 0 1px 0 0 rgba(255,255,255,0.18)`,
-            }}
-          >
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100"
-              style={{
-                background:
-                  'linear-gradient(135deg, rgba(255,255,255,0.15), transparent 60%)',
-              }}
+
+        {/* ── Metrics Row ── */}
+        {sessionsAvailable ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <MetricTile
+              label="Sessions"
+              value={formatNumber(stats.totalSessions)}
+              icon="💬"
+              accentColor={palette.accent}
             />
-            <HugeiconsIcon
-              icon={BubbleChatAddIcon}
-              size={16}
-              strokeWidth={1.8}
+            <MetricTile
+              label="Messages"
+              value={formatNumber(stats.totalMessages)}
+              icon="✉️"
+              accentColor={palette.success}
             />
-            <span>New Chat</span>
-          </button>
-          <SecondaryAction
-            label="Terminal"
-            icon={ConsoleIcon}
-            onClick={() => navigate({ to: '/terminal' })}
+            <MetricTile
+              label="Tool Calls"
+              value={formatNumber(stats.totalToolCalls)}
+              icon="🔧"
+              accentColor={palette.warning}
+            />
+            <MetricTile
+              label="Tokens"
+              value={formatNumber(stats.totalTokens)}
+              sub={costEstimate}
+              icon="⚡"
+              accentColor={palette.accentSecondary}
+            />
+          </div>
+        ) : (
+          <UnavailableWidget
+            title="Workspace Analytics"
+            description={getUnavailableReason('sessions')}
           />
-          <SecondaryAction
-            label="Skills"
-            icon={PuzzleIcon}
-            onClick={() => navigate({ to: '/skills' })}
-            disabled={!skillsAvailable}
-          />
-          {/* Edit toggle: enters "layout edit mode" where each widget
-              shows an X button and a banner appears for re-adding
-              hidden widgets. Persisted to localStorage. */}
-          <button
-            type="button"
-            aria-label={layout.editMode ? 'Done editing layout' : 'Edit layout'}
-            title={layout.editMode ? 'Done editing layout' : 'Edit layout'}
-            onClick={layout.toggleEdit}
-            className="inline-flex size-9 items-center justify-center rounded-lg border transition-all hover:scale-[1.05] hover:bg-[var(--theme-card)]/70"
-            style={{
-              borderColor: layout.editMode
-                ? 'var(--theme-accent)'
-                : 'var(--theme-border)',
-              background: layout.editMode
-                ? 'color-mix(in srgb, var(--theme-accent) 14%, transparent)'
-                : 'linear-gradient(135deg, color-mix(in srgb, var(--theme-card) 80%, transparent), transparent)',
-              color: layout.editMode
-                ? 'var(--theme-accent)'
-                : 'var(--theme-muted)',
-            }}
-          >
-            <HugeiconsIcon
-              icon={layout.editMode ? CheckmarkCircle02Icon : Edit02Icon}
-              size={15}
-              strokeWidth={1.7}
-            />
-          </button>
-          <button
-            type="button"
-            aria-label="Settings"
-            title="Settings"
-            onClick={() => navigate({ to: '/settings', search: {} })}
-            className="inline-flex size-9 items-center justify-center rounded-lg border transition-all hover:scale-[1.05] hover:bg-[var(--theme-card)]/70 hover:text-[var(--theme-text)]"
-            style={{
-              borderColor: 'var(--theme-border)',
-              color: 'var(--theme-muted)',
-              background:
-                'linear-gradient(135deg, color-mix(in srgb, var(--theme-card) 80%, transparent), transparent)',
-            }}
-          >
-            <HugeiconsIcon
-              icon={Settings02Icon}
-              size={15}
-              strokeWidth={1.7}
-            />
-          </button>
-        </div>
-      </div>
+        )}
 
-      {/* ── Attention marquee ──
-           Iteration 008: lifted *out* of the OpsStrip into its own
-           dedicated row above it. Fixed Eric's 'feels cluttered'
-           concern by giving the ticker its own visual chamber
-           (warning gradient, separated border) so it doesn't blend
-           into the gateway/version/cron line below it. */}
-      {(overview?.incidents.length ?? 0) > 0 ? (
-        <AttentionMarquee overview={overview ?? null} />
-      ) : null}
-
-      {/* ── Ops strip (gateway + version drift + platforms + cron pulse). ── */}
-      <OpsStrip
-        status={overview?.status ?? null}
-        cron={overview?.cron ?? null}
-        kanban={overview?.kanban ?? null}
-        platforms={overview?.platforms ?? []}
-      />
-
-      {/* ── Hero Metrics: 3 analytics tiles + Active Model KPI in slot 4 ── */}
-      <HeroMetrics
-        analytics={overview?.analytics ?? null}
-        fallback={{
-          sessions: stats.totalSessions,
-          messages: stats.totalMessages,
-          toolCalls: stats.totalToolCalls,
-          tokens: stats.totalTokens,
-        }}
-        extraTile={
-          <ActiveModelKpi
-            modelInfo={overview?.modelInfo ?? null}
-            analytics={overview?.analytics ?? null}
-          />
-        }
-      />
-
-      {/* ── Edit-mode banner (only renders when toggled). ── */}
-      <EditModePanel layout={layout} />
-
-      {/* ── Analytics chart (left) + Top models / Provider mix / Cache
-           efficiency stacked on the right. The right-side stack now
-           occupies the full vertical of the chart so we don't get the
-           floating-card empty-space Eric flagged in iter 008. ── */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
-        {layout.isVisible('analytics_chart') ? (
-          <div className="lg:col-span-8">
-            <WidgetShell id="analytics_chart" layout={layout}>
-              <AnalyticsChartCard
-                analytics={overview?.analytics ?? null}
-                insights={overview?.insights ?? []}
-                period={period}
-                onPeriodChange={setPeriod}
-                loading={overviewQuery.isFetching}
+        {/* ── Charts + Model + Skills ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+          <div className="lg:col-span-5">
+            {sessionsAvailable ? (
+              <ActivityChart sessions={sessions} palette={palette} />
+            ) : (
+              <UnavailableWidget
+                title="Activity"
+                description={getUnavailableReason('sessions')}
               />
-            </WidgetShell>
+            )}
           </div>
-        ) : null}
-        {layout.isVisible('top_models') ||
-        layout.isVisible('provider_mix') ||
-        layout.isVisible('cache_efficiency') ||
-        layout.isVisible('velocity') ||
-        layout.isVisible('cost_ledger') ? (
-          <div
-            className={
-              layout.isVisible('analytics_chart')
-                ? 'flex flex-col gap-3 lg:col-span-4'
-                : 'flex flex-col gap-3 lg:col-span-12'
-            }
-          >
-            {layout.isVisible('top_models') ? (
-              <WidgetShell id="top_models" layout={layout}>
-                <TopModelsCard analytics={overview?.analytics ?? null} />
-              </WidgetShell>
-            ) : null}
-            {layout.isVisible('cache_efficiency') ? (
-              <WidgetShell id="cache_efficiency" layout={layout}>
-                <CacheEfficiencyCard
-                  analytics={overview?.analytics ?? null}
-                />
-              </WidgetShell>
-            ) : null}
-            {layout.isVisible('provider_mix') ? (
-              <WidgetShell id="provider_mix" layout={layout}>
-                <ProviderMixCard analytics={overview?.analytics ?? null} />
-              </WidgetShell>
-            ) : null}
-            {layout.isVisible('velocity') ? (
-              <WidgetShell id="velocity" layout={layout}>
-                <VelocityCard analytics={overview?.analytics ?? null} />
-              </WidgetShell>
-            ) : null}
-            {layout.isVisible('cost_ledger') ? (
-              <WidgetShell id="cost_ledger" layout={layout}>
-                <CostLedgerCard
-                  analytics={overview?.analytics ?? null}
-                />
-              </WidgetShell>
-            ) : null}
+          <div className="lg:col-span-4">
+            <ModelCard palette={palette} />
           </div>
-        ) : null}
-      </div>
+          <div className="lg:col-span-3">
+            <SkillsWidget palette={palette} />
+          </div>
+        </div>
 
-      {/* ── Primary content: Sessions Intelligence (replaces 14d Activity) + side rail ──
-           Iteration 006 layout per Eric:
-           - Attention now rides the OpsStrip marquee, not the rail.
-           - Achievements moved up to sit beside Top Models would push the chart out
-             of place; instead it now lives at the *top* of the side rail since the
-             rail itself is right of the chart, which produces the same visual order.
-           - Logs default off; still toggleable from edit mode for power users. */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
-        {/* Iter 013 main column order: Operator Tip first (compact),
-            then Sessions Intelligence (the bottom anchor that grows
-            to fill the column to match the side rail height), then
-            optional Logs Tail at the bottom for power users in edit
-            mode. The column itself is `min-h-full flex` so the
-            child Sessions card's `flex-1` actually expands. */}
-        <div className="flex min-h-full flex-col gap-3 lg:col-span-8">
-          {layout.isVisible('operator_tip') ? (
-            <WidgetShell id="operator_tip" layout={layout}>
-              <OperatorTipCard overview={overview ?? null} />
-            </WidgetShell>
-          ) : null}
-          {layout.isVisible('sessions_intelligence') ? (
-            <div className="flex min-h-0 flex-1 flex-col">
-              <WidgetShell id="sessions_intelligence" layout={layout}>
-                {sessionsQuery.isError || sessionsUnavailable ? (
-                  <UnavailableWidget
-                    title="Recent Sessions"
-                    description={
-                      sessionsQuery.isError
-                        ? getUnavailableReason('sessions')
-                        : sessionsUnavailableMessage
+        {/* ── Recent Sessions (minimal) ── */}
+        {sessionsAvailable ? (
+          <GlassCard
+            title="Recent Sessions"
+            titleRight={
+              <button
+                type="button"
+                className="text-[10px] text-muted hover:text-neutral-300 transition-colors"
+                onClick={() =>
+                  navigate({
+                    to: '/chat/$sessionKey',
+                    params: { sessionKey: 'main' },
+                  })
+                }
+              >
+                View all →
+              </button>
+            }
+            accentColor={palette.accent}
+            noPadding
+          >
+            <div className="py-1">
+              {recentSessions.length === 0 ? (
+                <div className="text-xs text-neutral-400 py-8 text-center">
+                  No sessions yet — start a chat!
+                </div>
+              ) : (
+                recentSessions.map((s) => (
+                  <SessionRow
+                    key={s.id}
+                    session={s}
+                    maxTokens={maxTokens}
+                    palette={palette}
+                    onClick={() =>
+                      navigate({
+                        to: '/chat/$sessionKey',
+                        params: { sessionKey: s.id },
+                      })
                     }
                   />
-                ) : (
-                  <SessionsIntelligenceCard sessions={sessionRows} />
-                )}
-              </WidgetShell>
+                ))
+              )}
             </div>
-          ) : null}
-          {layout.isVisible('logs_tail') ? (
-            <WidgetShell id="logs_tail" layout={layout}>
-              <LogsTailCard logs={overview?.logs ?? null} />
-            </WidgetShell>
-          ) : null}
-        </div>
-        {/* Side rail. Achievements is now first (sits beside Top Models
-            visually since the rail is right of the chart row + sessions),
-            then Skills, then the rhythm card. Mix & rhythm is the unique
-            chart in this column — keeping it.
-            `min-h-full` + the trailing `flex-1` rhythm card together
-            stretch the rail to match Sessions Intelligence height so
-            we don't get the dangling gap Eric flagged in iter 007. */}
-        <div className="flex min-h-full flex-col gap-3 lg:col-span-4">
-          <WidgetShell id="achievements" layout={layout}>
-            <AchievementsCard
-              achievements={overview?.achievements ?? null}
-            />
-          </WidgetShell>
-          <WidgetShell id="skills_usage" layout={layout}>
-            <SkillsUsageCard
-              usage={overview?.skillsUsage ?? null}
-              installedCount={skillsInstalled}
-              onOpen={() => navigate({ to: '/skills' })}
-            />
-          </WidgetShell>
-          {/* `flex-1` here pushes the rhythm card to consume any
-              remaining vertical space so the rail's bottom aligns
-              with Sessions Intelligence. The card itself uses
-              h-full + flex-1 to honor the stretch. */}
-          <div className="flex min-h-0 flex-1 flex-col">
-            <WidgetShell id="mix_rhythm" layout={layout}>
-              <TokenMixHourCard
-                analytics={overview?.analytics ?? null}
-                sessions={sessionRows}
-              />
-            </WidgetShell>
-          </div>
-        </div>
-      </div>
+          </GlassCard>
+        ) : (
+          <UnavailableWidget
+            title="Recent Sessions"
+            description={getUnavailableReason('sessions')}
+          />
+        )}
       </div>
     </div>
   )

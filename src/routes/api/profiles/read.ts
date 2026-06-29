@@ -1,20 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../../server/auth-middleware'
-import { readProfileWithFallback } from '../../../server/profiles-browser'
+import path from 'node:path'
+import { readProfile } from '../../../server/profiles-browser'
+import { resolveActiveWorkspaceRoot } from '../../../server/workspace-root'
 
 export const Route = createFileRoute('/api/profiles/read')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ error: 'Unauthorized' }, { status: 401 })
-        }
         try {
           const url = new URL(request.url)
           const name = (url.searchParams.get('name') || '').trim() || 'default'
-          const profile = await readProfileWithFallback(name)
-          return json({ profile })
+          const workspace = await resolveActiveWorkspaceRoot(request.headers)
+          const hermesHome =
+            workspace.hermesHome || path.join(workspace.path, '.hermes')
+          return json({ profile: readProfile(name, hermesHome) })
         } catch (error) {
           return json(
             {

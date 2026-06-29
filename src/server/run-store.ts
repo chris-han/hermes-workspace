@@ -1,7 +1,7 @@
-import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
-import { getHermesRoot } from './claude-paths'
+import { resolveWorkspaceAppStateRoot } from './workspace-root'
 
 export type PersistedRunToolCall = {
   id: string
@@ -34,59 +34,92 @@ export type PersistedRunState = {
   errorMessage?: string
 }
 
-const RUNS_ROOT = path.join(getHermesRoot(), 'webui-mvp', 'runs')
-const runUpdateQueues = new Map<string, Promise<void>>()
+const TERMINAL_RUN_STATUSES = new Set<PersistedRunState['status']>([
+  'complete',
+  'error',
+])
 
-function encodeSessionKey(sessionKey: string): string {
-  return encodeURIComponent(sessionKey || 'main')
+function isTerminalRunStatus(status: PersistedRunState['status']): boolean {
+  return TERMINAL_RUN_STATUSES.has(status)
 }
 
-function sessionDir(sessionKey: string): string {
-  return path.join(RUNS_ROOT, encodeSessionKey(sessionKey))
+function rawSessionKey(sessionKey: string): string {
+  return sessionKey || 'main'
 }
 
-function runPath(sessionKey: string, runId: string): string {
-  return path.join(sessionDir(sessionKey), `${runId}.json`)
+function localSessionKey(workspaceRoot: string, sessionKey: string): string {
+  const raw = rawSessionKey(sessionKey)
+  const workspaceId = path.basename(path.resolve(workspaceRoot))
+  const workspacePrefix = `${workspaceId}:`
+  return raw.startsWith(workspacePrefix)
+    ? raw.slice(workspacePrefix.length)
+    : raw
+}
+
+function sessionDir(workspaceRoot: string, sessionKey: string): string {
+  return path.join(
+    workspaceRoot,
+    'sessions',
+    encodeURIComponent(localSessionKey(workspaceRoot, sessionKey)),
+    'runs',
+  )
+}
+
+function legacySessionDirs(
+  workspaceRoot: string,
+  sessionKey: string,
+): Array<string> {
+  const appRunsRoot = path.join(
+    resolveWorkspaceAppStateRoot(workspaceRoot),
+    'runs',
+  )
+  const encodedKeys = new Set([
+    encodeURIComponent(rawSessionKey(sessionKey)),
+    encodeURIComponent(localSessionKey(workspaceRoot, sessionKey)),
+  ])
+  return Array.from(encodedKeys).map((key) => path.join(appRunsRoot, key))
+}
+
+function runPath(
+  workspaceRoot: string,
+  sessionKey: string,
+  runId: string,
+): string {
+  return path.join(sessionDir(workspaceRoot, sessionKey), `${runId}.json`)
+}
+
+function runPathsForRead(
+  workspaceRoot: string,
+  sessionKey: string,
+  runId: string,
+): Array<string> {
+  return [
+    runPath(workspaceRoot, sessionKey, runId),
+    ...legacySessionDirs(workspaceRoot, sessionKey).map((dir) =>
+      path.join(dir, `${runId}.json`),
+    ),
+  ]
 }
 
 async function ensureDir(dir: string): Promise<void> {
   await mkdir(dir, { recursive: true })
 }
 
-async function writeRun(run: PersistedRunState): Promise<void> {
-  const dir = sessionDir(run.sessionKey)
+async function writeRun(
+  workspaceRoot: string,
+  run: PersistedRunState,
+): Promise<void> {
+  const dir = sessionDir(workspaceRoot, run.sessionKey)
   await ensureDir(dir)
-  const targetPath = runPath(run.sessionKey, run.runId)
-  const tempPath = `${targetPath}.${process.pid}.${Date.now()}.${Math.random()
-    .toString(36)
-    .slice(2)}.tmp`
-  await writeFile(tempPath, `${JSON.stringify(run, null, 2)}\n`, 'utf8')
-  await rename(tempPath, targetPath)
-}
-
-async function enqueueRunUpdate<T>(
-  sessionKey: string,
-  runId: string,
-  work: () => Promise<T>,
-): Promise<T> {
-  const key = `${encodeSessionKey(sessionKey)}:${runId}`
-  const previous = runUpdateQueues.get(key) ?? Promise.resolve()
-  const current = previous.catch(() => undefined).then(work)
-  const marker = current.then(
-    () => undefined,
-    () => undefined,
+  await writeFile(
+    runPath(workspaceRoot, run.sessionKey, run.runId),
+    `${JSON.stringify(run, null, 2)}\n`,
+    'utf8',
   )
-  runUpdateQueues.set(key, marker)
-  try {
-    return await current
-  } finally {
-    if (runUpdateQueues.get(key) === marker) {
-      runUpdateQueues.delete(key)
-    }
-  }
 }
 
 export async function createPersistedRun(input: {
+  workspaceRoot: string
   runId: string
   sessionKey: string
   friendlyId?: string
@@ -105,80 +138,93 @@ export async function createPersistedRun(input: {
     toolCalls: [],
     lifecycleEvents: [],
   }
-  await writeRun(run)
+  await writeRun(input.workspaceRoot, run)
   return run
 }
 
 export async function getPersistedRun(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
 ): Promise<PersistedRunState | null> {
-  try {
-    const raw = await readFile(runPath(sessionKey, runId), 'utf8')
-    return JSON.parse(raw) as PersistedRunState
-  } catch {
-    return null
+  for (const candidate of runPathsForRead(workspaceRoot, sessionKey, runId)) {
+    try {
+      const raw = await readFile(candidate, 'utf8')
+      return JSON.parse(raw) as PersistedRunState
+    } catch {
+      continue
+    }
   }
+  return null
 }
 
 export async function updatePersistedRun(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
   updater: (run: PersistedRunState) => PersistedRunState,
 ): Promise<PersistedRunState | null> {
-  return enqueueRunUpdate(sessionKey, runId, async () => {
-    const current = await getPersistedRun(sessionKey, runId)
-    if (!current) return null
-    const next = updater(current)
-    next.updatedAt = Date.now()
-    await writeRun(next)
-    return next
-  })
+  const current = await getPersistedRun(workspaceRoot, sessionKey, runId)
+  if (!current) return null
+  const next = updater(current)
+  next.updatedAt = Date.now()
+  await writeRun(workspaceRoot, next)
+  return next
 }
 
 export async function appendRunText(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
   text: string,
   options?: { replace?: boolean },
 ): Promise<PersistedRunState | null> {
-  return updatePersistedRun(sessionKey, runId, (run) => ({
+  return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => ({
     ...run,
-    status: 'active',
+    status: isTerminalRunStatus(run.status) ? run.status : 'active',
     lastEventAt: Date.now(),
     assistantText: options?.replace ? text : `${run.assistantText}${text}`,
   }))
 }
 
 export async function setRunThinking(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
   thinkingText: string,
 ): Promise<PersistedRunState | null> {
-  return updatePersistedRun(sessionKey, runId, (run) => ({
+  return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => ({
     ...run,
-    status: 'active',
+    status: isTerminalRunStatus(run.status) ? run.status : 'active',
     lastEventAt: Date.now(),
     thinkingText,
   }))
 }
 
 export async function upsertRunToolCall(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
   toolCall: PersistedRunToolCall,
 ): Promise<PersistedRunState | null> {
-  return updatePersistedRun(sessionKey, runId, (run) => {
+  return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => {
     const nextToolCalls = [...run.toolCalls]
     const idx = nextToolCalls.findIndex((entry) => entry.id === toolCall.id)
     if (idx >= 0) nextToolCalls[idx] = { ...nextToolCalls[idx], ...toolCall }
     else nextToolCalls.push(toolCall)
+    const nextStatus = isTerminalRunStatus(run.status)
+      ? run.status
+      : toolCall.phase === 'error'
+        ? 'error'
+        : 'active'
     return {
       ...run,
-      status: toolCall.phase === 'error' ? 'error' : 'active',
+      status: nextStatus,
       lastEventAt: Date.now(),
       toolCalls: nextToolCalls,
-      ...(toolCall.phase === 'error' && toolCall.result
+      ...(nextStatus === 'error' &&
+      toolCall.phase === 'error' &&
+      toolCall.result
         ? { errorMessage: toolCall.result }
         : {}),
     }
@@ -186,11 +232,12 @@ export async function upsertRunToolCall(
 }
 
 export async function addRunLifecycleEvent(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
   event: PersistedRunLifecycleEvent,
 ): Promise<PersistedRunState | null> {
-  return updatePersistedRun(sessionKey, runId, (run) => ({
+  return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => ({
     ...run,
     lastEventAt: Date.now(),
     lifecycleEvents: [...run.lifecycleEvents, event].slice(-40),
@@ -198,73 +245,55 @@ export async function addRunLifecycleEvent(
 }
 
 export async function markRunStatus(
+  workspaceRoot: string,
   sessionKey: string,
   runId: string,
   status: PersistedRunState['status'],
   errorMessage?: string,
 ): Promise<PersistedRunState | null> {
-  return updatePersistedRun(sessionKey, runId, (run) => ({
+  return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => ({
     ...run,
-    status,
+    status:
+      isTerminalRunStatus(run.status) && !isTerminalRunStatus(status)
+        ? run.status
+        : status,
     lastEventAt: Date.now(),
     ...(errorMessage ? { errorMessage } : {}),
   }))
 }
 
-// A run that hasn't been touched in this long is considered orphaned (e.g.
-// the agent process crashed, the network dropped silently, or the user
-// navigated away during a `handoff` that never resolved). Treating these as
-// "active" makes every chat re-open show a phantom "Thinking…" indicator
-// until the 120s client-side failsafe clears it.
-const STALE_RUN_THRESHOLD_MS = 5 * 60 * 1000
-
-async function readRunsInDir(dir: string): Promise<Array<PersistedRunState>> {
-  const files = (await readdir(dir)).filter((name) => name.endsWith('.json'))
-  if (files.length === 0) return []
-  const runs = await Promise.all(
-    files.map(async (name) => {
-      try {
-        const raw = await readFile(path.join(dir, name), 'utf8')
-        return JSON.parse(raw) as PersistedRunState
-      } catch {
-        return null
-      }
-    }),
-  )
-  return runs.filter((run): run is PersistedRunState => Boolean(run))
-}
-
 export async function getActiveRunForSession(
+  workspaceRoot: string,
   sessionKey: string,
 ): Promise<PersistedRunState | null> {
-  try {
-    const runs = await readRunsInDir(sessionDir(sessionKey))
-    const now = Date.now()
-    const candidates = runs
-      .filter((run) => !['complete', 'error'].includes(run.status))
-      .filter((run) => now - run.updatedAt < STALE_RUN_THRESHOLD_MS)
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-    return candidates[0] ?? null
-  } catch {
-    return null
+  const dirs = [
+    sessionDir(workspaceRoot, sessionKey),
+    ...legacySessionDirs(workspaceRoot, sessionKey),
+  ]
+  const runs: Array<PersistedRunState | null> = []
+  for (const dir of dirs) {
+    try {
+      const files = (await readdir(dir)).filter((name) =>
+        name.endsWith('.json'),
+      )
+      const dirRuns = await Promise.all(
+        files.map(async (name) => {
+          try {
+            const raw = await readFile(path.join(dir, name), 'utf8')
+            return JSON.parse(raw) as PersistedRunState
+          } catch {
+            return null
+          }
+        }),
+      )
+      runs.push(...dirRuns)
+    } catch {
+      continue
+    }
   }
-}
-
-// Lists every non-complete/error run across all sessions, regardless of
-// staleness. Powers the "Background runs" panel so users can inspect and
-// abandon orphans that the staleness filter hides from the chat UI.
-export async function listAllActiveRuns(): Promise<Array<PersistedRunState>> {
-  try {
-    const entries = await readdir(RUNS_ROOT, { withFileTypes: true })
-    const sessionDirs = entries
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => path.join(RUNS_ROOT, entry.name))
-    const runsBySession = await Promise.all(sessionDirs.map(readRunsInDir))
-    return runsBySession
-      .flat()
-      .filter((run) => !['complete', 'error'].includes(run.status))
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-  } catch {
-    return []
-  }
+  const candidates = runs
+    .filter((run): run is PersistedRunState => Boolean(run))
+    .filter((run) => !['complete', 'error'].includes(run.status))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+  return candidates[0] ?? null
 }

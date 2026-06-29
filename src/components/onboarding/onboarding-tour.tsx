@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Joyride, { ACTIONS, STATUS } from 'react-joyride'
+import { shouldCompleteOnboardingTour } from './onboarding-tour-utils'
+import Joyride from 'react-joyride'
 import { tourSteps } from './tour-steps'
 import type { CallBackProps, Styles } from 'react-joyride'
 import { useSettingsStore } from '@/hooks/use-settings'
 import { useResolvedTheme } from '@/hooks/use-chat-settings'
 
-const TOUR_STORAGE_KEY = 'claude-onboarding-completed'
+const TOUR_STORAGE_KEY = 'hermes-onboarding-completed'
 
 // Accent color mapping to hex values
 const ACCENT_COLORS = {
@@ -15,14 +16,6 @@ const ACCENT_COLORS = {
   purple: '#a855f7',
   blue: '#3b82f6',
   green: '#10b981',
-}
-
-export function shouldCompleteOnboardingTour(
-  action: string,
-  status: string,
-): boolean {
-  const finishedStatuses: Array<string> = [STATUS.FINISHED, STATUS.SKIPPED]
-  return finishedStatuses.includes(status) || action === ACTIONS.CLOSE
 }
 
 export function OnboardingTour() {
@@ -45,11 +38,11 @@ export function OnboardingTour() {
       if (hasCompletedTour) return
 
       // Wait for setup wizard to finish before starting tour
-      const CLAUDE_SETUP_KEY = 'claude-configured'
+      const HERMES_SETUP_KEY = 'hermes-configured'
       const checkAndStart = () => {
-        const claudeConfigured =
-          localStorage.getItem(CLAUDE_SETUP_KEY) === 'true'
-        if (claudeConfigured) {
+        const hermesConfigured =
+          localStorage.getItem(HERMES_SETUP_KEY) === 'true'
+        if (hermesConfigured) {
           setRun(true)
           return true
         }

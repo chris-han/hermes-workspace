@@ -1,6 +1,4 @@
-import { streamChat } from './claude-api'
-import { resolveChatBackend } from './chat-mode'
-import { openaiChat } from './openai-compat-api'
+import { streamChat } from './hermes-api'
 
 export type ChatMessage = {
   role: string
@@ -16,7 +14,7 @@ export type UnifiedChatOptions = {
   attachments?: Array<Record<string, unknown>>
 }
 
-async function* streamClaudeChat(
+async function* streamHermesChat(
   messages: Array<ChatMessage>,
   options: UnifiedChatOptions,
 ): AsyncGenerator<string, void, void> {
@@ -100,57 +98,22 @@ export async function sendChatUnified(
   messages: Array<ChatMessage>,
   options: UnifiedChatOptions = {},
 ): Promise<string> {
-  const backend = resolveChatBackend()
-
-  if (backend === 'openai-compat') {
-    return openaiChat(messages, {
-      model: options.model,
-      temperature: options.temperature,
-      signal: options.signal,
-      stream: false,
-      sessionId: options.sessionId,
-    })
+  if (!options.sessionId) {
+    throw new Error('Hermes enhanced chat requires sessionId')
   }
-
-  if (backend === 'claude-enhanced') {
-    let text = ''
-    for await (const delta of streamClaudeChat(messages, options)) {
-      text += delta
-    }
-    return text
+  let text = ''
+  for await (const delta of streamHermesChat(messages, options)) {
+    text += delta
   }
-
-  throw new Error('No chat backend available')
+  return text
 }
 
 export async function streamChatUnified(
   messages: Array<ChatMessage>,
   options: UnifiedChatOptions = {},
 ): Promise<AsyncGenerator<string, void, void>> {
-  const backend = resolveChatBackend()
-
-  if (backend === 'openai-compat') {
-    const rawStream = await openaiChat(messages, {
-      model: options.model,
-      temperature: options.temperature,
-      signal: options.signal,
-      stream: true,
-      sessionId: options.sessionId,
-    })
-    // Adapt StreamChunkType to plain string for legacy callers
-    async function* toStringStream() {
-      for await (const chunk of rawStream) {
-        if (chunk.type === 'content' || chunk.type === 'reasoning') {
-          yield chunk.text
-        }
-      }
-    }
-    return toStringStream()
+  if (!options.sessionId) {
+    throw new Error('Hermes enhanced chat requires sessionId')
   }
-
-  if (backend === 'claude-enhanced') {
-    return streamClaudeChat(messages, options)
-  }
-
-  throw new Error('No chat backend available')
+  return streamHermesChat(messages, options)
 }

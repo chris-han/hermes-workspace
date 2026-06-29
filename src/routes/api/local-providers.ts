@@ -1,11 +1,10 @@
 import { json } from '@tanstack/react-start'
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   ensureDiscovery,
   forceDiscovery,
-  getDiscoveryStatus,
   getDiscoveredModels,
+  getDiscoveryStatus,
   isProviderConfigured,
 } from '../../server/local-provider-discovery'
 
@@ -13,10 +12,6 @@ export const Route = createFileRoute('/api/local-providers')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
-
         const url = new URL(request.url)
         const refresh = url.searchParams.get('refresh') === 'true'
 
@@ -28,13 +23,23 @@ export const Route = createFileRoute('/api/local-providers')({
 
         const status = getDiscoveryStatus()
         const models = getDiscoveredModels()
+        const configuredById = new Map<string, boolean>(
+          await Promise.all(
+            status.map(
+              async (provider): Promise<readonly [string, boolean]> => [
+                provider.id,
+                await isProviderConfigured(provider.id, request.headers),
+              ],
+            ),
+          ),
+        )
 
         return json({
           ok: true,
           providers: status.map((p) => ({
             ...p,
-            configured: isProviderConfigured(p.id),
-            needsRestart: isProviderConfigured(p.id) ? false : p.online,
+            configured: configuredById.get(p.id) ?? false,
+            needsRestart: (configuredById.get(p.id) ?? false) ? false : p.online,
           })),
           models,
           totalLocalModels: models.length,

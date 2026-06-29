@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { requireLocalOrAuth } from '../../server/auth-middleware'
+import { createTerminalSession } from '../../server/terminal-sessions'
 import {
-  createTerminalSession,
-  getTerminalSession,
-} from '../../server/terminal-sessions'
+  WorkspaceAuthRequiredError,
+  resolveActiveWorkspaceRoot,
+} from '../../server/workspace-root'
 import {
   getClientIp,
   rateLimit,
@@ -27,10 +28,7 @@ export const Route = createFileRoute('/api/terminal-stream')({
         const csrfCheck = requireJsonContentType(request)
         if (csrfCheck) return csrfCheck
         const ip = getClientIp(request)
-        // A multi-pane Swarm2 runtime can open many attach sessions quickly,
-        // especially after refreshes or when showing a 2xN grid of workers.
-        // Keep abuse protection, but allow enough headroom for real runtime use.
-        if (!rateLimit(`terminal-stream:${ip}`, 240, 60_000)) {
+        if (!rateLimit(`terminal-stream:${ip}`, 10, 60_000)) {
           return rateLimitResponse()
         }
 
@@ -38,6 +36,18 @@ export const Route = createFileRoute('/api/terminal-stream')({
           string,
           unknown
         >
+        let activeWorkspace
+        try {
+          activeWorkspace = await resolveActiveWorkspaceRoot(request.headers)
+        } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return new Response(
+              JSON.stringify({ ok: false, error: err.message }),
+              { status: 401, headers: { 'Content-Type': 'application/json' } },
+            )
+          }
+          throw err
+        }
         const cwd =
           typeof body.cwd === 'string' && body.cwd.trim().length > 0
             ? body.cwd.trim()
@@ -53,20 +63,11 @@ export const Route = createFileRoute('/api/terminal-stream')({
         const command = Array.isArray(body.command)
           ? body.command.slice(0, 32).map((part) => String(part).slice(0, 2000))
           : undefined
-        // Optional attach: if the client passes an existing sessionId that's
-        // still alive, reattach to it instead of spawning a fresh PTY. Lets
-        // browser tabs survive transient SSE disconnects without losing the
-        // user's shell session. See #298.
-        const attachSessionId =
-          typeof body.sessionId === 'string' && body.sessionId.trim()
-            ? body.sessionId.trim()
-            : null
 
         const encoder = new TextEncoder()
         const stream = new ReadableStream({
           start(controller) {
             let isStreamActive = true
-            let isReattach = false
 
             const send = (event: string, data: unknown) => {
               if (!isStreamActive || controller.desiredSize === null) return
@@ -83,39 +84,30 @@ export const Route = createFileRoute('/api/terminal-stream')({
 
             let session: ReturnType<typeof createTerminalSession>
 
-            const existing = attachSessionId
-              ? getTerminalSession(attachSessionId)
-              : null
-
-            if (existing) {
-              session = existing
-              isReattach = true
-              session.markAttached()
-            } else {
+            try {
+              session = createTerminalSession({
+                command,
+                cwd,
+                workspaceRoot: activeWorkspace.path,
+                cols,
+                rows,
+              })
+            } catch (error) {
+              if (import.meta.env.DEV)
+                console.error(
+                  '[terminal-stream] Failed to create session:',
+                  error,
+                )
+              send('error', { message: String(error) })
               try {
-                session = createTerminalSession({
-                  command,
-                  cwd,
-                  cols,
-                  rows,
-                })
-              } catch (error) {
-                if (import.meta.env.DEV)
-                  console.error(
-                    '[terminal-stream] Failed to create session:',
-                    error,
-                  )
-                send('error', { message: String(error) })
-                try {
-                  controller.close()
-                } catch {
-                  /* */
-                }
-                return
+                controller.close()
+              } catch {
+                /* */
               }
+              return
             }
 
-            send('session', { sessionId: session.id, reattach: isReattach })
+            send('session', { sessionId: session.id })
 
             const handleEvent = (evt: { event: string; payload: unknown }) => {
               if (evt.event === 'data') {
@@ -148,11 +140,7 @@ export const Route = createFileRoute('/api/terminal-stream')({
               clearInterval(keepAlive)
               session.emitter.off('event', handleEvent)
               session.emitter.off('close', handleClose)
-              // DON'T close the PTY on SSE disconnect. Let it survive so
-              // the user can reattach after a network blip / tab suspension /
-              // HMR reload. The session reaps itself after DETACH_TTL_MS if
-              // no client reattaches. See #298.
-              session.markDetached()
+              session.close()
             }
 
             request.signal.addEventListener('abort', abort)

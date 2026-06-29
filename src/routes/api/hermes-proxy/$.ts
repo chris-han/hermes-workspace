@@ -1,0 +1,65 @@
+import { createFileRoute } from '@tanstack/react-router'
+import { BEARER_TOKEN, HERMES_API } from '../../../server/gateway-capabilities'
+
+async function proxyRequest(request: Request, splat: string) {
+  const incomingUrl = new URL(request.url)
+  const targetPath = splat.startsWith('/') ? splat : `/${splat}`
+  const targetUrl = new URL(`${HERMES_API}${targetPath}`)
+  targetUrl.search = incomingUrl.search
+
+  const headers = new Headers(request.headers)
+  headers.delete('host')
+  headers.delete('content-length')
+  if (BEARER_TOKEN) headers.set('Authorization', `Bearer ${BEARER_TOKEN}`)
+
+  const init: RequestInit = {
+    method: request.method,
+    headers,
+    redirect: 'manual',
+    signal: AbortSignal.timeout(10_000),
+  }
+
+  if (!['GET', 'HEAD'].includes(request.method.toUpperCase())) {
+    init.body = await request.text()
+  }
+
+  try {
+    const upstream = await fetch(targetUrl, init)
+    const body = await upstream.text()
+    const responseHeaders = new Headers()
+    const contentType = upstream.headers.get('content-type')
+    if (contentType) responseHeaders.set('content-type', contentType)
+    return new Response(body, {
+      status: upstream.status,
+      headers: responseHeaders,
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Hermes backend unreachable'
+    return new Response(
+      JSON.stringify({ ok: false, error: message }),
+      {
+        status: 503,
+        headers: { 'content-type': 'application/json' },
+      },
+    )
+  }
+}
+
+export const Route = createFileRoute('/api/hermes-proxy/$')({
+  server: {
+    handlers: {
+      GET: async ({ request, params }) => {
+        return proxyRequest(request, params._splat || '')
+      },
+      POST: async ({ request, params }) => {
+        return proxyRequest(request, params._splat || '')
+      },
+      PATCH: async ({ request, params }) => {
+        return proxyRequest(request, params._splat || '')
+      },
+      DELETE: async ({ request, params }) => {
+        return proxyRequest(request, params._splat || '')
+      },
+    },
+  },
+})

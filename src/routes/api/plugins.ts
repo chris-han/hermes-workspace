@@ -1,16 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../server/auth-middleware'
-import { listWorkspacePlugins } from '../../server/plugins-browser'
+import { fetchSemantierPlugins } from '../../server/semantier-plugins-api'
 
 export const Route = createFileRoute('/api/plugins')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
+        try {
+          const payload = await fetchSemantierPlugins(request.headers)
+          return json(payload)
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : 'Failed to load plugins'
+          return json({ error: message }, { status: 502 })
         }
-        return json({ ok: true, plugins: listWorkspacePlugins() })
       },
     },
   },

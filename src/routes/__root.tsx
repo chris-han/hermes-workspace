@@ -3,61 +3,59 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
-  useRouterState,
 } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import appCss from '../styles.css?url'
 import { getRootSurfaceState } from './-root-layout-state'
-import type {AuthStatus} from '@/lib/claude-auth';
+import { getRootLayoutMode } from './-root-layout-utils'
+import { unregisterServiceWorkers, wrapInlineScript } from './-root-runtime-guards'
 import { SearchModal } from '@/components/search/search-modal'
-import { UsageMeter } from '@/components/usage-meter'
 import { TerminalShortcutListener } from '@/components/terminal-shortcut-listener'
 import { GlobalShortcutListener } from '@/components/global-shortcut-listener'
 import { WorkspaceShell } from '@/components/workspace-shell'
-import { MobilePromptTrigger } from '@/components/mobile-prompt/MobilePromptTrigger'
 import { Toaster } from '@/components/ui/toast'
 import { OnboardingTour } from '@/components/onboarding/onboarding-tour'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
-import { UpdateCenterNotifier } from '@/components/update-center-notifier'
-import { applyInterfacePreferences, initializeSettingsAppearance, useSettings } from '@/hooks/use-settings'
-import { useApplyChatWidth } from '@/hooks/use-chat-settings'
+import { initializeSettingsAppearance } from '@/hooks/use-settings'
 import {
-  ClaudeOnboarding,
+  HermesOnboarding,
+  isSemantierBackendReady,
   ONBOARDING_COMPLETE_EVENT,
   ONBOARDING_KEY,
-} from '@/components/onboarding/claude-onboarding'
+  persistOnboardingCompletion,
+} from '@/components/onboarding/hermes-onboarding'
 import { ErrorBoundary } from '@/components/error-boundary'
-import { LoginScreen } from '@/components/auth/login-screen'
-import {  fetchClaudeAuthStatus } from '@/lib/claude-auth'
 
 const APP_CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "form-action 'self'",
-  // frame-ancestors is ignored in meta CSP and must be sent as an HTTP header.
-  "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+  "frame-ancestors 'none'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
-  "font-src 'self' data: https://fonts.gstatic.com",
+  "font-src 'self' data:",
   "connect-src 'self' ws: wss: http: https:",
   "worker-src 'self' blob:",
   "media-src 'self' blob: data:",
   "frame-src 'self' http: https:",
 ].join('; ')
 
-const THEME_STORAGE_KEY = 'claude-theme'
-const DEFAULT_THEME = 'claude-nous'
+const THEME_STORAGE_KEY = 'hermes-theme'
+const DEFAULT_THEME = 'semantier'
 const VALID_THEMES = [
-  'claude-nous',
-  'claude-nous-light',
-  'claude-official',
-  'claude-official-light',
-  'claude-classic',
-  'claude-classic-light',
-  'claude-slate',
-  'claude-slate-light',
+  'hermes-nous',
+  'hermes-nous-light',
+  'hermes-official',
+  'hermes-official-light',
+  'hermes-classic',
+  'hermes-classic-light',
+  'hermes-slate',
+  'hermes-slate-light',
+  'semantier',
+  'semantier-light',
 ]
 
 const themeScript = `
@@ -68,7 +66,7 @@ const themeScript = `
     const root = document.documentElement
     const storedTheme = localStorage.getItem('${THEME_STORAGE_KEY}')
     const theme = ${JSON.stringify(VALID_THEMES)}.includes(storedTheme) ? storedTheme : '${DEFAULT_THEME}'
-    const lightThemes = ['claude-nous-light', 'claude-official-light', 'claude-classic-light', 'claude-slate-light']
+    const lightThemes = ['hermes-nous-light', 'hermes-official-light', 'hermes-classic-light', 'hermes-slate-light', 'semantier-light']
     const isDark = !lightThemes.includes(theme)
     root.classList.remove('light', 'dark', 'system')
     root.classList.add(isDark ? 'dark' : 'light')
@@ -91,17 +89,19 @@ const themeColorScript = `
     const root = document.documentElement
     const theme = root.getAttribute('data-theme') || '${DEFAULT_THEME}'
     const colors = {
-      'claude-nous': '#031A1A',
-      'claude-nous-light': '#F8FAF8',
-      'claude-official': '#0A0E1A',
-      'claude-official-light': '#F7F7F1',
-      'claude-classic': '#0d0f12',
-      'claude-classic-light': '#F5F2ED',
-      'claude-slate': '#0d1117',
-      'claude-slate-light': '#F6F8FA',
+      'hermes-nous': '#031A1A',
+      'hermes-nous-light': '#F8FAF8',
+      'hermes-official': '#0A0E1A',
+      'hermes-official-light': '#F7F7F1',
+      'hermes-classic': '#0d0f12',
+      'hermes-classic-light': '#F5F2ED',
+      'hermes-slate': '#0d1117',
+      'hermes-slate-light': '#F6F8FA',
+      'semantier': '#0e0f0c',
+      'semantier-light': '#f5f5f0',
     }
     const nextColor = colors[theme] || colors['${DEFAULT_THEME}']
-    const isDark = !['claude-nous-light', 'claude-official-light', 'claude-classic-light', 'claude-slate-light'].includes(String(theme))
+    const isDark = !['hermes-nous-light', 'hermes-official-light', 'hermes-classic-light', 'hermes-slate-light', 'semantier-light'].includes(String(theme))
 
     let meta = document.querySelector('meta[name="theme-color"]')
     if (!meta) {
@@ -113,13 +113,6 @@ const themeColorScript = `
     root.style.setProperty('color-scheme', isDark ? 'dark' : 'light')
   } catch {}
 })()
-`
-
-const DEFAULT_SPLASH_HTML = `
-<img src="/claude-avatar.webp" alt="Hermes Agent" style="width:80px;height:80px;margin-bottom:20px;border-radius:16px;filter:drop-shadow(0 8px 32px color-mix(in srgb,#FFAC02 45%, transparent))" />
-<img src="/claude-banner.png" alt="Hermes Workspace" style="width:280px;height:auto;margin-bottom:8px;filter:drop-shadow(0 4px 16px rgba(0,0,0,0.5))" />
-<div style="font:400 14px/1 system-ui,-apple-system,sans-serif;letter-spacing:0.04em;color:#9CB2AE">Workspace</div>
-<div style="margin-top:28px;width:140px;height:3px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;position:relative"><div id="splash-bar" style="width:0%;height:100%;background:#FFAC02;border-radius:3px;transition:width 0.4s ease"></div></div>
 `
 
 export const Route = createRootRoute({
@@ -134,28 +127,58 @@ export const Route = createRootRoute({
           'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual',
       },
       {
-        title: 'Hermes Workspace',
+        title: 'semantier',
       },
       {
         name: 'description',
         content:
-          'Hermes Agent workspace for chat, tools, files, memory, and jobs.',
+          'Semantier workspace for chat, tools, files, memory, and jobs.',
+      },
+      // Open Graph for WeChat and social sharing
+      {
+        property: 'og:type',
+        content: 'website',
+      },
+      {
+        property: 'og:title',
+        content: 'semantier',
+      },
+      {
+        property: 'og:description',
+        content: 'Semantier workspace for chat, tools, files, memory, and jobs.',
       },
       {
         property: 'og:image',
-        content: '/cover.png',
+        content: 'https://www.semantier.com/images/logo.png',
       },
       {
-        property: 'og:image:type',
-        content: 'image/png',
+        property: 'og:image:width',
+        content: '1200',
       },
+      {
+        property: 'og:image:height',
+        content: '1200',
+      },
+      {
+        property: 'og:url',
+        content: 'https://www.semantier.com',
+      },
+      // Twitter Card
       {
         name: 'twitter:card',
         content: 'summary_large_image',
       },
       {
+        name: 'twitter:title',
+        content: 'semantier',
+      },
+      {
+        name: 'twitter:description',
+        content: 'Semantier workspace for chat, tools, files, memory, and jobs.',
+      },
+      {
         name: 'twitter:image',
-        content: '/cover.png',
+        content: 'https://www.semantier.com/images/logo.png',
       },
       // PWA meta tags
       {
@@ -179,7 +202,7 @@ export const Route = createRootRoute({
       {
         rel: 'icon',
         type: 'image/png',
-        href: '/claude-avatar.png',
+        href: '/logo.svg',
       },
       // PWA manifest and icons
       {
@@ -218,73 +241,45 @@ export const Route = createRootRoute({
 
 const queryClient = new QueryClient()
 
-export function getRootLayoutMode(
-  onboardingComplete: string | null,
-): 'onboarding' | 'workspace' {
-  return onboardingComplete === 'true' ? 'workspace' : 'onboarding'
-}
-
-export function wrapInlineScript(source: string): string {
-  return `(() => {\n  try {\n${source}\n  } catch (error) {\n    console.error('Inline bootstrap script failed', error)\n  }\n})()`
-}
-
-type ServiceWorkerLike = {
-  register: (scriptURL: string, options?: RegistrationOptions) => Promise<unknown>
-}
-
-type CachesLike = {
-  keys: () => Promise<Array<string>>
-  delete: (name: string) => Promise<boolean> | boolean
-}
-
-export async function registerAppServiceWorker({
-  serviceWorker,
-  cachesApi,
-}: {
-  serviceWorker?: ServiceWorkerLike
-  cachesApi?: CachesLike
-}): Promise<void> {
-  await cachesApi
-    ?.keys()
-    .then((names) =>
-      Promise.allSettled(names.map((name) => cachesApi.delete(name))),
-    )
-    .catch(() => undefined)
-
-  await serviceWorker
-    ?.register('/sw.js', { scope: '/' })
-    .catch((error: unknown) => {
-      console.warn('PWA service worker registration failed', error)
-    })
-}
-
 function RootLayout() {
-  const { settings } = useSettings()
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
-  const isHermesWorldLandingRoute =
-    pathname === '/hermes-world' ||
-    pathname.startsWith('/hermes-world/') ||
-    pathname === '/world' ||
-    pathname.startsWith('/world/')
-  const isGameSurfaceRoute = isHermesWorldLandingRoute || pathname === '/playground' || pathname.startsWith('/playground/')
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(
     null,
   )
-  const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null)
-  const [mounted, setMounted] = useState(false)
-  useApplyChatWidth()
 
   useEffect(() => {
-    applyInterfacePreferences(settings)
-  }, [settings])
-
-  useEffect(() => {
-    setMounted(true)
     initializeSettingsAppearance()
 
     const syncOnboardingCompletion = () => {
+      if (typeof window === 'undefined') return
+
+      const sync = async () => {
+        try {
+          if (localStorage.getItem(ONBOARDING_KEY) === 'true') {
+            setOnboardingComplete(true)
+            return
+          }
+
+          const res = await fetch('/api/gateway-status', { cache: 'no-store' })
+          if (res.ok) {
+            const data = (await res.json()) as {
+              mode?: string
+              capabilities?: { health?: boolean }
+            }
+            if (isSemantierBackendReady(data)) {
+              persistOnboardingCompletion()
+              setOnboardingComplete(true)
+              return
+            }
+          }
+        } catch {
+          // Fall through to the manual onboarding flow.
+        }
+
+        setOnboardingComplete(false)
+      }
+
       try {
-        setOnboardingComplete(localStorage.getItem(ONBOARDING_KEY) === 'true')
+        void sync()
       } catch {
         setOnboardingComplete(false)
       }
@@ -295,24 +290,6 @@ function RootLayout() {
     }
 
     syncOnboardingCompletion()
-
-    void fetch('/api/connection-status')
-      .then((res) => (res.ok ? res.json() : null))
-      .then(
-        (
-          status: {
-            ok?: boolean
-            chatReady?: boolean
-            modelConfigured?: boolean
-          } | null,
-        ) => {
-          if (status?.ok || (status?.chatReady && status?.modelConfigured)) {
-            localStorage.setItem(ONBOARDING_KEY, 'true')
-            syncOnboardingCompletion()
-          }
-        },
-      )
-      .catch(() => undefined)
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key && event.key !== ONBOARDING_KEY) return
@@ -329,7 +306,7 @@ function RootLayout() {
       handleOnboardingCompleteChanged,
     )
 
-    void registerAppServiceWorker({
+    void unregisterServiceWorkers({
       serviceWorker:
         'serviceWorker' in navigator ? navigator.serviceWorker : undefined,
       cachesApi: 'caches' in window ? caches : undefined,
@@ -344,30 +321,12 @@ function RootLayout() {
     }
   }, [])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined
-    let cancelled = false
-    fetchClaudeAuthStatus()
-      .then((status) => {
-        if (!cancelled) setAuthStatus(status)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAuthStatus({ authenticated: true, authRequired: false })
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const rootSurfaceState = getRootSurfaceState(onboardingComplete, authStatus)
+  const rootSurfaceState = getRootSurfaceState(onboardingComplete)
 
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster />
-      {mounted && rootSurfaceState.showLogin ? <LoginScreen /> : null}
-      {mounted && rootSurfaceState.showOnboarding ? <ClaudeOnboarding /> : null}
+      {rootSurfaceState.showOnboarding ? <HermesOnboarding /> : null}
       {rootSurfaceState.showWorkspaceShell ? (
         <>
           <GlobalShortcutListener />
@@ -381,14 +340,10 @@ function RootLayout() {
               <Outlet />
             </ErrorBoundary>
           </WorkspaceShell>
-          {!isHermesWorldLandingRoute ? <SearchModal /> : null}
-          {/* Keep UsageMeter mounted so search-modal OPEN_USAGE still works even when the pill is hidden by default. */}
-          {!isGameSurfaceRoute ? <UsageMeter visible={settings.showUsageMeter} /> : null}
-          {!isHermesWorldLandingRoute ? <KeyboardShortcutsModal /> : null}
-          {!isHermesWorldLandingRoute ? <UpdateCenterNotifier /> : null}
-          {rootSurfaceState.showPostOnboardingOverlays && !isGameSurfaceRoute ? (
+          <SearchModal />
+          <KeyboardShortcutsModal />
+          {rootSurfaceState.showPostOnboardingOverlays ? (
             <>
-              <MobilePromptTrigger />
               <OnboardingTour />
             </>
           ) : null}
@@ -428,73 +383,74 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         />
       </head>
       <body>
-        {/* The inline splash bootstrap mutates this node before React hydrates.
-            Keep default splash markup in the server/client tree, then suppress
-            parent-level style/theme mutations for this intentionally browser-owned DOM. */}
-        <div
-          id="splash-screen"
-          aria-hidden="true"
-          suppressHydrationWarning
-          style={{ display: 'none' }}
-          dangerouslySetInnerHTML={{ __html: DEFAULT_SPLASH_HTML }}
-        />
         <script
           dangerouslySetInnerHTML={{
             __html: wrapInlineScript(`
           (function(){
-            if (location.pathname === '/hermes-world' || location.pathname.indexOf('/hermes-world/') === 0 || location.pathname === '/world' || location.pathname.indexOf('/world/') === 0) return;
-            var d = document.getElementById('splash-screen');
-            if (!d) return;
-            var bg = '#031A1A', txt = '#F8F1E3', muted = '#9CB2AE', accent = '#FFAC02';
+            if (document.getElementById('splash-screen')) return;
+            var bg = '#0A0E1A', txt = '#E6EAF2', muted = '#9AA5BD', accent = '#6366F1';
             try {
               var theme = localStorage.getItem('${THEME_STORAGE_KEY}') || '${DEFAULT_THEME}';
-              if (theme === 'claude-nous') {
+              if (theme === 'hermes-nous') {
                 bg = '#031A1A';
                 txt = '#F8F1E3';
                 muted = '#9CB2AE';
                 accent = '#FFAC02';
-              } else if (theme === 'claude-nous-light') {
+              } else if (theme === 'hermes-nous-light') {
                 bg = '#F8FAF8';
                 txt = '#16315F';
                 muted = '#6F7D96';
                 accent = '#2557B7';
-              } else if (theme === 'claude-classic') {
+              } else if (theme === 'hermes-classic') {
                 bg = '#0d0f12';
                 txt = '#eceff4';
                 muted = '#7f8a96';
                 accent = '#b98a44';
-              } else if (theme === 'claude-official-light') {
+              } else if (theme === 'hermes-official-light') {
                 bg = '#F7F7F1';
                 txt = '#16315F';
                 muted = '#6F7D96';
                 accent = '#2557B7';
-              } else if (theme === 'claude-classic-light') {
+              } else if (theme === 'hermes-classic-light') {
                 bg = '#F5F2ED';
                 txt = '#1a1f26';
                 muted = '#6F675E';
                 accent = '#b98a44';
-              } else if (theme === 'claude-slate') {
+              } else if (theme === 'hermes-slate') {
                 bg = '#0d1117';
                 txt = '#c9d1d9';
                 muted = '#8b949e';
                 accent = '#7eb8f6';
-              } else if (theme === 'claude-slate-light') {
+              } else if (theme === 'hermes-slate-light') {
                 bg = '#F6F8FA';
                 txt = '#24292f';
                 muted = '#57606A';
                 accent = '#3b82f6';
+              } else if (theme === 'semantier') {
+                bg = '#0e0f0c';
+                txt = '#f0f0ec';
+                muted = '#868685';
+                accent = '#9fe870';
+              } else if (theme === 'semantier-light') {
+                bg = '#f5f5f0';
+                txt = '#0e0f0c';
+                muted = '#868685';
+                accent = '#163300';
               }
             } catch(e){}
 
-            var isDark = !['claude-nous-light','claude-official-light','claude-classic-light','claude-slate-light'].includes(theme);
-            var quips = ["Consulting the oracle...","Loading ancient knowledge...","Warming up the messenger...","Calibrating tool chain...","Summoning your agent...","Preparing the workspace...","Bridging realms...","Initializing agent runtime..."];
+            var isDark = !['hermes-nous-light','hermes-official-light','hermes-classic-light','hermes-slate-light','semantier-light'].includes(theme);
+            var quips = ["Consulting the oracle...","Loading ancient knowledge...","Warming up the messenger...","Calibrating tool chain...","Summoning Hermes...","Preparing the workspace...","Bridging realms...","Initializing agent runtime..."];
             var quip = quips[Math.floor(Math.random() * quips.length)];
 
+            var d = document.createElement('div');
+            d.id = 'splash-screen';
             d.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:'+bg+';transition:opacity 0.5s ease;';
-            d.innerHTML = '<img src="/claude-avatar.webp" alt="Hermes Agent" style="width:80px;height:80px;margin-bottom:20px;border-radius:16px;filter:drop-shadow(0 8px 32px color-mix(in srgb,'+accent+' 45%, transparent))" />'
-              + '<img src="'+(isDark ? '/claude-banner.png' : '/claude-banner-light.png')+'" alt="Hermes Workspace" style="width:280px;height:auto;margin-bottom:8px;filter:drop-shadow(0 4px 16px '+(isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.1)')+')" />'
+            d.innerHTML = '<img src="/logo.svg" alt="semantier logo" style="width:80px;height:80px;margin-bottom:20px;border-radius:16px;filter:drop-shadow(0 8px 32px color-mix(in srgb,'+accent+' 45%, transparent))" />'
+              + '<div style="font-family:Autaut Grotesk,Noto Sans SC,-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;font-size:22px;line-height:1.2;font-weight:600;letter-spacing:-0.02em;color:'+txt+';margin-bottom:8px;text-transform:lowercase;">semantier</div>'
               + '<div style="font:400 14px/1 system-ui,-apple-system,sans-serif;letter-spacing:0.04em;color:'+muted+'">Workspace</div>'
               + '<div style="margin-top:28px;width:140px;height:3px;background:'+(isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')+';border-radius:3px;overflow:hidden;position:relative"><div id=splash-bar style="width:0%;height:100%;background:'+accent+';border-radius:3px;transition:width 0.4s ease"></div></div>';
+            document.body.prepend(d);
 
             var bar = document.getElementById('splash-bar');
             if (bar) {
@@ -511,17 +467,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               if (bar) bar.style.width = '100%';
               setTimeout(function(){
                 el.style.opacity = '0';
-                setTimeout(function(){
-                  el.innerHTML = '';
-                  el.style.cssText = 'display:none';
-                }, 500);
+                setTimeout(function(){ el.remove(); }, 500);
               }, 300);
             };
             // Fallback: always dismiss after 5s
             setTimeout(function(){ window.__dismissSplash && window.__dismissSplash(); }, 5000);
             // Fast dismiss: returning users skip quickly
             try {
-              if (localStorage.getItem('claude-claude-url') || localStorage.getItem('claude-url')) {
+              if (localStorage.getItem('hermes-hermes-url') || localStorage.getItem('hermes-url')) {
                 setTimeout(function(){ window.__dismissSplash && window.__dismissSplash(); }, 600);
               }
             } catch(e) {}

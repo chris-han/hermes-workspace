@@ -6,7 +6,6 @@ import type {
   SessionTitleStatus,
   ToolCallContent,
 } from './types'
-import { stripWorkspaceDirective } from '../../lib/workspace-message-scope'
 
 export function deriveFriendlyIdFromKey(key: string | undefined): string {
   if (!key) return 'main'
@@ -38,7 +37,7 @@ const KNOWN_CHANNELS = [
 function stripChannelPrefix(text: string): string {
   const match = text.match(CHANNEL_PREFIX_REGEX)
   if (!match) return text
-  const bracket = match[1] ?? ''
+  const bracket = match[1]
   // Strip if it contains a timestamp or known channel name
   const hasTimestamp =
     /\d{4}-\d{2}-\d{2}/.test(bracket) || /\d{2}:\d{2}/.test(bracket)
@@ -53,7 +52,7 @@ function stripChannelPrefix(text: string): string {
  * and [Telegram/Signal/etc ...] headers, leaving just the user's text.
  */
 function cleanUserText(raw: string): string {
-  let text = stripWorkspaceDirective(raw)
+  let text = raw
 
   // Remove "Conversation info (untrusted metadata):" headers + JSON block
   // Format: "Conversation info (untrusted metadata):\n```json\n{...}\n```\n\n"
@@ -121,6 +120,18 @@ export function textFromMessage(msg: ChatMessage): string {
     }
   }
 
+  // Strip <think>/<thinking>/<thought> blocks from assistant content.
+  // History messages are stored with raw model output (including think blocks),
+  // while streamed messages have them stripped. Normalising here ensures both
+  // representations produce the same visible text for dedup and display.
+  if (msg.role === 'assistant') {
+    raw = raw
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+      .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+      .trim()
+  }
+
   // Clean user messages (strip system metadata)
   if (msg.role === 'user') {
     return stripChannelPrefix(cleanUserText(raw))
@@ -162,17 +173,11 @@ function normalizeTimestamp(value: unknown): number | null {
 }
 
 export function getMessageTimestamp(message: ChatMessage): number {
-  // ChatMessage has `[key: string]: unknown`, so bracket access is safe and
-  // avoids `as any`. `message.timestamp` is the canonical typed field;
-  // the others are alternative shapes used by different backends.
-  // Recovery messages always arrive with `timestamp` set to Date.now() (ms),
-  // which normalizeTimestamp returns as-is, so sort order is always correct.
-  const candidates: Array<unknown> = [
-    message['createdAt'],
-    message['created_at'],
+  const candidates = [
+    message.createdAt,
     message.timestamp,
-    message['time'],
-    message['ts'],
+    (message as Record<string, unknown>).time,
+    (message as Record<string, unknown>).ts,
   ]
 
   for (const candidate of candidates) {
@@ -217,7 +222,7 @@ export function normalizeSessions(
         : deriveFriendlyIdFromKey(session.friendlyId ?? session.key)
     const friendlyIdCandidate =
       typeof session.friendlyId === 'string' &&
-        session.friendlyId.trim().length > 0
+      session.friendlyId.trim().length > 0
         ? session.friendlyId.trim()
         : deriveFriendlyIdFromKey(key)
 
@@ -227,16 +232,13 @@ export function normalizeSessions(
         : undefined
     const explicitTitle =
       typeof session.title === 'string' && session.title.trim().length > 0
-        ? cleanUserText(session.title.trim()) || session.title.trim()
+        ? session.title.trim()
         : undefined
     const derivedTitle =
       typeof session.derivedTitle === 'string' &&
-        session.derivedTitle.trim().length > 0
-        ? cleanUserText(session.derivedTitle.trim()) || session.derivedTitle.trim()
-        : typeof session.preview === 'string' &&
-          session.preview.trim().length > 0
-          ? cleanUserText(session.preview.trim()) || session.preview.trim()
-          : undefined
+      session.derivedTitle.trim().length > 0
+        ? session.derivedTitle.trim()
+        : undefined
     const titleStatus = deriveTitleStatus(
       label,
       explicitTitle,
@@ -256,16 +258,16 @@ export function normalizeSessions(
       title: explicitTitle,
       derivedTitle,
       label,
+      status:
+        typeof session.status === 'string' && session.status.trim().length > 0
+          ? session.status.trim().toLowerCase()
+          : undefined,
       updatedAt:
         typeof session.updatedAt === 'number' ? session.updatedAt : undefined,
       lastMessage: session.lastMessage ?? null,
       titleStatus,
       titleSource,
       titleError: session.titleError ?? null,
-      preview:
-        typeof session.preview === 'string'
-          ? cleanUserText(session.preview) || session.preview.trim() || null
-          : session.preview ?? null,
     }
   })
 }
@@ -286,7 +288,7 @@ export async function readError(res: Response): Promise<string> {
 }
 
 export const missingAuthMessage =
-  'Hermes Agent connection failed. Make sure Hermes Agent is running and HERMES_API_URL is set correctly.'
+  'Semantier backend connection failed. Make sure semantier webapi is running and SEMANTIER_AGENT_API_URL is set correctly.'
 
 export function isMissingAuth(message: string): boolean {
   return message.includes(missingAuthMessage)

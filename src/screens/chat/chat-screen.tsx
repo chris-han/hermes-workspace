@@ -11,19 +11,10 @@ import {
 import { useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { isMissingAuth, textFromMessage } from './utils'
 import {
-  deriveFriendlyIdFromKey,
-  isMissingAuth,
-  readError,
-  textFromMessage,
-} from './utils'
-import {
-  
   advanceStickyStreamingText,
   createOptimisticMessage,
-  createResponseWaitSnapshot,
-  isTerminalActiveRunStatus,
-  shouldClearWaitingForAssistantMessage
 } from './chat-screen-utils'
 import {
   appendHistoryMessage,
@@ -37,10 +28,10 @@ import {
 import { ChatHeader } from './components/chat-header'
 import { ChatMessageList } from './components/chat-message-list'
 import { ChatEmptyState } from './components/chat-empty-state'
+import { ChatDemoWalkthrough } from './components/chat-demo-walkthrough'
 import { ChatComposer } from './components/chat-composer'
 import { ConnectionStatusMessage } from './components/connection-status-message'
 import {
-  clearPendingSendForSession,
   consumePendingSend,
   hasPendingGeneration,
   hasPendingSend,
@@ -51,7 +42,6 @@ import {
 import { useChatMeasurements } from './hooks/use-chat-measurements'
 import { useChatHistory } from './hooks/use-chat-history'
 import { useRealtimeChatHistory } from './hooks/use-realtime-chat-history'
-import { snapshotOptimisticUserMessages } from './hooks/optimistic-message-reinject'
 import { useSmoothStreamingText } from './hooks/use-smooth-streaming-text'
 import { useStreamingMessage } from './hooks/use-streaming-message'
 import { useActiveRunCheck } from './hooks/use-active-run-check'
@@ -61,33 +51,31 @@ import { useAutoSessionTitle } from './hooks/use-auto-session-title'
 import { useRenameSession } from './hooks/use-rename-session'
 import { useContextAlert } from './hooks/use-context-alert'
 import { ContextBar } from './components/context-bar'
+import { shouldRecoverMissingSessionRoute } from './chat-route-recovery'
 import {
   CHAT_OPEN_SETTINGS_EVENT,
   CHAT_PENDING_COMMAND_STORAGE_KEY,
   CHAT_RUN_COMMAND_EVENT,
-  CHAT_SUBMIT_SELECTION_EVENT,
 } from './chat-events'
-import type {
-  ChatRunCommandDetail,
-  ChatSubmitSelectionDetail,
-} from './chat-events'
-import type {ResponseWaitSnapshot} from './chat-screen-utils';
+import {
+  DOCX_MIME_TYPE,
+  fallbackUploadApiDocumentName,
+  isUploadApiDocumentMimeType,
+} from './attachment-documents'
 import type {
   ChatComposerAttachment,
   ChatComposerHandle,
   ChatComposerHelpers,
   ThinkingLevel,
 } from './components/chat-composer'
-import type { ApprovalRequest } from '@/screens/gateway/lib/approvals-store'
+import type { ApprovalRequest } from '@/lib/approvals-store'
 import type { ChatAttachment, ChatMessage, SessionMeta } from './types'
-import type {AgentActivity} from '@/stores/chat-activity-store';
-import { useChatSettingsStore } from '@/hooks/use-chat-settings'
-import { playChatComplete } from '@/lib/sounds'
+import type { ChatRunCommandDetail } from './chat-events'
 import {
   addApproval,
   loadApprovals,
   saveApprovals,
-} from '@/screens/gateway/lib/approvals-store'
+} from '@/lib/approvals-store'
 import { stripQueuedWrapper } from '@/lib/strip-queued-wrapper'
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/toast'
@@ -97,7 +85,7 @@ import { SEARCH_MODAL_EVENTS } from '@/hooks/use-search-modal'
 import { SIDEBAR_TOGGLE_EVENT } from '@/hooks/use-global-shortcuts'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { TerminalPanel } from '@/components/terminal-panel'
-import { AgentViewPanel } from '@/components/agent-view/agent-view-panel'
+import { InspectorPanel } from '@/components/inspector/inspector-panel'
 import { useTerminalPanelStore } from '@/stores/terminal-panel-store'
 import { useModelSuggestions } from '@/hooks/use-model-suggestions'
 import { ModelSuggestionToast } from '@/components/model-suggestion-toast'
@@ -105,16 +93,17 @@ import { MobileSessionsPanel } from '@/components/mobile-sessions-panel'
 import { ContextAlertModal } from '@/components/usage-meter/context-alert-modal'
 import { ErrorToastContainer, showErrorToast } from '@/components/error-toast'
 // ContextMeter removed — ContextBar (PR #32) replaces it
-import { persistRecoveryMessage, useChatStore } from '@/stores/chat-store'
-import { useSessionModelStore } from '@/stores/session-model-store'
+import { useChatStore } from '@/stores/chat-store'
 import { useResearchCard } from '@/hooks/use-research-card'
 // MOBILE_TAB_BAR_OFFSET removed — tab bar always hidden in chat
 import { useTapDebug } from '@/hooks/use-tap-debug'
 import { useChatMode } from '@/hooks/use-chat-mode'
-import {  useChatActivityStore } from '@/stores/chat-activity-store'
+import { _localModelOverride } from './model-override'
 
-export let _localModelOverride = ''
-export function setLocalModelOverride(model: string) { _localModelOverride = model }
+// Activity store removed — not used in Hermes Workspace
+const _noopSetActivity = (_s: string) => {}
+const FIRST_DEMO_WALKTHROUGH_PROMPT =
+  '基于当前组织的 demo dataset，生成营业分析，重点说明收入结构、项目毛利、回款节奏、现金压力和需要关注的经营异常。'
 
 type ChatScreenProps = {
   activeFriendlyId: string
@@ -139,6 +128,8 @@ type PortableHistoryMessage = {
   content: string
 }
 
+const PDF_MIME_TYPE = 'application/pdf'
+
 function normalizeMimeType(value: unknown): string {
   if (typeof value !== 'string') return ''
   return value.trim().toLowerCase()
@@ -147,6 +138,15 @@ function normalizeMimeType(value: unknown): string {
 function isImageMimeType(value: unknown): boolean {
   const normalized = normalizeMimeType(value)
   return normalized.startsWith('image/')
+}
+
+function isTextLikeMimeType(value: unknown): boolean {
+  const normalized = normalizeMimeType(value)
+  return (
+    normalized.startsWith('text/') ||
+    normalized === 'application/json' ||
+    normalized === DOCX_MIME_TYPE
+  )
 }
 
 function readDataUrlMimeType(value: unknown): string {
@@ -164,6 +164,117 @@ function stripDataUrlPrefix(value: unknown): string {
     return trimmed.slice(commaIndex + 1).trim()
   }
   return trimmed
+}
+
+function buildFileFromAttachment(attachment: ChatAttachment): File | null {
+  const mimeType =
+    normalizeMimeType(attachment.contentType) ||
+    readDataUrlMimeType(attachment.dataUrl)
+  if (!isUploadApiDocumentMimeType(mimeType)) {
+    return null
+  }
+
+  const rawDataUrl = attachment.dataUrl ?? ''
+  const base64Part = rawDataUrl.startsWith('data:')
+    ? (rawDataUrl.split(',')[1] ?? '')
+    : rawDataUrl
+  if (!base64Part) {
+    return null
+  }
+
+  const binaryStr = atob(base64Part)
+  const bytes = new Uint8Array(binaryStr.length)
+  for (let index = 0; index < binaryStr.length; index += 1) {
+    bytes[index] = binaryStr.charCodeAt(index)
+  }
+
+  const fallbackName = fallbackUploadApiDocumentName(mimeType)
+  return new File([bytes], attachment.name?.trim() || fallbackName, {
+    type: mimeType,
+  })
+}
+
+async function ensureChatSession(label: string): Promise<{
+  sessionKey: string
+  friendlyId: string
+}> {
+  const response = await fetch('/api/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label }),
+  })
+  if (!response.ok) {
+    throw new Error(`Create session failed: ${response.status}`)
+  }
+
+  const payload = (await response.json()) as {
+    ok?: boolean
+    error?: string
+    sessionKey?: string
+    friendlyId?: string
+  }
+  if (!payload.ok || !payload.sessionKey) {
+    throw new Error(payload.error || 'Create session failed')
+  }
+
+  return {
+    sessionKey: payload.sessionKey,
+    friendlyId: payload.friendlyId || payload.sessionKey,
+  }
+}
+
+async function uploadChatDocuments(
+  sessionKey: string,
+  attachments: Array<ChatAttachment>,
+): Promise<Array<string>> {
+  const uploadFiles = attachments
+    .map(buildFileFromAttachment)
+    .filter((file): file is File => file !== null)
+  if (uploadFiles.length === 0) {
+    return []
+  }
+
+  const form = new FormData()
+  form.append('session_id', sessionKey)
+  for (const file of uploadFiles) {
+    form.append('files', file)
+  }
+
+  const response = await fetch('/api/upload/batch', {
+    method: 'POST',
+    body: form,
+  })
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.status}`)
+  }
+
+  const payload = (await response.json()) as {
+    files?: Array<{
+      status?: string
+      filename?: string
+      error?: string
+    }>
+  }
+  if (!Array.isArray(payload.files)) return []
+
+  const failedCount = payload.files.filter(
+    (entry) => (entry.status || '').toLowerCase() !== 'ok',
+  ).length
+  if (failedCount > 0) {
+    toast(
+      failedCount === 1
+        ? '1 file failed to upload. It will not be referenced in this message.'
+        : `${failedCount} files failed to upload. They will not be referenced in this message.`,
+      { type: 'warning' },
+    )
+  }
+
+  const successNames = payload.files
+    .filter((entry) => (entry.status || '').toLowerCase() === 'ok')
+    .map((entry) => entry.filename?.trim() || '')
+    .filter((name) => name.length > 0)
+
+  return successNames
 }
 
 function normalizeMessageValue(value: unknown): string {
@@ -369,12 +480,7 @@ function getMessageStatusValue(message: ChatMessage): string {
 
 function getMessageTimestampValue(message: ChatMessage): number | null {
   const raw = message as Record<string, unknown>
-  const candidates = [
-    raw.timestamp,
-    raw.__createdAt,
-    raw.createdAt,
-    raw.created_at,
-  ]
+  const candidates = [raw.timestamp, raw.__createdAt, raw.createdAt]
 
   for (const candidate of candidates) {
     if (typeof candidate === 'number' && Number.isFinite(candidate)) {
@@ -477,7 +583,6 @@ export function ChatScreen({
   const setChatFocusMode = useWorkspaceStore((s) => s.setChatFocusMode)
   const queryClient = useQueryClient()
   const [sending, setSending] = useState(false)
-  const [_creatingSession, setCreatingSession] = useState(false)
   const [sessionsOpen, setSessionsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
@@ -489,6 +594,27 @@ export function ChatScreen({
   const portableChatFriendlyId = isPortableMode ? 'main' : activeFriendlyId
   // --- Issue #43 fix: lift waitingForResponse into persistent Zustand store ---
   // The store survives component unmount, so navigating away mid-stream
+  // doesn't lose the "waiting" flag. sessionStorage backup handles reloads.
+  const storeWaiting = useChatStore((s) => s.waitingSessionKeys)
+  // resolvedSessionKey isn't available yet (defined below), so we track it via
+  // a ref that's updated once it resolves. The memo/callback read the ref.
+  const sessionKeyForWaiting = useRef<string | undefined>(undefined)
+  const waitingForResponse = useMemo(() => {
+    const key = sessionKeyForWaiting.current
+    if (!key) return hasPendingSend() || hasPendingGeneration()
+    return storeWaiting.has(key)
+  }, [storeWaiting])
+
+  const setWaitingForResponse = useCallback((waiting: boolean) => {
+    const store = useChatStore.getState()
+    const key = sessionKeyForWaiting.current
+    if (!key) return
+    if (waiting) {
+      store.setSessionWaiting(key)
+    } else {
+      store.clearSessionWaiting(key)
+    }
+  }, [])
   const [liveToolActivity, setLiveToolActivity] = useState<
     Array<{ name: string; timestamp: number }>
   >([])
@@ -504,23 +630,17 @@ export function ChatScreen({
   >([])
   const [isCompacting, setIsCompacting] = useState(false)
   const [researchResetKey, setResearchResetKey] = useState(0)
+  const [isDemoWalkthroughRunning, setIsDemoWalkthroughRunning] =
+    useState(false)
   // Per-session thinking level — stored in sessionStorage keyed by session
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>(() => {
     if (typeof window === 'undefined') return 'low'
-    const key = `claude-thinking-${activeFriendlyId || 'new'}`
+    const key = `hermes-thinking-${activeFriendlyId || 'new'}`
     const stored = window.sessionStorage.getItem(key)
-    if (stored === 'off' || stored === 'low' || stored === 'medium' || stored === 'high' || stored === 'adaptive')
+    if (stored === 'off' || stored === 'low' || stored === 'adaptive')
       return stored
     return 'low'
   })
-  // Tracks whether the user has explicitly picked a thinking level for this session.
-  // A missing/absent sessionStorage key means we should fall back to the Hermes config default.
-  const thinkingInitializedByUserRef = useRef(false)
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const key = `claude-thinking-${activeFriendlyId || 'new'}`
-    thinkingInitializedByUserRef.current = window.sessionStorage.getItem(key) !== null
-  }, [activeFriendlyId])
   const { alertOpen, alertThreshold, alertPercent, dismissAlert } =
     useContextAlert()
 
@@ -536,7 +656,7 @@ export function ChatScreen({
   } | null>(null)
   const [fileExplorerCollapsed, setFileExplorerCollapsed] = useState(() => {
     if (typeof window === 'undefined') return true
-    const stored = localStorage.getItem('claude-file-explorer-collapsed')
+    const stored = localStorage.getItem('hermes-file-explorer-collapsed')
     return stored === null ? true : stored === 'true'
   })
   const { isMobile } = useChatMobile(queryClient)
@@ -566,7 +686,13 @@ export function ChatScreen({
     sessionsLoading: _sessionsLoading,
     sessionsFetching: _sessionsFetching,
     refetchSessions: _refetchSessions,
-  } = useChatSessions({ activeFriendlyId, isNewChat, forcedSessionKey })
+  } = useChatSessions({
+    activeFriendlyId,
+    isNewChat,
+    forcedSessionKey,
+    sseConnectionState,
+    waitingForResponse,
+  })
   const {
     historyQuery,
     historyMessages,
@@ -584,88 +710,24 @@ export function ChatScreen({
     activeExists,
     sessionsReady: sessionsQuery.isSuccess,
     queryClient,
-    historyRefetchInterval: sseConnectionState === 'connected' ? 30_000 : 5_000,
+    historyRefetchInterval:
+      sseConnectionState === 'connected'
+        ? false
+        : waitingForResponse
+          ? 5_000
+          : 30_000,
     portableMode: isPortableMode,
   })
 
-  // --- Waiting state management (Issue #43 + #449) ---
-  // resolvedSessionKey is now available (defined above from useChatHistory).
-  const storeWaiting = useChatStore((s) => s.waitingSessionKeys)
-  const sessionKeyForWaiting = useRef<string | undefined>(undefined)
-  const pendingVerifySessionKeyRef = useRef<string | undefined>(undefined)
-
   // Keep the waiting-state ref in sync with the resolved session key
   sessionKeyForWaiting.current = resolvedSessionKey
-
-  // Synchronously detect stale waiting state from sessionStorage.
-  // This runs during render (not in an effect) so the guard in
-  // waitingForResponse is active on the very first render, preventing
-  // a flash of the "Thinking" indicator when reopening an old session.
-  const needsStaleCheck =
-    resolvedSessionKey &&
-    !isNewChat &&
-    storeWaiting.has(resolvedSessionKey) &&
-    pendingVerifySessionKeyRef.current !== resolvedSessionKey
-
-  if (needsStaleCheck) {
-    pendingVerifySessionKeyRef.current = resolvedSessionKey
-  }
-
-  // Track whether the active-run API check has completed.
-  // Initialize to false when we detect stale state (needs verification),
-  // true otherwise. This prevents showing "Thinking" until the API confirms.
-  const [activeRunCheckDone, setActiveRunCheckDone] = useState(!needsStaleCheck)
-
-  const waitingForResponse = useMemo(() => {
-    const key = sessionKeyForWaiting.current
-    if (!key) return hasPendingSend() || hasPendingGeneration()
-
-    // If we restored waiting state from sessionStorage but haven't verified
-    // with the API yet, don't show thinking — it might be stale (Issue #449).
-    if (
-      storeWaiting.has(key) &&
-      pendingVerifySessionKeyRef.current === key &&
-      !activeRunCheckDone
-    ) {
-      return false
-    }
-
-    return storeWaiting.has(key)
-  }, [storeWaiting, activeRunCheckDone])
-
-  const setWaitingForResponse = useCallback((waiting: boolean) => {
-    const store = useChatStore.getState()
-    const key = sessionKeyForWaiting.current
-    if (!key) return
-    if (waiting) {
-      store.setSessionWaiting(key)
-    } else {
-      store.clearSessionWaiting(key)
-    }
-  }, [])
-  // verification before showing thinking (Issue #449).
-  useEffect(() => {
-    const currentSessionKey = resolvedSessionKey
-    if (!currentSessionKey || isNewChat) return
-    const store = useChatStore.getState()
-    if (store.isSessionWaiting(currentSessionKey)) {
-      pendingVerifySessionKeyRef.current = currentSessionKey
-      setActiveRunCheckDone(false)
-    } else {
-      // No restored waiting state — no need to verify
-      pendingVerifySessionKeyRef.current = undefined
-      setActiveRunCheckDone(true)
-    }
-  }, [resolvedSessionKey, isNewChat])
 
   // On remount, check if the server still has an active run for this session.
   // If so, re-set waitingForResponse in the store so the UI shows the spinner.
   useActiveRunCheck({
     sessionKey: resolvedSessionKey ?? '',
-    enabled: !isNewChat && Boolean(resolvedSessionKey) && historyQuery.isSuccess,
-    onCheckComplete: useCallback(() => {
-      setActiveRunCheckDone(true)
-    }, []),
+    enabled:
+      !isNewChat && Boolean(resolvedSessionKey) && historyQuery.isSuccess,
   })
 
   // Wire SSE realtime stream for instant message delivery
@@ -688,9 +750,9 @@ export function ChatScreen({
       : isNewChat
         ? 'new'
         : resolvedSessionKey ||
-        sessionKeyForHistory ||
-        activeCanonicalKey ||
-        'main',
+          sessionKeyForHistory ||
+          activeCanonicalKey ||
+          'main',
     friendlyId: portableChatFriendlyId,
     historyMessages,
     portableMode: isPortableMode,
@@ -722,7 +784,7 @@ export function ChatScreen({
       if (
         approvalId &&
         currentApprovals.some((entry) => {
-          return entry.status === 'pending' && entry.gatewayApprovalId === approvalId
+          return entry.status === 'pending' && entry.approvalId === approvalId
         })
       ) {
         setPendingApprovals(
@@ -756,15 +818,15 @@ export function ChatScreen({
       const agentId =
         typeof agentIdValue === 'string' && agentIdValue.trim().length > 0
           ? agentIdValue
-          : 'claude'
+          : 'hermes'
 
       addApproval({
         agentId,
         agentName,
         action,
         context,
-        source: 'agent',
-        gatewayApprovalId: approvalId || undefined,
+        source: 'hermes',
+        approvalId: approvalId || undefined,
       })
       setPendingApprovals(
         loadApprovals().filter((entry) => entry.status === 'pending'),
@@ -851,12 +913,12 @@ export function ChatScreen({
       setPendingApprovals(
         nextApprovals.filter((entry) => entry.status === 'pending'),
       )
-      if (!approval.gatewayApprovalId) return
+      if (!approval.approvalId) return
 
       const endpoint =
         status === 'approved'
-          ? `/api/approvals/${approval.gatewayApprovalId}/approve`
-          : `/api/approvals/${approval.gatewayApprovalId}/deny`
+          ? `/api/approvals/${approval.approvalId}/approve`
+          : `/api/approvals/${approval.approvalId}/deny`
       try {
         await fetch(endpoint, { method: 'POST' })
       } catch {
@@ -896,12 +958,13 @@ export function ChatScreen({
 
   const streamStart = useCallback(() => {
     if (!activeFriendlyId || isNewChat) return
-    // No aggressive delayed refetch here — it wipes optimistic user messages
-    // from the cache before the server has echoed them, causing the user's
-    // message to disappear until the agent completes. The existing failsafes
-    // (5s + 10s timeouts at lines below, active-run polling) handle the case
-    // where SSE misses the done event.
-    void activeFriendlyId // keep dep for eslint
+    // Bug #3 fix: no more 350ms polling loop — SSE handles realtime updates.
+    // Single delayed fetch as fallback to catch the initial response.
+    if (streamTimer.current) window.clearTimeout(streamTimer.current)
+    streamTimer.current = window.setTimeout(() => {
+      if (activeRealtimeStreamingRef.current) return
+      refreshHistoryRef.current()
+    }, 2000)
   }, [activeFriendlyId, isNewChat])
 
   refreshHistoryRef.current = function refreshHistory() {
@@ -910,21 +973,37 @@ export function ChatScreen({
     // Snapshot any unconfirmed optimistic user messages BEFORE refetch.
     // The refetch replaces the query cache with server data — if the server
     // hasn't processed the user's POST yet, the optimistic message vanishes.
-    const historySessionKey = isPortableMode
-      ? 'main'
-      : activeSessionKey ||
-        sessionKeyForHistory ||
-        resolvedSessionKey ||
-        'main'
-    const reInjectOptimistic = snapshotOptimisticUserMessages(
-      queryClient,
-      portableChatFriendlyId,
-      historySessionKey,
-    )
+    const currentMessages = (historyQuery.data as any)?.messages as
+      | Array<ChatMessage>
+      | undefined
+    const pendingOptimistic = (currentMessages ?? []).filter((msg) => {
+      const raw = msg as Record<string, unknown>
+      return (
+        msg.role === 'user' &&
+        (normalizeMessageValue(raw.__optimisticId).startsWith('opt-') ||
+          normalizeMessageValue(raw.status) === 'sending')
+      )
+    })
 
     void historyQuery.refetch().then(() => {
       // Re-inject optimistic messages that weren't in the server response
-      reInjectOptimistic()
+      if (pendingOptimistic.length === 0) return
+      const historySessionKey = isPortableMode
+        ? 'main'
+        : activeSessionKey ||
+          sessionKeyForHistory ||
+          resolvedSessionKey ||
+          'main'
+      if (!portableChatFriendlyId || !historySessionKey) return
+
+      for (const optimistic of pendingOptimistic) {
+        appendHistoryMessage(
+          queryClient,
+          portableChatFriendlyId,
+          historySessionKey,
+          optimistic,
+        )
+      }
     })
   }
 
@@ -960,11 +1039,11 @@ export function ChatScreen({
         )
         if (!res.ok) return
         const data = await res.json()
-        if (!data.ok) return
-        // Run not yet registered (gateway lag during silent processing) → keep waiting
-        if (!data.run) return
-        // Treat unknown / transient statuses as still-active to avoid premature teardown
-        if (isTerminalActiveRunStatus(data.run.status)) {
+        if (
+          !data.ok ||
+          !data.run ||
+          !['accepted', 'active', 'handoff'].includes(data.run.status)
+        ) {
           streamFinish()
           refreshHistoryRef.current()
         }
@@ -998,18 +1077,10 @@ export function ChatScreen({
   })
 
   const currentModelQuery = useQuery({
-    queryKey: [
-      'claude',
-      'session-status-model',
-      resolvedSessionKey || activeFriendlyId || 'main',
-    ],
+    queryKey: ['hermes', 'session-status-model'],
     queryFn: async () => {
       try {
-        const statusSessionKey = resolvedSessionKey || activeFriendlyId || 'main'
-        const query = statusSessionKey
-          ? `?sessionKey=${encodeURIComponent(statusSessionKey)}`
-          : ''
-        const res = await fetch(`/api/session-status${query}`)
+        const res = await fetch('/api/session-status')
         if (!res.ok) return ''
         const data = await res.json()
         const payload = data.payload ?? data
@@ -1026,29 +1097,6 @@ export function ChatScreen({
       }
     },
     refetchInterval: 30_000,
-    retry: false,
-  })
-
-  // Fetch the configured reasoning effort so the Chat Controls default matches
-  // what Hermes actually uses instead of hardcoding 'low'.
-  const reasoningEffortQuery = useQuery({
-    queryKey: ['hermes-config', 'reasoning-effort'],
-    queryFn: async () => {
-      try {
-        const res = await fetch('/api/hermes-config')
-        if (!res.ok) return 'low'
-        const data = await res.json() as { config?: Record<string, unknown> }
-        const agentSection = data?.config?.agent
-        if (agentSection && typeof agentSection === 'object' && !Array.isArray(agentSection)) {
-          const effort = (agentSection as Record<string, unknown>).reasoning_effort
-          if (effort === 'off' || effort === 'low' || effort === 'medium' || effort === 'high') return effort
-        }
-        return 'low'
-      } catch {
-        return 'low'
-      }
-    },
-    staleTime: 10 * 60 * 1000,
     retry: false,
   })
 
@@ -1076,7 +1124,7 @@ export function ChatScreen({
       currentModel.toLowerCase().includes('4-6') ||
       currentModel.toLowerCase().includes('claude-4.6')
     if (is46) {
-      const key = `claude-thinking-${activeFriendlyId || 'new'}`
+      const key = `hermes-thinking-${activeFriendlyId || 'new'}`
       const stored =
         typeof window !== 'undefined'
           ? window.sessionStorage.getItem(key)
@@ -1088,22 +1136,12 @@ export function ChatScreen({
     }
   }, [currentModel, activeFriendlyId])
 
-  // If no per-session thinking level override exists, inherit from Hermes config
-  useEffect(() => {
-    if (thinkingInitializedByUserRef.current) return
-    const configEffort = reasoningEffortQuery.data
-    if (!configEffort) return
-    if (configEffort === 'off' || configEffort === 'low' || configEffort === 'medium' || configEffort === 'high') {
-      setThinkingLevel(configEffort)
-    }
-  }, [reasoningEffortQuery.data])
-
   // Persist thinking level changes to sessionStorage
   const handleThinkingLevelChange = useCallback(
     (level: ThinkingLevel) => {
       setThinkingLevel(level)
       if (typeof window !== 'undefined') {
-        const key = `claude-thinking-${activeFriendlyId || 'new'}`
+        const key = `hermes-thinking-${activeFriendlyId || 'new'}`
         window.sessionStorage.setItem(key, level)
       }
     },
@@ -1127,9 +1165,6 @@ export function ChatScreen({
     startStreaming,
     cancelStreaming,
   } = useStreamingMessage({
-    pinMainSession:
-      activeFriendlyId === 'main' &&
-      (resolvedSessionKey || activeFriendlyId || 'main') === 'main',
     onSessionResolved: useCallback(
       ({
         sessionKey,
@@ -1166,10 +1201,6 @@ export function ChatScreen({
           (message) => ({
             ...message,
             status: 'sent',
-            // Clear __optimisticId so isOptimisticUserMessage returns false.
-            // Without this the message keeps being treated as pending and
-            // gets re-persisted, causing transcript duplication. Fixes #506.
-            __optimisticId: undefined,
             runId: runId ?? message.runId,
           }),
         )
@@ -1177,7 +1208,7 @@ export function ChatScreen({
       },
       [queryClient],
     ),
-    onComplete: useCallback((message: ChatMessage) => {
+    onComplete: useCallback(() => {
       const activeSend = activeSendRef.current
       if (activeSend?.clientId) {
         updateHistoryMessageByClientIdEverywhere(
@@ -1189,23 +1220,11 @@ export function ChatScreen({
           }),
         )
       }
-      if (activeSend?.sessionKey) {
-        persistRecoveryMessage(activeSend.sessionKey, message)
-        clearPendingSendForSession(
-          activeSend.sessionKey,
-          activeSend.friendlyId,
-        )
-      }
       activeSendRef.current = null
       refreshHistoryRef.current()
       setSending(false)
       // Clear waitingForResponse so ThinkingBubble hides and message renders
       streamFinish()
-      // Play notification sound if the user opted in (Settings → Chat).
-      // Read directly from the store to avoid re-creating this callback on every settings change.
-      if (useChatSettingsStore.getState().settings.soundOnChatComplete) {
-        playChatComplete()
-      }
     }, [queryClient, streamFinish]),
     onError: useCallback(
       (messageText: string) => {
@@ -1268,37 +1287,7 @@ export function ChatScreen({
       },
       [queryClient],
     ),
-    onAbort: useCallback(() => {
-      activeSendRef.current = null
-      setSending(false)
-      setPendingGeneration(false)
-      setWaitingForResponse(false)
-    }, [setWaitingForResponse]),
-    acceptedTimeoutMs: modelsQuery.data?.streamAcceptedTimeoutMs,
-    handoffTimeoutMs: modelsQuery.data?.streamHandoffTimeoutMs,
   })
-
-  // Cancel any in-flight stream when the user navigates between sessions or
-  // starts a new chat. Without this, an SSE stream from session A keeps
-  // running after the user navigates away — and any chunks it had already
-  // buffered before our abort takes effect could land in session B (the
-  // newly active session). See #297 (cross-session response contamination).
-  // Note: useStreamingMessage also has its own generation-token guard for
-  // the buffered-chunk race, but cancelling here is the cleaner contract
-  // (an in-flight response that the user navigated away from is no longer
-  // wanted in either session).
-  const navCancelKeyRef = useRef<string | null>(null)
-  useEffect(() => {
-    const navKey = `${activeCanonicalKey ?? ''}::${isNewChat ? 'new' : activeFriendlyId}`
-    if (navCancelKeyRef.current === null) {
-      navCancelKeyRef.current = navKey
-      return
-    }
-    if (navCancelKeyRef.current !== navKey) {
-      navCancelKeyRef.current = navKey
-      cancelStreaming()
-    }
-  }, [activeCanonicalKey, activeFriendlyId, isNewChat, cancelStreaming])
 
   const activeIsRealtimeStreaming = isPortableMode
     ? localIsStreaming
@@ -1310,10 +1299,12 @@ export function ChatScreen({
     activeRealtimeStreamingText,
     activeIsRealtimeStreaming,
   )
-  const stickyStreamingTextRef = useRef<{ runId: string | null; text: string }>({
-    runId: null,
-    text: '',
-  })
+  const stickyStreamingTextRef = useRef<{ runId: string | null; text: string }>(
+    {
+      runId: null,
+      text: '',
+    },
+  )
   stickyStreamingTextRef.current = advanceStickyStreamingText({
     isStreaming: activeIsRealtimeStreaming,
     runId: streamingRunId ?? null,
@@ -1422,7 +1413,7 @@ export function ChatScreen({
       return deduped
     }
 
-    let nextMessages = [...deduped]
+    const nextMessages = [...deduped]
     const streamToolCalls = activeToolCalls.map((toolCall) => ({
       ...toolCall,
       phase: toolCall.phase,
@@ -1438,42 +1429,6 @@ export function ChatScreen({
       __streamToolCalls: streamToolCalls,
     } as ChatMessage
 
-    // Check if the server has already returned a completed assistant message
-    // that overlaps with the streaming text. If so, drop the streaming
-    // placeholder to avoid showing the same response twice.
-    const streamingText = stableActiveStreamingText.trim()
-    const hasServerAssistantVersion = nextMessages.some((msg) => {
-      if (msg.role !== 'assistant') return false
-      if (msg.__streamingStatus === 'streaming') return false
-      // Any non-streaming assistant message that appears after the last user
-      // message is potentially the same response — match by text overlap
-      if (streamingText.length > 0) {
-        const msgText = textFromMessage(msg).trim()
-        if (msgText.length > 0 && (
-          msgText === streamingText ||
-          msgText.startsWith(streamingText) ||
-          streamingText.startsWith(msgText)
-        )) {
-          return true
-        }
-      }
-      // Also match by tool calls: if the server message has the same tool
-      // calls as the streaming placeholder, it's the same response
-      if (streamToolCalls.length > 0) {
-        const msgContent = Array.isArray(msg.content) ? msg.content : []
-        const msgToolCalls = msgContent.filter((p: any) => p.type === 'toolCall')
-        if (msgToolCalls.length > 0 && msgToolCalls.length === streamToolCalls.length) {
-          return streamToolCalls.every((stc: any) =>
-            msgToolCalls.some((mtc: any) => mtc.name === stc.name)
-          )
-        }
-      }
-      return false
-    })
-    if (hasServerAssistantVersion) {
-      return nextMessages
-    }
-
     const existingStreamIdx = nextMessages.findIndex(
       (message) => message.__streamingStatus === 'streaming',
     )
@@ -1483,13 +1438,6 @@ export function ChatScreen({
         ...nextMessages[existingStreamIdx],
         ...streamingMsg,
       }
-      // Remove any other streaming messages (e.g. from mergeHistoryMessages
-      // appending a realtime message after finalDisplayMessages already
-      // injected a placeholder). Keep only one streaming placeholder.
-      const keepIdx = existingStreamIdx
-      nextMessages = nextMessages.filter(
-        (m, i) => i === keepIdx || m.__streamingStatus !== 'streaming',
-      )
       return nextMessages
     }
 
@@ -1547,7 +1495,8 @@ export function ChatScreen({
     localStreamingMessageId,
   ])
 
-  const responseWaitSnapshotRef = useRef<ResponseWaitSnapshot | null>(null)
+  const messageCountAtSendRef = useRef(0)
+  const lastAssistantIdAtSendRef = useRef<string | null>(null)
   const prevIsRealtimeStreamingRef = useRef(activeIsRealtimeStreaming)
   const activeRealtimeStreamingRef = useRef(activeIsRealtimeStreaming)
 
@@ -1556,13 +1505,22 @@ export function ChatScreen({
   }, [activeIsRealtimeStreaming])
 
   useEffect(() => {
-    if (!waitingForResponse) {
-      responseWaitSnapshotRef.current = null
-      return
+    if (waitingForResponse) {
+      messageCountAtSendRef.current = finalDisplayMessages.length
+      const lastMsg = finalDisplayMessages[finalDisplayMessages.length - 1]
+      if (lastMsg?.role === 'assistant') {
+        const raw = lastMsg as Record<string, unknown>
+        lastAssistantIdAtSendRef.current = String(
+          raw.__optimisticId ??
+            raw.id ??
+            raw.messageId ??
+            raw.__realtimeSequence ??
+            '',
+        )
+      } else {
+        lastAssistantIdAtSendRef.current = null
+      }
     }
-    if (responseWaitSnapshotRef.current) return
-    responseWaitSnapshotRef.current =
-      createResponseWaitSnapshot(finalDisplayMessages)
   }, [waitingForResponse, finalDisplayMessages])
 
   useEffect(() => {
@@ -1573,9 +1531,24 @@ export function ChatScreen({
       }
       return
     }
-    const snapshot = responseWaitSnapshotRef.current
-    if (!snapshot) return
-    if (shouldClearWaitingForAssistantMessage(finalDisplayMessages, snapshot)) {
+    const last = finalDisplayMessages[finalDisplayMessages.length - 1]
+    if (!last || last.role !== 'assistant') return
+    if ((last as any).__streamingStatus === 'streaming') return
+    const countGrew =
+      finalDisplayMessages.length > messageCountAtSendRef.current
+    const raw = last as Record<string, unknown>
+    const currentId = String(
+      raw.__optimisticId ??
+        raw.id ??
+        raw.messageId ??
+        raw.__realtimeSequence ??
+        '',
+    )
+    const identityChanged =
+      currentId.length > 0 &&
+      currentId !== (lastAssistantIdAtSendRef.current ?? '')
+    const noAssistantAtSend = lastAssistantIdAtSendRef.current === null
+    if (countGrew || identityChanged || noAssistantAtSend) {
       if (clearTimerRef.current) return
       clearTimerRef.current = window.setTimeout(() => {
         clearTimerRef.current = null
@@ -1621,9 +1594,7 @@ export function ChatScreen({
   }, [suggestion, resolvedSessionKey, dismiss])
 
   // Sync chat activity to global store for sidebar orchestrator avatar
-  const setLocalActivity = useChatActivityStore(
-    (s) => s.setLocalActivity,
-  ) as (next: AgentActivity) => void
+  const setLocalActivity = _noopSetActivity
   useEffect(() => {
     if (liveToolActivity.length > 0) {
       setLocalActivity('tool-use')
@@ -1642,7 +1613,7 @@ export function ChatScreen({
   ])
 
   const statusQuery = useQuery({
-    queryKey: ['claude', 'status'],
+    queryKey: ['hermes', 'status'],
     queryFn: fetchStatus,
     retry: 2,
     retryDelay: 1000,
@@ -1662,7 +1633,7 @@ export function ChatScreen({
           }
         : statusQuery.data && !statusQuery.data.ok
           ? {
-              message: statusQuery.data.error || 'Hermes Agent unavailable',
+              message: statusQuery.data.error || 'Hermes unavailable',
               status: statusQuery.data.status,
             }
           : null
@@ -1684,9 +1655,9 @@ export function ChatScreen({
     const handleRefreshRequest = () => {
       void historyQuery.refetch()
     }
-    window.addEventListener('claude:chat-refresh', handleRefreshRequest)
+    window.addEventListener('hermes:chat-refresh', handleRefreshRequest)
     return () => {
-      window.removeEventListener('claude:chat-refresh', handleRefreshRequest)
+      window.removeEventListener('hermes:chat-refresh', handleRefreshRequest)
     }
   }, [historyQuery])
 
@@ -1717,9 +1688,9 @@ export function ChatScreen({
     function handleSSEDrop() {
       void historyQuery.refetch()
     }
-    window.addEventListener('claude:sse-dropped', handleSSEDrop)
+    window.addEventListener('hermes:sse-dropped', handleSSEDrop)
     return () => {
-      window.removeEventListener('claude:sse-dropped', handleSSEDrop)
+      window.removeEventListener('hermes:sse-dropped', handleSSEDrop)
     }
   }, [historyQuery])
 
@@ -1756,8 +1727,24 @@ export function ChatScreen({
     !historyQuery.isFetching &&
     !historyQuery.isSuccess
 
+  const shouldRecoverMissingRoute = shouldRecoverMissingSessionRoute({
+    embedded,
+    isNewChat,
+    forcedSessionKey,
+    activeFriendlyId,
+    activeExists,
+    sessionsReady: sessionsQuery.isSuccess,
+    historyFetching: historyQuery.isFetching,
+    resolvedSessionKey,
+    recentSession: isRecentSession(activeFriendlyId),
+  })
+
   useEffect(() => {
     if (isRedirecting) {
+      if (error) setError(null)
+      return
+    }
+    if (shouldRecoverMissingRoute) {
       if (error) setError(null)
       return
     }
@@ -1789,7 +1776,7 @@ export function ChatScreen({
       : historyError
         ? `Failed to load history. ${historyError}`
         : statusError
-          ? `Hermes Agent unavailable. ${statusError.message}`
+          ? `Hermes unavailable. ${statusError.message}`
           : null
     if (message) setError(message)
   }, [
@@ -1801,6 +1788,7 @@ export function ChatScreen({
     navigate,
     sessionsError,
     sessionsQuery.isSuccess,
+    shouldRecoverMissingRoute,
     shouldRedirectToNew,
   ])
 
@@ -1813,7 +1801,18 @@ export function ChatScreen({
     if (!shouldRedirectToNew && sessionsQuery.isSuccess) {
       setIsRedirecting(false)
     }
-  }, [isNewChat, isRedirecting, sessionsQuery.isSuccess, shouldRedirectToNew])
+  }, [
+    isNewChat,
+    isRedirecting,
+    sessionsQuery.isSuccess,
+    shouldRecoverMissingRoute,
+    shouldRedirectToNew,
+  ])
+
+  useEffect(() => {
+    if (!shouldRecoverMissingRoute) return
+    setIsRedirecting(true)
+  }, [shouldRecoverMissingRoute])
 
   useEffect(() => {
     if (embedded) return
@@ -1843,7 +1842,31 @@ export function ChatScreen({
     embedded,
   ])
 
-  const hideUi = shouldRedirectToNew || isRedirecting
+  useEffect(() => {
+    if (embedded) return
+    if (!shouldRecoverMissingRoute) return
+    resetPendingSend()
+    clearHistoryMessages(queryClient, activeFriendlyId, sessionKeyForHistory)
+    try {
+      if (localStorage.getItem('hermes-last-session') === activeFriendlyId) {
+        localStorage.removeItem('hermes-last-session')
+      }
+    } catch {}
+    navigate({
+      to: '/chat/$sessionKey',
+      params: { sessionKey: 'new' },
+      replace: true,
+    })
+  }, [
+    activeFriendlyId,
+    embedded,
+    navigate,
+    queryClient,
+    sessionKeyForHistory,
+    shouldRecoverMissingRoute,
+  ])
+
+  const hideUi = shouldRedirectToNew || shouldRecoverMissingRoute || isRedirecting
   const isFocusMode = !compact && chatFocusMode
   const showComposer = !isRedirecting
 
@@ -1911,7 +1934,7 @@ export function ChatScreen({
    * Response arrives via SSE stream, not via this function.
    */
   const sendMessage = useCallback(
-    function sendMessage(
+    async function sendMessage(
       sessionKey: string,
       friendlyId: string,
       body: string,
@@ -1927,6 +1950,17 @@ export function ChatScreen({
         ...attachment,
         id: attachment.id ?? crypto.randomUUID(),
       }))
+      const uploadApiAttachments = normalizedAttachments.filter(
+        (attachment) => {
+          const mime =
+            normalizeMimeType(attachment.contentType ?? '') ||
+            readDataUrlMimeType(attachment.dataUrl)
+          return (
+            isUploadApiDocumentMimeType(mime) &&
+            (attachment.dataUrl ?? '').length > 0
+          )
+        },
+      )
 
       // Inject text/file attachment content directly into the message body.
       // Servers reliably forward text in the message body; file attachments
@@ -1936,7 +1970,11 @@ export function ChatScreen({
           const mime =
             normalizeMimeType(a.contentType ?? '') ||
             readDataUrlMimeType(a.dataUrl ?? '')
-          return !isImageMimeType(mime) && (a.dataUrl ?? '').length > 0
+          return (
+            isTextLikeMimeType(mime) &&
+            !isUploadApiDocumentMimeType(mime) &&
+            (a.dataUrl ?? '').length > 0
+          )
         })
         .map((a) => {
           const raw = a.dataUrl ?? ''
@@ -1945,7 +1983,16 @@ export function ChatScreen({
             : raw
           return `\n\n<attachment name="${a.name ?? 'file'}">\n${content}\n</attachment>`
         })
-      const enrichedBody = body + textBlocks.join('')
+      const attachmentSummary = normalizedAttachments
+        .map((a) => a.name?.trim())
+        .filter((name): name is string => Boolean(name))
+      const fallbackBody =
+        attachmentSummary.length > 0
+          ? `Please review the attached files: ${attachmentSummary.join(', ')}`
+          : 'Please review the attached content.'
+      const enrichedBodyRaw = body + textBlocks.join('')
+      let enrichedBody =
+        enrichedBodyRaw.trim().length > 0 ? enrichedBodyRaw : fallbackBody
 
       let optimisticClientId = existingClientId
       setResearchResetKey((current) => current + 1)
@@ -1991,41 +2038,64 @@ export function ChatScreen({
 
       // Send a compatibility shape for attachment parsing.
       // Different server/channel versions read different keys.
-      const payloadAttachments = normalizedAttachments.map((attachment) => {
-        const mimeType =
-          normalizeMimeType(attachment.contentType) ||
-          readDataUrlMimeType(attachment.dataUrl)
-        const isImage = isImageMimeType(mimeType)
-        // For text/file attachments, dataUrl holds raw text (not a base64 data URL).
-        // We must base64-encode it so the server can build a valid data: URI.
-        const rawDataUrl = attachment.dataUrl ?? ''
-        let encodedContent: string
-        let finalDataUrl: string
-        if (!isImage && !rawDataUrl.startsWith('data:')) {
-          encodedContent = btoa(unescape(encodeURIComponent(rawDataUrl)))
-          finalDataUrl = mimeType
-            ? `data:${mimeType};base64,${encodedContent}`
-            : `data:text/plain;base64,${encodedContent}`
-        } else {
-          encodedContent = stripDataUrlPrefix(rawDataUrl)
-          finalDataUrl = rawDataUrl
-        }
-        return {
-          id: attachment.id,
-          name: attachment.name,
-          fileName: attachment.name,
-          contentType: mimeType || undefined,
-          mimeType: mimeType || undefined,
-          mediaType: mimeType || undefined,
-          type: isImage ? 'image' : 'file',
-          content: encodedContent,
-          data: encodedContent,
-          base64: encodedContent,
-          dataUrl: finalDataUrl,
-          size: attachment.size,
-        }
-      })
+      const payloadAttachments = normalizedAttachments
+        .filter((attachment) => {
+          const mimeType =
+            normalizeMimeType(attachment.contentType) ||
+            readDataUrlMimeType(attachment.dataUrl)
+          return !isUploadApiDocumentMimeType(mimeType)
+        })
+        .map((attachment) => {
+          const mimeType =
+            normalizeMimeType(attachment.contentType) ||
+            readDataUrlMimeType(attachment.dataUrl)
+          const isImage = isImageMimeType(mimeType)
+          // For text/file attachments, dataUrl holds raw text (not a base64 data URL).
+          // We must base64-encode it so the server can build a valid data: URI.
+          const rawDataUrl = attachment.dataUrl ?? ''
+          let encodedContent: string
+          let finalDataUrl: string
+          if (!isImage && !rawDataUrl.startsWith('data:')) {
+            encodedContent = btoa(unescape(encodeURIComponent(rawDataUrl)))
+            finalDataUrl = mimeType
+              ? `data:${mimeType};base64,${encodedContent}`
+              : `data:text/plain;base64,${encodedContent}`
+          } else {
+            encodedContent = stripDataUrlPrefix(rawDataUrl)
+            finalDataUrl = rawDataUrl
+          }
+          return {
+            id: attachment.id,
+            name: attachment.name,
+            fileName: attachment.name,
+            contentType: mimeType || undefined,
+            mimeType: mimeType || undefined,
+            mediaType: mimeType || undefined,
+            type: isImage ? 'image' : 'file',
+            content: encodedContent,
+            data: encodedContent,
+            base64: encodedContent,
+            dataUrl: finalDataUrl,
+            size: attachment.size,
+          }
+        })
       const history = buildPortableHistory(finalDisplayMessages)
+
+      if (uploadApiAttachments.length > 0) {
+        const uploadedNames = await uploadChatDocuments(
+          sessionKey,
+          uploadApiAttachments,
+        )
+        if (uploadedNames.length > 0) {
+          const refBlock = uploadedNames
+            .map((n) => `Uploaded document: uploads/${n}`)
+            .join('\n')
+          enrichedBody =
+            enrichedBody.trim().length > 0
+              ? `${enrichedBody}\n\n${refBlock}`
+              : refBlock
+        }
+      }
 
       try {
         streamStart()
@@ -2215,7 +2285,7 @@ export function ChatScreen({
 
   useEffect(() => {
     if (false) {
-      // Server connection checks removed — Hermes Agent uses direct API
+      // Server connection checks removed — Hermes uses direct API
       hasSeenDisconnectRef.current = true
       retriedQueuedMessageKeysRef.current.clear()
       return
@@ -2249,53 +2319,11 @@ export function ChatScreen({
       handleRefetch()
     }
 
-    window.addEventListener('claude:health-restored', handleHealthRestored)
+    window.addEventListener('hermes:health-restored', handleHealthRestored)
     return () => {
-      window.removeEventListener('claude:health-restored', handleHealthRestored)
+      window.removeEventListener('hermes:health-restored', handleHealthRestored)
     }
   }, [flushRetryableMessages, handleRefetch])
-
-  const createSessionForMessage = useCallback(
-    async (preferredFriendlyId?: string) => {
-      setCreatingSession(true)
-      try {
-        const res = await fetch('/api/sessions', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(
-            preferredFriendlyId && preferredFriendlyId.trim().length > 0
-              ? { friendlyId: preferredFriendlyId }
-              : {},
-          ),
-        })
-        if (!res.ok) throw new Error(await readError(res))
-
-        const data = (await res.json()) as {
-          sessionKey?: string
-          friendlyId?: string
-        }
-
-        const sessionKey =
-          typeof data.sessionKey === 'string' ? data.sessionKey : ''
-        const friendlyId =
-          typeof data.friendlyId === 'string' &&
-          data.friendlyId.trim().length > 0
-            ? data.friendlyId.trim()
-            : (preferredFriendlyId?.trim() ?? '') ||
-              deriveFriendlyIdFromKey(sessionKey)
-
-        if (!sessionKey || !friendlyId) {
-          throw new Error('Invalid session response')
-        }
-
-        queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
-        return { sessionKey, friendlyId }
-      } finally {
-        setCreatingSession(false)
-      }
-    },
-    [queryClient],
-  )
 
   const upsertSessionInCache = useCallback(
     (friendlyId: string, lastMessage: ChatMessage) => {
@@ -2356,11 +2384,7 @@ export function ChatScreen({
       if (!trimmedCommand.startsWith('/')) return false
 
       if (trimmedCommand === '/new') {
-        // Use the explicit 'new' session sentinel rather than '/chat' alone.
-        // The /chat index route redirects to the last-active session via
-        // localStorage, so navigating to '/chat' would land in the previous
-        // chat instead of opening a fresh one. See #300.
-        navigate({ to: '/chat/$sessionKey', params: { sessionKey: 'new' } })
+        navigate({ to: '/chat' })
         return true
       }
 
@@ -2379,7 +2403,7 @@ export function ChatScreen({
         window.dispatchEvent(
           new CustomEvent(CHAT_OPEN_SETTINGS_EVENT, {
             detail: {
-              section: trimmedCommand === '/skin' ? 'appearance' : 'claude',
+              section: trimmedCommand === '/skin' ? 'appearance' : 'hermes',
             },
           }),
         )
@@ -2425,6 +2449,12 @@ export function ChatScreen({
       const trimmedBody = body.trim()
       if (trimmedBody.length === 0 && attachments.length === 0) return
       if (attachments.length === 0 && handleUiSlashCommand(trimmedBody)) return
+      if (
+        isDemoWalkthroughRunning &&
+        trimmedBody === FIRST_DEMO_WALKTHROUGH_PROMPT
+      ) {
+        setIsDemoWalkthroughRunning(false)
+      }
 
       // Deduplicate sends with identical content within a 500ms window.
       // This prevents double-fire from paste events that trigger multiple send paths.
@@ -2456,48 +2486,62 @@ export function ChatScreen({
 
       if (isNewChat) {
         // In portable mode, use 'main' — no server-side sessions exist.
-        // In enhanced mode, create a UUID thread for the sessions API.
-        const threadId = isPortableMode ? 'main' : crypto.randomUUID()
-        const { optimisticMessage } = createOptimisticMessage(
-          trimmedBody,
-          attachmentPayload,
-        )
-        appendHistoryMessage(queryClient, threadId, threadId, optimisticMessage)
-        upsertSessionInCache(threadId, optimisticMessage)
-        setPendingGeneration(true)
-        setSending(true)
-        setWaitingForResponse(true)
+        // In enhanced mode, create the backend session first so document uploads
+        // have a real session-scoped uploads directory.
+        const createLabel =
+          trimmedBody || attachmentPayload[0]?.name?.trim() || 'New Session'
+        const newSession = isPortableMode
+          ? { sessionKey: 'main', friendlyId: 'main' }
+          : undefined
+        void (async () => {
+          try {
+            const resolvedSession =
+              newSession || (await ensureChatSession(createLabel))
+            const { sessionKey, friendlyId } = resolvedSession
+            const { optimisticMessage } = createOptimisticMessage(
+              trimmedBody,
+              attachmentPayload,
+            )
+            appendHistoryMessage(
+              queryClient,
+              friendlyId,
+              sessionKey,
+              optimisticMessage,
+            )
+            upsertSessionInCache(sessionKey, optimisticMessage)
+            setPendingGeneration(true)
+            setSending(true)
+            setWaitingForResponse(true)
+            onSessionResolved?.({ sessionKey, friendlyId })
 
-        if (!isPortableMode) {
-          void createSessionForMessage(threadId).catch((err: unknown) => {
-            if (import.meta.env.DEV) {
-              console.warn('[chat] failed to register new thread', err)
+            sendMessage(
+              sessionKey,
+              friendlyId,
+              trimmedBody,
+              attachmentPayload,
+              fastMode,
+              true,
+              typeof optimisticMessage.clientId === 'string'
+                ? optimisticMessage.clientId
+                : '',
+            )
+            if (!embedded) {
+              navigate({
+                to: '/chat/$sessionKey',
+                params: { sessionKey },
+                replace: true,
+              })
             }
-            void queryClient.invalidateQueries({
-              queryKey: chatQueryKeys.sessions,
-            })
-          })
-        }
-
-        sendMessage(
-          threadId,
-          threadId,
-          trimmedBody,
-          attachmentPayload,
-          fastMode,
-          true,
-          typeof optimisticMessage.clientId === 'string'
-            ? optimisticMessage.clientId
-            : '',
-        )
-        // In portable mode, navigate to /chat/main instead of UUID
-        if (!embedded) {
-          navigate({
-            to: '/chat/$sessionKey',
-            params: { sessionKey: threadId },
-            replace: true,
-          })
-        }
+          } catch (err) {
+            const messageText = err instanceof Error ? err.message : String(err)
+            setSending(false)
+            setPendingGeneration(false)
+            setWaitingForResponse(false)
+            setError(`Failed to send message. ${messageText}`)
+            toast('Failed to send message', { type: 'error' })
+            showErrorToast(messageText)
+          }
+        })()
         return
       }
 
@@ -2515,7 +2559,6 @@ export function ChatScreen({
     [
       activeFriendlyId,
       activeSessionKey,
-      createSessionForMessage,
       forcedSessionKey,
       isNewChat,
       navigate,
@@ -2526,6 +2569,7 @@ export function ChatScreen({
       queryClient,
       resolvedSessionKey,
       handleUiSlashCommand,
+      isDemoWalkthroughRunning,
     ],
   )
 
@@ -2547,6 +2591,19 @@ export function ChatScreen({
     setPendingGeneration(false)
     setWaitingForResponse(false)
   }, [cancelStreaming, queryClient])
+
+  const handleA2UiSubmit = useCallback(
+    (payload: string) => {
+      const body = payload.trim()
+      if (!body) return
+      send(body, [], false, {
+        reset: () => {},
+        setValue: () => {},
+        setAttachments: () => {},
+      })
+    },
+    [send],
+  )
 
   const runPaletteSlashCommand = useCallback(
     (command: string) => {
@@ -2572,23 +2629,6 @@ export function ChatScreen({
   }, [runPaletteSlashCommand])
 
   useEffect(() => {
-    function handleSubmitSelection(event: Event) {
-      const detail = (event as CustomEvent<ChatSubmitSelectionDetail>).detail
-      const text = detail?.text?.trim()
-      if (!text) return
-      send(text, [], false, commandHelpers)
-    }
-
-    window.addEventListener(CHAT_SUBMIT_SELECTION_EVENT, handleSubmitSelection)
-    return () => {
-      window.removeEventListener(
-        CHAT_SUBMIT_SELECTION_EVENT,
-        handleSubmitSelection,
-      )
-    }
-  }, [commandHelpers, send])
-
-  useEffect(() => {
     const pendingCommand = window.sessionStorage.getItem(
       CHAT_PENDING_COMMAND_STORAGE_KEY,
     )
@@ -2608,7 +2648,7 @@ export function ChatScreen({
     setFileExplorerCollapsed((prev) => {
       const next = !prev
       if (typeof window !== 'undefined') {
-        localStorage.setItem('claude-file-explorer-collapsed', String(next))
+        localStorage.setItem('hermes-file-explorer-collapsed', String(next))
       }
       return next
     })
@@ -2638,6 +2678,53 @@ export function ChatScreen({
 
   const handleInsertFileReference = useCallback((reference: string) => {
     composerHandleRef.current?.insertText(reference)
+  }, [])
+
+  const handleFillComposerInput = useCallback((value: string) => {
+    composerHandleRef.current?.setValue(`${value.trim()} `)
+
+    if (typeof window === 'undefined') return
+    window.requestAnimationFrame(() => {
+      const composerTarget = document.querySelector(
+        '[data-tour="chat-composer-input"]',
+      )
+      if (composerTarget instanceof HTMLElement) {
+        composerTarget.scrollIntoView({
+          block: 'center',
+          behavior: 'smooth',
+        })
+      }
+    })
+  }, [])
+
+  const startDemoWalkthrough = useCallback(() => {
+    composerHandleRef.current?.setValue(`${FIRST_DEMO_WALKTHROUGH_PROMPT} `)
+
+    if (typeof window === 'undefined') {
+      setIsDemoWalkthroughRunning(true)
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      const composerTarget = document.querySelector(
+        '[data-tour="chat-composer-input"]',
+      )
+      if (composerTarget instanceof HTMLElement) {
+        composerTarget.scrollIntoView({
+          block: 'center',
+          behavior: 'smooth',
+        })
+      }
+
+      const promptTarget = document.querySelector(
+        '[data-tour="chat-composer-input"] textarea',
+      )
+      if (promptTarget instanceof HTMLTextAreaElement) {
+        promptTarget.focus({ preventScroll: true })
+      }
+
+      setIsDemoWalkthroughRunning(true)
+    })
   }, [])
 
   const historyLoading =
@@ -2711,10 +2798,27 @@ export function ChatScreen({
     const handler = () => {
       /* agent view removed */
     }
-    window.addEventListener('claude:chat-agent-details', handler)
+    window.addEventListener('hermes:chat-agent-details', handler)
     return () =>
-      window.removeEventListener('claude:chat-agent-details', handler)
+      window.removeEventListener('hermes:chat-agent-details', handler)
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('demo_walkthrough') || params.get('run_insights')) {
+        params.delete('demo_walkthrough')
+        params.delete('run_insights')
+        const url = new URL(window.location.href)
+        url.search = params.toString()
+        window.history.replaceState({}, '', url.toString())
+        window.setTimeout(() => {
+          startDemoWalkthrough()
+        }, 150)
+      }
+    } catch {}
+  }, [startDemoWalkthrough])
 
   return (
     <div
@@ -2731,7 +2835,7 @@ export function ChatScreen({
             ? 'flex min-h-0 w-full flex-col'
             : isMobile
               ? 'flex flex-col'
-              : 'grid grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[minmax(0,1fr)]',
+              : 'grid grid-cols-[auto_1fr] grid-rows-[minmax(0,1fr)]',
         )}
       >
         {hideUi || compact || isFocusMode ? null : isMobile ? null : (
@@ -2744,7 +2848,8 @@ export function ChatScreen({
 
         <main
           className={cn(
-            'flex h-full flex-1 min-h-0 min-w-0 flex-col overflow-hidden transition-[margin-bottom] duration-200',
+            'flex h-full flex-1 min-h-0 min-w-0 flex-col overflow-hidden transition-[margin-right,margin-bottom] duration-200',
+            'mr-0',
             (activeIsRealtimeStreaming || hasPendingGeneration()) &&
               'chat-streaming-glow',
           )}
@@ -2841,12 +2946,7 @@ export function ChatScreen({
 
           {hideUi ? null : (
             <ContextBar
-              sessionId={
-                resolvedSessionKey ||
-                activeCanonicalKey ||
-                activeSession?.key ||
-                activeSessionKey
-              }
+              sessionId={activeSession?.key || activeSessionKey || undefined}
             />
           )}
 
@@ -2854,6 +2954,8 @@ export function ChatScreen({
             <ChatMessageList
               messages={finalDisplayMessages}
               onRetryMessage={handleRetryMessage}
+              onA2UiSubmit={handleA2UiSubmit}
+              onFillInput={handleFillComposerInput}
               onRefresh={handleRefreshHistory}
               loading={historyLoading}
               empty={historyEmpty}
@@ -2863,6 +2965,7 @@ export function ChatScreen({
                   onSuggestionClick={(prompt) => {
                     composerHandleRef.current?.setValue(prompt + ' ')
                   }}
+                  onStartDemoWalkthrough={startDemoWalkthrough}
                 />
               }
               notice={null}
@@ -2906,14 +3009,10 @@ export function ChatScreen({
               sessionKey={
                 isNewChat
                   ? undefined
-                  : forcedSessionKey ||
-                    resolvedSessionKey ||
-                    activeCanonicalKey ||
-                    activeSessionKey
+                  : forcedSessionKey || resolvedSessionKey || activeSessionKey
               }
               wrapperRef={composerRef}
               composerRef={composerHandleRef}
-              embedded={embedded}
               // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runtime safety
               focusKey={`${isNewChat ? 'new' : activeFriendlyId}:${activeCanonicalKey ?? ''}`}
               thinkingLevel={thinkingLevel}
@@ -2921,9 +3020,13 @@ export function ChatScreen({
             />
           ) : null}
         </main>
-        {!compact && !isFocusMode && <AgentViewPanel />}
       </div>
+      <ChatDemoWalkthrough
+        run={isDemoWalkthroughRunning}
+        onClose={() => setIsDemoWalkthroughRunning(false)}
+      />
       {!compact && !hideUi && !isMobile && !isFocusMode && <TerminalPanel />}
+      <InspectorPanel />
 
       {suggestion && (
         <ModelSuggestionToast

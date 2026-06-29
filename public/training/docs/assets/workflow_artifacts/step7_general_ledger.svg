@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" font-family="'Source Han Sans SC','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">
+  <defs>
+    <style>
+      .ink{fill:#1a1a1a} .muted{fill:#6b7280} .gold{fill:#b45309}
+      .mono{font-family:ui-monospace,Consolas,monospace}
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="899" height="399" rx="12" fill="#ffffff" stroke="#d4d4d8"/>
+  <rect x="0.5" y="0.5" width="6" height="399" rx="3" fill="#38bdf8"/>
+
+  <!-- Header -->
+  <rect x="7" y="1" width="892" height="56" fill="#fcfcfa"/>
+  <line x1="7" y1="57" x2="899" y2="57" stroke="#d4d4d8"/>
+  <circle cx="40" cy="29" r="13" fill="#1a1a1a"/>
+  <text x="40" y="34" font-size="14" fill="#fff" text-anchor="middle" font-weight="700">7</text>
+  <text x="62" y="34" font-size="17" font-weight="600" class="ink">分类汇总账簿 · 总账</text>
+  <text x="270" y="34" font-size="13" class="muted">General Ledger</text>
+  <rect x="800" y="16" width="87" height="22" rx="4" fill="#e0f2fe" stroke="#7dd3fc"/>
+  <text x="843" y="31" font-size="11" font-weight="700" letter-spacing="1" fill="#0c4a6e" text-anchor="middle">DERIVED</text>
+
+  <!-- Title -->
+  <text x="450" y="86" font-size="14" font-weight="600" class="ink" text-anchor="middle">总账 · 2022 年 7 月</text>
+
+  <!-- Table -->
+  <g transform="translate(36,100)">
+    <rect x="0" y="0" width="828" height="200" fill="white" stroke="#d4d4d8"/>
+
+    <!-- Header row -->
+    <rect x="0" y="0" width="828" height="32" fill="#f1f5f9"/>
+    <line x1="0" y1="32" x2="828" y2="32" stroke="#d4d4d8"/>
+    <line x1="100" y1="0" x2="100" y2="200" stroke="#d4d4d8"/>
+    <line x1="240" y1="0" x2="240" y2="200" stroke="#d4d4d8"/>
+    <line x1="400" y1="0" x2="400" y2="200" stroke="#d4d4d8"/>
+    <line x1="540" y1="0" x2="540" y2="200" stroke="#d4d4d8"/>
+    <line x1="680" y1="0" x2="680" y2="200" stroke="#d4d4d8"/>
+
+    <text x="50"  y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">科目编码</text>
+    <text x="170" y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">科目名称</text>
+    <text x="320" y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">期初余额</text>
+    <text x="470" y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">本期借方</text>
+    <text x="610" y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">本期贷方</text>
+    <text x="754" y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">期末余额</text>
+
+    <!-- Row 1: 银行存款 -->
+    <text x="50"  y="56" font-size="12" class="mono ink" text-anchor="middle">1002</text>
+    <text x="170" y="56" font-size="12" class="ink" text-anchor="middle">银行存款</text>
+    <text x="390" y="56" font-size="12" class="mono ink" text-anchor="end">25,000.00</text>
+    <text x="530" y="56" font-size="12" class="mono ink" text-anchor="end">12,000.00</text>
+    <text x="670" y="56" font-size="12" class="mono ink" text-anchor="end" font-weight="700">9,300.00</text>
+    <text x="818" y="56" font-size="12" class="mono ink" text-anchor="end">27,700.00</text>
+    <line x1="0" y1="68" x2="828" y2="68" stroke="#f3f4f6"/>
+
+    <!-- Row 2: 应收账款 -->
+    <text x="50"  y="88" font-size="12" class="mono ink" text-anchor="middle">1122</text>
+    <text x="170" y="88" font-size="12" class="ink" text-anchor="middle">应收账款</text>
+    <text x="390" y="88" font-size="12" class="mono ink" text-anchor="end">42,000.00</text>
+    <text x="530" y="88" font-size="12" class="mono muted" text-anchor="end">—</text>
+    <text x="670" y="88" font-size="12" class="mono ink" text-anchor="end">12,000.00</text>
+    <text x="818" y="88" font-size="12" class="mono ink" text-anchor="end">30,000.00</text>
+    <line x1="0" y1="100" x2="828" y2="100" stroke="#f3f4f6"/>
+
+    <!-- Row 3 highlighted: 管理费用 (touched by our voucher) -->
+    <rect x="0" y="100" width="828" height="32" fill="#fef3c7"/>
+    <text x="50"  y="120" font-size="12" class="mono ink" text-anchor="middle" font-weight="700">6602</text>
+    <text x="170" y="120" font-size="12" class="ink" text-anchor="middle" font-weight="700">管理费用</text>
+    <text x="390" y="120" font-size="12" class="mono ink" text-anchor="end">0.00</text>
+    <text x="530" y="120" font-size="12" class="mono ink" text-anchor="end" font-weight="700">9,300.00</text>
+    <text x="670" y="120" font-size="12" class="mono muted" text-anchor="end">—</text>
+    <text x="818" y="120" font-size="12" class="mono ink" text-anchor="end" font-weight="700">9,300.00</text>
+    <line x1="0" y1="132" x2="828" y2="132" stroke="#f3f4f6"/>
+
+    <!-- Total row -->
+    <rect x="0" y="160" width="828" height="40" fill="#fef3c7" opacity="0.6"/>
+    <line x1="0" y1="160" x2="828" y2="160" stroke="#1a1a1a"/>
+    <text x="120" y="184" font-size="12" font-weight="700" class="ink">合计 (借 = 贷 平衡)</text>
+    <text x="390" y="184" font-size="12" class="mono ink" font-weight="700" text-anchor="end">67,000.00</text>
+    <text x="530" y="184" font-size="12" class="mono ink" font-weight="700" text-anchor="end">21,300.00</text>
+    <text x="670" y="184" font-size="12" class="mono ink" font-weight="700" text-anchor="end">21,300.00</text>
+    <text x="818" y="184" font-size="12" class="mono ink" font-weight="700" text-anchor="end">67,000.00</text>
+  </g>
+
+  <!-- Caption -->
+  <text x="450" y="340" font-size="11" class="muted" text-anchor="middle" font-style="italic">
+    Fig 7 · Category-summarized view. 管理费用 行高亮 ¥9,300 = 8,000 (租金 #07651) + 500 (办公费 源 A) + 800 (差旅费 源 B);
+  </text>
+  <text x="450" y="358" font-size="11" class="muted" text-anchor="middle" font-style="italic">
+    Trial balance check: 本期借方合计 = 本期贷方合计 = 21,300.00 ✓
+  </text>
+</svg>

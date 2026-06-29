@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" font-family="'Source Han Sans SC','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">
+  <defs>
+    <style>
+      .ink{fill:#1a1a1a} .muted{fill:#6b7280} .gold{fill:#b45309} .accent{fill:#0c4a6e}
+      .mono{font-family:ui-monospace,Consolas,monospace}
+    </style>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#b45309"/>
+    </marker>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="899" height="479" rx="12" fill="#ffffff" stroke="#d4d4d8"/>
+  <rect x="0.5" y="0.5" width="6" height="479" rx="3" fill="#38bdf8"/>
+
+  <!-- Header -->
+  <rect x="7" y="1" width="892" height="56" fill="#fcfcfa"/>
+  <line x1="7" y1="57" x2="899" y2="57" stroke="#d4d4d8"/>
+  <circle cx="40" cy="29" r="13" fill="#1a1a1a"/>
+  <text x="40" y="34" font-size="14" fill="#fff" text-anchor="middle" font-weight="700">5</text>
+  <text x="62" y="34" font-size="17" font-weight="600" class="ink">登账处理 · 凭证过账</text>
+  <text x="252" y="34" font-size="13" class="muted">Posting</text>
+  <rect x="800" y="16" width="87" height="22" rx="4" fill="#e0f2fe" stroke="#7dd3fc"/>
+  <text x="843" y="31" font-size="11" font-weight="700" letter-spacing="1" fill="#0c4a6e" text-anchor="middle">DERIVED</text>
+
+  <!-- Source box -->
+  <g transform="translate(40,98)">
+    <rect x="0" y="0" width="300" height="290" rx="8" fill="#fafafa" stroke="#d4d4d8"/>
+    <text x="150" y="22" font-size="11" class="muted" text-anchor="middle" letter-spacing="1.5" font-weight="700">SOURCE</text>
+    <text x="150" y="46" font-size="14" font-weight="700" class="ink" text-anchor="middle">记账凭证 #07654</text>
+    <text x="150" y="64" font-size="11" class="muted" text-anchor="middle">2022-07-16 · 付款凭证 · 捆绑 A/B/C</text>
+    <line x1="20" y1="78" x2="280" y2="78" stroke="#d4d4d8"/>
+
+    <!-- 3-line debit/credit table -->
+    <text x="20" y="102" font-size="11" class="ink">借  管理费用 · 办公费 <tspan class="muted" font-size="10">(源 A)</tspan></text>
+    <text x="280" y="102" font-size="12" class="mono ink" text-anchor="end">+500.00</text>
+    <line x1="20" y1="112" x2="280" y2="112" stroke="#e5e7eb"/>
+
+    <text x="20" y="132" font-size="11" class="ink">借  管理费用 · 差旅费 <tspan class="muted" font-size="10">(源 B)</tspan></text>
+    <text x="280" y="132" font-size="12" class="mono ink" text-anchor="end">+800.00</text>
+    <line x1="20" y1="142" x2="280" y2="142" stroke="#e5e7eb"/>
+
+    <text x="20" y="162" font-size="11" class="ink">贷  银行存款 · 工行 6FE0 <tspan class="muted" font-size="10">(源 C)</tspan></text>
+    <text x="280" y="162" font-size="12" class="mono ink" text-anchor="end">-1,300.00</text>
+    <line x1="20" y1="172" x2="280" y2="172" stroke="#e5e7eb"/>
+
+    <text x="20" y="194" font-size="11" font-weight="700" class="ink">合计</text>
+    <text x="280" y="194" font-size="12" font-weight="700" class="mono ink" text-anchor="end">借 1,300 = 贷 1,300</text>
+
+    <text x="20" y="226" font-size="11" class="muted">audited &amp; balanced</text>
+    <rect x="170" y="212" width="110" height="20" rx="10" fill="#dcfce7" stroke="#15803d"/>
+    <text x="225" y="226" font-size="10" font-weight="700" fill="#15803d" text-anchor="middle">READY TO POST</text>
+
+    <text x="150" y="266" font-size="10" class="muted" text-anchor="middle" font-style="italic">JournalVoucherProjection_t</text>
+  </g>
+
+  <!-- Arrow with label -->
+  <g transform="translate(360,234)">
+    <line x1="0" y1="22" x2="160" y2="22" stroke="#b45309" stroke-width="3" marker-end="url(#arr)"/>
+    <rect x="40" y="0" width="84" height="20" rx="10" fill="#fef3c7" stroke="#f59e0b"/>
+    <text x="82" y="14" font-size="11" font-weight="700" class="gold" text-anchor="middle">过账 POSTING</text>
+    <text x="82" y="46" font-size="10" class="muted" text-anchor="middle" font-style="italic">apply to N ledgers</text>
+  </g>
+
+  <!-- Target box: focuses on Bank ledger -->
+  <g transform="translate(560,98)">
+    <rect x="0" y="0" width="300" height="290" rx="8" fill="#fafafa" stroke="#d4d4d8"/>
+    <text x="150" y="22" font-size="11" class="muted" text-anchor="middle" letter-spacing="1.5" font-weight="700">TARGET LEDGER (shown)</text>
+    <text x="150" y="46" font-size="14" font-weight="700" class="accent" text-anchor="middle">银行存款 — 工行 6FE0</text>
+    <text x="150" y="64" font-size="11" class="muted" text-anchor="middle">Account 1002.001</text>
+    <line x1="20" y1="78" x2="280" y2="78" stroke="#d4d4d8"/>
+
+    <!-- Header -->
+    <text x="20" y="100" font-size="11" class="muted">期初余额</text>
+    <text x="280" y="100" font-size="12" class="mono ink" text-anchor="end">10,000.00</text>
+    <line x1="20" y1="110" x2="280" y2="110" stroke="#e5e7eb"/>
+
+    <!-- The new posting (highlighted) -->
+    <rect x="14" y="116" width="272" height="22" fill="#fef3c7"/>
+    <text x="20" y="132" font-size="11" class="gold">07-16 #07654 (合并 A+B 支付)</text>
+    <text x="280" y="132" font-size="12" class="mono gold" text-anchor="end" font-weight="700">-1,300.00</text>
+
+    <line x1="20" y1="146" x2="280" y2="146" stroke="#e5e7eb"/>
+    <text x="20" y="170" font-size="12" font-weight="700" class="ink">期末余额</text>
+    <text x="280" y="170" font-size="14" font-weight="700" class="mono accent" text-anchor="end">8,700.00</text>
+
+    <line x1="20" y1="186" x2="280" y2="186" stroke="#d4d4d8" stroke-dasharray="3 3"/>
+    <text x="20" y="206" font-size="10" class="muted">同笔过账并写入 ↘</text>
+    <text x="20" y="226" font-size="10" class="ink">  · 管理费用 · 办公费  +500.00</text>
+    <text x="20" y="244" font-size="10" class="ink">  · 管理费用 · 差旅费  +800.00</text>
+
+    <text x="150" y="266" font-size="10" class="muted" text-anchor="middle" font-style="italic">LedgerView_t  (per affected account)</text>
+  </g>
+
+  <!-- Caption -->
+  <text x="450" y="424" font-size="11" class="muted" text-anchor="middle" font-style="italic">
+    Fig 5 · 捆绑后的记账凭证一次过账写入多个账户;此处展示对 银行存款·工行6FE0 的影响。
+  </text>
+  <text x="450" y="442" font-size="11" class="muted" text-anchor="middle" font-style="italic">
+    Internal to the accounting system; not constrained by the data standard.
+  </text>
+</svg>

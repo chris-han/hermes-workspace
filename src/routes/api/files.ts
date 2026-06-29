@@ -5,7 +5,6 @@ import { promisify } from 'node:util'
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import {
-  isAuthenticated,
   requireLocalOrAuth,
 } from '../../server/auth-middleware'
 import {
@@ -15,7 +14,12 @@ import {
   requireJsonContentType,
   safeErrorMessage,
 } from '../../server/rate-limit'
-import { loadWorkspaceCatalog } from './workspace'
+import {
+  WorkspaceAuthRequiredError,
+  ensureWorkspacePathWithinRoot,
+  resolveActiveWorkspaceRoot,
+  toWorkspaceRelativePath,
+} from '../../server/workspace-root'
 
 const execFileAsync = promisify(execFile)
 
@@ -28,44 +32,12 @@ type FileEntry = {
   children?: Array<FileEntry>
 }
 
-/**
- * Resolve an input path and verify it stays within WORKSPACE_ROOT.
- *
- * Uses path.relative() rather than a string-prefix check (which is unsafe
- * for sibling paths like `/root/.claude` vs `/root/.claude2`). The relative
- * form rejects any candidate that escapes the root via `..` segments or
- * that resolves to an absolute path outside the root. See #121.
- */
-async function getWorkspaceRoot(): Promise<string> {
-  const catalog = await loadWorkspaceCatalog()
-  if (!catalog.isValid || !catalog.path) {
-    throw new Error('No valid workspace selected')
-  }
-  return catalog.path
+function ensureWorkspacePath(workspaceRoot: string, input: string) {
+  return ensureWorkspacePathWithinRoot(workspaceRoot, input)
 }
 
-function ensureWorkspacePath(input: string, workspaceRoot: string) {
-  const raw = input.trim()
-  if (!raw) return workspaceRoot
-  const resolved = path.isAbsolute(raw)
-    ? path.resolve(raw)
-    : path.resolve(workspaceRoot, raw)
-  if (resolved === workspaceRoot) return resolved
-  const relative = path.relative(workspaceRoot, resolved)
-  if (
-    !relative ||
-    relative.startsWith('..') ||
-    relative === '..' ||
-    path.isAbsolute(relative)
-  ) {
-    throw new Error('Path is outside workspace')
-  }
-  return resolved
-}
-
-function toRelative(resolvedPath: string, workspaceRoot: string) {
-  const relative = path.relative(workspaceRoot, resolvedPath)
-  return relative || ''
+function toRelative(workspaceRoot: string, resolvedPath: string) {
+  return toWorkspaceRelativePath(workspaceRoot, resolvedPath)
 }
 
 function sortEntries(entries: Array<FileEntry>) {
@@ -115,14 +87,13 @@ const IGNORED_DIRS = new Set([
   '.DS_Store',
 ])
 
-const MAX_DIRECTORY_DEPTH = 3
+const MAX_DIRECTORY_DEPTH = 6
 const MAX_DIRECTORY_ENTRIES = 20_000
 
 type ReadDirectoryOptions = {
   maxDepth: number
   maxEntries: number | null
   countedEntries: { value: number }
-  workspaceRoot: string
 }
 
 function parseMaxDepth(input: string | null): number | null {
@@ -140,6 +111,7 @@ function parseMaxEntries(input: string | null): number | null {
 }
 
 async function readDirectory(
+  workspaceRoot: string,
   dirPath: string,
   depth: number,
   options: ReadDirectoryOptions,
@@ -165,11 +137,16 @@ async function readDirectory(
 
     if (IGNORED_DIRS.has(entry.name)) continue
     const fullPath = path.join(dirPath, entry.name)
-    const relativePath = toRelative(fullPath, options.workspaceRoot)
+    const relativePath = toRelative(workspaceRoot, fullPath)
     try {
       const stats = await fs.stat(fullPath)
       if (entry.isDirectory()) {
-        const children = await readDirectory(fullPath, depth + 1, options)
+        const children = await readDirectory(
+          workspaceRoot,
+          fullPath,
+          depth + 1,
+          options,
+        )
         mapped.push({
           name: entry.name,
           path: relativePath,
@@ -197,9 +174,9 @@ async function readDirectory(
   return sortEntries(mapped)
 }
 
-async function readGlobDirectory(globPath: string, workspaceRoot: string) {
+async function readGlobDirectory(workspaceRoot: string, globPath: string) {
   const { directoryPath, regex } = parseGlobPattern(globPath)
-  const resolvedDirectory = ensureWorkspacePath(directoryPath, workspaceRoot)
+  const resolvedDirectory = ensureWorkspacePath(workspaceRoot, directoryPath)
   const entries = await fs.readdir(resolvedDirectory, { withFileTypes: true })
   const mapped: Array<FileEntry> = []
 
@@ -209,7 +186,7 @@ async function readGlobDirectory(globPath: string, workspaceRoot: string) {
     const stats = await fs.stat(fullPath)
     mapped.push({
       name: entry.name,
-      path: toRelative(fullPath, workspaceRoot),
+      path: toRelative(workspaceRoot, fullPath),
       type: entry.isDirectory() ? 'folder' : 'file',
       size: stats.size,
       modifiedAt: stats.mtime.toISOString(),
@@ -217,7 +194,7 @@ async function readGlobDirectory(globPath: string, workspaceRoot: string) {
   }
 
   return {
-    root: toRelative(resolvedDirectory, workspaceRoot),
+    root: toRelative(workspaceRoot, resolvedDirectory),
     entries: sortEntries(mapped),
   }
 }
@@ -236,26 +213,6 @@ function getMimeType(filePath: string) {
       return 'image/webp'
     case '.svg':
       return 'image/svg+xml'
-    case '.pdf':
-      return 'application/pdf'
-    case '.md':
-    case '.markdown':
-      return 'text/markdown; charset=utf-8'
-    case '.txt':
-    case '.log':
-      return 'text/plain; charset=utf-8'
-    case '.json':
-      return 'application/json; charset=utf-8'
-    case '.html':
-    case '.htm':
-      return 'text/html; charset=utf-8'
-    case '.css':
-      return 'text/css; charset=utf-8'
-    case '.js':
-    case '.mjs':
-      return 'text/javascript; charset=utf-8'
-    case '.csv':
-      return 'text/csv; charset=utf-8'
     default:
       return 'application/octet-stream'
   }
@@ -266,14 +223,23 @@ function isImageFile(filePath: string) {
   return ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'].includes(ext)
 }
 
+function buildContentDisposition(filename: string) {
+  // Header values must stay ASCII-safe; keep a fallback filename and provide
+  // an RFC 5987 UTF-8 variant so Unicode names still round-trip correctly.
+  const asciiFallback = filename.replace(/[^\x20-\x7E]/g, '_') || 'download'
+  const encodedUtf8 = encodeURIComponent(filename)
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodedUtf8}`
+}
+
 export const Route = createFileRoute('/api/files')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
         try {
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
+          const workspaceRoot = activeWorkspace.path
           const url = new URL(request.url)
           const action = url.searchParams.get('action') || 'list'
           const inputPath = url.searchParams.get('path') || ''
@@ -282,21 +248,21 @@ export const Route = createFileRoute('/api/files')({
             url.searchParams.get('maxEntries'),
           )
 
-          const workspaceRoot = await getWorkspaceRoot()
-
           if (action === 'list' && hasGlob(inputPath)) {
             const globListing = await readGlobDirectory(
-              inputPath,
               workspaceRoot,
+              inputPath,
             )
             return json({
               root: globListing.root,
               base: workspaceRoot,
+              workspaceId: activeWorkspace.workspaceId,
+              workspaceSlug: activeWorkspace.workspaceSlug,
               entries: globListing.entries,
             })
           }
 
-          const resolvedPath = ensureWorkspacePath(inputPath, workspaceRoot)
+          const resolvedPath = ensureWorkspacePath(workspaceRoot, inputPath)
 
           if (action === 'read') {
             const buffer = await fs.readFile(resolvedPath)
@@ -304,59 +270,59 @@ export const Route = createFileRoute('/api/files')({
               const mime = getMimeType(resolvedPath)
               return json({
                 type: 'image',
-                path: toRelative(resolvedPath, workspaceRoot),
+                path: toRelative(workspaceRoot, resolvedPath),
                 content: `data:${mime};base64,${buffer.toString('base64')}`,
               })
             }
             return json({
               type: 'text',
-              path: toRelative(resolvedPath, workspaceRoot),
+              path: toRelative(workspaceRoot, resolvedPath),
               content: buffer.toString('utf8'),
             })
           }
 
-          if (action === 'download' || action === 'view') {
+          if (action === 'download') {
             const buffer = await fs.readFile(resolvedPath)
-            const mime = getMimeType(resolvedPath)
-            const headers: Record<string, string> = {
-              'Content-Type':
-                action === 'view' && mime === 'application/octet-stream'
-                  ? 'text/plain; charset=utf-8'
-                  : mime,
-            }
-            if (action === 'download') {
-              headers['Content-Disposition'] =
-                `attachment; filename="${path.basename(resolvedPath)}"`
-            }
-            return new Response(buffer, { headers })
+            return new Response(buffer, {
+              headers: {
+                'Content-Type': getMimeType(resolvedPath),
+                'Content-Disposition': buildContentDisposition(
+                  path.basename(resolvedPath),
+                ),
+              },
+            })
           }
 
-          const tree = await readDirectory(resolvedPath, 0, {
+          const tree = await readDirectory(workspaceRoot, resolvedPath, 0, {
             maxDepth: maxDepthParam ?? MAX_DIRECTORY_DEPTH,
             maxEntries: maxEntriesParam,
             countedEntries: { value: 0 },
-            workspaceRoot,
           })
           return json({
-            root: toRelative(resolvedPath, workspaceRoot),
+            root: toRelative(workspaceRoot, resolvedPath),
             base: workspaceRoot,
+            workspaceId: activeWorkspace.workspaceId,
+            workspaceSlug: activeWorkspace.workspaceSlug,
             entries: tree,
           })
         } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return json({ error: err.message }, { status: 401 })
+          }
           return json({ error: safeErrorMessage(err) }, { status: 500 })
         }
       },
       POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-        }
         const ip = getClientIp(request)
         if (!rateLimit(`files:${ip}`, 30, 60_000)) {
           return rateLimitResponse()
         }
 
         try {
-          const workspaceRoot = await getWorkspaceRoot()
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
+          const workspaceRoot = activeWorkspace.path
           const contentType = request.headers.get('content-type') || ''
           if (!contentType.includes('multipart/form-data')) {
             const csrfCheck = requireJsonContentType(request)
@@ -374,20 +340,19 @@ export const Route = createFileRoute('/api/files')({
               return json({ error: 'Missing file' }, { status: 400 })
             }
             const resolvedTarget = ensureWorkspacePath(
-              targetPath,
               workspaceRoot,
+              targetPath,
             )
             const isDir = (await fs.stat(resolvedTarget)).isDirectory()
             const destination = isDir
-              ? path.join(resolvedTarget, path.basename(file.name))
+              ? path.join(resolvedTarget, file.name)
               : resolvedTarget
-            ensureWorkspacePath(destination, workspaceRoot)
             await fs.mkdir(path.dirname(destination), { recursive: true })
             const buffer = Buffer.from(await file.arrayBuffer())
             await fs.writeFile(destination, buffer)
             return json({
               ok: true,
-              path: toRelative(destination, workspaceRoot),
+              path: toRelative(workspaceRoot, destination),
             })
           }
 
@@ -399,25 +364,25 @@ export const Route = createFileRoute('/api/files')({
 
           if (action === 'mkdir') {
             const dirPath = ensureWorkspacePath(
-              String(body.path || ''),
               workspaceRoot,
+              String(body.path || ''),
             )
             await fs.mkdir(dirPath, { recursive: true })
-            return json({ ok: true, path: toRelative(dirPath, workspaceRoot) })
+            return json({ ok: true, path: toRelative(workspaceRoot, dirPath) })
           }
 
           if (action === 'rename') {
             const fromPath = ensureWorkspacePath(
-              String(body.from || ''),
               workspaceRoot,
+              String(body.from || ''),
             )
             const toPath = ensureWorkspacePath(
-              String(body.to || ''),
               workspaceRoot,
+              String(body.to || ''),
             )
             await fs.mkdir(path.dirname(toPath), { recursive: true })
             await fs.rename(fromPath, toPath)
-            return json({ ok: true, path: toRelative(toPath, workspaceRoot) })
+            return json({ ok: true, path: toRelative(workspaceRoot, toPath) })
           }
 
           if (action === 'delete') {
@@ -425,8 +390,8 @@ export const Route = createFileRoute('/api/files')({
               return json({ ok: false, error: 'Unauthorized' }, { status: 401 })
             }
             const targetPath = ensureWorkspacePath(
-              String(body.path || ''),
               workspaceRoot,
+              String(body.path || ''),
             )
             try {
               // Try macOS trash command first
@@ -439,14 +404,17 @@ export const Route = createFileRoute('/api/files')({
           }
 
           const filePath = ensureWorkspacePath(
-            String(body.path || ''),
             workspaceRoot,
+            String(body.path || ''),
           )
           const content = typeof body.content === 'string' ? body.content : ''
           await fs.mkdir(path.dirname(filePath), { recursive: true })
           await fs.writeFile(filePath, content, 'utf8')
-          return json({ ok: true, path: toRelative(filePath, workspaceRoot) })
+          return json({ ok: true, path: toRelative(workspaceRoot, filePath) })
         } catch (err) {
+          if (err instanceof WorkspaceAuthRequiredError) {
+            return json({ error: err.message }, { status: 401 })
+          }
           return json({ error: safeErrorMessage(err) }, { status: 500 })
         }
       },

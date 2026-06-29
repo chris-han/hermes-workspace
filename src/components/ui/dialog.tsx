@@ -19,10 +19,10 @@ function DialogTrigger({ className, ...props }: DialogTriggerProps) {
 type DialogContentProps = {
   className?: string
   children: React.ReactNode
-  style?: React.CSSProperties
+  popupStyle?: React.CSSProperties
 }
 
-function DialogContent({ className, children, style }: DialogContentProps) {
+function DialogContent({ className, children, popupStyle }: DialogContentProps) {
   return (
     <Dialog.Portal>
       <Dialog.Backdrop
@@ -43,7 +43,7 @@ function DialogContent({ className, children, style }: DialogContentProps) {
           border: '1px solid var(--theme-border)',
           boxShadow: 'var(--theme-shadow-3)',
           color: 'var(--theme-text)',
-          ...style,
+          ...popupStyle,
         }}
       >
         {children}

@@ -1,7 +1,7 @@
 import { URL, fileURLToPath } from 'node:url'
 import { execSync, spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import net from 'node:net'
 import { resolve, dirname } from 'node:path'
 import os from 'node:os'
@@ -13,71 +13,48 @@ import tailwindcss from '@tailwindcss/vite'
 // nitro plugin removed (tanstackStart handles server runtime)
 import { defineConfig, loadEnv } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
+import { buildSemantierAgentProbeHeaders } from './src/server/semantier-agent-api'
 
 // ---------------------------------------------------------------------------
-// Hermes Agent auto-start helpers
+// Local service auto-start helpers
 // ---------------------------------------------------------------------------
 
-/** Resolve the hermes-agent directory using a priority-ordered fallback chain:
- *  1. HERMES_AGENT_PATH env var (explicit override)
- *  2. CLAUDE_AGENT_PATH env var (legacy override)
- *  3. ../hermes-agent  — sibling clone (standard README setup)
- *  4. ../../hermes-agent — one level up (monorepo / nested workspace)
- *  Returns null if none found.
- */
-function resolveClaudeAgentDir(env: Record<string, string>): string | null {
-  const candidates: string[] = []
-
-  const explicitAgentPath = env.HERMES_AGENT_PATH?.trim() || env.CLAUDE_AGENT_PATH?.trim()
-  if (explicitAgentPath) {
-    candidates.push(explicitAgentPath)
-  }
-
-  // Resolve relative to the workspace root (parent of hermes-workspace/)
-  const workspaceRoot = dirname(resolve('.'))
-  candidates.push(
-    resolve(workspaceRoot, 'hermes-agent'), // sibling (old README)
-    resolve(workspaceRoot, '..', 'hermes-agent'), // one level up
-    resolve(os.homedir(), '.claude', 'hermes-agent'), // Nous installer default
-    resolve(os.homedir(), 'hermes-agent'), // ~/hermes-agent
-  )
-
-  for (const candidate of candidates) {
-    if (existsSync(resolve(candidate, 'webapi'))) return candidate
-  }
-  return null
+function normalizeServiceUrl(
+  rawValue: string | undefined,
+  fallback: string,
+): string {
+  return rawValue?.trim() || fallback
 }
 
-/** Find the Hermes CLI binary used to start the local gateway. */
-function resolveClaudeBinary(): string | null {
-  const candidates = [
-    process.env.HERMES_CLI_BIN || '',
-    resolve(os.homedir(), '.hermes', 'hermes-agent', 'venv', 'bin', 'hermes'),
-    resolve(os.homedir(), '.claude', 'bin', 'claude'),
-    resolve(os.homedir(), '.local', 'bin', 'claude'),
-  ]
-  for (const c of candidates) {
-    if (existsSync(c)) return c
-  }
-  return null
-}
-
-/** Resolve the Python executable to use for Hermes backend startup.
- *  Prefers .venv/bin/python inside agentDir, falls back to system python3.
- */
-function resolveClaudePython(agentDir: string): string {
-  const venvPython = resolve(agentDir, '.venv', 'bin', 'python')
-  if (existsSync(venvPython)) return venvPython
-  // uv creates 'venv' not '.venv' sometimes
-  const uvVenv = resolve(agentDir, 'venv', 'bin', 'python')
-  if (existsSync(uvVenv)) return uvVenv
-  return 'python3'
-}
-
-/** Check if hermes-agent health endpoint is responding */
-async function isClaudeAgentHealthy(port = 8642): Promise<boolean> {
+function isLoopbackUrl(rawValue: string): boolean {
   try {
-    const r = await fetch(`http://127.0.0.1:${port}/health`, {
+    const parsed = new URL(rawValue)
+    return parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost'
+  } catch {
+    return false
+  }
+}
+
+function getServicePort(rawValue: string, fallbackPort: number): number {
+  try {
+    const parsed = new URL(rawValue)
+    if (parsed.port) return Number(parsed.port)
+    return parsed.protocol === 'https:' ? 443 : 80
+  } catch {
+    return fallbackPort
+  }
+}
+
+function localServiceLabel(name: string): string {
+  return `[${name}]`
+}
+
+const SEMANTIER_BACKEND_HEALTH_PATH = '/gateway/channels'
+
+async function isHealthyEndpoint(url: string, path: string): Promise<boolean> {
+  try {
+    const base = url.replace(/\/$/, '')
+    const r = await fetch(`${base}${path}`, {
       signal: AbortSignal.timeout(2000),
     })
     return r.ok
@@ -88,139 +65,13 @@ async function isClaudeAgentHealthy(port = 8642): Promise<boolean> {
 
 const config = defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  // Bridge loadEnv into process.env for server-side SSR runtime code that
-  // reads env vars directly from process.env (e.g. getBearerToken() in
-  // openai-compat-api.ts reads process.env.HERMES_API_TOKEN). Without this,
-  // Vite's loadEnv only populates the local `env` object — not process.env.
-  for (const key of Object.keys(env)) {
-    if (!(key in process.env)) {
-      process.env[key] = env[key]
-    }
-  }
-  const claudeApiUrl = env.CLAUDE_API_URL?.trim() || 'http://127.0.0.1:8642'
-  // /api/connection-status is handled by the real route file at
-  // src/routes/api/connection-status.ts; the dev server no longer
-  // intercepts that path with a slim shortcut. See #285.
-
-  // Hermes Agent auto-start state
-  let claudeAgentChild: ChildProcess | null = null
-  let claudeAgentStarted = false
-
-  const startClaudeAgent = async () => {
-    if (claudeAgentStarted) return
-    // Skip auto-start when CLAUDE_API_URL is explicitly set to a non-local endpoint
-    const explicitUrl =
-      env.CLAUDE_API_URL || process.env.CLAUDE_API_URL || claudeApiUrl || ''
-    if (
-      explicitUrl &&
-      explicitUrl !== 'http://127.0.0.1:8642' &&
-      explicitUrl !== 'http://localhost:8642'
-    ) {
-      console.log(
-        `[hermes-agent] Skipping auto-start — using external API: ${explicitUrl}`,
-      )
-      claudeAgentStarted = true
-      return
-    }
-    if (await isClaudeAgentHealthy()) {
-      console.log('[hermes-agent] Already running — reusing existing process')
-      claudeAgentStarted = true
-      return
-    }
-
-    const claudeBin = resolveClaudeBinary()
-    const agentDir = resolveClaudeAgentDir(env)
-
-    // Prefer the `hermes gateway run` binary path (Nous installer's canonical
-    // entrypoint). Fall back to launching uvicorn against the source tree if
-    // only a directory is present (dev / cloned-in-place setups).
-    let launchCmd: string
-    let commandArgs: string[]
-    let launchCwd: string | undefined
-
-    if (claudeBin) {
-      launchCmd = claudeBin
-      commandArgs = ['gateway', 'run']
-      launchCwd = agentDir ?? undefined
-      console.log(`[hermes-agent] Starting ${claudeBin} gateway run`)
-    } else if (agentDir) {
-      launchCmd = resolveClaudePython(agentDir)
-      const useGatewayRun = existsSync(resolve(agentDir, 'gateway', 'run.py'))
-      commandArgs = useGatewayRun
-        ? ['-m', 'gateway.run']
-        : [
-            '-m',
-            'uvicorn',
-            'webapi.app:app',
-            '--host',
-            '0.0.0.0',
-            '--port',
-            '8642',
-          ]
-      launchCwd = agentDir
-      console.log(
-        `[hermes-agent] Starting from ${agentDir} using ${launchCmd} (${useGatewayRun ? 'gateway.run' : 'uvicorn'})`,
-      )
-    } else {
-      console.warn(
-        '[hermes-agent] Could not find hermes-agent installation.\n' +
-          '  Run the installer:\n' +
-          '    curl -fsSL https://hermes-workspace.com/install.sh | bash\n' +
-          '  Or set HERMES_AGENT_PATH (or legacy CLAUDE_AGENT_PATH) in .env to point at your hermes-agent clone.',
-      )
-      return
-    }
-
-    const child = spawn(launchCmd, commandArgs, {
-      cwd: launchCwd,
-      detached: false, // keep tied to vite process — stops when dev server stops
-      stdio: 'pipe',
-      env: {
-        ...process.env,
-        PATH: [
-          resolve(os.homedir(), '.claude', 'bin'),
-          resolve(os.homedir(), '.local', 'bin'),
-          agentDir ? resolve(agentDir, '.venv', 'bin') : '',
-          agentDir ? resolve(agentDir, 'venv', 'bin') : '',
-          process.env.PATH || '',
-        ]
-          .filter(Boolean)
-          .join(':'),
-      },
-    })
-
-    claudeAgentChild = child
-    claudeAgentStarted = true
-
-    child.stdout?.on('data', (d: Buffer) => {
-      const line = d.toString().trim()
-      if (line) console.log(`[hermes-agent] ${line}`)
-    })
-    child.stderr?.on('data', (d: Buffer) => {
-      const line = d.toString().trim()
-      if (line) console.log(`[hermes-agent] ${line}`)
-    })
-
-    child.on('exit', (code) => {
-      claudeAgentChild = null
-      claudeAgentStarted = false
-      if (code !== 0 && code !== null) {
-        console.warn(`[hermes-agent] Exited with code ${code}`)
-      }
-    })
-
-    // Wait for healthy
-    for (let i = 0; i < 15; i++) {
-      await new Promise((r) => setTimeout(r, 1000))
-      if (await isClaudeAgentHealthy()) {
-        console.log('[hermes-agent] ✓ Ready on http://127.0.0.1:8642')
-        return
-      }
-    }
-    console.warn(
-      '[hermes-agent] Started but health check timed out — may still be loading',
-    )
-  }
+  const semantierAgentUrl = normalizeServiceUrl(
+    env.SEMANTIER_AGENT_API_URL ||
+      process.env.SEMANTIER_AGENT_API_URL ||
+      env.HERMES_API_URL ||
+      process.env.HERMES_API_URL,
+    'http://127.0.0.1:8899',
+  )
 
   let workspaceDaemonStarted = false
   let workspaceDaemonStarting = false
@@ -413,17 +264,17 @@ const config = defineConfig(({ mode, command }) => {
   }
 
   // Allow access from Tailscale, LAN, or custom domains via env var
-  // e.g. CLAUDE_ALLOWED_HOSTS=my-server.tail1234.ts.net,192.168.1.50
-  const _allowedHosts: string[] | true = env.CLAUDE_ALLOWED_HOSTS?.trim()
+  // e.g. HERMES_ALLOWED_HOSTS=my-server.tail1234.ts.net,192.168.1.50
+  const _allowedHosts: string[] | true = env.HERMES_ALLOWED_HOSTS?.trim()
     ? env
-        .CLAUDE_ALLOWED_HOSTS!.split(',')
+        .HERMES_ALLOWED_HOSTS!.split(',')
         .map((h) => h.trim())
         .filter(Boolean)
     : ['.ts.net'] // allow all Tailscale hostnames by default
   let proxyTarget = 'http://127.0.0.1:18789'
 
   try {
-    const parsed = new URL(claudeApiUrl)
+    const parsed = new URL(semantierAgentUrl)
     parsed.protocol = parsed.protocol === 'wss:' ? 'https:' : 'http:'
     parsed.pathname = ''
     proxyTarget = parsed.toString().replace(/\/$/, '')
@@ -432,26 +283,6 @@ const config = defineConfig(({ mode, command }) => {
   }
 
   return {
-    test: {
-      exclude: [
-        '**/node_modules/**',
-        '**/dist/**',
-        '**/skills-bundle/**',
-        '**/.{idea,git,cache,output,temp}/**',
-      ],
-      // Force vitest to run React through its own transform pipeline so ESM
-      // `import` and CJS `require('react')` share a single module instance.
-      // Without this, react-dom sets the dispatcher on its CJS React copy while
-      // components call hooks on the ESM React copy → null dispatcher → crash.
-      deps: {
-        inline: [
-          'react',
-          'react-dom',
-          '@testing-library/react',
-          '@testing-library/dom',
-        ],
-      },
-    },
     define: {
       // Note: Do NOT set 'process.env': {} here — TanStack Start uses environment-based
       // builds where isSsrBuild is unreliable. Blanket process.env replacement breaks
@@ -465,98 +296,47 @@ const config = defineConfig(({ mode, command }) => {
     },
     ssr: {
       external: [
-        'playwright',
-        'playwright-core',
-        'playwright-extra',
-        'puppeteer-extra-plugin-stealth',
+        'md-to-pdf',
+        'puppeteer',
       ],
     },
     optimizeDeps: {
       exclude: [
-        'playwright',
-        'playwright-core',
-        'playwright-extra',
-        'puppeteer-extra-plugin-stealth',
+        'md-to-pdf',
+        'puppeteer',
       ],
     },
     server: {
-      // Cross-origin isolation so the embedded HermesWorld WebGL client keeps
-      // SharedArrayBuffer multithreading (matches the standalone web client at
-      // play.hermes-world.ai). Without these, the iframe silently drops to a
-      // single thread → render+physics+netcode contend on one thread → inflated
-      // ping / worse frame pacing even though network RTT is identical.
-      // COEP 'credentialless' enables isolation WITHOUT requiring CORP headers
-      // on every cross-origin asset (fonts/images); the web client already sends
-      // cross-origin-resource-policy: cross-origin so the iframe still embeds.
-      // Same-origin agent API (/ws-claude, /api/claude-proxy) is unaffected.
-      headers: {
-        'Cross-Origin-Opener-Policy': 'same-origin',
-        'Cross-Origin-Embedder-Policy': 'credentialless',
-      },
       // Force IPv4 — 'localhost' resolves to ::1 (IPv6) on Windows, breaking connectivity
       host: '0.0.0.0',
-      // Port precedence:
-      //   1. --port CLI flag (wins, but we no longer hardcode it in package.json)
-      //   2. $PORT env var (for containers, reverse proxies, WhatsApp bridge collisions, etc. — see #96)
-      //   3. default 3000 (matches README/docs/docker-compose expectations)
-      port: process.env.PORT ? Number(process.env.PORT) : 3000,
-      // Managed Workspace launchers expect a stable port. Fail loudly instead
-      // of silently hopping to 3001+ so launchctl/service health matches the
-      // actual listening socket.
-      strictPort: true,
+      port: 3002,
+      strictPort: false, // allow fallback if 3002 is taken, but log clearly
       allowedHosts: true,
       watch: {
-        ignored: [
-          // NOTE: the generated TanStack route tree must NOT be added to this
-          // ignore list — doing so causes route changes to require a full
-          // dev-server restart. See src/router-route-resolution.test.ts.
-          // Real fix for HMR thrash on the generated tree is to ensure only
-          // ONE vite dev server runs against this source tree at a time.
-          // Local portable session store, rewritten on every chat send.
-          // Without this, the watcher fires on every message → spurious
-          // server-side reload events / test churn during development.
-          '**/.runtime/**',
-          // Internal TanStack Start state cache.
-          '**/.tanstack/**',
-          // Local plan/notes/scratch state used by OMC tooling — never
-          // imported by the module graph, but file events still spam logs.
-          '**/.omc/**',
-          '**/.omx/**',
-          // Build artifacts.
-          '**/dist/**',
-          '**/.output/**',
-          // Test/coverage outputs.
-          '**/coverage/**',
-          '**/playwright-report/**',
-          '**/test-results/**',
-          // Editor / agent metadata.
-          '**/.vscode/**',
-          '**/.claude/**',
-          '**/.cursor/**',
-          // Loose log files.
-          '**/*.log',
-        ],
+        // Exclude generated route tree — TanStack Router's file watcher
+        // detects its own output as a change → infinite regeneration loop
+        ignored: ['**/routeTree.gen.ts'],
       },
       proxy: {
-        // WebSocket proxy: clients connect to /ws-claude on the Hermes Workspace
+        // WebSocket proxy: clients connect to /ws-hermes on the Hermes Workspace
         // server (any IP/port), which internally forwards to the local server.
         // This means phone/LAN/Docker users never need to reach port 18789 directly.
-        '/ws-claude': {
+        '/ws-hermes': {
           target: proxyTarget,
           changeOrigin: false,
           ws: true,
-          rewrite: (path) => path.replace(/^\/ws-claude/, ''),
+          rewrite: (path) => path.replace(/^\/ws-hermes/, ''),
         },
         // REST API proxy: API proxy for Hermes backend
-        '/api/claude-proxy': {
+        '/api/hermes-proxy': {
           target: proxyTarget,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/claude-proxy/, ''),
+          rewrite: (path) => path.replace(/^\/api\/hermes-proxy/, ''),
         },
-        '/claude-ui': {
+        '/hermes-ui': {
           target: proxyTarget,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/claude-ui/, ''),
+          rewrite: (path) => path.replace(/^\/hermes-ui/, ''),
           ws: true,
           configure: (proxy) => {
             proxy.on('proxyRes', (_proxyRes) => {
@@ -580,6 +360,54 @@ const config = defineConfig(({ mode, command }) => {
         projects: ['./tsconfig.json'],
       }),
       tailwindcss(),
+      {
+        name: 'training-static-index',
+        configureServer(server) {
+          const trainingIndexPath = resolve('public/training/index.html')
+
+          server.middlewares.use(async (req, res, next) => {
+            const requestPath = req.url?.split('?')[0]
+            const isMarkdownDocumentRequest =
+              req.method === 'GET' &&
+              !!requestPath?.startsWith('/training/') &&
+              requestPath.endsWith('.md') &&
+              req.headers['sec-fetch-dest'] === 'document'
+
+            if (req.method === 'GET' && requestPath === '/training') {
+              const query = req.url?.includes('?')
+                ? `?${req.url.split('?').slice(1).join('?')}`
+                : ''
+              res.statusCode = 308
+              res.setHeader('location', `/training/${query}`)
+              res.end()
+              return
+            }
+
+            if (
+              (req.method === 'GET' && requestPath === '/training/') ||
+              isMarkdownDocumentRequest
+            ) {
+              try {
+                const html = readFileSync(trainingIndexPath, 'utf-8')
+                const transformedHtml = await server.transformIndexHtml(
+                  '/training/index.html',
+                  html,
+                  req.originalUrl,
+                )
+                res.statusCode = 200
+                res.setHeader('content-type', 'text/html; charset=utf-8')
+                res.end(transformedHtml)
+                return
+              } catch (error) {
+                next(error)
+                return
+              }
+            }
+
+            next()
+          })
+        },
+      },
       tanstackStart(),
       viteReact(),
       {
@@ -588,17 +416,6 @@ const config = defineConfig(({ mode, command }) => {
           if (command !== 'serve') return
         },
         configureServer(server) {
-          // Cross-origin isolation headers on EVERY response so the embedded
-          // HermesWorld WebGL client keeps SharedArrayBuffer multithreading
-          // (matches play.hermes-world.ai). Injected via middleware because the
-          // TanStack Start SSR handler owns the HTML response and overrides
-          // vite's server.headers. COEP 'credentialless' avoids requiring CORP
-          // on every cross-origin asset; same-origin agent API is unaffected.
-          server.middlewares.use((_req, res, next) => {
-            res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
-            res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless')
-            next()
-          })
           server.middlewares.use(async (req, res, next) => {
             const requestPath = req.url?.split('?')[0]
             if (req.method === 'GET' && requestPath === '/api/healthcheck') {
@@ -608,13 +425,83 @@ const config = defineConfig(({ mode, command }) => {
               return
             }
 
-            // /api/connection-status is handled by the real route file at
-            // src/routes/api/connection-status.ts — it returns the full
-            // ConnectionStatus payload including capabilities and chatMode
-            // that downstream feature gates depend on. Earlier versions
-            // had an inline shortcut handler here that returned a slim
-            // body ({ok, mode, backend}) which silently broke things like
-            // useFeatureCapability/useFeatureAvailable in dev mode. See #285.
+            // Portable-aware health check — returns ok if any chat backend is available
+            if (
+              req.method === 'GET' &&
+              requestPath === '/api/connection-status'
+            ) {
+              try {
+                const incomingCookieHeader =
+                  typeof req.headers.cookie === 'string' ? req.headers.cookie : null
+                // Check for the single wrapper backend first.
+                const [modelsRes, sessionsRes] = await Promise.all([
+                  fetch(`${semantierAgentUrl}/v1/models`, {
+                    headers: buildSemantierAgentProbeHeaders(
+                      '/v1/models',
+                      incomingCookieHeader,
+                    ),
+                    signal: AbortSignal.timeout(3000),
+                  }).catch(() => null),
+                  fetch(`${semantierAgentUrl}/api/sessions?limit=1`, {
+                    headers: buildSemantierAgentProbeHeaders(
+                      '/api/sessions',
+                      incomingCookieHeader,
+                    ),
+                    signal: AbortSignal.timeout(3000),
+                  }).catch(() => null),
+                ])
+                const hasModels = modelsRes?.ok ?? false
+                const hasSessions = sessionsRes?.ok ?? false
+                if (hasModels && hasSessions) {
+                  res.statusCode = 200
+                  res.setHeader('content-type', 'application/json')
+                  res.end(
+                    JSON.stringify({
+                      ok: true,
+                      mode: 'enhanced',
+                      backend: semantierAgentUrl,
+                    }),
+                  )
+                  return
+                }
+                if (hasModels) {
+                  res.statusCode = 200
+                  res.setHeader('content-type', 'application/json')
+                  res.end(
+                    JSON.stringify({
+                      ok: true,
+                      mode: 'portable',
+                      backend: semantierAgentUrl,
+                    }),
+                  )
+                  return
+                }
+                // Fall back to /health for full Hermes backends
+                const healthRes = await fetch(`${semantierAgentUrl}/health`, {
+                  signal: AbortSignal.timeout(3000),
+                })
+                res.statusCode = healthRes.ok ? 200 : 502
+                res.setHeader('content-type', 'application/json')
+                res.end(
+                  JSON.stringify({
+                    ok: healthRes.ok,
+                    mode: 'enhanced',
+                    backend: semantierAgentUrl,
+                  }),
+                )
+              } catch {
+                res.statusCode = 502
+                res.setHeader('content-type', 'application/json')
+                res.end(
+                  JSON.stringify({
+                    ok: false,
+                    mode: 'disconnected',
+                    backend: semantierAgentUrl,
+                  }),
+                )
+              }
+              return
+            }
 
             if (
               req.method !== 'POST' ||
@@ -641,23 +528,6 @@ const config = defineConfig(({ mode, command }) => {
             }
           })
 
-          // Dev-only: disable Node's default 5-minute request timeout so
-          // long-running SSE streams (agent runs that go silent for minutes
-          // during heavy reasoning / tool calls) don't get killed mid-stream
-          // by the HTTP layer. Heartbeats handle keep-alive at the application
-          // layer. Production servers should keep their default timeouts to
-          // avoid slowloris exposure.
-          if (command === 'serve' && server.httpServer) {
-            const httpServer = server.httpServer as unknown as {
-              requestTimeout?: number
-              headersTimeout?: number
-              timeout?: number
-            }
-            httpServer.requestTimeout = 0
-            httpServer.headersTimeout = 0
-            httpServer.timeout = 0
-          }
-
           server.httpServer?.on('close', () => {
             workspaceDaemonShuttingDown = true
             workspaceDaemonStarted = false
@@ -665,25 +535,6 @@ const config = defineConfig(({ mode, command }) => {
             if (workspaceDaemonChild) {
               workspaceDaemonChild.kill()
               workspaceDaemonChild = null
-            }
-          })
-
-          // Auto-start hermes-agent when dev server launches.
-          // Skip when launchd manages the gateway (HERMES_WORKSPACE_AUTO_START_AGENT=false)
-          // to avoid SIGTERM cycle on close that nukes the launchd-managed process.
-          const autoStartAgent =
-            process.env.HERMES_WORKSPACE_AUTO_START_AGENT !== 'false'
-          if (command === 'serve' && autoStartAgent) {
-            void startClaudeAgent()
-          }
-
-          // Shutdown hermes-agent when dev server stops — only if we spawned it.
-          server.httpServer?.on('close', () => {
-            if (claudeAgentChild && autoStartAgent) {
-              console.log('[hermes-agent] Stopping...')
-              claudeAgentChild.kill('SIGTERM')
-              claudeAgentChild = null
-              claudeAgentStarted = false
             }
           })
 
@@ -740,12 +591,16 @@ const config = defineConfig(({ mode, command }) => {
           // Replace specific env vars first, then the generic fallback
           let result = code
           result = result.replace(
-            /process\.env\.CLAUDE_API_URL/g,
-            JSON.stringify(claudeApiUrl),
+            /process\.env\.SEMANTIER_AGENT_API_URL/g,
+            JSON.stringify(semantierAgentUrl),
           )
           result = result.replace(
-            /process\.env\.CLAUDE_API_TOKEN/g,
-            JSON.stringify(env.CLAUDE_API_TOKEN || ''),
+            /process\.env\.HERMES_API_URL/g,
+            JSON.stringify(semantierAgentUrl),
+          )
+          result = result.replace(
+            /process\.env\.HERMES_API_TOKEN/g,
+            JSON.stringify(env.HERMES_API_TOKEN || ''),
           )
           result = result.replace(
             /process\.env\.NODE_ENV/g,

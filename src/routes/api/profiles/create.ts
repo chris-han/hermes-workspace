@@ -1,16 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../../server/auth-middleware'
+import path from 'node:path'
 import { createProfile } from '../../../server/profiles-browser'
 import { requireJsonContentType } from '../../../server/rate-limit'
+import { resolveActiveWorkspaceRoot } from '../../../server/workspace-root'
 
 export const Route = createFileRoute('/api/profiles/create')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ error: 'Unauthorized' }, { status: 401 })
-        }
         const csrfCheck = requireJsonContentType(request)
         if (csrfCheck) return csrfCheck
         try {
@@ -20,13 +18,16 @@ export const Route = createFileRoute('/api/profiles/create')({
             model?: string
             provider?: string
           }
+          const workspace = await resolveActiveWorkspaceRoot(request.headers)
+          const hermesHome =
+            workspace.hermesHome || path.join(workspace.path, '.hermes')
           return json({
             ok: true,
             profile: createProfile(body.name || '', {
               cloneFrom: body.cloneFrom,
               model: body.model,
               provider: body.provider,
-            }),
+            }, hermesHome),
           })
         } catch (error) {
           return json(

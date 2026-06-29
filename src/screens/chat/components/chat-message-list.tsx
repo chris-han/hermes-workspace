@@ -11,7 +11,6 @@ import {
   textFromMessage,
 } from '../utils'
 import { MessageItem } from './message-item'
-import { TuiActivityCard } from './tui-activity-card'
 import { ScrollToBottomButton } from './scroll-to-bottom-button'
 import { ResearchCard } from './research-card'
 import type { ChatMessage } from '../types'
@@ -25,7 +24,6 @@ import { AssistantAvatar } from '@/components/avatars'
 import { cn } from '@/lib/utils'
 import { hapticTap } from '@/lib/haptics'
 import { CHAT_OPEN_MESSAGE_SEARCH_EVENT } from '@/screens/chat/chat-events'
-import { useChatStore } from '@/stores/chat-store'
 
 /** Duration (ms) the thinking indicator stays visible after waitingForResponse
  *  clears, giving the first response message time to render before the
@@ -33,6 +31,38 @@ import { useChatStore } from '@/stores/chat-store'
  *  Keep this short so tool pills appear immediately and the shimmer only
  *  bridges the gap until the first tool/text event arrives. */
 const THINKING_GRACE_PERIOD_MS = 300
+
+/** Map tool names to human-readable status strings */
+const TOOL_STATUS_MAP: Record<string, string> = {
+  memory_search: 'Searching memory…',
+  memory_get: 'Searching memory…',
+  web_search: 'Searching the web…',
+  web_fetch: 'Reading page…',
+  cron: 'Managing schedules…',
+  message: 'Sending message…',
+  gateway: 'Managing gateway…',
+  canvas: 'Rendering canvas…',
+  voice_call: 'Making call…',
+  pdf: 'Reading PDF…',
+  todo: 'Managing tasks…',
+  Read: 'Reading file…',
+  read: 'Reading file…',
+  Write: 'Writing file…',
+  write: 'Writing file…',
+  Edit: 'Writing file…',
+  edit: 'Writing file…',
+  exec: 'Running code…',
+  sessions_spawn: 'Spawning agent…',
+  sessions_history: 'Checking sessions…',
+  sessions_list: 'Checking sessions…',
+  browser: 'Browsing web…',
+  image: 'Analyzing image…',
+  tts: 'Generating audio…',
+}
+
+function getToolStatusLabel(toolName: string): string {
+  return TOOL_STATUS_MAP[toolName] ?? 'Working…'
+}
 
 const TOOL_EMOJIS: Record<string, string> = {
   web_search: '🔍',
@@ -143,10 +173,13 @@ function ToolCallCard({ name, phase }: { name: string; phase: string }) {
 
   return (
     <div
-      className="rounded-lg border border-primary-200 bg-primary-50 text-[11px] overflow-hidden"
+      className="rounded-md theme-border-1 theme-left-status-border theme-tool-surface text-[11px] overflow-hidden"
       style={{
-        borderLeftWidth: '3px',
-        borderLeftColor: isRunning ? '#6366f1' : isDone ? '#22c55e' : '#ef4444',
+        ['--status-border-color' as string]: isRunning
+          ? 'var(--theme-accent)'
+          : isDone
+            ? 'var(--theme-success)'
+            : 'var(--theme-danger)',
         boxShadow: isRunning ? '0 0 8px rgba(99,102,241,0.12)' : 'none',
       }}
     >
@@ -180,49 +213,57 @@ type ThinkingBubbleProps = {
   liveToolActivity?: Array<{ name: string; timestamp: number }>
   researchCard?: UseResearchCardResult
   isCompacting?: boolean
-  /** When true, always show "Thinking…" regardless of activity. Used for the
-   * first 10s before the delayed activity feed appears. */
-  forceSimple?: boolean
 }
 
 /**
- * Shows a thinking indicator with animated dots and a meaningful status
+ * Premium shimmer thinking bubble — matches the assistant message position
+ * with three bouncing dots, a gradient shimmer sweep, and a dynamic status
  * label that reflects what's actually happening (tool calls, etc.).
- * When forceSimple is true, suppresses all activity labels — just "Thinking…".
  */
 function ThinkingBubble({
   activeToolCalls = [],
   liveToolActivity = [],
   researchCard,
   isCompacting = false,
-  forceSimple = false,
 }: ThinkingBubbleProps) {
-  // Fallback activity from heartbeat — shows last known agent activity
-  // when no tool calls are in flight (e.g. during pure reasoning)
-  const heartbeatActivity = useChatStore((s) => s.heartbeatActivity)
+  const allTools = useMemo(
+    () =>
+      liveToolActivity.length > 0
+        ? liveToolActivity.map((t) => ({
+            name: t.name,
+            phase: 'calling' as const,
+          }))
+        : activeToolCalls.map((t) => ({ name: t.name, phase: t.phase })),
+    [activeToolCalls, liveToolActivity],
+  )
 
-  // Build a meaningful status label from live activity
-  const activeToolNames = activeToolCalls
-    .filter((tc) => tc.phase !== 'done' && tc.phase !== 'complete' && tc.phase !== 'completed')
-    .map((tc) => tc.name.replace(/_/g, ' '))
-  const liveToolNames = liveToolActivity.map((a) => a.name.replace(/_/g, ' '))
-  const uniqueNames = [...new Set([...activeToolNames, ...liveToolNames])]
-  const activityLabel =
-    uniqueNames.length > 0
-      ? `Using: ${uniqueNames.slice(0, 3).join(', ')}${uniqueNames.length > 3 ? ` +${uniqueNames.length - 3} more` : ''}`
-      : null
+  // Derive the most recent active tool name
+  const activeToolName = useMemo(() => {
+    // liveToolActivity is ordered newest-first
+    if (liveToolActivity.length > 0) return liveToolActivity[0].name
+    // activeToolCalls: prefer 'calling'/'start' phase, fall back to most recent
+    const calling = activeToolCalls.find(
+      (tc) => tc.phase === 'calling' || tc.phase === 'start',
+    )
+    if (calling) return calling.name
+    if (activeToolCalls.length > 0)
+      return activeToolCalls[activeToolCalls.length - 1].name
+    return null
+  }, [activeToolCalls, liveToolActivity])
+
   const statusLabel = isCompacting
     ? 'Compacting context...'
-    : forceSimple
-      ? 'Thinking…'
-      : activityLabel || heartbeatActivity || 'Thinking…'
+    : activeToolName
+      ? getToolStatusLabel(activeToolName)
+      : 'Thinking…'
 
-  // Elapsed time counter — counts from bubble mount, not from last label change
+  // Elapsed time counter — resets when the status label changes (new tool)
   const [elapsed, setElapsed] = useState(0)
   useEffect(() => {
+    setElapsed(0)
     const interval = window.setInterval(() => setElapsed((s) => s + 1), 1000)
     return () => window.clearInterval(interval)
-  }, [])
+  }, [statusLabel])
 
   const elapsedLabel =
     elapsed >= 60
@@ -256,7 +297,9 @@ function ThinkingBubble({
     return () => window.clearTimeout(swapTimer)
   }, [statusLabel])
 
-  // Keep the bottom thinking bubble visible while inline Hermes activity handles tool details.
+  // Keep the thinking bubble visible even when tools are active.
+  // If inline tool cards fail to render for a streaming message, this still
+  // gives the user a live indication of what tool is running.
 
   return (
     <div className="flex items-end gap-2">
@@ -266,7 +309,7 @@ function ThinkingBubble({
       </div>
 
       {/* Chat bubble */}
-      <div className="relative max-w-[36rem] overflow-hidden rounded-2xl rounded-bl-sm border border-primary-200 dark:border-primary-200/20 bg-primary-100 dark:bg-primary-100 thinking-shimmer-bubble">
+      <div className="relative max-w-[36rem] overflow-hidden rounded-card rounded-bl-sm thinking-shimmer-bubble theme-border-1 theme-tool-surface">
         {/* Shimmer overlay */}
         <div
           className="thinking-shimmer-sweep pointer-events-none absolute inset-0"
@@ -279,7 +322,7 @@ function ThinkingBubble({
               <div className="flex items-center gap-1.5">
                 {isCompacting ? (
                   <span
-                    className="inline-block size-3 rounded-full border border-primary-300 border-t-primary-500 animate-spin"
+                    className="inline-block size-3 rounded-full border animate-spin theme-spinner-ring"
                     aria-hidden="true"
                   />
                 ) : (
@@ -359,9 +402,33 @@ function ThinkingBubble({
           {isStale ? (
             <span className="text-[11px] text-amber-500 dark:text-amber-400 animate-pulse">
               {isVeryStale
-                ? 'Still thinking… this is taking a while'
+                ? 'Still working… this is taking a while'
                 : 'Taking longer than usual…'}
             </span>
+          ) : null}
+
+          {activeToolName && !isCompacting ? (
+            <div
+              style={{
+                opacity: visible ? 1 : 0,
+                transition: 'opacity 300ms ease',
+              }}
+              className="flex flex-wrap gap-1.5"
+            >
+              {allTools.slice(0, 4).map((tool) => (
+                <span
+                  key={`${tool.name}-${tool.phase}`}
+                  className="inline-flex items-center rounded-full bg-primary-200/60 dark:bg-primary-800/30 px-2 py-0.5 text-[10px] font-mono text-primary-500 dark:text-primary-400 select-none"
+                >
+                  {tool.name}
+                </span>
+              ))}
+              {allTools.length > 4 ? (
+                <span className="inline-flex items-center rounded-full bg-primary-200/40 dark:bg-primary-800/20 px-2 py-0.5 text-[10px] text-primary-400 dark:text-primary-500 select-none">
+                  +{allTools.length - 4} more
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
 
@@ -373,45 +440,21 @@ function ThinkingBubble({
   )
 }
 
-/** Minimal status line shown after 10s of thinking when no tool calls
- *  are in flight yet. Shows heartbeat status + elapsed time. */
-function StatusLine() {
-  const heartbeatActivity = useChatStore((s) => s.heartbeatActivity)
-  const [elapsed, setElapsed] = useState(0)
-  useEffect(() => {
-    const interval = window.setInterval(() => setElapsed((s) => s + 1), 1000)
-    return () => window.clearInterval(interval)
-  }, [])
-
-  const elapsedLabel =
-    elapsed >= 60
-      ? `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`
-      : `${elapsed}s`
-
-  return (
-    <div className="flex items-center gap-2 text-[11px] text-primary-400 dark:text-primary-500 py-0.5">
-      <span className="inline-block size-1.5 rounded-full bg-amber-400 animate-pulse" />
-      <span className="opacity-80">
-        {heartbeatActivity || 'Working…'}
-      </span>
-      <span aria-hidden="true" className="opacity-40">·</span>
-      <span className="tabular-nums opacity-50 font-mono">{elapsedLabel}</span>
-    </div>
-  )
-}
-
 const VIRTUAL_ROW_HEIGHT = 136
 const VIRTUAL_OVERSCAN = 8
 const NEAR_BOTTOM_THRESHOLD = 200
 // Pull-to-refresh constants removed
 
-const HIDDEN_SYSTEM_USER_PREFIXES = [
+const HIDDEN_SYSTEM_USER_SUBSTRINGS = [
   'Pre-compaction memory flush',
   'Read HEARTBEAT.md',
   'HEARTBEAT_OK',
   'Execute your Session Startup sequence',
   '[Queued messages',
   'Heartbeat prompt',
+] as const
+
+const HIDDEN_SYSTEM_USER_PREFIXES = [
   '[Fri ',
   '[Mon ',
   '[Tue ',
@@ -424,10 +467,14 @@ const HIDDEN_SYSTEM_USER_PREFIXES = [
 function shouldHideSystemInjectedUserMessage(text: string): boolean {
   const trimmed = text.trim()
   if (!trimmed) return false
-  // Only hide messages that begin with known system-injected prompts. User
-  // context summaries may quote these phrases later in the message and must
-  // remain visible/persistent in the chat UI.
-  return HIDDEN_SYSTEM_USER_PREFIXES.some((prefix) => trimmed.startsWith(prefix))
+  if (
+    HIDDEN_SYSTEM_USER_PREFIXES.some((prefix) => trimmed.startsWith(prefix))
+  ) {
+    return true
+  }
+  return HIDDEN_SYSTEM_USER_SUBSTRINGS.some((substring) =>
+    trimmed.includes(substring),
+  )
 }
 
 function getChronologyRank(message: ChatMessage): number {
@@ -547,7 +594,10 @@ export function buildDisplayEntries(
       attachedToolMessages: [],
     }
 
-    if (message.role === 'assistant' && pendingAssistantToolMessages.length > 0) {
+    if (
+      message.role === 'assistant' &&
+      pendingAssistantToolMessages.length > 0
+    ) {
       entry.attachedToolMessages.push(...pendingAssistantToolMessages)
       pendingAssistantToolMessages = []
     }
@@ -576,6 +626,8 @@ function escapeAttributeSelector(value: string): string {
 type ChatMessageListProps = {
   messages: Array<ChatMessage>
   onRetryMessage?: (message: ChatMessage) => void
+  onA2UiSubmit?: (payload: string) => void
+  onFillInput?: (value: string) => void
   onRefresh?: () => void | Promise<unknown>
   loading: boolean
   empty: boolean
@@ -614,6 +666,8 @@ type ChatMessageListProps = {
 function ChatMessageListComponent({
   messages,
   onRetryMessage,
+  onA2UiSubmit,
+  onFillInput,
   onRefresh: _onRefresh,
   loading,
   empty,
@@ -654,13 +708,6 @@ function ChatMessageListComponent({
   const [isNearBottom, setIsNearBottom] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
   const [expandAllToolSections, setExpandAllToolSections] = useState(false)
-
-  // Activity feed delay: only show tool activity after 10s of thinking.
-  // For the first 10s, the ThinkingBubble stays simple ("Thinking…").
-  const THINKING_ACTIVITY_DELAY_S = 10
-  const [thinkingElapsed, setThinkingElapsed] = useState(0)
-  const thinkingStartRef = useRef<number>(0)
-  const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Bug 2 fix: grace period — keep thinking indicator alive briefly after
   // waitingForResponse clears so the response message has time to render.
@@ -722,11 +769,7 @@ function ChatMessageListComponent({
     const wasScrollingUp = metrics.scrollTop < lastScrollTopRef.current - 5
     lastScrollTopRef.current = metrics.scrollTop
 
-    // Bug #552: any user-initiated upward scroll releases stick-to-bottom
-    // (previously required >200px from bottom, which let streaming yank the
-    // viewport back down during near-bottom reading). Re-stick only when the
-    // user lands back at the bottom.
-    if (wasScrollingUp) {
+    if (wasScrollingUp && !nearBottom) {
       stickToBottomRef.current = false
       isNearBottomRef.current = false
     } else if (nearBottom) {
@@ -1131,7 +1174,6 @@ function ChatMessageListComponent({
     const hasInThreadStreamingActivity =
       isStreaming &&
       (activeToolCalls.length > 0 ||
-        liveToolActivity.length > 0 ||
         lifecycleEvents.length > 0 ||
         Boolean(streamingThinking && streamingThinking.trim().length > 0))
     // Streaming-but-empty only needs the detached thinking bubble when the
@@ -1167,52 +1209,6 @@ function ChatMessageListComponent({
     researchCard && researchCard.steps.length > 0,
   )
 
-  // Compute visibility of the entire bottom thinking area — the same gate
-  // used for rendering (lines below). Start / stop the elapsed timer here.
-  const thinkingAreaVisible =
-    showTypingIndicator ||
-    showResearchCard ||
-    isCompacting ||
-    liveToolActivity.length > 0 ||
-    (isStreaming && !streamingText) ||
-    (isStreaming && activeToolCalls.length > 0)
-
-  // Track how long the thinking area has been visible to gate the delayed
-  // activity feed (10s threshold).
-  useEffect(() => {
-    if (thinkingAreaVisible) {
-      if (thinkingStartRef.current === 0) {
-        thinkingStartRef.current = Date.now()
-        setThinkingElapsed(0)
-      }
-      if (!thinkingTimerRef.current) {
-        thinkingTimerRef.current = setInterval(() => {
-          setThinkingElapsed(
-            Math.floor((Date.now() - thinkingStartRef.current) / 1000),
-          )
-        }, 250)
-      }
-    } else {
-      if (thinkingTimerRef.current) {
-        clearInterval(thinkingTimerRef.current)
-        thinkingTimerRef.current = null
-      }
-      thinkingStartRef.current = 0
-      setThinkingElapsed(0)
-    }
-    return () => {
-      if (thinkingTimerRef.current) {
-        clearInterval(thinkingTimerRef.current)
-        thinkingTimerRef.current = null
-      }
-    }
-  }, [thinkingAreaVisible])
-
-  const showActivityFeed =
-    thinkingElapsed >= THINKING_ACTIVITY_DELAY_S ||
-    activeToolCalls.length > 0 ||
-    liveToolActivity.length > 0
-
   const shouldBottomPin =
     visibleEntries.length > 0 ||
     showToolOnlyNotice ||
@@ -1227,47 +1223,25 @@ function ChatMessageListComponent({
       id: string
       name: string
       phase: 'calling' | 'running' | 'done' | 'error'
-      args?: unknown
-      preview?: string
-      result?: string
     }>
-  >(() => {
-    if (activeToolCalls.length > 0) {
-      return activeToolCalls.map((toolCall) => {
-        const tcAny = toolCall as unknown as Record<string, unknown>
-        return {
-          id: toolCall.id,
-          name: toolCall.name,
-          phase:
-            toolCall.phase === 'complete' || toolCall.phase === 'completed'
-              ? 'done'
-              : toolCall.phase === 'start'
-                ? 'calling'
-                : toolCall.phase === 'failed' || toolCall.phase === 'error'
-                  ? 'error'
-                  : toolCall.phase === 'calling' ||
-                      toolCall.phase === 'running'
-                    ? toolCall.phase
-                    : 'calling',
-          args: tcAny.args,
-          preview:
-            typeof tcAny.preview === 'string'
-              ? (tcAny.preview)
-              : undefined,
-          result:
-            typeof tcAny.result === 'string'
-              ? (tcAny.result)
-              : undefined,
-        }
-      })
-    }
-
-    return liveToolActivity.map((entry, index) => ({
-      id: `live-${entry.name}-${index}`,
-      name: entry.name,
-      phase: 'running' as const,
-    }))
-  }, [activeToolCalls, liveToolActivity])
+  >(
+    () =>
+      activeToolCalls.map((toolCall) => ({
+        id: toolCall.id,
+        name: toolCall.name,
+        phase:
+          toolCall.phase === 'complete' || toolCall.phase === 'completed'
+            ? 'done'
+            : toolCall.phase === 'start'
+              ? 'calling'
+              : toolCall.phase === 'failed'
+                ? 'error'
+                : toolCall.phase === 'calling' || toolCall.phase === 'running'
+                  ? toolCall.phase
+                  : 'calling',
+      })),
+    [activeToolCalls],
+  )
 
   // Pin the last user+assistant group without adding bottom padding.
   const groupStartIndex = typeof lastUserIndex === 'number' ? lastUserIndex : -1
@@ -1355,8 +1329,7 @@ function ChatMessageListComponent({
     // while this wrapper is invisible.
     if (messageIsStreaming) {
       const hasStreamingActivity =
-        normalizedStreamingToolCalls.length > 0 ||
-        liveToolActivity.length > 0 ||
+        activeToolCalls.length > 0 ||
         lifecycleEvents.length > 0 ||
         Boolean(streamingThinking && streamingThinking.trim().length > 0)
       const isEmptyPlaceholder =
@@ -1377,6 +1350,8 @@ function ChatMessageListComponent({
             message={chatMessage}
             attachedToolMessages={entry.attachedToolMessages}
             onRetryMessage={effectiveOnRetry}
+            onA2UiSubmit={onA2UiSubmit}
+            onFillInput={onFillInput}
             toolResultsByCallId={hasToolCalls ? toolResultsByCallId : undefined}
             forceActionsVisible={forceActionsVisible}
             wrapperClassName={spacingClass}
@@ -1411,6 +1386,8 @@ function ChatMessageListComponent({
         message={chatMessage}
         attachedToolMessages={entry.attachedToolMessages}
         onRetryMessage={effectiveOnRetry}
+        onA2UiSubmit={onA2UiSubmit}
+        onFillInput={onFillInput}
         toolResultsByCallId={hasToolCalls ? toolResultsByCallId : undefined}
         forceActionsVisible={forceActionsVisible}
         wrapperClassName={spacingClass}
@@ -1857,6 +1834,8 @@ function ChatMessageListComponent({
                         message={chatMessage}
                         attachedToolMessages={entry.attachedToolMessages}
                         onRetryMessage={onRetryMessage}
+                        onA2UiSubmit={onA2UiSubmit}
+                        onFillInput={onFillInput}
                         toolResultsByCallId={
                           hasToolCalls ? toolResultsByCallId : undefined
                         }
@@ -1904,21 +1883,12 @@ function ChatMessageListComponent({
                 ) : null}
               </>
             )}
-            {/* Bottom shimmer + branch TUI card. Hide as soon as the
-                streaming text starts arriving — the per-message TUI card
-                above the assistant bubble takes over from there to avoid
-                a duplicated activity surface. */}
-            {(showTypingIndicator ||
-              showResearchCard ||
-              isCompacting ||
-              liveToolActivity.length > 0 ||
-              (isStreaming && !streamingText) ||
-              (isStreaming && activeToolCalls.length > 0)) &&
-            !(
-              isStreaming &&
-              streamingText &&
-              streamingText.trim().length > 0
-            ) ? (
+            {showTypingIndicator ||
+            showResearchCard ||
+            isCompacting ||
+            liveToolActivity.length > 0 ||
+            (isStreaming && !streamingText) ||
+            (isStreaming && activeToolCalls.length > 0) ? (
               <div
                 className="flex flex-col gap-1 py-1.5 px-1 animate-in fade-in duration-300 md:gap-1.5 md:py-2"
                 role="status"
@@ -1929,74 +1899,7 @@ function ChatMessageListComponent({
                   liveToolActivity={liveToolActivity}
                   researchCard={researchCard}
                   isCompacting={isCompacting}
-                  forceSimple={!showActivityFeed}
                 />
-                {/* After 10s of thinking, show activity feed. With tool calls:
-                    compact CLI-style TuiActivityCard (last 3). Without tool calls:
-                    a minimal status line showing elapsed time and heartbeat. */}
-                {showActivityFeed ? (
-                  <div className="flex max-w-[var(--chat-content-max-width)]">
-                    <div
-                      className="ml-[14px] mr-2 w-px shrink-0"
-                      style={{
-                        background:
-                          'linear-gradient(to bottom, color-mix(in srgb, var(--theme-accent) 35%, transparent), color-mix(in srgb, var(--theme-border) 60%, transparent))',
-                      }}
-                      aria-hidden
-                    />
-                    <div className="min-w-0 flex-1 pt-1">
-                      {normalizedStreamingToolCalls.length > 0 ? (
-                        <TuiActivityCard
-                          toolSections={normalizedStreamingToolCalls.slice(-3).map((tc) => {
-                            const phase = tc.phase
-                            const state =
-                              phase === 'error'
-                                ? ('output-error' as const)
-                                : phase === 'done'
-                                  ? ('output-available' as const)
-                                  : phase === 'running'
-                                    ? ('input-streaming' as const)
-                                    : ('input-available' as const)
-                            return {
-                              key: tc.id,
-                              type: tc.name,
-                              input:
-                                tc.args &&
-                                typeof tc.args === 'object' &&
-                                !Array.isArray(tc.args)
-                                  ? (tc.args as Record<string, unknown>)
-                                  : undefined,
-                              preview: tc.preview,
-                              outputText:
-                                state === 'output-available'
-                                  ? tc.result || ''
-                                  : '',
-                              errorText:
-                                state === 'output-error'
-                                  ? tc.result || 'Tool failed'
-                                  : undefined,
-                              state,
-                            }
-                          })}
-                          thinking={null}
-                          isStreaming={true}
-                          formatLabel={(name) => name.replace(/_/g, ' ')}
-                          formatArg={(_name, args) => {
-                            if (!args) return null
-                            const first = Object.values(args).find(
-                              (v) => typeof v === 'string' && v.trim(),
-                            )
-                            return typeof first === 'string'
-                              ? first.trim()
-                              : null
-                          }}
-                        />
-                      ) : (
-                        <StatusLine />
-                      )}
-                    </div>
-                  </div>
-                ) : null}
               </div>
             ) : null}
             {notice && noticePosition === 'end' ? notice : null}
@@ -2065,33 +1968,19 @@ function getStableMessageId(message: ChatMessage, index: number): string {
   }
 
   const timestamp = getRawMessageTimestamp(message)
-  const text = textFromMessage(message)
-  // Content-based fingerprint: hash of text content + timestamp.
-  // This survives reordering because it doesn't depend on array position.
-  const fingerprint = djb2(text.slice(0, 120))
   if (timestamp) {
-    return `${message.role ?? 'assistant'}-${timestamp}-${fingerprint}`
+    return `${message.role ?? 'assistant'}-${timestamp}-${index}`
   }
 
-  return `${message.role ?? 'assistant'}-${fingerprint}-${index}`
-}
-
-/** djb2 string hash — fast, decent distribution, no deps */
-function djb2(str: string): string {
-  let hash = 5381
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0
-  }
-  return (hash >>> 0).toString(36)
+  return `${message.role ?? 'assistant'}-${index}`
 }
 
 function getRawMessageTimestamp(message: ChatMessage): number | null {
   const candidates = [
-    (message as any).createdAt,
-    (message as any).created_at,
-    (message as any).timestamp,
-    (message as any).time,
-    (message as any).ts,
+    message.createdAt,
+    message.timestamp,
+    (message as Record<string, unknown>).time,
+    (message as Record<string, unknown>).ts,
   ]
   for (const candidate of candidates) {
     if (typeof candidate === 'number' && Number.isFinite(candidate)) {
@@ -2113,6 +2002,8 @@ function areChatMessageListEqual(
   return (
     prev.messages === next.messages &&
     prev.onRetryMessage === next.onRetryMessage &&
+    prev.onA2UiSubmit === next.onA2UiSubmit &&
+    prev.onFillInput === next.onFillInput &&
     prev.onRefresh === next.onRefresh &&
     prev.loading === next.loading &&
     prev.empty === next.empty &&

@@ -1,0 +1,105 @@
+AI Agent 
+for
+ Enterprise
+3
+-day workshop agenda
+Day 1: The Art of the Possible &amp; Architectural Foundations
+The morning session is designed for both information workers and the IT team to align on the vision. The afternoon transitions into a purely technical deep dive for the IT engineers.
+Morning: Enterprise AI Vision &amp; Scenarios (Cross-Functional Audience)
+09:00 - 09:30 | The Paradigm Shift in Enterprise Work:
+ Moving from software-as-a-tool to AI-as-an-agent.
+09:30 - 10:30 | Showcase: The Automated 
+BP 
+Agents:
+Live Demo 1:
+ Automatic Resume Reviewer. Demonstrating how an agent extracts, evaluates, and ranks candidate data directly within the workflow.
+ (target audience: HR BP)
+Live Demo 2:
+Meeting Coordinator
+. Showing autonomous calendar parsing, participant negotiation, and room booking.
+(target audience: 
+Business Administrator
+)
+Live Demo 
+3
+:
+Digital 
+Finance BP
+. Showing 
+h
+ow 
+f
+inance 
+b
+ecomes the 
+g
+overnance 
+l
+ayer for AI 
+o
+rganizations
+.
+ (target audience: Finance BP)
+10:30 - 11:30 | Expanding the Horizon (Information Worker Scenarios):
+ Brainstorming additional use cases (e.g., automated support ticketing, intelligent data querying, document summarization).
+11:30 - 12:00 | Q&amp;A and Business Alignment:
+ Establishing ROI and feedback loops between end-users and the IT build team.
+Afternoon: Technical Architecture &amp; Environment Setup (IT Audience Only)
+13:00 - 14:30 | The Enterprise AI Stack:
+ Unpacking the architecture.
+Understanding the roles of OpenClaw and Hermes in agent orchestration.
+Routing strategies: When to route to GPT (complex reasoning) vs. Qianwen (cost-efficiency, localized tasks, or self-hosted data privacy).
+14:30 - 16:00 | Infrastructure &amp; Deployment Foundations:
+Setting up the development environments.
+Discussing hosting strategies for webhook listeners and integration APIs (e.g., utilizing platforms like Render for rapid deployment of the connective tissue between Feishu and the LLMs).
+Overview of high-performance backend serving (touching on vLLM if self-hosting Qianwen).
+16:00 - 17:00 | Authentication &amp; Feishu Developer Console:
+ Configuring enterprise app credentials, event subscriptions, and bot permissions in Feishu.
+Day 2: Hands-On Agent Construction
+A fully practical day focused on building the connective tissue between the LLM, the orchestration framework, and the enterprise channel.
+Morning: Building the First Communication Loop
+09:00 - 10:30 | OpenClaw/Hermes Basics:
+ Initializing the workspace, defining agent personas, and setting up basic prompt templates.
+10:30 - 12:00 | Hooking up the LLMs:
+Configuring the API connections for GPT-4 and Qianwen.
+Implementing fallback logic and standardizing output formats (JSON parsing).
+Hands-on Lab:
+ Testing raw API calls through the orchestration layer.
+Afternoon: Integrating with Feishu
+13:00 - 15:00 | The 
+Meeting Coordinator 
+ (Rebuilding the Demo):
+Connecting the agent to Feishu’s open APIs.
+Handling natural language inputs from Feishu chat and mapping them to calendar API functions.
+Implementing tool-calling/function-calling capabilities.
+15:00 - 17:00 | State Management &amp; Memory:
+ Ensuring the agent can handle multi-turn conversations (e.g., "Actually, move that meeting to Thursday instead").
+Day 3: Advanced Workflows &amp; Enterprise Operations
+Focusing on complex, multi-step agents and the operational 
+challeng
+es 
+of maintaining these systems in production.
+Morning: Complex Document Processing &amp; Multi-Step Logic
+09:00 - 10:30 | The Automated Resume Reviewer (Deep Dive):
+Handling file uploads (PDF/Docx) via Feishu integration.
+Chunking, vectorization (if needed), and passing document context to Qianwen/GPT.
+10:30 - 12:00 | Multi-Agent Orchestration in OpenClaw/Hermes:
+Creating pipelines where one agent extracts information (e.g., candidate skills) and passes it to an evaluator agent.
+Formatting the final output as a structured Feishu Rich Text Message or injecting it directly into a Feishu Base/Document.
+Afternoon: Production Readiness, Security, &amp; Governance
+13:00 - 14:30 | Security &amp; Data Privacy:
+Ensuring PII (like candidate data) is handled securely.
+Setting up guardrails, prompt injection defenses, and monitoring token usage.
+14:30 - 16:00 | Performance Tuning &amp; Debugging:
+ Troubleshooting latency issues, optimizing prompts for faster inference, and logging agent decisions.
+16:00 - 17:00 | Workshop Wrap-Up &amp; Next Steps:
+ Defining the backlog for the IT team's first 30 days post-workshop.
+To ensure the hands-on labs run smoothly on Day 2, 
+the 
+development environments
+ needed:
+Local PC with vscode
+Codex/Claude/
+GithubCopilot
+LLM API token such as openai, azure openai, ali 
+DASHSCOPE

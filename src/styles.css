@@ -1,22 +1,97 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=EB+Garamond:opsz,wght@8..120,400..800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import '@fontsource/eb-garamond/400.css';
+@import '@fontsource/eb-garamond/500.css';
+@import '@fontsource/eb-garamond/600.css';
+@import '@fontsource/eb-garamond/700.css';
+@import '@fontsource/eb-garamond/800.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/noto-sans-sc/400.css';
+@import '@fontsource/noto-sans-sc/500.css';
+@import '@fontsource/noto-sans-sc/700.css';
+@import '@fontsource/noto-serif-sc/400.css';
+@import '@fontsource/noto-serif-sc/600.css';
 @import 'tailwindcss';
+
+@font-face {
+  font-family: 'Autaut Grotesk';
+  src: url('/font/AutautGrotesk-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* Tailwind v4 — enable dark: variant on .dark class (set by __root.tsx) */
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --tabbar-h: 80px;
-  /* Chat content max-width — controlled by Settings > Chat Display (see #89).
-   * Keep 900px default to match prior layout; 'wide' = 1200px, 'full' = 100%. */
-  --chat-content-max-width: 900px;
+  --tabbar-h: 0px;
+  --font-ui:
+    'Autaut Grotesk', 'Times New Roman', -apple-system, system-ui,
+    'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
+    'Hiragino Kaku Gothic Pro', 'Meiryo', 'MS PGothic', Arial, sans-serif;
+  --font-report-ui:
+    'Autaut Grotesk', 'Times New Roman', -apple-system, system-ui,
+    'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', Arial,
+    sans-serif;
+  /* Design-system radius tokens (theme-safe: does not override Tailwind base radius scale) */
+  --radius-sm: 4px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-button: 16px;
+  --radius-card: 20px;
+  --radius-comfortable: 20px;
+  --radius-section: 32px;
+  --radius-hero: 40px;
+  --theme-toggle-off-bg: var(--theme-card2);
+  --theme-toggle-off-border: var(--theme-border);
+  --theme-toggle-on-bg: var(--theme-accent);
+  --theme-toggle-on-border: var(--theme-accent);
 }
 
-[data-chat-width='wide'] {
-  --chat-content-max-width: 1200px;
+/* Shared radius utilities for all screen pages */
+.rounded-button {
+  border-radius: var(--radius-button, 16px) !important;
 }
 
-[data-chat-width='full'] {
-  --chat-content-max-width: 100%;
+.rounded-card {
+  border-radius: var(--radius-card, 20px) !important;
+}
+
+.rounded-comfortable {
+  border-radius: var(--radius-comfortable, 20px) !important;
+}
+
+.rounded-section {
+  border-radius: var(--radius-section, 32px) !important;
+}
+
+.rounded-hero {
+  border-radius: var(--radius-hero, 40px) !important;
+}
+
+/* Global radius harmonization for workspace screens */
+.rounded-sm {
+  border-radius: var(--radius-sm, 4px) !important;
+}
+
+.rounded-md {
+  border-radius: var(--radius-md, 12px) !important;
+}
+
+.rounded-lg {
+  border-radius: var(--radius-lg, 16px) !important;
+}
+
+.rounded-xl {
+  border-radius: var(--radius-card, 20px) !important;
+}
+
+.rounded-2xl {
+  border-radius: var(--radius-card, 20px) !important;
+}
+
+.rounded-3xl {
+  border-radius: var(--radius-section, 32px) !important;
 }
 
 /* Hide scrollbars until scroll (cross-browser) */
@@ -102,6 +177,43 @@
   background-color: var(--theme-accent-subtle) !important;
 }
 
+.theme-accent-button {
+  background-color: var(--theme-accent) !important;
+  border-color: var(--theme-accent-secondary) !important;
+  color: var(--theme-toggle-on-border) !important;
+}
+
+[data-theme$='-light'] .theme-accent {
+  color: #ffffff !important;
+}
+
+[data-theme='semantier'] .theme-accent,
+[data-theme='semantier-light'] .theme-accent {
+  color: var(--theme-toggle-on-border) !important;
+}
+
+/* Accent action controls: always use theme token fill (no hardcoded palette). */
+.theme-accent-fill {
+  background-color: var(--theme-accent) !important;
+}
+
+/* Default accent icon contrast for most themes. */
+.theme-accent-icon {
+  color: var(--theme-text) !important;
+}
+
+/* Semantier accent is brighter, so force deeper icon color for contrast. */
+[data-theme='semantier'] .theme-accent-icon,
+[data-theme='semantier-light'] .theme-accent-icon {
+  color: var(--theme-toggle-on-border) !important;
+}
+
+/* Danger controls must keep white foreground on red backgrounds. */
+.theme-danger-contrast,
+.theme-danger-contrast svg {
+  color: #ffffff !important;
+}
+
 .theme-shadow-1 {
   box-shadow: var(--theme-shadow-1) !important;
 }
@@ -110,6 +222,110 @@
 }
 .theme-shadow-3 {
   box-shadow: var(--theme-shadow-3) !important;
+}
+
+/* Semantic utility aliases used across screens when Tailwind token classes are not emitted */
+.bg-surface {
+  background-color: var(--color-surface, var(--theme-bg)) !important;
+}
+
+.bg-card {
+  background-color: var(--theme-card) !important;
+}
+
+/* Table header surface token and utility
+   Defaults to the theme card surface; light-theme variants prefer the quiet light surface.
+*/
+
+:root {
+  /* Matcha (抹茶色) header surface by default */
+  --theme-table-header: #7BA05B; /* semantier matcha/lime */
+}
+
+/* Keep previous light-theme override behavior but default to matcha as well */
+[data-theme$='-light'] {
+  --theme-table-header: #7BA05B !important;
+}
+
+/* Alias utilities: bg-table-header for Tailwind-style and theme-table-header for semantic use */
+.bg-table-header,
+.theme-table-header {
+  background-color: var(--theme-table-header, #7BA05B) !important;
+}
+
+.excel-preview-row-odd {
+  background-color: var(--theme-card) !important;
+}
+
+.excel-preview-row-even {
+  background-color: var(--theme-card2) !important;
+}
+
+.excel-preview-cell {
+  color: var(--theme-text) !important;
+}
+
+.text-ink {
+  color: var(--color-ink, var(--theme-text)) !important;
+}
+
+.border-border {
+  border-color: var(--theme-border) !important;
+}
+
+/* Unified border/surface utilities for page-level components */
+.theme-border-1 {
+  border: 1px solid var(--theme-border) !important;
+}
+
+.theme-border-t-1 {
+  border-top: 1px solid var(--theme-border) !important;
+}
+
+.theme-border-b-1 {
+  border-bottom: 1px solid var(--theme-border) !important;
+}
+
+.theme-border-l-1 {
+  border-left: 1px solid var(--theme-border) !important;
+}
+
+.theme-tool-surface {
+  background: var(--tool-card-bg) !important;
+  color: var(--tool-card-title) !important;
+}
+
+.theme-card-surface {
+  background: var(--theme-card) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-card2-surface {
+  background: var(--theme-card2) !important;
+}
+
+.theme-left-status-border {
+  border-left-width: 3px !important;
+  border-left-style: solid !important;
+  border-left-color: var(--status-border-color, var(--theme-border)) !important;
+}
+
+.theme-swatch-frame {
+  border: 1px solid var(--swatch-border, var(--theme-border)) !important;
+  background-color: var(--swatch-bg, var(--theme-bg)) !important;
+}
+
+.theme-swatch-panel {
+  background-color: var(--swatch-panel, var(--theme-card)) !important;
+}
+
+.theme-swatch-line {
+  background-color: var(--swatch-border, var(--theme-border)) !important;
+}
+
+.theme-spinner-ring {
+  border-color: var(--theme-border) !important;
+  border-top-color: var(--theme-accent) !important;
 }
 
 /* KPI card utility (label + value + trend badge) */
@@ -190,36 +406,11 @@
   }
 }
 
-:root {
-  --interface-font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --interface-density-scale: 1;
-}
-
-[data-interface-font='inter'] {
-  --interface-font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-[data-interface-font='serif'] {
-  --interface-font-family: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-}
-
-[data-interface-font='mono'] {
-  --interface-font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-}
-
-[data-interface-density='compact'] {
-  --interface-density-scale: 0.92;
-}
-
-[data-interface-density='spacious'] {
-  --interface-density-scale: 1.08;
-}
-
 html,
 body {
   @apply m-0 font-sans;
-  font-family: var(--interface-font-family);
-  font-size: calc(16px * var(--interface-density-scale));
+  font-family: var(--font-ui);
+  font-feature-settings: 'calt' 1;
   letter-spacing: -0.15px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -229,7 +420,33 @@ body {
 }
 
 .font-sans {
+  font-family: var(--font-ui);
   letter-spacing: -0.15px;
+}
+
+.font-ui {
+  font-family: var(--font-ui);
+  font-feature-settings: 'calt' 1;
+}
+
+.font-report-ui {
+  font-family: var(--font-report-ui);
+  font-feature-settings: normal;
+}
+
+.brand-wordmark {
+  font-family:
+    'Autaut Grotesk',
+    'Noto Sans SC',
+    -apple-system,
+    system-ui,
+    'Segoe UI',
+    Roboto,
+    Arial,
+    sans-serif;
+  font-feature-settings: 'calt' 1;
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
 }
 
 .inline-code {
@@ -737,104 +954,9 @@ code {
 }
 
 /* ── Hermes Workspace Themes ── */
-
-[data-theme='matrix'] {
-  --theme-bg: #020804;
-  --theme-sidebar: #030d06;
-  --theme-panel: #041008;
-  --theme-card: #07130a;
-  --theme-card2: #0a1c0f;
-  --theme-border: rgba(0, 255, 65, 0.28);
-  --theme-border-subtle: rgba(0, 255, 65, 0.13);
-  --theme-text: #d8ffe3;
-  --theme-muted: rgba(216, 255, 227, 0.58);
-  --theme-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.72);
-  --theme-shadow-2: 0 10px 28px rgba(0, 0, 0, 0.62);
-  --theme-shadow-3: 0 18px 54px rgba(0, 0, 0, 0.72);
-  --theme-glass: rgba(2, 8, 4, 0.88);
-  --theme-focus: #00ff41;
-  --theme-accent: #00ff41;
-  --theme-accent-secondary: #7cff9b;
-  --theme-accent-subtle: rgba(0, 255, 65, 0.13);
-  --theme-accent-border: rgba(0, 255, 65, 0.36);
-  --theme-active: #00ff41;
-  --theme-link: #7cff9b;
-  --theme-success: #00ff41;
-  --theme-warning: #d6ff5f;
-  --theme-danger: #ff5f6d;
-  --theme-stripe: rgba(0, 255, 65, 0.055);
-  --theme-header-bg: #030d06;
-  --theme-header-border: rgba(0, 255, 65, 0.26);
-  --chat-user-bg: #07230d;
-  --chat-user-border: rgba(0, 255, 65, 0.34);
-  --chat-user-foreground: #eaffef;
-  --chat-assistant-bg: #041008;
-  --chat-assistant-border: rgba(0, 255, 65, 0.15);
-  --chat-assistant-foreground: #d8ffe3;
-  --composer-bg: #020b05;
-  --composer-border: rgba(0, 255, 65, 0.3);
-  --composer-placeholder: rgba(216, 255, 227, 0.42);
-  --tool-card-bg: #041008;
-  --tool-card-border: rgba(0, 255, 65, 0.2);
-  --tool-card-title: #eaffef;
-  --tool-card-muted: rgba(216, 255, 227, 0.56);
-  --code-bg: #010602;
-  --code-border: rgba(0, 255, 65, 0.18);
-  --theme-input: #07130a;
-}
-
-[data-theme='matrix-light'] {
-  --theme-bg: #f4fff6;
-  --theme-sidebar: #eafff0;
-  --theme-panel: #f0fff4;
-  --theme-card: #ffffff;
-  --theme-card2: #f4fff6;
-  --theme-border: rgba(0, 126, 34, 0.2);
-  --theme-border-subtle: rgba(0, 126, 34, 0.1);
-  --theme-text: #062a12;
-  --theme-muted: rgba(6, 42, 18, 0.55);
-  --theme-shadow-1: 0 1px 2px rgba(0, 80, 20, 0.08);
-  --theme-shadow-2: 0 10px 28px rgba(0, 80, 20, 0.1);
-  --theme-shadow-3: 0 18px 54px rgba(0, 80, 20, 0.14);
-  --theme-glass: rgba(244, 255, 246, 0.88);
-  --theme-focus: #008f2d;
-  --theme-accent: #008f2d;
-  --theme-accent-secondary: #006b22;
-  --theme-accent-subtle: rgba(0, 143, 45, 0.1);
-  --theme-accent-border: rgba(0, 143, 45, 0.3);
-  --theme-active: #008f2d;
-  --theme-link: #006b22;
-  --theme-success: #008f2d;
-  --theme-warning: #7a6200;
-  --theme-danger: #c0392b;
-  --theme-stripe: rgba(0, 143, 45, 0.04);
-  --theme-header-bg: #eafff0;
-  --theme-header-border: rgba(0, 126, 34, 0.18);
-  --chat-user-bg: #eafff1;
-  --chat-user-border: rgba(0, 126, 34, 0.22);
-  --chat-user-foreground: #062a12;
-  --chat-assistant-bg: #ffffff;
-  --chat-assistant-border: rgba(0, 126, 34, 0.12);
-  --chat-assistant-foreground: #062a12;
-  --composer-bg: #f4fff6;
-  --composer-border: rgba(0, 126, 34, 0.22);
-  --composer-placeholder: rgba(6, 42, 18, 0.38);
-  --tool-card-bg: #f0fff4;
-  --tool-card-border: rgba(0, 126, 34, 0.15);
-  --tool-card-title: #062a12;
-  --tool-card-muted: rgba(6, 42, 18, 0.55);
-  --code-bg: #eafff0;
-  --code-border: rgba(0, 126, 34, 0.14);
-  --theme-input: #ffffff;
-}
-
-[data-theme='claude-official'] {
+[data-theme='hermes-official'] {
   --theme-bg: #0a0e1a;
-  /* Sidebar gets a deeper shade than the main bg so the column
-     reads as its own surface. Iter 014 fix: previously the sidebar
-     and bg were nearly identical (#0d1220 vs #0a0e1a) which made
-     the sidebar look transparent against the dashboard. */
-  --theme-sidebar: #060914;
+  --theme-sidebar: #0d1220;
   --theme-panel: #0d1220;
   --theme-card: #11182a;
   --theme-card2: #151d32;
@@ -848,6 +970,7 @@ code {
   --theme-glass: rgba(10, 14, 26, 0.88);
   --theme-focus: #818cf8;
   --theme-accent: #6366f1;
+  --theme-accent-foreground: #ffffff;
   --theme-accent-secondary: #818cf8;
   --theme-accent-subtle: rgba(99, 102, 241, 0.14);
   --theme-accent-border: rgba(99, 102, 241, 0.3);
@@ -878,7 +1001,7 @@ code {
   --theme-input: #0f1728;
 }
 
-[data-theme='claude-classic'] {
+[data-theme='hermes-classic'] {
   --theme-bg: #0d0f12;
   --theme-sidebar: #13171c;
   --theme-panel: #13171c;
@@ -894,6 +1017,7 @@ code {
   --theme-glass: rgba(13, 15, 18, 0.88);
   --theme-focus: #b98a44;
   --theme-accent: #b98a44;
+  --theme-accent-foreground: #2d1f0a;
   --theme-accent-secondary: #d3a45a;
   --theme-accent-subtle: rgba(185, 138, 68, 0.14);
   --theme-accent-border: rgba(185, 138, 68, 0.3);
@@ -925,7 +1049,7 @@ code {
   --theme-input: #232a33;
 }
 
-[data-theme='claude-slate'] {
+[data-theme='hermes-slate'] {
   --theme-bg: #0d1117;
   --theme-sidebar: #0d1117;
   --theme-panel: #161b22;
@@ -941,6 +1065,7 @@ code {
   --theme-glass: rgba(13, 17, 23, 0.88);
   --theme-focus: #7eb8f6;
   --theme-accent: #7eb8f6;
+  --theme-accent-foreground: #0c2e4e;
   --theme-accent-secondary: #8ea8ff;
   --theme-accent-subtle: rgba(126, 184, 246, 0.14);
   --theme-accent-border: rgba(126, 184, 246, 0.3);
@@ -971,7 +1096,7 @@ code {
   --theme-input: #232a33;
 }
 
-[data-theme='claude-official-light'] {
+[data-theme='hermes-official-light'] {
   --theme-bg: #f7f7f1;
   --theme-sidebar: #f2f3ed;
   --theme-panel: #f4f5ef;
@@ -987,6 +1112,7 @@ code {
   --theme-glass: rgba(247, 247, 241, 0.92);
   --theme-focus: #2557b7;
   --theme-accent: #2557b7;
+  --theme-accent-foreground: #ffffff;
   --theme-accent-secondary: #3f6fca;
   --theme-accent-subtle: rgba(37, 87, 183, 0.07);
   --theme-accent-border: rgba(37, 87, 183, 0.18);
@@ -1017,7 +1143,7 @@ code {
   --theme-input: #fbfcf7;
 }
 
-[data-theme='claude-classic-light'] {
+[data-theme='hermes-classic-light'] {
   --theme-bg: #f5f2ed;
   --theme-sidebar: #eee8df;
   --theme-panel: #f0ebe4;
@@ -1033,6 +1159,7 @@ code {
   --theme-glass: rgba(245, 242, 237, 0.84);
   --theme-focus: #b98a44;
   --theme-accent: #b98a44;
+  --theme-accent-foreground: #2d1f0a;
   --theme-accent-secondary: #d3a45a;
   --theme-accent-subtle: rgba(185, 138, 68, 0.12);
   --theme-accent-border: rgba(185, 138, 68, 0.28);
@@ -1063,7 +1190,7 @@ code {
   --theme-input: #fffdf9;
 }
 
-[data-theme='claude-slate-light'] {
+[data-theme='hermes-slate-light'] {
   --theme-bg: #f6f8fa;
   --theme-sidebar: #f3f5f7;
   --theme-panel: #eef2f6;
@@ -1079,6 +1206,7 @@ code {
   --theme-glass: rgba(246, 248, 250, 0.84);
   --theme-focus: #3b82f6;
   --theme-accent: #3b82f6;
+  --theme-accent-foreground: #1e3a8a;
   --theme-accent-secondary: #60a5fa;
   --theme-accent-subtle: rgba(59, 130, 246, 0.12);
   --theme-accent-border: rgba(59, 130, 246, 0.25);
@@ -1115,7 +1243,7 @@ code {
    Light: warm parchment, deep teal text, amber #ffac02 accent
    ============================================================ */
 
-[data-theme='claude-nous'] {
+[data-theme='hermes-nous'] {
   --theme-bg: #041c1c;
   --theme-sidebar: #06282a;
   --theme-panel: #06282a;
@@ -1131,6 +1259,7 @@ code {
   --theme-glass: rgba(4, 28, 28, 0.88);
   --theme-focus: #ffac02;
   --theme-accent: #ffac02;
+  --theme-accent-foreground: #1a0800;
   --theme-accent-secondary: #ffe6cb;
   --theme-accent-subtle: rgba(255, 172, 2, 0.12);
   --theme-accent-border: rgba(255, 172, 2, 0.28);
@@ -1161,7 +1290,7 @@ code {
   --theme-input: #06282a;
 }
 
-[data-theme='claude-nous-light'] {
+[data-theme='hermes-nous-light'] {
   --theme-bg: #f8faf8;
   --theme-sidebar: #f2f6f4;
   --theme-panel: #f4f7f5;
@@ -1177,6 +1306,7 @@ code {
   --theme-glass: rgba(248, 250, 248, 0.92);
   --theme-focus: #2557b7;
   --theme-accent: #2557b7;
+  --theme-accent-foreground: #ffffff;
   --theme-accent-secondary: #3f6fca;
   --theme-accent-subtle: rgba(37, 87, 183, 0.07);
   --theme-accent-border: rgba(37, 87, 183, 0.18);
@@ -1206,43 +1336,154 @@ code {
   --code-foreground: #16315f;
   --theme-input: #fbfdfb;
 }
+[data-theme='semantier'] {
+  --theme-bg: #0e0f0c;
+  --theme-sidebar: #121311;
+  --theme-panel: #181916;
+  --theme-card: #1e1f1c;
+  --theme-card2: #242522;
+  --theme-border: rgba(69, 71, 69, 0.68);
+  --theme-border-subtle: rgba(69, 71, 69, 0.4);
+  --theme-text: #f0f0ec;
+  --theme-muted: rgba(134, 134, 133, 0.7);
+  --theme-shadow-1: 0 0 0 rgba(0, 0, 0, 0);
+  --theme-shadow-2: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --theme-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --theme-glass: rgba(14, 15, 12, 0.92);
+  --theme-focus: #435ee5;
+  --theme-accent: #9fe870;
+  --theme-accent-foreground: #163300;
+  --theme-accent-text: #9fe870;
+  --theme-accent-secondary: #669542;
+  --theme-accent-subtle: rgba(159, 232, 112, 0.08);
+  --theme-accent-border: rgba(159, 232, 112, 0.25);
+  --theme-toggle-off-bg: #242522;
+  --theme-toggle-off-border: #454745;
+  --theme-toggle-on-bg: #9fe870;
+  --theme-toggle-on-border: #163300;
+  --theme-active: #9fe870;
+  --theme-link: #9fe870;
+  --theme-success: #4f7c64;
+  --theme-warning: #9c6b2f;
+  --theme-danger: #a24b4b;
+  --theme-stripe: rgba(42, 43, 40, 0.35);
+  --theme-header-bg: #121311;
+  --theme-header-border: rgba(42, 43, 40, 0.85);
+  --chat-user-bg: #1e1f1c;
+  --chat-user-border: rgba(159, 232, 112, 0.2);
+  --chat-user-foreground: #f0f0ec;
+  --chat-assistant-bg: #181916;
+  --chat-assistant-border: rgba(42, 43, 40, 0.5);
+  --chat-assistant-foreground: #f0f0ec;
+  --composer-bg: #1e1f1c;
+  --composer-border: rgba(42, 43, 40, 0.85);
+  --composer-placeholder: rgba(134, 134, 133, 0.45);
+  --tool-card-bg: #1a1b18;
+  --tool-card-border: rgba(42, 43, 40, 0.6);
+  --tool-card-title: #f0f0ec;
+  --tool-card-muted: rgba(134, 134, 133, 0.65);
+  --code-bg: #141513;
+  --code-border: rgba(42, 43, 40, 0.5);
+  --code-foreground: #f0f0ec;
+  --theme-input: #181916;
+}
 
-[data-theme='claude-nous'] html,
-[data-theme='claude-nous'] body,
-[data-theme='claude-nous'] #root,
-[data-theme='claude-nous'] .dark,
-[data-theme='claude-official'] html,
-[data-theme='claude-official'] body,
-[data-theme='claude-official'] #root,
-[data-theme='claude-official'] .dark,
-[data-theme='claude-classic'] html,
-[data-theme='claude-classic'] body,
-[data-theme='claude-classic'] #root,
-[data-theme='claude-classic'] .dark,
-[data-theme='claude-slate'] html,
-[data-theme='claude-slate'] body,
-[data-theme='claude-slate'] #root,
-[data-theme='claude-slate'] .dark {
+[data-theme='semantier-light'] {
+  --theme-bg: #f5f5f0;
+  --theme-sidebar: #efefea;
+  --theme-panel: #ebebe6;
+  --theme-card: #fafaf7;
+  --theme-card2: #e5e5e0;
+  --theme-border: #d4d8cf;
+  --theme-border-subtle: #e8ebe6;
+  --theme-text: #0e0f0c;
+  --theme-muted: rgba(134, 134, 133, 0.75);
+  --theme-shadow-1: 0 0 0 rgba(0, 0, 0, 0);
+  --theme-shadow-2: 0 1px 2px rgba(14, 15, 12, 0.03);
+  --theme-shadow-3: 0 8px 24px rgba(14, 15, 12, 0.06);
+  --theme-glass: rgba(245, 245, 240, 0.92);
+  --theme-focus: #435ee5;
+  --theme-accent: #9fe870;
+  --theme-accent-foreground: #163300;
+  --theme-accent-text: #558f2e;
+  --theme-accent-secondary: #669542;
+  --theme-accent-subtle: rgba(22, 51, 0, 0.07);
+  --theme-accent-border: rgba(22, 51, 0, 0.18);
+  --theme-toggle-off-bg: #e8ebe6;
+  --theme-toggle-off-border: #868685;
+  --theme-toggle-on-bg: #9fe870;
+  --theme-toggle-on-border: #163300;
+  --theme-active: #163300;
+  --theme-link: #163300;
+  --theme-success: #4f7c64;
+  --theme-warning: #9c6b2f;
+  --theme-danger: #a24b4b;
+  --theme-stripe: rgba(213, 214, 209, 0.35);
+  --theme-header-bg: #efefea;
+  --theme-header-border: rgba(213, 214, 209, 0.85);
+  --chat-user-bg: #e8e8e3;
+  --chat-user-border: rgba(22, 51, 0, 0.18);
+  --chat-user-foreground: #0e0f0c;
+  --chat-assistant-bg: #f0f0ec;
+  --chat-assistant-border: rgba(213, 214, 209, 0.4);
+  --chat-assistant-foreground: #0e0f0c;
+  --composer-bg: #fafaf7;
+  --composer-border: rgba(213, 214, 209, 0.85);
+  --composer-placeholder: rgba(134, 134, 133, 0.5);
+  --tool-card-bg: #ebebe6;
+  --tool-card-border: rgba(213, 214, 209, 0.6);
+  --tool-card-title: #0e0f0c;
+  --tool-card-muted: rgba(134, 134, 133, 0.7);
+  --code-bg: #e5e5e0;
+  --code-border: rgba(213, 214, 209, 0.5);
+  --code-foreground: #0e0f0c;
+  --theme-input: #fafaf7;
+}
+
+[data-theme='hermes-nous'] html,
+[data-theme='hermes-nous'] body,
+[data-theme='hermes-nous'] #root,
+[data-theme='hermes-nous'] .dark,
+[data-theme='hermes-official'] html,
+[data-theme='hermes-official'] body,
+[data-theme='hermes-official'] #root,
+[data-theme='hermes-official'] .dark,
+[data-theme='hermes-classic'] html,
+[data-theme='hermes-classic'] body,
+[data-theme='hermes-classic'] #root,
+[data-theme='hermes-classic'] .dark,
+[data-theme='hermes-slate'] html,
+[data-theme='hermes-slate'] body,
+[data-theme='hermes-slate'] #root,
+[data-theme='hermes-slate'] .dark,
+[data-theme='semantier'] html,
+[data-theme='semantier'] body,
+[data-theme='semantier'] #root,
+[data-theme='semantier'] .dark {
   background-color: var(--theme-bg);
   color: var(--theme-text);
 }
 
-[data-theme='claude-nous-light'] html,
-[data-theme='claude-nous-light'] body,
-[data-theme='claude-nous-light'] #root,
-[data-theme='claude-nous-light'] .light,
-[data-theme='claude-official-light'] html,
-[data-theme='claude-official-light'] body,
-[data-theme='claude-official-light'] #root,
-[data-theme='claude-official-light'] .light,
-[data-theme='claude-classic-light'] html,
-[data-theme='claude-classic-light'] body,
-[data-theme='claude-classic-light'] #root,
-[data-theme='claude-classic-light'] .light,
-[data-theme='claude-slate-light'] html,
-[data-theme='claude-slate-light'] body,
-[data-theme='claude-slate-light'] #root,
-[data-theme='claude-slate-light'] .light {
+[data-theme='hermes-nous-light'] html,
+[data-theme='hermes-nous-light'] body,
+[data-theme='hermes-nous-light'] #root,
+[data-theme='hermes-nous-light'] .light,
+[data-theme='hermes-official-light'] html,
+[data-theme='hermes-official-light'] body,
+[data-theme='hermes-official-light'] #root,
+[data-theme='hermes-official-light'] .light,
+[data-theme='hermes-classic-light'] html,
+[data-theme='hermes-classic-light'] body,
+[data-theme='hermes-classic-light'] #root,
+[data-theme='hermes-classic-light'] .light,
+[data-theme='hermes-slate-light'] html,
+[data-theme='hermes-slate-light'] body,
+[data-theme='hermes-slate-light'] #root,
+[data-theme='hermes-slate-light'] .light,
+[data-theme='semantier-light'] html,
+[data-theme='semantier-light'] body,
+[data-theme='semantier-light'] #root,
+[data-theme='semantier-light'] .light {
   background-color: var(--theme-bg);
   color: var(--theme-text);
 }
@@ -1252,10 +1493,11 @@ code {
    to theme-appropriate values so ALL existing Tailwind classes work.
    Dark: 50=darkest surface, 950=lightest text (already set above) */
 
-[data-theme='claude-nous'],
-[data-theme='claude-official'],
-[data-theme='claude-classic'],
-[data-theme='claude-slate'] {
+[data-theme='hermes-nous'],
+[data-theme='hermes-official'],
+[data-theme='hermes-classic'],
+[data-theme='hermes-slate'],
+[data-theme='semantier'] {
   --color-primary-50: var(--theme-panel);
   --color-primary-100: var(--theme-card);
   --color-primary-200: var(--theme-border);
@@ -1278,10 +1520,11 @@ code {
 /* ── Tailwind primary token remaps for light themes ────────────────────
    Light: 50=lightest surface, 950=darkest text */
 
-[data-theme='claude-nous-light'],
-[data-theme='claude-official-light'],
-[data-theme='claude-classic-light'],
-[data-theme='claude-slate-light'] {
+[data-theme='hermes-nous-light'],
+[data-theme='hermes-official-light'],
+[data-theme='hermes-classic-light'],
+[data-theme='hermes-slate-light'],
+[data-theme='semantier-light'] {
   color-scheme: light !important;
   --color-primary-50: var(--theme-card) !important;
   --color-primary-100: var(--theme-card2) !important;
@@ -1315,6 +1558,17 @@ code {
   color: #fff !important;
 }
 
+/* Scroll-to-bottom button icon: light in light theme, dark in dark theme */
+[data-theme$='-light'] .scroll-to-bottom-button,
+[data-theme$='-light'] .scroll-to-bottom-button svg {
+  color: #ffffff !important;
+}
+
+[data-theme$='-dark'] .scroll-to-bottom-button,
+[data-theme$='-dark'] .scroll-to-bottom-button svg {
+  color: #0f172a !important;
+}
+
 /* Composer focus ring for all themes */
 [data-theme] .composer-input:focus-within {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 65%, transparent);
@@ -1324,13 +1578,14 @@ code {
 /* ════════════════════════════════════════════════════════════════════
    EDITORIAL VOCABULARY — v2 surface pass
    Apply these utilities + treatments across components for the
-   Claude/Nous editorial museum-catalog feel.
+   Hermes/Nous editorial museum-catalog feel.
    ════════════════════════════════════════════════════════════════════ */
 
 /* Editorial micro-label (uppercase, tracked, restrained)
    Use for section headers, metric labels, KPI captions.
    Replaces casual lowercase mid-weight headings. */
 .micro-label {
+  font-family: var(--font-ui);
   text-transform: uppercase;
   letter-spacing: 0.2em;
   font-size: 0.6875rem; /* 11px */
@@ -1399,6 +1654,57 @@ code {
   box-shadow: none !important;
 }
 
+/* Morandi surface normalization for screens using literal white/neutral utilities */
+[data-theme$='-light'] .bg-white {
+  background-color: var(--theme-card) !important;
+}
+[data-theme$='-light'] .bg-white\/90 {
+  background-color: color-mix(
+    in srgb,
+    var(--theme-card) 90%,
+    transparent
+  ) !important;
+}
+[data-theme$='-light'] .bg-white\/80 {
+  background-color: color-mix(
+    in srgb,
+    var(--theme-card) 80%,
+    transparent
+  ) !important;
+}
+[data-theme$='-light'] .bg-white\/60 {
+  background-color: color-mix(
+    in srgb,
+    var(--theme-card) 60%,
+    transparent
+  ) !important;
+}
+[data-theme$='-light'] .bg-neutral-50,
+[data-theme$='-light'] .bg-neutral-100 {
+  background-color: var(--theme-card2) !important;
+}
+[data-theme$='-light'] .border-neutral-100,
+[data-theme$='-light'] .border-neutral-200,
+[data-theme$='-light'] .border-neutral-300,
+[data-theme$='-light'] .border-white,
+[data-theme$='-light'] .border-black {
+  border-color: var(--theme-border) !important;
+}
+
+[data-theme='semantier'] .border-neutral-700,
+[data-theme='semantier'] .border-neutral-800,
+[data-theme='semantier'] .border-neutral-900,
+[data-theme='semantier'] .border-white,
+[data-theme='semantier'] .border-black {
+  border-color: var(--theme-border) !important;
+}
+[data-theme='semantier'] .bg-neutral-800,
+[data-theme='semantier'] .bg-neutral-900,
+[data-theme='semantier'] .bg-black,
+[data-theme='semantier'] .bg-white {
+  background-color: var(--theme-card) !important;
+}
+
 /* Reserved depth class for genuinely floating UI (modals, popovers, toasts) */
 .frame-elevated {
   border: 1px solid var(--theme-border);
@@ -1422,13 +1728,12 @@ code {
   --radius-editorial-input: 6px;
 }
 
-/* Restrain border-radius on common component patterns in light themes
-   (dark themes can keep their existing softer radii for now to avoid surprise) */
+/* Light-theme radius mapping aligned with design system */
 [data-theme$='-light'] .rounded-2xl {
-  border-radius: 8px !important;
+  border-radius: var(--radius-card, 20px) !important;
 }
 [data-theme$='-light'] .rounded-3xl {
-  border-radius: 10px !important;
+  border-radius: var(--radius-section, 32px) !important;
 }
 
 /* Fluid serif numeral for hero/empty-state metrics (optional opt-in) */
@@ -1479,6 +1784,12 @@ code {
 [data-theme$='-light'] .bg-violet-500,
 [data-theme$='-light'] .bg-violet-600 {
   background-color: var(--theme-accent) !important;
+}
+[data-theme$='-light'] .bg-indigo-500,
+[data-theme$='-light'] .bg-indigo-600,
+[data-theme$='-light'] .bg-violet-500,
+[data-theme$='-light'] .bg-violet-600 {
+  color: #ffffff !important;
 }
 [data-theme$='-light'] .border-indigo-200,
 [data-theme$='-light'] .border-indigo-300,
@@ -1551,10 +1862,3 @@ code {
       border-radius 0.3s ease;
   }
 }
-
-/* ════════════════════════════════════════════════════════════════════
-   SciFi Theme — imported AFTER all other theme rules so that
-   its CSS variable remaps take precedence over the default
-   Tailwind oklch values and .system dark mode overrides.
-   ═══════════════════════════════════════════════════════════════════ */
-@import './scifi-theme.css';

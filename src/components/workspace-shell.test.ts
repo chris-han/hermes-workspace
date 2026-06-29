@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { MOBILE_HAMBURGER_NAV_ITEMS } from './mobile-hamburger-menu'
-import { MOBILE_NAV_TABS } from './mobile-tab-bar'
-import { DESKTOP_SIDEBAR_BACKDROP_CLASS } from './workspace-shell'
+import {
+  DESKTOP_SIDEBAR_BACKDROP_CLASS,
+  shouldAutoRedirectToFeishuLogin,
+  shouldShowSemantierLogin,
+} from './workspace-shell-utils'
+import { connectedReachabilityStatus } from './connection-startup-screen'
+import { shouldShowProfileCompletion } from './auth/profile-completion-screen'
 
 describe('workspace shell sidebar backdrop', () => {
   it('only spans the desktop sidebar width, not the full viewport', () => {
@@ -10,20 +14,48 @@ describe('workspace shell sidebar backdrop', () => {
   })
 })
 
-describe('swarm2 navigation alias handling', () => {
-  it('keeps /swarm as the only user-visible swarm entry in the mobile hamburger menu', () => {
-    const swarm = MOBILE_HAMBURGER_NAV_ITEMS.find((item) => item.id === 'swarm')
-    const swarm2 = MOBILE_HAMBURGER_NAV_ITEMS.find((item) => item.id === 'swarm2')
-
-    expect(swarm?.to).toBe('/swarm')
-    expect(swarm2).toBeUndefined()
+describe('shouldShowSemantierLogin', () => {
+  it('requires Semantier login once auth resolves unauthenticated', () => {
+    expect(shouldShowSemantierLogin(false, false)).toBe(true)
   })
 
-  it('keeps /swarm as the only user-visible swarm tab', () => {
-    const swarm = MOBILE_NAV_TABS.find((item) => item.id === 'swarm')
-    const swarm2 = MOBILE_NAV_TABS.find((item) => item.id === 'swarm2')
+  it('does not require Semantier login while auth is still loading or already authenticated', () => {
+    expect(shouldShowSemantierLogin(true, false)).toBe(false)
+    expect(shouldShowSemantierLogin(false, true)).toBe(false)
+    expect(shouldShowSemantierLogin(false, undefined)).toBe(false)
+  })
+})
 
-    expect(swarm?.to).toBe('/swarm')
-    expect(swarm2).toBeUndefined()
+describe('shouldAutoRedirectToFeishuLogin', () => {
+  it('redirects only when Feishu OAuth is enabled and user is unauthenticated', () => {
+    expect(shouldAutoRedirectToFeishuLogin(true, false, false)).toBe(true)
+    expect(shouldAutoRedirectToFeishuLogin(false, false, false)).toBe(false)
+    expect(shouldAutoRedirectToFeishuLogin(true, true, false)).toBe(false)
+    expect(shouldAutoRedirectToFeishuLogin(true, undefined, false)).toBe(false)
+  })
+
+  it('does not auto-redirect immediately after explicit logout', () => {
+    expect(shouldAutoRedirectToFeishuLogin(true, false, true)).toBe(false)
+  })
+})
+
+describe('shouldShowProfileCompletion', () => {
+  it('requires profile completion after Semantier auth succeeds with an incomplete profile', () => {
+    expect(shouldShowProfileCompletion(true, false)).toBe(true)
+  })
+
+  it('does not require profile completion when unauthenticated or already complete', () => {
+    expect(shouldShowProfileCompletion(false, false)).toBe(false)
+    expect(shouldShowProfileCompletion(true, true)).toBe(false)
+    expect(shouldShowProfileCompletion(undefined, false)).toBe(false)
+  })
+})
+
+describe('connectedReachabilityStatus', () => {
+  it('treats the startup auth-check as reachability only', () => {
+    expect(connectedReachabilityStatus()).toEqual({
+      authenticated: true,
+      authRequired: false,
+    })
   })
 })

@@ -10,7 +10,6 @@ import {
   Chat01Icon,
   CommandLineIcon,
   File01Icon,
-  McpServerIcon,
   PuzzleIcon,
   Settings01Icon,
 } from '@hugeicons/core-free-icons'
@@ -120,9 +119,7 @@ export function CommandPalette({ pathname, sessions }: CommandPaletteProps) {
 
   const runSlashCommand = (command: string) => {
     if (command === '/new') {
-      // /chat index redirects to last session via localStorage — use the
-      // explicit 'new' sentinel so /new actually opens a fresh chat. See #300.
-      void navigate({ to: '/chat/$sessionKey', params: { sessionKey: 'new' } })
+      void navigate({ to: '/chat' })
       return
     }
 
@@ -131,13 +128,8 @@ export function CommandPalette({ pathname, sessions }: CommandPaletteProps) {
       return
     }
 
-    if (command === '/mcp') {
-      void navigate({ to: '/mcp' })
-      return
-    }
-
     if (command === '/model' || command === '/skin') {
-      const section = command === '/skin' ? 'appearance' : 'claude'
+      const section = command === '/skin' ? 'appearance' : 'hermes'
       if (pathname.startsWith('/chat') || pathname === '/') {
         window.dispatchEvent(
           new CustomEvent(CHAT_OPEN_SETTINGS_EVENT, {
@@ -213,22 +205,13 @@ export function CommandPalette({ pathname, sessions }: CommandPaletteProps) {
         onSelect: () => void navigate({ to: '/skills' }),
       },
       {
-        id: 'screen-mcp',
-        group: 'Screens',
-        label: 'MCP',
-        keywords: 'mcp servers model context protocol presets',
-        shortcut: 'Go',
-        icon: McpServerIcon,
-        onSelect: () => void navigate({ to: '/mcp' }),
-      },
-      {
         id: 'screen-settings',
         group: 'Screens',
         label: 'Settings',
         keywords: 'preferences configuration',
         shortcut: 'Go',
         icon: Settings01Icon,
-        onSelect: () => void navigate({ to: '/settings', search: {} }),
+        onSelect: () => void navigate({ to: '/settings' }),
       },
     ],
     [navigate],
@@ -279,7 +262,7 @@ export function CommandPalette({ pathname, sessions }: CommandPaletteProps) {
         id: 'slash-model',
         group: 'Slash Commands',
         label: '/model',
-        keywords: 'open model picker settings claude provider',
+        keywords: 'open model picker settings hermes provider',
         shortcut: 'Run',
         icon: CommandLineIcon,
         onSelect: () => runSlashCommand('/model'),
@@ -292,15 +275,6 @@ export function CommandPalette({ pathname, sessions }: CommandPaletteProps) {
         shortcut: 'Run',
         icon: CommandLineIcon,
         onSelect: () => runSlashCommand('/skills'),
-      },
-      {
-        id: 'slash-mcp',
-        group: 'Slash Commands',
-        label: '/mcp',
-        keywords: 'mcp servers model context protocol page',
-        shortcut: 'Run',
-        icon: CommandLineIcon,
-        onSelect: () => runSlashCommand('/mcp'),
       },
       {
         id: 'slash-skin',

@@ -20,7 +20,7 @@ type AuthCheckResponse = {
   error?: string
 }
 
-type ClaudeConfigResponse = {
+type HermesConfigResponse = {
   activeProvider?: string
   activeModel?: string
 }
@@ -104,36 +104,36 @@ export function ConnectionCheckStep({
         {status === 'connected'
           ? 'Your backend is reachable and ready for setup.'
           : status === 'checking'
-            ? 'Checking whether an OpenAI-compatible backend is available...'
+            ? 'Checking whether a compatible backend is available...'
             : 'No compatible backend is connected yet.'}
       </p>
 
       {status === 'disconnected' && (
         <div className="mb-6 w-full rounded-2xl border border-red-200 bg-red-50 p-4 text-left">
           <p className="mb-3 text-sm font-medium text-red-700">
-            Make sure the Hermes Agent HTTP API server is enabled:
+            Make sure a compatible backend is running:
           </p>
           <div className="space-y-2">
             <div>
               <p className="text-xs font-medium text-red-700 mb-1">
-                1. Enable the API server in <code>~/.hermes/.env</code>:
+                1. Start or restart your local gateway:
               </p>
               <code className="block overflow-x-auto rounded-lg bg-red-100 px-3 py-2 text-xs text-red-900">
-                API_SERVER_ENABLED=true
+                hermes gateway run
               </code>
             </div>
             <div>
               <p className="text-xs font-medium text-red-700 mb-1">
-                2. Restart the gateway:
+                2. Verify the backend responds on the configured URL:
               </p>
               <code className="block overflow-x-auto rounded-lg bg-red-100 px-3 py-2 text-xs text-red-900">
-                cd hermes-agent && hermes --gateway
+                curl "$SEMANTIER_AGENT_API_URL/health"
               </code>
             </div>
           </div>
           <p className="mt-3 text-xs text-red-700">
-            Or point <code>HERMES_API_URL</code> at any OpenAI-compatible
-            backend (Ollama, LiteLLM, vLLM, etc.).
+            Point <code>SEMANTIER_AGENT_API_URL</code> at any compatible
+            backend.
           </p>
           {lastError && (
             <p className="mt-3 text-xs text-red-700">{lastError}</p>
@@ -157,7 +157,7 @@ export function ModelConfigurationStep({
   setCanProceed,
 }: OnboardingStepComponentProps) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [config, setConfig] = useState<ClaudeConfigResponse | null>(null)
+  const [config, setConfig] = useState<HermesConfigResponse | null>(null)
 
   useEffect(() => {
     setCanProceed(true)
@@ -168,14 +168,14 @@ export function ModelConfigurationStep({
 
     async function loadConfig() {
       try {
-        const response = await fetch('/api/claude-config', {
+        const response = await fetch('/api/hermes-config', {
           signal: AbortSignal.timeout(5000),
         })
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`)
         }
 
-        const data = (await response.json()) as ClaudeConfigResponse
+        const data = (await response.json()) as HermesConfigResponse
         if (!cancelled) {
           setConfig(data)
           setStatus('ready')
@@ -213,8 +213,8 @@ export function ModelConfigurationStep({
       </h2>
 
       <p className="mb-6 max-w-md text-base leading-relaxed text-primary-600">
-        Core chat works with any OpenAI-compatible backend. Hermes Agent gateway APIs
-        make provider and model setup editable from the workspace.
+        Core chat goes through the Semantier agent wrapper. The wrapper manages
+        the Hermes gateway internally and handles provider and model setup.
       </p>
 
       <div className="mb-6 w-full rounded-2xl border border-primary-200 bg-primary-100/70 p-4 text-left">

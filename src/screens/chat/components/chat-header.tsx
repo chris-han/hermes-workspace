@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { InspectorToggleButton } from '@/components/inspector/inspector-panel'
 import { openHamburgerMenu } from '@/components/mobile-hamburger-menu'
 
 function toTitleCase(value: string): string {
@@ -64,7 +65,7 @@ function formatMobileSessionTitle(rawTitle: string): string {
   return title
 }
 
-type ThinkingLevel = 'off' | 'low' | 'medium' | 'high' | 'adaptive'
+type ThinkingLevel = 'off' | 'low' | 'adaptive'
 
 type ChatHeaderProps = {
   activeTitle: string
@@ -183,7 +184,7 @@ function ChatHeaderComponent({
       onOpenAgentDetails()
       return
     }
-    window.dispatchEvent(new CustomEvent('claude:chat-agent-details'))
+    window.dispatchEvent(new CustomEvent('hermes:chat-agent-details'))
   }, [onOpenAgentDetails])
 
   useEffect(() => {
@@ -300,6 +301,9 @@ function ChatHeaderComponent({
 
           <div className="flex-1" />
 
+          <div className="shrink-0 flex items-center gap-1">
+            <InspectorToggleButton />
+          </div>
         </div>
       </div>
     )
@@ -347,7 +351,7 @@ function ChatHeaderComponent({
                 void saveTitleEdit()
               }}
               onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                if (event.key === 'Enter') {
                   event.preventDefault()
                   void saveTitleEdit()
                   return
@@ -384,46 +388,30 @@ function ChatHeaderComponent({
                 </button>
               )}
               {sessionPopoverOpen && (
-                <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-80 overflow-hidden rounded-xl border border-[var(--theme-border)] shadow-2xl">
-                  <div
-                    className="border-b px-3 py-2"
-                    style={{
-                      background: 'var(--theme-card)',
-                      borderColor: 'var(--theme-border)',
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <svg
-                        width="13"
-                        height="13"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        className="shrink-0 text-[var(--theme-muted)]"
-                      >
-                        <circle cx="11" cy="11" r="8" />
-                        <path d="m21 21-4.35-4.35" />
-                      </svg>
-                      <input
-                        autoFocus
-                        type="text"
-                        placeholder="Search sessions..."
-                        value={sessionSearch}
-                        onChange={(e) => setSessionSearch(e.target.value)}
-                        className="flex-1 bg-transparent text-sm outline-none"
-                        style={{ color: 'var(--theme-text)' }}
-                      />
-                    </div>
+                <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-80 rounded-xl border border-primary-200 bg-surface shadow-lg overflow-hidden">
+                  <div className="flex items-center gap-2 border-b border-neutral-100 px-3 py-2">
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="text-neutral-400 shrink-0"
+                    >
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.35-4.35" />
+                    </svg>
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder="Search sessions..."
+                      value={sessionSearch}
+                      onChange={(e) => setSessionSearch(e.target.value)}
+                      className="flex-1 bg-transparent text-sm outline-none text-neutral-700 placeholder-neutral-400 dark:text-neutral-200"
+                    />
                   </div>
-                  <div
-                    className="max-h-60 overflow-y-auto p-1"
-                    style={{
-                      background: 'var(--theme-card)',
-                      boxShadow: '0 18px 48px rgba(0,0,0,0.38)',
-                      opacity: 1,
-                    }}
-                  >
+                  <div className="max-h-60 overflow-y-auto p-1">
                     {sessions
                       .filter((s) => {
                         if (!sessionSearch.trim()) return true
@@ -457,15 +445,12 @@ function ChatHeaderComponent({
                               onSelectSession?.(s.key || s.friendlyId || '')
                             }}
                             className={cn(
-                              'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                              'border-b border-[var(--theme-border)] last:border-0 hover:bg-[var(--theme-card2)]',
-                              isActive && 'bg-[var(--theme-card2)] font-medium',
+                              'flex w-full items-center gap-2 px-3 py-2 text-sm text-left border-b border-neutral-100 last:border-0 hover:bg-neutral-50 dark:hover:bg-white/10 transition-colors',
+                              isActive &&
+                                'bg-neutral-50 font-medium text-neutral-900',
                             )}
                           >
-                            <span
-                              className="flex-1 min-w-0 truncate"
-                              style={{ color: 'var(--theme-text)' }}
-                            >
+                            <span className="flex-1 min-w-0 truncate text-neutral-700 dark:text-neutral-200">
                               {label}
                             </span>
                             {isActive && (
@@ -507,7 +492,7 @@ function ChatHeaderComponent({
                 }
               />
               <TooltipContent side="bottom">
-                Thinking: Adaptive — Hermes reasons before responding
+                Thinking: Adaptive — Claude reasons before responding
               </TooltipContent>
             </TooltipRoot>
           </TooltipProvider>
@@ -602,6 +587,7 @@ function ChatHeaderComponent({
             </TooltipRoot>
           </TooltipProvider>
         )}
+        <InspectorToggleButton className="ml-2" />
       </div>
     </div>
   )

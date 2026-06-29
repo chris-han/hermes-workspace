@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildInlineToolRenderPlan,
-  compactInlineToolRenderPlan,
-  detectAssistantCorruptionWarning,
+  formatGovernedQueryResultForDisplay,
 } from './message-item'
+import { shouldRenderPrimaryAssistantText } from './message-item'
 import type { ChatMessage } from '../types'
 
 describe('buildInlineToolRenderPlan', () => {
@@ -49,129 +49,167 @@ describe('buildInlineToolRenderPlan', () => {
       { kind: 'text', text: 'After tool.' },
     ])
   })
-})
 
-describe('compactInlineToolRenderPlan', () => {
-  it('stacks consecutive tool calls without moving surrounding text', () => {
-    const plan = compactInlineToolRenderPlan([
-      { kind: 'text', text: 'Before. ' },
-      {
-        kind: 'tool',
-        section: {
-          key: 'tc-1',
-          type: 'read_file',
-          outputText: '',
-          state: 'output-available',
+  it('does not auto-inject schema_form for free-form structured prompts (use backend A2UI instead)', () => {
+    const message: ChatMessage = {
+      role: 'assistant',
+      content: [
+        {
+          type: 'text',
+          text: '请提供以下信息：项目名称、目标用户、上线时间、项目描述。',
         },
-      },
-      {
-        kind: 'tool',
-        section: {
-          key: 'tc-2',
-          type: 'search_files',
-          outputText: '',
-          state: 'output-available',
-        },
-      },
-      { kind: 'text', text: 'After.' },
-    ])
+      ],
+      timestamp: Date.now(),
+    }
 
-    expect(plan).toEqual([
-      { kind: 'text', text: 'Before. ' },
-      {
-        kind: 'tools',
-        sections: [
-          {
-            key: 'tc-1',
-            type: 'read_file',
-            outputText: '',
-            state: 'output-available',
-          },
-          {
-            key: 'tc-2',
-            type: 'search_files',
-            outputText: '',
-            state: 'output-available',
-          },
-        ],
-      },
-      { kind: 'text', text: 'After.' },
-    ])
+    const plan = buildInlineToolRenderPlan(message, [])
+
+    // Auto-synthesis is disabled — forms must come from explicit backend A2UI schemas.
+    expect(plan.some((item) => item.kind === 'ui')).toBe(false)
   })
 
-  it('keeps separate stacks when text appears between tool calls', () => {
-    const plan = compactInlineToolRenderPlan([
-      {
-        kind: 'tool',
-        section: {
-          key: 'tc-1',
-          type: 'read_file',
-          outputText: '',
-          state: 'output-available',
-        },
-      },
-      { kind: 'text', text: 'Then ' },
-      {
-        kind: 'tool',
-        section: {
-          key: 'tc-2',
-          type: 'search_files',
-          outputText: '',
-          state: 'output-available',
-        },
-      },
-    ])
+  it('does not inject generic form when assistant text is not requesting fields', () => {
+    const message: ChatMessage = {
+      role: 'assistant',
+      content: [{ type: 'text', text: '我已经完成联系人搜索并准备创建会议。' }],
+      timestamp: Date.now(),
+    }
 
-    expect(plan).toEqual([
-      {
-        kind: 'tools',
-        sections: [
-          {
-            key: 'tc-1',
-            type: 'read_file',
-            outputText: '',
-            state: 'output-available',
-          },
-        ],
-      },
-      { kind: 'text', text: 'Then ' },
-      {
-        kind: 'tools',
-        sections: [
-          {
-            key: 'tc-2',
-            type: 'search_files',
-            outputText: '',
-            state: 'output-available',
-          },
-        ],
-      },
-    ])
+    const plan = buildInlineToolRenderPlan(message, [])
+
+    expect(plan.some((item) => item.kind === 'ui')).toBe(false)
+  })
+
+  it('does not synthesize a schema_form even when assistant lists labelled fields', () => {
+    const message: ChatMessage = {
+      role: 'assistant',
+      content: [
+        {
+          type: 'text',
+          text: [
+            '请补充以下信息：',
+            '会议主题**是什么',
+            '会议时间**（哪天几点？）',
+            '参会人员**有哪些？（可选）',
+            '如果没有就不填',
+            '提供这些信息后',
+            '我就可以帮你创建飞书会议了',
+          ].join('\n'),
+        },
+      ],
+      timestamp: Date.now(),
+    }
+
+    const plan = buildInlineToolRenderPlan(message, [])
+
+    // Auto-synthesis is disabled — even when text reads like a field list,
+    // forms must come from an explicit backend A2UI schema.
+    expect(plan.some((item) => item.kind === 'ui')).toBe(false)
+  })
+
+  it('does not mine markdown tables into form fields when assistant uses conversational closing phrases', () => {
+    // Regression: session 64adbd385339 produced a free-text form with garbage
+    // labels like "| S&P 500 | 7" because the closing line "...请告诉我您感兴趣的方向"
+    // triggered auto-form synthesis that then split the markdown table rows.
+    const message: ChatMessage = {
+      role: 'assistant',
+      content: [
+        {
+          type: 'text',
+          text: [
+            '## 美股走势概览',
+            '',
+            '| 指数 | 最新收盘 | 日涨跌 | 月涨跌 | 3 月涨跌 |',
+            '|------|----------|--------|--------|----------|',
+            '| **S&P 500** | 7,135.95 | -0.04% | +9.30% | +2.29% |',
+            '| **NASDAQ** | 24,673.24 | +0.04% | +14.28% | +4.58% |',
+            '| **Dow Jones** | 48,861.81 | -0.57% | +5.44% | -1.10% |',
+            '',
+            '如需查看具体个股走势、行业板块分析或更详细的技术面分析，请告诉我您感兴趣的方向。',
+          ].join('\n'),
+        },
+      ],
+      timestamp: Date.now(),
+    }
+
+    const plan = buildInlineToolRenderPlan(message, [])
+
+    expect(plan.some((item) => item.kind === 'ui')).toBe(false)
   })
 })
 
-describe('detectAssistantCorruptionWarning', () => {
-  it('flags assistant messages that begin with raw user role text', () => {
-    const warning = detectAssistantCorruptionWarning(
-      'assistant',
-      'user\nNew reviews are fine...',
+describe('formatGovernedQueryResultForDisplay', () => {
+  it('renders governed-query display columns while preserving ascii row keys', () => {
+    const rendered = formatGovernedQueryResultForDisplay(
+      JSON.stringify({
+        columns: ['amount_10k'],
+        display_columns: ['金额（万元）'],
+        rows: [{ amount_10k: 12.5 }],
+        column_metadata: {
+          amount_10k: {
+            display_name_zh: '金额（万元）',
+            unit: 'CNY_10K',
+          },
+        },
+      }),
     )
 
-    expect(warning?.kind).toBe('role-prefix')
-    expect(warning?.detail).toContain('Stored role is assistant')
+    expect(rendered).toContain('金额（万元）')
+    expect(rendered).toContain('12.5')
+    expect(rendered).not.toContain('amount_10k')
   })
 
-  it('does not flag real user messages with the same body text', () => {
+  it('falls back to machine columns when display columns are missing', () => {
+    const rendered = formatGovernedQueryResultForDisplay(
+      JSON.stringify({
+        columns: ['amount_10k'],
+        rows: [{ amount_10k: 12.5 }],
+      }),
+    )
+
+    expect(rendered).toContain('amount_10k')
+    expect(rendered).toContain('12.5')
+  })
+})
+
+describe('shouldRenderPrimaryAssistantText', () => {
+  it('renders for user messages', () => {
     expect(
-      detectAssistantCorruptionWarning('user', 'user\nNew reviews are fine...'),
-    ).toBeNull()
+      shouldRenderPrimaryAssistantText({
+        isUser: true,
+        hasToolCalls: true,
+        hasA2UiBlocks: true,
+      }),
+    ).toBe(true)
   })
 
-  it('flags very large repeated divider loops', () => {
-    const text = `${'normal text\n'.repeat(2000)}${'----------\n'.repeat(25)}`
+  it('does not render assistant fallback text when tool calls are present', () => {
+    expect(
+      shouldRenderPrimaryAssistantText({
+        isUser: false,
+        hasToolCalls: true,
+        hasA2UiBlocks: false,
+      }),
+    ).toBe(false)
+  })
 
-    expect(detectAssistantCorruptionWarning('assistant', text)?.kind).toBe(
-      'divider-loop',
-    )
+  it('does not render assistant fallback text when a2ui blocks are present', () => {
+    expect(
+      shouldRenderPrimaryAssistantText({
+        isUser: false,
+        hasToolCalls: false,
+        hasA2UiBlocks: true,
+      }),
+    ).toBe(false)
+  })
+
+  it('renders assistant fallback text when neither tool calls nor a2ui are present', () => {
+    expect(
+      shouldRenderPrimaryAssistantText({
+        isUser: false,
+        hasToolCalls: false,
+        hasA2UiBlocks: false,
+      }),
+    ).toBe(true)
   })
 })

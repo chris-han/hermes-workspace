@@ -1,0 +1,19 @@
+{
+  "type": "design",
+  "designSystems": [],
+  "primaryDesignSystem": null,
+  "assets": {
+    "AI Agents Workshop Courseware App": {
+      "versions": [
+        {
+          "path": "index.html",
+          "createdAt": "2026-06-18T08:42:12.392Z",
+          "status": "needs-review",
+          "subtitle": "Interactive courseware reader for the 3-day enterprise AI Agent workshop"
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-06-18T08:42:12.392Z",
+  "updatedAt": "2026-06-18T08:42:12.392Z"
+}

@@ -34,79 +34,51 @@ function mergeSessionTitle(
   }
 }
 
-function buildSyntheticActiveSession(
-  activeFriendlyId: string,
-  forcedSessionKey: string | undefined,
-  stored: SessionTitleInfo | undefined,
-): SessionMeta | null {
-  if (!activeFriendlyId || activeFriendlyId === 'new') return null
-
-  const derivedTitle =
-    stored?.title ?? (activeFriendlyId === 'main' ? 'Hermes' : 'New Session')
-
-  return {
-    key: forcedSessionKey || activeFriendlyId,
-    friendlyId: activeFriendlyId,
-    label: undefined,
-    title: undefined,
-    derivedTitle,
-    updatedAt: Date.now(),
-    titleStatus: stored?.status ?? 'idle',
-    titleSource: stored?.source,
-    titleError: stored?.error,
-  }
-}
-
 type UseChatSessionsInput = {
   activeFriendlyId: string
   isNewChat: boolean
   forcedSessionKey?: string
+  sseConnectionState?: string
+  waitingForResponse?: boolean
 }
 
 export function useChatSessions({
   activeFriendlyId,
   isNewChat,
   forcedSessionKey,
+  sseConnectionState,
+  waitingForResponse = false,
 }: UseChatSessionsInput) {
+  const hasDegradedSse = sseConnectionState !== 'connected'
   const sessionsQuery = useQuery({
     queryKey: chatQueryKeys.sessions,
     queryFn: fetchSessions,
-    refetchInterval: 5000,
+    refetchInterval(query) {
+      const rows = Array.isArray(query.state.data) ? query.state.data : []
+      const hasActiveRun = rows.some((session) => {
+        const status =
+          typeof session?.status === 'string'
+            ? session.status.toLowerCase()
+            : ''
+        return status === 'running' || status === 'queued' || status === 'streaming'
+      })
+
+      // Keep metadata fresh only when needed; otherwise stay low-frequency.
+      if (waitingForResponse || hasActiveRun) return 5000
+      if (hasDegradedSse) return 15000
+      return 60000
+    },
   })
   const storedTitles = useSessionTitles()
 
   const sessions = useMemo(() => {
     const rawSessions = sessionsQuery.data ?? []
     const filtered = filterSessionsWithTombstones(rawSessions)
-    const merged = filtered.map((session) =>
+    if (!filtered.length) return filtered
+    return filtered.map((session) =>
       mergeSessionTitle(session, storedTitles[session.friendlyId]),
     )
-    const activeAlreadyPresent = merged.some(
-      (session) => session.friendlyId === activeFriendlyId,
-    )
-
-    if (!activeAlreadyPresent && (forcedSessionKey || isRecentSession(activeFriendlyId))) {
-      const synthetic = buildSyntheticActiveSession(
-        activeFriendlyId,
-        forcedSessionKey,
-        storedTitles[activeFriendlyId],
-      )
-      if (synthetic) {
-        merged.unshift(synthetic)
-      }
-    }
-
-    return merged.sort((a, b) => {
-      const aTs = a.updatedAt ?? 0
-      const bTs = b.updatedAt ?? 0
-      return bTs - aTs
-    })
-  }, [
-    activeFriendlyId,
-    forcedSessionKey,
-    sessionsQuery.data,
-    storedTitles,
-  ])
+  }, [sessionsQuery.data, storedTitles])
 
   const activeSession = useMemo(() => {
     return sessions.find((session) => session.friendlyId === activeFriendlyId)

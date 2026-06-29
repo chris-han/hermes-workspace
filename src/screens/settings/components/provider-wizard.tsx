@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ProviderIcon } from './provider-icon'
 import type { ProviderAuthType } from '@/lib/provider-catalog'
 import {
-  CLAUDE_CONFIG_PATH,
+  HERMES_CONFIG_PATH,
   PROVIDER_CATALOG,
   buildConfigExample,
   getAuthTypeLabel,
@@ -80,7 +80,7 @@ function getAuthTypeMeta(authType: ProviderAuthType): AuthTypeMeta {
     return {
       title: 'CLI Token',
       description:
-        'Use your existing Hermes CLI auth token (from Claude Code / claude.ai)',
+        'Use your existing Claude CLI auth token (from Claude Code / claude.ai)',
     }
   }
 
@@ -277,7 +277,7 @@ export function ProviderWizard({
       setSaveState('saved')
       setVerifyState('checking')
       setVerificationMessage(
-        `${providerName} API key saved. Hermes Agent is restarting…`,
+        `${providerName} API key saved. Hermes is restarting…`,
       )
       setStep('verify')
 
@@ -301,7 +301,7 @@ export function ProviderWizard({
         } else {
           setVerifyState('warning')
           setVerificationMessage(
-            `Hermes Agent restarted, but ${providerName} models haven't appeared yet. ` +
+            `Hermes restarted, but ${providerName} models haven't appeared yet. ` +
               `Check your API key or wait a moment and refresh.`,
           )
         }
@@ -320,17 +320,17 @@ export function ProviderWizard({
 
   const verifyIconColor =
     verifyState === 'success'
-      ? 'text-green-600'
+      ? 'text-success'
       : verifyState === 'warning'
-        ? 'text-amber-600'
-        : 'text-primary-600'
+        ? 'text-warning'
+        : 'theme-muted'
 
   const verifyBorderColor =
     verifyState === 'success'
       ? 'border-green-200 bg-green-50/60'
       : verifyState === 'warning'
-        ? 'border-amber-200 bg-amber-50/60'
-        : 'border-primary-200 bg-primary-100/70'
+        ? 'theme-border bg-muted/60'
+        : 'theme-border theme-card2'
 
   const verifyTitle =
     verifyState === 'success'
@@ -341,9 +341,9 @@ export function ProviderWizard({
 
   return (
     <DialogRoot open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="left-auto right-0 top-[var(--titlebar-h,0px)] h-[calc(100dvh-var(--titlebar-h,0px))] w-screen translate-x-0 translate-y-0 overflow-hidden rounded-none border-primary-200 bg-primary-50/95 backdrop-blur-sm duration-300 ease-out sm:w-[min(860px,100vw)] sm:rounded-l-2xl data-[state=open]:scale-100 data-[state=closed]:scale-100 data-[state=open]:translate-x-0 data-[state=closed]:translate-x-full">
+      <DialogContent className="left-auto right-0 top-[var(--titlebar-h,0px)] h-[calc(100dvh-var(--titlebar-h,0px))] w-screen translate-x-0 translate-y-0 overflow-hidden rounded-none theme-border theme-card2 backdrop-blur-sm duration-300 ease-out sm:w-[min(860px,100vw)] sm:rounded-l-2xl data-[state=open]:scale-100 data-[state=closed]:scale-100 data-[state=open]:translate-x-0 data-[state=closed]:translate-x-full">
         <div className="flex h-full min-h-0 flex-col">
-          <div className="border-b border-primary-200 p-4 sm:p-5">
+          <div className="border-b theme-border p-4 sm:p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <DialogTitle className="text-balance">
@@ -384,27 +384,27 @@ export function ProviderWizard({
                     key={item.id}
                     className={cn(
                       'rounded-xl border px-2.5 py-2',
-                      isCurrent && 'border-primary-400 bg-primary-100/70',
+                      isCurrent && 'theme-border theme-card2',
                       isComplete && 'border-green-500/30 bg-green-500/10',
                       !isCurrent &&
                         !isComplete &&
-                        'border-primary-200 bg-primary-50',
+                        'theme-border theme-card2',
                     )}
                   >
                     <div className="flex items-center gap-2">
                       <span
                         className={cn(
                           'inline-flex size-5 items-center justify-center rounded-full border text-xs font-medium tabular-nums',
-                          isCurrent && 'border-primary-500 text-primary-800',
-                          isComplete && 'border-green-500/40 text-green-600',
+                          isCurrent && 'theme-border theme-text',
+                          isComplete && 'border-green-500/40 text-success',
                           !isCurrent &&
                             !isComplete &&
-                            'border-primary-300 text-primary-600',
+                            'theme-border theme-muted',
                         )}
                       >
                         {index + 1}
                       </span>
-                      <span className="truncate text-xs font-medium text-primary-800">
+                      <span className="truncate text-xs font-medium theme-text">
                         {item.label}
                       </span>
                     </div>
@@ -415,10 +415,10 @@ export function ProviderWizard({
 
             {step === 'provider' ? (
               <section className="mt-5">
-                <h3 className="text-base font-medium text-primary-900 text-balance">
+                <h3 className="text-base font-medium theme-text text-balance">
                   Step 1: Choose Provider
                 </h3>
-                <p className="mt-1 text-sm text-primary-600 text-pretty">
+                <p className="mt-1 text-sm theme-muted text-pretty">
                   Select the provider you want to configure.
                 </p>
 
@@ -431,18 +431,18 @@ export function ProviderWizard({
                         onClick={function onSelectProvider() {
                           handleSelectProvider(provider.id)
                         }}
-                        className="rounded-2xl border border-primary-200 bg-primary-50/70 p-3 text-left transition-colors hover:border-primary-400 hover:bg-primary-100 dark:hover:bg-primary-800/70"
+                        className="rounded-2xl border theme-border theme-card2 p-3 text-left transition-colors hover:border-border hover:bg-muted dark:hover:bg-muted"
                       >
                         <div className="flex items-center gap-2.5">
-                          <span className="inline-flex size-9 items-center justify-center rounded-xl border border-primary-200 bg-primary-100/70">
+                          <span className="inline-flex size-9 items-center justify-center rounded-xl border theme-border theme-card2">
                             <ProviderIcon providerId={provider.id} />
                           </span>
-                          <h4 className="text-sm font-medium text-primary-900 text-balance">
+                          <h4 className="text-sm font-medium theme-text text-balance">
                             {provider.name}
                           </h4>
                         </div>
 
-                        <p className="mt-2 text-xs text-primary-600 text-pretty line-clamp-2">
+                        <p className="mt-2 text-xs theme-muted text-pretty line-clamp-2">
                           {provider.description}
                         </p>
 
@@ -451,7 +451,7 @@ export function ProviderWizard({
                             return (
                               <span
                                 key={authType}
-                                className="rounded-full border border-primary-300 bg-primary-100 px-2 py-0.5 text-xs text-primary-700"
+                                className="rounded-full border theme-border theme-card2 px-2 py-0.5 text-xs theme-text"
                               >
                                 {getAuthTypeLabel(authType)}
                               </span>
@@ -467,10 +467,10 @@ export function ProviderWizard({
 
             {step === 'auth' && selectedProvider ? (
               <section className="mt-5">
-                <h3 className="text-base font-medium text-primary-900 text-balance">
+                <h3 className="text-base font-medium theme-text text-balance">
                   Step 2: Choose Auth Type
                 </h3>
-                <p className="mt-1 text-sm text-primary-600 text-pretty">
+                <p className="mt-1 text-sm theme-muted text-pretty">
                   {selectedProvider.name} supports{' '}
                   {selectedProvider.authTypes
                     .map(function mapAuthType(authType) {
@@ -480,10 +480,10 @@ export function ProviderWizard({
                   .
                 </p>
 
-                <div className="mt-3 rounded-xl border border-primary-200 bg-primary-100/70 px-3 py-2">
-                  <p className="text-xs text-primary-700 text-pretty">
+                <div className="mt-3 rounded-xl border theme-border theme-card2 px-3 py-2">
+                  <p className="text-xs theme-text text-pretty">
                     Config file path:{' '}
-                    <code className="font-mono">{CLAUDE_CONFIG_PATH}</code>
+                    <code className="font-mono">{HERMES_CONFIG_PATH}</code>
                   </p>
                 </div>
 
@@ -504,18 +504,18 @@ export function ProviderWizard({
                         className={cn(
                           'rounded-2xl border p-3 text-left transition-colors',
                           supported
-                            ? 'border-primary-200 bg-primary-50/70 hover:border-primary-400 hover:bg-primary-100 dark:hover:bg-primary-800/80'
-                            : 'cursor-not-allowed border-primary-200 bg-primary-50/40 opacity-50',
+                            ? 'theme-border theme-card2 hover:border-border hover:bg-muted dark:hover:bg-muted'
+                            : 'cursor-not-allowed theme-border theme-card2 opacity-50',
                         )}
                       >
-                        <h4 className="text-sm font-medium text-primary-900 text-balance">
+                        <h4 className="text-sm font-medium theme-text text-balance">
                           {meta.title}
                         </h4>
-                        <p className="mt-1 text-xs text-primary-600 text-pretty">
+                        <p className="mt-1 text-xs theme-muted text-pretty">
                           {meta.description}
                         </p>
                         {!supported ? (
-                          <p className="mt-2 text-xs text-primary-500 text-pretty">
+                          <p className="mt-2 text-xs theme-muted text-pretty">
                             Not supported by {selectedProvider.name}.
                           </p>
                         ) : null}
@@ -550,15 +550,15 @@ export function ProviderWizard({
 
             {step === 'instructions' && selectedProvider && selectedAuthType ? (
               <section className="mt-5">
-                <h3 className="text-base font-medium text-primary-900 text-balance">
+                <h3 className="text-base font-medium theme-text text-balance">
                   Step 3: Add API Key
                 </h3>
 
                 {selectedAuthType === 'oauth' ? (
                   <>
-                    <p className="mt-1 text-sm text-primary-600 text-pretty">
+                    <p className="mt-1 text-sm theme-muted text-pretty">
                       This will run{' '}
-                      <code className="font-mono text-primary-800">
+                      <code className="font-mono theme-text">
                         hermes setup
                       </code>{' '}
                       in the terminal to start the OAuth flow. A browser window
@@ -572,7 +572,7 @@ export function ProviderWizard({
                           window.open('/terminal', '_blank')
                           setVerificationMessage(
                             'Run "hermes setup" in the terminal and select Google OAuth when prompted. ' +
-                              'A browser window will open for sign-in. Once complete, Hermes Agent will restart automatically.',
+                              'A browser window will open for sign-in. Once complete, Hermes will restart automatically.',
                           )
                           setVerifyState('warning')
                           setStep('verify')
@@ -581,28 +581,28 @@ export function ProviderWizard({
                         Open Terminal
                       </Button>
 
-                      <div className="rounded-xl border border-primary-200 bg-primary-100/70 px-3 py-2">
-                        <p className="text-xs text-primary-700 text-pretty">
+                      <div className="rounded-xl border theme-border theme-card2 px-3 py-2">
+                        <p className="text-xs theme-text text-pretty">
                           In the terminal, run:
                         </p>
-                        <pre className="mt-1 rounded-lg bg-primary-200/60 px-2 py-1.5 text-xs font-mono text-primary-900">
+                        <pre className="mt-1 rounded-lg theme-card2 px-2 py-1.5 text-xs font-mono theme-text">
                           hermes setup
                         </pre>
-                        <p className="mt-1.5 text-xs text-primary-600 text-pretty">
+                        <p className="mt-1.5 text-xs theme-muted text-pretty">
                           Select <strong>Google Antigravity</strong> →{' '}
                           <strong>OAuth</strong>. A browser tab will open for
                           Google sign-in.
                         </p>
                       </div>
 
-                      <div className="rounded-xl border border-primary-200 bg-primary-100/70 px-3 py-2">
-                        <p className="text-xs text-primary-700 text-pretty">
+                      <div className="rounded-xl border theme-border theme-card2 px-3 py-2">
+                        <p className="text-xs theme-text text-pretty">
                           No terminal access?{' '}
                           <a
                             href="https://github.com/NousResearch/hermes-agent"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-primary-800 underline decoration-primary-400 hover:text-primary-900"
+                            className="theme-text underline hover:text-foreground"
                           >
                             See the Hermes Agent docs
                           </a>{' '}
@@ -613,9 +613,9 @@ export function ProviderWizard({
                   </>
                 ) : selectedAuthType === 'cli-token' ? (
                   <>
-                    <p className="mt-1 text-sm text-primary-600 text-pretty">
-                      If you have Claude Code or the Hermes CLI installed,
-                      Hermes Agent can use the same auth token. Run the configure
+                    <p className="mt-1 text-sm theme-muted text-pretty">
+                      If you have Claude Code or the Claude CLI installed,
+                      Hermes can use the same auth token. Run the configure
                       command to detect and import it automatically.
                     </p>
 
@@ -626,7 +626,7 @@ export function ProviderWizard({
                           window.open('/terminal', '_blank')
                           setVerificationMessage(
                             'Run "hermes setup" in the terminal and select Anthropic → CLI Token. ' +
-                              'It will detect compatible local credentials and import them automatically.',
+                              'It will detect your Claude CLI credentials and import them automatically.',
                           )
                           setVerifyState('warning')
                           setStep('verify')
@@ -635,38 +635,38 @@ export function ProviderWizard({
                         Open Terminal
                       </Button>
 
-                      <div className="rounded-xl border border-primary-200 bg-primary-100/70 px-3 py-2">
-                        <p className="text-xs text-primary-700 text-pretty">
+                      <div className="rounded-xl border theme-border theme-card2 px-3 py-2">
+                        <p className="text-xs theme-text text-pretty">
                           In the terminal, run:
                         </p>
-                        <pre className="mt-1 rounded-lg bg-primary-200/60 px-2 py-1.5 text-xs font-mono text-primary-900">
+                        <pre className="mt-1 rounded-lg theme-card2 px-2 py-1.5 text-xs font-mono theme-text">
                           hermes setup
                         </pre>
-                        <p className="mt-1.5 text-xs text-primary-600 text-pretty">
+                        <p className="mt-1.5 text-xs theme-muted text-pretty">
                           Select <strong>Anthropic</strong> →{' '}
-                          <strong>Setup Token (Hermes CLI)</strong>. It will
+                          <strong>Setup Token (Claude CLI)</strong>. It will
                           detect your existing Claude credentials from{' '}
-                          <code className="font-mono">~/.hermes/</code>.
+                          <code className="font-mono">~/.claude/</code>.
                         </p>
                       </div>
 
-                      <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2">
-                        <p className="text-xs text-amber-800 text-pretty">
-                          <strong>Requires:</strong> Claude Code or Hermes CLI
+                      <div className="rounded-xl border theme-border bg-muted px-3 py-2">
+                        <p className="text-xs text-warning text-pretty">
+                          <strong>Requires:</strong> Claude Code or Claude CLI
                           must be installed and authenticated first. Run{' '}
-                          <code className="font-mono">hermes</code> in terminal
+                          <code className="font-mono">claude</code> in terminal
                           to verify.
                         </p>
                       </div>
 
-                      <div className="rounded-xl border border-primary-200 bg-primary-100/70 px-3 py-2">
-                        <p className="text-xs text-primary-700 text-pretty">
+                      <div className="rounded-xl border theme-border theme-card2 px-3 py-2">
+                        <p className="text-xs theme-text text-pretty">
                           No terminal access?{' '}
                           <a
                             href="https://github.com/NousResearch/hermes-agent"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-primary-800 underline decoration-primary-400 hover:text-primary-900"
+                            className="theme-text underline hover:text-foreground"
                           >
                             See the Hermes Agent docs
                           </a>{' '}
@@ -677,7 +677,7 @@ export function ProviderWizard({
                   </>
                 ) : selectedAuthType === 'api-key' ? (
                   <>
-                    <p className="mt-1 text-sm text-primary-600 text-pretty">
+                    <p className="mt-1 text-sm theme-muted text-pretty">
                       Paste your {selectedProvider.name} API key below. It will
                       be saved directly to your local config file.
                     </p>
@@ -691,7 +691,7 @@ export function ProviderWizard({
                             setApiKeyInput(e.target.value)
                           }}
                           placeholder={`sk-... or your ${selectedProvider.name} API key`}
-                          className="flex-1 rounded-xl border border-primary-300 bg-white px-3 py-2 text-sm text-primary-900 placeholder:text-primary-400 focus:border-accent-400 focus:outline-none focus:ring-1 focus:ring-accent-400/50"
+                          className="flex-1 rounded-xl border theme-border theme-card px-3 py-2 text-sm theme-text placeholder:theme-muted focus:border-accent-400 focus:outline-none focus:ring-1 focus:ring-accent-400/50"
                           autoFocus
                         />
                         <Button
@@ -712,18 +712,18 @@ export function ProviderWizard({
                       </div>
 
                       {saveState === 'error' ? (
-                        <p className="text-xs text-red-600">{saveError}</p>
+                        <p className="text-xs text-danger">{saveError}</p>
                       ) : null}
 
                       {saveState === 'saved' ? (
-                        <p className="text-xs text-green-600">
+                        <p className="text-xs text-success">
                           <HugeiconsIcon
                             icon={Tick02Icon}
                             size={14}
                             strokeWidth={1.5}
                             className="inline mr-1"
                           />
-                          Key saved! Hermes Agent is restarting to apply changes.
+                          Key saved! Hermes is restarting to apply changes.
                         </p>
                       ) : null}
                     </div>
@@ -732,7 +732,7 @@ export function ProviderWizard({
                       href={selectedProvider.docsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-3 inline-flex items-center gap-1 text-sm text-primary-700 underline decoration-primary-400 hover:text-primary-900"
+                      className="mt-3 inline-flex items-center gap-1 text-sm theme-text underline hover:text-foreground"
                     >
                       <HugeiconsIcon
                         icon={Link01Icon}
@@ -742,10 +742,10 @@ export function ProviderWizard({
                       Get your {selectedProvider.name} API key
                     </a>
 
-                    <div className="mt-4 rounded-xl border border-primary-200 bg-primary-100/70 px-3 py-2">
-                      <p className="text-xs text-primary-700 text-pretty">
+                    <div className="mt-4 rounded-xl border theme-border theme-card2 px-3 py-2">
+                      <p className="text-xs theme-text text-pretty">
                         API keys are stored locally in{' '}
-                        <code className="font-mono">{CLAUDE_CONFIG_PATH}</code>,
+                        <code className="font-mono">{HERMES_CONFIG_PATH}</code>,
                         never sent to Studio.
                       </p>
                     </div>
@@ -756,7 +756,7 @@ export function ProviderWizard({
                       onClick={function toggleManual() {
                         setShowManualSnippet(!showManualSnippet)
                       }}
-                      className="mt-3 text-xs text-primary-500 hover:text-primary-700 underline"
+                      className="mt-3 text-xs theme-muted hover:text-foreground underline"
                     >
                       {showManualSnippet ? 'Hide' : 'Show'} manual config
                       snippet
@@ -780,7 +780,7 @@ export function ProviderWizard({
                             Copy snippet
                           </Button>
                           {copyState === 'copied' ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-green-600">
+                            <span className="inline-flex items-center gap-1 text-xs text-success">
                               <HugeiconsIcon
                                 icon={Tick02Icon}
                                 size={20}
@@ -790,7 +790,7 @@ export function ProviderWizard({
                             </span>
                           ) : null}
                         </div>
-                        <pre className="overflow-x-auto rounded-2xl border border-primary-200 bg-primary-100/80 p-3 text-xs text-primary-900">
+                        <pre className="overflow-x-auto rounded-2xl border theme-border theme-card2 p-3 text-xs theme-text">
                           <code className="font-mono tabular-nums">
                             {configExample}
                           </code>
@@ -800,7 +800,7 @@ export function ProviderWizard({
                   </>
                 ) : (
                   <>
-                    <p className="mt-1 text-sm text-primary-600 text-pretty">
+                    <p className="mt-1 text-sm theme-muted text-pretty">
                       No additional configuration needed. Just ensure the
                       service is running locally.
                     </p>
@@ -838,7 +838,7 @@ export function ProviderWizard({
 
             {step === 'verify' ? (
               <section className="mt-5">
-                <h3 className="text-base font-medium text-primary-900 text-balance">
+                <h3 className="text-base font-medium theme-text text-balance">
                   Step 4: Verify
                 </h3>
                 <div
@@ -855,8 +855,8 @@ export function ProviderWizard({
                   >
                     {verifyTitle}
                   </p>
-                  <p className="mt-1 text-sm text-primary-600 text-pretty">
-                    {verificationMessage || 'Waiting for Hermes Agent to respond…'}
+                  <p className="mt-1 text-sm theme-muted text-pretty">
+                    {verificationMessage || 'Waiting for Hermes to respond…'}
                   </p>
                 </div>
 

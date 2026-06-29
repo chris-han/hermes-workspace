@@ -5,11 +5,10 @@ import { useChatStore } from '../../../stores/chat-store'
 import { appendHistoryMessage, chatQueryKeys } from '../chat-queries'
 import { toast } from '../../../components/ui/toast'
 import { textFromMessage } from '../utils'
-import { snapshotOptimisticUserMessages } from './optimistic-message-reinject'
 import type { ChatMessage } from '../types'
 import type { StreamingState } from '../../../stores/chat-store'
 
-const PORTABLE_HISTORY_STORAGE_KEY = 'claude_portable_chat_main'
+const PORTABLE_HISTORY_STORAGE_KEY = 'hermes_portable_chat_main'
 const PORTABLE_HISTORY_LIMIT = 100
 
 /** Read clientId from a message using either camelCase or snake_case field. */
@@ -146,6 +145,10 @@ export function useRealtimeChatHistory({
     completedStreamingThinkingRef.current = ''
   }, [])
 
+  useEffect(() => {
+    clearCompletedStreaming()
+  }, [clearCompletedStreaming, effectiveSessionKey])
+
   const backfillHistory = useCallback(async () => {
     if (!effectiveSessionKey || effectiveSessionKey === 'new') return
     if (isBackfillingRef.current) return
@@ -196,12 +199,13 @@ export function useRealtimeChatHistory({
           const msgText = extractUserMessageText(message)
           if (
             msgText.startsWith('Pre-compaction memory flush') ||
-            msgText.startsWith('Store durable memories now') ||
-            msgText.startsWith('APPEND new content only and do not overwrite') ||
+            msgText.includes('Pre-compaction memory flush') ||
+            msgText.includes('Store durable memories now') ||
+            msgText.includes('APPEND new content only and do not overwrite') ||
             msgText.startsWith('A subagent task') ||
             msgText.startsWith('[Queued announce messages') ||
-            msgText.startsWith('Summarize this naturally for the user') ||
-            (msgText.startsWith('Stats: runtime') &&
+            msgText.includes('Summarize this naturally for the user') ||
+            (msgText.includes('Stats: runtime') &&
               msgText.includes('sessionKey agent:'))
           ) {
             onUserMessage?.(message, source)
@@ -325,132 +329,31 @@ export function useRealtimeChatHistory({
             const prevCount =
               (prevData?.messages as Array<unknown> | undefined)?.length ?? 0
 
-            // Snapshot optimistic user messages before refetch so they
-            // survive the cache replacement. Re-injected after refetch.
-            const reInjectOptimistic = snapshotOptimisticUserMessages(
-              queryClient,
-              effectiveFriendlyId,
-              effectiveSessionKey,
-            )
+            // Refetch immediately — done event message is already in realtime store
+            queryClient.invalidateQueries({ queryKey: key }).then(() => {
+              clearCompletedStreaming()
 
-            // Issue #441 fix: Directly merge realtime buffer into history cache
-            // INSTEAD of invalidateQueries. The old approach caused a race:
-            // invalidateQueries → refetch (async) → merge runs with stale data
-            // → duplicates appear briefly → refetch completes → fixed.
-            //
-            // New approach: merge realtime messages into the cache synchronously,
-            // then clear the realtime buffer in the same tick. A background
-            // refetch runs after for consistency but doesn't block rendering.
-            const store = useChatStore.getState()
-            const realtimeMessages =
-              store.realtimeMessages.get(effectiveSessionKey) ?? []
-            const historyMessages = prevData?.messages as
-              | Array<unknown>
-              | undefined
-
-            if (realtimeMessages.length > 0 && Array.isArray(historyMessages)) {
-              // Deduplicate: remove any realtime messages already in history
-              const historyTexts = new Set(
-                historyMessages.map((m: unknown) => {
-                  const raw = m as Record<string, unknown>
-                  const content = raw.content ?? raw.text ?? ''
-                  return `${raw.role ?? ''}:${JSON.stringify(content)}`
-                }),
-              )
-              const dedupedRealtime = realtimeMessages.filter((m: unknown) => {
-                const raw = m as Record<string, unknown>
-                const content = raw.content ?? raw.text ?? ''
-                const sig = `${raw.role ?? ''}:${JSON.stringify(content)}`
-                return !historyTexts.has(sig)
-              })
-
-              if (dedupedRealtime.length > 0) {
-                const merged = [...historyMessages, ...dedupedRealtime].sort(
-                  (a: unknown, b: unknown) => {
-                    const aTs = (a as Record<string, unknown>).createdAt as
-                      | number
-                      | undefined
-                    const bTs = (b as Record<string, unknown>).createdAt as
-                      | number
-                      | undefined
-                    if (typeof aTs === 'number' && typeof bTs === 'number')
-                      return aTs - bTs
-                    return 0
+              // Check for compaction — significant message count drop
+              const newData =
+                queryClient.getQueryData<Record<string, unknown>>(key)
+              const newCount =
+                (newData?.messages as Array<unknown> | undefined)?.length ?? 0
+              if (
+                prevCount > 10 &&
+                newCount > 0 &&
+                newCount < prevCount * 0.6
+              ) {
+                onCompactionEnd?.()
+                toast(
+                  'Context compacted — older messages were summarized to free up space',
+                  {
+                    type: 'info',
+                    icon: '🗜️',
+                    duration: 8000,
                   },
                 )
-                queryClient.setQueryData(key, {
-                  ...(prevData ?? {}),
-                  messages: merged,
-                })
               }
-            }
-
-            // Capture the just-completed assistant message from the realtime
-            // buffer BEFORE clearing it. After compaction the refetched history
-            // may be shorter and miss this message entirely. Fixes #505.
-            const completedAssistant =
-              realtimeMessages.length > 0
-                ? (() => {
-                    const last = realtimeMessages[realtimeMessages.length - 1] as
-                      | Record<string, unknown>
-                      | undefined
-                    return last?.role === 'assistant' ? last : null
-                  })()
-                : null
-
-            // Clear realtime buffer immediately — no more stale data in render
-            store.clearRealtimeBuffer(effectiveSessionKey)
-            clearCompletedStreaming()
-
-            // Background refetch for long-term consistency — doesn't block render
-            queryClient.invalidateQueries({ queryKey: key, refetchType: 'all' }).then(() => {
-              // Re-inject the completed assistant message if compaction dropped it
-              if (completedAssistant) {
-                const refetchData =
-                  queryClient.getQueryData<Record<string, unknown>>(key)
-                const refetchedMessages =
-                  (refetchData?.messages as Array<Record<string, unknown>>) ?? []
-                const assistantTail = (completedAssistant.content ?? completedAssistant.text ?? '')
-                  .toString()
-                  .slice(-64)
-                const alreadyPresent = refetchedMessages.some(
-                  (m) =>
-                    m.role === 'assistant' &&
-                    ((m.content ?? m.text ?? '') as string).toString().slice(-64) === assistantTail,
-                )
-                if (!alreadyPresent) {
-                  appendHistoryMessage(
-                    queryClient,
-                    effectiveFriendlyId,
-                    effectiveSessionKey,
-                    completedAssistant as unknown as import('@/types/chat').ChatMessage,
-                  )
-                }
-              }
-              // Re-inject optimistic user messages that the server hasn't echoed yet
-              reInjectOptimistic()
             })
-
-            // Check for compaction — significant message count drop
-            const newData =
-              queryClient.getQueryData<Record<string, unknown>>(key)
-            const newCount =
-              (newData?.messages as Array<unknown> | undefined)?.length ?? 0
-            if (
-              prevCount > 10 &&
-              newCount > 0 &&
-              newCount < prevCount * 0.6
-            ) {
-              onCompactionEnd?.()
-              toast(
-                'Context compacted — older messages were summarized to free up space',
-                {
-                  type: 'info',
-                  icon: '🗜️',
-                  duration: 8000,
-                },
-              )
-            }
           }
         }
       },
@@ -485,7 +388,9 @@ export function useRealtimeChatHistory({
 
   const mergeHistoryMessages = useChatStore((s) => s.mergeHistoryMessages)
   const clearSession = useChatStore((s) => s.clearSession)
-  const lastEventAt = useChatStore((s) => s.lastEventAt)
+  const lastEventAt = useChatStore(
+    (s) => s.lastEventAtBySession.get(effectiveSessionKey) ?? 0,
+  )
   const clearRealtimeBuffer = useChatStore((s) => s.clearRealtimeBuffer)
   const realtimeMessages = useChatStore(
     (s) => s.realtimeMessages.get(effectiveSessionKey) ?? EMPTY_MESSAGES,
@@ -575,7 +480,7 @@ export function useRealtimeChatHistory({
       .join('\n')
       .toLowerCase()
 
-    // Only trigger on Hermes Agent's actual mid-compaction signal.
+    // Only trigger on Hermes's actual mid-compaction signal.
     // "pre-compaction memory flush" and "store durable memories now" are routine
     // heartbeat messages — do NOT match those here.
     if (!textCandidates.includes('compacting context')) return
@@ -592,6 +497,7 @@ export function useRealtimeChatHistory({
     if (!effectiveSessionKey || effectiveSessionKey === 'new' || !enabled)
       return
     syncIntervalRef.current = setInterval(() => {
+      if (connectionState === 'connected') return
       // Don't poll during active streaming — causes flicker/overwrites
       if (streamingStateRef.current !== null) return
       // Guard window: don't poll right after streaming clears — new stream
@@ -606,7 +512,13 @@ export function useRealtimeChatHistory({
     return () => {
       if (syncIntervalRef.current) clearInterval(syncIntervalRef.current)
     }
-  }, [effectiveFriendlyId, effectiveSessionKey, enabled, queryClient])
+  }, [
+    connectionState,
+    effectiveFriendlyId,
+    effectiveSessionKey,
+    enabled,
+    queryClient,
+  ])
 
   // Clear realtime buffer when session changes
   useEffect(() => {

@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '../../server/auth-middleware'
 import {
   ensureBusStarted,
   subscribeToChatEvents,
@@ -8,7 +7,7 @@ import {
 /**
  * SSE endpoint for chat events.
  *
- * Claude does not expose a global browser-facing event stream, so the server
+ * Hermes does not expose a global browser-facing event stream, so the server
  * keeps a local singleton bus of translated chat events and fans that out to
  * any browser SSE subscribers.
  */
@@ -16,13 +15,6 @@ export const Route = createFileRoute('/api/chat-events')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return new Response(
-            JSON.stringify({ ok: false, error: 'Unauthorized' }),
-            { status: 401, headers: { 'Content-Type': 'application/json' } },
-          )
-        }
-
         const url = new URL(request.url)
         const sessionKeyParam =
           url.searchParams.get('sessionKey')?.trim() || undefined

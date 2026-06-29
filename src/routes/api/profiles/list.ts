@@ -1,19 +1,24 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../../server/auth-middleware'
-import { listProfilesWithFallback } from '../../../server/profiles-browser'
+import path from 'node:path'
+import {
+  getActiveProfileName,
+  listProfiles,
+} from '../../../server/profiles-browser'
+import { resolveActiveWorkspaceRoot } from '../../../server/workspace-root'
 
 export const Route = createFileRoute('/api/profiles/list')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ error: 'Unauthorized' }, { status: 401 })
-        }
         try {
-          const { profiles, activeProfile } =
-            await listProfilesWithFallback()
-          return json({ profiles, activeProfile })
+          const workspace = await resolveActiveWorkspaceRoot(request.headers)
+          const hermesHome =
+            workspace.hermesHome || path.join(workspace.path, '.hermes')
+          return json({
+            profiles: listProfiles(hermesHome),
+            activeProfile: getActiveProfileName(hermesHome),
+          })
         } catch (error) {
           return json(
             {

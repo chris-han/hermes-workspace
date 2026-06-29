@@ -1,41 +1,57 @@
 import { describe, expect, it } from 'vitest'
+import { linkifyRunDirectoryFooter, normalizeMarkdownHref } from './markdown'
 
-import { rewriteLocalMediaSources } from './markdown'
-
-describe('rewriteLocalMediaSources', () => {
-  it('rewrites markdown image MEDIA tokens that point to local files', () => {
-    expect(
-      rewriteLocalMediaSources('![cat](MEDIA:/Users/test/.hermes/tmp/cat.png)'),
-    ).toBe('![cat](/api/media?path=%2FUsers%2Ftest%2F.hermes%2Ftmp%2Fcat.png)')
+describe('normalizeMarkdownHref', () => {
+  it('keeps run links as SPA-routable /runs/ paths', () => {
+    expect(normalizeMarkdownHref('/runs/20260422_123456_abcd')).toBe(
+      '/runs/20260422_123456_abcd',
+    )
   })
 
-  it('rewrites html image MEDIA tokens that point to local files without corrupting quotes', () => {
-    expect(
-      rewriteLocalMediaSources(
-        '<img src="MEDIA:/tmp/cat.png" alt="cat" />',
-      ),
-    ).toBe('<img src="/api/media?path=%2Ftmp%2Fcat.png" alt="cat" />')
+  it('keeps non-run links unchanged', () => {
+    expect(normalizeMarkdownHref('/chat/main')).toBe('/chat/main')
+    expect(normalizeMarkdownHref('https://example.com')).toBe(
+      'https://example.com',
+    )
   })
 
-  it('leaves remote MEDIA URLs untouched', () => {
-    expect(
-      rewriteLocalMediaSources('![cat](MEDIA:https://example.com/cat.png)'),
-    ).toBe('![cat](MEDIA:https://example.com/cat.png)')
-    expect(
-      rewriteLocalMediaSources('<img src="MEDIA:https://example.com/cat.png" />'),
-    ).toBe('<img src="MEDIA:https://example.com/cat.png" />')
+  it('keeps empty href values unchanged', () => {
+    expect(normalizeMarkdownHref(undefined)).toBeUndefined()
+    expect(normalizeMarkdownHref('')).toBe('')
+  })
+})
+
+describe('linkifyRunDirectoryFooter', () => {
+  it('rewrites run directory footer into a files deep link', () => {
+    const text =
+      'Done.\n\nRun directory: /home/chris/repo/semantier/workspaces/abc123/sessions/session_abc/runs/20260423_174033_06_7be5c1'
+
+    expect(linkifyRunDirectoryFooter(text)).toContain(
+      'Run directory: [/home/chris/repo/semantier/workspaces/abc123/sessions/session_abc/runs/20260423_174033_06_7be5c1](/files?path=sessions%2Fsession_abc%2Fruns%2F20260423_174033_06_7be5c1)',
+    )
   })
 
-  it('handles multiple local MEDIA tokens in one message', () => {
-    const input =
-      'Here is one: ![a](MEDIA:/tmp/a.png) and two: <img src="MEDIA:/tmp/b.png" />'
-    const result = rewriteLocalMediaSources(input)
-    expect(result).toContain('/api/media?path=%2Ftmp%2Fa.png')
-    expect(result).toContain('/api/media?path=%2Ftmp%2Fb.png')
+  it('does not alter lines already containing markdown links', () => {
+    const line =
+      'Run directory: [/tmp/run/20260423](/files?path=runs%2F20260423)'
+    expect(linkifyRunDirectoryFooter(line)).toBe(line)
   })
 
-  it('passes through content without MEDIA tokens unchanged', () => {
-    const plain = 'Hello world, no images here.'
-    expect(rewriteLocalMediaSources(plain)).toBe(plain)
+  it('rewrites Chinese saved-report footer into a files deep link', () => {
+    const line =
+      '报告全文已保存至 /home/chris/repo/semantier-runtime/workspaces/ws123/sessions/session_abc/artifacts/tax_report.md'
+
+    expect(linkifyRunDirectoryFooter(line)).toContain(
+      '报告全文已保存至 [/home/chris/repo/semantier-runtime/workspaces/ws123/sessions/session_abc/artifacts/tax_report.md](/files?path=sessions%2Fsession_abc%2Fartifacts%2Ftax_report.md)',
+    )
+  })
+
+  it('rewrites backticked saved-report footer into a files deep link', () => {
+    const line =
+      'Report saved to: `/home/chris/repo/semantier-runtime/workspaces/ws123/sessions/session_abc/artifacts/tax_report.md`'
+
+    expect(linkifyRunDirectoryFooter(line)).toContain(
+      'Report saved to: [/home/chris/repo/semantier-runtime/workspaces/ws123/sessions/session_abc/artifacts/tax_report.md](/files?path=sessions%2Fsession_abc%2Fartifacts%2Ftax_report.md)',
+    )
   })
 })

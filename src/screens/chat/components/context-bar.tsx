@@ -85,8 +85,8 @@ function ContextBarComponent({
   const pct = ctx.contextPercent
   const clampedPct = Math.min(Math.max(pct, 0), 100)
 
-  // Hide only before any model/context info has loaded.
-  if (ctx.maxTokens <= 0 && ctx.usedTokens <= 0 && !ctx.model) return null
+  // Hide entirely when no data has loaded yet
+  if (clampedPct === 0 && ctx.usedTokens === 0) return null
   const isCritical = clampedPct > 90
   const isDanger = clampedPct >= 75 && clampedPct <= 90
   const isWarning = clampedPct >= 50 && clampedPct < 75

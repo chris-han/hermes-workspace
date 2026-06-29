@@ -29,9 +29,8 @@ const MODEL_MAP: Record<string, string> = {
   'gemini-2.0-flash': 'Gemini 2.0 Flash',
   'gemini-2.5-pro': 'Gemini 2.5 Pro',
   'gemini-2.5-flash': 'Gemini 2.5 Flash',
-  'MiniMax-M3': 'MiniMax M3',
-  'MiniMax-M2.7': 'MiniMax M2.7',
-  'MiniMax-M2.7-Lightning': 'MiniMax M2.7 Lightning',
+  'MiniMax-M2.5': 'MiniMax M2.5',
+  'MiniMax-M2.5-Lightning': 'MiniMax M2.5 Lightning',
 }
 
 const PROVIDER_LABELS: Record<string, string> = {

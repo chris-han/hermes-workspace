@@ -16,15 +16,16 @@ const KnowledgeBrowserScreen = lazy(async () => {
   return { default: module.KnowledgeBrowserScreen }
 })
 
-const ExternalMemoryBrowserScreen = lazy(async () => {
-  const module = await import('@/screens/memory/external-memory-browser-screen')
-  return { default: module.ExternalMemoryBrowserScreen }
+const GovernanceModelExplainer = lazy(async () => {
+  const module =
+    await import('@/screens/memory/components/governance-model-explainer')
+  return { default: module.GovernanceModelExplainer }
 })
 
 export const Route = createFileRoute('/memory')({
   ssr: false,
   component: function MemoryRoute() {
-    const [tab, setTab] = useState<'memory' | 'knowledge' | 'external'>(
+    const [tab, setTab] = useState<'memory' | 'knowledge' | 'governance'>(
       'memory',
     )
     const memoryAvailable = useFeatureAvailable('memory')
@@ -36,7 +37,7 @@ export const Route = createFileRoute('/memory')({
         <Tabs
           value={tab}
           onValueChange={(value) =>
-            setTab(value as 'memory' | 'knowledge' | 'external')
+            setTab(value as 'memory' | 'knowledge' | 'governance')
           }
           className="h-full min-h-0 gap-0"
         >
@@ -47,7 +48,7 @@ export const Route = createFileRoute('/memory')({
             >
               <TabsTab value="memory">Memory</TabsTab>
               <TabsTab value="knowledge">Knowledge</TabsTab>
-              <TabsTab value="external">External providers</TabsTab>
+              <TabsTab value="governance">Governance</TabsTab>
             </TabsList>
           </div>
 
@@ -82,14 +83,14 @@ export const Route = createFileRoute('/memory')({
             ) : null}
           </TabsPanel>
 
-          <TabsPanel value="external" className="min-h-0 flex-1">
-            {tab === 'external' ? (
+          <TabsPanel value="governance" className="min-h-0 flex-1">
+            {tab === 'governance' ? (
               <Suspense
                 fallback={
-                  <RouteLoadingState label="Loading external memory providers..." />
+                  <RouteLoadingState label="Loading governance model..." />
                 }
               >
-                <ExternalMemoryBrowserScreen />
+                <GovernanceModelExplainer />
               </Suspense>
             ) : null}
           </TabsPanel>

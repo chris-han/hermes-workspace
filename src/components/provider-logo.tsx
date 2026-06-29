@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 const LIGHT_THEMES = new Set([
-  'claude-nous-light',
-  'claude-official-light',
-  'claude-classic-light',
-  'claude-slate-light',
+  'hermes-nous-light',
+  'hermes-official-light',
+  'hermes-classic-light',
+  'hermes-slate-light',
+  'semantier-light',
 ])
 
 function useIsLightTheme(): boolean {

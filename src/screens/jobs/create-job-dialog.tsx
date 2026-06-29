@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
-import type { JobProfileOption } from '@/lib/jobs-api'
 
 const SCHEDULE_PRESETS = [
   { label: 'Every 15m', value: 'every 15m' },
@@ -16,14 +15,18 @@ const SCHEDULE_PRESETS = [
 ] as const
 
 const DELIVERY_OPTIONS = ['local', 'telegram', 'discord'] as const
+type ScheduleMode = 'preset' | 'custom'
+type RepeatMode = 'once' | 'limited' | 'forever'
+
+function isPresetSchedule(value: string): boolean {
+  return SCHEDULE_PRESETS.some((preset) => preset.value === value)
+}
 
 type CreateJobDialogProps = {
   open: boolean
   isSubmitting?: boolean
-  profiles: Array<JobProfileOption>
   onOpenChange: (open: boolean) => void
   onSubmit: (input: {
-    profile: string
     name: string
     schedule: string
     prompt: string
@@ -33,33 +36,30 @@ type CreateJobDialogProps = {
   }) => void | Promise<void>
 }
 
-function getInitialState(profile = 'default') {
+function getInitialState() {
   return {
-    profile,
     name: '',
     schedule: 'every 30m',
+    scheduleMode: 'preset' as ScheduleMode,
     prompt: '',
     skillsInput: '',
     deliver: ['local'] as Array<string>,
-    repeatMode: 'unlimited' as 'unlimited' | 'limited',
-    repeatCount: '1',
+    repeatMode: 'forever' as RepeatMode,
+    repeatCount: '2',
   }
 }
 
 export function CreateJobDialog({
   open,
   isSubmitting = false,
-  profiles,
   onOpenChange,
   onSubmit,
 }: CreateJobDialogProps) {
-  const activeProfile =
-    profiles.find((profile) => profile.active)?.name ?? profiles[0].name
-  const [form, setForm] = useState(() => getInitialState(activeProfile))
+  const [form, setForm] = useState(getInitialState)
 
   useEffect(() => {
     if (!open) {
-      setForm(getInitialState(activeProfile))
+      setForm(getInitialState())
       return
     }
 
@@ -77,17 +77,7 @@ export function CreateJobDialog({
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [open, onOpenChange, activeProfile])
-
-  useEffect(() => {
-    if (open) {
-      setForm((current) => {
-        if (profiles.some((profile) => profile.name === current.profile))
-          return current
-        return { ...current, profile: activeProfile }
-      })
-    }
-  }, [activeProfile, open, profiles])
+  }, [open, onOpenChange])
 
   function toggleDelivery(target: string) {
     setForm((current) => {
@@ -111,16 +101,17 @@ export function CreateJobDialog({
       .filter(Boolean)
 
     void onSubmit({
-      profile: form.profile,
       name: form.name.trim(),
       schedule: form.schedule.trim(),
       prompt: form.prompt.trim(),
       deliver: form.deliver.length > 0 ? form.deliver : undefined,
       skills: skills.length > 0 ? Array.from(new Set(skills)) : undefined,
       repeat:
-        form.repeatMode === 'limited'
-          ? Math.max(1, Number.parseInt(form.repeatCount, 10) || 1)
-          : undefined,
+        form.repeatMode === 'forever'
+          ? 0
+          : form.repeatMode === 'once'
+            ? 1
+            : Math.max(2, Number.parseInt(form.repeatCount, 10) || 2),
     })
   }
 
@@ -150,16 +141,14 @@ export function CreateJobDialog({
             exit={{ opacity: 0, scale: 0.98, y: 10 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
             onSubmit={handleFormSubmit}
-            className="relative z-10 flex max-h-[85vh] w-[min(720px,96vw)] flex-col overflow-hidden rounded-2xl border shadow-2xl"
+            className="relative z-10 flex max-h-[85vh] w-[min(720px,96vw)] flex-col overflow-hidden rounded-2xl border border-border shadow-2xl"
             style={{
               background: 'var(--theme-card)',
-              borderColor: 'var(--theme-border)',
               color: 'var(--theme-text)',
             }}
           >
             <div
-              className="flex items-start justify-between gap-4 border-b px-5 py-4"
-              style={{ borderColor: 'var(--theme-border)' }}
+              className="flex items-start justify-between gap-4 border-b border-border px-5 py-4"
             >
               <div>
                 <h2 className="text-lg font-semibold">Create Job</h2>
@@ -183,36 +172,6 @@ export function CreateJobDialog({
 
             <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
               <section className="space-y-2">
-                <label className="text-sm font-medium">Profile</label>
-                <select
-                  value={form.profile}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      profile: event.target.value,
-                    }))
-                  }
-                  required
-                  className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
-                  style={{
-                    background: 'var(--theme-input)',
-                    borderColor: 'var(--theme-border)',
-                    color: 'var(--theme-text)',
-                  }}
-                >
-                  {profiles.map((profile) => (
-                    <option key={profile.name} value={profile.name}>
-                      {profile.name}
-                      {profile.active ? ' (active)' : ''}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs" style={{ color: 'var(--theme-muted)' }}>
-                  Cron jobs are stored under the selected Hermes profile.
-                </p>
-              </section>
-
-              <section className="space-y-2">
                 <label className="text-sm font-medium">Name</label>
                 <input
                   value={form.name}
@@ -224,81 +183,88 @@ export function CreateJobDialog({
                   }
                   placeholder="Daily research summary"
                   required
-                  className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                  className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                   style={{
                     background: 'var(--theme-input)',
-                    borderColor: 'var(--theme-border)',
                     color: 'var(--theme-text)',
                     boxShadow: '0 0 0 0 transparent',
                   }}
                 />
               </section>
 
-              <section className="space-y-3">
+              <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-medium">Schedule</h3>
+                  <h3 className="text-sm font-medium">Interval time</h3>
                   <p
                     className="mt-1 text-xs"
                     style={{ color: 'var(--theme-muted)' }}
                   >
-                    Choose a preset or enter a custom schedule string below.
+                    Pick a preset interval or switch to a custom cron string.
                   </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {SCHEDULE_PRESETS.map((preset) => {
-                    const isActive = form.schedule === preset.value
-                    return (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() =>
-                          setForm((current) => ({
-                            ...current,
-                            schedule: preset.value,
-                          }))
-                        }
-                        className="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
-                        style={{
-                          background: isActive
-                            ? 'var(--theme-accent)'
-                            : 'var(--theme-card)',
-                          borderColor: isActive
-                            ? 'var(--theme-accent)'
-                            : 'var(--theme-border)',
-                          color: isActive ? '#fff' : 'var(--theme-text)',
-                        }}
-                      >
-                        {preset.label}
-                      </button>
-                    )
-                  })}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Custom schedule</label>
-                  <input
-                    value={form.schedule}
-                    onChange={(event) =>
+                  <label className="text-sm font-medium">Interval preset</label>
+                  <select
+                    value={form.scheduleMode === 'preset' ? form.schedule : 'custom'}
+                    onChange={(event) => {
+                      const nextValue = event.target.value
                       setForm((current) => ({
                         ...current,
-                        schedule: event.target.value,
+                        scheduleMode:
+                          nextValue === 'custom' ? 'custom' : 'preset',
+                        schedule:
+                          nextValue === 'custom'
+                            ? current.schedule
+                            : nextValue,
                       }))
-                    }
-                    placeholder="every 30m or 0 9 * * *"
-                    required
-                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                    }}
+                    className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                     style={{
                       background: 'var(--theme-input)',
-                      borderColor: 'var(--theme-border)',
                       color: 'var(--theme-text)',
                     }}
-                  />
-                  <p
-                    className="text-xs"
-                    style={{ color: 'var(--theme-muted)' }}
                   >
-                    Advanced users can enter cron expressions directly.
-                  </p>
+                    {SCHEDULE_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                    <option value="custom">Custom cron</option>
+                  </select>
                 </div>
+                {form.scheduleMode === 'custom' ? (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Custom schedule
+                    </label>
+                    <input
+                      value={form.schedule}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          schedule: event.target.value,
+                        }))
+                      }
+                      placeholder="0 9 * * *"
+                      required
+                      className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                      style={{
+                        background: 'var(--theme-input)',
+                        color: 'var(--theme-text)',
+                      }}
+                    />
+                    <p
+                      className="text-xs"
+                      style={{ color: 'var(--theme-muted)' }}
+                    >
+                      Enter a cron expression when the preset list is not enough.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-2.5 text-xs text-[var(--theme-muted)]">
+                    Interval set to {SCHEDULE_PRESETS.find((preset) => preset.value === form.schedule)?.label ?? form.schedule}
+                  </div>
+                )}
               </section>
 
               <section className="space-y-2">
@@ -311,13 +277,12 @@ export function CreateJobDialog({
                       prompt: event.target.value,
                     }))
                   }
-                  placeholder="What should Hermes Agent do?"
+                  placeholder="What should Hermes do?"
                   required
                   rows={5}
-                  className="w-full resize-none rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                  className="w-full resize-none rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                   style={{
                     background: 'var(--theme-input)',
-                    borderColor: 'var(--theme-border)',
                     color: 'var(--theme-text)',
                   }}
                 />
@@ -345,10 +310,9 @@ export function CreateJobDialog({
                       }))
                     }
                     placeholder="research, writing, synthesis"
-                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                    className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                     style={{
                       background: 'var(--theme-input)',
-                      borderColor: 'var(--theme-border)',
                       color: 'var(--theme-text)',
                     }}
                   />
@@ -374,7 +338,7 @@ export function CreateJobDialog({
                           onClick={() => toggleDelivery(option)}
                           title={
                             needsGateway
-                              ? `Requires Hermes Agent gateway with ${option} configured`
+                              ? `Requires Hermes Gateway with ${option} configured`
                               : undefined
                           }
                           className="rounded-full border px-3 py-1.5 text-xs font-medium capitalize transition-colors"
@@ -401,33 +365,33 @@ export function CreateJobDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Repeat</label>
+                  <label className="text-sm font-medium">Repeat cycles</label>
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() =>
                         setForm((current) => ({
                           ...current,
-                          repeatMode: 'unlimited',
+                          repeatMode: 'once',
                         }))
                       }
                       className="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
                       style={{
                         background:
-                          form.repeatMode === 'unlimited'
+                          form.repeatMode === 'once'
                             ? 'var(--theme-accent)'
                             : 'var(--theme-card)',
                         borderColor:
-                          form.repeatMode === 'unlimited'
+                          form.repeatMode === 'once'
                             ? 'var(--theme-accent)'
                             : 'var(--theme-border)',
                         color:
-                          form.repeatMode === 'unlimited'
+                          form.repeatMode === 'once'
                             ? '#fff'
                             : 'var(--theme-text)',
                       }}
                     >
-                      Unlimited
+                      Once
                     </button>
                     <button
                       type="button"
@@ -453,13 +417,39 @@ export function CreateJobDialog({
                             : 'var(--theme-text)',
                       }}
                     >
-                      Set count
+                      Many
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((current) => ({
+                          ...current,
+                          repeatMode: 'forever',
+                        }))
+                      }
+                      className="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+                      style={{
+                        background:
+                          form.repeatMode === 'forever'
+                            ? 'var(--theme-accent)'
+                            : 'var(--theme-card)',
+                        borderColor:
+                          form.repeatMode === 'forever'
+                            ? 'var(--theme-accent)'
+                            : 'var(--theme-border)',
+                        color:
+                          form.repeatMode === 'forever'
+                            ? '#fff'
+                            : 'var(--theme-text)',
+                      }}
+                    >
+                      Forever
                     </button>
                   </div>
                   {form.repeatMode === 'limited' ? (
                     <input
                       type="number"
-                      min={1}
+                      min={2}
                       step={1}
                       value={form.repeatCount}
                       onChange={(event) =>
@@ -468,10 +458,9 @@ export function CreateJobDialog({
                           repeatCount: event.target.value,
                         }))
                       }
-                      className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
+                      className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                       style={{
                         background: 'var(--theme-input)',
-                        borderColor: 'var(--theme-border)',
                         color: 'var(--theme-text)',
                       }}
                     />
@@ -481,8 +470,7 @@ export function CreateJobDialog({
             </div>
 
             <div
-              className="flex items-center justify-end gap-2 border-t px-5 py-4"
-              style={{ borderColor: 'var(--theme-border)' }}
+              className="flex items-center justify-end gap-2 border-t border-border px-5 py-4"
             >
               <button
                 type="button"
@@ -503,8 +491,11 @@ export function CreateJobDialog({
                   !form.schedule.trim() ||
                   !form.prompt.trim()
                 }
-                className="rounded-xl px-4 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-50"
-                style={{ background: 'var(--theme-accent)' }}
+                className="rounded-xl px-4 py-2 text-sm font-medium transition-opacity disabled:opacity-50"
+                style={{
+                  background: 'var(--theme-accent)',
+                  color: 'var(--theme-accent-foreground)',
+                }}
               >
                 {isSubmitting ? 'Creating...' : 'Create'}
               </button>

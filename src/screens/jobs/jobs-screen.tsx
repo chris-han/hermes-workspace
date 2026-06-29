@@ -18,14 +18,20 @@ import {
 } from '@hugeicons/core-free-icons'
 import { CreateJobDialog } from './create-job-dialog'
 import { EditJobDialog } from './edit-job-dialog'
-import type { ClaudeJob } from '@/lib/jobs-api'
+import type { HermesJob } from '@/lib/jobs-api'
+import {
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogRoot,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import {
   createJob,
   deleteJob,
   fetchJobOutput,
-  fetchJobProfiles,
   fetchJobs,
   pauseJob,
   resumeJob,
@@ -33,8 +39,7 @@ import {
   updateJob,
 } from '@/lib/jobs-api'
 
-const QUERY_KEY = ['claude', 'jobs'] as const
-const PROFILES_QUERY_KEY = ['claude', 'job-profiles'] as const
+const QUERY_KEY = ['hermes', 'jobs'] as const
 
 function formatNextRun(nextRun?: string | null): string {
   if (!nextRun) return '—'
@@ -67,7 +72,7 @@ function getOutputPreview(content: string): string {
   return `${normalized.slice(0, 200).trimEnd()}…`
 }
 
-function getLastRunStatus(job: ClaudeJob): {
+function getLastRunStatus(job: HermesJob): {
   label: string
   color: string
 } {
@@ -95,6 +100,15 @@ function getLastRunStatus(job: ClaudeJob): {
   }
 }
 
+function formatRepeatPolicy(job: HermesJob): string {
+  const completed = Math.max(0, job.repeat?.completed ?? job.run_count ?? 0)
+  const times = job.repeat?.times
+  if (typeof times !== 'number') return `Forever · ${completed} run${completed === 1 ? '' : 's'}`
+  const remaining = Math.max(0, times - completed)
+  if (times === 1) return remaining > 0 ? 'Once' : 'Once · complete'
+  return `${times} cycles · ${remaining} left`
+}
+
 function JobCard({
   job,
   onPause,
@@ -103,19 +117,19 @@ function JobCard({
   onDelete,
   onEdit,
 }: {
-  job: ClaudeJob
+  job: HermesJob
   onPause: (id: string) => void
   onResume: (id: string) => void
   onTrigger: (id: string) => void
-  onDelete: (id: string) => void
-  onEdit: (job: ClaudeJob) => void
+  onDelete: () => void
+  onEdit: (job: HermesJob) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const isPaused = job.state === 'paused' || !job.enabled
   const isCompleted = job.state === 'completed'
   const lastRunStatus = getLastRunStatus(job)
   const outputQuery = useQuery({
-    queryKey: ['claude', 'jobs', job.id, 'output'],
+    queryKey: ['hermes', 'jobs', job.id, 'output'],
     queryFn: () => fetchJobOutput(job.id),
     enabled: expanded,
     staleTime: 30_000,
@@ -128,8 +142,7 @@ function JobCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       className={cn(
-        'rounded-xl border p-4 transition-colors',
-        'bg-[var(--theme-card)] border-[var(--theme-border)]',
+        'rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-sm transition-colors',
         isPaused && 'opacity-60',
       )}
     >
@@ -154,15 +167,9 @@ function JobCard({
             {job.prompt}
           </p>
           <div className="mb-2 flex flex-wrap items-center gap-3 text-[10px] text-[var(--theme-muted)]">
-            {job.profile && (
-              <>
-                <span className="rounded-md border border-[var(--theme-border)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-[var(--theme-text)]">
-                  {job.profile}
-                </span>
-                <span>·</span>
-              </>
-            )}
             <span>{job.schedule_display || 'custom'}</span>
+            <span>·</span>
+            <span>{formatRepeatPolicy(job)}</span>
             <span>·</span>
             <span>Next: {formatNextRun(job.next_run_at)}</span>
             <span>·</span>
@@ -186,8 +193,19 @@ function JobCard({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <button
+            onClick={() => setExpanded((current) => !current)}
+            className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+            title={expanded ? 'Hide run history' : 'Show run history'}
+          >
+            <HugeiconsIcon
+              icon={expanded ? ArrowUp01Icon : ArrowDown01Icon}
+              size={14}
+              className="text-[var(--theme-muted)]"
+            />
+          </button>
+          <button
             onClick={() => onTrigger(job.id)}
-            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+            className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title="Run now"
           >
             <HugeiconsIcon
@@ -198,7 +216,7 @@ function JobCard({
           </button>
           <button
             onClick={() => (isPaused ? onResume(job.id) : onPause(job.id))}
-            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+            className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title={isPaused ? 'Resume' : 'Pause'}
           >
             <HugeiconsIcon
@@ -209,7 +227,7 @@ function JobCard({
           </button>
           <button
             onClick={() => onEdit(job)}
-            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+            className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title="Edit"
           >
             <HugeiconsIcon
@@ -218,20 +236,10 @@ function JobCard({
               className="text-[var(--theme-muted)]"
             />
           </button>
+
           <button
-            onClick={() => setExpanded((current) => !current)}
-            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
-            title={expanded ? 'Hide run history' : 'Show run history'}
-          >
-            <HugeiconsIcon
-              icon={expanded ? ArrowUp01Icon : ArrowDown01Icon}
-              size={14}
-              className="text-[var(--theme-muted)]"
-            />
-          </button>
-          <button
-            onClick={() => onDelete(job.id)}
-            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+            onClick={() => onDelete()}
+            className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title="Delete"
           >
             <HugeiconsIcon
@@ -304,25 +312,14 @@ export function JobsScreen() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
-  const [editingJob, setEditingJob] = useState<ClaudeJob | null>(null)
+  const [editingJob, setEditingJob] = useState<HermesJob | null>(null)
+  const [deletingJob, setDeletingJob] = useState<HermesJob | null>(null)
 
   const jobsQuery = useQuery({
     queryKey: QUERY_KEY,
     queryFn: fetchJobs,
-    refetchInterval: 30_000,
+    refetchInterval: 5_000,
   })
-  const profilesQuery = useQuery({
-    queryKey: PROFILES_QUERY_KEY,
-    queryFn: fetchJobProfiles,
-    staleTime: 60_000,
-  })
-  const profiles = useMemo(
-    () =>
-      profilesQuery.data?.length
-        ? profilesQuery.data
-        : [{ name: 'default', active: true }],
-    [profilesQuery.data],
-  )
 
   const pauseMutation = useMutation({
     mutationFn: pauseJob,
@@ -369,7 +366,6 @@ export function JobsScreen() {
     mutationFn: async (payload: {
       jobId: string
       updates: {
-        profile: string
         name: string
         schedule: string
         prompt: string
@@ -396,15 +392,12 @@ export function JobsScreen() {
     const q = search.toLowerCase()
     return jobs.filter(
       (j) =>
-        j.name.toLowerCase().includes(q) ||
-        j.prompt.toLowerCase().includes(q) ||
-        j.profile?.toLowerCase().includes(q),
+        j.name.toLowerCase().includes(q) || j.prompt.toLowerCase().includes(q),
     )
   }, [jobsQuery.data, search])
 
   const handleCreate = useCallback(
     async (input: {
-      profile: string
       name: string
       schedule: string
       prompt: string
@@ -420,7 +413,7 @@ export function JobsScreen() {
   return (
     <div className="min-h-full overflow-y-auto bg-surface text-ink">
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-4 py-6 pb-[calc(var(--tabbar-h,80px)+1.5rem)] sm:px-6 lg:px-8">
-        <header className="rounded-2xl border border-primary-200 bg-primary-50/85 p-4 backdrop-blur-xl">
+        <header className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-sm backdrop-blur-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <HugeiconsIcon
@@ -442,7 +435,7 @@ export function JobsScreen() {
                 onClick={() =>
                   void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
                 }
-                className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+                className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
                 title="Refresh"
               >
                 <HugeiconsIcon
@@ -453,8 +446,11 @@ export function JobsScreen() {
               </button>
               <button
                 onClick={() => setShowCreate(true)}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
-                style={{ background: 'var(--theme-accent)' }}
+                className="flex cursor-pointer items-center gap-1.5 rounded-button px-3 py-1.5 text-xs font-medium transition-colors hover:scale-105 active:scale-95"
+                style={{
+                  background: 'var(--theme-accent)',
+                  color: 'var(--theme-accent-foreground)',
+                }}
               >
                 <HugeiconsIcon icon={Add01Icon} size={14} />
                 New Job
@@ -463,7 +459,7 @@ export function JobsScreen() {
           </div>
         </header>
 
-        <div className="rounded-2xl border border-primary-200 bg-primary-50/85 p-4 backdrop-blur-xl">
+        <div className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-sm backdrop-blur-xl">
           <div className="relative">
             <HugeiconsIcon
               icon={Search01Icon}
@@ -478,15 +474,6 @@ export function JobsScreen() {
               className="w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] py-1.5 pl-8 pr-3 text-xs text-[var(--theme-text)] placeholder:text-[var(--theme-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
             />
           </div>
-          {profilesQuery.isError ? (
-            <p
-              className="mt-2 text-xs"
-              style={{ color: 'var(--theme-warning)' }}
-            >
-              Profile list failed to load. New jobs will default to the default
-              profile until profiles refresh.
-            </p>
-          ) : null}
         </div>
 
         <div className="flex-1 space-y-2 overflow-y-auto px-4 py-3">
@@ -512,9 +499,7 @@ export function JobsScreen() {
                 className="mb-3 opacity-40"
               />
               <p className="text-sm font-medium">No scheduled jobs</p>
-              <p className="mt-1 text-xs">
-                No cron jobs found across Hermes profiles
-              </p>
+              <p className="mt-1 text-xs">Create one to get started</p>
             </div>
           ) : (
             <AnimatePresence mode="popLayout">
@@ -526,11 +511,7 @@ export function JobsScreen() {
                   onResume={(id) => resumeMutation.mutate(id)}
                   onTrigger={(id) => triggerMutation.mutate(id)}
                   onEdit={(selectedJob) => setEditingJob(selectedJob)}
-                  onDelete={(id) => {
-                    if (confirm(`Delete job "${job.name}"?`)) {
-                      deleteMutation.mutate(id)
-                    }
-                  }}
+                  onDelete={() => setDeletingJob(job)}
                 />
               ))}
             </AnimatePresence>
@@ -539,7 +520,6 @@ export function JobsScreen() {
 
         <CreateJobDialog
           open={showCreate}
-          profiles={profiles}
           onOpenChange={setShowCreate}
           onSubmit={handleCreate}
           isSubmitting={createMutation.isPending}
@@ -547,7 +527,6 @@ export function JobsScreen() {
         <EditJobDialog
           job={editingJob}
           open={editingJob !== null}
-          profiles={profiles}
           onOpenChange={(open) => {
             if (!open) setEditingJob(null)
           }}
@@ -560,6 +539,41 @@ export function JobsScreen() {
           }}
           isSubmitting={updateMutation.isPending}
         />
+        <DialogRoot
+          open={deletingJob !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeletingJob(null)
+          }}
+        >
+          <DialogContent>
+            <div className="p-5">
+              <DialogTitle className="mb-2 text-sm font-semibold">
+                Delete job
+              </DialogTitle>
+              <DialogDescription className="mb-4 text-xs">
+                Delete &ldquo;{deletingJob?.name || '(unnamed)'}&rdquo;? This
+                cannot be undone.
+              </DialogDescription>
+              <div className="flex justify-end gap-2">
+                <DialogClose className="px-3 py-1.5 text-xs">
+                  Cancel
+                </DialogClose>
+                <button
+                  onClick={() => {
+                    if (deletingJob) {
+                      deleteMutation.mutate(deletingJob.id)
+                      setDeletingJob(null)
+                    }
+                  }}
+                  className="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium text-destructive-foreground transition-opacity hover:opacity-90"
+                  style={{ background: 'var(--theme-danger)' }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </DialogRoot>
       </div>
     </div>
   )

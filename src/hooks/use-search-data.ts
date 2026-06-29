@@ -14,7 +14,6 @@ const FILES_STALE_TIME_MS = 2 * 60_000
 const SKILLS_STALE_TIME_MS = 2 * 60_000
 const SEARCH_QUERY_GC_TIME_MS = 10 * 60_000
 const MAX_SEARCH_FILES = 2_500
-const SESSION_FTS_STALE_TIME_MS = 15_000
 
 export type SearchSession = {
   id: string
@@ -23,7 +22,6 @@ export type SearchSession = {
   title?: string
   preview?: string
   updatedAt?: number
-  source?: string | null
 }
 
 export type SearchFile = {
@@ -60,11 +58,6 @@ type FilesApiResponse = {
 type SkillsApiResponse = {
   ok?: boolean
   skills?: Array<Record<string, unknown>>
-}
-
-type SessionSearchApiResponse = {
-  ok?: boolean
-  results?: Array<Record<string, unknown>>
 }
 
 type SearchQueryScope =
@@ -168,31 +161,15 @@ async function fetchSessions(
 
   const sessions = Array.isArray(data.sessions) ? data.sessions : []
 
-  return sessions.map((session) => {
-    const derivedTitle =
-      typeof session.derivedTitle === 'string' && session.derivedTitle.trim()
-        ? session.derivedTitle.trim()
-        : ''
-    const friendlyId = String(session.friendlyId || session.key || 'unknown')
-    const preview =
-      typeof session.preview === 'string' ? session.preview : ''
-    return {
-      id: String(session.key || session.friendlyId || 'unknown'),
-      key: String(session.key || ''),
-      friendlyId,
-      // Prefer the API-supplied derived title (chat content) over the
-      // raw session id, so user queries like 'github' or 'workflow'
-      // actually match what the chat is about.
-      title: derivedTitle || friendlyId || 'Untitled',
-      preview,
-      updatedAt:
-        typeof session.updatedAt === 'number'
-          ? session.updatedAt
-          : typeof session.startedAt === 'number'
-            ? session.startedAt
-            : Date.now(),
-    }
-  })
+  return sessions.map((session) => ({
+    id: String(session.key || session.friendlyId || 'unknown'),
+    key: String(session.key || ''),
+    friendlyId: String(session.friendlyId || session.key || 'unknown'),
+    title: String(session.friendlyId || session.key || 'Untitled'),
+    preview: '',
+    updatedAt:
+      typeof session.updatedAt === 'number' ? session.updatedAt : Date.now(),
+  }))
 }
 
 async function fetchFiles(
@@ -206,38 +183,6 @@ async function fetchFiles(
 
   const entries = Array.isArray(data.entries) ? data.entries : []
   return flattenFileTree(entries, MAX_SEARCH_FILES)
-}
-
-async function fetchSessionSearch(
-  query: string,
-  querySignal?: AbortSignal,
-): Promise<Array<SearchSession>> {
-  const normalized = query.trim()
-  if (!normalized) return []
-  const data = await fetchJsonWithTimeout<SessionSearchApiResponse>(
-    `/api/sessions/search?q=${encodeURIComponent(normalized)}&limit=24`,
-    querySignal,
-  )
-  if (!data || data.ok === false) return []
-  const results = Array.isArray(data.results) ? data.results : []
-  return results.map((entry, index) => {
-    const key = String(entry.key || entry.session_id || entry.id || '')
-    const friendlyId = String(entry.friendlyId || key || 'unknown')
-    return {
-      id: String(entry.id || `${key}:${index}`),
-      key,
-      friendlyId,
-      title: String(entry.title || friendlyId || 'Untitled'),
-      preview: String(entry.snippet || entry.preview || ''),
-      updatedAt:
-        typeof entry.updatedAt === 'number'
-          ? entry.updatedAt
-          : typeof entry.session_started === 'number'
-            ? entry.session_started
-            : undefined,
-      source: typeof entry.source === 'string' ? entry.source : null,
-    }
-  })
 }
 
 async function fetchSkills(
@@ -262,10 +207,9 @@ async function fetchSkills(
   })
 }
 
-export function useSearchData(scope: SearchQueryScope, query = '') {
+export function useSearchData(scope: SearchQueryScope) {
   const sessionsAvailable = useFeatureAvailable('sessions')
   const skillsAvailable = useFeatureAvailable('skills')
-  const trimmedQuery = query.trim()
 
   // Sessions
   const sessionsQuery = useQuery({
@@ -273,20 +217,6 @@ export function useSearchData(scope: SearchQueryScope, query = '') {
     queryFn: ({ signal }) => fetchSessions(signal),
     enabled: sessionsAvailable && (scope === 'all' || scope === 'chats'),
     staleTime: SESSIONS_STALE_TIME_MS,
-    gcTime: SEARCH_QUERY_GC_TIME_MS,
-    retry: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
-
-  const sessionSearchQuery = useQuery({
-    queryKey: ['search', 'sessions-fts', trimmedQuery],
-    queryFn: ({ signal }) => fetchSessionSearch(trimmedQuery, signal),
-    enabled:
-      sessionsAvailable &&
-      trimmedQuery.length >= 2 &&
-      (scope === 'all' || scope === 'chats'),
-    staleTime: SESSION_FTS_STALE_TIME_MS,
     gcTime: SEARCH_QUERY_GC_TIME_MS,
     retry: false,
     refetchOnWindowFocus: false,
@@ -322,15 +252,11 @@ export function useSearchData(scope: SearchQueryScope, query = '') {
 
   return {
     sessions: sessionsQuery.data || [],
-    sessionSearchResults: sessionSearchQuery.data || [],
     files: filesQuery.data || [],
     skills: skillsQuery.data || [],
     activity: activityResults,
     isLoading:
-      sessionsQuery.isLoading ||
-      sessionSearchQuery.isLoading ||
-      filesQuery.isLoading ||
-      skillsQuery.isLoading,
+      sessionsQuery.isLoading || filesQuery.isLoading || skillsQuery.isLoading,
   }
 }
 

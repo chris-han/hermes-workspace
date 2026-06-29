@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 540" font-family="'Source Han Sans SC','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">
+  <defs>
+    <style>
+      .ink{fill:#1a1a1a} .muted{fill:#6b7280} .gold{fill:#b45309}
+      .accent{fill:#0c4a6e} .green{fill:#15803d}
+      .mono{font-family:ui-monospace,Consolas,monospace}
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="899" height="539" rx="12" fill="#ffffff" stroke="#d4d4d8"/>
+  <rect x="0.5" y="0.5" width="6" height="539" rx="3" fill="#f59e0b"/>
+
+  <!-- Header -->
+  <rect x="7" y="1" width="892" height="56" fill="#fcfcfa"/>
+  <line x1="7" y1="57" x2="899" y2="57" stroke="#d4d4d8"/>
+  <circle cx="40" cy="29" r="13" fill="#1a1a1a"/>
+  <text x="40" y="34" font-size="14" fill="#fff" text-anchor="middle" font-weight="700">4</text>
+  <text x="62" y="34" font-size="17" font-weight="600" class="ink">凭证体系归类 · 会计凭证</text>
+  <text x="290" y="34" font-size="13" class="muted">Accounting Voucher (Bundle)</text>
+  <rect x="745" y="16" width="142" height="22" rx="4" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="816" y="31" font-size="11" font-weight="700" letter-spacing="1" class="gold" text-anchor="middle">STANDARD REQUIRED</text>
+
+  <!-- Tree -->
+  <g transform="translate(40,90)" class="mono" font-size="13">
+    <rect x="0" y="0" width="820" height="370" rx="6" fill="#fafaf9" stroke="#d4d4d8"/>
+
+    <!-- Root -->
+    <text x="24" y="32" class="ink" font-weight="700">📁 记账凭证 #07654 <tspan class="muted" font-size="11" font-style="italic">(2022-07, ¥500.00)</tspan></text>
+    <text x="24" y="56" class="ink">└── 📄 <tspan class="accent">报销单 RB-2022-0716-001</tspan></text>
+
+    <!-- Item A -->
+    <text x="24" y="92" class="ink">&#160;&#160;&#160;&#160;├── 📎 <tspan class="gold">A · 原始凭证 — 数电发票 #22442000000921300354</tspan></text>
+    <rect x="616" y="78" width="48" height="18" rx="3" fill="#1e293b"/>
+    <text x="640" y="91" font-size="10" fill="#fbbf24" text-anchor="middle">XML</text>
+    <text x="24" y="116" class="ink">&#160;&#160;&#160;&#160;│&#160;&#160;&#160;└── 🔗 <tspan class="green">入账信息结构化数据文件 (XBRL)</tspan></text>
+    <rect x="500" y="102" width="160" height="18" rx="3" fill="#fef3c7" stroke="#f59e0b"/>
+    <text x="580" y="115" font-size="10" class="gold" text-anchor="middle">linked by InvoiceNumber</text>
+
+    <!-- Item B -->
+    <text x="24" y="152" class="ink">&#160;&#160;&#160;&#160;├── 📎 <tspan class="gold">B · 原始凭证 — 铁路电子客票 #25E1234567</tspan></text>
+    <rect x="572" y="138" width="80" height="18" rx="3" fill="#1e293b"/>
+    <text x="612" y="151" font-size="10" fill="#fbbf24" text-anchor="middle">OFD + XBRL</text>
+    <text x="24" y="176" class="ink">&#160;&#160;&#160;&#160;│&#160;&#160;&#160;└── 🔗 <tspan class="green">入账信息结构化数据文件 (XBRL)</tspan></text>
+    <rect x="500" y="162" width="130" height="18" rx="3" fill="#fef3c7" stroke="#f59e0b"/>
+    <text x="565" y="175" font-size="10" class="gold" text-anchor="middle">linked by 唯一标识</text>
+
+    <!-- Item C -->
+    <text x="24" y="212" class="ink">&#160;&#160;&#160;&#160;└── 📎 <tspan class="gold">C · 原始凭证 — 银行电子回单 #6FE0-4D2C-66EA</tspan></text>
+    <rect x="612" y="198" width="80" height="18" rx="3" fill="#1e293b"/>
+    <text x="652" y="211" font-size="10" fill="#fbbf24" text-anchor="middle">OFD + XBRL</text>
+    <text x="24" y="236" class="ink">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;└── 🔗 <tspan class="green">入账信息结构化数据文件 (XBRL)</tspan></text>
+    <rect x="510" y="222" width="120" height="18" rx="3" fill="#fef3c7" stroke="#f59e0b"/>
+    <text x="570" y="235" font-size="10" class="gold" text-anchor="middle">linked by 回单号</text>
+
+    <!-- Note -->
+    <line x1="24" y1="262" x2="796" y2="262" stroke="#d4d4d8"/>
+    <text x="24" y="284" font-size="12" class="ink" font-weight="700">N 张原始凭证 → 1 张记账凭证</text>
+    <text x="24" y="304" font-size="11" class="muted" font-style="italic">
+      Per MOF Fig 5-2 — when N source vouchers are booked to one journal voucher,
+    </text>
+    <text x="24" y="320" font-size="11" class="muted" font-style="italic">
+      each gets its own 入账信息结构化数据文件 keyed by a stable identifier.
+    </text>
+    <text x="24" y="342" font-size="11" font-weight="600" class="gold">
+      → 归档 (Archival) must preserve this cross-link index for audit trace.
+    </text>
+  </g>
+
+  <!-- Caption -->
+  <text x="450" y="494" font-size="11" class="muted" text-anchor="middle" font-style="italic">
+    Fig 4 · The bundle is the unit of 归档.
+  </text>
+  <text x="450" y="510" font-size="11" class="muted" text-anchor="middle" font-style="italic">
+    1 → N or N → 1 relationships are both supported by the standard (Fig 5-2 / 5-3 of the Application Guide).
+  </text>
+</svg>

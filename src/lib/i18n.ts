@@ -1,5 +1,5 @@
 /**
- * Lightweight i18n — UI string translations for Hermes Workspace.
+ * Lightweight i18n — UI string translations for Project Workspace.
  * Add new languages by adding a locale map below.
  */
 
@@ -9,21 +9,26 @@ export type LocaleId =
   | 'fr'
   | 'de'
   | 'zh'
-  | 'zh-TW'
   | 'ja'
   | 'ko'
   | 'pt'
   | 'ru'
   | 'ar'
 
-const EN = {
+export type TranslationKey = keyof typeof EN
+
+const EN: Record<string, string> = {
   // Nav
   'nav.dashboard': 'Dashboard',
   'nav.chat': 'Chat',
+  'nav.search': 'Search',
   'nav.files': 'Files',
   'nav.terminal': 'Terminal',
   'nav.jobs': 'Jobs',
   'nav.tasks': 'Tasks',
+  'nav.conductor': 'Conductor',
+  'nav.operations': 'Operations',
+  'nav.dataConnections': 'Data Connections',
   'nav.memory': 'Memory',
   'nav.skills': 'Skills',
   'nav.profiles': 'Profiles',
@@ -47,6 +52,12 @@ const EN = {
   // Jobs
   'jobs.title': 'Jobs',
   'jobs.newJob': 'New Job',
+  // Chat
+  'chat.search': 'Search',
+  'chat.newSession': 'New Session',
+  'chat.startingSession': 'Starting…',
+  'chat.main': 'Main',
+  'chat.knowledge': 'Knowledge',
   // Settings
   'settings.title': 'Settings',
   'settings.language': 'Language',
@@ -61,16 +72,17 @@ const EN = {
   'common.noData': 'No data',
 } as const
 
-export type TranslationKey = keyof typeof EN
-type LocaleTranslations = Record<TranslationKey, string>
-
-const ES: LocaleTranslations = {
+const ES: typeof EN = {
   'nav.dashboard': 'Panel',
   'nav.chat': 'Chat',
+  'nav.search': 'Buscar',
   'nav.files': 'Archivos',
   'nav.terminal': 'Terminal',
   'nav.jobs': 'Trabajos',
   'nav.tasks': 'Tareas',
+  'nav.conductor': 'Conductor',
+  'nav.operations': 'Operaciones',
+  'nav.dataConnections': 'Conexiones de datos',
   'nav.memory': 'Memoria',
   'nav.skills': 'Habilidades',
   'nav.profiles': 'Perfiles',
@@ -90,6 +102,11 @@ const ES: LocaleTranslations = {
   'tasks.done': 'Hecho',
   'jobs.title': 'Trabajos',
   'jobs.newJob': 'Nuevo Trabajo',
+  'chat.search': 'Buscar',
+  'chat.newSession': 'Nueva sesión',
+  'chat.startingSession': 'Iniciando…',
+  'chat.main': 'Principal',
+  'chat.knowledge': 'Conocimiento',
   'settings.title': 'Configuración',
   'settings.language': 'Idioma',
   'settings.languageDesc':
@@ -103,13 +120,17 @@ const ES: LocaleTranslations = {
   'common.noData': 'Sin datos',
 }
 
-const FR: LocaleTranslations = {
+const FR: typeof EN = {
   'nav.dashboard': 'Tableau de bord',
   'nav.chat': 'Chat',
+  'nav.search': 'Rechercher',
   'nav.files': 'Fichiers',
   'nav.terminal': 'Terminal',
   'nav.jobs': 'Tâches planifiées',
   'nav.tasks': 'Tâches',
+  'nav.conductor': 'Chef d\'orchestre',
+  'nav.operations': 'Opérations',
+  'nav.dataConnections': 'Connexions de données',
   'nav.memory': 'Mémoire',
   'nav.skills': 'Compétences',
   'nav.profiles': 'Profils',
@@ -129,6 +150,11 @@ const FR: LocaleTranslations = {
   'tasks.done': 'Terminé',
   'jobs.title': 'Tâches planifiées',
   'jobs.newJob': 'Nouvelle tâche',
+  'chat.search': 'Rechercher',
+  'chat.newSession': 'Nouvelle session',
+  'chat.startingSession': 'Démarrage…',
+  'chat.main': 'Principal',
+  'chat.knowledge': 'Connaissance',
   'settings.title': 'Paramètres',
   'settings.language': 'Langue',
   'settings.languageDesc':
@@ -142,32 +168,41 @@ const FR: LocaleTranslations = {
   'common.noData': 'Aucune donnée',
 }
 
-const ZH: LocaleTranslations = {
+const ZH: typeof EN = {
   'nav.dashboard': '仪表板',
   'nav.chat': '聊天',
+  'nav.search': '搜索',
   'nav.files': '文件',
   'nav.terminal': '终端',
-  'nav.jobs': '作业',
+  'nav.jobs': '任务计划',
   'nav.tasks': '任务',
+  'nav.conductor': '指挥中心',
+  'nav.operations': '运营',
+  'nav.dataConnections': '数据连接',
   'nav.memory': '记忆',
   'nav.skills': '技能',
-  'nav.profiles': '配置文件',
+  'nav.profiles': '配置',
   'nav.settings': '设置',
   'skills.installed': '已安装',
   'skills.marketplace': '市场',
   'skills.search': '按名称、标签或描述搜索',
   'skills.noResults': '未找到技能',
-  'profiles.profiles': '配置文件',
+  'profiles.profiles': '配置',
   'profiles.monitoring': '监控',
   'tasks.title': '任务',
   'tasks.newTask': '新建任务',
-  'tasks.backlog': '待办池',
-  'tasks.todo': '待处理',
+  'tasks.backlog': '待办',
+  'tasks.todo': '计划中',
   'tasks.inProgress': '进行中',
   'tasks.review': '审核',
   'tasks.done': '完成',
-  'jobs.title': '作业',
-  'jobs.newJob': '新建作业',
+  'jobs.title': '任务计划',
+  'jobs.newJob': '新建计划',
+  'chat.search': '搜索',
+  'chat.newSession': '新建会话',
+  'chat.startingSession': '正在创建…',
+  'chat.main': '主菜单',
+  'chat.knowledge': '知识',
   'settings.title': '设置',
   'settings.language': '语言',
   'settings.languageDesc': '选择工作区界面显示语言。',
@@ -180,131 +215,16 @@ const ZH: LocaleTranslations = {
   'common.noData': '暂无数据',
 }
 
-const RU: LocaleTranslations = {
-  'nav.dashboard': 'Панель',
-  'nav.chat': 'Чат',
-  'nav.files': 'Файлы',
-  'nav.terminal': 'Терминал',
-  'nav.jobs': 'Задания',
-  'nav.tasks': 'Задачи',
-  'nav.memory': 'Память',
-  'nav.skills': 'Навыки',
-  'nav.profiles': 'Профили',
-  'nav.settings': 'Настройки',
-  'skills.installed': 'Установленные',
-  'skills.marketplace': 'Маркетплейс',
-  'skills.search': 'Поиск по названию, тегам или описанию',
-  'skills.noResults': 'Навыки не найдены',
-  'profiles.profiles': 'Профили',
-  'profiles.monitoring': 'Мониторинг',
-  'tasks.title': 'Задачи',
-  'tasks.newTask': 'Новая задача',
-  'tasks.backlog': 'Бэклог',
-  'tasks.todo': 'К выполнению',
-  'tasks.inProgress': 'В работе',
-  'tasks.review': 'Проверка',
-  'tasks.done': 'Готово',
-  'jobs.title': 'Задания',
-  'jobs.newJob': 'Новое задание',
-  'settings.title': 'Настройки',
-  'settings.language': 'Язык',
-  'settings.languageDesc': 'Выберите язык интерфейса рабочего пространства.',
-  'common.save': 'Сохранить',
-  'common.cancel': 'Отмена',
-  'common.delete': 'Удалить',
-  'common.search': 'Поиск',
-  'common.loading': 'Загрузка...',
-  'common.error': 'Ошибка',
-  'common.noData': 'Нет данных',
-}
-
-const ZH_TW: LocaleTranslations = {
-  'nav.dashboard': '儀表板',
-  'nav.chat': '聊天',
-  'nav.files': '檔案',
-  'nav.terminal': '終端機',
-  'nav.jobs': '工作',
-  'nav.tasks': '任務',
-  'nav.memory': '記憶體',
-  'nav.skills': '技能',
-  'nav.profiles': '個人資料',
-  'nav.settings': '設定',
-  'skills.installed': '已安裝',
-  'skills.marketplace': '市集',
-  'skills.search': '依名稱、標籤或描述搜尋',
-  'skills.noResults': '找不到技能',
-  'profiles.profiles': '個人資料',
-  'profiles.monitoring': '監控',
-  'tasks.title': '任務',
-  'tasks.newTask': '新增任務',
-  'tasks.backlog': '待辦清單',
-  'tasks.todo': '待處理',
-  'tasks.inProgress': '進行中',
-  'tasks.review': '審查',
-  'tasks.done': '完成',
-  'jobs.title': '工作',
-  'jobs.newJob': '新增工作',
-  'settings.title': '設定',
-  'settings.language': '語言',
-  'settings.languageDesc': '選擇工作區介面的顯示語言。',
-  'common.save': '儲存',
-  'common.cancel': '取消',
-  'common.delete': '刪除',
-  'common.search': '搜尋',
-  'common.loading': '載入中...',
-  'common.error': '錯誤',
-  'common.noData': '無資料',
-}
-
-const JA: LocaleTranslations = {
-  'nav.dashboard': 'ダッシュボード',
-  'nav.chat': 'チャット',
-  'nav.files': 'ファイル',
-  'nav.terminal': 'ターミナル',
-  'nav.jobs': 'ジョブ',
-  'nav.tasks': 'タスク',
-  'nav.memory': 'メモリ',
-  'nav.skills': 'スキル',
-  'nav.profiles': 'プロフィール',
-  'nav.settings': '設定',
-  'skills.installed': 'インストール済み',
-  'skills.marketplace': 'マーケットプレイス',
-  'skills.search': '名前・タグ・説明で検索',
-  'skills.noResults': 'スキルが見つかりません',
-  'profiles.profiles': 'プロフィール',
-  'profiles.monitoring': 'モニタリング',
-  'tasks.title': 'タスク',
-  'tasks.newTask': '新しいタスク',
-  'tasks.backlog': 'バックログ',
-  'tasks.todo': '未着手',
-  'tasks.inProgress': '進行中',
-  'tasks.review': 'レビュー',
-  'tasks.done': '完了',
-  'jobs.title': 'ジョブ',
-  'jobs.newJob': '新しいジョブ',
-  'settings.title': '設定',
-  'settings.language': '言語',
-  'settings.languageDesc': 'ワークスペースUIの表示言語を選択します。',
-  'common.save': '保存',
-  'common.cancel': 'キャンセル',
-  'common.delete': '削除',
-  'common.search': '検索',
-  'common.loading': '読み込み中...',
-  'common.error': 'エラー',
-  'common.noData': 'データなし',
-}
-
-const LOCALES: Record<LocaleId, LocaleTranslations> = {
+const LOCALES: Record<LocaleId, typeof EN> = {
   en: EN,
   es: ES,
   fr: FR,
   de: EN,
   zh: ZH,
-  'zh-TW': ZH_TW,
-  ja: JA,
+  ja: EN,
   ko: EN,
   pt: EN,
-  ru: RU,
+  ru: EN,
   ar: EN,
 }
 
@@ -313,8 +233,7 @@ export const LOCALE_LABELS: Record<LocaleId, string> = {
   es: 'Español',
   fr: 'Français',
   de: 'Deutsch',
-  zh: '中文（简体）',
-  'zh-TW': '繁體中文',
+  zh: '中文',
   ja: '日本語',
   ko: '한국어',
   pt: 'Português',
@@ -323,24 +242,63 @@ export const LOCALE_LABELS: Record<LocaleId, string> = {
 }
 
 const STORAGE_KEY = 'hermes-workspace-locale'
+let currentLocale: LocaleId | null = null
+
+function applyLocaleToClient(id: LocaleId, emitChange: boolean): void {
+  currentLocale = id
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY, id)
+    if (emitChange) {
+      window.dispatchEvent(new CustomEvent('locale-change', { detail: id }))
+    }
+  }
+}
+
+async function persistLocale(id: LocaleId): Promise<void> {
+  try {
+    await fetch('/api/user-settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      keepalive: true,
+      body: JSON.stringify({ settings: { locale: id } }),
+    })
+  } catch {
+    // Best-effort only; the client cache still updates immediately.
+  }
+}
 
 export function getLocale(): LocaleId {
+  if (currentLocale) return currentLocale
   if (typeof window === 'undefined') return 'en'
   const stored = localStorage.getItem(STORAGE_KEY)
-  if (stored && stored in LOCALES) return stored as LocaleId
-  const full = navigator.language
-  if (full in LOCALES) return full as LocaleId
-  const lang = full.split('-')[0]
-  if (lang in LOCALES) return lang as LocaleId
-  return 'en'
+  if (stored && stored in LOCALES) {
+    currentLocale = stored as LocaleId
+    return currentLocale
+  }
+  const browser = navigator.language.split('-')[0]
+  if (browser in LOCALES) {
+    currentLocale = browser as LocaleId
+    return currentLocale
+  }
+  currentLocale = 'en'
+  return currentLocale
 }
 
 export function setLocale(id: LocaleId): void {
-  localStorage.setItem(STORAGE_KEY, id)
-  window.dispatchEvent(new CustomEvent('locale-change', { detail: id }))
+  applyLocaleToClient(id, true)
+  if (typeof window !== 'undefined') {
+    void persistLocale(id)
+  }
+}
+
+export function syncLocaleFromSettings(id: LocaleId): void {
+  applyLocaleToClient(id, true)
 }
 
 export function t(key: TranslationKey): string {
   const locale = getLocale()
-  return LOCALES[locale]?.[key] ?? LOCALES.en[key] ?? key
+  const translations = LOCALES[locale] as Record<string, string | undefined>
+  const fallbackTranslations = LOCALES.en as Record<string, string | undefined>
+  return translations[key] ?? fallbackTranslations[key] ?? key
 }

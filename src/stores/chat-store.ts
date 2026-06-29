@@ -104,6 +104,8 @@ type ChatState = {
   streamingState: Map<string, StreamingState>
   /** Timestamp of last received event */
   lastEventAt: number
+  /** Timestamp of last received event, keyed by sessionKey */
+  lastEventAtBySession: Map<string, number>
   /**
    * RunIds currently being handled by send-stream (the active send SSE).
    * Server-side dedup is the primary defense. This client-side set remains as
@@ -114,6 +116,7 @@ type ChatState = {
   // Actions
   setConnectionState: (state: ConnectionState, error?: string) => void
   processEvent: (event: ChatStreamEvent) => void
+  getLastEventAt: (sessionKey: string) => number
   getRealtimeMessages: (sessionKey: string) => Array<ChatMessage>
   getStreamingState: (sessionKey: string) => StreamingState | null
   clearSession: (sessionKey: string) => void
@@ -140,11 +143,6 @@ type ChatState = {
   clearSessionWaiting: (sessionKey: string) => void
   /** Check if a session is waiting for a response */
   isSessionWaiting: (sessionKey: string) => boolean
-
-  /** Last activity description forwarded via heartbeat — used by ThinkingBubble
-   *  to show meaningful progress during long reasoning stretches */
-  heartbeatActivity: string | null
-  setHeartbeatActivity: (activity: string | null) => void
 }
 
 const createEmptyStreamingState = (): StreamingState => ({
@@ -163,7 +161,7 @@ function persistStreamingState(
   if (_streamingPersistTimer) clearTimeout(_streamingPersistTimer)
   _streamingPersistTimer = setTimeout(() => {
     sessionStorage.setItem(
-      `claude_streaming_${sessionKey}`,
+      `hermes_streaming_${sessionKey}`,
       JSON.stringify({ ...state, _savedAt: Date.now() }),
     )
   }, 500)
@@ -174,7 +172,7 @@ export function restoreStreamingState(
 ): StreamingState | null {
   if (typeof sessionStorage === 'undefined') return null
 
-  const storageKey = `claude_streaming_${sessionKey}`
+  const storageKey = `hermes_streaming_${sessionKey}`
   const raw = sessionStorage.getItem(storageKey)
   if (!raw) return null
 
@@ -198,56 +196,8 @@ export function restoreStreamingState(
   }
 }
 
-const RECOVERY_MSG_PREFIX = 'claude_recovery_msg_'
-const RECOVERY_MSG_TTL_MS = 5 * 60 * 1000
-
-export function persistRecoveryMessage(
-  sessionKey: string,
-  message: ChatMessage,
-): void {
-  if (typeof sessionStorage === 'undefined') return
-  try {
-    sessionStorage.setItem(
-      `${RECOVERY_MSG_PREFIX}${sessionKey}`,
-      JSON.stringify({ message, storedAt: Date.now() }),
-    )
-  } catch {
-    // Ignore storage write failures (quota, private mode, etc.).
-  }
-}
-
-export function readRecoveryMessage(sessionKey: string): ChatMessage | null {
-  if (typeof sessionStorage === 'undefined') return null
-  const key = `${RECOVERY_MSG_PREFIX}${sessionKey}`
-  const raw = sessionStorage.getItem(key)
-  if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw) as {
-      message?: ChatMessage
-      storedAt?: number
-    }
-    if (!parsed.message) return null
-    if (
-      typeof parsed.storedAt !== 'number' ||
-      Date.now() - parsed.storedAt > RECOVERY_MSG_TTL_MS
-    ) {
-      sessionStorage.removeItem(key)
-      return null
-    }
-    return parsed.message
-  } catch {
-    sessionStorage.removeItem(key)
-    return null
-  }
-}
-
-export function clearRecoveryMessage(sessionKey: string): void {
-  if (typeof sessionStorage === 'undefined') return
-  sessionStorage.removeItem(`${RECOVERY_MSG_PREFIX}${sessionKey}`)
-}
-
 const WAITING_TTL_MS = 120_000
-const WAITING_STORAGE_PREFIX = 'claude_waiting_'
+const WAITING_STORAGE_PREFIX = 'hermes_waiting_'
 
 function persistWaitingState(
   sessionKey: string,
@@ -305,6 +255,31 @@ function normalizeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function areSessionKeyAliases(left: string, right: string): boolean {
+  const normalizedLeft = normalizeString(left)
+  const normalizedRight = normalizeString(right)
+  if (!normalizedLeft || !normalizedRight) return false
+  if (normalizedLeft === normalizedRight) return true
+  return (
+    normalizedLeft.endsWith(`:${normalizedRight}`) ||
+    normalizedRight.endsWith(`:${normalizedLeft}`)
+  )
+}
+
+function getRealtimeMessagesForSession(
+  messagesBySession: Map<string, Array<ChatMessage>>,
+  sessionKey: string,
+): Array<ChatMessage> {
+  const exact = messagesBySession.get(sessionKey) ?? []
+  const aliases: Array<ChatMessage> = []
+  for (const [candidateKey, messages] of messagesBySession.entries()) {
+    if (candidateKey === sessionKey) continue
+    if (!areSessionKeyAliases(candidateKey, sessionKey)) continue
+    aliases.push(...messages)
+  }
+  return aliases.length === 0 ? exact : [...exact, ...aliases]
+}
+
 /**
  * Strip <final>...</final> wrapper tags that the server emits as a
  * streaming-completion sentinel in agent chunk events.
@@ -345,6 +320,7 @@ function stripInternalTags(text: string): string {
     .map((part, i) => {
       if (i % 2 === 1) return part // inside code block — leave untouched
       return part
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
         .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
         .replace(/<antThinking>[\s\S]*?<\/antThinking>/gi, '')
         .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
@@ -474,8 +450,7 @@ function getMessageHistoryIndex(
   msg: ChatMessage | null | undefined,
 ): number | undefined {
   if (!msg) return undefined
-  const raw = msg as Record<string, unknown>
-  const value = raw.__historyIndex ?? raw.historyIndex
+  const value = (msg as Record<string, unknown>).__historyIndex
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
@@ -519,6 +494,10 @@ function compareMessagesByTime(left: ChatMessage, right: ChatMessage): number {
     getMessageEventTime(right) ?? getMessageReceiveTime(right) ?? 0
   if (leftTime !== rightTime) return leftTime - rightTime
 
+  const leftRank = getMessageChronologyRank(left)
+  const rightRank = getMessageChronologyRank(right)
+  if (leftRank !== rightRank) return leftRank - rightRank
+
   const leftHistoryIndex = getMessageHistoryIndex(left)
   const rightHistoryIndex = getMessageHistoryIndex(right)
   if (
@@ -528,10 +507,6 @@ function compareMessagesByTime(left: ChatMessage, right: ChatMessage): number {
   ) {
     return leftHistoryIndex - rightHistoryIndex
   }
-
-  const leftRank = getMessageChronologyRank(left)
-  const rightRank = getMessageChronologyRank(right)
-  if (leftRank !== rightRank) return leftRank - rightRank
 
   const leftRealtimeSequence = getMessageRealtimeSequence(left)
   const rightRealtimeSequence = getMessageRealtimeSequence(right)
@@ -635,6 +610,14 @@ function messageMultipartSignature(
   return `${msg.role ?? 'unknown'}:${content}:${attachments}`
 }
 
+function assistantTextsEquivalent(left: string, right: string): boolean {
+  if (!left || !right) return false
+  if (left === right) return true
+  const normalizedLeft = normalizeAssistantDedupText(left)
+  const normalizedRight = normalizeAssistantDedupText(right)
+  return normalizedLeft.length > 0 && normalizedLeft === normalizedRight
+}
+
 const _restoredWaiting = restoreWaitingSessions()
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -643,10 +626,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   realtimeMessages: new Map(),
   streamingState: new Map(),
   lastEventAt: 0,
+  lastEventAtBySession: new Map(),
   sendStreamRunIds: new Set(),
   waitingSessionKeys: _restoredWaiting.keys,
   waitingSessionMeta: _restoredWaiting.meta,
-  heartbeatActivity: null,
 
   setConnectionState: (connectionState, error) => {
     set({ connectionState, lastError: error ?? null })
@@ -693,14 +676,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     return get().waitingSessionKeys.has(sessionKey)
   },
 
-  setHeartbeatActivity: (activity) => {
-    set({ heartbeatActivity: activity })
-  },
-
   processEvent: (event) => {
     const state = get()
     const sessionKey = event.sessionKey
     const now = Date.now()
+    const markEventAt = () => {
+      const lastEventAtBySession = new Map(get().lastEventAtBySession)
+      lastEventAtBySession.set(sessionKey, now)
+      return { lastEventAt: now, lastEventAtBySession }
+    }
 
     // Skip ALL events for runs being handled by send-stream.
     // send-stream is the authoritative handler for active sends — chat-events
@@ -838,7 +822,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           if (
             normalizedMessage.role === 'assistant' &&
             newPlainText.length > 20 &&
-            newPlainText === extractMessageText(existing)
+            assistantTextsEquivalent(newPlainText, extractMessageText(existing))
           ) {
             return true
           }
@@ -882,7 +866,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             status: undefined,
           }
           messages.set(sessionKey, sortMessagesChronologically(sessionMessages))
-          set({ realtimeMessages: messages, lastEventAt: now })
+          set({ realtimeMessages: messages, ...markEventAt() })
           break
         }
 
@@ -903,34 +887,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
 
         if (duplicateIndex === -1) {
-          // Multiple message.started events from the agent create distinct
-          // realtime entries with empty content. Replace the previous empty
-          // assistant message instead of appending — prevents "3 individual
-          // messages then one final" bug where each tool phase looks like a
-          // separate assistant bubble.
-          if (
-            incomingMessage.role === 'assistant' &&
-            newPlainText.length === 0 &&
-            sessionMessages.length > 0
-          ) {
-            const prevEmptyIdx = sessionMessages.findLastIndex(
-              (m) =>
-                m.role === 'assistant' &&
-                extractMessageText(m).length === 0,
-            )
-            if (prevEmptyIdx >= 0) {
-              sessionMessages[prevEmptyIdx] = incomingMessage
-              messages.set(
-                sessionKey,
-                sortMessagesChronologically(sessionMessages),
-              )
-              set({ realtimeMessages: messages, lastEventAt: now })
-              break
-            }
-          }
           sessionMessages.push(incomingMessage)
           messages.set(sessionKey, sortMessagesChronologically(sessionMessages))
-          set({ realtimeMessages: messages, lastEventAt: now })
+          set({ realtimeMessages: messages, ...markEventAt() })
         }
         break
       }
@@ -950,7 +909,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
 
         streamingMap.set(sessionKey, next)
-        set({ streamingState: streamingMap, lastEventAt: now })
+        set({ streamingState: streamingMap, ...markEventAt() })
         persistStreamingState(sessionKey, next)
 
         break
@@ -966,7 +925,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
 
         streamingMap.set(sessionKey, next)
-        set({ streamingState: streamingMap, lastEventAt: now })
+        set({ streamingState: streamingMap, ...markEventAt() })
         persistStreamingState(sessionKey, next)
         break
       }
@@ -985,7 +944,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
 
         streamingMap.set(sessionKey, next)
-        set({ streamingState: streamingMap, lastEventAt: now })
+        set({ streamingState: streamingMap, ...markEventAt() })
         persistStreamingState(sessionKey, next)
         break
       }
@@ -1034,7 +993,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
 
         streamingMap.set(sessionKey, next)
-        set({ streamingState: streamingMap, lastEventAt: now })
+        set({ streamingState: streamingMap, ...markEventAt() })
         persistStreamingState(sessionKey, next)
         break
       }
@@ -1125,7 +1084,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
             const existingId = getMessageId(existing)
             if (completeId && existingId && completeId === existingId)
               return true
-            if (completeText && completeText === extractMessageText(existing))
+            if (
+              completeText &&
+              assistantTextsEquivalent(
+                completeText,
+                extractMessageText(existing),
+              )
+            )
               return true
             return false
           })
@@ -1145,7 +1110,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
               const existingId = getMessageId(existing)
               if (completeId && existingId && completeId === existingId)
                 return true
-              if (completeText && completeText === extractMessageText(existing))
+              if (
+                completeText &&
+                assistantTextsEquivalent(
+                  completeText,
+                  extractMessageText(existing),
+                )
+              )
                 return true
               return false
             })
@@ -1161,10 +1132,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
               set({ realtimeMessages: messages })
             }
           }
-
-          // Persist the final assistant message to sessionStorage so it survives
-          // dev refresh / tab navigation until backend history catches up.
-          persistRecoveryMessage(sessionKey, completeMessage)
         }
 
         // Clear streaming state immediately — tool calls are preserved via
@@ -1173,9 +1140,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // DO NOT keep a stub here — it keeps isRealtimeStreaming=true which
         // injects an invisible streaming placeholder that causes a blank gap.
         streamingMap.delete(sessionKey)
-        set({ streamingState: streamingMap, lastEventAt: now })
+        set({ streamingState: streamingMap, ...markEventAt() })
         if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.removeItem(`claude_streaming_${sessionKey}`)
+          sessionStorage.removeItem(`hermes_streaming_${sessionKey}`)
         }
         break
       }
@@ -1184,6 +1151,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   getRealtimeMessages: (sessionKey) => {
     return get().realtimeMessages.get(sessionKey) ?? []
+  },
+
+  getLastEventAt: (sessionKey) => {
+    return get().lastEventAtBySession.get(sessionKey) ?? 0
   },
 
   getStreamingState: (sessionKey) => {
@@ -1195,7 +1166,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const streaming = new Map(get().streamingState)
     messages.delete(sessionKey)
     streaming.delete(sessionKey)
-    set({ realtimeMessages: messages, streamingState: streaming })
+    const lastEventAtBySession = new Map(get().lastEventAtBySession)
+    lastEventAtBySession.delete(sessionKey)
+    set({
+      realtimeMessages: messages,
+      streamingState: streaming,
+      lastEventAtBySession,
+    })
   },
 
   clearRealtimeBuffer: (sessionKey) => {
@@ -1217,7 +1194,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   mergeHistoryMessages: (sessionKey, historyMessages) => {
-    const realtimeMessages = get().realtimeMessages.get(sessionKey) ?? []
+    const realtimeMessages = getRealtimeMessagesForSession(
+      get().realtimeMessages,
+      sessionKey,
+    )
 
     if (realtimeMessages.length === 0) {
       return sortMessagesChronologically(historyMessages)
@@ -1244,12 +1224,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (histMsg.role === rtMsg.role && rtText) {
         const histText = extractMessageText(histMsg)
         if (histText === rtText) return true
-        // Streaming realtime text is a prefix of the final server text.
-        // Match either direction to prevent duplicates when the server
-        // returns the complete message after the realtime buffer had a
-        // partial version.
-        if (rtText.length > 0 && histText.length > 0) {
-          if (histText.startsWith(rtText) || rtText.startsWith(histText)) return true
+
+        if (histMsg.role === 'assistant') {
+          const normalizedHistoryText = normalizeAssistantDedupText(histText)
+          const normalizedRealtimeText = normalizeAssistantDedupText(rtText)
+          if (
+            normalizedHistoryText.length > 0 &&
+            normalizedHistoryText === normalizedRealtimeText
+          ) {
+            return true
+          }
         }
       }
 
@@ -1366,6 +1350,33 @@ function extractMessageText(msg: ChatMessage | null | undefined): string {
       return stripFinalTags(val.trim())
   }
   return ''
+}
+
+function normalizeAssistantDedupText(text: string): string {
+  if (!text) return ''
+
+  // History responses can append artifact footers that are not present in the
+  // streamed completion text. Strip these suffixes so both representations of
+  // the same assistant turn deduplicate correctly.
+  let normalized = text.replace(/\n\s*Run directory:\s+[^\n]+\s*$/i, '').trim()
+
+  normalized = normalized
+    .replace(/\n\s*\[Full report\]\([^\n]*\/runs\/[\w-]+[^\n]*\)\s*$/i, '')
+    .trim()
+
+  // Some realtime events still contain raw a2ui/uiSchema code fences while
+  // history stores the same response with those fences stripped. Removing only
+  // these UI fences keeps dedup strict for normal code blocks.
+  normalized = normalized
+    .replace(/```(?:a2ui|uiSchema)\s*[\s\S]*?```/gi, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+
+  // Strip formatting-only whitespace differences so realtime/history variants
+  // of the same assistant turn compare equal during dedup.
+  normalized = normalized.replace(/\s+/g, ' ').trim()
+
+  return normalized
 }
 
 function ensureAssistantTextContent(msg: ChatMessage): ChatMessage {

@@ -9,12 +9,7 @@ export type CrewPlatformInfo = {
 export type CrewMember = {
   id: string
   displayName: string
-  humanLabel?: string
   role: string
-  specialty?: string
-  mission?: string
-  skills?: Array<string>
-  capabilities?: Array<string>
   profileFound: boolean
   gatewayState: 'running' | 'stopped' | 'unknown' | string
   processAlive: boolean
@@ -81,7 +76,6 @@ export function useCrewStatus() {
     crew: query.data?.crew ?? [],
     lastUpdated: query.data?.fetchedAt ?? null,
     isLoading: query.isLoading,
-    isFetching: query.isFetching,
     isError: query.isError,
     error: query.error,
     refetch: query.refetch,

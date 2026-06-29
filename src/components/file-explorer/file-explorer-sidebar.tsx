@@ -41,12 +41,7 @@ type FileExplorerSidebarProps = {
   collapsed: boolean
   onToggle: () => void
   onInsertReference: (reference: string) => void
-  // When provided, clicking a file calls this instead of opening the built-in
-  // modal preview — lets parents (e.g. the /files route) render the file in
-  // their own side editor.
-  onOpenFile?: (entry: FileEntry) => void
-  // Path of the currently-open file, used to highlight the row.
-  activePath?: string | null
+  focusPath?: string
   hidden?: boolean
   className?: string
 }
@@ -92,6 +87,38 @@ function buildReference(pathValue: string) {
   return `See file: workspace/${normalized}`
 }
 
+function normalizeFocusPath(pathValue: string): string {
+  if (!pathValue) return ''
+  let decoded = pathValue.trim()
+  try {
+    decoded = decodeURIComponent(decoded)
+  } catch {
+    // Keep original value when decoding fails.
+  }
+
+  decoded = normalizePath(decoded).replace(/^\/+/, '').replace(/\/+$/, '')
+
+  const workspaceMatch = decoded.match(/workspaces\/[^/]+\/(.+)$/)
+  if (workspaceMatch?.[1]) {
+    return workspaceMatch[1].replace(/^\/+/, '')
+  }
+
+  return decoded
+}
+
+function findEntryByPath(
+  entries: Array<FileEntry>,
+  targetPath: string,
+): FileEntry | null {
+  for (const entry of entries) {
+    if (entry.path === targetPath) return entry
+    if (entry.type !== 'folder' || !entry.children?.length) continue
+    const nested = findEntryByPath(entry.children, targetPath)
+    if (nested) return nested
+  }
+  return null
+}
+
 async function fetchFileTree(): Promise<Array<FileEntry>> {
   const res = await fetch('/api/files?action=list')
   if (!res.ok) throw new Error('Failed to load files')
@@ -124,8 +151,7 @@ export function FileExplorerSidebar({
   collapsed,
   onToggle,
   onInsertReference,
-  onOpenFile,
-  activePath = null,
+  focusPath,
   hidden = false,
   className,
 }: FileExplorerSidebarProps) {
@@ -138,6 +164,9 @@ export function FileExplorerSidebar({
   const [promptState, setPromptState] = useState<PromptState | null>(null)
   const [promptValue, setPromptValue] = useState('')
   const [previewPath, setPreviewPath] = useState<string | null>(null)
+  const [scrollTarget, setScrollTarget] = useState<string | null>(null)
+  const lastAppliedFocusRef = useRef('')
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null)
   const uploadTargetRef = useRef<string>('')
   const uploadInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -173,6 +202,54 @@ export function FileExplorerSidebar({
       window.removeEventListener('keydown', handleEscape)
     }
   }, [contextMenu])
+
+  useEffect(() => {
+    const targetPath = normalizeFocusPath(focusPath || '')
+    if (!targetPath || entries.length === 0) return
+    if (lastAppliedFocusRef.current === targetPath) return
+
+    lastAppliedFocusRef.current = targetPath
+    const targetEntry = findEntryByPath(entries, targetPath)
+    const effectivePath = targetEntry?.path || targetPath
+    const pathParts = effectivePath.split('/').filter(Boolean)
+    const ancestorPaths: Array<string> = []
+    for (let i = 1; i < pathParts.length; i += 1) {
+      ancestorPaths.push(pathParts.slice(0, i).join('/'))
+    }
+
+    const foldersToExpand = [...ancestorPaths]
+    // Expand the target folder itself if it's a directory
+    if (targetEntry?.type === 'folder') {
+      foldersToExpand.push(effectivePath)
+    }
+
+    if (foldersToExpand.length > 0) {
+      setExpanded((prev) => {
+        const next = new Set(prev)
+        for (const folderPath of foldersToExpand) {
+          next.add(folderPath)
+        }
+        return next
+      })
+    }
+
+    setScrollTarget(effectivePath)
+    if (targetEntry?.type === 'file') {
+      setPreviewPath(targetEntry.path)
+    }
+  }, [entries, focusPath])
+
+  useEffect(() => {
+    if (!scrollTarget) return
+    const timer = setTimeout(() => {
+      const el = scrollViewportRef.current?.querySelector<HTMLElement>(
+        `[data-filepath="${CSS.escape(scrollTarget)}"]`,
+      )
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      setScrollTarget(null)
+    }, 120)
+    return () => clearTimeout(timer)
+  }, [scrollTarget])
 
   const filteredEntries = useMemo(
     () => filterTree(entries, search),
@@ -318,13 +395,9 @@ export function FileExplorerSidebar({
         return
       }
       onInsertReference(buildReference(entry.path))
-      if (onOpenFile) {
-        onOpenFile(entry)
-      } else {
-        setPreviewPath(entry.path)
-      }
+      setPreviewPath(entry.path)
     },
-    [onInsertReference, onOpenFile, toggleFolder],
+    [onInsertReference, toggleFolder],
   )
 
   const renderEntry = useCallback(
@@ -337,6 +410,7 @@ export function FileExplorerSidebar({
         <div key={entry.path}>
           <button
             type="button"
+            data-filepath={entry.path}
             onClick={() => handleFileClick(entry)}
             onContextMenu={(event) => {
               event.preventDefault()
@@ -349,9 +423,6 @@ export function FileExplorerSidebar({
             className={cn(
               'group flex w-full items-center gap-2 rounded-md py-1.5 text-left text-sm text-primary-900',
               'hover:bg-primary-200',
-              activePath === entry.path &&
-                entry.type === 'file' &&
-                'bg-accent-100 font-medium text-accent-800 hover:bg-accent-100',
             )}
             style={{ paddingLeft: padding }}
           >
@@ -378,7 +449,7 @@ export function FileExplorerSidebar({
         </div>
       )
     },
-    [activePath, expanded, handleFileClick, isSearchActive, setContextMenu],
+    [expanded, handleFileClick, isSearchActive, setContextMenu],
   )
 
   if (hidden) return null
@@ -435,7 +506,7 @@ export function FileExplorerSidebar({
       </div>
 
       <ScrollAreaRoot className="flex-1 min-h-0">
-        <ScrollAreaViewport className="px-1">
+        <ScrollAreaViewport ref={scrollViewportRef} className="px-1">
           {loading ? (
             <div className="px-3 py-2 text-xs text-primary-500">Loading…</div>
           ) : error ? (

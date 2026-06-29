@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" font-family="'Source Han Sans SC','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">
+  <defs>
+    <style>
+      .ink{fill:#1a1a1a} .muted{fill:#6b7280}
+      .mono{font-family:ui-monospace,Consolas,monospace}
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="899" height="479" rx="12" fill="#ffffff" stroke="#d4d4d8"/>
+  <rect x="0.5" y="0.5" width="6" height="479" rx="3" fill="#38bdf8"/>
+
+  <!-- Header -->
+  <rect x="7" y="1" width="892" height="56" fill="#fcfcfa"/>
+  <line x1="7" y1="57" x2="899" y2="57" stroke="#d4d4d8"/>
+  <circle cx="40" cy="29" r="13" fill="#1a1a1a"/>
+  <text x="40" y="34" font-size="14" fill="#fff" text-anchor="middle" font-weight="700">6</text>
+  <text x="62" y="34" font-size="17" font-weight="600" class="ink">时序账簿记录 · 日记账</text>
+  <text x="282" y="34" font-size="13" class="muted">Journal</text>
+  <rect x="800" y="16" width="87" height="22" rx="4" fill="#e0f2fe" stroke="#7dd3fc"/>
+  <text x="843" y="31" font-size="11" font-weight="700" letter-spacing="1" fill="#0c4a6e" text-anchor="middle">DERIVED</text>
+
+  <!-- Table -->
+  <g transform="translate(36,88)">
+    <rect x="0" y="0" width="828" height="288" fill="white" stroke="#d4d4d8"/>
+
+    <!-- Header row -->
+    <rect x="0" y="0" width="828" height="32" fill="#f1f5f9"/>
+    <line x1="0" y1="32" x2="828" y2="32" stroke="#d4d4d8"/>
+    <line x1="100" y1="0" x2="100" y2="288" stroke="#d4d4d8"/>
+    <line x1="200" y1="0" x2="200" y2="288" stroke="#d4d4d8"/>
+    <line x1="360" y1="0" x2="360" y2="288" stroke="#d4d4d8"/>
+    <line x1="480" y1="0" x2="480" y2="288" stroke="#d4d4d8"/>
+    <line x1="600" y1="0" x2="600" y2="288" stroke="#d4d4d8"/>
+    <line x1="714" y1="0" x2="714" y2="288" stroke="#d4d4d8"/>
+
+    <text x="50"  y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">日期</text>
+    <text x="150" y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">凭证号</text>
+    <text x="280" y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">摘要</text>
+    <text x="420" y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">总账科目</text>
+    <text x="540" y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">明细科目</text>
+    <text x="657" y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">借方</text>
+    <text x="771" y="20" font-size="12" font-weight="700" class="ink" text-anchor="middle">贷方</text>
+
+    <!-- Row 1: 07651 借 -->
+    <text x="50"  y="56" font-size="12" class="mono ink" text-anchor="middle">2022-07-14</text>
+    <text x="150" y="56" font-size="12" class="ink" text-anchor="middle">转 07651</text>
+    <text x="280" y="56" font-size="12" class="ink" text-anchor="middle">支付租金</text>
+    <text x="420" y="56" font-size="12" class="ink" text-anchor="middle">管理费用</text>
+    <text x="540" y="56" font-size="12" class="ink" text-anchor="middle">租金</text>
+    <text x="705" y="56" font-size="12" class="mono ink" text-anchor="end">8,000.00</text>
+    <text x="820" y="56" font-size="12" class="mono muted" text-anchor="end">—</text>
+    <line x1="0" y1="68" x2="828" y2="68" stroke="#f3f4f6"/>
+
+    <!-- Row 2: 07651 贷 -->
+    <text x="50"  y="88" font-size="12" class="mono ink" text-anchor="middle">2022-07-14</text>
+    <text x="150" y="88" font-size="12" class="ink" text-anchor="middle">转 07651</text>
+    <text x="280" y="88" font-size="12" class="ink" text-anchor="middle">支付租金</text>
+    <text x="420" y="88" font-size="12" class="ink" text-anchor="middle">银行存款</text>
+    <text x="540" y="88" font-size="12" class="ink" text-anchor="middle">工行 6FE0</text>
+    <text x="705" y="88" font-size="12" class="mono muted" text-anchor="end">—</text>
+    <text x="820" y="88" font-size="12" class="mono ink" text-anchor="end">8,000.00</text>
+    <line x1="0" y1="100" x2="828" y2="100" stroke="#f3f4f6"/>
+
+    <!-- Highlighted Row 3 — 07654 借 办公费 (源 A) -->
+    <rect x="0" y="100" width="828" height="32" fill="#fef3c7"/>
+    <text x="50"  y="120" font-size="12" class="mono ink" text-anchor="middle">2022-07-16</text>
+    <text x="150" y="120" font-size="12" class="ink" text-anchor="middle" font-weight="700">付 07654</text>
+    <text x="280" y="120" font-size="12" class="ink" text-anchor="middle">购办公用品 (源 A)</text>
+    <text x="420" y="120" font-size="12" class="ink" text-anchor="middle">管理费用</text>
+    <text x="540" y="120" font-size="12" class="ink" text-anchor="middle">办公费</text>
+    <text x="705" y="120" font-size="12" class="mono ink" text-anchor="end" font-weight="700">500.00</text>
+    <text x="820" y="120" font-size="12" class="mono muted" text-anchor="end">—</text>
+    <line x1="0" y1="132" x2="828" y2="132" stroke="#f3f4f6"/>
+
+    <!-- Highlighted Row 4 — 07654 借 差旅费 (源 B) -->
+    <rect x="0" y="132" width="828" height="32" fill="#fef3c7"/>
+    <text x="50"  y="152" font-size="12" class="mono ink" text-anchor="middle">2022-07-16</text>
+    <text x="150" y="152" font-size="12" class="ink" text-anchor="middle" font-weight="700">付 07654</text>
+    <text x="280" y="152" font-size="12" class="ink" text-anchor="middle">差旅·交通 (源 B)</text>
+    <text x="420" y="152" font-size="12" class="ink" text-anchor="middle">管理费用</text>
+    <text x="540" y="152" font-size="12" class="ink" text-anchor="middle">差旅费</text>
+    <text x="705" y="152" font-size="12" class="mono ink" text-anchor="end" font-weight="700">800.00</text>
+    <text x="820" y="152" font-size="12" class="mono muted" text-anchor="end">—</text>
+    <line x1="0" y1="164" x2="828" y2="164" stroke="#f3f4f6"/>
+
+    <!-- Highlighted Row 5 — 07654 贷 银行存款 (源 C) -->
+    <rect x="0" y="164" width="828" height="32" fill="#fef3c7"/>
+    <text x="50"  y="184" font-size="12" class="mono ink" text-anchor="middle">2022-07-16</text>
+    <text x="150" y="184" font-size="12" class="ink" text-anchor="middle" font-weight="700">付 07654</text>
+    <text x="280" y="184" font-size="12" class="ink" text-anchor="middle">合并支付 (源 C)</text>
+    <text x="420" y="184" font-size="12" class="ink" text-anchor="middle">银行存款</text>
+    <text x="540" y="184" font-size="12" class="ink" text-anchor="middle">工行 6FE0</text>
+    <text x="705" y="184" font-size="12" class="mono muted" text-anchor="end">—</text>
+    <text x="820" y="184" font-size="12" class="mono ink" text-anchor="end" font-weight="700">1,300.00</text>
+    <line x1="0" y1="196" x2="828" y2="196" stroke="#f3f4f6"/>
+
+    <!-- Row 6: 07655 借 -->
+    <text x="50"  y="216" font-size="12" class="mono ink" text-anchor="middle">2022-07-18</text>
+    <text x="150" y="216" font-size="12" class="ink" text-anchor="middle">收 07655</text>
+    <text x="280" y="216" font-size="12" class="ink" text-anchor="middle">客户回款</text>
+    <text x="420" y="216" font-size="12" class="ink" text-anchor="middle">银行存款</text>
+    <text x="540" y="216" font-size="12" class="ink" text-anchor="middle">工行 6FE0</text>
+    <text x="705" y="216" font-size="12" class="mono ink" text-anchor="end">12,000.00</text>
+    <text x="820" y="216" font-size="12" class="mono muted" text-anchor="end">—</text>
+    <line x1="0" y1="228" x2="828" y2="228" stroke="#f3f4f6"/>
+
+    <!-- Row 7: 07655 贷 -->
+    <text x="50"  y="248" font-size="12" class="mono ink" text-anchor="middle">2022-07-18</text>
+    <text x="150" y="248" font-size="12" class="ink" text-anchor="middle">收 07655</text>
+    <text x="280" y="248" font-size="12" class="ink" text-anchor="middle">客户回款</text>
+    <text x="420" y="248" font-size="12" class="ink" text-anchor="middle">应收账款</text>
+    <text x="540" y="248" font-size="12" class="ink" text-anchor="middle">客户 A</text>
+    <text x="705" y="248" font-size="12" class="mono muted" text-anchor="end">—</text>
+    <text x="820" y="248" font-size="12" class="mono ink" text-anchor="end">12,000.00</text>
+  </g>
+
+  <!-- Caption -->
+  <text x="450" y="420" font-size="11" class="muted" text-anchor="middle" font-style="italic">
+    Fig 6 · Chronological tape view across all accounts.
+  </text>
+  <text x="450" y="438" font-size="11" class="muted" text-anchor="middle" font-style="italic">
+    Highlighted 3 rows = 记账凭证 #07654 (A 数电发票 + B 铁路客票 → C 合并支付); 一张捆绑凭证产生多行明细。
+  </text>
+</svg>

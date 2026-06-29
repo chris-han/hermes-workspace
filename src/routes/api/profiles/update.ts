@@ -1,16 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../../server/auth-middleware'
+import path from 'node:path'
 import { updateProfileConfig } from '../../../server/profiles-browser'
 import { requireJsonContentType } from '../../../server/rate-limit'
+import { resolveActiveWorkspaceRoot } from '../../../server/workspace-root'
 
 export const Route = createFileRoute('/api/profiles/update')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ error: 'Unauthorized' }, { status: 401 })
-        }
         const csrfCheck = requireJsonContentType(request)
         if (csrfCheck) return csrfCheck
         try {
@@ -21,7 +19,14 @@ export const Route = createFileRoute('/api/profiles/update')({
           if (!body.patch || typeof body.patch !== 'object') {
             return json({ error: 'patch is required' }, { status: 400 })
           }
-          const profile = updateProfileConfig(body.name || '', body.patch)
+          const workspace = await resolveActiveWorkspaceRoot(request.headers)
+          const hermesHome =
+            workspace.hermesHome || path.join(workspace.path, '.hermes')
+          const profile = updateProfileConfig(
+            body.name || '',
+            body.patch,
+            hermesHome,
+          )
           return json({ ok: true, profile })
         } catch (error) {
           return json(

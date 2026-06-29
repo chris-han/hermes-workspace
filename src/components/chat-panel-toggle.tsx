@@ -26,7 +26,7 @@ export function ChatPanelToggle() {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.8 }}
           transition={{ duration: 0.15 }}
-          className="fixed bottom-12 right-4 z-50"
+          className="fixed bottom-6 right-6 z-50"
         >
           <TooltipProvider>
             <TooltipRoot>
@@ -35,6 +35,7 @@ export function ChatPanelToggle() {
                 render={
                   <Button
                     size="icon"
+                    variant="ghost"
                     className="size-12 rounded-full bg-accent-500 text-white shadow-lg hover:bg-accent-600 active:scale-95 transition-all"
                     aria-label="Open chat"
                   >

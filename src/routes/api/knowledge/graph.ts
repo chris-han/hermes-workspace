@@ -1,19 +1,28 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { isAuthenticated } from '../../../server/auth-middleware'
 import { buildKnowledgeGraph } from '../../../server/knowledge-browser'
+import {
+  resolveActiveWorkspaceRoot,
+  WorkspaceAuthRequiredError,
+} from '../../../server/workspace-root'
 
 export const Route = createFileRoute('/api/knowledge/graph')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthenticated(request)) {
-          return json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
         try {
-          return json(buildKnowledgeGraph())
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
+          return json(
+            buildKnowledgeGraph(activeWorkspace.path, {
+              datasetType: activeWorkspace.datasetType,
+            }),
+          )
         } catch (error) {
+          if (error instanceof WorkspaceAuthRequiredError) {
+            return json({ error: error.message }, { status: 401 })
+          }
           return json(
             {
               error:

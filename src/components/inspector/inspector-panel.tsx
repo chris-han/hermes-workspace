@@ -5,6 +5,7 @@ import type { ActivityEvent } from './activity-store'
 import { getUnavailableReason } from '@/lib/feature-gates'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { cn } from '@/lib/utils'
+import { useWorkspaceStore } from '@/stores/workspace-store'
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
@@ -146,7 +147,7 @@ function ActivityTab() {
             className="ml-auto truncate"
             style={{ color: 'var(--theme-text)' }}
           >
-            {event.text}
+            {event.path ?? event.text}
           </span>
         </div>
       ))}
@@ -159,18 +160,17 @@ function ActivityTab() {
 function FilesTab() {
   const events = useActivityStore((s) => s.events)
 
-  // Extract file paths from activity events
+  // Extract file paths from activity events — prefer the explicit path field
+  // recorded during streaming; fall back to event.text only for legacy events.
   const files = Array.from(
     new Set(
       events
         .filter(
           (e: ActivityEvent) =>
-            e.type === 'tool_call' ||
-            e.type === 'file_read' ||
-            e.type === 'file_write',
+            e.type === 'file_read' || e.type === 'file_write',
         )
-        .map((e: ActivityEvent) => e.text)
-        .filter(Boolean),
+        .map((e: ActivityEvent) => e.path ?? null)
+        .filter((p): p is string => Boolean(p)),
     ),
   )
 
@@ -374,39 +374,192 @@ function SkillsTab() {
 
 // ── Logs Tab ──────────────────────────────────────────────────────────────────
 
+type SessionLogPayload = {
+  session_id?: string
+  session_key?: string
+  model?: string
+  message_count?: number
+  session_start?: string
+  last_updated?: string
+  tools?: Array<unknown>
+  messages?: Array<Record<string, unknown>>
+}
+
 function LogsTab() {
-  const events = useActivityStore((s) => s.events)
-  const scrollRef = useRef<HTMLPreElement>(null)
+  const sessionKey = useWorkspaceStore((s) => s.chatPanelSessionKey)
+  const [log, setLog] = useState<SessionLogPayload | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
-  }, [events.length])
-
-  if (events.length === 0) {
-    return (
-      <div className="p-3">
-        <p className="text-xs" style={{ color: 'var(--theme-muted)' }}>
-          Raw event stream — waiting for activity…
-        </p>
-      </div>
+    if (!sessionKey) {
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    fetch(
+      `/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionKey)}/log`,
     )
-  }
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json() as Promise<SessionLogPayload>
+      })
+      .then((json) => {
+        if (!cancelled) {
+          setLog(json)
+          setLoading(false)
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : 'Failed to load session log',
+          )
+          setLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [sessionKey, refreshKey])
+
+  const messages = Array.isArray(log?.messages) ? log.messages : []
+  const recentMessages = messages.slice(-8)
 
   return (
-    <div className="p-3">
-      <p className="mb-2 text-xs" style={{ color: 'var(--theme-muted)' }}>
-        Raw events ({events.length})
-      </p>
-      <pre
-        ref={scrollRef}
-        className="text-xs rounded p-2 overflow-auto max-h-[400px] font-mono"
+    <div className="space-y-2 p-3 overflow-auto max-h-[calc(100vh-140px)]">
+      {loading && <LoadingState text="Loading session log…" />}
+      {!loading && error && <ErrorState text={`Session log: ${error}`} />}
+      {!loading && !error && !log && (
+        <EmptyState text="No session log available" />
+      )}
+
+      {!loading && log && (
+        <>
+          {/* Session metadata */}
+          <div
+            className="rounded-lg px-3 py-2 text-xs leading-relaxed"
+            style={{
+              backgroundColor: 'var(--theme-card)',
+              border: '1px solid var(--theme-border)',
+              color: 'var(--theme-text)',
+            }}
+          >
+            <p
+              className="text-[10px] uppercase tracking-wider font-semibold mb-1"
+              style={{ color: 'var(--theme-accent)' }}
+            >
+              Session
+            </p>
+            <div>
+              <span style={{ color: 'var(--theme-muted)' }}>Key: </span>
+              <span className="font-mono break-all">
+                {String(log.session_key ?? log.session_id ?? sessionKey)}
+              </span>
+            </div>
+            {log.model && (
+              <div>
+                <span style={{ color: 'var(--theme-muted)' }}>Model: </span>
+                {log.model}
+              </div>
+            )}
+            {typeof log.message_count === 'number' && (
+              <div>
+                <span style={{ color: 'var(--theme-muted)' }}>Messages: </span>
+                {log.message_count}
+              </div>
+            )}
+            {Array.isArray(log.tools) && log.tools.length > 0 && (
+              <div>
+                <span style={{ color: 'var(--theme-muted)' }}>Tools: </span>
+                {log.tools.length} registered
+              </div>
+            )}
+            {log.session_start && (
+              <div>
+                <span style={{ color: 'var(--theme-muted)' }}>Started: </span>
+                {log.session_start}
+              </div>
+            )}
+            {log.last_updated && (
+              <div>
+                <span style={{ color: 'var(--theme-muted)' }}>Updated: </span>
+                {log.last_updated}
+              </div>
+            )}
+          </div>
+
+          {/* Recent messages */}
+          {recentMessages.length > 0 && (
+            <div className="space-y-1">
+              <p
+                className="text-[10px] uppercase tracking-wider font-semibold"
+                style={{ color: 'var(--theme-accent)' }}
+              >
+                Recent Messages ({recentMessages.length} of {messages.length})
+              </p>
+              {recentMessages.map((msg, i) => {
+                const role = String(msg.role ?? 'unknown')
+                const content = msg.content
+                let preview = ''
+                if (typeof content === 'string') {
+                  preview = content.slice(0, 150)
+                } else if (Array.isArray(content)) {
+                  const part = (
+                    content as Array<Record<string, unknown>>
+                  ).find((p) => p?.type === 'text' || typeof p?.text === 'string')
+                  preview =
+                    typeof part?.text === 'string' ? part.text.slice(0, 150) : ''
+                }
+                return (
+                  <div
+                    key={i}
+                    className="rounded px-2 py-1.5 text-xs"
+                    style={{ background: 'var(--theme-card2)' }}
+                  >
+                    <span
+                      className="font-semibold"
+                      style={{
+                        color:
+                          role === 'user'
+                            ? 'var(--theme-accent)'
+                            : 'var(--theme-text)',
+                      }}
+                    >
+                      {role}
+                    </span>
+                    {preview && (
+                      <p
+                        className="mt-0.5 truncate"
+                        style={{ color: 'var(--theme-muted)' }}
+                      >
+                        {preview}
+                      </p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setRefreshKey((k) => k + 1)}
+        className="w-full rounded px-2 py-1 text-xs hover:opacity-80 transition-opacity"
         style={{
           background: 'var(--theme-card2)',
           color: 'var(--theme-muted)',
+          border: '1px solid var(--theme-border)',
         }}
+        disabled={loading}
       >
-        {events.map((e: ActivityEvent) => JSON.stringify(e)).join('\n')}
-      </pre>
+        ↺ Refresh
+      </button>
     </div>
   )
 }

@@ -4,6 +4,8 @@ export type ActivityEvent = {
   type: string
   time: string
   text: string
+  /** Actual filesystem path for file_read / file_write events */
+  path?: string
 }
 
 type ActivityState = {

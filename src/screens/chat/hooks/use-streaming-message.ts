@@ -540,10 +540,25 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
                 : isFileRead
                   ? 'file_read'
                   : 'tool_call'
+            // Extract file path from args for file_read / file_write events
+            let eventPath: string | undefined
+            if (
+              (isFileRead || isFileWrite) &&
+              payload.args &&
+              typeof payload.args === 'object'
+            ) {
+              const args = payload.args as Record<string, unknown>
+              const raw =
+                args.file_path ?? args.path ?? args.target_file ?? args.filename
+              if (typeof raw === 'string' && raw.trim()) {
+                eventPath = raw.trim()
+              }
+            }
             pushActivity({
               type: eventType,
               time: new Date().toLocaleTimeString(),
               text: `${toolName} (${phase})`,
+              ...(eventPath ? { path: eventPath } : {}),
             })
           }
           processStoreEvent({

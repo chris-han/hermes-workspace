@@ -725,12 +725,18 @@ function SkillsTab({ sessionKey }: { sessionKey: string | null }) {
           hasMatch(attached.names, skill.id || skill.name),
         )
 
-        const attachedPlugins = normalizedPlugins.filter((plugin) =>
-          hasMatch(attached.plugins, plugin.id) ||
-          hasMatch(attached.plugins, plugin.name) ||
-          hasMatch(attached.names, plugin.id) ||
-          hasMatch(attached.names, plugin.name),
-        )
+        const attachedPlugins = normalizedPlugins.filter((plugin) => {
+          if (
+            hasMatch(attached.plugins, plugin.id) ||
+            hasMatch(attached.plugins, plugin.name) ||
+            hasMatch(attached.names, plugin.id) ||
+            hasMatch(attached.names, plugin.name)
+          ) {
+            return true
+          }
+          const tools = Array.isArray(plugin.tools) ? plugin.tools : []
+          return tools.some((tool) => hasMatch(attached.tools, tool))
+        })
 
         const attachedToolsets = normalizedToolsets.filter((toolset) => {
           if (
@@ -769,7 +775,12 @@ function SkillsTab({ sessionKey }: { sessionKey: string | null }) {
   if (!sessionKey) {
     return <EmptyState text="Open a session to see session-attached skills, plugins, and tools" />
   }
-  if (skills.length === 0 && plugins.length === 0 && toolsets.length === 0) {
+  if (
+    skills.length === 0 &&
+    plugins.length === 0 &&
+    toolsets.length === 0 &&
+    sessionTools.length === 0
+  ) {
     return <EmptyState text="No session-attached skills, plugins, or tools found" />
   }
 

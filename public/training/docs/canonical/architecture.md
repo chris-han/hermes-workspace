@@ -966,12 +966,8 @@ graph TB
         external["<b>External Analytics</b><br/>Reporting tools<br/>Dashboard clients<br/>___<br/>Read-only access"]
     end
 
-    subgraph mvp["MVP — MCP READ LAYER"]
-        dbhub["<b>DBHub</b><br/>MCP Server<br/>(@bytebase/dbhub)<br/>___<br/>execute_sql<br/>search_objects<br/>___<br/>DSN: file:.semantier-home/eos.db<br/><b>?mode=ro</b>"]
-    end
-
-    subgraph migration["MIGRATION PATH — CentralMind Gateway"]
-        gateway["<b>CentralMind Gateway</b><br/>MCP Server<br/>___<br/>SQLite connector (MVP-compat)<br/>PostgreSQL (production)<br/>DuckDB (OLAP)<br/>ClickHouse (high-volume)"]
+    subgraph migration["FUTURE UNIFIED DB ACCESS GATEWAY"]
+        gateway["<b>CentralMind Gateway</b><br/>MCP Server<br/>___<br/>SQLite connector<br/>PostgreSQL (production)<br/>DuckDB (OLAP)<br/>ClickHouse (high-volume)"]
     end
 
     subgraph retrieval["KGL RETRIEVAL (Governed)"]
@@ -995,7 +991,6 @@ graph TB
 
     %% Connections
     eosdb -->|read| wrapper
-    eosdb -->|read| dbhub
     eosdb -->|read| gateway
     statedb -->|hermes session<br/>via wrapper| hermes
     
@@ -1005,7 +1000,6 @@ graph TB
     pystore -->|writes| commit
     commit -->|persists| eosdb
     
-    external -->|queries| dbhub
     external -->|queries| gateway
     
     holo -->|raw candidates| adapter
@@ -1027,13 +1021,11 @@ graph TB
     
     commit -->|records| audit
     
-    dbhub -.->|MVP| eosdb
     gateway -.->|migration| eosdb
     
     style wrapper fill:#90EE90
     style pystore fill:#90EE90
     style commit fill:#90EE90
-    style dbhub fill:#87CEEB
     style gateway fill:#87CEEB
     style hermes_boundary fill:#fff8e1,stroke:#f59e0b,stroke-width:2px
     style semantier_boundary fill:#ecfeff,stroke:#0891b2,stroke-width:2px
@@ -1704,7 +1696,7 @@ T5 Conflict-Resolution Artifact Record:
 
 2. Read Path Separation:
    hermes-agent read:    via wrapper (same path as write)
-   External analytics:   via MCP (DBHub or CentralMind Gateway)
+   External analytics:   via governed_query today; via CentralMind Gateway MCP when the future unified DB access gateway is enabled
    Retrieval:           via holographic + adapter (for context snapshot only)
 
 3. Responsibility Split:
@@ -1721,7 +1713,7 @@ T5 Conflict-Resolution Artifact Record:
    Replay → never touches live retrieval or KGL
 
 4. Storage Isolation:
-   eos.db (platform-shared governed store, read-only via MCP)
+   eos.db (platform-shared governed store; user-facing reads go through scoped governed analytics surfaces)
    Hermes operational state (shared .semantier-home/state.db SessionDB cache plus workspace-owned session artifacts, not accessible to MCP)
    Authenticated workspace session logs live under
    workspaces/<workspace_id>/sessions/
@@ -1741,8 +1733,8 @@ T5 Conflict-Resolution Artifact Record:
    state is workspace-owned
 
 6. Migration Path:
-   MVP: DBHub ← eos.db (?mode=ro)
-   Scale: CentralMind Gateway ← eos.db (or PostgreSQL/DuckDB/ClickHouse)
+   Current: governed_query ← DuckDB scoped views ← eos.db / derived lakehouse artifacts
+   Future: CentralMind Gateway ← SQLite/PostgreSQL/DuckDB/ClickHouse read connectors
    Application code: no change
    Python store layer: no change
    eos.db may remain platform-shared unless a later plan migrates governed storage
@@ -2285,7 +2277,7 @@ tax filing package            → TaxFilingPackage_t
 accounting archive package    → AccountingArchivePackage_t
 monthly accounting workflow   → MonthlyAccountingWorkflow_t
 hermes-agent EOS access       → Semantier agent wrapper (HermesClient → SemantierAgent → gateway.py → Python store layer)
-external analytic / reporting → MCP database tool (DBHub / CentralMind Gateway) over eos.db (read-only)
+external analytic / reporting → governed_query today; CentralMind Gateway MCP in the future unified DB access design
 ```
 
 ---
@@ -7060,45 +7052,33 @@ Datastore partitioning policy note:
 
 Analytic queries and reporting feature slices — including trial balance aggregation,
 period-over-period CQ trend analysis, management projection views, and financial statement
-cross-period comparisons — consume this data through a governed MCP database tool layer.
+cross-period comparisons — consume this data through governed Semantier runtime APIs or
+explicitly managed external read-only analytics integrations.
 
-The MCP tool layer is the read path for **external analytics clients and reporting tools**
-that are not hermes-agent.  hermes-agent uses the Semantier agent wrapper (see §28.0).
-Direct SQLite access by non-wrapper agents or LLM tools is not permitted.
+External read-only analytics clients and reporting tools may use an MCP database tool
+layer only when it is configured outside Semantier backend startup. hermes-agent uses
+the Semantier agent wrapper (see §28.0). Direct SQLite access by non-wrapper agents or
+LLM tools is not permitted.
 
-### 28.2 MVP — DBHub (SQLite + PostgreSQL)
+### 28.2 External Read-Only Analytics MCP Tools
 
-For MVP, the MCP database tool is **DBHub** (`@bytebase/dbhub`):
+`eos.db` is authoritative Semantier runtime state, not an MCP server. Semantier backend
+startup MUST NOT programmatically register a managed MCP server named `eos_db` or launch
+CentralMind Gateway for EOS access.
 
-```text
-DBHub exposes two MCP tools:
-  execute_sql   — run a SQL query against the configured DSN
-  search_objects — explore schema, tables, columns, indexes
-```
-
-Configuration (see `hermes-agent/cli-config.yaml.example`, section `eos_db`):
-
-```yaml
-eos_db:
-  command: npx
-  args:
-    - "-y"
-    - "@bytebase/dbhub@latest"
-    - "--transport"
-    - "stdio"
-    - "--dsn"
-    - "file:.semantier-home/eos.db?mode=ro"
-```
+External operators may configure their own read-only analytics MCP database tool against
+an approved snapshot or read-only EOS DSN. Such configuration is outside the Semantier
+runtime startup path and must not be treated as governed write authority.
 
 Hard constraints:
 
 ```text
-The DSN MUST use ?mode=ro (read-only) for all agent and reporting access.
+Any external analytics DSN MUST use ?mode=ro (read-only) for SQLite access.
 Write access to eos.db is governed exclusively through the Python store layer
 (full_cycle_store.py, db.py, event_store.py, etc.).
 No agent, LLM tool, or MCP client may INSERT, UPDATE, or DELETE EOS records
 directly via the MCP database tool.
-DBHub may not be used to query hermes-agent's own shared SessionDB
+External MCP database tools may not be used to query hermes-agent's own shared SessionDB
 (`.semantier-home/state.db` or `$SEMANTIER_LOCAL_STATE_DIR/state.db`) or any
 legacy workspace-local state.db residue. That operational cache is controlled
 by Semantier wrapper code, not by agent database tools.
@@ -7149,8 +7129,9 @@ produced by the projection layer and gated by `ProjectionTrustState_t`.
 ### 28.5 Migration Path — CentralMind Gateway
 
 When SQLite limits are reached for OLAP-heavy workloads (trial balance aggregation at scale,
-period-over-period CQ trend queries, or real-time ClickHouse analytics), the MCP database
-tool layer migrates from DBHub to **CentralMind Gateway** (`github.com/centralmind/gateway`).
+period-over-period CQ trend queries, or real-time ClickHouse analytics), external
+read-only database access may be unified through **CentralMind Gateway**
+(`github.com/centralmind/gateway`).
 
 Migration triggers:
 
@@ -7164,8 +7145,8 @@ Migration triggers:
 Migration invariant:
 
 ```text
-The MCP tool binding for external analytics clients changes
-  (cli-config.yaml.example, eos_db section; or gateway.yaml connector).
+The MCP tool binding for external analytics clients is introduced through
+  an explicit gateway.yaml connector.
 The Semantier agent wrapper (SemantierAgent → gateway.py) does not change.
 The Python store layer (full_cycle_store.py, db.py) does not change.
 The governance, projection, replay, and audit evidence chains do not change.
@@ -7175,7 +7156,7 @@ Only the read path for external analytic queries migrates.
 Connectors available via CentralMind Gateway:
 
 ```text
-SQLite    — drop-in for DBHub MVP, identical tables
+SQLite    — read-only EOS compatibility connector
 PostgreSQL — production multi-tenant deployment
 DuckDB    — OLAP analytics layer for period aggregation and CQ trend reporting
 ClickHouse — high-volume journal voucher and ledger projection OLAP
@@ -7301,7 +7282,7 @@ governed_query is not an EOS write path.
 governed_query is not accounting truth authority.
 governed_query does not bypass projection trust gates.
 governed_query does not bypass replay, explainability, or audit contracts.
-governed_query does not expose raw eos.* tables, unscoped lakehouse files, or direct DBHub SQL.
+governed_query does not expose raw eos.* tables, unscoped lakehouse files, or direct external SQL.
 governed_query is the generic governed analytics surface. Dataset-specific public query tools are not part of the runtime contract.
 ```
 
@@ -7413,7 +7394,7 @@ financial statement summaries, and exception exploration) must follow:
    Any exported analytic claim must map to replayable pinned artifacts.
 
 5. Migration neutrality:
-   Slice semantics remain unchanged when read layer moves DBHub -> CentralMind Gateway.
+   Slice semantics remain unchanged if a future CentralMind Gateway read layer is introduced.
 ```
 
 Operational note:

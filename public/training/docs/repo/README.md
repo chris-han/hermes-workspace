@@ -69,9 +69,9 @@ The Excel automation plugin is tracked at
   `org_financial_statement_packages`, `org_tax_filing_packages`,
   `org_accounting_archive_packages`
 
-Raw DBHub SQL, terminal SQL, general code, file/search tools, raw `eos.*`
-tables, and unscoped lakehouse files are not user-facing governed data access
-paths.
+Raw external SQL MCP tools, terminal SQL, general code, file/search tools, raw
+`eos.*` tables, and unscoped lakehouse files are not user-facing governed data
+access paths.
 
 Recommended sequence:
 

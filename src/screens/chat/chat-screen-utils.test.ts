@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { advanceStickyStreamingText } from './chat-screen-utils'
+import {
+  advanceStickyStreamingText,
+  getStreamingPlaceholderMessageId,
+  hasAssistantReplyAfterLastUser,
+} from './chat-screen-utils'
 
 describe('advanceStickyStreamingText', () => {
   it('preserves the last non-empty streaming text when a tool phase temporarily reports empty text', () => {
@@ -48,5 +52,92 @@ describe('advanceStickyStreamingText', () => {
     })
 
     expect(next).toEqual({ runId: null, text: '' })
+  })
+})
+
+describe('hasAssistantReplyAfterLastUser', () => {
+  it('detects that the streamed reply has already materialized after the last user', () => {
+    expect(
+      hasAssistantReplyAfterLastUser({
+        messages: [
+          {
+            role: 'user',
+            content: [{ type: 'text', text: 'Summarize the run' }],
+          },
+          {
+            role: 'assistant',
+            content: [
+              { type: 'text', text: 'The run completed successfully.' },
+            ],
+            id: 'assistant-1',
+          },
+        ],
+        streamingText: 'The run completed successfully.',
+      }),
+    ).toBe(true)
+  })
+
+  it('ignores the synthetic streaming placeholder when checking for a real reply', () => {
+    expect(
+      hasAssistantReplyAfterLastUser({
+        messages: [
+          {
+            role: 'user',
+            content: [{ type: 'text', text: 'Summarize the run' }],
+          },
+          {
+            role: 'assistant',
+            content: [],
+            __optimisticId: 'streaming-current',
+            __streamingStatus: 'streaming',
+            __streamingText: 'The run completed',
+          },
+        ],
+        streamingText: 'The run completed',
+      }),
+    ).toBe(false)
+  })
+
+  it('returns false when the only assistant reply belongs to an earlier turn', () => {
+    expect(
+      hasAssistantReplyAfterLastUser({
+        messages: [
+          {
+            role: 'assistant',
+            content: [{ type: 'text', text: 'Earlier answer.' }],
+          },
+          {
+            role: 'user',
+            content: [{ type: 'text', text: 'New question' }],
+          },
+        ],
+        streamingText: 'Earlier answer.',
+      }),
+    ).toBe(false)
+  })
+})
+
+describe('getStreamingPlaceholderMessageId', () => {
+  it('returns the active synthetic streaming message identity instead of the final assistant identity', () => {
+    expect(
+      getStreamingPlaceholderMessageId([
+        {
+          role: 'user',
+          content: [{ type: 'text', text: 'Question' }],
+        },
+        {
+          role: 'assistant',
+          content: [],
+          __optimisticId: 'streaming-current',
+          __streamingStatus: 'streaming',
+        },
+        {
+          role: 'assistant',
+          id: 'final-assistant',
+          content: [{ type: 'text', text: 'Final answer.' }],
+          __streamingStatus: 'complete',
+        },
+      ]),
+    ).toBe('streaming-current')
   })
 })

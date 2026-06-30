@@ -1236,13 +1236,13 @@ function ChatMessageListComponent({
     }
   }, [scrollMetrics, shouldVirtualize, visibleEntries.length])
 
-  function isMessageStreaming(message: ChatMessage, index: number) {
+  function isMessageStreaming(message: ChatMessage, _index: number) {
     if (!isStreaming || !streamingMessageId) return false
     const messageId = message.__optimisticId || (message as any).id
-    return (
-      messageId === streamingMessageId ||
-      (message.role === 'assistant' && index === lastAssistantIndex)
-    )
+    if (typeof messageId === 'string' && messageId.trim().length > 0) {
+      return messageId === streamingMessageId
+    }
+    return false
   }
 
   function renderMessage(entry: DisplayEntry, entryIndex: number) {

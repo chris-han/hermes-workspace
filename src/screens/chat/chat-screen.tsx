@@ -15,6 +15,8 @@ import { isMissingAuth, textFromMessage } from './utils'
 import {
   advanceStickyStreamingText,
   createOptimisticMessage,
+  getStreamingPlaceholderMessageId,
+  hasAssistantReplyAfterLastUser,
 } from './chat-screen-utils'
 import {
   appendHistoryMessage,
@@ -1428,6 +1430,15 @@ export function ChatScreen({
       return deduped
     }
 
+    if (
+      hasAssistantReplyAfterLastUser({
+        messages: deduped,
+        streamingText: stableActiveStreamingText,
+      })
+    ) {
+      return deduped
+    }
+
     const nextMessages = [...deduped]
     const streamToolCalls = activeToolCalls.map((toolCall) => ({
       ...toolCall,
@@ -1437,7 +1448,9 @@ export function ChatScreen({
     const streamingMsg = {
       role: 'assistant',
       content: [],
-      __optimisticId: 'streaming-current',
+      __optimisticId: isPortableMode
+        ? (localStreamingMessageId ?? 'streaming-current')
+        : 'streaming-current',
       __streamingStatus: 'streaming',
       __streamingText: stableActiveStreamingText,
       __streamingThinking: realtimeStreamingThinking,
@@ -1472,18 +1485,17 @@ export function ChatScreen({
     activeToolCalls,
     activeIsRealtimeStreaming,
     activeRealtimeStreamingText,
+    isPortableMode,
+    localStreamingMessageId,
     realtimeMessages,
     realtimeStreamingThinking,
   ])
 
   const derivedStreamingInfo = useMemo(() => {
     if (activeIsRealtimeStreaming) {
-      const last = finalDisplayMessages[finalDisplayMessages.length - 1]
       const id = isPortableMode
         ? localStreamingMessageId
-        : last?.role === 'assistant'
-          ? (last as any).__optimisticId || (last as any).id || null
-          : null
+        : getStreamingPlaceholderMessageId(finalDisplayMessages)
       return { isStreaming: true, streamingMessageId: id }
     }
     if (waitingForResponse && finalDisplayMessages.length > 0) {

@@ -64,3 +64,90 @@ export function createOptimisticMessage(
 
   return { clientId, optimisticId, optimisticMessage }
 }
+
+export function getChatMessageIdentity(message: ChatMessage): string | null {
+  const raw = message as Record<string, unknown>
+  const candidates = [
+    message.__optimisticId,
+    message.id,
+    message.messageId,
+    raw.clientId,
+    raw.client_id,
+    raw.uuid,
+  ]
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate.trim()
+    }
+  }
+
+  return null
+}
+
+function textFromChatMessage(message: ChatMessage): string {
+  if (Array.isArray(message.content)) {
+    const text = message.content
+      .filter((part) => part.type === 'text' && typeof part.text === 'string')
+      .map((part) => ('text' in part ? part.text : ''))
+      .join('\n')
+      .trim()
+    if (text.length > 0) return text
+  }
+
+  const raw = message as Record<string, unknown>
+  for (const key of ['text', 'body', 'message']) {
+    const value = raw[key]
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim()
+    }
+  }
+
+  return ''
+}
+
+function normalizeAssistantStreamingText(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+export function hasAssistantReplyAfterLastUser(params: {
+  messages: Array<ChatMessage>
+  streamingText: string
+}): boolean {
+  const { messages, streamingText } = params
+  const lastUserIndex = messages.reduce(
+    (lastIndex, message, index) =>
+      message.role === 'user' ? index : lastIndex,
+    -1,
+  )
+  if (lastUserIndex < 0) return false
+
+  const normalizedStreamingText = normalizeAssistantStreamingText(streamingText)
+  return messages.slice(lastUserIndex + 1).some((message) => {
+    if (message.role !== 'assistant') return false
+    if (message.__streamingStatus === 'streaming') return false
+    const messageText = normalizeAssistantStreamingText(
+      textFromChatMessage(message),
+    )
+    if (messageText.length === 0) return false
+    if (normalizedStreamingText.length === 0) return true
+    return (
+      messageText === normalizedStreamingText ||
+      normalizedStreamingText.startsWith(messageText) ||
+      messageText.startsWith(normalizedStreamingText)
+    )
+  })
+}
+
+export function getStreamingPlaceholderMessageId(
+  messages: Array<ChatMessage>,
+): string | null {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    if (message.role !== 'assistant') continue
+    if (message.__streamingStatus !== 'streaming') continue
+    return getChatMessageIdentity(message)
+  }
+
+  return null
+}

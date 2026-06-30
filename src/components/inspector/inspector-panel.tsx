@@ -23,7 +23,7 @@ export const useInspectorStore = create<InspectorStore>((set) => ({
 
 // ── Tab types ─────────────────────────────────────────────────────────────────
 
-type TabId = 'activity' | 'artifacts' | 'files' | 'memory' | 'skills' | 'logs'
+type TabId = 'activity' | 'artifacts' | 'memory' | 'skills' | 'logs'
 
 const TABS: Array<{
   id: TabId
@@ -32,7 +32,6 @@ const TABS: Array<{
 }> = [
   { id: 'activity', label: 'Activity' },
   { id: 'artifacts', label: 'Artifacts' },
-  { id: 'files', label: 'Files' },
   { id: 'memory', label: 'Memory', feature: 'memory' },
   { id: 'skills', label: 'Skills', feature: 'skills' },
   { id: 'logs', label: 'Logs' },
@@ -386,52 +385,6 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
   )
 }
 
-// ── Files Tab ─────────────────────────────────────────────────────────────────
-
-function FilesTab() {
-  const events = useActivityStore((s) => s.events)
-
-  // Extract file paths from activity events — prefer the explicit path field
-  // recorded during streaming; fall back to event.text only for legacy events.
-  const files = Array.from(
-    new Set(
-      events
-        .filter(
-          (e: ActivityEvent) =>
-            e.type === 'file_read' || e.type === 'file_write',
-        )
-        .map((e: ActivityEvent) => e.path ?? null)
-        .filter((p): p is string => Boolean(p)),
-    ),
-  )
-
-  if (files.length === 0) {
-    return (
-      <EmptyState text="No files touched yet — activity will appear during chat" />
-    )
-  }
-
-  return (
-    <div className="space-y-1 p-3">
-      <p className="mb-2 text-xs" style={{ color: 'var(--theme-muted)' }}>
-        Files touched in session ({files.length})
-      </p>
-      {files.map((file: string, i: number) => (
-        <div
-          key={i}
-          className="rounded px-2 py-1 text-xs font-mono truncate"
-          style={{
-            color: 'var(--theme-text)',
-            background: 'var(--theme-card2)',
-          }}
-        >
-          {file}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 // ── Memory Tab ────────────────────────────────────────────────────────────────
 
 function MemoryTab() {
@@ -454,8 +407,8 @@ function MemoryTab() {
           const list = Array.isArray(json?.files) ? json.files : []
           setFiles(
             list.map((entry: Record<string, unknown>) => ({
-              path: String(entry?.path || ''),
-              name: String(entry?.name || entry?.path || ''),
+              path: String(entry.path || ''),
+              name: String(entry.name || entry.path || ''),
             })),
           )
           setLoading(false)
@@ -547,7 +500,7 @@ function SkillsTab() {
   if (skills.length === 0) return <EmptyState text="No skills found" />
 
   // Group by category
-  const grouped: Record<string, Array<SkillItem>> = {}
+  const grouped: Partial<Record<string, Array<SkillItem>>> = {}
   for (const skill of skills) {
     const cat = skill.category || 'Uncategorized'
     if (!grouped[cat]) grouped[cat] = []
@@ -1044,7 +997,6 @@ export function InspectorPanel({
             {activeTab === 'artifacts' && (
               <ArtifactsTab sessionKey={sessionKey} />
             )}
-            {activeTab === 'files' && <FilesTab />}
             {activeTab === 'memory' && <MemoryTab />}
             {activeTab === 'skills' && <SkillsTab />}
             {activeTab === 'logs' && <LogsTab sessionKey={sessionKey} />}

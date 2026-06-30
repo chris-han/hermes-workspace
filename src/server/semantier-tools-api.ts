@@ -16,6 +16,7 @@ export type SemantierToolsetInfo = {
   configured: boolean
   sourceTier?: string
   sourceLabel?: string
+  platformCompatibility?: Array<string>
   builtin?: boolean
   canModify?: boolean
 }
@@ -40,7 +41,7 @@ export async function fetchSemantierToolsets(
 
   if (!response.ok) {
     const record =
-      payload && !Array.isArray(payload)
+      !Array.isArray(payload)
         ? (payload as { error?: string; detail?: string })
         : {}
     throw new Error(

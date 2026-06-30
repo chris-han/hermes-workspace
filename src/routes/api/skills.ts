@@ -35,6 +35,7 @@ type SkillSummary = {
   builtin?: boolean
   sourceTier?: string
   sourceLabel?: string
+  platformCompatibility: Array<string>
   canEdit?: boolean
   canUninstall?: boolean
   canModify?: boolean
@@ -159,14 +160,14 @@ function normalizeSkillConfigFields(value: unknown): Array<SkillConfigField> {
         : 'string'
 
     const options = Array.isArray(record.options)
-      ? record.options
-          .map((option) => {
-            const optRecord = asRecord(option)
-            const value = readString(optRecord.value)
-            const label = readString(optRecord.label) || value
-            if (!value) return null
-            return { label, value }
-          })
+          ? record.options
+              .map((option) => {
+                const optRecord = asRecord(option)
+                const optionValue = readString(optRecord.value)
+                const label = readString(optRecord.label) || optionValue
+                if (!optionValue) return null
+                return { label, value: optionValue }
+              })
           .filter((option): option is { label: string; value: string } =>
             Boolean(option),
           )
@@ -255,6 +256,7 @@ function normalizeSkill(value: unknown): SkillSummary | null {
     builtin: Boolean(record.builtin),
     sourceTier: readString(record.sourceTier) || undefined,
     sourceLabel: readString(record.sourceLabel) || undefined,
+    platformCompatibility: readStringArray(record.platformCompatibility),
     canEdit: typeof record.canEdit === 'boolean' ? record.canEdit : undefined,
     canUninstall:
       typeof record.canUninstall === 'boolean'
@@ -300,6 +302,7 @@ function matchesSearch(skill: SkillSummary, rawSearch: string): boolean {
     skill.description,
     skill.author,
     skill.category,
+    ...skill.platformCompatibility,
     ...skill.tags,
     ...skill.triggers,
   ]

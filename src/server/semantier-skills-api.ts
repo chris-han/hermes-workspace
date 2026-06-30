@@ -18,6 +18,7 @@ export type SemantierSkillInventoryItem = {
   builtin?: boolean
   sourceTier?: string
   sourceLabel?: string
+  platformCompatibility?: Array<string>
   canEdit?: boolean
   canUninstall?: boolean
   canModify?: boolean

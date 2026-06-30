@@ -456,48 +456,322 @@ function MemoryTab() {
 // ── Skills Tab ────────────────────────────────────────────────────────────────
 
 type SkillItem = {
+  id?: string
   name: string
   category?: string
   description?: string
+  enabled?: boolean
 }
 
-function SkillsTab() {
+type PluginItem = {
+  id: string
+  name: string
+  description?: string
+  enabled?: boolean
+  toolsets?: Array<string>
+  tools?: Array<string>
+}
+
+type ToolsetItem = {
+  id: string
+  name: string
+  description?: string
+  enabled?: boolean
+  available?: boolean
+  configured?: boolean
+  tools?: Array<string>
+}
+
+function readRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {}
+}
+
+function readString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function readStringArray(value: unknown): Array<string> {
+  if (!Array.isArray(value)) return []
+  return value.map((entry) => readString(entry)).filter(Boolean)
+}
+
+function readBoolean(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') return value
+  return undefined
+}
+
+function normalizeMatchKey(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+function hasMatch(set: Set<string>, value: string | undefined): boolean {
+  if (!value) return false
+  return set.has(normalizeMatchKey(value))
+}
+
+function normalizeSkillsPayload(payload: unknown): Array<SkillItem> {
+  const record = readRecord(payload)
+  const list = Array.isArray(payload)
+    ? payload
+    : Array.isArray(record.skills)
+      ? record.skills
+      : Array.isArray(record.data)
+        ? record.data
+        : []
+
+  return list
+    .map((entry) => {
+      const item = readRecord(entry)
+      const name = readString(item.name) || readString(item.id)
+      if (!name) return null
+      return {
+        id: readString(item.id) || undefined,
+        name,
+        category: readString(item.category) || undefined,
+        description: readString(item.description) || undefined,
+        enabled: readBoolean(item.enabled),
+      }
+    })
+    .filter((entry): entry is SkillItem => Boolean(entry))
+}
+
+function normalizePluginsPayload(payload: unknown): Array<PluginItem> {
+  const record = readRecord(payload)
+  const list = Array.isArray(payload)
+    ? payload
+    : Array.isArray(record.plugins)
+      ? record.plugins
+      : []
+
+  return list
+    .map((entry) => {
+      const item = readRecord(entry)
+      const id = readString(item.id) || readString(item.name)
+      if (!id) return null
+      return {
+        id,
+        name:
+          readString(item.label) || readString(item.name) || readString(item.id),
+        description: readString(item.description) || undefined,
+        enabled: readBoolean(item.enabled),
+        toolsets: readStringArray(item.toolsets),
+        tools: readStringArray(item.tools),
+      }
+    })
+    .filter((entry): entry is PluginItem => Boolean(entry))
+}
+
+function normalizeToolsetsPayload(payload: unknown): Array<ToolsetItem> {
+  const record = readRecord(payload)
+  const list = Array.isArray(payload)
+    ? payload
+    : Array.isArray(record.tools)
+      ? record.tools
+      : []
+
+  return list
+    .map((entry) => {
+      const item = readRecord(entry)
+      const id = readString(item.id) || readString(item.name)
+      if (!id) return null
+      return {
+        id,
+        name:
+          readString(item.label) || readString(item.name) || readString(item.id),
+        description: readString(item.description) || undefined,
+        enabled: readBoolean(item.enabled),
+        available: readBoolean(item.available),
+        configured: readBoolean(item.configured),
+        tools: readStringArray(item.tools),
+      }
+    })
+    .filter((entry): entry is ToolsetItem => Boolean(entry))
+}
+
+function extractSessionAttachments(value: unknown): {
+  skills: Set<string>
+  plugins: Set<string>
+  toolsets: Set<string>
+  tools: Set<string>
+  names: Set<string>
+} {
+  const skills = new Set<string>()
+  const plugins = new Set<string>()
+  const toolsets = new Set<string>()
+  const tools = new Set<string>()
+  const names = new Set<string>()
+
+  const add = (set: Set<string>, input: unknown) => {
+    const value = readString(input)
+    if (!value) return
+    set.add(normalizeMatchKey(value))
+  }
+
+  const addArray = (set: Set<string>, input: unknown) => {
+    for (const value of readStringArray(input)) {
+      set.add(normalizeMatchKey(value))
+    }
+  }
+
+  if (!Array.isArray(value)) {
+    return { skills, plugins, toolsets, tools, names }
+  }
+
+  for (const entry of value) {
+    if (typeof entry === 'string') {
+      add(tools, entry)
+      add(names, entry)
+      continue
+    }
+
+    const item = readRecord(entry)
+    add(names, item.name)
+    add(names, item.id)
+    add(names, item.label)
+
+    add(skills, item.skill)
+    add(skills, item.skillName)
+    add(skills, item.skill_id)
+    add(plugins, item.plugin)
+    add(plugins, item.pluginName)
+    add(plugins, item.plugin_id)
+    add(toolsets, item.toolset)
+    add(toolsets, item.toolsetName)
+    add(toolsets, item.toolset_id)
+    add(tools, item.tool)
+    add(tools, item.toolName)
+
+    addArray(skills, item.skills)
+    addArray(plugins, item.plugins)
+    addArray(toolsets, item.toolsets)
+    addArray(tools, item.tools)
+
+    const kind = normalizeMatchKey(readString(item.type) || readString(item.kind))
+    const canonicalName =
+      readString(item.name) || readString(item.id) || readString(item.label)
+    if (canonicalName) {
+      if (kind === 'skill') add(skills, canonicalName)
+      if (kind === 'plugin') add(plugins, canonicalName)
+      if (kind === 'toolset') add(toolsets, canonicalName)
+      if (kind === 'tool') add(tools, canonicalName)
+    }
+  }
+
+  return { skills, plugins, toolsets, tools, names }
+}
+
+function SkillsTab({ sessionKey }: { sessionKey: string | null }) {
   const [skills, setSkills] = useState<Array<SkillItem>>([])
+  const [plugins, setPlugins] = useState<Array<PluginItem>>([])
+  const [toolsets, setToolsets] = useState<Array<ToolsetItem>>([])
+  const [sessionTools, setSessionTools] = useState<Array<string>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/skills')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    setLoading(true)
+    setError(null)
+
+    if (!sessionKey) {
+      setSkills([])
+      setPlugins([])
+      setToolsets([])
+      setSessionTools([])
+      setLoading(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    Promise.all([
+      fetch('/api/skills').then((res) => {
+        if (!res.ok) throw new Error(`skills: HTTP ${res.status}`)
         return res.json()
+      }),
+      fetch('/api/plugins').then((res) => {
+        if (!res.ok) throw new Error(`plugins: HTTP ${res.status}`)
+        return res.json()
+      }),
+      fetch('/api/tools/toolsets').then((res) => {
+        if (!res.ok) throw new Error(`tools: HTTP ${res.status}`)
+        return res.json()
+      }),
+      sessionKey
+        ? fetch(
+            `/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionKey)}/log`,
+          )
+            .then((res) => {
+              if (!res.ok) throw new Error(`session log: HTTP ${res.status}`)
+              return res.json()
+            })
+            .catch(() => null)
+        : Promise.resolve(null),
+    ])
+      .then(([skillsPayload, pluginsPayload, toolsPayload, logPayload]) => {
+        if (cancelled) return
+
+        const normalizedSkills = normalizeSkillsPayload(skillsPayload)
+        const normalizedPlugins = normalizePluginsPayload(pluginsPayload)
+        const normalizedToolsets = normalizeToolsetsPayload(toolsPayload)
+        const logRecord = readRecord(logPayload)
+        const attached = extractSessionAttachments(logRecord.tools)
+
+        const attachedSkills = normalizedSkills.filter((skill) =>
+          hasMatch(attached.skills, skill.id || skill.name) ||
+          hasMatch(attached.names, skill.id || skill.name),
+        )
+
+        const attachedPlugins = normalizedPlugins.filter((plugin) =>
+          hasMatch(attached.plugins, plugin.id) ||
+          hasMatch(attached.plugins, plugin.name) ||
+          hasMatch(attached.names, plugin.id) ||
+          hasMatch(attached.names, plugin.name),
+        )
+
+        const attachedToolsets = normalizedToolsets.filter((toolset) => {
+          if (
+            hasMatch(attached.toolsets, toolset.id) ||
+            hasMatch(attached.toolsets, toolset.name) ||
+            hasMatch(attached.names, toolset.id) ||
+            hasMatch(attached.names, toolset.name)
+          ) {
+            return true
+          }
+          const tools = Array.isArray(toolset.tools) ? toolset.tools : []
+          return tools.some((tool) => hasMatch(attached.tools, tool))
+        })
+
+        const attachedTools = Array.from(attached.tools)
+
+        setSkills(attachedSkills)
+        setPlugins(attachedPlugins)
+        setToolsets(attachedToolsets)
+        setSessionTools(attachedTools)
+        setLoading(false)
       })
-      .then((json) => {
-        if (!cancelled) {
-          // Handle array of skills or object with skills property
-          const list = Array.isArray(json)
-            ? json
-            : json.skills || json.data || []
-          setSkills(list)
-          setLoading(false)
-        }
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'Failed to load skills tab')
+        setLoading(false)
       })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err.message || 'Failed to load skills')
-          setLoading(false)
-        }
-      })
+
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [sessionKey])
 
   if (loading) return <LoadingState text="Loading skills…" />
   if (error) return <ErrorState text={`Skills: ${error}`} />
-  if (skills.length === 0) return <EmptyState text="No skills found" />
+  if (!sessionKey) {
+    return <EmptyState text="Open a session to see session-attached skills, plugins, and tools" />
+  }
+  if (skills.length === 0 && plugins.length === 0 && toolsets.length === 0) {
+    return <EmptyState text="No session-attached skills, plugins, or tools found" />
+  }
 
   // Group by category
   const grouped: Partial<Record<string, Array<SkillItem>>> = {}
@@ -510,48 +784,175 @@ function SkillsTab() {
   return (
     <div className="space-y-3 p-3 overflow-auto max-h-[calc(100vh-140px)]">
       <p className="text-xs" style={{ color: 'var(--theme-muted)' }}>
-        {skills.length} skills loaded
+        {`Session: ${sessionKey}`}
       </p>
-      {Object.entries(grouped).map(([category, items]) => (
-        <div key={category}>
-          <p
-            className="text-[10px] uppercase tracking-wider mb-1 font-semibold"
-            style={{ color: 'var(--theme-accent)' }}
-          >
-            {category}
-          </p>
-          {items.map((skill) => (
-            <button
-              key={skill.name}
-              type="button"
-              onClick={() =>
-                setExpanded(expanded === skill.name ? null : skill.name)
-              }
-              className="w-full text-left rounded px-2 py-1.5 text-xs mb-0.5 transition-colors"
-              style={{
-                background:
-                  expanded === skill.name
-                    ? 'var(--theme-card2)'
-                    : 'transparent',
-                color: 'var(--theme-text)',
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <span style={{ color: 'var(--theme-accent)' }}>⚡</span>
-                <span>{skill.name}</span>
-              </div>
-              {expanded === skill.name && skill.description && (
-                <p
-                  className="mt-1 pl-5 text-[11px]"
-                  style={{ color: 'var(--theme-muted)' }}
+      <div className="space-y-1">
+        <p
+          className="text-[10px] uppercase tracking-wider mb-1 font-semibold"
+          style={{ color: 'var(--theme-accent)' }}
+        >
+          Loaded Skills ({skills.length})
+        </p>
+        {Object.entries(grouped).map(([category, items]) => (
+          <div key={category}>
+            <p className="text-[10px] mb-1" style={{ color: 'var(--theme-muted)' }}>
+              {category}
+            </p>
+            {items.map((skill) => {
+              const itemKey = `skill:${skill.id || skill.name}`
+              return (
+                <button
+                  key={itemKey}
+                  type="button"
+                  onClick={() => setExpanded(expanded === itemKey ? null : itemKey)}
+                  className="w-full text-left rounded px-2 py-1.5 text-xs mb-0.5 transition-colors"
+                  style={{
+                    background:
+                      expanded === itemKey
+                        ? 'var(--theme-card2)'
+                        : 'transparent',
+                    color: 'var(--theme-text)',
+                  }}
                 >
-                  {skill.description}
-                </p>
-              )}
-            </button>
-          ))}
-        </div>
-      ))}
+                  <div className="flex items-center gap-2">
+                    <span style={{ color: 'var(--theme-accent)' }}>⚡</span>
+                    <span>{skill.name}</span>
+                    {skill.enabled === false ? (
+                      <span
+                        className="ml-auto text-[10px]"
+                        style={{ color: 'var(--theme-muted)' }}
+                      >
+                        disabled
+                      </span>
+                    ) : null}
+                  </div>
+                  {expanded === itemKey && skill.description ? (
+                    <p
+                      className="mt-1 pl-5 text-[11px]"
+                      style={{ color: 'var(--theme-muted)' }}
+                    >
+                      {skill.description}
+                    </p>
+                  ) : null}
+                </button>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-1">
+        <p
+          className="text-[10px] uppercase tracking-wider mb-1 font-semibold"
+          style={{ color: 'var(--theme-accent)' }}
+        >
+          Plugins ({plugins.length})
+        </p>
+        {plugins.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--theme-muted)' }}>
+            No plugins loaded
+          </p>
+        ) : (
+          plugins.map((plugin) => {
+            const itemKey = `plugin:${plugin.id}`
+            return (
+              <button
+                key={plugin.id}
+                type="button"
+                onClick={() => setExpanded(expanded === itemKey ? null : itemKey)}
+                className="w-full text-left rounded px-2 py-1.5 text-xs mb-0.5 transition-colors"
+                style={{
+                  background:
+                    expanded === itemKey ? 'var(--theme-card2)' : 'transparent',
+                  color: 'var(--theme-text)',
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <span style={{ color: 'var(--theme-accent)' }}>◆</span>
+                  <span>{plugin.name}</span>
+                  {plugin.enabled === false ? (
+                    <span
+                      className="ml-auto text-[10px]"
+                      style={{ color: 'var(--theme-muted)' }}
+                    >
+                      disabled
+                    </span>
+                  ) : null}
+                </div>
+                {expanded === itemKey ? (
+                  <div className="mt-1 pl-5 space-y-0.5 text-[11px]" style={{ color: 'var(--theme-muted)' }}>
+                    {plugin.description ? <p>{plugin.description}</p> : null}
+                    {plugin.toolsets && plugin.toolsets.length > 0 ? (
+                      <p>Toolsets: {plugin.toolsets.join(', ')}</p>
+                    ) : null}
+                    {plugin.tools && plugin.tools.length > 0 ? (
+                      <p>Tools: {plugin.tools.join(', ')}</p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </button>
+            )
+          })
+        )}
+      </div>
+
+      <div className="space-y-1">
+        <p
+          className="text-[10px] uppercase tracking-wider mb-1 font-semibold"
+          style={{ color: 'var(--theme-accent)' }}
+        >
+          Tools ({sessionTools.length > 0 ? `${sessionTools.length} in session` : `${toolsets.length} toolsets`})
+        </p>
+        {sessionTools.length > 0 ? (
+          <div className="rounded px-2 py-2 text-xs" style={{ background: 'var(--theme-card2)' }}>
+            <p style={{ color: 'var(--theme-muted)' }}>
+              Session tools: {sessionTools.join(', ')}
+            </p>
+          </div>
+        ) : null}
+        {toolsets.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--theme-muted)' }}>
+            No toolsets loaded
+          </p>
+        ) : (
+          toolsets.map((toolset) => {
+            const itemKey = `toolset:${toolset.id}`
+            return (
+              <button
+                key={toolset.id}
+                type="button"
+                onClick={() => setExpanded(expanded === itemKey ? null : itemKey)}
+                className="w-full text-left rounded px-2 py-1.5 text-xs mb-0.5 transition-colors"
+                style={{
+                  background:
+                    expanded === itemKey ? 'var(--theme-card2)' : 'transparent',
+                  color: 'var(--theme-text)',
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <span style={{ color: 'var(--theme-accent)' }}>◦</span>
+                  <span>{toolset.name}</span>
+                  {toolset.enabled === false ? (
+                    <span className="ml-auto text-[10px]" style={{ color: 'var(--theme-muted)' }}>
+                      disabled
+                    </span>
+                  ) : null}
+                </div>
+                {expanded === itemKey ? (
+                  <div className="mt-1 pl-5 space-y-0.5 text-[11px]" style={{ color: 'var(--theme-muted)' }}>
+                    {toolset.description ? <p>{toolset.description}</p> : null}
+                    {toolset.available === false ? <p>Unavailable in current environment</p> : null}
+                    {toolset.configured === false ? <p>Not configured</p> : null}
+                    {toolset.tools && toolset.tools.length > 0 ? (
+                      <p>Tools: {toolset.tools.join(', ')}</p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </button>
+            )
+          })
+        )}
+      </div>
     </div>
   )
 }
@@ -998,7 +1399,7 @@ export function InspectorPanel({
               <ArtifactsTab sessionKey={sessionKey} />
             )}
             {activeTab === 'memory' && <MemoryTab />}
-            {activeTab === 'skills' && <SkillsTab />}
+            {activeTab === 'skills' && <SkillsTab sessionKey={sessionKey} />}
             {activeTab === 'logs' && <LogsTab sessionKey={sessionKey} />}
           </div>
         </>

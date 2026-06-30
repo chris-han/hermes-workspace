@@ -97,6 +97,27 @@ export const PROVIDER_CATALOG: Array<ProviderInfo> = [
     ),
   },
   {
+    id: 'alibaba',
+    name: 'Qwen Cloud / DashScope',
+    description: 'Alibaba Cloud DashScope API for Qwen models.',
+    authTypes: ['api-key'],
+    docsUrl: 'https://dashscope.console.aliyun.com/',
+    configExample: JSON.stringify(
+      {
+        auth: {
+          profiles: {
+            'alibaba:default': {
+              provider: 'alibaba',
+              apiKey: 'sk-your-key-here',
+            },
+          },
+        },
+      },
+      null,
+      2,
+    ),
+  },
+  {
     id: 'minimax',
     name: 'MiniMax',
     description: 'MiniMax foundation models and multimodal APIs.',

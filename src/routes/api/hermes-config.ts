@@ -17,8 +17,8 @@ import {
   resolveHermesHomeFromBackend,
   resolveHermesPathFromBackend,
 } from '../../server/hermes-home'
-import { createCapabilityUnavailablePayload } from '@/lib/feature-gates'
 import { WorkspaceAuthRequiredError } from '../../server/workspace-root'
+import { createCapabilityUnavailablePayload } from '@/lib/feature-gates'
 
 type AuthResult = Response | true
 
@@ -37,6 +37,12 @@ const PROVIDERS = [
     name: 'OpenRouter',
     authType: 'api_key',
     envKeys: ['OPENROUTER_API_KEY'],
+  },
+  {
+    id: 'alibaba',
+    name: 'Qwen Cloud / DashScope',
+    authType: 'api_key',
+    envKeys: ['DASHSCOPE_API_KEY'],
   },
   {
     id: 'zai',

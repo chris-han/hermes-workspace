@@ -56,6 +56,8 @@ async function patchConfig(
  */
 const KNOWN_PROVIDER_PREFIXES = [
   'openrouter',
+  'alibaba',
+  'dashscope',
   'anthropic',
   'openai',
   'openai-codex',
@@ -459,7 +461,9 @@ function getDraftValue(
   config: HermesConfig | undefined,
   draftValues: Record<string, string>,
 ): string {
-  if (draftValues[setting.id] !== undefined) return draftValues[setting.id]
+  if (Object.prototype.hasOwnProperty.call(draftValues, setting.id)) {
+    return draftValues[setting.id] ?? ''
+  }
   if (!setting.path) return ''
   const rawValue = readPath(config, setting.path)
   if (setting.formatter) return setting.formatter(rawValue)
@@ -769,7 +773,12 @@ function SettingCard(props: {
   )
 }
 
-type ModelProviderOption = 'custom' | 'openrouter' | 'anthropic' | 'openai'
+type ModelProviderOption =
+  | 'custom'
+  | 'openrouter'
+  | 'alibaba'
+  | 'anthropic'
+  | 'openai'
 
 type ModelConfigDraft = {
   provider: ModelProviderOption
@@ -785,11 +794,18 @@ type PerformanceDraft = {
 const MODEL_PROVIDER_OPTIONS: Array<SelectOption> = [
   { label: 'Custom', value: 'custom' },
   { label: 'OpenRouter', value: 'openrouter' },
+  { label: 'Qwen Cloud / DashScope', value: 'alibaba' },
   { label: 'Anthropic', value: 'anthropic' },
   { label: 'OpenAI', value: 'openai' },
 ]
 
 const MODEL_PRESETS = [
+  {
+    id: 'dashscope',
+    label: 'Qwen Cloud / DashScope',
+    provider: 'alibaba' as const,
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+  },
   {
     id: 'atomic-chat',
     label: 'Atomic Chat',

@@ -82,6 +82,7 @@ type SkillSummary = {
   enabled: boolean
   sourceTier?: string
   sourceLabel?: string
+  platformCompatibility?: Array<string>
   canEdit?: boolean
   canUninstall?: boolean
   canModify?: boolean
@@ -115,6 +116,7 @@ type ToolsetSummary = {
   configured: boolean
   sourceTier?: string
   sourceLabel?: string
+  platformCompatibility?: Array<string>
   builtin?: boolean
   canModify?: boolean
 }
@@ -126,6 +128,7 @@ type PluginSummary = {
   description: string
   sourceTier?: string
   sourceLabel?: string
+  platformCompatibility?: Array<string>
   enabled: boolean
   category: string
   toolsets: Array<string>
@@ -221,6 +224,8 @@ const MARKETPLACE_URL_PRESETS = [
   },
 ]
 
+type SkillOverrideMap = Partial<Record<string, SkillOverride>>
+
 const DEFAULT_CATEGORIES = [
   'All',
   'Web & Frontend',
@@ -243,6 +248,58 @@ const SOURCE_FILTERS: Array<SkillSourceFilter> = [
   'User',
   'Shared',
 ]
+
+const PLATFORM_LABELS: Record<string, string> = {
+  cli: 'CLI',
+  weixin: 'Weixin',
+  feishu: 'Feishu',
+  api_server: 'API',
+  acp: 'ACP',
+}
+
+function normalizePlatformCompatibility(
+  platforms?: Array<string>,
+): Array<string> {
+  if (!Array.isArray(platforms)) return []
+  return Array.from(
+    new Set(
+      platforms
+        .map((platform) => platform.trim())
+        .filter(Boolean),
+    ),
+  ).sort()
+}
+
+function PlatformCompatibilityChips({
+  platforms,
+  max = 3,
+}: {
+  platforms?: Array<string>
+  max?: number
+}) {
+  const normalized = normalizePlatformCompatibility(platforms)
+  if (normalized.length === 0) return null
+  const visible = normalized.slice(0, max)
+  const extra = normalized.length - visible.length
+
+  return (
+    <>
+      {visible.map((platform) => (
+        <span
+          key={platform}
+          className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500"
+        >
+          {PLATFORM_LABELS[platform] || platform}
+        </span>
+      ))}
+      {extra > 0 ? (
+        <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+          +{extra} platforms
+        </span>
+      ) : null}
+    </>
+  )
+}
 
 const TAB_OPTIONS: Array<DisplayControl & { value: SkillsTab }> = [
   { label: 'Installed', value: 'installed' },
@@ -310,6 +367,7 @@ function matchesToolsetSearch(
     toolset.label,
     toolset.description,
     toolset.sourceLabel || '',
+    ...(toolset.platformCompatibility || []),
     ...toolset.tools,
   ]
     .join('\n')
@@ -327,6 +385,7 @@ function matchesPluginSearch(plugin: PluginSummary, rawSearch: string): boolean 
     plugin.description,
     plugin.category,
     plugin.sourceLabel || '',
+    ...(plugin.platformCompatibility || []),
     ...plugin.toolsets,
     ...plugin.tools,
     ...plugin.providesHooks,
@@ -355,12 +414,20 @@ function resolveSkillSearchTier(
   }
 
   if (skill.description.toLowerCase().includes(normalizedQuery)) return 2
+  if (
+    normalizePlatformCompatibility(skill.platformCompatibility)
+      .join(' ')
+      .toLowerCase()
+      .includes(normalizedQuery)
+  ) {
+    return 2
+  }
   return 3
 }
 
 function applySkillOverrides(
   skills: Array<SkillSummary>,
-  overrides: Record<string, SkillOverride>,
+  overrides: SkillOverrideMap,
 ): Array<SkillSummary> {
   return skills.map((skill) => {
     const override = overrides[skill.id]
@@ -518,6 +585,13 @@ function displayMarketplaceUrlInput(value: string): string {
   return value.trim() || DEFAULT_MARKETPLACE_DISPLAY_URL
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+  return {}
+}
+
 function normalizeInstallIdentifier(rawValue: string): string {
   const value = rawValue.trim()
   if (!value) return ''
@@ -556,7 +630,7 @@ export function SkillsScreen() {
     null,
   )
   const [skillOverrides, setSkillOverrides] = useState<
-    Record<string, SkillOverride>
+    SkillOverrideMap
   >({})
   const [selectedSkill, setSelectedSkill] = useState<SkillSummary | null>(null)
   const [selectedToolset, setSelectedToolset] = useState<ToolsetSummary | null>(
@@ -627,7 +701,7 @@ export function SkillsScreen() {
 
       if (!response.ok) {
         const record =
-          payload && !Array.isArray(payload)
+          !Array.isArray(payload)
             ? (payload as { error?: string; detail?: string })
             : {}
         throw new Error(
@@ -649,7 +723,7 @@ export function SkillsScreen() {
 
       if (!response.ok) {
         const record =
-          payload && !Array.isArray(payload)
+          !Array.isArray(payload)
             ? (payload as { error?: string; detail?: string })
             : {}
         throw new Error(
@@ -657,11 +731,7 @@ export function SkillsScreen() {
         )
       }
 
-      return (payload as PluginsApiResponse) || {
-        plugins: [],
-        total: 0,
-        categories: ['All'],
-      }
+      return payload as PluginsApiResponse
     },
   })
 
@@ -811,20 +881,21 @@ export function SkillsScreen() {
       ).map(function mapHubSkill(skill) {
         // Gateway returns: name, description, source, identifier, trust_level, repo, path, tags, extra, installed
         const skillId = skill.id || skill.name
+        const extra = asRecord(skill.extra)
         const author =
           skill.author ||
           (skill.repo ? skill.repo.split('/')[0] : null) ||
-          (skill.extra as Record<string, unknown>)?.author ||
+          extra.author ||
           skill.source ||
           'Community'
         const homepage =
           skill.homepage ||
           skill.repo ||
-          (skill.extra as Record<string, unknown>)?.homepage ||
+          extra.homepage ||
           null
-        const category =
+        const skillCategory =
           skill.category ||
-          (skill.extra as Record<string, unknown>)?.category ||
+          extra.category ||
           'Productivity'
 
         return {
@@ -836,7 +907,7 @@ export function SkillsScreen() {
           triggers: skill.tags,
           tags: skill.tags,
           homepage: typeof homepage === 'string' ? homepage : null,
-          category: String(category),
+          category: String(skillCategory),
           icon:
             skill.source === 'github'
               ? '🐙'
@@ -873,6 +944,7 @@ export function SkillsScreen() {
             skill.source === 'official' || skill.trust_level === 'builtin'
               ? 'Shared'
               : 'Shared',
+          platformCompatibility: [],
           featuredGroup: undefined,
           security: {
             level:
@@ -987,9 +1059,9 @@ export function SkillsScreen() {
         command?: string
         ok?: boolean
       }
-      const actionError = data.error || data.detail || 'Action failed'
+      const responseError = data.error || data.detail || 'Action failed'
       if (!response.ok) {
-        throw new Error(actionError)
+        throw new Error(responseError)
       }
 
       if (
@@ -999,11 +1071,11 @@ export function SkillsScreen() {
         if (data.command) {
           await copyCommandAndToast(
             data.command,
-            actionError || 'Gateway action unavailable.',
+            responseError || 'Gateway action unavailable.',
           )
           return
         }
-        throw new Error(actionError)
+        throw new Error(responseError)
       }
 
       await Promise.all([
@@ -1256,7 +1328,7 @@ export function SkillsScreen() {
                             ? (pluginsQuery.data?.total || 0).toLocaleString()
                           : (
                               hubQuery.data?.total ||
-                              hubQuery.data?.results?.length ||
+                              hubQuery.data?.results.length ||
                               0
                             ).toLocaleString()}
                     </span>
@@ -1703,6 +1775,10 @@ export function SkillsScreen() {
                     ) : null}
 
                     <div className="flex flex-wrap gap-1.5">
+                      <PlatformCompatibilityChips
+                        platforms={selectedSkill.platformCompatibility}
+                        max={8}
+                      />
                       {selectedSkill.contentHash ? (
                         <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
                           Installed hash {selectedSkill.contentHash}
@@ -1936,6 +2012,10 @@ export function SkillsScreen() {
                           {selectedToolset.sourceLabel}
                         </span>
                       ) : null}
+                      <PlatformCompatibilityChips
+                        platforms={selectedToolset.platformCompatibility}
+                        max={8}
+                      />
                     </div>
 
                     <article className="rounded-xl border border-border bg-primary-100/30 p-4 backdrop-blur-sm">
@@ -2018,6 +2098,10 @@ export function SkillsScreen() {
                           {selectedPlugin.sourceLabel}
                         </span>
                       ) : null}
+                      <PlatformCompatibilityChips
+                        platforms={selectedPlugin.platformCompatibility}
+                        max={8}
+                      />
                     </div>
 
                     <article className="rounded-xl border border-border bg-primary-100/30 p-4 backdrop-blur-sm">
@@ -2177,7 +2261,6 @@ function SecurityBadge({
 }) {
   if (!security) return null
   const config = SECURITY_BADGE[security.level]
-  if (!config) return null
 
   const [expanded, setExpanded] = useState(false)
 
@@ -2216,7 +2299,6 @@ function SecurityBadge({
 function SecurityScanCard({ security }: { security: SecurityRisk }) {
   const [showDetails, setShowDetails] = useState(false)
   const config = SECURITY_BADGE[security.level]
-  if (!config) return null
 
   const summaryText =
     security.flags.length === 0
@@ -2402,6 +2484,9 @@ function SkillsGrid({
                     {skill.sourceLabel}
                   </span>
                 ) : null}
+                <PlatformCompatibilityChips
+                  platforms={skill.platformCompatibility}
+                />
                 {skill.contentHash ? (
                   <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
                     {skill.contentHash}
@@ -2544,6 +2629,9 @@ function ToolsetsGrid({ toolsets, loading, onOpenDetails }: ToolsetsGridProps) {
                   {toolset.sourceLabel}
                 </span>
               ) : null}
+              <PlatformCompatibilityChips
+                platforms={toolset.platformCompatibility}
+              />
               <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
                 {toolset.configured ? 'Configured' : 'No extra config'}
               </span>
@@ -2647,6 +2735,9 @@ function PluginsGrid({ plugins, loading, onOpenDetails }: PluginsGridProps) {
                   {plugin.sourceLabel}
                 </span>
               ) : null}
+              <PlatformCompatibilityChips
+                platforms={plugin.platformCompatibility}
+              />
               <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
                 {plugin.toolsets.length.toLocaleString()} toolsets
               </span>

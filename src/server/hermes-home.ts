@@ -11,6 +11,7 @@ import {
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(SERVER_DIR, '..', '..', '..')
 const REPO_AGENT_HERMES_HOME = path.join(REPO_ROOT, 'agent', '.hermes')
+const SEMANTIER_RUNTIME_ROOT_ENV = 'SEMANTIER_LOCAL_STATE_DIR'
 const ACCESS_CONTROL_FILENAME = 'access-control.json'
 
 export type AccessControlRole = 'regular' | 'administrator'
@@ -159,6 +160,34 @@ export async function resolveHermesHomeFromBackend(
   return resolveHermesHomeForWorkspace(activeWorkspace.path, accessControl)
 }
 
+export function isSemantierRuntimeRepo(): boolean {
+  return fs.existsSync(path.join(REPO_ROOT, 'src', 'agents', 'launcher.py'))
+}
+
+export function resolveSemantierRuntimeHome(
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const configured = env[SEMANTIER_RUNTIME_ROOT_ENV]?.trim()
+  const raw = configured || path.join(REPO_ROOT, '.semantier-home')
+  const expanded = expandHome(raw, os.homedir())
+  return path.resolve(path.isAbsolute(expanded) ? expanded : path.join(REPO_ROOT, expanded))
+}
+
+export async function resolveInferenceHermesHomeFromBackend(
+  requestHeaders?: HeadersInit | Headers,
+): Promise<string> {
+  if (isSemantierRuntimeRepo()) {
+    return resolveSemantierRuntimeHome()
+  }
+  return resolveHermesHomeFromBackend(requestHeaders)
+}
+
+export async function resolveWorkspaceHermesHomeFromBackend(
+  requestHeaders?: HeadersInit | Headers,
+): Promise<string> {
+  return resolveHermesHomeFromBackend(requestHeaders)
+}
+
 export async function resolveHermesAccessControlFromBackend(
   requestHeaders?: HeadersInit | Headers,
 ): Promise<HermesAccessControlResolution> {
@@ -218,13 +247,16 @@ export async function resolveHermesPathFromBackend(
 export async function resolveHermesConfigPathFromBackend(
   requestHeaders?: HeadersInit | Headers,
 ): Promise<string> {
-  return resolveHermesPathFromBackend(requestHeaders, 'config.yaml')
+  return path.join(
+    await resolveInferenceHermesHomeFromBackend(requestHeaders),
+    'config.yaml',
+  )
 }
 
 export async function resolveHermesEnvPathFromBackend(
   requestHeaders?: HeadersInit | Headers,
 ): Promise<string> {
-  return resolveHermesPathFromBackend(requestHeaders, '.env')
+  return path.join(await resolveInferenceHermesHomeFromBackend(requestHeaders), '.env')
 }
 
 export async function resolveHermesProfilesPathFromBackend(

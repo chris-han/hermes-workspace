@@ -2,6 +2,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { resolveHermesHome, resolveHermesHomeForWorkspace } from './hermes-home'
+import { resolveSemantierRuntimeHome } from './hermes-home'
 
 describe('resolveHermesHome', () => {
   it('prefers HERMES_HOME when explicitly configured', () => {
@@ -52,5 +53,29 @@ describe('resolveHermesHomeForWorkspace', () => {
         administratorHome: '/home/chris/repo/semantier/agent/.hermes',
       }),
     ).toBe(path.resolve('/home/chris/repo/semantier/agent/.hermes'))
+  })
+})
+
+describe('resolveSemantierRuntimeHome', () => {
+  it('defaults to the repo .semantier-home runtime root', () => {
+    expect(resolveSemantierRuntimeHome({})).toBe(
+      path.resolve('/home/chris/repo/semantier-runtime/.semantier-home'),
+    )
+  })
+
+  it('resolves relative SEMANTIER_LOCAL_STATE_DIR from the repo root', () => {
+    expect(
+      resolveSemantierRuntimeHome({
+        SEMANTIER_LOCAL_STATE_DIR: '.semantier-test-home',
+      }),
+    ).toBe(path.resolve('/home/chris/repo/semantier-runtime/.semantier-test-home'))
+  })
+
+  it('uses absolute SEMANTIER_LOCAL_STATE_DIR as-is', () => {
+    expect(
+      resolveSemantierRuntimeHome({
+        SEMANTIER_LOCAL_STATE_DIR: '/tmp/semantier-home',
+      }),
+    ).toBe(path.resolve('/tmp/semantier-home'))
   })
 })

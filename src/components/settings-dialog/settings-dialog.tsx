@@ -20,8 +20,8 @@ import {
   VolumeHighIcon,
 } from '@hugeicons/core-free-icons'
 import { Component, useCallback, useEffect, useMemo, useState } from 'react'
-import type * as React from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import type * as React from 'react'
 import type { AccentColor, SettingsThemeMode } from '@/hooks/use-settings'
 import type { LoaderStyle } from '@/hooks/use-chat-settings'
 import type { BrailleSpinnerPreset } from '@/components/ui/braille-spinner'
@@ -239,6 +239,14 @@ const PROVIDER_CARDS: Array<{
     envKey: 'OPENROUTER_API_KEY',
   },
   {
+    id: 'alibaba',
+    name: 'Qwen Cloud / DashScope',
+    logo: '',
+    models: ['qwen3.5-plus', 'qwen3.6-plus', 'qwen3-coder-plus'],
+    authType: 'api_key',
+    envKey: 'DASHSCOPE_API_KEY',
+  },
+  {
     id: 'zai',
     name: 'Z.AI / GLM',
     logo: '/providers/zhipu.png',
@@ -273,11 +281,41 @@ const PROVIDER_CARDS: Array<{
   { id: 'custom', name: 'Custom', logo: '', models: [], authType: 'api_key' },
 ]
 
+const AUXILIARY_MODEL_TASKS = ['vision', 'web_extract', 'compression'] as const
+
+function buildAuxiliaryModelConfig(provider: string, model: string) {
+  return Object.fromEntries(
+    AUXILIARY_MODEL_TASKS.map((task) => [task, { provider, model }]),
+  )
+}
+
+function readAuxiliaryModelConfig(config: unknown) {
+  const auxiliary =
+    typeof config === 'object' && config !== null && 'auxiliary' in config
+      ? (config.auxiliary as Record<string, unknown>)
+      : {}
+  const taskConfig = AUXILIARY_MODEL_TASKS.map((task) => auxiliary[task]).find(
+    (value): value is Record<string, unknown> =>
+      typeof value === 'object' && value !== null,
+  )
+
+  return {
+    provider:
+      typeof taskConfig?.provider === 'string' ? taskConfig.provider : '',
+    model: typeof taskConfig?.model === 'string' ? taskConfig.model : '',
+  }
+}
+
 function HermesContent() {
   const configAvailable = useFeatureAvailable('config')
   const [activeProvider, setActiveProvider] = useState('')
   const [activeModel, setActiveModel] = useState('')
   const [availableModels, setAvailableModels] = useState<Array<string>>([])
+  const [auxiliaryProvider, setAuxiliaryProvider] = useState('')
+  const [auxiliaryModel, setAuxiliaryModel] = useState('')
+  const [availableAuxiliaryModels, setAvailableAuxiliaryModels] = useState<
+    Array<string>
+  >([])
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [keyInput, setKeyInput] = useState('')
   const [_saving, setSaving] = useState(false)
@@ -300,14 +338,18 @@ function HermesContent() {
   } | null>(null)
 
   const fetchModelsForProvider = useCallback(
-    (providerId: string) => {
+    (
+      providerId: string,
+      setModels: React.Dispatch<React.SetStateAction<Array<string>>> =
+        setAvailableModels,
+    ) => {
       // For local providers, prefer auto-discovered models first
       if (localDiscovery) {
         const discovered = localDiscovery.models
           .filter((m) => m.provider === providerId)
           .map((m) => m.id)
         if (discovered.length > 0) {
-          setAvailableModels(discovered)
+          setModels(discovered)
           return
         }
       }
@@ -316,12 +358,12 @@ function HermesContent() {
       )
         .then((r) => r.json())
         .then((d: { models?: Array<{ id: string }> }) => {
-          setAvailableModels((d.models || []).map((m) => m.id))
+          setModels((d.models || []).map((m) => m.id))
         })
         .catch(() => {
           // Fall back to hardcoded
           const card = PROVIDER_CARDS.find((p) => p.id === providerId)
-          setAvailableModels(card?.models || [])
+          setModels(card?.models || [])
         })
     },
     [localDiscovery],
@@ -343,7 +385,16 @@ function HermesContent() {
         setActiveProvider(d.activeProvider || '')
         setActiveModel(d.activeModel || '')
         if (d.activeProvider) fetchModelsForProvider(d.activeProvider)
-        const mem = (d.config?.memory as Record<string, unknown>) || {}
+        const auxiliary = readAuxiliaryModelConfig(d.config)
+        setAuxiliaryProvider(auxiliary.provider)
+        setAuxiliaryModel(auxiliary.model)
+        if (auxiliary.provider) {
+          fetchModelsForProvider(auxiliary.provider, setAvailableAuxiliaryModels)
+        }
+        const mem =
+          typeof d.config?.memory === 'object' && d.config.memory !== null
+            ? (d.config.memory as Record<string, unknown>)
+            : {}
         setMemEnabled(mem.memory_enabled !== false)
         setUserProfileEnabled(mem.user_profile_enabled !== false)
         // Build configured keys map
@@ -375,6 +426,9 @@ function HermesContent() {
       const d = await ref.json()
       setActiveProvider(d.activeProvider || '')
       setActiveModel(d.activeModel || '')
+      const auxiliary = readAuxiliaryModelConfig(d.config)
+      setAuxiliaryProvider(auxiliary.provider)
+      setAuxiliaryModel(auxiliary.model)
       const keys: Record<string, string> = {}
       for (const p of d.providers || []) {
         if (p.configured && p.envKeys?.[0])
@@ -392,12 +446,39 @@ function HermesContent() {
     setActiveProvider(providerId)
     if (model) {
       setActiveModel(model)
-      save({ config: { model, provider: providerId } })
+      save({
+        config: {
+          model: {
+            provider: providerId,
+            default: model,
+          },
+          provider: providerId,
+        },
+      })
     } else {
       // Switching provider without a model — fetch models and pick the first one
       fetchModelsForProvider(providerId)
-      save({ config: { provider: providerId } })
+      save({
+        config: {
+          model: {
+            provider: providerId,
+          },
+          provider: providerId,
+        },
+      })
     }
+  }
+
+  const selectAuxiliaryProvider = (providerId: string, model?: string) => {
+    const nextModel = model ?? auxiliaryModel
+    setAuxiliaryProvider(providerId)
+    if (model !== undefined) setAuxiliaryModel(model)
+    fetchModelsForProvider(providerId, setAvailableAuxiliaryModels)
+    save({
+      config: {
+        auxiliary: buildAuxiliaryModelConfig(providerId, nextModel),
+      },
+    })
   }
 
   if (!configAvailable) {
@@ -437,7 +518,7 @@ function HermesContent() {
           className="mb-1 text-xs font-semibold uppercase tracking-wider"
           style={mutedStyle}
         >
-          Provider
+          Main Model Provider
         </p>
         <p className="mb-3 text-[11px]" style={mutedStyle}>
           Select your AI provider. OAuth providers authenticate via browser.
@@ -502,7 +583,7 @@ function HermesContent() {
             className="mb-1 text-xs font-semibold uppercase tracking-wider"
             style={mutedStyle}
           >
-            Model
+            Main Model
           </p>
           <div className="flex flex-wrap gap-2">
             {(() => {
@@ -535,6 +616,87 @@ function HermesContent() {
           </div>
         </div>
       )}
+
+      {/* Auxiliary Model Selection */}
+      <div>
+        <p
+          className="mb-1 text-xs font-semibold uppercase tracking-wider"
+          style={mutedStyle}
+        >
+          Auxiliary Model Provider
+        </p>
+        <p className="mb-3 text-[11px]" style={mutedStyle}>
+          Used for vision, web extraction, and compression helper calls.
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <select
+            value={auxiliaryProvider}
+            onChange={(e) => selectAuxiliaryProvider(e.target.value)}
+            className="min-h-10 flex-1 rounded-lg border px-3 text-sm outline-none"
+            style={{
+              ...cardStyle,
+              backgroundColor: 'var(--theme-card)',
+            }}
+          >
+            <option value="">Select provider</option>
+            {PROVIDER_CARDS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <Input
+            value={auxiliaryModel}
+            onChange={(e) => setAuxiliaryModel(e.target.value)}
+            onBlur={() => {
+              if (auxiliaryProvider) {
+                save({
+                  config: {
+                    auxiliary: buildAuxiliaryModelConfig(
+                      auxiliaryProvider,
+                      auxiliaryModel,
+                    ),
+                  },
+                })
+              }
+            }}
+            placeholder="Auxiliary model"
+            className="min-h-10 flex-1"
+            style={cardStyle}
+          />
+        </div>
+        {auxiliaryProvider && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(() => {
+              if (availableAuxiliaryModels.length > 0)
+                return availableAuxiliaryModels
+              const discovered = localDiscovery?.models
+                .filter((m) => m.provider === auxiliaryProvider)
+                .map((m) => m.id)
+              if (discovered && discovered.length > 0) return discovered
+              return (
+                PROVIDER_CARDS.find((p) => p.id === auxiliaryProvider)
+                  ?.models || []
+              )
+            })().map((model) => (
+              <button
+                key={model}
+                type="button"
+                onClick={() => selectAuxiliaryProvider(auxiliaryProvider, model)}
+                className={cn(
+                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+                  auxiliaryModel === model
+                    ? 'ring-2 ring-accent-500'
+                    : 'hover:brightness-110',
+                )}
+                style={cardStyle}
+              >
+                {model}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {(() => {
         const disc = localDiscovery?.providers.find(
@@ -723,12 +885,22 @@ function HermesContent() {
           </span>
         </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
-          <span style={mutedStyle}>Model</span>
+          <span style={mutedStyle}>Main Model</span>
           <span className="font-mono font-medium">{activeModel || '—'}</span>
-          <span style={mutedStyle}>Provider</span>
+          <span style={mutedStyle}>Main Provider</span>
           <span className="font-mono font-medium">
             {PROVIDER_CARDS.find((p) => p.id === activeProvider)?.name ||
               activeProvider ||
+              '—'}
+          </span>
+          <span style={mutedStyle}>Aux Model</span>
+          <span className="font-mono font-medium">
+            {auxiliaryModel || '—'}
+          </span>
+          <span style={mutedStyle}>Aux Provider</span>
+          <span className="font-mono font-medium">
+            {PROVIDER_CARDS.find((p) => p.id === auxiliaryProvider)?.name ||
+              auxiliaryProvider ||
               '—'}
           </span>
           <span style={mutedStyle}>Config</span>
@@ -2175,6 +2347,8 @@ function DisplayContent() {
 }
 
 function LanguageContent() {
+  const { settings, updateSettings } = useSettings()
+
   return (
     <div className="space-y-4">
       <SectionHeader

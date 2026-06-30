@@ -12,6 +12,7 @@ export type SemantierPluginInfo = {
   description: string
   sourceTier?: string
   sourceLabel?: string
+  platformCompatibility?: Array<string>
   enabled: boolean
   category: string
   toolsets: Array<string>
@@ -51,7 +52,7 @@ export async function fetchSemantierPlugins(
 
   if (!response.ok) {
     const record =
-      payload && !Array.isArray(payload)
+      !Array.isArray(payload)
         ? (payload as { error?: string; detail?: string })
         : {}
     throw new Error(

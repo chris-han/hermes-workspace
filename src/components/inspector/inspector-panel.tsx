@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { create } from 'zustand'
 import { useActivityStore } from './activity-store'
@@ -6,7 +6,6 @@ import type { ActivityEvent } from './activity-store'
 import { getUnavailableReason } from '@/lib/feature-gates'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { cn } from '@/lib/utils'
-import { useWorkspaceStore } from '@/stores/workspace-store'
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
@@ -58,12 +57,26 @@ function LoadingState({ text }: { text: string }) {
   )
 }
 
-function ArtifactsTab() {
+function getActivityEventSessionKey(event: ActivityEvent): string | null {
+  const value = event.details?.sessionKey
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
   const events = useActivityStore((s) => s.events)
-  const artifacts = events.filter((e) => e.type === 'artifact')
+  const artifacts = events.filter(
+    (event) =>
+      event.type === 'artifact' &&
+      sessionKey &&
+      getActivityEventSessionKey(event) === sessionKey,
+  )
+
+  if (!sessionKey) {
+    return <EmptyState text="Open a session to see artifacts" />
+  }
 
   if (artifacts.length === 0) {
-    return <EmptyState text="No agent-authored artifacts yet" />
+    return <EmptyState text="No artifacts recorded for this session" />
   }
 
   return (
@@ -136,13 +149,7 @@ function DetailRow({
   )
 }
 
-function JsonDetailBlock({
-  label,
-  value,
-}: {
-  label: string
-  value: unknown
-}) {
+function JsonDetailBlock({ label, value }: { label: string; value: unknown }) {
   if (value === null || value === undefined) return null
   const text =
     typeof value === 'string' ? value : JSON.stringify(value, null, 2) || ''
@@ -294,17 +301,30 @@ function ActivityExpandedPanel({ event }: { event: ActivityEvent }) {
 
 // ── Activity Tab ──────────────────────────────────────────────────────────────
 
-function ActivityTab() {
+function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
   const events = useActivityStore((s) => s.events)
+  const filteredEvents = useMemo(
+    () =>
+      sessionKey
+        ? events.filter(
+            (event) => getActivityEventSessionKey(event) === sessionKey,
+          )
+        : [],
+    [events, sessionKey],
+  )
   const scrollRef = useRef<HTMLDivElement>(null)
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
-  }, [events.length])
+  }, [filteredEvents.length])
 
-  if (events.length === 0) {
-    return <EmptyState text="No activity yet — start a conversation" />
+  if (!sessionKey) {
+    return <EmptyState text="Open a session to see activity" />
+  }
+
+  if (filteredEvents.length === 0) {
+    return <EmptyState text="No activity recorded for this session" />
   }
 
   const toggleExpanded = (key: string) => {
@@ -319,7 +339,7 @@ function ActivityTab() {
       ref={scrollRef}
       className="space-y-1 p-3 overflow-auto max-h-[calc(100vh-140px)]"
     >
-      {events.map((event: ActivityEvent, i: number) => (
+      {filteredEvents.map((event: ActivityEvent, i: number) => (
         <div
           key={i}
           className="rounded-md text-xs"
@@ -643,14 +663,7 @@ function extractMessageTimestamp(msg: Record<string, unknown>): string {
   return ''
 }
 
-function LogsTab() {
-  const resolvedSessionKey = useActivityStore((s) => s.resolvedSessionKey)
-  const workspaceSessionKey = useWorkspaceStore((s) => s.chatPanelSessionKey)
-  // Prefer the key resolved from streaming (guaranteed real); fall back to the
-  // workspace store only if it doesn't look like a bootstrap sentinel.
-  const BOOTSTRAP_KEYS = new Set(['main', 'new', ''])
-  const sessionKey = resolvedSessionKey
-    ?? (!BOOTSTRAP_KEYS.has(workspaceSessionKey) ? workspaceSessionKey : null)
+function LogsTab({ sessionKey }: { sessionKey: string | null }) {
   const [log, setLog] = useState<SessionLogPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -659,10 +672,14 @@ function LogsTab() {
 
   useEffect(() => {
     if (!sessionKey) {
+      setLog(null)
+      setError(null)
       setLoading(false)
       return
-    }    let cancelled = false
+    }
+    let cancelled = false
     setLoading(true)
+    setLog(null)
     setError(null)
     fetch(
       `/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionKey)}/log`,
@@ -806,7 +823,9 @@ function LogsTab() {
                   </div>
                 )}
                 <div>
-                  <span style={{ color: 'var(--theme-muted)' }}>Messages: </span>
+                  <span style={{ color: 'var(--theme-muted)' }}>
+                    Messages:{' '}
+                  </span>
                   {messages.length}
                 </div>
                 {Array.isArray(log.tools) && log.tools.length > 0 && (
@@ -817,13 +836,17 @@ function LogsTab() {
                 )}
                 {log.session_start && (
                   <div>
-                    <span style={{ color: 'var(--theme-muted)' }}>Started: </span>
+                    <span style={{ color: 'var(--theme-muted)' }}>
+                      Started:{' '}
+                    </span>
                     {log.session_start}
                   </div>
                 )}
                 {log.last_updated && (
                   <div>
-                    <span style={{ color: 'var(--theme-muted)' }}>Updated: </span>
+                    <span style={{ color: 'var(--theme-muted)' }}>
+                      Updated:{' '}
+                    </span>
                     {log.last_updated}
                   </div>
                 )}
@@ -903,7 +926,11 @@ function LogsTab() {
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
-export function InspectorPanel() {
+export function InspectorPanel({
+  sessionKey = null,
+}: {
+  sessionKey?: string | null
+}) {
   const isOpen = useInspectorStore((s) => s.isOpen)
   const memoryAvailable = useFeatureAvailable('memory')
   const skillsAvailable = useFeatureAvailable('skills')
@@ -1011,12 +1038,16 @@ export function InspectorPanel() {
 
           {/* Content */}
           <div className="flex-1 overflow-auto">
-            {activeTab === 'activity' && <ActivityTab />}
-            {activeTab === 'artifacts' && <ArtifactsTab />}
+            {activeTab === 'activity' && (
+              <ActivityTab sessionKey={sessionKey} />
+            )}
+            {activeTab === 'artifacts' && (
+              <ArtifactsTab sessionKey={sessionKey} />
+            )}
             {activeTab === 'files' && <FilesTab />}
             {activeTab === 'memory' && <MemoryTab />}
             {activeTab === 'skills' && <SkillsTab />}
-            {activeTab === 'logs' && <LogsTab />}
+            {activeTab === 'logs' && <LogsTab sessionKey={sessionKey} />}
           </div>
         </>
       )}

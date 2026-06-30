@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatAttachment, ChatMessage } from '../types'
 import { useChatStore } from '@/stores/chat-store'
-import { pushActivity, setActivitySessionKey } from '@/components/inspector/activity-store'
+import {
+  pushActivity,
+  setActivitySessionKey,
+} from '@/components/inspector/activity-store'
 
 type StreamingState = {
   isStreaming: boolean
@@ -587,6 +590,7 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
                 result:
                   typeof payload.result === 'string' ? payload.result : null,
                 runId: activeRunIdRef.current ?? null,
+                sessionKey: activeSessionKeyRef.current,
               },
             })
           }
@@ -635,6 +639,7 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
               title,
               path: path || null,
               runId: activeRunIdRef.current ?? null,
+              sessionKey: activeSessionKeyRef.current,
             },
           })
           processStoreEvent({
@@ -691,6 +696,7 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
               state: doneState ?? 'final',
               errorMessage: errorMessage ?? null,
               runId: activeRunIdRef.current ?? null,
+              sessionKey: activeSessionKeyRef.current,
             },
           })
           processStoreEvent({

@@ -729,6 +729,14 @@ export function ChatScreen({
     setActivitySessionKey(resolvedSessionKey)
   }, [resolvedSessionKey])
 
+  const inspectorSessionKey = isNewChat
+    ? null
+    : forcedSessionKey ||
+      resolvedSessionKey ||
+      activeCanonicalKey ||
+      activeSessionKey ||
+      null
+
   // On remount, check if the server still has an active run for this session.
   // If so, re-set waitingForResponse in the store so the UI shows the spinner.
   useActiveRunCheck({
@@ -1873,7 +1881,8 @@ export function ChatScreen({
     shouldRecoverMissingRoute,
   ])
 
-  const hideUi = shouldRedirectToNew || shouldRecoverMissingRoute || isRedirecting
+  const hideUi =
+    shouldRedirectToNew || shouldRecoverMissingRoute || isRedirecting
   const isFocusMode = !compact && chatFocusMode
   const showComposer = !isRedirecting
 
@@ -3033,7 +3042,7 @@ export function ChatScreen({
         onClose={() => setIsDemoWalkthroughRunning(false)}
       />
       {!compact && !hideUi && !isMobile && !isFocusMode && <TerminalPanel />}
-      <InspectorPanel />
+      <InspectorPanel sessionKey={inspectorSessionKey} />
 
       {suggestion && (
         <ModelSuggestionToast

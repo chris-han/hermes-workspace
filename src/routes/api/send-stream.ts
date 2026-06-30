@@ -221,6 +221,7 @@ export const Route = createFileRoute('/api/send-stream')({
                 const decoder = new TextDecoder()
                 let buffer = ''
                 let finished = false
+                let hasAssistantOutput = false
 
                 while (!finished) {
                   const { done, value } = await reader.read()
@@ -235,14 +236,27 @@ export const Route = createFileRoute('/api/send-stream')({
                     if (!frame) continue
 
                     if (frame.data === '[DONE]') {
-                      await markRun('complete')
-                      push({
-                        event: 'done',
-                        data: {
-                          state: 'complete',
-                          runId,
-                        },
-                      })
+                      if (hasAssistantOutput) {
+                        await markRun('complete')
+                        push({
+                          event: 'done',
+                          data: {
+                            state: 'complete',
+                            runId,
+                          },
+                        })
+                      } else {
+                        const message = 'Run completed without assistant output'
+                        await markRun('error', message)
+                        push({
+                          event: 'done',
+                          data: {
+                            state: 'error',
+                            errorMessage: message,
+                            runId,
+                          },
+                        })
+                      }
                       finished = true
                       abortController.abort()
                       break
@@ -319,6 +333,7 @@ export const Route = createFileRoute('/api/send-stream')({
                     const finishReason = readString(choice.finish_reason)
 
                     if (reasoning) {
+                      hasAssistantOutput = true
                       if (workspaceRoot) {
                         await setRunThinking(
                           workspaceRoot,
@@ -333,6 +348,7 @@ export const Route = createFileRoute('/api/send-stream')({
                       })
                     }
                     if (content) {
+                      hasAssistantOutput = true
                       if (workspaceRoot) {
                         await appendRunText(
                           workspaceRoot,
@@ -348,14 +364,27 @@ export const Route = createFileRoute('/api/send-stream')({
                     }
 
                     if (finishReason && finishReason !== 'error') {
-                      await markRun('complete')
-                      push({
-                        event: 'done',
-                        data: {
-                          state: 'complete',
-                          runId,
-                        },
-                      })
+                      if (hasAssistantOutput) {
+                        await markRun('complete')
+                        push({
+                          event: 'done',
+                          data: {
+                            state: 'complete',
+                            runId,
+                          },
+                        })
+                      } else {
+                        const message = 'Run completed without assistant output'
+                        await markRun('error', message)
+                        push({
+                          event: 'done',
+                          data: {
+                            state: 'error',
+                            errorMessage: message,
+                            runId,
+                          },
+                        })
+                      }
                       finished = true
                       abortController.abort()
                       break
@@ -377,7 +406,11 @@ export const Route = createFileRoute('/api/send-stream')({
                   }
                 }
                 if (!finished && !abortController.signal.aborted) {
-                  await markRun('complete')
+                  if (hasAssistantOutput) {
+                    await markRun('complete')
+                  } else {
+                    await markRun('error', 'Run completed without assistant output')
+                  }
                 }
               } catch (error) {
                 if (!abortController.signal.aborted) {

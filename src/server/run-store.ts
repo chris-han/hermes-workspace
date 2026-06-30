@@ -173,6 +173,7 @@ export async function persistRunTrajectory(
   const conversations: Array<{ from: string; value: string }> = []
   const thinking = run.thinkingText.trim()
   const assistant = run.assistantText.trim()
+  if (!thinking && !assistant) return false
   if (thinking) conversations.push({ from: 'assistant', value: thinking })
   if (assistant) conversations.push({ from: 'assistant', value: assistant })
 
@@ -308,11 +309,17 @@ export async function markRunStatus(
   return updatePersistedRun(workspaceRoot, sessionKey, runId, (run) => ({
     ...run,
     status:
-      isTerminalRunStatus(run.status) && !isTerminalRunStatus(status)
-        ? run.status
-        : status,
+      status === 'complete' && !run.assistantText.trim() && !run.thinkingText.trim()
+        ? 'error'
+        : isTerminalRunStatus(run.status) && !isTerminalRunStatus(status)
+          ? run.status
+          : status,
     lastEventAt: Date.now(),
-    ...(errorMessage ? { errorMessage } : {}),
+    ...(status === 'complete' && !run.assistantText.trim() && !run.thinkingText.trim()
+      ? { errorMessage: errorMessage || 'Run completed without assistant output' }
+      : errorMessage
+        ? { errorMessage }
+        : {}),
   }))
 }
 

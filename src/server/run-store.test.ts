@@ -189,6 +189,33 @@ describe('run-store', () => {
     }
   })
 
+  it('marks empty completed runs as error and skips trajectory persistence', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'run-store-'))
+    const sessionKey = 'session-empty'
+    const runId = 'run-empty'
+
+    try {
+      await createPersistedRun({ workspaceRoot: root, sessionKey, runId })
+      await markRunStatus(root, sessionKey, runId, 'complete')
+
+      const run = await getPersistedRun(root, sessionKey, runId)
+      expect(run?.status).toBe('error')
+      expect(run?.errorMessage).toBe('Run completed without assistant output')
+      expect(await persistRunTrajectory(root, sessionKey, runId)).toBe(false)
+
+      const trajectoryPath = path.join(
+        root,
+        'sessions',
+        sessionKey,
+        'logs',
+        `${sessionKey}.trajectory.jsonl`,
+      )
+      expect(fs.existsSync(trajectoryPath)).toBe(false)
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it('persists a trajectory jsonl record on completed runs with model', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'run-store-'))
     const sessionKey = 'session_abc123'

@@ -67,6 +67,8 @@ type PersistedArtifact = {
   kind: string
   mediaType: string
   path: string
+  rawUrl: string
+  relativePath: string
   sha256: string
   sizeBytes: number | null
   timestamp: number | string | null
@@ -94,6 +96,22 @@ function formatArtifactTime(value: number | string | null): string {
   return ''
 }
 
+function artifactKeys(artifact: PersistedArtifact): Array<string> {
+  return [
+    artifact.artifactId,
+    artifact.path,
+    artifact.relativePath,
+    artifact.filename,
+    artifact.rawUrl,
+  ].filter(Boolean)
+}
+
+function artifactRawHref(rawUrl: string): string {
+  return rawUrl.startsWith('/api/semantier-proxy/')
+    ? rawUrl
+    : `/api/semantier-proxy${rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`}`
+}
+
 function normalizePersistedArtifacts(
   payload: SessionTrajectoryPayload | null,
 ): Array<PersistedArtifact> {
@@ -106,7 +124,6 @@ function normalizePersistedArtifacts(
     : []
   const timestampByKey = new Map<string, number | string>()
   for (const event of lifecycleEvents) {
-    if (!event || typeof event !== 'object') continue
     const artifact =
       event.artifact && typeof event.artifact === 'object'
         ? (event.artifact as Record<string, unknown>)
@@ -123,7 +140,7 @@ function normalizePersistedArtifacts(
     }
   }
 
-  return artifacts
+  const normalized = artifacts
     .map((artifact) => {
       const key =
         readString(artifact.artifact_id) ||
@@ -135,12 +152,21 @@ function normalizePersistedArtifacts(
         kind: readString(artifact.kind),
         mediaType: readString(artifact.media_type),
         path: readString(artifact.path),
+        rawUrl: readString(artifact.raw_url),
+        relativePath: readString(artifact.relative_path),
         sha256: readString(artifact.sha256),
         sizeBytes: readNumber(artifact.size_bytes),
         timestamp: key ? timestampByKey.get(key) ?? null : null,
       }
     })
     .filter((artifact) => artifact.filename || artifact.path)
+  const seen = new Set<string>()
+  return normalized.filter((artifact) => {
+    const keys = artifactKeys(artifact)
+    if (keys.some((key) => seen.has(key))) return false
+    for (const key of keys) seen.add(key)
+    return true
+  })
 }
 
 function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
@@ -198,8 +224,7 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
   const artifacts = useMemo(() => {
     const seen = new Set<string>()
     const persisted = persistedArtifacts.map((artifact) => {
-      const key = artifact.artifactId || artifact.path || artifact.filename
-      if (key) seen.add(key)
+      for (const key of artifactKeys(artifact)) seen.add(key)
       return { kind: 'persisted' as const, artifact }
     })
     const activity = activityArtifacts
@@ -259,6 +284,10 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
           entry.kind === 'persisted' && artifact.sizeBytes !== null
             ? `${artifact.sizeBytes.toLocaleString()} bytes`
             : ''
+        const persistedMeta =
+          entry.kind === 'persisted'
+            ? [artifact.path, size, time].filter(Boolean).join(' · ')
+            : ''
         return (
           <div
             key={`${entry.kind}-${title}-${index}`}
@@ -271,20 +300,36 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
           >
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium break-all">{title}</span>
-              {time ? (
-                <span className="shrink-0" style={{ color: 'var(--theme-accent)' }}>
-                  {time}
-                </span>
-              ) : null}
+              <div className="flex shrink-0 items-center gap-2">
+                {entry.kind === 'persisted' && artifact.rawUrl ? (
+                  <a
+                    href={artifactRawHref(artifact.rawUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded border px-2 py-0.5 font-medium transition-opacity hover:opacity-80"
+                    style={{
+                      borderColor: 'var(--theme-border)',
+                      color: 'var(--theme-accent)',
+                    }}
+                  >
+                    Raw
+                  </a>
+                ) : null}
+                {entry.kind === 'activity' && time ? (
+                  <span style={{ color: 'var(--theme-accent)' }}>
+                    {time}
+                  </span>
+                ) : null}
+              </div>
             </div>
             {subtitle ? (
               <div className="mt-1 break-all" style={{ color: 'var(--theme-muted)' }}>
                 {subtitle}
               </div>
             ) : null}
-            {entry.kind === 'persisted' && (artifact.path || size) ? (
+            {entry.kind === 'persisted' && persistedMeta ? (
               <div className="mt-1 break-all" style={{ color: 'var(--theme-muted)' }}>
-                {[artifact.path, size].filter(Boolean).join(' · ')}
+                {persistedMeta}
               </div>
             ) : null}
           </div>
@@ -576,11 +621,85 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
 
 // ── Memory Tab ────────────────────────────────────────────────────────────────
 
+type MemoryFile = {
+  path: string
+  name: string
+}
+
+function MemoryRawPanel({ file }: { file: MemoryFile }) {
+  const [showRaw, setShowRaw] = useState(false)
+  const [content, setContent] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!showRaw || content !== null || loading) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    fetch(`/api/memory/read?path=${encodeURIComponent(file.path)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json() as Promise<Record<string, unknown>>
+      })
+      .then((json) => {
+        if (cancelled) return
+        const rawContent =
+          typeof json.content === 'string'
+            ? json.content
+            : JSON.stringify(json.content ?? '', null, 2)
+        setContent(rawContent)
+        setLoading(false)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'Failed to load memory')
+        setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [content, file.path, loading, showRaw])
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-medium break-all">{file.name}</div>
+          <div className="break-all" style={{ color: 'var(--theme-muted)' }}>
+            {file.path}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowRaw((prev) => !prev)}
+          className="shrink-0 rounded border px-2 py-0.5 font-medium transition-opacity hover:opacity-80"
+          style={{
+            borderColor: 'var(--theme-border)',
+            color: 'var(--theme-accent)',
+          }}
+        >
+          {showRaw ? 'Friendly' : 'Raw'}
+        </button>
+      </div>
+      {showRaw ? (
+        <div>
+          {loading ? <LoadingState text="Loading raw memory…" /> : null}
+          {error ? <ErrorState text={`Memory: ${error}`} /> : null}
+          {!loading && !error ? (
+            <JsonDetailBlock
+              label="memory"
+              value={content ?? { path: file.path }}
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function MemoryTab() {
-  const [files, setFiles] = useState<Array<{
-    path: string
-    name: string
-  }> | null>(null)
+  const [files, setFiles] = useState<Array<MemoryFile> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -634,8 +753,7 @@ function MemoryTab() {
             color: 'var(--theme-text)',
           }}
         >
-          <div className="font-medium">{file.name}</div>
-          <div style={{ color: 'var(--theme-muted)' }}>{file.path}</div>
+          <MemoryRawPanel file={file} />
         </div>
       ))}
     </div>

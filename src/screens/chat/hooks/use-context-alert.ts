@@ -64,12 +64,16 @@ function readPercent(value: unknown): number {
   return 0
 }
 
-export function useContextAlert(sessionId?: string): {
+export function useContextAlert(
+  sessionId?: string,
+  options: { enabled?: boolean } = {},
+): {
   alertOpen: boolean
   alertThreshold: number
   alertPercent: number
   dismissAlert: () => void
 } {
+  const enabled = options.enabled ?? true
   const storedRef = useRef<StoredState | null>(null)
   const [alertOpen, setAlertOpen] = useState(false)
   const [alertThreshold, setAlertThreshold] = useState<number>(0)
@@ -80,6 +84,7 @@ export function useContextAlert(sessionId?: string): {
   }, [])
 
   const refresh = useCallback(async () => {
+    if (!enabled) return
     try {
       const params = sessionId
         ? `?sessionId=${encodeURIComponent(sessionId)}`
@@ -121,17 +126,23 @@ export function useContextAlert(sessionId?: string): {
     } catch {
       /* ignore */
     }
-  }, [alertOpen, sessionId])
+  }, [alertOpen, enabled, sessionId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (!enabled) {
+      setAlertOpen(false)
+      setAlertThreshold(0)
+      setAlertPercent(0)
+      return
+    }
     storedRef.current = loadStoredState()
     void refresh()
     const id = window.setInterval(() => {
       void refresh()
     }, POLL_MS)
     return () => window.clearInterval(id)
-  }, [refresh])
+  }, [enabled, refresh])
 
   return { alertOpen, alertThreshold, alertPercent, dismissAlert }
 }

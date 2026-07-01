@@ -695,7 +695,9 @@ export function ChatScreen({
   const activeContextSessionId =
     activeSession?.key || activeSessionKey || undefined
   const { alertOpen, alertThreshold, alertPercent, dismissAlert } =
-    useContextAlert(activeContextSessionId)
+    useContextAlert(activeContextSessionId, {
+      enabled: !isNewChat && Boolean(activeContextSessionId),
+    })
 
   const {
     historyQuery,

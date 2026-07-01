@@ -302,7 +302,7 @@ function PlatformCompatibilityChips({
 }
 
 const TAB_OPTIONS: Array<DisplayControl & { value: SkillsTab }> = [
-  { label: 'Installed', value: 'installed' },
+  { label: 'Skills', value: 'installed' },
   { label: 'Toolsets', value: 'toolsets' },
   { label: 'Plugins', value: 'plugins' },
   { label: 'Marketplace', value: 'marketplace' },

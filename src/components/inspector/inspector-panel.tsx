@@ -113,6 +113,8 @@ type PersistedArtifact = {
 }
 
 type SessionTrajectoryPayload = {
+  session_id?: string
+  sessionKey?: string
   trajectory?: {
     artifacts?: Array<Record<string, unknown>>
     lifecycleEvents?: Array<Record<string, unknown>>
@@ -154,10 +156,32 @@ function artifactRawHref(rawUrl: string): string {
     : `/api/semantier-proxy${rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`}`
 }
 
+function artifactRelativePath(artifact: Record<string, unknown>): string {
+  const relativePath = readString(artifact.relative_path)
+  if (relativePath) return relativePath
+  const path = readString(artifact.path)
+  const marker = '/artifacts/'
+  const markerIndex = path.indexOf(marker)
+  return markerIndex >= 0 ? path.slice(markerIndex + marker.length) : ''
+}
+
+function fallbackArtifactRawUrl(
+  artifact: Record<string, unknown>,
+  sessionId: string,
+): string {
+  const relativePath = artifactRelativePath(artifact)
+  if (!sessionId || !relativePath) return ''
+  return `/sessions/${encodeURIComponent(sessionId)}/artifacts/${relativePath
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/')}/raw`
+}
+
 function normalizePersistedArtifacts(
   payload: SessionTrajectoryPayload | null,
 ): Array<PersistedArtifact> {
   const trajectory = payload?.trajectory
+  const sessionId = readString(payload?.session_id) || readString(payload?.sessionKey)
   const artifacts = Array.isArray(trajectory?.artifacts)
     ? trajectory.artifacts
     : []
@@ -194,8 +218,10 @@ function normalizePersistedArtifacts(
         kind: readString(artifact.kind),
         mediaType: readString(artifact.media_type),
         path: readString(artifact.path),
-        rawUrl: readString(artifact.raw_url),
-        relativePath: readString(artifact.relative_path),
+        rawUrl:
+          readString(artifact.raw_url) ||
+          fallbackArtifactRawUrl(artifact, sessionId),
+        relativePath: artifactRelativePath(artifact),
         sha256: readString(artifact.sha256),
         sizeBytes: readNumber(artifact.size_bytes),
         timestamp: key ? (timestampByKey.get(key) ?? null) : null,

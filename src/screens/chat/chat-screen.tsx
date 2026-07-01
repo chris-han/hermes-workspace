@@ -52,7 +52,6 @@ import { useChatSessions } from './hooks/use-chat-sessions'
 import { useAutoSessionTitle } from './hooks/use-auto-session-title'
 import { useRenameSession } from './hooks/use-rename-session'
 import { useContextAlert } from './hooks/use-context-alert'
-import { ContextBar } from './components/context-bar'
 import { shouldRecoverMissingSessionRoute } from './chat-route-recovery'
 import {
   CHAT_OPEN_SETTINGS_EVENT,
@@ -64,6 +63,7 @@ import {
   fallbackUploadApiDocumentName,
   isUploadApiDocumentMimeType,
 } from './attachment-documents'
+import { _localModelOverride } from './model-override'
 import type {
   ChatComposerAttachment,
   ChatComposerHandle,
@@ -95,13 +95,12 @@ import { ModelSuggestionToast } from '@/components/model-suggestion-toast'
 import { MobileSessionsPanel } from '@/components/mobile-sessions-panel'
 import { ContextAlertModal } from '@/components/usage-meter/context-alert-modal'
 import { ErrorToastContainer, showErrorToast } from '@/components/error-toast'
-// ContextMeter removed — ContextBar (PR #32) replaces it
+// Context usage indicator is rendered as the composer send-button ring.
 import { useChatStore } from '@/stores/chat-store'
 import { useResearchCard } from '@/hooks/use-research-card'
 // MOBILE_TAB_BAR_OFFSET removed — tab bar always hidden in chat
 import { useTapDebug } from '@/hooks/use-tap-debug'
 import { useChatMode } from '@/hooks/use-chat-mode'
-import { _localModelOverride } from './model-override'
 
 // Activity store removed — not used in Hermes Workspace
 const _noopSetActivity = (_s: string) => {}
@@ -644,9 +643,6 @@ export function ChatScreen({
       return stored
     return 'low'
   })
-  const { alertOpen, alertThreshold, alertPercent, dismissAlert } =
-    useContextAlert()
-
   const pendingStartRef = useRef(false)
   const composerHandleRef = useRef<ChatComposerHandle | null>(null)
   // Idempotency guard prevents duplicate sends on paste/attach double-fire.
@@ -696,6 +692,11 @@ export function ChatScreen({
     sseConnectionState,
     waitingForResponse,
   })
+  const activeContextSessionId =
+    activeSession?.key || activeSessionKey || undefined
+  const { alertOpen, alertThreshold, alertPercent, dismissAlert } =
+    useContextAlert(activeContextSessionId)
+
   const {
     historyQuery,
     historyMessages,
@@ -2973,12 +2974,6 @@ export function ChatScreen({
           )}
 
           {hideUi ? null : (
-            <ContextBar
-              sessionId={activeSession?.key || activeSessionKey || undefined}
-            />
-          )}
-
-          {hideUi ? null : (
             <ChatMessageList
               messages={finalDisplayMessages}
               onRetryMessage={handleRetryMessage}
@@ -3045,6 +3040,7 @@ export function ChatScreen({
               focusKey={`${isNewChat ? 'new' : activeFriendlyId}:${activeCanonicalKey ?? ''}`}
               thinkingLevel={thinkingLevel}
               onThinkingLevelChange={handleThinkingLevelChange}
+              contextPercent={alertPercent}
             />
           ) : null}
         </main>

@@ -64,7 +64,7 @@ function readPercent(value: unknown): number {
   return 0
 }
 
-export function useContextAlert(): {
+export function useContextAlert(sessionId?: string): {
   alertOpen: boolean
   alertThreshold: number
   alertPercent: number
@@ -81,13 +81,16 @@ export function useContextAlert(): {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch('/api/context-usage')
+      const params = sessionId
+        ? `?sessionId=${encodeURIComponent(sessionId)}`
+        : ''
+      const res = await fetch(`/api/context-usage${params}`)
       if (!res.ok) return
       const data = (await res.json()) as {
         ok?: boolean
         contextPercent?: unknown
       }
-      if (!data?.ok) return
+      if (!data.ok) return
 
       const currentPercent = readPercent(data.contextPercent)
       setAlertPercent(currentPercent)
@@ -118,7 +121,7 @@ export function useContextAlert(): {
     } catch {
       /* ignore */
     }
-  }, [alertOpen])
+  }, [alertOpen, sessionId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return

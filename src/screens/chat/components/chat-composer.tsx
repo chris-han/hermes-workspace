@@ -38,10 +38,7 @@ import {
   getZeroForkModelInfoFlags,
   shouldBlockZeroForkModelSwitch,
 } from './chat-composer-model-switch'
-import {
-  fetchCurrentModelFromStatus,
-  readText,
-} from './chat-current-model'
+import { fetchCurrentModelFromStatus, readText } from './chat-current-model'
 import type { CSSProperties, Ref } from 'react'
 
 import type { ModelCatalogEntry, ModelSwitchResponse } from '@/lib/model-types'
@@ -100,6 +97,7 @@ type ChatComposerProps = {
   /** Called when user changes thinking level */
   onThinkingLevelChange?: (level: ThinkingLevel) => void
   onAbort?: () => void
+  contextPercent?: number
 }
 
 type ChatComposerHelpers = {
@@ -123,6 +121,41 @@ function nextThinkingLevel(level: ThinkingLevel): ThinkingLevel {
 function isClaude46Model(model: string): boolean {
   const normalized = model.toLowerCase()
   return normalized.includes('4-6') || normalized.includes('claude-4.6')
+}
+
+function clampContextPercent(value: number | undefined): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0
+  return Math.min(Math.max(value, 0), 100)
+}
+
+function getContextRingStyle(
+  contextPercent: number | undefined,
+): CSSProperties {
+  const pct = clampContextPercent(contextPercent)
+  const remainingDegrees = Math.max(0, (100 - pct) * 3.6)
+
+  return {
+    background: `conic-gradient(from -90deg, #1B813E 0deg ${remainingDegrees}deg, color-mix(in srgb, var(--theme-bg) 72%, var(--theme-text) 28%) ${remainingDegrees}deg 360deg)`,
+  }
+}
+
+function SendIconFill({
+  iconSize,
+  strokeWidth,
+}: {
+  iconSize: number
+  strokeWidth: number
+}) {
+  return (
+    <span className="flex size-full items-center justify-center rounded-full theme-accent-fill">
+      <HugeiconsIcon
+        icon={ArrowUp02Icon}
+        size={iconSize}
+        strokeWidth={strokeWidth}
+        className="theme-accent-icon"
+      />
+    </span>
+  )
 }
 
 type GatewayStatusApiResponse = {
@@ -662,6 +695,7 @@ function ChatComposerComponent({
   thinkingLevel: externalThinkingLevel,
   onThinkingLevelChange,
   onAbort,
+  contextPercent,
 }: ChatComposerProps) {
   const mobileKeyboardInset = useWorkspaceStore((s) => s.mobileKeyboardInset)
   const mobileComposerFocused = useWorkspaceStore(
@@ -1443,6 +1477,13 @@ function ChatComposerComponent({
       attachmentProcessingCount === 0)
 
   const hasDraft = value.trim().length > 0 || attachments.length > 0
+  const contextRingStyle = useMemo(
+    () => getContextRingStyle(contextPercent),
+    [contextPercent],
+  )
+  const sendAriaLabel = `Send message. Context window ${Math.round(
+    clampContextPercent(contextPercent),
+  )}% used.`
   const promptPlaceholder = isMobileViewport
     ? 'Message...'
     : 'Ask anything... (↵ to send · ⇧↵ new line · ⌘⇧M switch model)'
@@ -1975,16 +2016,12 @@ function ChatComposerComponent({
                     type="button"
                     onClick={handleSubmit}
                     disabled={submitDisabled}
-                    aria-label="Send message"
+                    aria-label={sendAriaLabel}
                     data-tour="chat-composer-send"
-                    className="size-9 rounded-full theme-accent-fill flex items-center justify-center transition-all duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                    className="size-10 rounded-full p-[3px] flex items-center justify-center transition-opacity duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                    style={contextRingStyle}
                   >
-                    <HugeiconsIcon
-                      icon={ArrowUp02Icon}
-                      size={18}
-                      strokeWidth={2}
-                      className="theme-accent-icon"
-                    />
+                    <SendIconFill iconSize={18} strokeWidth={2} />
                   </button>
                 ) : voiceInput.isSupported || voiceRecorder.isSupported ? (
                   <button
@@ -2035,16 +2072,12 @@ function ChatComposerComponent({
                     type="button"
                     onClick={handleSubmit}
                     disabled={submitDisabled}
-                    aria-label="Send message"
+                    aria-label={sendAriaLabel}
                     data-tour="chat-composer-send"
-                    className="size-9 rounded-full theme-accent-fill flex items-center justify-center transition-all duration-150 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="size-10 rounded-full p-[3px] flex items-center justify-center transition-opacity duration-150 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={contextRingStyle}
                   >
-                    <HugeiconsIcon
-                      icon={ArrowUp02Icon}
-                      size={18}
-                      strokeWidth={2}
-                      className="theme-accent-icon"
-                    />
+                    <SendIconFill iconSize={18} strokeWidth={2} />
                   </button>
                 )}
               </div>
@@ -2712,15 +2745,11 @@ function ChatComposerComponent({
                         disabled={submitDisabled}
                         size="icon-sm"
                         data-tour="chat-composer-send"
-                        className="rounded-full theme-accent-fill hover:opacity-90"
-                        aria-label="Send message"
+                        className="size-9 rounded-full p-[3px] hover:opacity-90"
+                        style={contextRingStyle}
+                        aria-label={sendAriaLabel}
                       >
-                        <HugeiconsIcon
-                          icon={ArrowUp02Icon}
-                          size={20}
-                          strokeWidth={1.5}
-                          className="theme-accent-icon"
-                        />
+                        <SendIconFill iconSize={20} strokeWidth={1.5} />
                       </Button>
                     </PromptInputAction>
                   </>

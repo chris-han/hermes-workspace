@@ -2018,7 +2018,7 @@ function ChatComposerComponent({
                     disabled={submitDisabled}
                     aria-label={sendAriaLabel}
                     data-tour="chat-composer-send"
-                    className="size-10 rounded-full p-[3px] flex items-center justify-center transition-opacity duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                    className="size-10 rounded-full border-0 p-[3px] flex items-center justify-center outline-none transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                     style={contextRingStyle}
                   >
                     <SendIconFill iconSize={18} strokeWidth={2} />
@@ -2074,7 +2074,7 @@ function ChatComposerComponent({
                     disabled={submitDisabled}
                     aria-label={sendAriaLabel}
                     data-tour="chat-composer-send"
-                    className="size-10 rounded-full p-[3px] flex items-center justify-center transition-opacity duration-150 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="size-10 rounded-full border-0 p-[3px] flex items-center justify-center outline-none transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] disabled:opacity-30 disabled:cursor-not-allowed"
                     style={contextRingStyle}
                   >
                     <SendIconFill iconSize={18} strokeWidth={2} />
@@ -2745,7 +2745,7 @@ function ChatComposerComponent({
                         disabled={submitDisabled}
                         size="icon-sm"
                         data-tour="chat-composer-send"
-                        className="size-9 rounded-full p-[3px] hover:opacity-90"
+                        className="size-9 rounded-full border-0 p-[3px] outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)]"
                         style={contextRingStyle}
                         aria-label={sendAriaLabel}
                       >

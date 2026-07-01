@@ -194,7 +194,9 @@ function formatTableValue(value: unknown): string {
   return JSON.stringify(value).replace(/\|/g, '\\|')
 }
 
-export function formatGovernedQueryResultForDisplay(outputText: string): string {
+export function formatGovernedQueryResultForDisplay(
+  outputText: string,
+): string {
   const trimmed = outputText.trim()
   if (!trimmed.startsWith('{')) return outputText
 
@@ -207,7 +209,9 @@ export function formatGovernedQueryResultForDisplay(outputText: string): string 
   if (!isRecord(payload)) return outputText
 
   const columns = Array.isArray(payload.columns)
-    ? payload.columns.filter((column): column is string => typeof column === 'string')
+    ? payload.columns.filter(
+        (column): column is string => typeof column === 'string',
+      )
     : []
   const rows = Array.isArray(payload.rows) ? payload.rows : []
   if (columns.length === 0 || rows.length === 0) return outputText
@@ -217,10 +221,15 @@ export function formatGovernedQueryResultForDisplay(outputText: string): string 
         typeof column === 'string' && column.trim() ? column : null,
       )
     : []
-  const headers = columns.map((column, index) => displayColumns[index] || column)
+  const headers = columns.map(
+    (column, index) => displayColumns[index] || column,
+  )
   const tableRows = rows
     .filter(isRecord)
-    .map((row) => `| ${columns.map((column) => formatTableValue(row[column])).join(' | ')} |`)
+    .map(
+      (row) =>
+        `| ${columns.map((column) => formatTableValue(row[column])).join(' | ')} |`,
+    )
 
   if (tableRows.length === 0) return outputText
 
@@ -1078,18 +1087,41 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
         )}
         <span className="flex-1" />
         {elapsed && (
-          <span className="shrink-0 text-[10px] tabular-nums" style={{ color: 'var(--tool-card-muted)' }}>
+          <span
+            className="shrink-0 text-[10px] tabular-nums"
+            style={{ color: 'var(--tool-card-muted)' }}
+          >
             {elapsed}
           </span>
         )}
-        {isDone && <span className="shrink-0 text-xs" style={{ color: 'var(--theme-success)' }}>✓</span>}
-        {isError && <span className="shrink-0 text-xs" style={{ color: 'var(--theme-danger)' }}>✕</span>}
+        {isDone && (
+          <span
+            className="shrink-0 text-xs"
+            style={{ color: 'var(--theme-success)' }}
+          >
+            ✓
+          </span>
+        )}
+        {isError && (
+          <span
+            className="shrink-0 text-xs"
+            style={{ color: 'var(--theme-danger)' }}
+          >
+            ✕
+          </span>
+        )}
         {isRunning && (
-          <span className="shrink-0 size-1.5 rounded-full animate-pulse" style={{ background: 'var(--theme-accent)' }} />
+          <span
+            className="shrink-0 size-1.5 rounded-full animate-pulse"
+            style={{ background: 'var(--theme-accent)' }}
+          />
         )}
       </button>
       {isRunning && !expanded && (
-        <div className="px-2.5 pb-1.5 text-[10px]" style={{ color: 'var(--tool-card-muted)' }}>
+        <div
+          className="px-2.5 pb-1.5 text-[10px]"
+          style={{ color: 'var(--tool-card-muted)' }}
+        >
           <span>
             {verb}
             {dots}
@@ -1139,10 +1171,16 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
           {/* Show error */}
           {isError && result && (
             <div className="px-2.5 py-1.5">
-              <div className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: 'var(--theme-danger)' }}>
+              <div
+                className="text-[9px] uppercase tracking-widest mb-0.5"
+                style={{ color: 'var(--theme-danger)' }}
+              >
                 Error
               </div>
-              <pre className="text-[10px] font-mono whitespace-pre-wrap break-words max-h-48 overflow-y-auto" style={{ color: 'var(--theme-danger)' }}>
+              <pre
+                className="text-[10px] font-mono whitespace-pre-wrap break-words max-h-48 overflow-y-auto"
+                style={{ color: 'var(--theme-danger)' }}
+              >
                 {result}
               </pre>
             </div>
@@ -1159,7 +1197,10 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
         </div>
       )}
       {!expanded && isError && result && (
-        <div className="px-2.5 pb-1.5 text-[10px] font-mono truncate" style={{ color: 'var(--theme-danger)' }}>
+        <div
+          className="px-2.5 pb-1.5 text-[10px] font-mono truncate"
+          style={{ color: 'var(--theme-danger)' }}
+        >
           {result.slice(0, 80)}
         </div>
       )}
@@ -1544,16 +1585,28 @@ function InlineToolSectionItem({
           ) : null}
           <span className="flex-1" />
           {isRunning && (
-            <span className="text-[10px] tabular-nums" style={{ color: 'var(--tool-card-muted)' }}>
+            <span
+              className="text-[10px] tabular-nums"
+              style={{ color: 'var(--tool-card-muted)' }}
+            >
               {elapsedLabel}
             </span>
           )}
           {isDone && !isRunning && (
-            <span className="text-xs" style={{ color: 'var(--theme-success)' }}>✓</span>
+            <span className="text-xs" style={{ color: 'var(--theme-success)' }}>
+              ✓
+            </span>
           )}
-          {isError && <span className="text-xs" style={{ color: 'var(--theme-danger)' }}>✕</span>}
+          {isError && (
+            <span className="text-xs" style={{ color: 'var(--theme-danger)' }}>
+              ✕
+            </span>
+          )}
           {isRunning && (
-            <span className="size-1.5 rounded-full animate-pulse" style={{ background: 'var(--theme-accent)' }} />
+            <span
+              className="size-1.5 rounded-full animate-pulse"
+              style={{ background: 'var(--theme-accent)' }}
+            />
           )}
           {hasExpandableContent && (
             <span className="text-[8px] opacity-30 ml-0.5">
@@ -1562,7 +1615,10 @@ function InlineToolSectionItem({
           )}
         </div>
         {isRunning && (
-          <div className="px-2.5 pb-1.5 text-[10px]" style={{ color: 'var(--tool-card-muted)' }}>
+          <div
+            className="px-2.5 pb-1.5 text-[10px]"
+            style={{ color: 'var(--tool-card-muted)' }}
+          >
             {verb}
             {'.'.repeat(dots)}
           </div>
@@ -1574,7 +1630,10 @@ function InlineToolSectionItem({
         <div className="mt-1 ml-3 flex flex-col gap-1.5 pb-1 pl-3 animate-in slide-in-from-top-1 duration-150 theme-border-l-1">
           {hasInputData && !showRawJson ? (
             <div>
-              <div className="text-[9px] uppercase tracking-widest mb-0.5 font-sans" style={{ color: 'var(--tool-card-muted)' }}>
+              <div
+                className="text-[9px] uppercase tracking-widest mb-0.5 font-sans"
+                style={{ color: 'var(--tool-card-muted)' }}
+              >
                 Input
               </div>
               {toolSection.type === 'exec' && headerArg ? (
@@ -1601,19 +1660,28 @@ function InlineToolSectionItem({
           {!showRawJson ? (
             isError && toolSection.errorText ? (
               <div>
-                <div className="text-[9px] uppercase tracking-widest mb-0.5 font-sans" style={{ color: 'var(--theme-danger)' }}>
+                <div
+                  className="text-[9px] uppercase tracking-widest mb-0.5 font-sans"
+                  style={{ color: 'var(--theme-danger)' }}
+                >
                   Error
                 </div>
                 <pre
                   className="max-h-48 overflow-x-auto whitespace-pre-wrap break-words rounded p-2 text-[10px] font-mono"
-                  style={{ background: 'var(--code-bg, var(--theme-card))', color: 'var(--theme-danger)' }}
+                  style={{
+                    background: 'var(--code-bg, var(--theme-card))',
+                    color: 'var(--theme-danger)',
+                  }}
                 >
                   {displayedOutputText}
                 </pre>
               </div>
             ) : toolSection.outputText ? (
               <div>
-                <div className="text-[9px] uppercase tracking-widest mb-0.5 font-sans" style={{ color: 'var(--tool-card-muted)' }}>
+                <div
+                  className="text-[9px] uppercase tracking-widest mb-0.5 font-sans"
+                  style={{ color: 'var(--tool-card-muted)' }}
+                >
                   Output
                 </div>
                 <pre
@@ -1648,7 +1716,8 @@ function InlineToolSectionItem({
                     e.stopPropagation()
                     setShowFullOutput((v) => !v)
                   }}
-                  className="text-[9px]" style={{ color: 'var(--tool-card-muted)' }}
+                  className="text-[9px]"
+                  style={{ color: 'var(--tool-card-muted)' }}
                 >
                   {showFullOutput ? 'less' : 'more'}
                 </button>
@@ -1659,7 +1728,8 @@ function InlineToolSectionItem({
                   e.stopPropagation()
                   setShowRawJson((v) => !v)
                 }}
-                className="text-[9px]" style={{ color: 'var(--tool-card-muted)' }}
+                className="text-[9px]"
+                style={{ color: 'var(--tool-card-muted)' }}
               >
                 {showRawJson ? 'formatted' : 'raw'}
               </button>
@@ -1667,7 +1737,10 @@ function InlineToolSectionItem({
           )}
           {/* Fallback when no args or output available */}
           {!hasInputData && !hasOutputData && !isRunning && (
-            <div className="text-[10px] italic" style={{ color: 'var(--tool-card-muted)' }}>
+            <div
+              className="text-[10px] italic"
+              style={{ color: 'var(--tool-card-muted)' }}
+            >
               No detail available for this tool call
             </div>
           )}
@@ -2416,7 +2489,13 @@ function MessageItemComponent({
                       <span className="truncate">
                         {attachment.name || 'Attachment'}
                       </span>
-                      <span className="rounded px-1.5 py-0.5 text-[10px] uppercase" style={{ background: 'var(--theme-card2)', color: 'var(--tool-card-muted)' }}>
+                      <span
+                        className="rounded px-1.5 py-0.5 text-[10px] uppercase"
+                        style={{
+                          background: 'var(--theme-card2)',
+                          color: 'var(--tool-card-muted)',
+                        }}
+                      >
                         {ext || 'file'}
                       </span>
                     </a>
@@ -2448,13 +2527,16 @@ function MessageItemComponent({
               <div className="flex flex-col gap-2">
                 {inlineRenderPlan.map((item, index) =>
                   item.kind === 'ui' ? (
-                    <div key={item.key} className="rounded-lg border border-border/70 bg-muted/10 p-3">
+                    <div
+                      key={item.key}
+                      className="rounded-lg border border-border/70 bg-muted/10 p-3"
+                    >
                       <A2UiRenderer
                         schema={item.schema}
                         onSubmit={onA2UiSubmit}
                       />
                     </div>
-                  ) : item.text.trim().length > 0 ? (
+                  ) : item.kind === 'text' && item.text.trim().length > 0 ? (
                     <div key={`text-${index}`} className="relative">
                       {extractStandaloneMarkdownFence(item.text) ? (
                         <MarkdownMessageCard
@@ -2532,23 +2614,28 @@ function MessageItemComponent({
         </div>
       ) : null}
       {/* Retry information if available */}
-      {!isUser && !effectiveIsStreaming ? (() => {
-        const retryMessage = typeof message.retry_message === 'string' ? message.retry_message : null
-        if (retryMessage) {
-          return (
-            <div className="mt-2 rounded-lg border border-amber-200/50 bg-amber-50/30 px-3 py-2 text-[11px] text-amber-700 dark:border-amber-800/30 dark:bg-amber-900/10 dark:text-amber-300">
-              <div className="flex items-start gap-2">
-                <span className="mt-0.5 shrink-0 text-lg">⚡</span>
-                <div>
-                  <div className="font-medium">Auto-retry</div>
-                  <div className="mt-1 opacity-90">{retryMessage}</div>
+      {!isUser && !effectiveIsStreaming
+        ? (() => {
+            const retryMessage =
+              typeof message.retry_message === 'string'
+                ? message.retry_message
+                : null
+            if (retryMessage) {
+              return (
+                <div className="mt-2 rounded-lg border border-amber-200/50 bg-amber-50/30 px-3 py-2 text-[11px] text-amber-700 dark:border-amber-800/30 dark:bg-amber-900/10 dark:text-amber-300">
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 shrink-0 text-lg">⚡</span>
+                    <div>
+                      <div className="font-medium">Auto-retry</div>
+                      <div className="mt-1 opacity-90">{retryMessage}</div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )
-        }
-        return null
-      })() : null}
+              )
+            }
+            return null
+          })()
+        : null}
       {hasAssistantMetadata ? (
         <div className="flex flex-wrap justify-end gap-x-2 gap-y-0.5 pl-10 pr-1 mt-0.5 font-mono text-[10px] tabular-nums text-primary-400 leading-relaxed">
           {usageMetadata.inputTokens !== null && (

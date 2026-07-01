@@ -132,10 +132,10 @@ function getContextRingStyle(
   contextPercent: number | undefined,
 ): CSSProperties {
   const pct = clampContextPercent(contextPercent)
-  const remainingDegrees = Math.max(0, (100 - pct) * 3.6)
+  const usedDegrees = Math.max(0, pct * 3.6)
 
   return {
-    background: `conic-gradient(from -90deg, #1B813E 0deg ${remainingDegrees}deg, color-mix(in srgb, var(--theme-bg) 72%, var(--theme-text) 28%) ${remainingDegrees}deg 360deg)`,
+    background: `conic-gradient(from 0deg, color-mix(in srgb, var(--theme-bg) 72%, var(--theme-text) 28%) 0deg ${usedDegrees}deg, #1B813E ${usedDegrees}deg 360deg)`,
   }
 }
 

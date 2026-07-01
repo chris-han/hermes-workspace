@@ -23,7 +23,14 @@ function isBrowserMemoryPath(relativePath: string): boolean {
   )
 }
 
-function normalizeWorkspaceRoot(): string {
+type MemoryRootOptions = {
+  workspaceRoot?: string | null
+}
+
+function normalizeWorkspaceRoot(options: MemoryRootOptions = {}): string {
+  const explicitRoot = options.workspaceRoot?.trim()
+  if (explicitRoot) return explicitRoot
+
   // Honor HERMES_HOME when set (e.g. ~/.hermes-vanilla for running alongside prod).
   // Fall back to ~/.hermes for the default install location.
   const envHome = process.env.HERMES_HOME?.trim()
@@ -31,8 +38,8 @@ function normalizeWorkspaceRoot(): string {
   return path.join(os.homedir(), '.hermes')
 }
 
-export function getMemoryWorkspaceRoot(): string {
-  return path.resolve(normalizeWorkspaceRoot())
+export function getMemoryWorkspaceRoot(options: MemoryRootOptions = {}): string {
+  return path.resolve(normalizeWorkspaceRoot(options))
 }
 
 function normalizeRelativeMemoryPath(input: string): string {
@@ -47,12 +54,15 @@ function normalizeRelativeMemoryPath(input: string): string {
   return normalized
 }
 
-export function resolveMemoryFilePath(relativePath: string): {
+export function resolveMemoryFilePath(
+  relativePath: string,
+  options: MemoryRootOptions = {},
+): {
   fullPath: string
   relativePath: string
 } {
   const safeRelativePath = normalizeRelativeMemoryPath(relativePath)
-  const workspaceRoot = getMemoryWorkspaceRoot()
+  const workspaceRoot = getMemoryWorkspaceRoot(options)
   const fullPath = path.resolve(workspaceRoot, safeRelativePath)
   if (!fullPath.startsWith(workspaceRoot)) {
     throw new Error('Resolved path is outside workspace')
@@ -133,8 +143,10 @@ function compareMemoryFiles(a: MemoryFileMeta, b: MemoryFileMeta): number {
   return a.path.localeCompare(b.path)
 }
 
-export function listMemoryFiles(): Array<MemoryFileMeta> {
-  const workspaceRoot = getMemoryWorkspaceRoot()
+export function listMemoryFiles(
+  options: MemoryRootOptions = {},
+): Array<MemoryFileMeta> {
+  const workspaceRoot = getMemoryWorkspaceRoot(options)
   const results: Array<MemoryFileMeta> = []
 
   walkWorkspaceDir(results, workspaceRoot, workspaceRoot)
@@ -143,22 +155,28 @@ export function listMemoryFiles(): Array<MemoryFileMeta> {
   return results
 }
 
-export function readMemoryFile(relativePath: string): string {
-  const { fullPath } = resolveMemoryFilePath(relativePath)
+export function readMemoryFile(
+  relativePath: string,
+  options: MemoryRootOptions = {},
+): string {
+  const { fullPath } = resolveMemoryFilePath(relativePath, options)
   return fs.readFileSync(fullPath, 'utf-8')
 }
 
-export function searchMemoryFiles(query: string): Array<MemorySearchMatch> {
+export function searchMemoryFiles(
+  query: string,
+  options: MemoryRootOptions = {},
+): Array<MemorySearchMatch> {
   const needle = query.trim().toLowerCase()
   if (!needle) return []
 
   const matches: Array<MemorySearchMatch> = []
-  const files = listMemoryFiles()
+  const files = listMemoryFiles(options)
 
   for (const file of files) {
     let content = ''
     try {
-      content = readMemoryFile(file.path)
+      content = readMemoryFile(file.path, options)
     } catch {
       continue
     }

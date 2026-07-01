@@ -621,53 +621,23 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
 
 // ── Memory Tab ────────────────────────────────────────────────────────────────
 
-type MemoryFile = {
-  path: string
-  name: string
+type MemorySnapshot = {
+  kind: string
+  title: string
+  content: string
+  source?: string
 }
 
-function MemoryRawPanel({ file }: { file: MemoryFile }) {
+function MemoryRawPanel({ snapshot }: { snapshot: MemorySnapshot }) {
   const [showRaw, setShowRaw] = useState(false)
-  const [content, setContent] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!showRaw || content !== null || loading) return
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    fetch(`/api/memory/read?path=${encodeURIComponent(file.path)}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json() as Promise<Record<string, unknown>>
-      })
-      .then((json) => {
-        if (cancelled) return
-        const rawContent =
-          typeof json.content === 'string'
-            ? json.content
-            : JSON.stringify(json.content ?? '', null, 2)
-        setContent(rawContent)
-        setLoading(false)
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return
-        setError(err instanceof Error ? err.message : 'Failed to load memory')
-        setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [content, file.path, loading, showRaw])
 
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-medium break-all">{file.name}</div>
+          <div className="font-medium break-all">{snapshot.title}</div>
           <div className="break-all" style={{ color: 'var(--theme-muted)' }}>
-            {file.path}
+            {snapshot.source || 'session_db.system_prompt'}
           </div>
         </div>
         <button
@@ -683,40 +653,57 @@ function MemoryRawPanel({ file }: { file: MemoryFile }) {
         </button>
       </div>
       {showRaw ? (
-        <div>
-          {loading ? <LoadingState text="Loading raw memory…" /> : null}
-          {error ? <ErrorState text={`Memory: ${error}`} /> : null}
-          {!loading && !error ? (
-            <JsonDetailBlock
-              label="memory"
-              value={content ?? { path: file.path }}
-            />
-          ) : null}
-        </div>
-      ) : null}
+        <JsonDetailBlock label="memory snapshot" value={snapshot} />
+      ) : (
+        <pre
+          className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded px-2 py-1 text-[11px]"
+          style={{
+            background: 'var(--theme-card)',
+            border: '1px solid var(--theme-border)',
+            color: 'var(--theme-text)',
+          }}
+        >
+          {snapshot.content}
+        </pre>
+      )}
     </div>
   )
 }
 
-function MemoryTab() {
-  const [files, setFiles] = useState<Array<MemoryFile> | null>(null)
+function MemoryTab({ sessionKey }: { sessionKey: string | null }) {
+  const [snapshots, setSnapshots] = useState<Array<MemorySnapshot> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!sessionKey) {
+      setSnapshots([])
+      setLoading(false)
+      setError(null)
+      return
+    }
     let cancelled = false
-    fetch('/api/memory/list')
+    setLoading(true)
+    setError(null)
+    fetch(
+      `/api/semantier-proxy/api/sessions/${encodeURIComponent(
+        sessionKey,
+      )}/memory-snapshot`,
+    )
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json()
       })
       .then((json) => {
         if (!cancelled) {
-          const list = Array.isArray(json?.files) ? json.files : []
-          setFiles(
+          const list = Array.isArray(json?.snapshots) ? json.snapshots : []
+          setSnapshots(
             list.map((entry: Record<string, unknown>) => ({
-              path: String(entry.path || ''),
-              name: String(entry.name || entry.path || ''),
+              kind: String(entry.kind || ''),
+              title: String(entry.title || entry.kind || 'Memory snapshot'),
+              content: String(entry.content || ''),
+              source:
+                typeof entry.source === 'string' ? entry.source : undefined,
             })),
           )
           setLoading(false)
@@ -731,21 +718,23 @@ function MemoryTab() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [sessionKey])
 
   if (loading) return <LoadingState text="Loading memory…" />
   if (error) return <ErrorState text={`Memory: ${error}`} />
-  if (!files || files.length === 0)
-    return <EmptyState text="No memory files available" />
+  if (!sessionKey) return <EmptyState text="No session selected" />
+  if (!snapshots || snapshots.length === 0)
+    return <EmptyState text="No memory snapshot was injected for this session" />
 
   return (
     <div className="space-y-2 p-3 overflow-auto max-h-[calc(100vh-140px)]">
       <p className="mb-1 text-xs" style={{ color: 'var(--theme-muted)' }}>
-        {files.length} memory files available
+        {snapshots.length} memory snapshot{snapshots.length === 1 ? '' : 's'} used
+        in this session
       </p>
-      {files.map((file, index) => (
+      {snapshots.map((snapshot, index) => (
         <div
-          key={`${file.path}-${index}`}
+          key={`${snapshot.kind}-${index}`}
           className="rounded-lg px-3 py-2 text-xs leading-relaxed"
           style={{
             backgroundColor: 'var(--theme-card)',
@@ -753,7 +742,7 @@ function MemoryTab() {
             color: 'var(--theme-text)',
           }}
         >
-          <MemoryRawPanel file={file} />
+          <MemoryRawPanel snapshot={snapshot} />
         </div>
       ))}
     </div>
@@ -1716,7 +1705,7 @@ export function InspectorPanel({
             {activeTab === 'artifacts' && (
               <ArtifactsTab sessionKey={sessionKey} />
             )}
-            {activeTab === 'memory' && <MemoryTab />}
+            {activeTab === 'memory' && <MemoryTab sessionKey={sessionKey} />}
             {activeTab === 'skills' && <SkillsTab sessionKey={sessionKey} />}
             {activeTab === 'logs' && <LogsTab sessionKey={sessionKey} />}
           </div>

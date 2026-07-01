@@ -61,20 +61,175 @@ function getActivityEventSessionKey(event: ActivityEvent): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
+type PersistedArtifact = {
+  artifactId: string
+  filename: string
+  kind: string
+  mediaType: string
+  path: string
+  sha256: string
+  sizeBytes: number | null
+  timestamp: number | string | null
+}
+
+type SessionTrajectoryPayload = {
+  trajectory?: {
+    artifacts?: Array<Record<string, unknown>>
+    lifecycleEvents?: Array<Record<string, unknown>>
+  }
+}
+
+function readNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function formatArtifactTime(value: number | string | null): string {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Date(value).toLocaleTimeString()
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Date.parse(value)
+    return Number.isNaN(parsed) ? value : new Date(parsed).toLocaleTimeString()
+  }
+  return ''
+}
+
+function normalizePersistedArtifacts(
+  payload: SessionTrajectoryPayload | null,
+): Array<PersistedArtifact> {
+  const trajectory = payload?.trajectory
+  const artifacts = Array.isArray(trajectory?.artifacts)
+    ? trajectory.artifacts
+    : []
+  const lifecycleEvents = Array.isArray(trajectory?.lifecycleEvents)
+    ? trajectory.lifecycleEvents
+    : []
+  const timestampByKey = new Map<string, number | string>()
+  for (const event of lifecycleEvents) {
+    if (!event || typeof event !== 'object') continue
+    const artifact =
+      event.artifact && typeof event.artifact === 'object'
+        ? (event.artifact as Record<string, unknown>)
+        : null
+    if (!artifact) continue
+    const key =
+      readString(artifact.artifact_id) ||
+      readString(artifact.path) ||
+      readString(artifact.filename)
+    if (!key) continue
+    const timestamp = event.timestamp
+    if (typeof timestamp === 'number' || typeof timestamp === 'string') {
+      timestampByKey.set(key, timestamp)
+    }
+  }
+
+  return artifacts
+    .map((artifact) => {
+      const key =
+        readString(artifact.artifact_id) ||
+        readString(artifact.path) ||
+        readString(artifact.filename)
+      return {
+        artifactId: readString(artifact.artifact_id),
+        filename: readString(artifact.filename),
+        kind: readString(artifact.kind),
+        mediaType: readString(artifact.media_type),
+        path: readString(artifact.path),
+        sha256: readString(artifact.sha256),
+        sizeBytes: readNumber(artifact.size_bytes),
+        timestamp: key ? timestampByKey.get(key) ?? null : null,
+      }
+    })
+    .filter((artifact) => artifact.filename || artifact.path)
+}
+
 function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
   const events = useActivityStore((s) => s.events)
-  const artifacts = events.filter(
+  const [persistedArtifacts, setPersistedArtifacts] = useState<
+    Array<PersistedArtifact>
+  >([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const activityArtifacts = events.filter(
     (event) =>
       event.type === 'artifact' &&
       sessionKey &&
       getActivityEventSessionKey(event) === sessionKey,
   )
 
+  useEffect(() => {
+    if (!sessionKey) {
+      setPersistedArtifacts([])
+      setError(null)
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    fetch(
+      `/api/semantier-proxy/sessions/${encodeURIComponent(sessionKey)}/trajectory`,
+    )
+      .then((res) => {
+        if (res.status === 404) return null
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json() as Promise<SessionTrajectoryPayload>
+      })
+      .then((json) => {
+        if (!cancelled) {
+          setPersistedArtifacts(normalizePersistedArtifacts(json))
+          setLoading(false)
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : 'Failed to load artifacts',
+          )
+          setPersistedArtifacts([])
+          setLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [sessionKey])
+
+  const artifacts = useMemo(() => {
+    const seen = new Set<string>()
+    const persisted = persistedArtifacts.map((artifact) => {
+      const key = artifact.artifactId || artifact.path || artifact.filename
+      if (key) seen.add(key)
+      return { kind: 'persisted' as const, artifact }
+    })
+    const activity = activityArtifacts
+      .filter((artifact) => {
+        const path =
+          typeof artifact.details?.path === 'string'
+            ? artifact.details.path
+            : ''
+        const key = path || artifact.text
+        if (key && seen.has(key)) return false
+        if (key) seen.add(key)
+        return true
+      })
+      .map((artifact) => ({ kind: 'activity' as const, artifact }))
+    return [...persisted, ...activity]
+  }, [activityArtifacts, persistedArtifacts])
+
   if (!sessionKey) {
     return <EmptyState text="Open a session to see artifacts" />
   }
 
-  if (artifacts.length === 0) {
+  if (loading && artifacts.length === 0) {
+    return <LoadingState text="Loading artifacts…" />
+  }
+
+  if (error && artifacts.length === 0) {
+    return <ErrorState text={`Artifacts: ${error}`} />
+  }
+
+  if (!loading && artifacts.length === 0) {
     return <EmptyState text="No artifacts recorded for this session" />
   }
 
@@ -83,24 +238,58 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
       <p className="text-xs" style={{ color: 'var(--theme-muted)' }}>
         {artifacts.length} artifacts emitted by the agent
       </p>
-      {artifacts.map((artifact, index) => (
-        <div
-          key={`${artifact.time}-${index}`}
-          className="rounded-lg px-3 py-2 text-xs leading-relaxed"
-          style={{
-            backgroundColor: 'var(--theme-card)',
-            border: '1px solid var(--theme-border)',
-            color: 'var(--theme-text)',
-          }}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-medium">{artifact.text}</span>
-            <span style={{ color: 'var(--theme-accent)' }}>
-              {artifact.time}
-            </span>
+      {error ? <ErrorState text={`Artifacts: ${error}`} /> : null}
+      {artifacts.map((entry, index) => {
+        const artifact = entry.artifact
+        const title =
+          entry.kind === 'persisted'
+            ? artifact.filename || artifact.path
+            : artifact.text
+        const time =
+          entry.kind === 'persisted'
+            ? formatArtifactTime(artifact.timestamp)
+            : artifact.time
+        const subtitle =
+          entry.kind === 'persisted'
+            ? artifact.kind || artifact.mediaType || artifact.sha256
+            : typeof artifact.details?.path === 'string'
+              ? artifact.details.path
+              : ''
+        const size =
+          entry.kind === 'persisted' && artifact.sizeBytes !== null
+            ? `${artifact.sizeBytes.toLocaleString()} bytes`
+            : ''
+        return (
+          <div
+            key={`${entry.kind}-${title}-${index}`}
+            className="rounded-lg px-3 py-2 text-xs leading-relaxed"
+            style={{
+              backgroundColor: 'var(--theme-card)',
+              border: '1px solid var(--theme-border)',
+              color: 'var(--theme-text)',
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium break-all">{title}</span>
+              {time ? (
+                <span className="shrink-0" style={{ color: 'var(--theme-accent)' }}>
+                  {time}
+                </span>
+              ) : null}
+            </div>
+            {subtitle ? (
+              <div className="mt-1 break-all" style={{ color: 'var(--theme-muted)' }}>
+                {subtitle}
+              </div>
+            ) : null}
+            {entry.kind === 'persisted' && (artifact.path || size) ? (
+              <div className="mt-1 break-all" style={{ color: 'var(--theme-muted)' }}>
+                {[artifact.path, size].filter(Boolean).join(' · ')}
+              </div>
+            ) : null}
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

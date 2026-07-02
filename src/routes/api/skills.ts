@@ -42,9 +42,14 @@ type SkillSummary = {
   contentHash?: string | null
   latestHash?: string | null
   updateStatus?: 'up_to_date' | 'update_available' | 'unavailable'
+  version?: string | null
+  installedVersion?: string | null
+  latestVersion?: string | null
   hubIdentifier?: string | null
   hubSource?: string | null
   hubUpdatedAt?: string | null
+  packageType?: string | null
+  packagePath?: string | null
   canUpdate?: boolean
   featuredGroup?: string
   configFields?: Array<SkillConfigField>
@@ -266,6 +271,9 @@ function normalizeSkill(value: unknown): SkillSummary | null {
       typeof record.canModify === 'boolean' ? record.canModify : undefined,
     contentHash: readString(record.contentHash) || null,
     latestHash: readString(record.latestHash) || null,
+    version: readString(record.version) || null,
+    installedVersion: readString(record.installedVersion) || null,
+    latestVersion: readString(record.latestVersion) || null,
     updateStatus:
       readString(record.updateStatus) === 'up_to_date' ||
       readString(record.updateStatus) === 'update_available' ||
@@ -275,6 +283,8 @@ function normalizeSkill(value: unknown): SkillSummary | null {
     hubIdentifier: readString(record.hubIdentifier) || null,
     hubSource: readString(record.hubSource) || null,
     hubUpdatedAt: readString(record.hubUpdatedAt) || null,
+    packageType: readString(record.packageType) || null,
+    packagePath: readString(record.packagePath) || null,
     canUpdate:
       typeof record.canUpdate === 'boolean' ? record.canUpdate : undefined,
     featuredGroup: undefined,

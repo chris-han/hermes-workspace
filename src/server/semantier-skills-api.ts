@@ -31,6 +31,13 @@ export type SemantierSkillInventoryItem = {
   hubIdentifier?: string | null
   hubSource?: string | null
   hubUpdatedAt?: string | null
+  latestHash?: string | null
+  updateStatus?: 'up_to_date' | 'update_available' | 'unavailable'
+  version?: string | null
+  installedVersion?: string | null
+  latestVersion?: string | null
+  packageType?: string | null
+  packagePath?: string | null
   canUpdate?: boolean
   configFields?: Array<{
     key: string

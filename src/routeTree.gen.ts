@@ -58,6 +58,7 @@ import { Route as ApiPingRouteImport } from './routes/api/ping'
 import { Route as ApiPathsRouteImport } from './routes/api/paths'
 import { Route as ApiModelsRouteImport } from './routes/api/models'
 import { Route as ApiMemoryRouteImport } from './routes/api/memory'
+import { Route as ApiMeetingCoordinatorSettingsRouteImport } from './routes/api/meeting-coordinator-settings'
 import { Route as ApiMeetingCoordinatorRouteImport } from './routes/api/meeting-coordinator'
 import { Route as ApiLocalProvidersRouteImport } from './routes/api/local-providers'
 import { Route as ApiHistoryRouteImport } from './routes/api/history'
@@ -362,6 +363,12 @@ const ApiMemoryRoute = ApiMemoryRouteImport.update({
   path: '/api/memory',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMeetingCoordinatorSettingsRoute =
+  ApiMeetingCoordinatorSettingsRouteImport.update({
+    id: '/api/meeting-coordinator-settings',
+    path: '/api/meeting-coordinator-settings',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiMeetingCoordinatorRoute = ApiMeetingCoordinatorRouteImport.update({
   id: '/api/meeting-coordinator',
   path: '/api/meeting-coordinator',
@@ -681,6 +688,7 @@ export interface FileRoutesByFullPath {
   '/api/history': typeof ApiHistoryRoute
   '/api/local-providers': typeof ApiLocalProvidersRoute
   '/api/meeting-coordinator': typeof ApiMeetingCoordinatorRoute
+  '/api/meeting-coordinator-settings': typeof ApiMeetingCoordinatorSettingsRoute
   '/api/memory': typeof ApiMemoryRouteWithChildren
   '/api/models': typeof ApiModelsRoute
   '/api/paths': typeof ApiPathsRoute
@@ -787,6 +795,7 @@ export interface FileRoutesByTo {
   '/api/history': typeof ApiHistoryRoute
   '/api/local-providers': typeof ApiLocalProvidersRoute
   '/api/meeting-coordinator': typeof ApiMeetingCoordinatorRoute
+  '/api/meeting-coordinator-settings': typeof ApiMeetingCoordinatorSettingsRoute
   '/api/memory': typeof ApiMemoryRouteWithChildren
   '/api/models': typeof ApiModelsRoute
   '/api/paths': typeof ApiPathsRoute
@@ -895,6 +904,7 @@ export interface FileRoutesById {
   '/api/history': typeof ApiHistoryRoute
   '/api/local-providers': typeof ApiLocalProvidersRoute
   '/api/meeting-coordinator': typeof ApiMeetingCoordinatorRoute
+  '/api/meeting-coordinator-settings': typeof ApiMeetingCoordinatorSettingsRoute
   '/api/memory': typeof ApiMemoryRouteWithChildren
   '/api/models': typeof ApiModelsRoute
   '/api/paths': typeof ApiPathsRoute
@@ -1004,6 +1014,7 @@ export interface FileRouteTypes {
     | '/api/history'
     | '/api/local-providers'
     | '/api/meeting-coordinator'
+    | '/api/meeting-coordinator-settings'
     | '/api/memory'
     | '/api/models'
     | '/api/paths'
@@ -1110,6 +1121,7 @@ export interface FileRouteTypes {
     | '/api/history'
     | '/api/local-providers'
     | '/api/meeting-coordinator'
+    | '/api/meeting-coordinator-settings'
     | '/api/memory'
     | '/api/models'
     | '/api/paths'
@@ -1217,6 +1229,7 @@ export interface FileRouteTypes {
     | '/api/history'
     | '/api/local-providers'
     | '/api/meeting-coordinator'
+    | '/api/meeting-coordinator-settings'
     | '/api/memory'
     | '/api/models'
     | '/api/paths'
@@ -1325,6 +1338,7 @@ export interface RootRouteChildren {
   ApiHistoryRoute: typeof ApiHistoryRoute
   ApiLocalProvidersRoute: typeof ApiLocalProvidersRoute
   ApiMeetingCoordinatorRoute: typeof ApiMeetingCoordinatorRoute
+  ApiMeetingCoordinatorSettingsRoute: typeof ApiMeetingCoordinatorSettingsRoute
   ApiMemoryRoute: typeof ApiMemoryRouteWithChildren
   ApiModelsRoute: typeof ApiModelsRoute
   ApiPathsRoute: typeof ApiPathsRoute
@@ -1719,6 +1733,13 @@ declare module '@tanstack/react-router' {
       path: '/api/memory'
       fullPath: '/api/memory'
       preLoaderRoute: typeof ApiMemoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/meeting-coordinator-settings': {
+      id: '/api/meeting-coordinator-settings'
+      path: '/api/meeting-coordinator-settings'
+      fullPath: '/api/meeting-coordinator-settings'
+      preLoaderRoute: typeof ApiMeetingCoordinatorSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/meeting-coordinator': {
@@ -2265,6 +2286,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHistoryRoute: ApiHistoryRoute,
   ApiLocalProvidersRoute: ApiLocalProvidersRoute,
   ApiMeetingCoordinatorRoute: ApiMeetingCoordinatorRoute,
+  ApiMeetingCoordinatorSettingsRoute: ApiMeetingCoordinatorSettingsRoute,
   ApiMemoryRoute: ApiMemoryRouteWithChildren,
   ApiModelsRoute: ApiModelsRoute,
   ApiPathsRoute: ApiPathsRoute,

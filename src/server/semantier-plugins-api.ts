@@ -20,6 +20,18 @@ export type SemantierPluginInfo = {
   providesHooks: Array<string>
   sourcePath: string
   canModify?: boolean
+  version?: string | null
+  installedVersion?: string | null
+  latestVersion?: string | null
+  contentHash?: string | null
+  latestHash?: string | null
+  updateStatus?: 'up_to_date' | 'update_available' | 'unavailable'
+  hubIdentifier?: string | null
+  hubSource?: string | null
+  hubUpdatedAt?: string | null
+  packageType?: string | null
+  packagePath?: string | null
+  canUpdate?: boolean
 }
 
 export async function fetchSemantierPlugins(

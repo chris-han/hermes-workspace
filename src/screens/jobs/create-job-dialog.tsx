@@ -44,8 +44,8 @@ function getInitialState() {
     prompt: '',
     skillsInput: '',
     deliver: ['local'] as Array<string>,
-    repeatMode: 'forever' as RepeatMode,
-    repeatCount: '2',
+    repeatMode: 'limited' as RepeatMode,
+    repeatCount: '3',
   }
 }
 
@@ -111,7 +111,7 @@ export function CreateJobDialog({
           ? 0
           : form.repeatMode === 'once'
             ? 1
-            : Math.max(2, Number.parseInt(form.repeatCount, 10) || 2),
+            : Math.max(2, Number.parseInt(form.repeatCount, 10) || 3),
     })
   }
 

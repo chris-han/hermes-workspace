@@ -90,7 +90,7 @@ function getInitialState(job: HermesJob | null) {
         : ['local'],
     repeatMode,
     repeatCount:
-      remainingRepeats === null ? '2' : String(Math.max(2, remainingRepeats)),
+      remainingRepeats === null ? '3' : String(Math.max(2, remainingRepeats)),
   }
 }
 
@@ -159,7 +159,7 @@ export function EditJobDialog({
           ? 0
           : form.repeatMode === 'once'
             ? 1
-            : Math.max(2, Number.parseInt(form.repeatCount, 10) || 2),
+            : Math.max(2, Number.parseInt(form.repeatCount, 10) || 3),
     })
   }
 

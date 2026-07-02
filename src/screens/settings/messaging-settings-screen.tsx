@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ViewIcon, ViewOffIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import QRCode from 'qrcode'
+import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
@@ -20,6 +20,15 @@ type PlatformState = {
   validated_at?: string
   last_error?: string
   config: Record<string, unknown>
+}
+
+type FeishuLiveChannel = {
+  chat_id: string
+  thread_id?: string
+  chat_type?: string
+  name?: string
+  last_active?: number
+  session_id?: string
 }
 
 type PlatformsResponse = {
@@ -113,6 +122,7 @@ type FeishuDraft = {
   appSecret: string
   domain: 'feishu' | 'lark'
   connectionMode: 'websocket' | 'webhook'
+  homeChannel: string
 }
 
 type WeixinDmPolicy = 'open' | 'allowlist' | 'disabled' | 'pairing'
@@ -134,16 +144,17 @@ export function scheduleFeishuLinkStatusPolling(
   poll: () => Promise<void> | void,
   intervalMs = 1500,
 ): () => void {
-  let cancelled = false
+  const state = { cancelled: false }
   let timer: ReturnType<typeof setTimeout> | undefined
+  const shouldContinue = () => !state.cancelled
 
   const schedulePoll = () => {
     timer = globalThis.setTimeout(async () => {
-      if (cancelled) {
+      if (!shouldContinue()) {
         return
       }
       await poll()
-      if (!cancelled) {
+      if (shouldContinue()) {
         schedulePoll()
       }
     }, intervalMs)
@@ -151,7 +162,7 @@ export function scheduleFeishuLinkStatusPolling(
 
   schedulePoll()
   return () => {
-    cancelled = true
+    state.cancelled = true
     if (timer !== undefined) {
       globalThis.clearTimeout(timer)
     }
@@ -163,6 +174,7 @@ const EMPTY_FEISHU: FeishuDraft = {
   appSecret: '',
   domain: 'feishu',
   connectionMode: 'websocket',
+  homeChannel: '',
 }
 
 const EMPTY_WEIXIN: WeixinDraft = {
@@ -246,11 +258,47 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
       `Request failed (${response.status})`
     throw new Error(detail)
   }
-  return (payload ?? ({} as T)) as T
+  return (payload ?? {}) as T
 }
 
 function platformTitle(id: PlatformId): string {
   return id === 'feishu' ? 'Feishu / Lark' : 'Weixin (WeChat)'
+}
+
+function feishuLiveChannels(
+  config: Record<string, unknown>,
+): Array<FeishuLiveChannel> {
+  const value = config.live_channels
+  if (!Array.isArray(value)) {
+    return []
+  }
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const row = item as Record<string, unknown>
+      const chatId = String(row.chat_id ?? '').trim()
+      if (!chatId) {
+        return null
+      }
+      return {
+        chat_id: chatId,
+        thread_id: String(row.thread_id ?? '').trim(),
+        chat_type: String(row.chat_type ?? '').trim(),
+        name: String(row.name ?? chatId).trim(),
+        last_active:
+          typeof row.last_active === 'number' ? row.last_active : undefined,
+        session_id: String(row.session_id ?? '').trim(),
+      }
+    })
+    .filter((item): item is FeishuLiveChannel => item !== null)
+}
+
+function feishuChannelLabel(channel: FeishuLiveChannel): string {
+  const type = channel.chat_type === 'dm' ? 'DM' : channel.chat_type || 'chat'
+  const name = channel.name || channel.chat_id
+  return `${name} · ${type} · ${channel.chat_id}`
 }
 
 function StatusBadge({ configured }: { configured: boolean }) {
@@ -370,6 +418,8 @@ function useMessagingSettingsModel() {
   const [reconnectingWeixin, setReconnectingWeixin] = useState(false)
   const [weixinReconnectOutcome, setWeixinReconnectOutcome] =
     useState<WeixinReconnectResponse | null>(null)
+  const [approvingFeishuPairing, setApprovingFeishuPairing] = useState(false)
+  const [feishuPairingApproveCode, setFeishuPairingApproveCode] = useState('')
   const [approvingWeixinPairing, setApprovingWeixinPairing] = useState(false)
   const [weixinPairingApproveCode, setWeixinPairingApproveCode] = useState('')
   const [validationMessage, setValidationMessage] = useState<
@@ -402,6 +452,7 @@ function useMessagingSettingsModel() {
             feishuConfig.connection_mode === 'webhook'
               ? 'webhook'
               : 'websocket',
+          homeChannel: String(feishuConfig.home_channel ?? ''),
         })
 
         const weixinConfig = next.weixin.config
@@ -418,7 +469,7 @@ function useMessagingSettingsModel() {
             ? String(weixinConfig.dm_policy)
             : 'pairing') as WeixinDmPolicy,
           allowFrom: Array.isArray(weixinConfig.allow_from)
-            ? (weixinConfig.allow_from as string[]).join(', ')
+            ? (weixinConfig.allow_from as Array<string>).join(', ')
             : String(weixinConfig.allow_from ?? ''),
           groupPolicy: (['open', 'allowlist', 'disabled'].includes(
             String(weixinConfig.group_policy),
@@ -426,7 +477,7 @@ function useMessagingSettingsModel() {
             ? String(weixinConfig.group_policy)
             : 'disabled') as WeixinGroupPolicy,
           groupAllowFrom: Array.isArray(weixinConfig.group_allow_from)
-            ? (weixinConfig.group_allow_from as string[]).join(', ')
+            ? (weixinConfig.group_allow_from as Array<string>).join(', ')
             : String(weixinConfig.group_allow_from ?? ''),
           homeChannel: String(weixinConfig.home_channel ?? ''),
         })
@@ -813,6 +864,7 @@ function useMessagingSettingsModel() {
           app_secret: feishu.appSecret.trim(),
           domain: feishu.domain,
           connection_mode: feishu.connectionMode,
+          home_channel: feishu.homeChannel.trim(),
         },
       }
 
@@ -884,11 +936,7 @@ function useMessagingSettingsModel() {
         detail?: string
       }
       if (!res.ok) {
-        if (
-          response &&
-          typeof response === 'object' &&
-          'auth_level' in response
-        ) {
+        if (typeof response === 'object' && 'auth_level' in response) {
           setWeixinReconnectOutcome(response)
           if (response.requires_step_up) {
             setWeixinPairingMessage(
@@ -966,10 +1014,43 @@ function useMessagingSettingsModel() {
     }
   }
 
+  async function approveFeishuPairingSelf() {
+    const code = feishuPairingApproveCode.trim().toUpperCase()
+    if (!code) {
+      toast('Enter the Feishu pairing code first.', { type: 'error' })
+      return
+    }
+    setApprovingFeishuPairing(true)
+    try {
+      const response = await requestJson<{
+        ok: boolean
+        message: string
+      }>('/messaging/feishu/pairing/approve-self', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+      setFeishuPairingApproveCode('')
+      toast(response.message, { type: 'success' })
+      await loadPlatforms()
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to approve Feishu pairing.'
+      toast(message, { type: 'error' })
+    } finally {
+      setApprovingFeishuPairing(false)
+    }
+  }
+
   return {
+    approveFeishuPairingSelf,
     authMe,
+    approvingFeishuPairing,
     canValidateFeishu,
     feishu,
+    feishuPairingApproveCode,
     feishuLinkAuthorizeUrl,
     feishuLinkMessage,
     feishuLinkQrDataUrl,
@@ -984,6 +1065,7 @@ function useMessagingSettingsModel() {
     remove,
     save,
     savingPlatform,
+    setFeishuPairingApproveCode,
     setFeishu,
     setShowWeixinToken,
     showWeixinToken,
@@ -1227,6 +1309,146 @@ function FeishuAccountLinkCard({
   )
 }
 
+function FeishuGatewayPairingCodeForm({
+  model,
+}: {
+  model: ReturnType<typeof useMessagingSettingsModel>
+}) {
+  const botReady = model.platforms.feishu.configured || model.canValidateFeishu
+
+  return (
+    <div className="mt-4 rounded-md border theme-border theme-card p-3">
+      <div className="mb-3">
+        <h3 className="text-sm font-medium theme-text">
+          Feishu gateway pairing code
+        </h3>
+        <p className="text-xs theme-muted">
+          After the bot sends a pairing code in Feishu, enter it here to
+          authorize your next message. The code proves which Feishu user should
+          be bound to this Semantier account.
+        </p>
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          value={model.feishuPairingApproveCode}
+          onChange={(event) =>
+            model.setFeishuPairingApproveCode(event.target.value.toUpperCase())
+          }
+          placeholder="Q2RAM8N4"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          disabled={!botReady || model.approvingFeishuPairing}
+          className="font-mono tracking-[0.08em]"
+        />
+        <Button
+          type="button"
+          disabled={!botReady || model.approvingFeishuPairing}
+          onClick={() => void model.approveFeishuPairingSelf()}
+        >
+          {model.approvingFeishuPairing ? 'Approving...' : 'Approve code'}
+        </Button>
+      </div>
+      {!botReady ? (
+        <p className="mt-2 text-xs theme-muted">
+          Save or enter valid Feishu bot credentials first so the bot can issue
+          pairing codes.
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+function FeishuHomeChannelCard({
+  model,
+}: {
+  model: ReturnType<typeof useMessagingSettingsModel>
+}) {
+  const channels = feishuLiveChannels(model.platforms.feishu.config)
+  const saving = model.savingPlatform === 'feishu'
+  const canSave = model.platforms.feishu.configured && !saving
+  const refreshing = model.loading && !saving
+  const canRefresh = model.platforms.feishu.configured && !refreshing
+  const selectedKnownChannel = channels.some(
+    (channel) => channel.chat_id === model.feishu.homeChannel.trim(),
+  )
+
+  return (
+    <div className="mt-4 rounded-md border theme-border theme-card p-3">
+      <div className="mb-3">
+        <h3 className="text-sm font-medium theme-text">Feishu home channel</h3>
+        <p className="text-xs theme-muted">
+          Default target for scheduled results, reminders, and proactive Feishu
+          delivery.
+        </p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="grid gap-2">
+          <select
+            value={selectedKnownChannel ? model.feishu.homeChannel : ''}
+            disabled={
+              !model.platforms.feishu.configured || channels.length === 0
+            }
+            onChange={(event) =>
+              model.setFeishu((current) => ({
+                ...current,
+                homeChannel: event.target.value,
+              }))
+            }
+            className="h-9 rounded-md border theme-border theme-card px-3 text-sm theme-text"
+          >
+            <option value="">
+              {channels.length
+                ? 'Select a live Feishu chat'
+                : 'No live chats yet'}
+            </option>
+            {channels.map((channel) => (
+              <option
+                key={`${channel.chat_id}:${channel.thread_id || ''}`}
+                value={channel.chat_id}
+              >
+                {feishuChannelLabel(channel)}
+              </option>
+            ))}
+          </select>
+          <Input
+            value={model.feishu.homeChannel}
+            placeholder="oc_xxx"
+            disabled={!model.platforms.feishu.configured}
+            onChange={(event) =>
+              model.setFeishu((current) => ({
+                ...current,
+                homeChannel: event.target.value,
+              }))
+            }
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!canRefresh}
+            onClick={() => void model.loadPlatforms()}
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          <Button
+            type="button"
+            disabled={!canSave}
+            onClick={() => void model.save('feishu')}
+          >
+            {saving ? 'Saving...' : 'Set home'}
+          </Button>
+        </div>
+      </div>
+      {model.feishu.homeChannel ? (
+        <p className="mt-2 text-xs theme-muted">
+          Current home channel: {model.feishu.homeChannel}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
 function FeishuBotConfigCard({
   model,
 }: {
@@ -1363,6 +1585,8 @@ function FeishuBotConfigCard({
           </Button>
         </div>
       </div>
+      <FeishuGatewayPairingCodeForm model={model} />
+      <FeishuHomeChannelCard model={model} />
     </SectionCard>
   )
 }
@@ -1377,12 +1601,12 @@ function WeixinReadOnlyCard({
     !state.configured ||
     Boolean(model.weixinPairingState) ||
     model.weixinReconnectOutcome?.requires_step_up === true
-  const runtimeState = String(state.config?.runtime_session_state ?? '').trim()
+  const runtimeState = String(state.config.runtime_session_state ?? '').trim()
   const runtimeError = String(
-    state.config?.runtime_session_error ?? state.last_error ?? '',
+    state.config.runtime_session_error ?? state.last_error ?? '',
   ).trim()
   const runtimeUpdatedAt = String(
-    state.config?.runtime_session_updated_at ?? '',
+    state.config.runtime_session_updated_at ?? '',
   ).trim()
   const reconnectOutcome = model.weixinReconnectOutcome
 

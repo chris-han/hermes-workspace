@@ -1381,8 +1381,8 @@ function FeishuHomeChannelCard({
           delivery.
         </p>
       </div>
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-        <div className="grid gap-2">
+      <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="grid min-w-0 gap-2">
           <select
             value={selectedKnownChannel ? model.feishu.homeChannel : ''}
             disabled={
@@ -1394,7 +1394,7 @@ function FeishuHomeChannelCard({
                 homeChannel: event.target.value,
               }))
             }
-            className="h-9 rounded-md border theme-border theme-card px-3 text-sm theme-text"
+            className="h-9 w-full min-w-0 max-w-full truncate rounded-md border theme-border theme-card px-3 text-sm theme-text"
           >
             <option value="">
               {channels.length
@@ -1422,7 +1422,7 @@ function FeishuHomeChannelCard({
             }
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 md:justify-end">
           <Button
             type="button"
             variant="outline"
@@ -1442,7 +1442,8 @@ function FeishuHomeChannelCard({
       </div>
       {model.feishu.homeChannel ? (
         <p className="mt-2 text-xs theme-muted">
-          Current home channel: {model.feishu.homeChannel}
+          Current home channel:{' '}
+          <span className="break-all">{model.feishu.homeChannel}</span>
         </p>
       ) : null}
     </div>

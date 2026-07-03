@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  cancelNegotiation,
   fetchMeetingCoordinatorState,
+  finalizeNegotiation,
   requeueDeliveryTask,
   runDeliveryRetryNow,
+  runNegotiationNow,
 } from '@/lib/meeting-coordinator-api'
 
 export function MeetingCoordinatorPanel() {
@@ -21,9 +24,25 @@ export function MeetingCoordinatorPanel() {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['meeting-coordinator'] }),
   })
+  const runNegotiationMutation = useMutation({
+    mutationFn: runNegotiationNow,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['meeting-coordinator'] }),
+  })
+  const finalizeNegotiationMutation = useMutation({
+    mutationFn: finalizeNegotiation,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['meeting-coordinator'] }),
+  })
+  const cancelNegotiationMutation = useMutation({
+    mutationFn: cancelNegotiation,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['meeting-coordinator'] }),
+  })
 
   const monitors = query.data?.monitors ?? []
   const deliveryTasks = query.data?.deliveryTasks ?? []
+  const negotiations = query.data?.negotiations ?? []
   const scheduler = query.data?.scheduler
 
   const field = (label: string, value: unknown) =>
@@ -33,6 +52,11 @@ export function MeetingCoordinatorPanel() {
         {String(value)}
       </p>
     )
+  const compactRow = (key: string, value: string) => (
+    <p key={key} className="truncate text-xs text-[var(--theme-muted)]">
+      {value}
+    </p>
+  )
 
   return (
     <section className="rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-[0_16px_50px_var(--theme-shadow)]">
@@ -99,6 +123,162 @@ export function MeetingCoordinatorPanel() {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+          <div className="rounded-md border border-[var(--theme-border)] p-3 md:col-span-2">
+            <h3 className="text-sm font-medium text-[var(--theme-text)]">
+              Negotiations
+            </h3>
+            {negotiations.length === 0 ? (
+              <p className="mt-2 text-xs text-[var(--theme-muted)]">
+                No active negotiations
+              </p>
+            ) : (
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                {negotiations.map((negotiation) => {
+                  const finalize = () => {
+                    const selectedSlotId = window
+                      .prompt('Selected slot id')
+                      ?.trim()
+                    if (!selectedSlotId) return
+                    finalizeNegotiationMutation.mutate({
+                      negotiationId: negotiation.negotiation_id,
+                      selectedSlotId,
+                    })
+                  }
+                  return (
+                    <div
+                      key={negotiation.negotiation_id}
+                      className="rounded-md bg-[var(--theme-card2)] p-2"
+                    >
+                      <p className="text-sm text-[var(--theme-text)]">
+                        {negotiation.meeting_title || negotiation.negotiation_id}
+                      </p>
+                      <div className="mt-1 grid gap-1">
+                        {field('status', negotiation.status)}
+                        {field('negotiation', negotiation.negotiation_id)}
+                        {field('monitor', negotiation.monitor_id)}
+                        {field('event', negotiation.event_id)}
+                        {field('calendar', negotiation.calendar_id)}
+                        {field('decliner', negotiation.declined_attendee_user_id)}
+                        {field('triggers', negotiation.trigger_attendee_user_ids_json)}
+                        {field('round', negotiation.current_round)}
+                        {field('max rounds', negotiation.max_rounds)}
+                        {field('scheduler', negotiation.scheduler_status)}
+                        {field('finalize', negotiation.finalize_status)}
+                        {field('expires', negotiation.expires_at_utc)}
+                        {field('updated', negotiation.updated_at)}
+                      </div>
+                      {negotiation.candidate_slots?.length ? (
+                        <div className="mt-2 rounded-md border border-[var(--theme-border)] p-2">
+                          <p className="text-xs font-medium text-[var(--theme-muted-2)]">
+                            Candidate slots
+                          </p>
+                          <div className="mt-1 grid gap-1">
+                            {negotiation.candidate_slots.map((slot) =>
+                              compactRow(
+                                slot.slot_id,
+                                `${slot.slot_id}: ${slot.start_time || ''} - ${slot.end_time || ''} (${slot.status || 'candidate'})`,
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                      {negotiation.votes?.length ? (
+                        <div className="mt-2 rounded-md border border-[var(--theme-border)] p-2">
+                          <p className="text-xs font-medium text-[var(--theme-muted-2)]">
+                            Votes
+                          </p>
+                          <div className="mt-1 grid gap-1">
+                            {negotiation.votes.map((vote) =>
+                              compactRow(
+                                vote.vote_id,
+                                `${vote.attendee_user_id || 'unknown'}: ${vote.vote || 'unknown'} on ${vote.slot_id || 'unknown slot'}`,
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                      {negotiation.participants?.length ? (
+                        <div className="mt-2 rounded-md border border-[var(--theme-border)] p-2">
+                          <p className="text-xs font-medium text-[var(--theme-muted-2)]">
+                            Participants
+                          </p>
+                          <div className="mt-1 grid gap-1">
+                            {negotiation.participants.map((participant) =>
+                              compactRow(
+                                participant.attendee_user_id,
+                                `${participant.display_name || participant.attendee_user_id}: ${participant.role || 'participant'} / ${participant.latest_response_status || 'unknown'}`,
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                      {negotiation.messages?.length ? (
+                        <div className="mt-2 rounded-md border border-[var(--theme-border)] p-2">
+                          <p className="text-xs font-medium text-[var(--theme-muted-2)]">
+                            Messages
+                          </p>
+                          <div className="mt-1 grid gap-1">
+                            {negotiation.messages.slice(-4).map((message) =>
+                              compactRow(
+                                message.message_event_id,
+                                `${message.direction || 'message'} ${message.message_type || ''} ${message.participant_user_id || ''} ${message.created_at || ''}`,
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                      {negotiation.finalize_attempts?.length ? (
+                        <div className="mt-2 rounded-md border border-[var(--theme-border)] p-2">
+                          <p className="text-xs font-medium text-[var(--theme-muted-2)]">
+                            Finalize attempts
+                          </p>
+                          <div className="mt-1 grid gap-1">
+                            {negotiation.finalize_attempts.map((attempt) =>
+                              compactRow(
+                                attempt.finalize_attempt_id,
+                                `${attempt.finalize_attempt_id}: ${attempt.status || 'pending'} ${attempt.selected_slot_id || ''} ${attempt.updated_at || ''}`,
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            runNegotiationMutation.mutate(
+                              negotiation.negotiation_id,
+                            )
+                          }
+                          className="rounded-md border border-[var(--theme-border)] px-2 py-1 text-xs text-[var(--theme-text)]"
+                        >
+                          Run negotiation {negotiation.negotiation_id}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={finalize}
+                          className="rounded-md border border-[var(--theme-border)] px-2 py-1 text-xs text-[var(--theme-text)]"
+                        >
+                          Finalize negotiation {negotiation.negotiation_id}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            cancelNegotiationMutation.mutate(
+                              negotiation.negotiation_id,
+                            )
+                          }
+                          className="rounded-md border border-[var(--theme-border)] px-2 py-1 text-xs text-[var(--theme-text)]"
+                        >
+                          Cancel negotiation {negotiation.negotiation_id}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </div>
           <div className="rounded-md border border-[var(--theme-border)] p-3">

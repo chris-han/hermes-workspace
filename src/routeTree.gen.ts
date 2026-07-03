@@ -58,8 +58,6 @@ import { Route as ApiPingRouteImport } from './routes/api/ping'
 import { Route as ApiPathsRouteImport } from './routes/api/paths'
 import { Route as ApiModelsRouteImport } from './routes/api/models'
 import { Route as ApiMemoryRouteImport } from './routes/api/memory'
-import { Route as ApiMeetingCoordinatorSettingsRouteImport } from './routes/api/meeting-coordinator-settings'
-import { Route as ApiMeetingCoordinatorRouteImport } from './routes/api/meeting-coordinator'
 import { Route as ApiLocalProvidersRouteImport } from './routes/api/local-providers'
 import { Route as ApiHistoryRouteImport } from './routes/api/history'
 import { Route as ApiHermesTasksAssigneesRouteImport } from './routes/api/hermes-tasks-assignees'
@@ -361,17 +359,6 @@ const ApiModelsRoute = ApiModelsRouteImport.update({
 const ApiMemoryRoute = ApiMemoryRouteImport.update({
   id: '/api/memory',
   path: '/api/memory',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiMeetingCoordinatorSettingsRoute =
-  ApiMeetingCoordinatorSettingsRouteImport.update({
-    id: '/api/meeting-coordinator-settings',
-    path: '/api/meeting-coordinator-settings',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiMeetingCoordinatorRoute = ApiMeetingCoordinatorRouteImport.update({
-  id: '/api/meeting-coordinator',
-  path: '/api/meeting-coordinator',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiLocalProvidersRoute = ApiLocalProvidersRouteImport.update({
@@ -687,8 +674,6 @@ export interface FileRoutesByFullPath {
   '/api/hermes-tasks-assignees': typeof ApiHermesTasksAssigneesRoute
   '/api/history': typeof ApiHistoryRoute
   '/api/local-providers': typeof ApiLocalProvidersRoute
-  '/api/meeting-coordinator': typeof ApiMeetingCoordinatorRoute
-  '/api/meeting-coordinator-settings': typeof ApiMeetingCoordinatorSettingsRoute
   '/api/memory': typeof ApiMemoryRouteWithChildren
   '/api/models': typeof ApiModelsRoute
   '/api/paths': typeof ApiPathsRoute
@@ -794,8 +779,6 @@ export interface FileRoutesByTo {
   '/api/hermes-tasks-assignees': typeof ApiHermesTasksAssigneesRoute
   '/api/history': typeof ApiHistoryRoute
   '/api/local-providers': typeof ApiLocalProvidersRoute
-  '/api/meeting-coordinator': typeof ApiMeetingCoordinatorRoute
-  '/api/meeting-coordinator-settings': typeof ApiMeetingCoordinatorSettingsRoute
   '/api/memory': typeof ApiMemoryRouteWithChildren
   '/api/models': typeof ApiModelsRoute
   '/api/paths': typeof ApiPathsRoute
@@ -903,8 +886,6 @@ export interface FileRoutesById {
   '/api/hermes-tasks-assignees': typeof ApiHermesTasksAssigneesRoute
   '/api/history': typeof ApiHistoryRoute
   '/api/local-providers': typeof ApiLocalProvidersRoute
-  '/api/meeting-coordinator': typeof ApiMeetingCoordinatorRoute
-  '/api/meeting-coordinator-settings': typeof ApiMeetingCoordinatorSettingsRoute
   '/api/memory': typeof ApiMemoryRouteWithChildren
   '/api/models': typeof ApiModelsRoute
   '/api/paths': typeof ApiPathsRoute
@@ -1013,8 +994,6 @@ export interface FileRouteTypes {
     | '/api/hermes-tasks-assignees'
     | '/api/history'
     | '/api/local-providers'
-    | '/api/meeting-coordinator'
-    | '/api/meeting-coordinator-settings'
     | '/api/memory'
     | '/api/models'
     | '/api/paths'
@@ -1120,8 +1099,6 @@ export interface FileRouteTypes {
     | '/api/hermes-tasks-assignees'
     | '/api/history'
     | '/api/local-providers'
-    | '/api/meeting-coordinator'
-    | '/api/meeting-coordinator-settings'
     | '/api/memory'
     | '/api/models'
     | '/api/paths'
@@ -1228,8 +1205,6 @@ export interface FileRouteTypes {
     | '/api/hermes-tasks-assignees'
     | '/api/history'
     | '/api/local-providers'
-    | '/api/meeting-coordinator'
-    | '/api/meeting-coordinator-settings'
     | '/api/memory'
     | '/api/models'
     | '/api/paths'
@@ -1337,8 +1312,6 @@ export interface RootRouteChildren {
   ApiHermesTasksAssigneesRoute: typeof ApiHermesTasksAssigneesRoute
   ApiHistoryRoute: typeof ApiHistoryRoute
   ApiLocalProvidersRoute: typeof ApiLocalProvidersRoute
-  ApiMeetingCoordinatorRoute: typeof ApiMeetingCoordinatorRoute
-  ApiMeetingCoordinatorSettingsRoute: typeof ApiMeetingCoordinatorSettingsRoute
   ApiMemoryRoute: typeof ApiMemoryRouteWithChildren
   ApiModelsRoute: typeof ApiModelsRoute
   ApiPathsRoute: typeof ApiPathsRoute
@@ -1733,20 +1706,6 @@ declare module '@tanstack/react-router' {
       path: '/api/memory'
       fullPath: '/api/memory'
       preLoaderRoute: typeof ApiMemoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/meeting-coordinator-settings': {
-      id: '/api/meeting-coordinator-settings'
-      path: '/api/meeting-coordinator-settings'
-      fullPath: '/api/meeting-coordinator-settings'
-      preLoaderRoute: typeof ApiMeetingCoordinatorSettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/meeting-coordinator': {
-      id: '/api/meeting-coordinator'
-      path: '/api/meeting-coordinator'
-      fullPath: '/api/meeting-coordinator'
-      preLoaderRoute: typeof ApiMeetingCoordinatorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/local-providers': {
@@ -2285,8 +2244,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHermesTasksAssigneesRoute: ApiHermesTasksAssigneesRoute,
   ApiHistoryRoute: ApiHistoryRoute,
   ApiLocalProvidersRoute: ApiLocalProvidersRoute,
-  ApiMeetingCoordinatorRoute: ApiMeetingCoordinatorRoute,
-  ApiMeetingCoordinatorSettingsRoute: ApiMeetingCoordinatorSettingsRoute,
   ApiMemoryRoute: ApiMemoryRouteWithChildren,
   ApiModelsRoute: ApiModelsRoute,
   ApiPathsRoute: ApiPathsRoute,

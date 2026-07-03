@@ -10,6 +10,7 @@ export type TaskRecord = {
   id: string
   title: string
   description: string
+  metadata?: Record<string, unknown>
   column: TaskColumn
   priority: TaskPriority
   assignee: string | null
@@ -86,6 +87,12 @@ function normalizeTask(
     id: task.id,
     title: task.title,
     description: task.description ?? '',
+    metadata:
+      task.metadata &&
+      typeof task.metadata === 'object' &&
+      !Array.isArray(task.metadata)
+        ? task.metadata
+        : undefined,
     column: (task.column as TaskColumn) ?? 'backlog',
     priority: (task.priority as TaskPriority) ?? 'medium',
     assignee: task.assignee ?? null,

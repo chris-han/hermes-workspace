@@ -32,6 +32,33 @@ export type SemantierPluginInfo = {
   packageType?: string | null
   packagePath?: string | null
   canUpdate?: boolean
+  uiExtensions?: Array<SemantierPluginUiExtension>
+}
+
+export type SemantierPluginUiExtension = {
+  id: string
+  host_screen?: string
+  operations_host?: string
+  task_signal?: {
+    field?: string
+    value?: string
+  }
+  label?: string
+  description?: string
+  components?: Record<
+    string,
+    {
+      module?: string
+      export?: string
+      props_version?: string
+    }
+  >
+  actions?: Array<{
+    id: string
+    label?: string
+    plugin_api?: string
+  }>
+  host_version_requirement?: string
 }
 
 export async function fetchSemantierPlugins(
@@ -63,10 +90,9 @@ export async function fetchSemantierPlugins(
     | Array<SemantierPluginInfo>
 
   if (!response.ok) {
-    const record =
-      !Array.isArray(payload)
-        ? (payload as { error?: string; detail?: string })
-        : {}
+    const record = !Array.isArray(payload)
+      ? (payload as { error?: string; detail?: string })
+      : {}
     throw new Error(
       record.error ||
         record.detail ||
@@ -85,6 +111,8 @@ export async function fetchSemantierPlugins(
   return {
     plugins: Array.isArray(payload.plugins) ? payload.plugins : [],
     total: typeof payload.total === 'number' ? payload.total : 0,
-    categories: Array.isArray(payload.categories) ? payload.categories : ['All'],
+    categories: Array.isArray(payload.categories)
+      ? payload.categories
+      : ['All'],
   }
 }

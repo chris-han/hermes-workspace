@@ -7,6 +7,7 @@ export type HermesTask = {
   id: string
   title: string
   description: string
+  metadata?: Record<string, unknown>
   column: TaskColumn
   priority: TaskPriority
   assignee: string | null

@@ -5,6 +5,12 @@ import type {
   Task as StoreTask,
   TaskStatus as StoreTaskStatus,
 } from '@/stores/task-store'
+import {
+  matchingPluginUiExtension,
+  pluginUiComponent,
+  pluginUiNegotiationId,
+  type PluginUiExtensionRegistration,
+} from '@/lib/plugin-ui-extensions'
 import { cn } from '@/lib/utils'
 import { useTaskStore } from '@/stores/task-store'
 
@@ -135,6 +141,13 @@ export type KanbanBoardProps = {
   missionId?: string
   onAssignAgent?: (taskId: string, agentId: string) => void
   compact?: boolean
+  pluginUiExtensions?: Array<PluginUiExtensionRegistration>
+  onPluginAction?: (
+    task: HubTask,
+    registration: PluginUiExtensionRegistration,
+    actionId: string,
+    payload?: Record<string, unknown>,
+  ) => void
 }
 
 export function KanbanBoard({
@@ -145,11 +158,16 @@ export function KanbanBoard({
   missionId,
   onAssignAgent,
   compact = false,
+  pluginUiExtensions = [],
+  onPluginAction,
 }: KanbanBoardProps) {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] =
     useState<KanbanColumnStatus | null>(null)
   const [menuTaskId, setMenuTaskId] = useState<string | null>(null)
+  const [pluginDetailTaskId, setPluginDetailTaskId] = useState<string | null>(
+    null,
+  )
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>({
     x: 0,
     y: 0,
@@ -198,6 +216,17 @@ export function KanbanBoard({
 
     return grouped
   }, [mergedTasks])
+
+  const pluginDetailTask = pluginDetailTaskId
+    ? (mergedTasks.find((task) => task.id === pluginDetailTaskId) ?? null)
+    : null
+  const pluginDetailRegistration = pluginDetailTask
+    ? matchingPluginUiExtension(pluginUiExtensions, pluginDetailTask.metadata)
+    : null
+  const PluginDetail =
+    pluginDetailRegistration && pluginDetailTask
+      ? pluginUiComponent(pluginDetailRegistration, 'detail_drawer')
+      : null
 
   useEffect(() => {
     function handleCloseMenu() {
@@ -298,6 +327,13 @@ export function KanbanBoard({
                     const assignee = task.agentId
                       ? (agentNameById.get(task.agentId) ?? task.agentId)
                       : 'Unassigned'
+                    const pluginRegistration = matchingPluginUiExtension(
+                      pluginUiExtensions,
+                      task.metadata,
+                    )
+                    const PluginCard = pluginRegistration
+                      ? pluginUiComponent(pluginRegistration, 'card_renderer')
+                      : null
 
                     return (
                       <article
@@ -326,96 +362,119 @@ export function KanbanBoard({
                           compact ? 'p-2' : 'p-3',
                         )}
                       >
-                        <h4
-                          title={task.title}
-                          className={cn(
-                            'font-semibold text-[var(--theme-text)]',
-                            compact
-                              ? 'truncate text-[12px] leading-4'
-                              : 'line-clamp-2 text-sm',
-                          )}
-                        >
-                          {compact
-                            ? truncateCompactTitle(task.title)
-                            : task.title}
-                        </h4>
-
-                        <div
-                          className={cn(
-                            'flex items-center justify-between gap-2',
-                            compact ? 'mt-1.5' : 'mt-2',
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              'rounded-full border font-semibold uppercase tracking-wide',
-                              PRIORITY_BADGES[task.priority],
-                              compact
-                                ? 'px-1.5 py-0.5 text-[9px]'
-                                : 'px-2 py-0.5 text-[10px]',
-                            )}
-                          >
-                            {PRIORITY_LABELS[task.priority]}
-                          </span>
-                          <span
-                            className={cn(
-                              'truncate text-[var(--theme-muted)]',
-                              compact
-                                ? 'max-w-[84px] text-[10px]'
-                                : 'text-[11px]',
-                            )}
-                          >
-                            {assignee}
-                          </span>
-                        </div>
-
-                        {onAssignAgent ? (
-                          <div className={cn(compact ? 'mt-1.5' : 'mt-2')}>
-                            <label
+                        {pluginRegistration && PluginCard ? (
+                          <PluginCard
+                            taskId={task.id}
+                            extensionId={pluginRegistration.extension.id}
+                            negotiationId={pluginUiNegotiationId(task.metadata)}
+                            metadata={task.metadata ?? {}}
+                            compact={compact}
+                            onOpenDetail={() => setPluginDetailTaskId(task.id)}
+                            onAction={(actionId, payload) =>
+                              onPluginAction?.(
+                                task,
+                                pluginRegistration,
+                                actionId,
+                                payload,
+                              )
+                            }
+                          />
+                        ) : (
+                          <>
+                            <h4
+                              title={task.title}
                               className={cn(
-                                'mb-1 block font-medium uppercase tracking-wide text-[var(--theme-muted)]',
-                                compact ? 'text-[9px]' : 'text-[10px]',
-                              )}
-                            >
-                              Assign
-                            </label>
-                            <select
-                              value={task.agentId ?? ''}
-                              onChange={(event) => {
-                                const nextAgentId = event.target.value
-                                if (!nextAgentId) return
-                                onAssignAgent(task.id, nextAgentId)
-                                updateTask(task.id, (currentTask) => ({
-                                  ...currentTask,
-                                  agentId: nextAgentId,
-                                  updatedAt: Date.now(),
-                                }))
-                              }}
-                              className={cn(
-                                'w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] px-2 text-[var(--theme-text)] outline-none',
+                                'font-semibold text-[var(--theme-text)]',
                                 compact
-                                  ? 'py-1 text-[10px]'
-                                  : 'py-1 text-[11px]',
+                                  ? 'truncate text-[12px] leading-4'
+                                  : 'line-clamp-2 text-sm',
                               )}
                             >
-                              <option value="">Unassigned</option>
-                              {agents.map((agent) => (
-                                <option key={agent.id} value={agent.id}>
-                                  {agent.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        ) : null}
+                              {compact
+                                ? truncateCompactTitle(task.title)
+                                : task.title}
+                            </h4>
 
-                        <p
-                          className={cn(
-                            'text-[var(--theme-muted)]',
-                            compact ? 'mt-1.5 text-[10px]' : 'mt-2 text-[11px]',
-                          )}
-                        >
-                          {formatTimeInColumn(task.updatedAt)}
-                        </p>
+                            <div
+                              className={cn(
+                                'flex items-center justify-between gap-2',
+                                compact ? 'mt-1.5' : 'mt-2',
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  'rounded-full border font-semibold uppercase tracking-wide',
+                                  PRIORITY_BADGES[task.priority],
+                                  compact
+                                    ? 'px-1.5 py-0.5 text-[9px]'
+                                    : 'px-2 py-0.5 text-[10px]',
+                                )}
+                              >
+                                {PRIORITY_LABELS[task.priority]}
+                              </span>
+                              <span
+                                className={cn(
+                                  'truncate text-[var(--theme-muted)]',
+                                  compact
+                                    ? 'max-w-[84px] text-[10px]'
+                                    : 'text-[11px]',
+                                )}
+                              >
+                                {assignee}
+                              </span>
+                            </div>
+
+                            {onAssignAgent ? (
+                              <div className={cn(compact ? 'mt-1.5' : 'mt-2')}>
+                                <label
+                                  className={cn(
+                                    'mb-1 block font-medium uppercase tracking-wide text-[var(--theme-muted)]',
+                                    compact ? 'text-[9px]' : 'text-[10px]',
+                                  )}
+                                >
+                                  Assign
+                                </label>
+                                <select
+                                  value={task.agentId ?? ''}
+                                  onChange={(event) => {
+                                    const nextAgentId = event.target.value
+                                    if (!nextAgentId) return
+                                    onAssignAgent(task.id, nextAgentId)
+                                    updateTask(task.id, (currentTask) => ({
+                                      ...currentTask,
+                                      agentId: nextAgentId,
+                                      updatedAt: Date.now(),
+                                    }))
+                                  }}
+                                  className={cn(
+                                    'w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] px-2 text-[var(--theme-text)] outline-none',
+                                    compact
+                                      ? 'py-1 text-[10px]'
+                                      : 'py-1 text-[11px]',
+                                  )}
+                                >
+                                  <option value="">Unassigned</option>
+                                  {agents.map((agent) => (
+                                    <option key={agent.id} value={agent.id}>
+                                      {agent.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : null}
+
+                            <p
+                              className={cn(
+                                'text-[var(--theme-muted)]',
+                                compact
+                                  ? 'mt-1.5 text-[10px]'
+                                  : 'mt-2 text-[11px]',
+                              )}
+                            >
+                              {formatTimeInColumn(task.updatedAt)}
+                            </p>
+                          </>
+                        )}
                       </article>
                     )
                   })}
@@ -425,6 +484,28 @@ export function KanbanBoard({
           })}
         </div>
       </div>
+
+      {pluginDetailTask && pluginDetailRegistration && PluginDetail ? (
+        <div className="fixed inset-0 z-40 flex justify-end bg-black/40">
+          <div className="h-full w-full max-w-xl overflow-y-auto border-l border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-2xl">
+            <PluginDetail
+              taskId={pluginDetailTask.id}
+              extensionId={pluginDetailRegistration.extension.id}
+              negotiationId={pluginUiNegotiationId(pluginDetailTask.metadata)}
+              metadata={pluginDetailTask.metadata ?? {}}
+              onClose={() => setPluginDetailTaskId(null)}
+              onAction={(actionId, payload) =>
+                onPluginAction?.(
+                  pluginDetailTask,
+                  pluginDetailRegistration,
+                  actionId,
+                  payload,
+                )
+              }
+            />
+          </div>
+        </div>
+      ) : null}
 
       {menuTaskId ? (
         <div

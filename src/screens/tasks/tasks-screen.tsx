@@ -17,6 +17,14 @@ import {
 } from '@hugeicons/core-free-icons'
 import { TaskCard } from './task-card'
 import { TaskDialog } from './task-dialog'
+import {
+  matchingPluginUiExtension,
+  pluginActionPath,
+  pluginUiComponent,
+  pluginUiNegotiationId,
+  type PluginUiExtensionManifest,
+  type PluginUiExtensionRegistration,
+} from '@/lib/plugin-ui-extensions'
 import type {
   CreateTaskInput,
   HermesTask,
@@ -40,9 +48,17 @@ import {
 
 const QUERY_KEY = ['hermes', 'tasks'] as const
 const ASSIGNEES_KEY = ['hermes', 'tasks', 'assignees'] as const
+const PLUGINS_KEY = ['hermes', 'tasks', 'plugins'] as const
 
 export const TASKS_BOARD_HELP_TEXT =
   'Drag cards to change status. Open a card to set assignee and due date.'
+
+type PluginsResponse = {
+  plugins?: Array<{
+    name?: string
+    uiExtensions?: Array<PluginUiExtensionManifest>
+  }>
+}
 
 function SkeletonCard() {
   return (
@@ -88,8 +104,31 @@ export function TasksScreen() {
     staleTime: 5 * 60_000, // profiles don't change often
   })
 
+  const pluginsQuery = useQuery({
+    queryKey: PLUGINS_KEY,
+    queryFn: async function fetchPluginUiExtensions(): Promise<
+      Array<PluginUiExtensionRegistration>
+    > {
+      const response = await fetch('/api/plugins')
+      const payload = (await response
+        .json()
+        .catch(() => ({}))) as PluginsResponse
+      if (!response.ok) return []
+
+      return (payload.plugins ?? []).flatMap((plugin) => {
+        if (!plugin.name || !Array.isArray(plugin.uiExtensions)) return []
+        return plugin.uiExtensions.map((extension) => ({
+          pluginName: plugin.name as string,
+          extension,
+        }))
+      })
+    },
+    staleTime: 5 * 60_000,
+  })
+
   const assignees: Array<TaskAssignee> = assigneesQuery.data?.assignees ?? []
   const humanReviewer = assigneesQuery.data?.humanReviewer ?? null
+  const pluginUiExtensions = pluginsQuery.data ?? []
 
   // Build a label map from dynamic assignees for TaskCard display
   const assigneeLabels = useMemo(() => {
@@ -99,6 +138,14 @@ export function TasksScreen() {
   }, [assignees])
 
   const tasks = tasksQuery.data ?? []
+  const editingPluginRegistration = matchingPluginUiExtension(
+    pluginUiExtensions,
+    editingTask?.metadata,
+  )
+  const EditingPluginDetail =
+    editingPluginRegistration && editingTask
+      ? pluginUiComponent(editingPluginRegistration, 'detail_drawer')
+      : null
 
   const tasksByColumn = useMemo(() => {
     const map: Record<TaskColumn, Array<HermesTask>> = {
@@ -178,6 +225,45 @@ export function TasksScreen() {
     onSuccess: () => invalidate(),
     onError: (e) =>
       toast(e instanceof Error ? e.message : 'Failed to move task', {
+        type: 'error',
+      }),
+  })
+
+  const pluginActionMutation = useMutation({
+    mutationFn: async ({
+      task,
+      registration,
+      actionId,
+      payload,
+    }: {
+      task: HermesTask
+      registration: PluginUiExtensionRegistration
+      actionId: string
+      payload?: Record<string, unknown>
+    }) => {
+      const path = pluginActionPath(registration, actionId, task.metadata)
+      if (!path) throw new Error(`No plugin action path for ${actionId}`)
+      const response = await fetch(path, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload ?? {}),
+      })
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string
+        detail?: string
+      }
+      if (!response.ok) {
+        throw new Error(
+          body.error || body.detail || `Action failed: ${actionId}`,
+        )
+      }
+    },
+    onSuccess: () => {
+      invalidate()
+      toast('Task action completed')
+    },
+    onError: (e) =>
+      toast(e instanceof Error ? e.message : 'Task action failed', {
         type: 'error',
       }),
   })
@@ -433,6 +519,20 @@ export function TasksScreen() {
                               task={task}
                               assigneeLabels={assigneeLabels}
                               isDragging={draggingId === task.id}
+                              pluginUiExtensions={pluginUiExtensions}
+                              onPluginAction={(
+                                currentTask,
+                                registration,
+                                actionId,
+                                payload,
+                              ) =>
+                                pluginActionMutation.mutate({
+                                  task: currentTask,
+                                  registration,
+                                  actionId,
+                                  payload,
+                                })
+                              }
                               onDragStart={(e) => handleDragStart(e, task.id)}
                               onClick={() => setEditingTask(task)}
                             />
@@ -459,20 +559,47 @@ export function TasksScreen() {
           }}
         />
 
-        {/* Edit dialog */}
-        <TaskDialog
-          open={editingTask !== null}
-          onOpenChange={(open) => {
-            if (!open) setEditingTask(null)
-          }}
-          task={editingTask}
-          assignees={assignees}
-          isSubmitting={updateMutation.isPending}
-          onSubmit={async (input) => {
-            if (!editingTask) return
-            await updateMutation.mutateAsync({ id: editingTask.id, input })
-          }}
-        />
+        {editingTask && editingPluginRegistration && EditingPluginDetail ? (
+          <div
+            className="fixed inset-0 z-50 flex justify-end bg-black/45"
+            onClick={() => setEditingTask(null)}
+          >
+            <div
+              className="h-full w-full max-w-lg overflow-y-auto border-l border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <EditingPluginDetail
+                taskId={editingTask.id}
+                extensionId={editingPluginRegistration.extension.id}
+                negotiationId={pluginUiNegotiationId(editingTask.metadata)}
+                metadata={editingTask.metadata ?? {}}
+                onClose={() => setEditingTask(null)}
+                onAction={(actionId, payload) =>
+                  pluginActionMutation.mutate({
+                    task: editingTask,
+                    registration: editingPluginRegistration,
+                    actionId,
+                    payload,
+                  })
+                }
+              />
+            </div>
+          </div>
+        ) : (
+          <TaskDialog
+            open={editingTask !== null}
+            onOpenChange={(open) => {
+              if (!open) setEditingTask(null)
+            }}
+            task={editingTask}
+            assignees={assignees}
+            isSubmitting={updateMutation.isPending}
+            onSubmit={async (input) => {
+              if (!editingTask) return
+              await updateMutation.mutateAsync({ id: editingTask.id, input })
+            }}
+          />
+        )}
       </div>
     </div>
   )

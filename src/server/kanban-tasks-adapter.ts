@@ -100,8 +100,33 @@ function bodyWithMeta(description?: string, meta: WorkspaceTaskMeta = {}) {
 function splitBodyAndMeta(body?: string | null): {
   description: string
   meta: WorkspaceTaskMeta
+  metadata?: Record<string, unknown>
 } {
   if (!body) return { description: '', meta: {} }
+  try {
+    const parsed = JSON.parse(body) as unknown
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const envelope = parsed as Record<string, unknown>
+      const rawMetadata = envelope.metadata
+      const metadata =
+        rawMetadata &&
+        typeof rawMetadata === 'object' &&
+        !Array.isArray(rawMetadata)
+          ? (rawMetadata as Record<string, unknown>)
+          : undefined
+      const payload = envelope.payload
+      const description =
+        typeof envelope.description === 'string'
+          ? envelope.description
+          : typeof payload === 'string'
+            ? payload
+            : ''
+      return { description, meta: {}, metadata }
+    }
+  } catch {
+    // Non-JSON bodies use the legacy description + comment metadata format.
+  }
+
   const trimmed = body.trimEnd()
   const markerStart = trimmed.lastIndexOf(META_PREFIX)
   if (markerStart === -1 || !trimmed.endsWith(META_SUFFIX)) {
@@ -167,13 +192,14 @@ function isoFromEpochSeconds(value?: number | null): string {
 }
 
 function normalizeKanbanTask(task: KanbanTask): TaskRecord {
-  const { description, meta } = splitBodyAndMeta(task.body)
+  const { description, meta, metadata } = splitBodyAndMeta(task.body)
   const createdAt = isoFromEpochSeconds(task.created_at)
   const completedAt = isoFromEpochSeconds(task.completed_at ?? task.created_at)
   return {
     id: task.id,
     title: task.title,
     description,
+    metadata,
     column: kanbanStatusToColumn(task.status),
     priority: kanbanPriorityToTaskPriority(task.priority),
     assignee: task.assignee ?? null,

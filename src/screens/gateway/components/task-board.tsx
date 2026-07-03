@@ -18,6 +18,7 @@ export type HubTask = {
   agentId?: string
   /** ID of the mission that created this task. Used to filter stale tasks. */
   missionId?: string
+  metadata?: Record<string, unknown>
   createdAt: number
   updatedAt: number
 }
@@ -97,6 +98,12 @@ function toTask(value: unknown): HubTask | null {
   const agentId = typeof row.agentId === 'string' ? row.agentId : undefined
   const missionId =
     typeof row.missionId === 'string' ? row.missionId : undefined
+  const metadata =
+    row.metadata &&
+    typeof row.metadata === 'object' &&
+    !Array.isArray(row.metadata)
+      ? (row.metadata as Record<string, unknown>)
+      : undefined
   if (
     !id ||
     !title ||
@@ -112,6 +119,7 @@ function toTask(value: unknown): HubTask | null {
     status: row.status,
     agentId,
     missionId,
+    metadata,
     createdAt,
     updatedAt,
   })

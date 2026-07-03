@@ -164,18 +164,41 @@ type PluginSummary = {
   packageType?: string | null
   packagePath?: string | null
   canUpdate?: boolean
+  uiExtensions?: Array<PluginUiExtension>
 }
 
 type DetailChipTone = 'neutral' | 'accent' | 'warning' | 'danger'
+
+type PluginUiExtension = {
+  id: string
+  host_screen?: string
+  operations_host?: string
+  task_signal?: {
+    field?: string
+    value?: string
+  }
+  label?: string
+  description?: string
+  components?: Record<
+    string,
+    {
+      module?: string
+      export?: string
+      props_version?: string
+    }
+  >
+  actions?: Array<{
+    id: string
+    label?: string
+    plugin_api?: string
+  }>
+  host_version_requirement?: string
+}
 
 type PluginsApiResponse = {
   plugins: Array<PluginSummary>
   total: number
   categories: Array<string>
-}
-
-type MeetingCoordinatorSettings = {
-  max_followups: number
 }
 
 type SkillUpdateStatus = 'up_to_date' | 'update_available' | 'unavailable'
@@ -277,11 +300,7 @@ const DEFAULT_CATEGORIES = [
   'Finance & Crypto',
 ]
 
-const SOURCE_FILTERS: Array<SkillSourceFilter> = [
-  'All',
-  'User',
-  'Shared',
-]
+const SOURCE_FILTERS: Array<SkillSourceFilter> = ['All', 'User', 'Shared']
 
 const PLATFORM_LABELS: Record<string, string> = {
   cli: 'CLI',
@@ -296,11 +315,7 @@ function normalizePlatformCompatibility(
 ): Array<string> {
   if (!Array.isArray(platforms)) return []
   return Array.from(
-    new Set(
-      platforms
-        .map((platform) => platform.trim())
-        .filter(Boolean),
-    ),
+    new Set(platforms.map((platform) => platform.trim()).filter(Boolean)),
   ).sort()
 }
 
@@ -440,7 +455,10 @@ function matchesToolsetSearch(
     .includes(search)
 }
 
-function matchesPluginSearch(plugin: PluginSummary, rawSearch: string): boolean {
+function matchesPluginSearch(
+  plugin: PluginSummary,
+  rawSearch: string,
+): boolean {
   const search = rawSearch.trim().toLowerCase()
   if (!search) return true
 
@@ -463,13 +481,9 @@ function matchesPluginSearch(plugin: PluginSummary, rawSearch: string): boolean 
     .includes(search)
 }
 
-function isFeishuMeetingCoordinatorPlugin(plugin: PluginSummary | null): boolean {
-  if (!plugin) return false
-  return (
-    plugin.id === 'feishu_meeting_coordinator' ||
-    plugin.name === 'feishu_meeting_coordinator' ||
-    plugin.packagePath === 'plugins/feishu_meeting_coordinator'
-  )
+function operationsHostHref(host?: string): string | null {
+  if (host === 'kanban') return '/tasks'
+  return null
 }
 
 function resolveSkillSearchTier(
@@ -579,7 +593,9 @@ function labelFromSkillConfigKey(key: string): string {
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
-function buildInstallA2UiSchema(skill: SkillSummary | null): Array<InstallA2UiFieldNode> {
+function buildInstallA2UiSchema(
+  skill: SkillSummary | null,
+): Array<InstallA2UiFieldNode> {
   const fields = skill?.configFields || []
   return fields
     .filter((field) => field.key)
@@ -715,9 +731,7 @@ export function SkillsScreen() {
   const [pendingAction, setPendingAction] = useState<PendingSkillAction | null>(
     null,
   )
-  const [skillOverrides, setSkillOverrides] = useState<
-    SkillOverrideMap
-  >({})
+  const [skillOverrides, setSkillOverrides] = useState<SkillOverrideMap>({})
   const [selectedSkill, setSelectedSkill] = useState<SkillSummary | null>(null)
   const [selectedToolset, setSelectedToolset] = useState<ToolsetSummary | null>(
     null,
@@ -725,8 +739,6 @@ export function SkillsScreen() {
   const [selectedPlugin, setSelectedPlugin] = useState<PluginSummary | null>(
     null,
   )
-  const [meetingCoordinatorMaxFollowups, setMeetingCoordinatorMaxFollowups] =
-    useState('3')
   const [installConfigValues, setInstallConfigValues] = useState<
     Record<string, string>
   >({})
@@ -788,10 +800,9 @@ export function SkillsScreen() {
         | { error?: string; detail?: string }
 
       if (!response.ok) {
-        const record =
-          !Array.isArray(payload)
-            ? (payload as { error?: string; detail?: string })
-            : {}
+        const record = !Array.isArray(payload)
+          ? (payload as { error?: string; detail?: string })
+          : {}
         throw new Error(
           record.error || record.detail || 'Failed to load toolsets',
         )
@@ -810,10 +821,9 @@ export function SkillsScreen() {
         | { error?: string; detail?: string }
 
       if (!response.ok) {
-        const record =
-          !Array.isArray(payload)
-            ? (payload as { error?: string; detail?: string })
-            : {}
+        const record = !Array.isArray(payload)
+          ? (payload as { error?: string; detail?: string })
+          : {}
         throw new Error(
           record.error || record.detail || 'Failed to load plugins',
         )
@@ -822,74 +832,6 @@ export function SkillsScreen() {
       return payload as PluginsApiResponse
     },
   })
-
-  const meetingCoordinatorSettingsQuery = useQuery({
-    queryKey: ['meeting-coordinator-settings'],
-    enabled: isFeishuMeetingCoordinatorPlugin(selectedPlugin),
-    queryFn: async function fetchMeetingCoordinatorSettings(): Promise<MeetingCoordinatorSettings> {
-      const response = await fetch('/api/meeting-coordinator-settings')
-      const payload = (await response.json().catch(() => ({}))) as {
-        settings?: Partial<MeetingCoordinatorSettings>
-        error?: string
-      }
-      if (!response.ok) {
-        throw new Error(
-          payload.error || 'Failed to load meeting coordinator settings',
-        )
-      }
-      const value = Number(payload.settings?.max_followups)
-      return {
-        max_followups: Number.isFinite(value) && value > 0 ? value : 3,
-      }
-    },
-  })
-
-  const saveMeetingCoordinatorSettings = useMutation({
-    mutationFn: async function saveSettings(
-      settings: MeetingCoordinatorSettings,
-    ): Promise<MeetingCoordinatorSettings> {
-      const response = await fetch('/api/meeting-coordinator-settings', {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(settings),
-      })
-      const payload = (await response.json().catch(() => ({}))) as {
-        settings?: Partial<MeetingCoordinatorSettings>
-        error?: string
-      }
-      if (!response.ok) {
-        throw new Error(
-          payload.error || 'Failed to save meeting coordinator settings',
-        )
-      }
-      const value = Number(payload.settings?.max_followups)
-      return {
-        max_followups: Number.isFinite(value) && value > 0 ? value : 3,
-      }
-    },
-    onSuccess: (settings) => {
-      queryClient.setQueryData(['meeting-coordinator-settings'], settings)
-      setMeetingCoordinatorMaxFollowups(String(settings.max_followups))
-      toast('Meeting coordinator settings saved.', {
-        type: 'success',
-        icon: '✅',
-      })
-    },
-    onError: (error) => {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Failed to save meeting coordinator settings.'
-      toast(message, { type: 'error', icon: '❌' })
-    },
-  })
-
-  useEffect(() => {
-    if (!meetingCoordinatorSettingsQuery.data) return
-    setMeetingCoordinatorMaxFollowups(
-      String(meetingCoordinatorSettingsQuery.data.max_followups),
-    )
-  }, [meetingCoordinatorSettingsQuery.data])
 
   const marketplaceConfigQuery = useQuery({
     queryKey: ['skills-marketplace-config'],
@@ -912,29 +854,40 @@ export function SkillsScreen() {
   useEffect(() => {
     if (marketplaceConfigQuery.data === undefined) return
     setMarketplaceUrl(marketplaceConfigQuery.data)
-    setMarketplaceUrlDraft(displayMarketplaceUrlInput(marketplaceConfigQuery.data))
+    setMarketplaceUrlDraft(
+      displayMarketplaceUrlInput(marketplaceConfigQuery.data),
+    )
   }, [marketplaceConfigQuery.data])
 
   const installedCountQuery = useQuery({
-    queryKey: ['skills-browser', 'installed-count', searchInput, category, sort],
-    queryFn: async function fetchInstalledSkillCount(): Promise<SkillsApiResponse> {
-      const params = new URLSearchParams()
-      params.set('tab', 'installed')
-      params.set('search', searchInput)
-      params.set('category', category)
-      params.set('page', '1')
-      params.set('limit', '1')
-      params.set('sort', sort)
+    queryKey: [
+      'skills-browser',
+      'installed-count',
+      searchInput,
+      category,
+      sort,
+    ],
+    queryFn:
+      async function fetchInstalledSkillCount(): Promise<SkillsApiResponse> {
+        const params = new URLSearchParams()
+        params.set('tab', 'installed')
+        params.set('search', searchInput)
+        params.set('category', category)
+        params.set('page', '1')
+        params.set('limit', '1')
+        params.set('sort', sort)
 
-      const response = await fetch(`/api/skills?${params.toString()}`)
-      const payload = (await response.json()) as SkillsApiResponse & {
-        error?: string
-      }
-      if (!response.ok) {
-        throw new Error(payload.error || 'Failed to fetch installed skill count')
-      }
-      return payload
-    },
+        const response = await fetch(`/api/skills?${params.toString()}`)
+        const payload = (await response.json()) as SkillsApiResponse & {
+          error?: string
+        }
+        if (!response.ok) {
+          throw new Error(
+            payload.error || 'Failed to fetch installed skill count',
+          )
+        }
+        return payload
+      },
     staleTime: 30_000,
   })
 
@@ -964,16 +917,17 @@ export function SkillsScreen() {
   const skillUpdatesQuery = useQuery({
     queryKey: ['skills-updates'],
     enabled: tab === 'installed',
-    queryFn: async function fetchSkillUpdates(): Promise<SkillUpdatesApiResponse> {
-      const response = await fetch('/api/skills?check_updates=1')
-      const payload = (await response.json()) as SkillUpdatesApiResponse
-      if (!response.ok) {
-        throw new Error(
-          payload.error || payload.detail || 'Failed to check skill updates',
-        )
-      }
-      return payload
-    },
+    queryFn:
+      async function fetchSkillUpdates(): Promise<SkillUpdatesApiResponse> {
+        const response = await fetch('/api/skills?check_updates=1')
+        const payload = (await response.json()) as SkillUpdatesApiResponse
+        if (!response.ok) {
+          throw new Error(
+            payload.error || payload.detail || 'Failed to check skill updates',
+          )
+        }
+        return payload
+      },
     staleTime: 5 * 60 * 1000,
     retry: 1,
   })
@@ -1044,15 +998,8 @@ export function SkillsScreen() {
           extra.author ||
           skill.source ||
           'Community'
-        const homepage =
-          skill.homepage ||
-          skill.repo ||
-          extra.homepage ||
-          null
-        const skillCategory =
-          skill.category ||
-          extra.category ||
-          'Productivity'
+        const homepage = skill.homepage || skill.repo || extra.homepage || null
+        const skillCategory = skill.category || extra.category || 'Productivity'
 
         return {
           id: skillId,
@@ -1148,10 +1095,7 @@ export function SkillsScreen() {
     [pluginCategory, pluginsQuery.data?.plugins, searchInput, sourceFilter],
   )
 
-  const visibleSourceFilters = useMemo(
-    () => SOURCE_FILTERS,
-    [tab],
-  )
+  const visibleSourceFilters = useMemo(() => SOURCE_FILTERS, [tab])
 
   async function copyCommandAndToast(command: string, message: string) {
     try {
@@ -1221,7 +1165,9 @@ export function SkillsScreen() {
       }
 
       if (
-        (action === 'install' || action === 'update' || action === 'uninstall') &&
+        (action === 'install' ||
+          action === 'update' ||
+          action === 'uninstall') &&
         data.ok === false
       ) {
         if (data.command) {
@@ -1390,10 +1336,13 @@ export function SkillsScreen() {
   function openInstallFlow(skill: SkillSummary, source?: HubSkill['source']) {
     if (skill.configFields && skill.configFields.length > 0) {
       setSelectedSkill(skill)
-      toast('This skill requires install config. Complete the A2UI form to continue.', {
-        type: 'warning',
-        icon: '🧩',
-      })
+      toast(
+        'This skill requires install config. Complete the A2UI form to continue.',
+        {
+          type: 'warning',
+          icon: '🧩',
+        },
+      )
       return
     }
 
@@ -1482,11 +1431,11 @@ export function SkillsScreen() {
                           ? (toolsetsQuery.data?.length || 0).toLocaleString()
                           : option.value === 'plugins'
                             ? (pluginsQuery.data?.total || 0).toLocaleString()
-                          : (
-                              hubQuery.data?.total ||
-                              hubQuery.data?.results.length ||
-                              0
-                            ).toLocaleString()}
+                            : (
+                                hubQuery.data?.total ||
+                                hubQuery.data?.results.length ||
+                                0
+                              ).toLocaleString()}
                     </span>
                   </TabsTab>
                 ))}
@@ -1501,9 +1450,9 @@ export function SkillsScreen() {
                       ? 'Search by toolset, source, or tool name'
                       : tab === 'plugins'
                         ? 'Search by plugin, category, toolset, or hook'
-                      : tab === 'marketplace'
-                        ? 'Search Skills Hub, GitHub, and local fallback'
-                        : 'Search by name, tags, or description'
+                        : tab === 'marketplace'
+                          ? 'Search Skills Hub, GitHub, and local fallback'
+                          : 'Search by name, tags, or description'
                   }
                   className="h-10 w-full min-w-0 rounded-button border border-border bg-primary-100/60 px-3 text-sm text-ink outline-none transition-colors focus:border-primary"
                 />
@@ -1719,9 +1668,7 @@ export function SkillsScreen() {
                               }}
                               className="flex-col items-start gap-0.5"
                             >
-                              <span className="font-medium">
-                                {entry.label}
-                              </span>
+                              <span className="font-medium">{entry.label}</span>
                               <span className="max-w-full truncate text-xs text-primary-500">
                                 {entry.value}
                               </span>
@@ -1732,8 +1679,8 @@ export function SkillsScreen() {
                     </MenuRoot>
                   </div>
                   <p className="text-xs text-primary-500">
-                    Select a preset or enter a custom marketplace endpoint.
-                    The default marketplace uses the built-in Hermes skills index.
+                    Select a preset or enter a custom marketplace endpoint. The
+                    default marketplace uses the built-in Hermes skills index.
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -1900,7 +1847,8 @@ export function SkillsScreen() {
           <footer className="flex items-center justify-between rounded-card border border-border bg-primary-50/80 px-3 py-2.5 text-sm text-primary-500 tabular-nums">
             <span>{plugins.length.toLocaleString()} visible plugins</span>
             <span>
-              {(pluginsQuery.data?.total || 0).toLocaleString()} total in runtime
+              {(pluginsQuery.data?.total || 0).toLocaleString()} total in
+              runtime
             </span>
           </footer>
         ) : null}
@@ -1963,9 +1911,7 @@ export function SkillsScreen() {
                         </DetailChip>
                       ) : null}
                       {selectedSkill.version ? (
-                        <DetailChip>
-                          Version {selectedSkill.version}
-                        </DetailChip>
+                        <DetailChip>Version {selectedSkill.version}</DetailChip>
                       ) : null}
                       {selectedSkill.updateStatus === 'update_available' &&
                       selectedSkill.latestVersion ? (
@@ -1980,25 +1926,25 @@ export function SkillsScreen() {
                         </DetailChip>
                       ) : null}
                       {selectedSkill.triggers.length > 0 ? (
-                        selectedSkill.triggers.slice(0, 8).map((trigger) => (
-                          <DetailChip key={trigger}>
-                            {trigger}
-                          </DetailChip>
-                        ))
+                        selectedSkill.triggers
+                          .slice(0, 8)
+                          .map((trigger) => (
+                            <DetailChip key={trigger}>{trigger}</DetailChip>
+                          ))
                       ) : (
-                        <DetailChip>
-                          No triggers listed
-                        </DetailChip>
+                        <DetailChip>No triggers listed</DetailChip>
                       )}
                     </div>
 
-                    {!selectedSkill.installed && installConfigSchema.length > 0 ? (
+                    {!selectedSkill.installed &&
+                    installConfigSchema.length > 0 ? (
                       <section className="rounded-card border border-border bg-primary-50/80 p-4 backdrop-blur-sm">
                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-500">
                           Install Configuration (A2UI)
                         </p>
                         <p className="mt-1 text-sm text-primary-500">
-                          This skill declares configuration fields that are stored under skills.config.* during install.
+                          This skill declares configuration fields that are
+                          stored under skills.config.* during install.
                         </p>
 
                         <div className="mt-3 space-y-3">
@@ -2011,7 +1957,9 @@ export function SkillsScreen() {
                                 ) : null}
                               </span>
                               {node.description ? (
-                                <p className="text-xs text-primary-500">{node.description}</p>
+                                <p className="text-xs text-primary-500">
+                                  {node.description}
+                                </p>
                               ) : null}
 
                               {node.control === 'boolean' ? (
@@ -2042,14 +1990,23 @@ export function SkillsScreen() {
                                 >
                                   <option value="">Select</option>
                                   {node.options.map((option) => (
-                                    <option key={`${node.key}-${option.value}`} value={option.value}>
+                                    <option
+                                      key={`${node.key}-${option.value}`}
+                                      value={option.value}
+                                    >
                                       {option.label}
                                     </option>
                                   ))}
                                 </select>
                               ) : (
                                 <input
-                                  type={node.secret ? 'password' : node.control === 'number' ? 'number' : 'text'}
+                                  type={
+                                    node.secret
+                                      ? 'password'
+                                      : node.control === 'number'
+                                        ? 'number'
+                                        : 'text'
+                                  }
                                   value={installConfigValues[node.key] || ''}
                                   onChange={(event) =>
                                     setInstallConfigValues((current) => ({
@@ -2183,7 +2140,9 @@ export function SkillsScreen() {
                 <ScrollAreaViewport className="px-5 py-4">
                   <div className="min-w-0 space-y-4">
                     <div className="flex flex-wrap gap-1.5">
-                      <DetailChip tone={selectedToolset.enabled ? 'accent' : 'neutral'}>
+                      <DetailChip
+                        tone={selectedToolset.enabled ? 'accent' : 'neutral'}
+                      >
                         {selectedToolset.enabled ? 'Enabled' : 'Disabled'}
                       </DetailChip>
                       <DetailChip>
@@ -2203,9 +2162,7 @@ export function SkillsScreen() {
                         </DetailChip>
                       ) : null}
                       {selectedToolset.sourceLabel ? (
-                        <DetailChip>
-                          {selectedToolset.sourceLabel}
-                        </DetailChip>
+                        <DetailChip>{selectedToolset.sourceLabel}</DetailChip>
                       ) : null}
                       <PlatformCompatibilityChips
                         platforms={selectedToolset.platformCompatibility}
@@ -2222,9 +2179,7 @@ export function SkillsScreen() {
                     <DetailPanel title="Included Tools">
                       <div className="flex flex-wrap gap-1.5">
                         {selectedToolset.tools.map((tool) => (
-                          <DetailChip key={tool}>
-                            {tool}
-                          </DetailChip>
+                          <DetailChip key={tool}>{tool}</DetailChip>
                         ))}
                       </div>
                     </DetailPanel>
@@ -2237,7 +2192,8 @@ export function SkillsScreen() {
 
               <div className="flex flex-col gap-3 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="min-w-0 flex-1 text-sm text-primary-500">
-                  Runtime toolsets inherit version metadata from their provider plugin.
+                  Runtime toolsets inherit version metadata from their provider
+                  plugin.
                 </p>
                 <div className="flex shrink-0 items-center gap-2">
                   {selectedToolset.updateStatus === 'update_available' ? (
@@ -2294,7 +2250,8 @@ export function SkillsScreen() {
                   {selectedPlugin.label}
                 </DialogTitle>
                 <DialogDescription className="mt-1 text-pretty">
-                  {selectedPlugin.category} • {selectedPlugin.sourceLabel || 'Plugin'}
+                  {selectedPlugin.category} •{' '}
+                  {selectedPlugin.sourceLabel || 'Plugin'}
                 </DialogDescription>
               </div>
 
@@ -2302,16 +2259,14 @@ export function SkillsScreen() {
                 <ScrollAreaViewport className="px-5 py-4">
                   <div className="min-w-0 space-y-4">
                     <div className="flex flex-wrap gap-1.5">
-                      <DetailChip tone={selectedPlugin.enabled ? 'accent' : 'neutral'}>
+                      <DetailChip
+                        tone={selectedPlugin.enabled ? 'accent' : 'neutral'}
+                      >
                         {selectedPlugin.enabled ? 'Enabled' : 'Inactive'}
                       </DetailChip>
-                      <DetailChip>
-                        {selectedPlugin.category}
-                      </DetailChip>
+                      <DetailChip>{selectedPlugin.category}</DetailChip>
                       {selectedPlugin.sourceLabel ? (
-                        <DetailChip>
-                          {selectedPlugin.sourceLabel}
-                        </DetailChip>
+                        <DetailChip>{selectedPlugin.sourceLabel}</DetailChip>
                       ) : null}
                       {selectedPlugin.version ? (
                         <DetailChip>
@@ -2332,83 +2287,117 @@ export function SkillsScreen() {
 
                     <DetailPanel>
                       <p className="text-sm leading-relaxed text-primary-600">
-                        {selectedPlugin.description || 'No plugin description provided.'}
+                        {selectedPlugin.description ||
+                          'No plugin description provided.'}
                       </p>
                     </DetailPanel>
 
-                    {isFeishuMeetingCoordinatorPlugin(selectedPlugin) ? (
-                      <DetailPanel title="RSVP Follow-Up Policy">
+                    <DetailPanel title="UI Extensions">
+                      {selectedPlugin.uiExtensions &&
+                      selectedPlugin.uiExtensions.length > 0 ? (
                         <div className="space-y-3">
-                          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                            <label className="min-w-0 space-y-1.5">
-                              <span className="block text-xs font-medium uppercase text-muted-foreground">
-                                Max follow-ups per attendee
-                              </span>
-                              <input
-                                className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-primary-700 shadow-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
-                                type="number"
-                                min={1}
-                                max={20}
-                                step={1}
-                                value={meetingCoordinatorMaxFollowups}
-                                disabled={
-                                  meetingCoordinatorSettingsQuery.isPending ||
-                                  saveMeetingCoordinatorSettings.isPending
-                                }
-                                onChange={(event) => {
-                                  setMeetingCoordinatorMaxFollowups(
-                                    event.target.value,
-                                  )
-                                }}
-                              />
-                            </label>
-                            <Button
-                              size="sm"
-                              disabled={
-                                meetingCoordinatorSettingsQuery.isPending ||
-                                saveMeetingCoordinatorSettings.isPending
-                              }
-                              onClick={() => {
-                                const nextValue = Number(
-                                  meetingCoordinatorMaxFollowups,
-                                )
-                                if (
-                                  !Number.isInteger(nextValue) ||
-                                  nextValue < 1 ||
-                                  nextValue > 20
-                                ) {
-                                  toast(
-                                    'Max follow-ups must be a whole number from 1 to 20.',
-                                    { type: 'error', icon: '❌' },
-                                  )
-                                  return
-                                }
-                                saveMeetingCoordinatorSettings.mutate({
-                                  max_followups: nextValue,
-                                })
-                              }}
-                            >
-                              {saveMeetingCoordinatorSettings.isPending
-                                ? 'Saving...'
-                                : 'Save'}
-                            </Button>
-                          </div>
+                          {selectedPlugin.uiExtensions.map((extension) => {
+                            const componentEntries = Object.entries(
+                              extension.components ?? {},
+                            )
+                            const hostHref = operationsHostHref(
+                              extension.operations_host,
+                            )
+
+                            return (
+                              <div
+                                key={extension.id}
+                                className="rounded-lg border border-border bg-background/70 p-3"
+                              >
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-primary-800">
+                                      {extension.label || extension.id}
+                                    </p>
+                                    {extension.description ? (
+                                      <p className="mt-1 text-xs leading-relaxed text-primary-500">
+                                        {extension.description}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                  {hostHref ? (
+                                    <a
+                                      href={hostHref}
+                                      className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium text-primary-700 transition hover:border-primary-300 hover:bg-primary-50"
+                                    >
+                                      Open host
+                                    </a>
+                                  ) : null}
+                                </div>
+
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                  <DetailChip>
+                                    Discovery:{' '}
+                                    {extension.host_screen || 'unknown'}
+                                  </DetailChip>
+                                  <DetailChip>
+                                    Operations:{' '}
+                                    {extension.operations_host || 'unknown'}
+                                  </DetailChip>
+                                  {extension.task_signal?.field &&
+                                  extension.task_signal.value ? (
+                                    <DetailChip tone="accent">
+                                      Signal {extension.task_signal.field}=
+                                      {extension.task_signal.value}
+                                    </DetailChip>
+                                  ) : null}
+                                </div>
+
+                                {componentEntries.length > 0 ? (
+                                  <div className="mt-3">
+                                    <p className="mb-1.5 text-xs font-medium uppercase text-muted-foreground">
+                                      Components
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {componentEntries.map(
+                                        ([componentId, component]) => (
+                                          <DetailChip key={componentId}>
+                                            {componentId}:{' '}
+                                            {component.module || 'unknown'}
+                                          </DetailChip>
+                                        ),
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : null}
+
+                                {extension.actions &&
+                                extension.actions.length > 0 ? (
+                                  <div className="mt-3">
+                                    <p className="mb-1.5 text-xs font-medium uppercase text-muted-foreground">
+                                      Actions
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {extension.actions.map((action) => (
+                                        <DetailChip key={action.id}>
+                                          {action.label || action.id}
+                                        </DetailChip>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            )
+                          })}
                         </div>
-                      </DetailPanel>
-                    ) : null}
+                      ) : (
+                        <DetailChip>No UI extensions declared</DetailChip>
+                      )}
+                    </DetailPanel>
 
                     <DetailPanel title="Hook Surfaces">
                       <div className="flex flex-wrap gap-1.5">
                         {selectedPlugin.providesHooks.length > 0 ? (
                           selectedPlugin.providesHooks.map((hook) => (
-                            <DetailChip key={hook}>
-                              {hook}
-                            </DetailChip>
+                            <DetailChip key={hook}>{hook}</DetailChip>
                           ))
                         ) : (
-                          <DetailChip>
-                            No hooks declared
-                          </DetailChip>
+                          <DetailChip>No hooks declared</DetailChip>
                         )}
                       </div>
                     </DetailPanel>
@@ -2418,22 +2407,16 @@ export function SkillsScreen() {
                         <div className="flex flex-wrap gap-1.5">
                           {selectedPlugin.toolsets.length > 0 ? (
                             selectedPlugin.toolsets.map((toolset) => (
-                              <DetailChip key={toolset}>
-                                {toolset}
-                              </DetailChip>
+                              <DetailChip key={toolset}>{toolset}</DetailChip>
                             ))
                           ) : (
-                            <DetailChip>
-                              No toolsets exposed
-                            </DetailChip>
+                            <DetailChip>No toolsets exposed</DetailChip>
                           )}
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {selectedPlugin.tools.length > 0 ? (
                             selectedPlugin.tools.map((tool) => (
-                              <DetailChip key={tool}>
-                                {tool}
-                              </DetailChip>
+                              <DetailChip key={tool}>{tool}</DetailChip>
                             ))
                           ) : (
                             <DetailChip>
@@ -3006,95 +2989,95 @@ function ToolsetsGrid({
             pendingAction.action === 'update'
           const hasUpdate = toolset.updateStatus === 'update_available'
           return (
-          <motion.article
-            key={toolset.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
-            className="flex min-h-[220px] flex-col rounded-card border border-border bg-card p-4"
-          >
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <div className="space-y-1">
-                <ToolsetMark sourceTier={toolset.sourceTier} />
-                <h3 className="line-clamp-2 text-base font-medium text-ink text-balance">
-                  {toolset.label}
-                </h3>
-                <p className="line-clamp-1 text-xs text-primary-500">
-                  {toolset.tools.length.toLocaleString()} tools
-                </p>
-              </div>
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs tabular-nums',
-                  toolset.enabled
-                    ? 'border-primary/40 bg-primary/15 text-primary'
-                    : 'border-primary-200 bg-primary-100/60 text-primary-500',
-                )}
-              >
-                {isUpdating ? (
-                  <>
-                    <InlineSpinner />
-                    Updating...
-                  </>
-                ) : hasUpdate ? (
-                  'Update available'
-                ) : toolset.enabled ? (
-                  'Enabled'
-                ) : (
-                  'Inactive'
-                )}
-              </span>
-            </div>
-
-            <p className="line-clamp-3 min-h-[58px] text-sm text-primary-500 text-pretty">
-              {toolset.description}
-            </p>
-
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {toolset.sourceLabel ? (
-                <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
-                  {toolset.sourceLabel}
-                </span>
-              ) : null}
-              <PlatformCompatibilityChips
-                platforms={toolset.platformCompatibility}
-              />
-              <VersionChips item={toolset} />
-              <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
-                {toolset.configured ? 'Configured' : 'No extra config'}
-              </span>
-              {toolset.tools.slice(0, 2).map((tool) => (
+            <motion.article
+              key={toolset.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex min-h-[220px] flex-col rounded-card border border-border bg-card p-4"
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="space-y-1">
+                  <ToolsetMark sourceTier={toolset.sourceTier} />
+                  <h3 className="line-clamp-2 text-base font-medium text-ink text-balance">
+                    {toolset.label}
+                  </h3>
+                  <p className="line-clamp-1 text-xs text-primary-500">
+                    {toolset.tools.length.toLocaleString()} tools
+                  </p>
+                </div>
                 <span
-                  key={`${toolset.id}-${tool}`}
-                  className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500"
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs tabular-nums',
+                    toolset.enabled
+                      ? 'border-primary/40 bg-primary/15 text-primary'
+                      : 'border-primary-200 bg-primary-100/60 text-primary-500',
+                  )}
                 >
-                  {tool}
+                  {isUpdating ? (
+                    <>
+                      <InlineSpinner />
+                      Updating...
+                    </>
+                  ) : hasUpdate ? (
+                    'Update available'
+                  ) : toolset.enabled ? (
+                    'Enabled'
+                  ) : (
+                    'Inactive'
+                  )}
                 </span>
-              ))}
-            </div>
+              </div>
 
-            <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onOpenDetails(toolset)}
-              >
-                Details
-              </Button>
-              <span className="text-xs text-primary-500">
-                {toolset.canModify ? 'Editable' : 'Read only'}
-              </span>
-              {hasUpdate ? (
+              <p className="line-clamp-3 min-h-[58px] text-sm text-primary-500 text-pretty">
+                {toolset.description}
+              </p>
+
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {toolset.sourceLabel ? (
+                  <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                    {toolset.sourceLabel}
+                  </span>
+                ) : null}
+                <PlatformCompatibilityChips
+                  platforms={toolset.platformCompatibility}
+                />
+                <VersionChips item={toolset} />
+                <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                  {toolset.configured ? 'Configured' : 'No extra config'}
+                </span>
+                {toolset.tools.slice(0, 2).map((tool) => (
+                  <span
+                    key={`${toolset.id}-${tool}`}
+                    className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500"
+                  >
+                    {tool}
+                  </span>
+                ))}
+              </div>
+
+              <div className="mt-auto flex items-center justify-between gap-2 pt-3">
                 <Button
+                  variant="outline"
                   size="sm"
-                  disabled={isUpdating || !toolset.canUpdate}
-                  onClick={() => onUpdate(toolset)}
+                  onClick={() => onOpenDetails(toolset)}
                 >
-                  {isUpdating ? 'Updating...' : 'Update'}
+                  Details
                 </Button>
-              ) : null}
-            </div>
-          </motion.article>
+                <span className="text-xs text-primary-500">
+                  {toolset.canModify ? 'Editable' : 'Read only'}
+                </span>
+                {hasUpdate ? (
+                  <Button
+                    size="sm"
+                    disabled={isUpdating || !toolset.canUpdate}
+                    onClick={() => onUpdate(toolset)}
+                  >
+                    {isUpdating ? 'Updating...' : 'Update'}
+                  </Button>
+                ) : null}
+              </div>
+            </motion.article>
           )
         })}
       </AnimatePresence>
@@ -3116,9 +3099,7 @@ function PluginsGrid({
   if (plugins.length === 0) {
     return (
       <div className="rounded-card border border-dashed border-border bg-primary-100/40 px-4 py-8 text-center">
-        <p className="text-sm font-medium text-primary-700">
-          No plugins found
-        </p>
+        <p className="text-sm font-medium text-primary-700">No plugins found</p>
         <p className="mt-1 text-xs text-primary-500 text-pretty max-w-sm mx-auto">
           Try a different source filter, category, or search term.
         </p>
@@ -3135,90 +3116,90 @@ function PluginsGrid({
             pendingAction.action === 'update'
           const hasUpdate = plugin.updateStatus === 'update_available'
           return (
-          <motion.article
-            key={plugin.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
-            className="flex min-h-[220px] flex-col rounded-card border border-border bg-card p-4"
-          >
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <div className="space-y-1">
-                <PluginCategoryMark category={plugin.category} />
-                <h3 className="line-clamp-2 text-base font-medium text-ink text-balance">
-                  {plugin.label}
-                </h3>
-                <p className="line-clamp-1 text-xs text-primary-500">
-                  {plugin.category}
-                </p>
-              </div>
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs tabular-nums',
-                  plugin.enabled
-                    ? 'border-primary/40 bg-primary/15 text-primary'
-                    : 'border-primary-200 bg-primary-100/60 text-primary-500',
-                )}
-              >
-                {isUpdating ? (
-                  <>
-                    <InlineSpinner />
-                    Updating...
-                  </>
-                ) : hasUpdate ? (
-                  'Update available'
-                ) : plugin.enabled ? (
-                  'Enabled'
-                ) : (
-                  'Inactive'
-                )}
-              </span>
-            </div>
-
-            <p className="line-clamp-3 min-h-[58px] text-sm text-primary-500 text-pretty">
-              {plugin.description || 'No plugin description provided.'}
-            </p>
-
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {plugin.sourceLabel ? (
-                <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
-                  {plugin.sourceLabel}
-                </span>
-              ) : null}
-              <PlatformCompatibilityChips
-                platforms={plugin.platformCompatibility}
-              />
-              <VersionChips item={plugin} />
-              <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
-                {plugin.toolsets.length.toLocaleString()} toolsets
-              </span>
-              <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
-                {plugin.providesHooks.length.toLocaleString()} hooks
-              </span>
-            </div>
-
-            <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onOpenDetails(plugin)}
-              >
-                Details
-              </Button>
-              <span className="text-xs text-primary-500">
-                {plugin.canModify ? 'Editable' : 'Read only'}
-              </span>
-              {hasUpdate ? (
-                <Button
-                  size="sm"
-                  disabled={isUpdating || !plugin.canUpdate}
-                  onClick={() => onUpdate(plugin)}
+            <motion.article
+              key={plugin.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex min-h-[220px] flex-col rounded-card border border-border bg-card p-4"
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="space-y-1">
+                  <PluginCategoryMark category={plugin.category} />
+                  <h3 className="line-clamp-2 text-base font-medium text-ink text-balance">
+                    {plugin.label}
+                  </h3>
+                  <p className="line-clamp-1 text-xs text-primary-500">
+                    {plugin.category}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs tabular-nums',
+                    plugin.enabled
+                      ? 'border-primary/40 bg-primary/15 text-primary'
+                      : 'border-primary-200 bg-primary-100/60 text-primary-500',
+                  )}
                 >
-                  {isUpdating ? 'Updating...' : 'Update'}
+                  {isUpdating ? (
+                    <>
+                      <InlineSpinner />
+                      Updating...
+                    </>
+                  ) : hasUpdate ? (
+                    'Update available'
+                  ) : plugin.enabled ? (
+                    'Enabled'
+                  ) : (
+                    'Inactive'
+                  )}
+                </span>
+              </div>
+
+              <p className="line-clamp-3 min-h-[58px] text-sm text-primary-500 text-pretty">
+                {plugin.description || 'No plugin description provided.'}
+              </p>
+
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {plugin.sourceLabel ? (
+                  <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                    {plugin.sourceLabel}
+                  </span>
+                ) : null}
+                <PlatformCompatibilityChips
+                  platforms={plugin.platformCompatibility}
+                />
+                <VersionChips item={plugin} />
+                <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                  {plugin.toolsets.length.toLocaleString()} toolsets
+                </span>
+                <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
+                  {plugin.providesHooks.length.toLocaleString()} hooks
+                </span>
+              </div>
+
+              <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onOpenDetails(plugin)}
+                >
+                  Details
                 </Button>
-              ) : null}
-            </div>
-          </motion.article>
+                <span className="text-xs text-primary-500">
+                  {plugin.canModify ? 'Editable' : 'Read only'}
+                </span>
+                {hasUpdate ? (
+                  <Button
+                    size="sm"
+                    disabled={isUpdating || !plugin.canUpdate}
+                    onClick={() => onUpdate(plugin)}
+                  >
+                    {isUpdating ? 'Updating...' : 'Update'}
+                  </Button>
+                ) : null}
+              </div>
+            </motion.article>
           )
         })}
       </AnimatePresence>

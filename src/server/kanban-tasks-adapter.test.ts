@@ -85,6 +85,58 @@ describe('kanban-tasks-adapter', () => {
     ])
   })
 
+  it('exposes canonical JSON body metadata without string heuristics', async () => {
+    dashboardFetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        columns: [
+          {
+            name: 'blocked',
+            tasks: [
+              {
+                id: 't_meta',
+                title: 'Plugin-owned task',
+                body: JSON.stringify({
+                  metadata: {
+                    task_type: 'custom_plugin_task',
+                    negotiation_id: 'neg_123',
+                    workspace_id: 'ws_123',
+                  },
+                  payload: {
+                    trigger_attendees: ['ou_123'],
+                  },
+                }),
+                assignee: null,
+                status: 'blocked',
+                priority: 0,
+                created_by: 'worker',
+                created_at: 1782000000,
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+    const tasks = await listKanbanTasks(
+      'http://workspace.local/api/hermes-tasks?include_done=true',
+      {},
+      { includeDone: true },
+    )
+
+    expect(tasks).toHaveLength(1)
+    expect(tasks[0]).toMatchObject({
+      id: 't_meta',
+      description: '',
+      metadata: {
+        task_type: 'custom_plugin_task',
+        negotiation_id: 'neg_123',
+        workspace_id: 'ws_123',
+      },
+      tags: [],
+      due_date: null,
+    })
+  })
+
   it('creates through Kanban and patches status when the UI column is not the Kanban default', async () => {
     dashboardFetchMock
       .mockResolvedValueOnce(

@@ -1,6 +1,12 @@
 import type { HermesTask } from '@/lib/tasks-api'
 import type { CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
+import {
+  matchingPluginUiExtension,
+  pluginUiComponent,
+  pluginUiNegotiationId,
+  type PluginUiExtensionRegistration,
+} from '@/lib/plugin-ui-extensions'
 import { PRIORITY_COLORS, isOverdue } from '@/lib/tasks-api'
 
 type Props = {
@@ -9,6 +15,13 @@ type Props = {
   onClick: () => void
   onDragStart: (e: React.DragEvent) => void
   isDragging?: boolean
+  pluginUiExtensions?: Array<PluginUiExtensionRegistration>
+  onPluginAction?: (
+    task: HermesTask,
+    registration: PluginUiExtensionRegistration,
+    actionId: string,
+    payload?: Record<string, unknown>,
+  ) => void
 }
 
 export function formatTaskAssigneeLabel(
@@ -27,12 +40,49 @@ export function TaskCard({
   onClick,
   onDragStart,
   isDragging,
+  pluginUiExtensions = [],
+  onPluginAction,
 }: Props) {
   const overdue = isOverdue(task)
   const priorityColor = PRIORITY_COLORS[task.priority]
   const visibleTags = task.tags.slice(0, 2)
   const extraTagCount = task.tags.length - 2
   const assigneeLabel = formatTaskAssigneeLabel(task.assignee, assigneeLabels)
+  const pluginRegistration = matchingPluginUiExtension(
+    pluginUiExtensions,
+    task.metadata,
+  )
+  const PluginCard = pluginRegistration
+    ? pluginUiComponent(pluginRegistration, 'card_renderer')
+    : null
+
+  if (pluginRegistration && PluginCard) {
+    return (
+      <div
+        draggable
+        onDragStart={onDragStart}
+        className={cn(
+          'relative rounded-lg border theme-left-status-border p-3 transition-all select-none',
+          'bg-[var(--theme-card)] border-[var(--theme-border)]',
+          isDragging
+            ? 'opacity-40 rotate-1 shadow-2xl'
+            : 'hover:shadow-[0_4px_16px_rgba(0,0,0,0.35)]',
+        )}
+        style={{ '--status-border-color': priorityColor } as CSSProperties}
+      >
+        <PluginCard
+          taskId={task.id}
+          extensionId={pluginRegistration.extension.id}
+          negotiationId={pluginUiNegotiationId(task.metadata)}
+          metadata={task.metadata ?? {}}
+          onOpenDetail={onClick}
+          onAction={(actionId, payload) =>
+            onPluginAction?.(task, pluginRegistration, actionId, payload)
+          }
+        />
+      </div>
+    )
+  }
 
   return (
     <div

@@ -10,6 +10,14 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useAgentChat } from '../hooks/use-agent-chat'
+import {
+  ORCHESTRATOR_AVATAR_ACCENT_COLOR,
+  ORCHESTRATOR_AVATAR_COLOR,
+  ORCHESTRATOR_AVATAR_STATUS,
+  ORCHESTRATOR_PROGRESS_CLASS_NAME,
+  ORCHESTRATOR_PROGRESS_STATUS,
+  ORCHESTRATOR_PROGRESS_VALUE,
+} from './orchestrator-visuals'
 import type { OperationsChatMessage } from '../hooks/use-agent-chat'
 import type { OperationsAgent } from '../hooks/use-operations'
 import { Button } from '@/components/ui/button'
@@ -23,23 +31,23 @@ import { cn } from '@/lib/utils'
 function getStatusStyles(status: OperationsAgent['status']) {
   if (status === 'error') {
     return {
-      dot: 'bg-red-500',
-      ring: 'text-red-500',
+      dot: 'bg-[var(--theme-danger)]',
+      ring: 'text-[var(--theme-danger)]',
       label: 'Error',
     }
   }
 
   if (status === 'active') {
     return {
-      dot: 'bg-emerald-500',
-      ring: 'text-emerald-500',
+      dot: 'bg-[var(--theme-success)]',
+      ring: 'text-[var(--theme-success)]',
       label: 'Active',
     }
   }
 
   return {
-    dot: 'bg-primary-300',
-    ring: 'text-primary-300',
+    dot: 'bg-[var(--theme-muted)]',
+    ring: 'text-[var(--theme-muted)]',
     label: 'Idle',
   }
 }
@@ -63,6 +71,10 @@ function displayJobName(jobName: string, agentId: string) {
 
 function describeJob(job: OperationsAgent['jobs'][number]) {
   return job.description?.trim() || job.schedule
+}
+
+function isWorkspaceAlias(agent: OperationsAgent) {
+  return agent.id === 'default'
 }
 
 export function OperationsInlineChat({
@@ -96,7 +108,7 @@ export function OperationsInlineChat({
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-[1.25rem] border border-[var(--theme-border)] bg-[var(--theme-card)]">
+    <section className="flex min-h-0 flex-1 flex-col rounded-card border border-[var(--theme-border)] bg-[var(--theme-card2)]">
       <div
         ref={scrollRef}
         className="flex min-h-[100px] max-h-[160px] flex-1 flex-col justify-center overflow-y-auto px-3 py-3"
@@ -116,10 +128,10 @@ export function OperationsInlineChat({
                 >
                   <div
                     className={cn(
-                      'max-w-[92%] rounded-2xl px-3 py-2 text-xs leading-relaxed shadow-sm',
+                      'max-w-[92%] rounded-md px-3 py-2 text-xs leading-relaxed',
                       isUser
                         ? 'bg-[var(--theme-accent-soft)] text-[var(--theme-text)]'
-                        : 'bg-[var(--theme-card2)] text-[var(--theme-text)]',
+                        : 'bg-[var(--theme-card)] text-[var(--theme-text)]',
                     )}
                   >
                     {message.role === 'assistant' ? (
@@ -140,8 +152,10 @@ export function OperationsInlineChat({
       </div>
 
       <div className="border-t border-[var(--theme-border)] px-3 py-3">
-        {error ? <p className="mb-2 text-xs text-red-600">{error}</p> : null}
-        <div className="flex items-center gap-2 rounded-[1rem] border border-[var(--theme-border)] bg-[var(--theme-bg)] p-2">
+        {error ? (
+          <p className="mb-2 text-xs text-[var(--theme-danger)]">{error}</p>
+        ) : null}
+        <div className="flex items-center gap-2 rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] p-2">
           <input
             type="text"
             value={draft}
@@ -157,7 +171,7 @@ export function OperationsInlineChat({
           />
           <Button
             size="icon-sm"
-            className="rounded-lg bg-[var(--theme-accent)] text-primary-950 hover:bg-[var(--theme-accent-strong)]"
+            className="rounded-md bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)] hover:bg-[var(--theme-accent-strong)]"
             onClick={() => void handleSend()}
             disabled={!draft.trim() || isSending}
             aria-label={isSending ? 'Sending message' : 'Send message'}
@@ -191,6 +205,29 @@ export function OperationsAgentCard({
   )
   const cronJobCount = agent.jobs.length
   const isActive = agent.status === 'active' && !isPaused
+  const aliasesOrchestrator = isWorkspaceAlias(agent)
+  const progressValue = aliasesOrchestrator
+    ? ORCHESTRATOR_PROGRESS_VALUE
+    : agent.progressValue
+  const progressStatus = aliasesOrchestrator
+    ? ORCHESTRATOR_PROGRESS_STATUS
+    : agent.progressStatus
+  const progressClassName = aliasesOrchestrator
+    ? ORCHESTRATOR_PROGRESS_CLASS_NAME
+    : status.ring
+  const avatarColor = aliasesOrchestrator
+    ? ORCHESTRATOR_AVATAR_COLOR
+    : agent.meta.color
+  const avatarAccentColor = aliasesOrchestrator
+    ? ORCHESTRATOR_AVATAR_ACCENT_COLOR
+    : '#ffffff'
+  const avatarStatus = aliasesOrchestrator
+    ? ORCHESTRATOR_AVATAR_STATUS
+    : agent.status === 'error'
+      ? 'failed'
+      : agent.status === 'active'
+        ? 'running'
+        : 'idle'
 
   const toggleMutation = useMutation({
     mutationFn: async (payload: { jobId: string; enabled: boolean }) =>
@@ -235,7 +272,7 @@ export function OperationsAgentCard({
   }
 
   return (
-    <article className="flex min-h-[19rem] flex-col rounded-[1.5rem] border border-[var(--theme-border)] bg-[var(--theme-card)] p-3 shadow-[0_20px_60px_color-mix(in_srgb,var(--theme-shadow)_14%,transparent)]">
+    <article className="flex min-h-[19rem] flex-col rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-3">
       <div className="relative flex min-h-8 items-center">
         <div className="absolute left-0 flex items-center">
           <button
@@ -247,13 +284,14 @@ export function OperationsAgentCard({
             }
             onClick={() => setShowCronPanel((value) => !value)}
             className={cn(
-              'inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-1.5 text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-bg)] hover:text-[var(--theme-text)]',
-              showCronPanel && 'bg-[var(--theme-bg)] text-[var(--theme-text)]',
+              'inline-flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-md px-1.5 text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-card2)] hover:text-[var(--theme-text)]',
+              showCronPanel &&
+                'bg-[var(--theme-card2)] text-[var(--theme-text)]',
             )}
           >
             <HugeiconsIcon icon={Clock01Icon} size={14} strokeWidth={1.9} />
             {cronJobCount > 0 ? (
-              <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--theme-bg)] px-1.5 text-[10px] font-medium text-[var(--theme-text)]">
+              <span className="inline-flex min-w-4 items-center justify-center rounded-md bg-[var(--theme-bg)] px-1.5 text-[10px] font-medium text-[var(--theme-text)]">
                 {cronJobCount}
               </span>
             ) : null}
@@ -285,7 +323,7 @@ export function OperationsAgentCard({
             }
             onClick={() => void handlePlayPause()}
             disabled={isSending && !isActive}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-bg)] hover:text-[var(--theme-text)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-card2)] hover:text-[var(--theme-text)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <HugeiconsIcon
               icon={isActive ? PauseIcon : PlayIcon}
@@ -298,7 +336,7 @@ export function OperationsAgentCard({
             type="button"
             aria-label={`Open settings for ${displayName}`}
             onClick={() => onOpenSettings(agent.id)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-bg)] hover:text-[var(--theme-text)]"
+            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-card2)] hover:text-[var(--theme-text)]"
           >
             <HugeiconsIcon icon={Settings01Icon} size={16} strokeWidth={1.8} />
           </button>
@@ -308,24 +346,18 @@ export function OperationsAgentCard({
       <div className="flex flex-col items-center gap-1 px-2 py-2 text-center">
         <div className="relative flex size-12 shrink-0 items-center justify-center">
           <AgentProgress
-            value={agent.progressValue}
-            status={agent.progressStatus}
+            value={progressValue}
+            status={progressStatus}
             size={48}
             strokeWidth={2.5}
-            className={status.ring}
+            className={progressClassName}
           />
           <div className="absolute inset-0 flex items-center justify-center">
             <PixelAvatar
               size={40}
-              color={agent.meta.color}
-              accentColor="#ffffff"
-              status={
-                agent.status === 'error'
-                  ? 'failed'
-                  : agent.status === 'active'
-                    ? 'running'
-                    : 'idle'
-              }
+              color={avatarColor}
+              accentColor={avatarAccentColor}
+              status={avatarStatus}
             />
           </div>
         </div>
@@ -350,14 +382,14 @@ export function OperationsAgentCard({
             transition={{ duration: 0.18, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="mb-4 rounded-[1.25rem] border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 py-3">
+            <div className="mb-4 rounded-card border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-3">
               {agent.jobs.length > 0 ? (
                 <>
                   <div className="max-h-[200px] space-y-2 overflow-y-auto pr-1">
                     {agent.jobs.map((job) => (
                       <div
                         key={job.id}
-                        className="flex items-center gap-2 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-2.5 py-2"
+                        className="flex items-center gap-2 rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-2.5 py-2"
                       >
                         <label className="relative inline-flex cursor-pointer items-center">
                           <input
@@ -374,7 +406,7 @@ export function OperationsAgentCard({
                               job.enabled ? 'Disable job' : 'Enable job'
                             }
                           />
-                          <span className="h-5 w-9 rounded-full bg-primary-200 transition-colors peer-checked:bg-[var(--theme-accent)]" />
+                          <span className="h-5 w-9 rounded-full border border-[var(--theme-border)] bg-[var(--theme-card)] transition-colors peer-checked:border-[var(--theme-accent)] peer-checked:bg-[var(--theme-accent)]" />
                           <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-[var(--theme-card)] shadow-sm transition-transform peer-checked:translate-x-4" />
                         </label>
                         <div className="min-w-0 flex-1">
@@ -388,7 +420,7 @@ export function OperationsAgentCard({
                         <Button
                           size="icon-sm"
                           variant="secondary"
-                          className="h-7 w-7 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-card)] text-[var(--theme-text)] hover:bg-[var(--theme-card2)]"
+                          className="h-7 w-7 rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] text-[var(--theme-text)] hover:bg-[var(--theme-card2)]"
                           onClick={() => runCronMutation.mutate(job.id)}
                           aria-label={`Run ${displayJobName(job.name, agent.id)} now`}
                         >
@@ -405,7 +437,7 @@ export function OperationsAgentCard({
                     <Button
                       render={<a href="/cron" />}
                       variant="secondary"
-                      className="h-8 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 text-xs font-medium text-[var(--theme-text)] hover:bg-[var(--theme-card2)]"
+                      className="h-8 rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 text-xs font-medium text-[var(--theme-text)] hover:bg-[var(--theme-card)]"
                     >
                       + Add Job
                     </Button>
@@ -419,7 +451,7 @@ export function OperationsAgentCard({
                   <Button
                     render={<a href="/cron" />}
                     variant="secondary"
-                    className="h-8 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 text-xs font-medium text-[var(--theme-text)] hover:bg-[var(--theme-card2)]"
+                    className="h-8 rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 text-xs font-medium text-[var(--theme-text)] hover:bg-[var(--theme-card)]"
                   >
                     + Add Job
                   </Button>

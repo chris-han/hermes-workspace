@@ -39,7 +39,7 @@ import {
   shouldBlockZeroForkModelSwitch,
 } from './chat-composer-model-switch'
 import { fetchCurrentModelFromStatus, readText } from './chat-current-model'
-import type { CSSProperties, Ref } from 'react'
+import type { Ref } from 'react'
 
 import type { ModelCatalogEntry, ModelSwitchResponse } from '@/lib/model-types'
 import type {
@@ -57,6 +57,7 @@ import { useSettings } from '@/hooks/use-settings'
 import { MOBILE_TAB_BAR_OFFSET } from '@/components/mobile-tab-bar'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { Button } from '@/components/ui/button'
+import { AgentProgress } from '@/components/agent-view/agent-progress'
 import { usePinnedModels } from '@/hooks/use-pinned-models'
 // import { ModeSelector } from '@/components/mode-selector'
 import { cn } from '@/lib/utils'
@@ -128,17 +129,6 @@ function clampContextPercent(value: number | undefined): number {
   return Math.min(Math.max(value, 0), 100)
 }
 
-function getContextRingStyle(
-  contextPercent: number | undefined,
-): CSSProperties {
-  const pct = clampContextPercent(contextPercent)
-  const usedDegrees = Math.max(0, pct * 3.6)
-
-  return {
-    background: `conic-gradient(from 0deg, color-mix(in srgb, var(--theme-bg) 72%, var(--theme-text) 28%) 0deg ${usedDegrees}deg, #1B813E ${usedDegrees}deg 360deg)`,
-  }
-}
-
 function SendIconFill({
   iconSize,
   strokeWidth,
@@ -154,6 +144,32 @@ function SendIconFill({
         strokeWidth={strokeWidth}
         className="theme-accent-icon"
       />
+    </span>
+  )
+}
+
+function SendButtonContent({
+  contextPercent,
+  iconSize,
+  strokeWidth,
+}: {
+  contextPercent: number | undefined
+  iconSize: number
+  strokeWidth: number
+}) {
+  return (
+    <span className="relative flex size-full items-center justify-center">
+      <AgentProgress
+        value={100 - clampContextPercent(contextPercent)}
+        status="running"
+        size={40}
+        strokeWidth={3}
+        className="absolute inset-0"
+        progressClassName="text-[#1B813E]"
+      />
+      <span className="absolute inset-[3px]">
+        <SendIconFill iconSize={iconSize} strokeWidth={strokeWidth} />
+      </span>
     </span>
   )
 }
@@ -1477,10 +1493,6 @@ function ChatComposerComponent({
       attachmentProcessingCount === 0)
 
   const hasDraft = value.trim().length > 0 || attachments.length > 0
-  const contextRingStyle = useMemo(
-    () => getContextRingStyle(contextPercent),
-    [contextPercent],
-  )
   const sendAriaLabel = `Send message. Context window ${Math.round(
     clampContextPercent(contextPercent),
   )}% used.`
@@ -2018,10 +2030,13 @@ function ChatComposerComponent({
                     disabled={submitDisabled}
                     aria-label={sendAriaLabel}
                     data-tour="chat-composer-send"
-                    className="size-10 rounded-full border-0 p-[3px] flex items-center justify-center outline-none transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
-                    style={contextRingStyle}
+                    className="size-10 rounded-full border-0 p-0 flex items-center justify-center outline-none transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                   >
-                    <SendIconFill iconSize={18} strokeWidth={2} />
+                    <SendButtonContent
+                      contextPercent={contextPercent}
+                      iconSize={18}
+                      strokeWidth={2}
+                    />
                   </button>
                 ) : voiceInput.isSupported || voiceRecorder.isSupported ? (
                   <button
@@ -2074,10 +2089,13 @@ function ChatComposerComponent({
                     disabled={submitDisabled}
                     aria-label={sendAriaLabel}
                     data-tour="chat-composer-send"
-                    className="size-10 rounded-full border-0 p-[3px] flex items-center justify-center outline-none transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] disabled:opacity-30 disabled:cursor-not-allowed"
-                    style={contextRingStyle}
+                    className="size-10 rounded-full border-0 p-0 flex items-center justify-center outline-none transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    <SendIconFill iconSize={18} strokeWidth={2} />
+                    <SendButtonContent
+                      contextPercent={contextPercent}
+                      iconSize={18}
+                      strokeWidth={2}
+                    />
                   </button>
                 )}
               </div>
@@ -2745,11 +2763,14 @@ function ChatComposerComponent({
                         disabled={submitDisabled}
                         size="icon-sm"
                         data-tour="chat-composer-send"
-                        className="size-9 rounded-full border-0 p-[3px] outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)]"
-                        style={contextRingStyle}
+                        className="size-10 rounded-full border-0 p-0 outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)]"
                         aria-label={sendAriaLabel}
                       >
-                        <SendIconFill iconSize={20} strokeWidth={1.5} />
+                        <SendButtonContent
+                          contextPercent={contextPercent}
+                          iconSize={20}
+                          strokeWidth={1.5}
+                        />
                       </Button>
                     </PromptInputAction>
                   </>

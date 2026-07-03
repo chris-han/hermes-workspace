@@ -29,6 +29,7 @@ export const THEME_STYLE: CSSProperties = {
   ['--theme-muted' as string]: 'var(--color-primary-700)',
   ['--theme-muted-2' as string]: 'var(--color-primary-600)',
   ['--theme-accent' as string]: 'var(--color-accent-500)',
+  ['--theme-accent-foreground' as string]: '#163300',
   ['--theme-accent-strong' as string]: 'var(--color-accent-600)',
   ['--theme-accent-soft' as string]:
     'color-mix(in srgb, var(--color-accent-500) 12%, transparent)',
@@ -50,6 +51,11 @@ export const THEME_STYLE: CSSProperties = {
     'color-mix(in srgb, var(--theme-warning) 18%, transparent)',
   ['--theme-warning-border' as string]:
     'color-mix(in srgb, var(--theme-warning) 35%, white)',
+  ['--theme-success' as string]: 'var(--color-green-700, #15803d)',
+  ['--theme-success-soft' as string]:
+    'color-mix(in srgb, var(--theme-success) 12%, transparent)',
+  ['--theme-success-border' as string]:
+    'color-mix(in srgb, var(--theme-success) 32%, white)',
 }
 
 export function OperationsScreen() {
@@ -89,79 +95,96 @@ export function OperationsScreen() {
 
   return (
     <main
-      className="min-h-full bg-surface px-3 pb-24 pt-5 text-primary-900 md:px-5 md:pt-8"
+      className="min-h-full bg-surface px-4 pb-24 pt-6 text-[var(--theme-text)] md:px-6"
       style={THEME_STYLE}
     >
       <section className="mx-auto w-full max-w-[1320px] space-y-4">
-        <header className="flex flex-col gap-4 rounded-xl border border-primary-200 bg-primary-50/80 px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] text-[var(--theme-accent)] shadow-sm">
-              <HugeiconsIcon icon={AiBrain03Icon} size={22} strokeWidth={1.8} />
+        <header className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-5">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-button border border-[var(--theme-border)] bg-[var(--theme-card2)] text-[var(--theme-accent)]">
+                <HugeiconsIcon
+                  icon={AiBrain03Icon}
+                  size={22}
+                  strokeWidth={1.8}
+                />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-semibold leading-none text-[var(--theme-text)]">
+                    Operations
+                  </h1>
+                  <span className="rounded-md border border-[var(--theme-border)] bg-[var(--theme-card2)] px-2 py-1 text-[11px] font-medium text-[var(--theme-muted)]">
+                    {agents.length} agents
+                  </span>
+                </div>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--theme-muted)]">
+                  Persistent agent roster, scheduled work, and generated
+                  outputs.
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-base font-semibold text-primary-900">
-                Operations
-              </h1>
-              <p className="mt-1 text-sm text-primary-600">
-                Your persistent agent team
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-1 shadow-sm">
-              <button
-                type="button"
-                onClick={() => setView('overview')}
-                className={cn(
-                  'rounded-lg px-4 py-2 text-sm font-medium transition-all',
-                  view === 'overview'
-                    ? 'bg-[var(--theme-accent)] text-primary-950'
-                    : 'text-[var(--theme-muted)] hover:bg-[var(--theme-card2)]',
-                )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex rounded-button border border-[var(--theme-border)] bg-[var(--theme-card2)] p-1">
+                <button
+                  type="button"
+                  onClick={() => setView('overview')}
+                  className={cn(
+                    'cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                    view === 'overview'
+                      ? 'bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)]'
+                      : 'text-[var(--theme-muted)] hover:bg-[var(--theme-card2)]',
+                  )}
+                >
+                  Overview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView('outputs')}
+                  className={cn(
+                    'cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                    view === 'outputs'
+                      ? 'bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)]'
+                      : 'text-[var(--theme-muted)] hover:bg-[var(--theme-card2)]',
+                  )}
+                >
+                  Outputs
+                </button>
+              </div>
+              <Button
+                className="cursor-pointer bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)] hover:bg-[var(--theme-accent-strong)]"
+                onClick={() => setNewAgentOpen(true)}
               >
-                Overview
-              </button>
-              <button
-                type="button"
-                onClick={() => setView('outputs')}
-                className={cn(
-                  'rounded-lg px-4 py-2 text-sm font-medium transition-all',
-                  view === 'outputs'
-                    ? 'bg-[var(--theme-accent)] text-primary-950'
-                    : 'text-[var(--theme-muted)] hover:bg-[var(--theme-card2)]',
-                )}
+                <HugeiconsIcon
+                  icon={PlusSignIcon}
+                  size={16}
+                  strokeWidth={1.8}
+                />
+                New Agent
+              </Button>
+              <Button
+                variant="secondary"
+                className="cursor-pointer border border-[var(--theme-border)] bg-[var(--theme-card2)] text-[var(--theme-text)] hover:bg-[var(--theme-card)]"
+                onClick={() => setSettingsOpen(true)}
               >
-                Outputs
-              </button>
+                <HugeiconsIcon
+                  icon={Settings01Icon}
+                  size={16}
+                  strokeWidth={1.8}
+                />
+                Settings
+              </Button>
             </div>
-            <Button
-              className="bg-[var(--theme-accent)] text-primary-950 hover:bg-[var(--theme-accent-strong)]"
-              onClick={() => setNewAgentOpen(true)}
-            >
-              <HugeiconsIcon icon={PlusSignIcon} size={16} strokeWidth={1.8} />
-              New Agent
-            </Button>
-            <Button
-              variant="secondary"
-              className="border border-[var(--theme-border)] bg-[var(--theme-card)] text-[var(--theme-text)] hover:bg-[var(--theme-card2)]"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <HugeiconsIcon
-                icon={Settings01Icon}
-                size={16}
-                strokeWidth={1.8}
-              />
-              Settings
-            </Button>
           </div>
         </header>
 
         {isLoading ? (
-          <section className="rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-6 py-12 text-center text-sm text-[var(--theme-muted)] shadow-[0_24px_80px_var(--theme-shadow)]">
+          <section className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] px-6 py-12 text-center text-sm text-[var(--theme-muted)]">
             Loading Operations roster…
           </section>
         ) : error ? (
-          <section className="rounded-3xl border border-[var(--theme-danger-border)] bg-[var(--theme-danger-soft)] px-6 py-12 text-center text-sm text-[var(--theme-text)] shadow-[0_24px_80px_var(--theme-shadow)]">
+          <section className="rounded-card border border-[var(--theme-danger-border)] bg-[var(--theme-danger-soft)] px-6 py-12 text-center text-sm text-[var(--theme-danger)]">
             {error}
           </section>
         ) : view === 'outputs' ? (
@@ -176,7 +199,7 @@ export function OperationsScreen() {
               <OrchestratorCard totalAgents={agents.length} />
             </motion.div>
 
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <section className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
               {agents.map((agent, index) => (
                 <motion.div
                   key={agent.id}
@@ -196,7 +219,7 @@ export function OperationsScreen() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: agents.length * 0.04, duration: 0.22 }}
                 onClick={() => setNewAgentOpen(true)}
-                className="flex min-h-[19rem] flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[var(--theme-border)] bg-[var(--theme-card)] p-4 text-center shadow-[0_20px_60px_color-mix(in_srgb,var(--theme-shadow)_10%,transparent)] transition-colors hover:border-[var(--theme-accent)] hover:bg-[var(--theme-accent-soft)]"
+                className="flex min-h-[19rem] cursor-pointer flex-col items-center justify-center rounded-card border border-dashed border-[var(--theme-border)] bg-[var(--theme-card)] p-4 text-center transition-colors hover:border-[var(--theme-accent)] hover:bg-[var(--theme-accent-soft)]"
               >
                 <HugeiconsIcon
                   icon={PlusSignIcon}
@@ -210,7 +233,7 @@ export function OperationsScreen() {
               </motion.button>
             </section>
 
-            <section className="rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-[0_24px_80px_var(--theme-shadow)]">
+            <section className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-[var(--theme-text)]">
@@ -230,12 +253,9 @@ export function OperationsScreen() {
                     return (
                       <div
                         key={activity.id}
-                        className="flex flex-col gap-2 rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 md:flex-row md:items-center md:justify-between"
+                        className="flex flex-col gap-2 rounded-card border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 md:flex-row md:items-center md:justify-between"
                       >
                         <p className="text-sm text-[var(--theme-text)]">
-                          <span className="mr-2">
-                            {agent?.meta.emoji ?? '🤖'}
-                          </span>
                           <span className="font-medium">
                             {agent?.name ?? activity.agentId}:
                           </span>{' '}
@@ -248,7 +268,7 @@ export function OperationsScreen() {
                     )
                   })
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-6 text-sm text-[var(--theme-muted)]">
+                  <div className="rounded-card border border-dashed border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-6 text-sm text-[var(--theme-muted)]">
                     No recent activity yet.
                   </div>
                 )}

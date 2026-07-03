@@ -1,11 +1,10 @@
 import type { HermesTask } from '@/lib/tasks-api'
-import type { CSSProperties } from 'react'
+import type { PluginUiExtensionRegistration } from '@/lib/plugin-ui-extensions'
 import { cn } from '@/lib/utils'
 import {
   matchingPluginUiExtension,
   pluginUiComponent,
   pluginUiNegotiationId,
-  type PluginUiExtensionRegistration,
 } from '@/lib/plugin-ui-extensions'
 import { PRIORITY_COLORS, isOverdue } from '@/lib/tasks-api'
 
@@ -62,14 +61,16 @@ export function TaskCard({
         draggable
         onDragStart={onDragStart}
         className={cn(
-          'relative rounded-lg border theme-left-status-border p-3 transition-all select-none',
+          'relative rounded-card border p-3 transition-colors select-none',
           'bg-[var(--theme-card)] border-[var(--theme-border)]',
-          isDragging
-            ? 'opacity-40 rotate-1 shadow-2xl'
-            : 'hover:shadow-[0_4px_16px_rgba(0,0,0,0.35)]',
+          isDragging ? 'opacity-50' : 'hover:border-[var(--theme-accent)]',
         )}
-        style={{ '--status-border-color': priorityColor } as CSSProperties}
       >
+        <span
+          className="absolute right-3 top-3 h-2 w-2 rounded-full"
+          style={{ background: priorityColor }}
+          aria-hidden="true"
+        />
         <PluginCard
           taskId={task.id}
           extensionId={pluginRegistration.extension.id}
@@ -89,68 +90,79 @@ export function TaskCard({
       draggable
       onDragStart={onDragStart}
       onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onClick()
+        }
+      }}
+      role="button"
+      tabIndex={0}
       className={cn(
-        'relative rounded-lg border theme-left-status-border p-3 cursor-pointer transition-all select-none',
+        'relative rounded-card border p-3 cursor-pointer transition-colors select-none outline-none',
         'bg-[var(--theme-card)] border-[var(--theme-border)]',
-        'hover:border-[var(--theme-accent)]',
-        isDragging
-          ? 'opacity-40 rotate-1 shadow-2xl'
-          : 'hover:shadow-[0_4px_16px_rgba(0,0,0,0.35)]',
+        'hover:border-[var(--theme-accent)] focus-visible:ring-2 focus-visible:ring-[var(--theme-accent)]',
+        isDragging && 'opacity-50',
       )}
-      style={{ '--status-border-color': priorityColor } as CSSProperties}
     >
-      {/* Priority dot in top-right */}
       <span
-        className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full shrink-0"
+        className="absolute right-3 top-3 h-2 w-2 shrink-0 rounded-full"
         style={{ background: priorityColor }}
         title={`Priority: ${task.priority}`}
       />
 
-      <p className="text-sm font-medium text-[var(--theme-text)] leading-snug mb-1 line-clamp-2 pr-4">
+      <p className="mb-1 pr-5 text-sm font-semibold leading-snug text-[var(--theme-text)] line-clamp-2">
         {task.title}
       </p>
 
       {task.description && (
-        <p className="text-xs text-[var(--theme-muted)] line-clamp-2 mb-2">
+        <p className="mb-3 text-xs leading-relaxed text-[var(--theme-muted)] line-clamp-2">
           {task.description}
         </p>
       )}
 
-      <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
+      <div className="mt-3 flex items-end justify-between gap-2">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--theme-hover)] text-[var(--theme-muted)]">
+          <span className="rounded-md bg-[var(--theme-hover)] px-2 py-1 text-[10px] font-medium text-[var(--theme-muted)]">
             {assigneeLabel}
           </span>
           {visibleTags.map((tag) => (
             <span
               key={tag}
-              className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--theme-hover)] text-[var(--theme-muted)]"
+              className="rounded-md bg-[var(--theme-hover)] px-2 py-1 text-[10px] font-medium text-[var(--theme-muted)]"
             >
               {tag}
             </span>
           ))}
           {extraTagCount > 0 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--theme-hover)] text-[var(--theme-muted)]">
+            <span className="rounded-md bg-[var(--theme-hover)] px-2 py-1 text-[10px] font-medium text-[var(--theme-muted)]">
               +{extraTagCount} more
             </span>
           )}
         </div>
 
         {task.due_date && (
-          <div className="flex items-center gap-1 text-[10px] tabular-nums">
+          <div className="flex shrink-0 items-center gap-1 text-[10px] tabular-nums">
             {overdue && (
               <>
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                <span className="text-red-400 font-semibold">Overdue</span>
-                <span className="text-[var(--theme-muted)] mx-0.5">·</span>
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: 'var(--theme-danger)' }}
+                />
+                <span
+                  className="font-semibold"
+                  style={{ color: 'var(--theme-danger)' }}
+                >
+                  Overdue
+                </span>
+                <span className="mx-0.5 text-[var(--theme-muted)]">·</span>
               </>
             )}
             <span
               className={
-                overdue
-                  ? 'text-red-400 font-semibold'
-                  : 'text-[var(--theme-muted)]'
+                overdue ? 'font-semibold' : 'text-[var(--theme-muted)]'
               }
+              style={overdue ? { color: 'var(--theme-danger)' } : undefined}
             >
               {(() => {
                 const [y, m, d] = task.due_date.split('-').map(Number)

@@ -83,34 +83,28 @@ export function TaskDialog({
   }
 
   const inputClass = cn(
-    'w-full rounded-lg border px-3 py-2 text-sm',
+    'w-full rounded-md border px-3 py-2 text-sm',
     'bg-[var(--theme-input)] border-[var(--theme-border)] text-[var(--theme-text)]',
-    'focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]',
+    'focus:outline-none focus:ring-2 focus:ring-[var(--theme-accent)]',
     'placeholder:text-[var(--theme-muted)]',
   )
 
-  const labelClass = 'block text-xs font-medium text-[var(--theme-muted)] mb-1'
+  const labelClass = 'mb-1 block text-xs font-medium text-[var(--theme-muted)]'
 
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(520px,95vw)] border-[var(--theme-border)] bg-[var(--theme-bg)] overflow-hidden">
-        {/* Accent top border */}
-        <div
-          className="h-[3px] w-full"
-          style={{ background: 'var(--theme-accent)' }}
-        />
-
-        <div className="p-5">
-          <DialogTitle className="text-base font-semibold text-[var(--theme-text)] mb-1">
+      <DialogContent className="w-[min(560px,95vw)] overflow-hidden border-[var(--theme-border)] bg-[var(--theme-card)]">
+        <div className="p-6">
+          <DialogTitle className="mb-1 text-xl font-semibold leading-tight text-[var(--theme-text)]">
             {isEdit ? 'Edit Task' : 'New Task'}
           </DialogTitle>
-          <DialogDescription className="text-xs text-[var(--theme-muted)] mb-4">
+          <DialogDescription className="mb-5 text-sm text-[var(--theme-muted)]">
             {isEdit
-              ? 'Update the task details below.'
-              : 'Fill in the details for your new task.'}
+              ? 'Update ownership, priority, and due date in one pass.'
+              : 'Create the next unit of work for the board.'}
           </DialogDescription>
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className={labelClass}>Title *</label>
               <input
@@ -139,7 +133,6 @@ export function TaskDialog({
                 <label className={labelClass}>Column</label>
                 <select
                   className={inputClass}
-                  style={{ colorScheme: 'dark' }}
                   value={column}
                   onChange={(e) => setColumn(e.target.value as TaskColumn)}
                 >
@@ -154,7 +147,6 @@ export function TaskDialog({
                 <label className={labelClass}>Priority</label>
                 <select
                   className={inputClass}
-                  style={{ colorScheme: 'dark' }}
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as TaskPriority)}
                 >
@@ -170,7 +162,6 @@ export function TaskDialog({
                 <label className={labelClass}>Assignee</label>
                 <select
                   className={inputClass}
-                  style={{ colorScheme: 'dark' }}
                   value={assignee}
                   onChange={(e) => setAssignee(e.target.value)}
                 >
@@ -181,7 +172,7 @@ export function TaskDialog({
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-[10px] text-[var(--theme-muted)]">
+                <p className="mt-1.5 text-[10px] leading-relaxed text-[var(--theme-muted)]">
                   Assignee is separate from status. Dragging a card changes its
                   column only.
                 </p>
@@ -191,7 +182,6 @@ export function TaskDialog({
                 <input
                   type="date"
                   className={inputClass}
-                  style={{ colorScheme: 'dark' }}
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                 />
@@ -208,7 +198,7 @@ export function TaskDialog({
               />
             </div>
 
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between border-t border-[var(--theme-border)] pt-4">
               <p className="text-[10px] text-[var(--theme-muted)]">
                 Press Esc to cancel
               </p>
@@ -226,7 +216,11 @@ export function TaskDialog({
                   type="submit"
                   size="sm"
                   disabled={isSubmitting || !title.trim()}
-                  style={{ background: 'var(--theme-accent)', color: 'white' }}
+                  className="cursor-pointer"
+                  style={{
+                    background: 'var(--theme-accent)',
+                    color: 'var(--theme-accent-foreground)',
+                  }}
                 >
                   {isSubmitting
                     ? 'Saving...'

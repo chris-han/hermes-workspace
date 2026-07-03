@@ -34,7 +34,7 @@ export function OperationsAgentChat({
   }
 
   return (
-    <section className="rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-[0_20px_70px_color-mix(in_srgb,var(--theme-shadow)_14%,transparent)]">
+    <section className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-[var(--theme-text)]">
@@ -61,14 +61,14 @@ export function OperationsAgentChat({
 
       <div
         ref={scrollRef}
-        className="mt-4 max-h-[26rem] space-y-3 overflow-y-auto rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] p-4"
+        className="mt-4 max-h-[26rem] space-y-3 overflow-y-auto rounded-card border border-[var(--theme-border)] bg-[var(--theme-bg)] p-4"
       >
         {renderedMessages.length > 0 ? (
           renderedMessages.map((message) => (
             <div
               key={message.id}
               className={cn(
-                'rounded-2xl border px-4 py-3 text-sm shadow-sm',
+                'rounded-md border px-4 py-3 text-sm',
                 message.role === 'user'
                   ? 'ml-auto max-w-[90%] border-[var(--theme-accent)] bg-[var(--theme-accent-soft)] text-[var(--theme-text)]'
                   : 'max-w-[95%] border-[var(--theme-border)] bg-[var(--theme-card)] text-[var(--theme-text)]',
@@ -96,7 +96,9 @@ export function OperationsAgentChat({
         )}
       </div>
 
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="mt-3 text-sm text-[var(--theme-danger)]">{error}</p>
+      ) : null}
 
       <div className="mt-4 flex items-end gap-3">
         <textarea
@@ -109,10 +111,10 @@ export function OperationsAgentChat({
             }
           }}
           placeholder="Type a message..."
-          className="min-h-[112px] flex-1 resize-y rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none placeholder:text-[var(--theme-muted)] focus:border-[var(--theme-accent)]"
+          className="min-h-[112px] flex-1 resize-y rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none placeholder:text-[var(--theme-muted)] focus:ring-2 focus:ring-[var(--theme-accent)]"
         />
         <Button
-          className="bg-[var(--theme-accent)] text-primary-950 hover:bg-[var(--theme-accent-strong)]"
+          className="cursor-pointer bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)] hover:bg-[var(--theme-accent-strong)]"
           onClick={() => void handleSend()}
           disabled={!draft.trim() || isSending}
         >

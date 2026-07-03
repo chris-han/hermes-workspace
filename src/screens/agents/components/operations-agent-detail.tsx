@@ -37,7 +37,7 @@ function normalizeModel(
 
   return {
     id,
-    provider: model.provider ?? id.split('/')[0] ?? 'model',
+    provider: model.provider ?? id.split('/')[0],
     name:
       model.label ??
       model.displayName ??
@@ -103,7 +103,7 @@ function ModelSelector({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex min-h-[3rem] w-full items-center justify-between gap-3 rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-left text-sm text-[var(--theme-text)] shadow-[0_8px_24px_color-mix(in_srgb,var(--theme-shadow)_18%,transparent)]"
+        className="inline-flex min-h-[3rem] w-full cursor-pointer items-center justify-between gap-3 rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-left text-sm text-[var(--theme-text)]"
       >
         <span className="truncate">
           {selected
@@ -122,7 +122,7 @@ function ModelSelector({
       </button>
 
       {open ? (
-        <div className="absolute left-0 top-[calc(100%+0.5rem)] z-[80] w-full overflow-hidden rounded-2xl border border-[var(--theme-border2)] bg-[var(--theme-card)] shadow-[0_24px_80px_var(--theme-shadow)]">
+        <div className="absolute left-0 top-[calc(100%+0.5rem)] z-[80] w-full overflow-hidden rounded-card border border-[var(--theme-border2)] bg-[var(--theme-card)]">
           <div className="max-h-80 overflow-y-auto p-2">
             <button
               type="button"
@@ -131,7 +131,7 @@ function ModelSelector({
                 setOpen(false)
               }}
               className={cn(
-                'flex w-full rounded-xl px-3 py-2.5 text-left text-sm',
+                'flex w-full cursor-pointer rounded-md px-3 py-2.5 text-left text-sm',
                 !value
                   ? 'bg-[var(--theme-accent-soft)]'
                   : 'hover:bg-[var(--theme-bg)]',
@@ -148,7 +148,7 @@ function ModelSelector({
                   setOpen(false)
                 }}
                 className={cn(
-                  'mt-1 flex w-full rounded-xl px-3 py-2.5 text-left text-sm',
+                  'mt-1 flex w-full cursor-pointer rounded-md px-3 py-2.5 text-left text-sm',
                   value === model.id
                     ? 'bg-[var(--theme-accent-soft)]'
                     : 'hover:bg-[var(--theme-bg)]',
@@ -222,12 +222,12 @@ export function OperationsAgentDetail({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-3xl rounded-3xl border border-[var(--theme-border2)] bg-[var(--theme-card)] p-5 shadow-[0_24px_80px_var(--theme-shadow)] sm:p-6"
+        className="w-full max-w-3xl rounded-card border border-[var(--theme-border2)] bg-[var(--theme-card)] p-5 sm:p-6"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] text-[var(--theme-accent)]">
+            <div className="flex size-11 items-center justify-center rounded-button border border-[var(--theme-border)] bg-[var(--theme-bg)] text-[var(--theme-accent)]">
               <HugeiconsIcon
                 icon={Settings01Icon}
                 size={20}
@@ -249,7 +249,7 @@ export function OperationsAgentDetail({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex size-10 items-center justify-center rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] text-lg text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent-strong)]"
+            className="inline-flex size-10 cursor-pointer items-center justify-center rounded-button border border-[var(--theme-border)] bg-[var(--theme-card2)] text-lg text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-text)]"
             aria-label="Close agent settings"
           >
             <HugeiconsIcon icon={Cancel01Icon} size={18} strokeWidth={1.8} />
@@ -264,7 +264,7 @@ export function OperationsAgentDetail({
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none focus:border-[var(--theme-accent)]"
+              className="w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none focus:ring-2 focus:ring-[var(--theme-accent)]"
             />
           </label>
 
@@ -275,7 +275,7 @@ export function OperationsAgentDetail({
             <input
               value={emoji}
               onChange={(event) => setEmoji(event.target.value)}
-              className="w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none focus:border-[var(--theme-accent)]"
+              className="w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none focus:ring-2 focus:ring-[var(--theme-accent)]"
             />
           </label>
         </div>
@@ -294,14 +294,14 @@ export function OperationsAgentDetail({
           <textarea
             value={systemPrompt}
             onChange={(event) => setSystemPrompt(event.target.value)}
-            className="min-h-[220px] w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none focus:border-[var(--theme-accent)]"
+            className="min-h-[220px] w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none focus:ring-2 focus:ring-[var(--theme-accent)]"
           />
         </label>
 
         <div className="mt-6 flex flex-col gap-3 border-t border-[var(--theme-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
           <Button
             variant="ghost"
-            className="justify-start text-red-600 hover:bg-red-50 hover:text-red-700"
+            className="justify-start text-[var(--theme-danger)] hover:bg-[var(--theme-danger-soft)] hover:text-[var(--theme-danger)]"
             onClick={() => void onDelete(agent.id)}
             disabled={isDeleting || isSaving}
           >
@@ -318,7 +318,7 @@ export function OperationsAgentDetail({
               Cancel
             </Button>
             <Button
-              className="bg-[var(--theme-accent)] text-primary-950 hover:bg-[var(--theme-accent-strong)]"
+              className="cursor-pointer bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)] hover:bg-[var(--theme-accent-strong)]"
               onClick={() =>
                 void onSave({
                   agentId: agent.id,

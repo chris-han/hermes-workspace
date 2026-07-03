@@ -17,20 +17,22 @@ import {
 } from '@hugeicons/core-free-icons'
 import { TaskCard } from './task-card'
 import { TaskDialog } from './task-dialog'
-import {
-  matchingPluginUiExtension,
-  pluginActionPath,
-  pluginUiComponent,
-  pluginUiNegotiationId,
-  type PluginUiExtensionManifest,
-  type PluginUiExtensionRegistration,
-} from '@/lib/plugin-ui-extensions'
 import type {
   CreateTaskInput,
   HermesTask,
   TaskAssignee,
   TaskColumn,
 } from '@/lib/tasks-api'
+import type {
+  PluginUiExtensionManifest,
+  PluginUiExtensionRegistration,
+} from '@/lib/plugin-ui-extensions'
+import {
+  matchingPluginUiExtension,
+  pluginActionPath,
+  pluginUiComponent,
+  pluginUiNegotiationId,
+} from '@/lib/plugin-ui-extensions'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import {
@@ -62,13 +64,13 @@ type PluginsResponse = {
 
 function SkeletonCard() {
   return (
-    <div className="rounded-lg border border-[var(--theme-border)] bg-[var(--theme-card)] p-3 animate-pulse">
-      <div className="h-3.5 bg-[var(--theme-hover)] rounded w-3/4 mb-2" />
-      <div className="h-2.5 bg-[var(--theme-hover)] rounded w-full mb-1" />
-      <div className="h-2.5 bg-[var(--theme-hover)] rounded w-2/3 mb-3" />
+    <div className="animate-pulse rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-3">
+      <div className="mb-2 h-3.5 w-3/4 rounded bg-[var(--theme-hover)]" />
+      <div className="mb-1 h-2.5 w-full rounded bg-[var(--theme-hover)]" />
+      <div className="mb-3 h-2.5 w-2/3 rounded bg-[var(--theme-hover)]" />
       <div className="flex gap-1.5">
-        <div className="h-4 w-12 bg-[var(--theme-hover)] rounded" />
-        <div className="h-4 w-10 bg-[var(--theme-hover)] rounded" />
+        <div className="h-4 w-12 rounded-md bg-[var(--theme-hover)]" />
+        <div className="h-4 w-10 rounded-md bg-[var(--theme-hover)]" />
       </div>
     </div>
   )
@@ -157,7 +159,7 @@ export function TasksScreen() {
     }
     for (const t of tasks) {
       if (assigneeFilter && t.assignee !== assigneeFilter) continue
-      if (map[t.column]) map[t.column].push(t)
+      map[t.column].push(t)
     }
     for (const col of COLUMN_ORDER) {
       map[col].sort((a, b) => a.position - b.position)
@@ -309,100 +311,115 @@ export function TasksScreen() {
     ? COLUMN_ORDER
     : COLUMN_ORDER.filter((c) => c !== 'done')
   const colMaxWidth = Math.floor(1200 / visibleColumns.length)
+  const statCards = [
+    { label: 'Total', value: stats.total },
+    { label: 'In progress', value: stats.inProgress },
+    { label: 'Overdue', value: stats.overdue, danger: stats.overdue > 0 },
+    { label: 'Done', value: `${stats.completion}%` },
+  ]
 
   return (
     <div className="min-h-full overflow-y-auto bg-surface text-ink">
-      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-4 py-6 pb-[calc(var(--tabbar-h,80px)+1.5rem)] sm:px-6 lg:px-8">
-        {/* Header */}
-        <header className="rounded-2xl border border-primary-200 bg-primary-50/85 p-4 backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <h1 className="text-2xl font-medium text-ink">Tasks</h1>
+      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-4 py-6 pb-[calc(var(--tabbar-h,80px)+1.5rem)] sm:px-6 lg:px-8">
+        <header className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-5">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-3xl font-semibold leading-none text-[var(--theme-text)]">
+                  Tasks
+                </h1>
+                <span className="rounded-md border border-[var(--theme-border)] bg-[var(--theme-card2)] px-2 py-1 text-[11px] font-medium text-[var(--theme-muted)]">
+                  Kanban
+                </span>
+              </div>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--theme-muted)]">
+                {TASKS_BOARD_HELP_TEXT}
+              </p>
               {assigneeFilter && (
-                <div className="flex items-center gap-2 text-xs text-[var(--theme-muted)]">
-                  <span>
-                    Filtered by:{' '}
-                    <span className="capitalize" style={{ color: '#f59e0b' }}>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--theme-muted)]">
+                  <span className="rounded-md bg-[var(--theme-hover)] px-2 py-1">
+                    Filtered by{' '}
+                    <span className="font-semibold text-[var(--theme-text)]">
                       {assigneeFilter}
                     </span>
                   </span>
                   <button
                     type="button"
                     onClick={() => setAssigneeFilter(null)}
-                    className="text-[var(--theme-muted)] hover:text-[var(--theme-text)] transition-colors"
+                    className="cursor-pointer rounded-md border border-[var(--theme-border)] px-2 py-1 text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-text)]"
                   >
-                    ✕ Clear
+                    Clear filter
                   </button>
                 </div>
               )}
-              {/* Stats */}
-              <div className="flex items-center gap-2 text-xs text-[var(--theme-muted)] flex-wrap">
-                <span>{stats.total} total</span>
-                <span className="hidden sm:inline">·</span>
-                <span className="hidden sm:inline">
-                  {stats.inProgress} in progress
-                </span>
-                {stats.overdue > 0 && (
-                  <>
-                    <span>·</span>
-                    <span className="text-red-400">
-                      {stats.overdue} overdue
-                    </span>
-                  </>
-                )}
-                <span className="hidden sm:inline">·</span>
-                <span className="hidden sm:inline">
-                  {stats.completion}% done
-                </span>
-              </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
               <button
+                type="button"
                 onClick={() => setShowDone((v) => !v)}
                 className={cn(
-                  'text-xs px-2.5 py-1 rounded-lg border transition-colors',
+                  'cursor-pointer rounded-button border px-3 py-2 text-xs font-medium transition-colors',
                   showDone
-                    ? 'border-[var(--theme-accent)] text-[var(--theme-accent)] bg-[var(--theme-hover)]'
+                    ? 'border-[var(--theme-accent)] bg-[var(--theme-accent-subtle)] text-[var(--theme-text)]'
                     : 'border-[var(--theme-border)] text-[var(--theme-muted)] hover:text-[var(--theme-text)] hover:border-[var(--theme-accent)]',
                 )}
               >
                 {showDone ? 'Hide Done' : 'Show Done'}
               </button>
               <button
+                type="button"
                 onClick={invalidate}
-                className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+                className="cursor-pointer rounded-button border border-[var(--theme-border)] p-2 text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-text)]"
                 title="Refresh"
               >
                 <HugeiconsIcon
                   icon={RefreshIcon}
                   size={16}
-                  className="text-[var(--theme-muted)]"
+                  className="text-current"
                 />
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setCreateColumn('backlog')
                   setShowCreate(true)
                 }}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
-                style={{ background: 'var(--theme-accent)' }}
+                className="flex cursor-pointer items-center gap-1.5 rounded-button px-4 py-2 text-xs font-semibold transition-colors hover:opacity-90 active:scale-95"
+                style={{
+                  background: 'var(--theme-accent)',
+                  color: 'var(--theme-accent-foreground)',
+                }}
               >
                 <HugeiconsIcon icon={Add01Icon} size={14} />
                 New Task
               </button>
             </div>
           </div>
-          <p className="mt-3 text-xs text-[var(--theme-muted)]">
-            {TASKS_BOARD_HELP_TEXT}
-          </p>
+
+          <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4">
+            {statCards.map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-md border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-2"
+              >
+                <p className="text-[11px] font-medium text-[var(--theme-muted)]">
+                  {stat.label}
+                </p>
+                <p
+                  className="mt-1 text-xl font-semibold leading-none text-[var(--theme-text)]"
+                  style={
+                    stat.danger ? { color: 'var(--theme-danger)' } : undefined
+                  }
+                >
+                  {stat.value}
+                </p>
+              </div>
+            ))}
+          </div>
         </header>
 
-        {/* Board */}
-        <div
-          className="mx-auto flex w-full max-w-[1200px] flex-1 gap-3 overflow-x-auto overflow-y-hidden p-4 min-h-0"
-          style={{ boxShadow: 'inset 0 8px 24px rgba(0,0,0,0.2)' }}
-        >
+        <div className="mx-auto flex min-h-0 w-full max-w-[1200px] flex-1 gap-3 overflow-x-auto overflow-y-hidden rounded-card border border-[var(--theme-border)] bg-[var(--theme-card2)] p-3">
           {visibleColumns.map((col) => {
             const colTasks = tasksByColumn[col]
             const colColor = COLUMN_COLORS[col]
@@ -412,11 +429,11 @@ export function TasksScreen() {
               <div
                 key={col}
                 className={cn(
-                  'flex flex-col rounded-xl border min-w-[180px] w-full shrink-0 flex-1',
+                  'flex w-full min-w-[230px] flex-1 shrink-0 flex-col rounded-card border',
                   'bg-[var(--theme-card)] border-[var(--theme-border)]',
-                  'transition-colors shadow-[0_2px_12px_rgba(0,0,0,0.25)]',
+                  'transition-colors',
                   isDragOver &&
-                    'border-[var(--theme-accent)] bg-[var(--theme-hover)]',
+                    'border-[var(--theme-accent)] bg-[var(--theme-accent-subtle)]',
                 )}
                 style={{ maxWidth: colMaxWidth }}
                 onDragOver={(e) => handleDragOver(e, col)}
@@ -424,61 +441,54 @@ export function TasksScreen() {
                 onDragLeave={() => setDragOverColumn(null)}
               >
                 {/* Column header */}
-                <div
-                  className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--theme-border)] rounded-t-xl"
-                  style={{
-                    borderTopWidth: 2,
-                    borderTopColor: colColor,
-                    borderTopStyle: 'solid',
-                  }}
-                >
+                <div className="flex items-center justify-between border-b border-[var(--theme-border)] px-3 py-3">
                   <div className="flex items-center gap-2">
                     <span
-                      className="w-2 h-2 rounded-full shrink-0"
+                      className="h-2 w-2 shrink-0 rounded-full"
                       style={{ background: colColor }}
                     />
-                    <span className="text-xs font-semibold text-[var(--theme-text)]">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[var(--theme-text)]">
                       {COLUMN_LABELS[col]}
                     </span>
-                    <span className="text-xs text-[var(--theme-muted)]">
-                      (
+                    <span className="rounded-md bg-[var(--theme-hover)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--theme-muted)]">
                       {tasksQuery.isFetching && tasksQuery.data === undefined
                         ? '…'
                         : colTasks.length}
-                      )
                     </span>
                   </div>
                   <button
+                    type="button"
                     onClick={() => {
                       setCreateColumn(col)
                       setShowCreate(true)
                     }}
-                    className="rounded p-0.5 hover:bg-[var(--theme-hover)] transition-colors"
+                    className="cursor-pointer rounded-md p-1 text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-hover)] hover:text-[var(--theme-text)]"
                     title={`Add to ${COLUMN_LABELS[col]}`}
                   >
                     <HugeiconsIcon
                       icon={Add01Icon}
                       size={14}
-                      className="text-[var(--theme-muted)]"
+                      className="text-current"
                     />
                   </button>
                 </div>
 
-                {/* Cards */}
-                <div className="flex flex-col gap-2 p-2 flex-1 overflow-y-auto">
+                <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
                   {tasksQuery.isError ? (
                     <motion.div
                       key="error"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="flex flex-col items-center justify-center py-8 gap-2 text-red-400"
+                      className="flex flex-col items-center justify-center gap-2 py-8"
+                      style={{ color: 'var(--theme-danger)' }}
                     >
                       <p className="text-xs font-medium">
                         Failed to load tasks
                       </p>
                       <button
+                        type="button"
                         onClick={() => tasksQuery.refetch()}
-                        className="text-xs text-[var(--theme-accent)] hover:underline"
+                        className="cursor-pointer rounded-md border border-[var(--theme-border)] px-2 py-1 text-xs text-[var(--theme-text)] transition-colors hover:border-[var(--theme-accent)]"
                       >
                         Retry
                       </button>
@@ -497,7 +507,7 @@ export function TasksScreen() {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
-                          className="flex flex-col items-center justify-center py-8 gap-2 text-[var(--theme-muted)] opacity-60"
+                          className="flex flex-col items-center justify-center gap-2 rounded-card border border-dashed border-[var(--theme-border)] py-8 text-[var(--theme-muted)]"
                         >
                           <HugeiconsIcon icon={CheckListIcon} size={22} />
                           <p className="text-xs font-medium">No tasks</p>

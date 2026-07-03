@@ -78,7 +78,7 @@ export function OperationsAgentJobs({
   })
 
   return (
-    <section className="rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-[0_20px_70px_color-mix(in_srgb,var(--theme-shadow)_14%,transparent)]">
+    <section className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-[var(--theme-text)]">
@@ -108,7 +108,7 @@ export function OperationsAgentJobs({
             return (
               <div
                 key={job.id}
-                className="flex flex-col gap-3 rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] p-4 md:flex-row md:items-center md:justify-between"
+                className="flex flex-col gap-3 rounded-card border border-[var(--theme-border)] bg-[var(--theme-bg)] p-4 md:flex-row md:items-center md:justify-between"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-3">
@@ -128,7 +128,7 @@ export function OperationsAgentJobs({
                           icon={Tick01Icon}
                           size={14}
                           strokeWidth={2}
-                          className="text-emerald-600"
+                          className="text-[var(--theme-success)]"
                         />
                       ) : null}
                     </button>
@@ -163,14 +163,14 @@ export function OperationsAgentJobs({
             )
           })
         ) : (
-          <div className="rounded-2xl border border-dashed border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-6 text-sm text-[var(--theme-muted)]">
+          <div className="rounded-card border border-dashed border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-6 text-sm text-[var(--theme-muted)]">
             No cron jobs are linked to this agent yet.
           </div>
         )}
       </div>
 
       {adding ? (
-        <div className="mt-4 rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] p-4">
+        <div className="mt-4 rounded-card border border-[var(--theme-border)] bg-[var(--theme-bg)] p-4">
           <div className="grid gap-3 md:grid-cols-2">
             <label className="space-y-2">
               <span className="text-sm font-medium text-[var(--theme-text)]">
@@ -180,7 +180,7 @@ export function OperationsAgentJobs({
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="Daily scan"
-                className="w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none placeholder:text-[var(--theme-muted)] focus:border-[var(--theme-accent)]"
+                className="w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none placeholder:text-[var(--theme-muted)] focus:ring-2 focus:ring-[var(--theme-accent)]"
               />
             </label>
             <label className="space-y-2">
@@ -191,7 +191,7 @@ export function OperationsAgentJobs({
                 value={schedule}
                 onChange={(event) => setSchedule(event.target.value)}
                 placeholder="0 9 * * *"
-                className="w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none placeholder:text-[var(--theme-muted)] focus:border-[var(--theme-accent)]"
+                className="w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none placeholder:text-[var(--theme-muted)] focus:ring-2 focus:ring-[var(--theme-accent)]"
               />
             </label>
           </div>
@@ -203,7 +203,7 @@ export function OperationsAgentJobs({
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder="What this job should do"
-              className="min-h-[96px] w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none placeholder:text-[var(--theme-muted)] focus:border-[var(--theme-accent)]"
+              className="min-h-[96px] w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none placeholder:text-[var(--theme-muted)] focus:ring-2 focus:ring-[var(--theme-accent)]"
             />
           </label>
           <div className="mt-4 flex justify-end gap-3">
@@ -215,7 +215,7 @@ export function OperationsAgentJobs({
               Cancel
             </Button>
             <Button
-              className="bg-[var(--theme-accent)] text-primary-950 hover:bg-[var(--theme-accent-strong)]"
+              className="cursor-pointer bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)] hover:bg-[var(--theme-accent-strong)]"
               onClick={() => createMutation.mutate()}
               disabled={createMutation.isPending}
             >

@@ -94,14 +94,6 @@ function getModelBadgeClassName(model: string): string {
   return 'bg-primary-300/70 text-primary-800 ring-primary-400/50'
 }
 
-function getStatusRingClassName(status: AgentNodeStatus): string {
-  if (status === 'failed') return 'ring-red-500/70'
-  if (status === 'thinking') return 'ring-accent-500/70'
-  if (status === 'complete') return 'ring-emerald-500/70'
-  if (status === 'queued') return 'ring-primary-500/70'
-  return 'ring-emerald-500/70'
-}
-
 function getStatusTextClassName(status: AgentNodeStatus): string {
   if (status === 'failed') return 'text-red-300'
   if (status === 'thinking') return 'text-accent-300'
@@ -116,10 +108,6 @@ function getStatusLabel(status: AgentNodeStatus): string {
   if (status === 'complete') return 'complete'
   if (status === 'queued') return 'queued'
   return 'running'
-}
-
-function shouldPulse(status: AgentNodeStatus): boolean {
-  return status === 'running' || status === 'thinking'
 }
 
 /**
@@ -488,10 +476,10 @@ export function AgentCard({
                 value={node.progress}
                 status={node.status}
                 size={40}
-                strokeWidth={2.5}
+                strokeWidth={3}
                 className="absolute inset-0"
               />
-              <div className="absolute inset-1 inline-flex items-center justify-center rounded-full border border-primary-300/70 bg-primary-200/80">
+              <div className="absolute inset-[3px] inline-flex items-center justify-center rounded-full border border-primary-300/70 bg-primary-200/80">
                 {node.isMain ? (
                   <AgentAvatar size="sm" />
                 ) : (
@@ -607,22 +595,7 @@ export function AgentCard({
                 strokeWidth={3}
                 className="absolute inset-0"
               />
-              {shouldPulse(node.status) ? (
-                <motion.span
-                  aria-hidden
-                  animate={{ scale: [1, 1.12, 1], opacity: [0.3, 0.08, 0.3] }}
-                  transition={{
-                    duration: 1.3,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                  }}
-                  className={cn(
-                    'absolute inset-0 rounded-full ring-2',
-                    getStatusRingClassName(node.status),
-                  )}
-                />
-              ) : null}
-              <div className="absolute inset-1.5 inline-flex items-center justify-center rounded-full border border-primary-300/70 bg-primary-200/80">
+              <div className="absolute inset-[4px] inline-flex items-center justify-center rounded-full border border-primary-300/70 bg-primary-200/80">
                 {node.isMain ? (
                   <AgentAvatar size="md" />
                 ) : (

@@ -27,8 +27,9 @@ function getStatusPill(output: AgentOutput) {
   if (output.status === 'ok') {
     return {
       label: output.statusLabel || 'Success',
-      icon: '✅',
-      className: 'bg-emerald-500/12 text-emerald-700 border-emerald-500/20',
+      className:
+        'border-[var(--theme-success-border)] bg-[var(--theme-success-soft)] text-[var(--theme-success)]',
+      dotClassName: 'bg-[var(--theme-success)]',
     }
   }
 
@@ -36,50 +37,57 @@ function getStatusPill(output: AgentOutput) {
     if (output.failureKind === 'delivery') {
       return {
         label: output.statusLabel || 'Delivery Failed',
-        icon: '📬',
-        className: 'bg-sky-500/12 text-sky-700 border-sky-500/20',
+        className:
+          'border-[var(--theme-warning-border)] bg-[var(--theme-warning-soft)] text-[var(--theme-warning)]',
+        dotClassName: 'bg-[var(--theme-warning)]',
       }
     }
     if (output.failureKind === 'config') {
       return {
         label: output.statusLabel || 'Config Failed',
-        icon: '⚙️',
-        className: 'bg-violet-500/12 text-violet-700 border-violet-500/20',
+        className:
+          'border-[var(--theme-warning-border)] bg-[var(--theme-warning-soft)] text-[var(--theme-warning)]',
+        dotClassName: 'bg-[var(--theme-warning)]',
       }
     }
     if (output.failureKind === 'approval') {
       return {
         label: output.statusLabel || 'Needs Approval',
-        icon: '✋',
-        className: 'bg-amber-500/12 text-amber-700 border-amber-500/20',
+        className:
+          'border-[var(--theme-warning-border)] bg-[var(--theme-warning-soft)] text-[var(--theme-warning)]',
+        dotClassName: 'bg-[var(--theme-warning)]',
       }
     }
     if (output.failureKind === 'runtime') {
       return {
         label: output.statusLabel || 'Model/Runtime Failed',
-        icon: '🧠',
-        className: 'bg-rose-500/12 text-rose-700 border-rose-500/20',
+        className:
+          'border-[var(--theme-danger-border)] bg-[var(--theme-danger-soft)] text-[var(--theme-danger)]',
+        dotClassName: 'bg-[var(--theme-danger)]',
       }
     }
     return {
       label: output.statusLabel || 'Error',
-      icon: '❌',
-      className: 'bg-rose-500/12 text-rose-700 border-rose-500/20',
+      className:
+        'border-[var(--theme-danger-border)] bg-[var(--theme-danger-soft)] text-[var(--theme-danger)]',
+      dotClassName: 'bg-[var(--theme-danger)]',
     }
   }
 
   if (output.status === 'running') {
     return {
       label: output.statusLabel || 'Running',
-      icon: '⏳',
-      className: 'bg-amber-500/12 text-amber-700 border-amber-500/20',
+      className:
+        'border-[var(--theme-warning-border)] bg-[var(--theme-warning-soft)] text-[var(--theme-warning)]',
+      dotClassName: 'bg-[var(--theme-warning)]',
     }
   }
 
   return {
     label: output.statusLabel || 'Unknown',
-    icon: '•',
-    className: 'bg-primary-200/80 text-primary-700 border-primary-300',
+    className:
+      'border-[var(--theme-border)] bg-[var(--theme-card2)] text-[var(--theme-muted)]',
+    dotClassName: 'bg-[var(--theme-muted)]',
   }
 }
 
@@ -118,9 +126,9 @@ function FilterPill({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-xl px-3.5 py-2 text-sm font-medium transition-all',
+        'cursor-pointer rounded-md px-3.5 py-2 text-sm font-medium transition-colors',
         active
-          ? 'bg-[var(--theme-accent)] text-primary-950'
+          ? 'bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)]'
           : 'border border-[var(--theme-border)] bg-[var(--theme-card)] text-[var(--theme-muted)] hover:bg-[var(--theme-card2)]',
       )}
     >
@@ -198,7 +206,7 @@ function OutputCard({ output }: { output: AgentOutput }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.18 }}
-      className="rounded-[1.5rem] border border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-[0_20px_60px_color-mix(in_srgb,var(--theme-shadow)_12%,transparent)]"
+      className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-5"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -221,10 +229,13 @@ function OutputCard({ output }: { output: AgentOutput }) {
             )}
           >
             <span
-              className={cn(output.status === 'running' && 'animate-pulse')}
-            >
-              {status.icon}
-            </span>
+              className={cn(
+                'h-2 w-2 rounded-full',
+                output.status === 'running' && 'animate-pulse',
+                status.dotClassName,
+              )}
+              aria-hidden="true"
+            />
             <span>{status.label}</span>
           </span>
           {duration ? <span>· {duration}</span> : null}
@@ -232,7 +243,7 @@ function OutputCard({ output }: { output: AgentOutput }) {
       </div>
 
       <div className="mt-4 space-y-3 text-sm text-[var(--theme-text)]">
-        <div className="rounded-[1.1rem] border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3">
+        <div className="rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--theme-muted)]">
             Summary
           </p>
@@ -253,7 +264,7 @@ function OutputCard({ output }: { output: AgentOutput }) {
           ) : null}
         </div>
 
-        <div className="overflow-hidden rounded-[1.1rem] border border-[var(--theme-border)] bg-[var(--theme-card)]/75 px-4 py-3">
+        <div className="overflow-hidden rounded-md border border-[var(--theme-border)] bg-[var(--theme-card2)] px-4 py-3">
           <div
             className={cn(
               'relative',
@@ -262,7 +273,7 @@ function OutputCard({ output }: { output: AgentOutput }) {
           >
             <Markdown>{output.fullOutput}</Markdown>
             {!expanded ? (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-t from-white to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-t from-[var(--theme-card2)] to-transparent" />
             ) : null}
           </div>
         </div>
@@ -272,11 +283,11 @@ function OutputCard({ output }: { output: AgentOutput }) {
             className={cn(
               'rounded-xl border px-3 py-2 text-sm',
               output.failureKind === 'delivery'
-                ? 'border-sky-500/25 bg-sky-500/8 text-sky-700'
+                ? 'border-[var(--theme-warning-border)] bg-[var(--theme-warning-soft)] text-[var(--theme-warning)]'
                 : output.failureKind === 'config'
-                  ? 'border-violet-500/25 bg-violet-500/8 text-violet-700'
+                  ? 'border-[var(--theme-warning-border)] bg-[var(--theme-warning-soft)] text-[var(--theme-warning)]'
                   : output.failureKind === 'approval'
-                    ? 'border-amber-500/25 bg-amber-500/8 text-amber-700'
+                    ? 'border-[var(--theme-warning-border)] bg-[var(--theme-warning-soft)] text-[var(--theme-warning)]'
                     : 'border-[var(--theme-danger-border)] bg-[var(--theme-danger-soft)] text-[var(--theme-danger)]',
             )}
           >
@@ -381,7 +392,7 @@ export function FullOutputsView() {
 
   if (loading) {
     return (
-      <section className="rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-6 py-14 text-center text-sm text-[var(--theme-muted)] shadow-[0_24px_80px_var(--theme-shadow)]">
+      <section className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] px-6 py-14 text-center text-sm text-[var(--theme-muted)]">
         Loading outputs…
       </section>
     )
@@ -389,7 +400,7 @@ export function FullOutputsView() {
 
   if (error) {
     return (
-      <section className="rounded-3xl border border-[var(--theme-danger-border)] bg-[var(--theme-danger-soft)] px-6 py-14 text-center text-sm text-[var(--theme-text)] shadow-[0_24px_80px_var(--theme-shadow)]">
+      <section className="rounded-card border border-[var(--theme-danger-border)] bg-[var(--theme-danger-soft)] px-6 py-14 text-center text-sm text-[var(--theme-danger)]">
         {error}
       </section>
     )
@@ -400,9 +411,9 @@ export function FullOutputsView() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.24 }}
-      className="rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-[0_24px_80px_var(--theme-shadow)] md:p-5"
+      className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 md:p-5"
     >
-      <div className="rounded-[1.5rem] border border-[var(--theme-border)] bg-[var(--theme-card)]/90 p-3 backdrop-blur-sm md:p-4">
+      <div className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card2)] p-3 md:p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap gap-2">
             {availableFilters.map((item) => (
@@ -418,7 +429,7 @@ export function FullOutputsView() {
 
           <Button
             variant="secondary"
-            className="border border-[var(--theme-border)] bg-[var(--theme-card)] text-[var(--theme-text)] hover:bg-[var(--theme-card2)]"
+            className="cursor-pointer border border-[var(--theme-border)] bg-[var(--theme-card)] text-[var(--theme-text)] hover:bg-[var(--theme-card2)]"
             onClick={() => void refresh()}
           >
             <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={1.8} />
@@ -441,7 +452,7 @@ export function FullOutputsView() {
 
       <div className="mt-4">
         {outputs.length === 0 ? (
-          <div className="rounded-[1.5rem] border border-dashed border-[var(--theme-border)] bg-[var(--theme-bg)] px-5 py-12 text-center text-sm text-[var(--theme-muted)]">
+          <div className="rounded-card border border-dashed border-[var(--theme-border)] bg-[var(--theme-bg)] px-5 py-12 text-center text-sm text-[var(--theme-muted)]">
             No agent outputs yet. Configure cron jobs in agent settings to get
             started.
           </div>

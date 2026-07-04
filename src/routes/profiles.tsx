@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { ProfilesScreen } from '@/screens/profiles/profiles-screen'
-import { CrewScreen } from '@/screens/crew/crew-screen'
+import { MissionControlScreen } from '@/screens/mission-control/mission-control-screen'
 
 export const Route = createFileRoute('/profiles')({
   ssr: false,
@@ -38,7 +38,7 @@ function ProfilesRoute() {
             Monitoring
           </button>
         </div>
-        {tab === 'profiles' ? <ProfilesScreen /> : <CrewScreen />}
+        {tab === 'profiles' ? <ProfilesScreen /> : <MissionControlScreen />}
       </div>
     </div>
   )

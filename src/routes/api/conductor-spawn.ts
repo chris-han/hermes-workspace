@@ -1,9 +1,9 @@
 /**
- * Conductor mission spawn — Hermes-backed.
+ * orchestrator mission spawn — Hermes-backed.
  *
  * Spawns a one-shot Hermes job whose prompt is the orchestrator instructions.
  * The orchestrator session, when it runs, uses the create_task / delegate
- * tools to spawn worker agents. The Conductor UI then polls /api/sessions
+ * tools to spawn worker agents. The orchestrator UI then polls /api/sessions
  * + /api/history to track workers.
  *
  * Replaces the previous OCPlatform JSON-RPC implementation
@@ -24,7 +24,7 @@ import {
 
 let cachedSkill: string | null = null
 
-type ConductorSpawnBody = {
+type orchestratorSpawnBody = {
   goal?: unknown
   orchestratorModel?: unknown
   workerModel?: unknown
@@ -184,7 +184,7 @@ export const Route = createFileRoute('/api/conductor-spawn')({
         try {
           const body = (await request
             .json()
-            .catch(() => ({}))) as ConductorSpawnBody
+            .catch(() => ({}))) as orchestratorSpawnBody
           const goal = readOptionalString(body.goal)
           const orchestratorModel = readOptionalString(body.orchestratorModel)
           const workerModel = readOptionalString(body.workerModel)
@@ -205,7 +205,7 @@ export const Route = createFileRoute('/api/conductor-spawn')({
             supervised,
           })
 
-          const jobName = `conductor-${Date.now()}`
+          const jobName = `orchestrator-${Date.now()}`
           // Schedule a one-shot job ~5s in the future so the cron loop
           // picks it up promptly without racing with the create response.
           const result = await createHermesJob({

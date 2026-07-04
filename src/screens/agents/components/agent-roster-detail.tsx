@@ -7,7 +7,7 @@ import {
   Settings01Icon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import type { OperationsAgent } from '../hooks/use-operations'
+import type { AgentRosterAgent } from '../hooks/use-agent-roster'
 import type { GatewayModelCatalogEntry } from '@/lib/gateway-api'
 import { Button } from '@/components/ui/button'
 import { fetchModels } from '@/lib/gateway-api'
@@ -164,7 +164,7 @@ function ModelSelector({
   )
 }
 
-export function OperationsAgentDetail({
+export function AgentRosterDetail({
   open,
   agent,
   onClose,
@@ -174,7 +174,7 @@ export function OperationsAgentDetail({
   isDeleting,
 }: {
   open: boolean
-  agent: OperationsAgent | null
+  agent: AgentRosterAgent | null
   onClose: () => void
   onSave: (input: {
     agentId: string
@@ -201,7 +201,7 @@ export function OperationsAgentDetail({
   }, [agent, open])
 
   const modelsQuery = useQuery({
-    queryKey: ['operations', 'models'],
+    queryKey: ['agentRoster', 'models'],
     queryFn: fetchModels,
     enabled: open,
   })

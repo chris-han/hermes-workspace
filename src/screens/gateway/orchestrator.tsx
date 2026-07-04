@@ -11,19 +11,19 @@ import {
   TaskDone01Icon,
 } from '@hugeicons/core-free-icons'
 import { OfficeView } from './components/office-view'
-import { useConductorGateway } from './hooks/use-conductor-gateway'
+import { useorchestratorGateway } from './hooks/use-orchestrator-gateway'
 import type { AgentWorkingRow } from './components/agents-working-panel'
 import type { GatewaySession } from '@/lib/gateway-api'
 import type { CSSProperties } from 'react'
 import type {
   MissionHistoryEntry,
   MissionHistoryWorkerDetail,
-} from './hooks/use-conductor-gateway'
+} from './hooks/use-orchestrator-gateway'
 import { Button } from '@/components/ui/button'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { cn } from '@/lib/utils'
 
-type ConductorPhase = 'home' | 'preview' | 'active' | 'complete'
+type orchestratorPhase = 'home' | 'preview' | 'active' | 'complete'
 type QuickActionId = 'research' | 'build' | 'review' | 'deploy'
 
 type HistoryMessage = {
@@ -429,13 +429,13 @@ function getWorkerBorderClass(
 function WorkerCard({
   worker,
   index,
-  conductor,
+  orchestrator,
   now,
 }: {
-  worker: ReturnType<typeof useConductorGateway>['workers'][number]
+  worker: ReturnType<typeof useorchestratorGateway>['workers'][number]
   index: number
-  conductor: Pick<
-    ReturnType<typeof useConductorGateway>,
+  orchestrator: Pick<
+    ReturnType<typeof useorchestratorGateway>,
     'workerOutputs' | 'isPaused' | 'pausedAtMs' | 'missionStartedAt'
   >
   now: number
@@ -443,7 +443,7 @@ function WorkerCard({
   const dot = getWorkerDot(worker.status)
   const persona = getAgentPersona(index)
   const workerOutput =
-    conductor.workerOutputs[worker.key] ??
+    orchestrator.workerOutputs[worker.key] ??
     getLastAssistantMessage(
       worker.raw.messages as Array<HistoryMessage> | undefined,
     )
@@ -452,12 +452,12 @@ function WorkerCard({
       ? worker.raw.createdAt
       : typeof worker.raw.startedAt === 'string'
         ? worker.raw.startedAt
-        : conductor.missionStartedAt
+        : orchestrator.missionStartedAt
   const workerEndTime =
     worker.status === 'complete' || worker.status === 'stale'
       ? new Date(worker.updatedAt ?? new Date().toISOString()).getTime()
-      : conductor.isPaused
-        ? (conductor.pausedAtMs ?? now)
+      : orchestrator.isPaused
+        ? (orchestrator.pausedAtMs ?? now)
         : now
 
   return (
@@ -523,7 +523,7 @@ function WorkerCard({
           <CyclingStatus
             steps={WORKING_STEPS}
             intervalMs={3500}
-            isPaused={conductor.isPaused}
+            isPaused={orchestrator.isPaused}
           />
         )}
       </div>
@@ -551,7 +551,7 @@ function usePreviewAvailability(previewUrl: string | null, enabled: boolean) {
   const exhausted = enabled && !!previewUrl && (failedProbes >= 4 || timedOut)
 
   const probeQuery = useQuery({
-    queryKey: ['conductor', 'preview-probe', previewUrl],
+    queryKey: ['orchestrator', 'preview-probe', previewUrl],
     queryFn: async () => {
       if (!previewUrl) return false
       try {
@@ -672,7 +672,7 @@ function getParentDirectory(pathValue: string): string {
 }
 
 function getDirectorySuggestions() {
-  return ['~/conductor-projects', '~/Projects', '/tmp', '~/Desktop']
+  return ['~/orchestrator-projects', '~/Projects', '/tmp', '~/Desktop']
 }
 
 function ModelSelectorDropdown({
@@ -917,8 +917,8 @@ function deriveSessionStatus(
   return 'running'
 }
 
-export function Conductor() {
-  const conductor = useConductorGateway()
+export function orchestrator() {
+  const orchestrator = useorchestratorGateway()
   const [goalDraft, setGoalDraft] = useState('')
   const [missionModalOpen, setMissionModalOpen] = useState(false)
   const [continueDraft, setContinueDraft] = useState('')
@@ -943,7 +943,7 @@ export function Conductor() {
     string | null
   >(null)
   const modelsQuery = useQuery({
-    queryKey: ['conductor', 'models'],
+    queryKey: ['orchestrator', 'models'],
     queryFn: async () => {
       const res = await fetch('/api/models')
       const data = (await res.json()) as {
@@ -1013,21 +1013,21 @@ export function Conductor() {
 
   useEffect(() => {
     if (
-      conductor.phase === 'idle' ||
-      conductor.phase === 'complete' ||
-      conductor.isPaused
+      orchestrator.phase === 'idle' ||
+      orchestrator.phase === 'complete' ||
+      orchestrator.isPaused
     )
       return
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
-  }, [conductor.isPaused, conductor.phase])
+  }, [orchestrator.isPaused, orchestrator.phase])
 
   useEffect(() => {
-    if (!conductor.isPaused) return
-    setNow(conductor.pausedAtMs ?? Date.now())
-  }, [conductor.isPaused, conductor.pausedAtMs])
+    if (!orchestrator.isPaused) return
+    setNow(orchestrator.pausedAtMs ?? Date.now())
+  }, [orchestrator.isPaused, orchestrator.pausedAtMs])
 
-  // Set body background to match Conductor theme so no gray shows behind keyboard/tab bar
+  // Set body background to match orchestrator theme so no gray shows behind keyboard/tab bar
   useEffect(() => {
     const prev = document.body.style.backgroundColor
     document.body.style.backgroundColor = 'var(--color-surface)'
@@ -1036,15 +1036,15 @@ export function Conductor() {
     }
   }, [])
 
-  const phase: ConductorPhase = useMemo(() => {
-    if (conductor.phase === 'idle') return 'home'
-    if (conductor.phase === 'decomposing') return 'preview'
-    if (conductor.phase === 'running') return 'active'
+  const phase: orchestratorPhase = useMemo(() => {
+    if (orchestrator.phase === 'idle') return 'home'
+    if (orchestrator.phase === 'decomposing') return 'preview'
+    if (orchestrator.phase === 'running') return 'active'
     return 'complete'
-  }, [conductor.phase])
+  }, [orchestrator.phase])
 
   const handleNewMission = () => {
-    conductor.resetMission()
+    orchestrator.resetMission()
     setGoalDraft('')
     setMissionModalOpen(false)
     setContinueDraft('')
@@ -1057,7 +1057,7 @@ export function Conductor() {
     if (!trimmed) return
     setMissionModalOpen(false)
     setContinueDraft('')
-    await conductor.sendMission(trimmed)
+    await orchestrator.sendMission(trimmed)
   }
 
   const handleQuickActionSelect = (action: (typeof QUICK_ACTIONS)[number]) => {
@@ -1077,19 +1077,19 @@ export function Conductor() {
 
     const continuationSummarySource =
       completeSummary ??
-      Object.values(conductor.workerOutputs).find((output) => output.trim()) ??
-      conductor.workers
+      Object.values(orchestrator.workerOutputs).find((output) => output.trim()) ??
+      orchestrator.workers
         .map((worker) =>
           getLastAssistantMessage(
             worker.raw.messages as Array<HistoryMessage> | undefined,
           ),
         )
         .find((output) => output.trim()) ??
-      conductor.streamText
+      orchestrator.streamText
 
     const combinedPrompt = [
       'CONTINUATION OF PREVIOUS MISSION',
-      `Original goal: ${conductor.goal}`,
+      `Original goal: ${orchestrator.goal}`,
       `Previous output summary: ${truncateContinuationText(continuationSummarySource ?? '')}`,
       `New instructions: ${trimmedInstructions}`,
       '',
@@ -1098,18 +1098,18 @@ export function Conductor() {
 
     setContinueDraft('')
     setContinueModalOpen(false)
-    await conductor.sendMission(combinedPrompt)
+    await orchestrator.sendMission(combinedPrompt)
   }
 
   const updateSettings = (
-    patch: Partial<typeof conductor.conductorSettings>,
+    patch: Partial<typeof orchestrator.orchestratorSettings>,
   ) => {
-    conductor.setConductorSettings({ ...conductor.conductorSettings, ...patch })
+    orchestrator.setorchestratorSettings({ ...orchestrator.orchestratorSettings, ...patch })
   }
 
   const openDirectoryBrowser = () => {
     setDirectoryBrowserPath(
-      conductor.conductorSettings.projectsDir.trim() || '~',
+      orchestrator.orchestratorSettings.projectsDir.trim() || '~',
     )
     setDirectoryBrowserEntries([])
     setDirectoryBrowserError(null)
@@ -1130,21 +1130,21 @@ export function Conductor() {
     }))
   }, [directoryBrowserPath])
 
-  const totalWorkers = conductor.workers.length
-  const completedWorkers = conductor.workers.filter(
+  const totalWorkers = orchestrator.workers.length
+  const completedWorkers = orchestrator.workers.filter(
     (worker) => worker.status === 'complete',
   ).length
-  const activeWorkerCount = conductor.activeWorkers.length
+  const activeWorkerCount = orchestrator.activeWorkers.length
   const missionProgress =
     totalWorkers > 0 ? Math.round((completedWorkers / totalWorkers) * 100) : 0
-  const totalTokens = conductor.workers.reduce(
+  const totalTokens = orchestrator.workers.reduce(
     (sum, worker) => sum + worker.totalTokens,
     0,
   )
-  const selectedHistoryEntry = conductor.selectedHistoryEntry
+  const selectedHistoryEntry = orchestrator.selectedHistoryEntry
   const completeMissionCostWorkers = useMemo<Array<MissionCostWorker>>(
     () =>
-      conductor.workers.map((worker, index) => {
+      orchestrator.workers.map((worker, index) => {
         const persona = getAgentPersona(index)
         return {
           id: worker.key,
@@ -1154,7 +1154,7 @@ export function Conductor() {
           personaName: persona.name,
         }
       }),
-    [conductor.workers],
+    [orchestrator.workers],
   )
   const historyMissionCostWorkers = useMemo<Array<MissionCostWorker>>(
     () =>
@@ -1169,7 +1169,7 @@ export function Conductor() {
   )
   const OFFICE_NAMES = ['Nova', 'Pixel', 'Blaze', 'Echo', 'Sage', 'Drift']
   const homeOfficeRows = useMemo<Array<AgentWorkingRow>>(() => {
-    const sessions = conductor.recentSessions
+    const sessions = orchestrator.recentSessions
     if (sessions.length === 0) {
       return OFFICE_NAMES.slice(0, 3).map((name, i) => ({
         id: `placeholder-${i}`,
@@ -1209,22 +1209,22 @@ export function Conductor() {
         sessionKey: s.key ?? undefined,
       }
     })
-  }, [conductor.recentSessions])
+  }, [orchestrator.recentSessions])
 
   const officeAgentRows = useMemo<Array<AgentWorkingRow>>(() => {
-    if (conductor.workers.length > 0) {
-      return conductor.workers.map((worker, index) => {
+    if (orchestrator.workers.length > 0) {
+      return orchestrator.workers.map((worker, index) => {
         const persona = getAgentPersona(index)
-        const currentTask = conductor.tasks.find(
+        const currentTask = orchestrator.tasks.find(
           (task) => task.workerKey === worker.key && task.status === 'running',
         )?.title
         const lastLine =
-          conductor.workerOutputs[worker.key] ??
+          orchestrator.workerOutputs[worker.key] ??
           getLastAssistantMessage(
             worker.raw.messages as Array<HistoryMessage> | undefined,
           )
         const isWorkerPaused =
-          conductor.isPaused &&
+          orchestrator.isPaused &&
           (worker.status === 'running' || worker.status === 'idle')
 
         return {
@@ -1243,7 +1243,7 @@ export function Conductor() {
           lastAt: worker.updatedAt
             ? new Date(worker.updatedAt).getTime()
             : undefined,
-          taskCount: conductor.tasks.filter(
+          taskCount: orchestrator.tasks.filter(
             (task) => task.workerKey === worker.key,
           ).length,
           currentTask: isWorkerPaused ? 'Paused' : currentTask,
@@ -1254,30 +1254,30 @@ export function Conductor() {
 
     return [
       {
-        id: 'conductor-placeholder-agent',
+        id: 'orchestrator-placeholder-agent',
         name: 'Nova',
-        modelId: conductor.conductorSettings.workerModel || 'auto',
+        modelId: orchestrator.orchestratorSettings.workerModel || 'auto',
         roleDescription: 'Waiting for workers',
         status: 'spawning',
-        lastLine: conductor.goal || 'Preparing the office…',
+        lastLine: orchestrator.goal || 'Preparing the office…',
         taskCount: 0,
-        currentTask: conductor.goal || 'Preparing the office…',
-        sessionKey: 'conductor-placeholder-agent',
+        currentTask: orchestrator.goal || 'Preparing the office…',
+        sessionKey: 'orchestrator-placeholder-agent',
       },
     ]
   }, [
-    conductor.conductorSettings.workerModel,
-    conductor.goal,
-    conductor.isPaused,
-    conductor.tasks,
-    conductor.workerOutputs,
-    conductor.workers,
+    orchestrator.orchestratorSettings.workerModel,
+    orchestrator.goal,
+    orchestrator.isPaused,
+    orchestrator.tasks,
+    orchestrator.workerOutputs,
+    orchestrator.workers,
   ])
 
   const completePhaseProjectPath = useMemo(() => {
     const workerOutputTexts = [
-      ...Object.values(conductor.workerOutputs),
-      ...conductor.workers.map((worker) =>
+      ...Object.values(orchestrator.workerOutputs),
+      ...orchestrator.workers.map((worker) =>
         getLastAssistantMessage(
           worker.raw.messages as Array<HistoryMessage> | undefined,
         ),
@@ -1289,26 +1289,26 @@ export function Conductor() {
       if (extractedPath) return extractedPath
     }
 
-    for (const task of conductor.tasks) {
+    for (const task of orchestrator.tasks) {
       if (!task.output) continue
       const extractedPath = extractProjectPath(task.output)
       if (extractedPath) return extractedPath
     }
 
-    const streamPath = extractProjectPath(conductor.streamText)
+    const streamPath = extractProjectPath(orchestrator.streamText)
     if (streamPath) return streamPath
 
     const candidates = buildProjectPathCandidates(
-      conductor.workers,
-      conductor.missionStartedAt,
+      orchestrator.workers,
+      orchestrator.missionStartedAt,
     )
     return candidates[0] ?? null
   }, [
-    conductor.tasks,
-    conductor.streamText,
-    conductor.workerOutputs,
-    conductor.workers,
-    conductor.missionStartedAt,
+    orchestrator.tasks,
+    orchestrator.streamText,
+    orchestrator.workerOutputs,
+    orchestrator.workers,
+    orchestrator.missionStartedAt,
   ])
   const completePhaseOutputLabel = useMemo(
     () => getOutputDisplayName(completePhaseProjectPath),
@@ -1320,7 +1320,7 @@ export function Conductor() {
     : null
 
   const selectedHistoryOutputPath = useMemo(() => {
-    const entry = conductor.selectedHistoryEntry
+    const entry = orchestrator.selectedHistoryEntry
     if (!entry) return null
     if (entry.outputPath) return entry.outputPath
     if (entry.projectPath) return entry.projectPath
@@ -1333,7 +1333,7 @@ export function Conductor() {
       entry.startedAt,
     )
     return candidates[0] ?? null
-  }, [conductor.selectedHistoryEntry])
+  }, [orchestrator.selectedHistoryEntry])
   const selectedHistoryOutputLabel = useMemo(
     () => getOutputDisplayName(selectedHistoryOutputPath),
     [selectedHistoryOutputPath],
@@ -1350,12 +1350,12 @@ export function Conductor() {
     selectedHistoryOutputPath === completePhaseProjectPath
   const selectedHistoryPreview = usePreviewAvailability(
     selectedHistoryPreviewUrl,
-    !!conductor.selectedHistoryEntry && isLiveCompletePreview,
+    !!orchestrator.selectedHistoryEntry && isLiveCompletePreview,
   )
   const previewState = usePreviewAvailability(previewUrl, phase === 'complete')
 
   const completedTaskOutputs = useMemo(() => {
-    return conductor.tasks
+    return orchestrator.tasks
       .filter((task) => task.output)
       .map((task) => ({
         ...task,
@@ -1368,18 +1368,18 @@ export function Conductor() {
         })(),
         previewText: (task.output ?? '').trim().slice(0, 200),
       }))
-  }, [conductor.tasks])
+  }, [orchestrator.tasks])
 
   const completeSummary = useMemo(() => {
     if (phase !== 'complete') return null
-    const isFailed = !!conductor.streamError
+    const isFailed = !!orchestrator.streamError
     const lines = [
       isFailed
-        ? `❌ ${conductor.streamError}`
+        ? `❌ ${orchestrator.streamError}`
         : '✅ Mission completed successfully',
       '',
-      `**Goal:** ${conductor.goal}`,
-      `**Duration:** ${formatElapsedTime(conductor.missionStartedAt, conductor.completedAt ? new Date(conductor.completedAt).getTime() : now)}`,
+      `**Goal:** ${orchestrator.goal}`,
+      `**Duration:** ${formatElapsedTime(orchestrator.missionStartedAt, orchestrator.completedAt ? new Date(orchestrator.completedAt).getTime() : now)}`,
     ]
     if (totalWorkers > 0) {
       lines.push(
@@ -1395,43 +1395,43 @@ export function Conductor() {
     completePhaseProjectPath,
     completePhaseOutputLabel,
     totalWorkers,
-    conductor.goal,
+    orchestrator.goal,
     totalTokens,
-    conductor.missionStartedAt,
+    orchestrator.missionStartedAt,
     now,
   ])
   const continuationPreview = useMemo(() => {
     const summarySource =
       completeSummary ??
-      Object.values(conductor.workerOutputs).find((output) => output.trim()) ??
-      conductor.workers
+      Object.values(orchestrator.workerOutputs).find((output) => output.trim()) ??
+      orchestrator.workers
         .map((worker) =>
           getLastAssistantMessage(
             worker.raw.messages as Array<HistoryMessage> | undefined,
           ),
         )
         .find((output) => output.trim()) ??
-      conductor.streamText
+      orchestrator.streamText
     return truncateContinuationText(summarySource ?? '')
   }, [
     completeSummary,
-    conductor.streamText,
-    conductor.workerOutputs,
-    conductor.workers,
+    orchestrator.streamText,
+    orchestrator.workerOutputs,
+    orchestrator.workers,
   ])
   const continuationModalPreview = useMemo(
     () => truncateContinuationText(continuationPreview, 200),
     [continuationPreview],
   )
-  const hasMissionHistory = conductor.missionHistory.length > 0
-  const canResetSavedState = hasMissionHistory || conductor.hasPersistedMission
+  const hasMissionHistory = orchestrator.missionHistory.length > 0
+  const canResetSavedState = hasMissionHistory || orchestrator.hasPersistedMission
   const filteredHistory = (() => {
-    const history = conductor.missionHistory
+    const history = orchestrator.missionHistory
     if (activityFilter === 'all') return history
     return history.filter((entry) => entry.status === activityFilter)
   })()
   const filteredSessions = (() => {
-    const sessions = conductor.recentSessions
+    const sessions = orchestrator.recentSessions
     if (activityFilter === 'all') return sessions
     return sessions
       .filter((session) =>
@@ -1454,14 +1454,14 @@ export function Conductor() {
 
   useEffect(() => {
     if (!selectedTaskId) return
-    if (conductor.tasks.some((task) => task.id === selectedTaskId)) return
+    if (orchestrator.tasks.some((task) => task.id === selectedTaskId)) return
     setSelectedTaskId(null)
-  }, [conductor.tasks, selectedTaskId])
+  }, [orchestrator.tasks, selectedTaskId])
 
   useEffect(() => {
     if (phase !== 'complete') return
     setCompleteCostExpanded(true)
-  }, [phase, conductor.completedAt])
+  }, [phase, orchestrator.completedAt])
 
   useEffect(() => {
     if (!selectedHistoryEntry) return
@@ -1496,7 +1496,7 @@ export function Conductor() {
             <div className="space-y-6">
               <button
                 type="button"
-                onClick={() => conductor.setSelectedHistoryEntry(null)}
+                onClick={() => orchestrator.setSelectedHistoryEntry(null)}
                 className="inline-flex items-center gap-2 self-start rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 py-2 text-sm text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-border2)] hover:text-[var(--theme-text)]"
               >
                 <span aria-hidden="true">←</span> Back
@@ -1536,7 +1536,7 @@ export function Conductor() {
                     <Button
                       type="button"
                       onClick={() => {
-                        conductor.setSelectedHistoryEntry(null)
+                        orchestrator.setSelectedHistoryEntry(null)
                         handleNewMission()
                       }}
                       className="rounded-xl bg-[var(--theme-accent)] px-5 text-white hover:bg-[var(--theme-accent-strong)]"
@@ -1746,7 +1746,7 @@ export function Conductor() {
             <div className="space-y-2 text-center">
               <div className="relative flex items-center justify-center">
                 <div className="inline-flex items-center gap-2.5 rounded-full border border-[var(--theme-border)] bg-[var(--theme-card)] px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.24em] text-[var(--theme-muted)]">
-                  Conductor
+                  orchestrator
                   <span className="size-2.5 rounded-full bg-emerald-400" />
                 </div>
                 <div className="absolute right-0 flex items-center gap-2">
@@ -1766,7 +1766,7 @@ export function Conductor() {
                     type="button"
                     onClick={() => setSettingsOpen(true)}
                     className="inline-flex items-center justify-center rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-2 text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent-strong)]"
-                    aria-label="Open conductor settings"
+                    aria-label="Open orchestrator settings"
                   >
                     <HugeiconsIcon
                       icon={Settings01Icon}
@@ -1795,7 +1795,7 @@ export function Conductor() {
               />
             </section>
 
-            {hasMissionHistory || conductor.recentSessions.length > 0 ? (
+            {hasMissionHistory || orchestrator.recentSessions.length > 0 ? (
               <section className="mt-6 w-full space-y-3">
                 <div className="flex items-center gap-3">
                   <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--theme-muted)]">
@@ -1861,7 +1861,7 @@ export function Conductor() {
                               key={entry.id}
                               type="button"
                               onClick={() =>
-                                conductor.setSelectedHistoryEntry(entry)
+                                orchestrator.setSelectedHistoryEntry(entry)
                               }
                               className="flex w-full items-center gap-3 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 py-2 text-left text-sm transition-colors hover:border-[var(--theme-accent)]"
                             >
@@ -2040,7 +2040,7 @@ export function Conductor() {
                     value={goalDraft}
                     onChange={(event) => setGoalDraft(event.target.value)}
                     placeholder={`${QUICK_ACTIONS.find((action) => action.id === selectedAction)?.label ?? 'Build'}: describe the mission, constraints, and desired outcome.`}
-                    disabled={conductor.isSending}
+                    disabled={orchestrator.isSending}
                     rows={8}
                     className="min-h-[220px] w-full rounded-3xl border border-[var(--theme-border2)] bg-[var(--theme-bg)] px-4 py-4 text-sm text-[var(--theme-text)] outline-none transition-colors placeholder:text-[var(--theme-muted-2)] focus:border-[var(--theme-accent)] disabled:cursor-not-allowed disabled:opacity-60 md:text-base"
                   />
@@ -2048,10 +2048,10 @@ export function Conductor() {
                   <div className="flex justify-end">
                     <Button
                       type="submit"
-                      disabled={!goalDraft.trim() || conductor.isSending}
+                      disabled={!goalDraft.trim() || orchestrator.isSending}
                       className="rounded-full bg-[var(--theme-accent)] px-5 text-white hover:bg-[var(--theme-accent-strong)]"
                     >
-                      {conductor.isSending ? 'Launching...' : 'Launch Mission'}
+                      {orchestrator.isSending ? 'Launching...' : 'Launch Mission'}
                       <HugeiconsIcon
                         icon={ArrowRight01Icon}
                         size={16}
@@ -2079,7 +2079,7 @@ export function Conductor() {
                       Mission Defaults
                     </p>
                     <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--theme-text)]">
-                      Conductor settings
+                      orchestrator settings
                     </h2>
                     <p className="mt-2 text-sm text-[var(--theme-muted-2)]">
                       Set the models and defaults every new mission should
@@ -2099,7 +2099,7 @@ export function Conductor() {
                 <div className="mt-6 space-y-4">
                   <ModelSelectorDropdown
                     label="Orchestrator Model"
-                    value={conductor.conductorSettings.orchestratorModel}
+                    value={orchestrator.orchestratorSettings.orchestratorModel}
                     onChange={(nextValue) =>
                       updateSettings({ orchestratorModel: nextValue })
                     }
@@ -2108,7 +2108,7 @@ export function Conductor() {
 
                   <ModelSelectorDropdown
                     label="Worker Model"
-                    value={conductor.conductorSettings.workerModel}
+                    value={orchestrator.orchestratorSettings.workerModel}
                     onChange={(nextValue) =>
                       updateSettings({ workerModel: nextValue })
                     }
@@ -2122,11 +2122,11 @@ export function Conductor() {
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        value={conductor.conductorSettings.projectsDir}
+                        value={orchestrator.orchestratorSettings.projectsDir}
                         onChange={(event) =>
                           updateSettings({ projectsDir: event.target.value })
                         }
-                        placeholder="~/conductor-projects"
+                        placeholder="~/orchestrator-projects"
                         className="min-w-0 flex-1 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none transition-colors placeholder:text-[var(--theme-muted-2)] focus:border-[var(--theme-accent)]"
                       />
                       <button
@@ -2151,7 +2151,7 @@ export function Conductor() {
                       type="number"
                       min={1}
                       max={5}
-                      value={conductor.conductorSettings.maxParallel}
+                      value={orchestrator.orchestratorSettings.maxParallel}
                       onChange={(event) =>
                         updateSettings({
                           maxParallel: Math.min(
@@ -2167,7 +2167,7 @@ export function Conductor() {
                   <label className="flex items-start gap-3 rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-4">
                     <input
                       type="checkbox"
-                      checked={conductor.conductorSettings.supervised}
+                      checked={orchestrator.orchestratorSettings.supervised}
                       onChange={(event) =>
                         updateSettings({ supervised: event.target.checked })
                       }
@@ -2190,7 +2190,7 @@ export function Conductor() {
                           Reset saved state
                         </p>
                         <p className="mt-1 text-xs text-[var(--theme-muted-2)]">
-                          Clear mission history and any persisted Conductor
+                          Clear mission history and any persisted orchestrator
                           mission state.
                         </p>
                       </div>
@@ -2198,7 +2198,7 @@ export function Conductor() {
                         type="button"
                         onClick={() => {
                           setSettingsOpen(false)
-                          conductor.resetSavedState()
+                          orchestrator.resetSavedState()
                           setGoalDraft('')
                           setContinueDraft('')
                           setSelectedTaskId(null)
@@ -2232,7 +2232,7 @@ export function Conductor() {
                       Choose project directory
                     </h3>
                     <p className="mt-2 text-sm text-[var(--theme-muted-2)]">
-                      Select the folder where Conductor should create project
+                      Select the folder where orchestrator should create project
                       output.
                     </p>
                   </div>
@@ -2429,7 +2429,7 @@ export function Conductor() {
                 Mission Decomposition
               </p>
               <h1 className="text-2xl font-semibold tracking-tight">
-                {conductor.goal}
+                {orchestrator.goal}
               </h1>
               <p className="text-sm text-[var(--theme-muted-2)]">
                 The agent is breaking the mission into workers. Once they spawn,
@@ -2452,10 +2452,10 @@ export function Conductor() {
                 </span>
               </div>
               <div className="mt-4 min-h-[200px] overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-5 py-4">
-                {conductor.planText ? (
+                {orchestrator.planText ? (
                   <div className="space-y-4">
                     <Markdown className="max-h-[500px] max-w-none overflow-auto text-sm text-[var(--theme-text)]">
-                      {conductor.planText.replace(/(.{20,}?)\1+/g, '$1')}
+                      {orchestrator.planText.replace(/(.{20,}?)\1+/g, '$1')}
                     </Markdown>
                     <PlanningIndicator />
                   </div>
@@ -2463,12 +2463,12 @@ export function Conductor() {
                   <PlanningIndicator />
                 )}
               </div>
-              {conductor.streamError && (
+              {orchestrator.streamError && (
                 <div className="mt-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-600">
-                  {conductor.streamError}
+                  {orchestrator.streamError}
                 </div>
               )}
-              {conductor.timeoutWarning && (
+              {orchestrator.timeoutWarning && (
                 <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-400/40 bg-amber-500/10 px-5 py-3">
                   <p className="text-sm text-amber-700">
                     ⚠️ Planning is taking longer than expected...
@@ -2482,12 +2482,12 @@ export function Conductor() {
                   </Button>
                 </div>
               )}
-              {conductor.tasks.length > 0 && (
+              {orchestrator.tasks.length > 0 && (
                 <div className="mt-4 space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--theme-muted)]">
-                    Identified Tasks ({conductor.tasks.length})
+                    Identified Tasks ({orchestrator.tasks.length})
                   </p>
-                  {conductor.tasks.map((task) => (
+                  {orchestrator.tasks.map((task) => (
                     <div
                       key={task.id}
                       className="flex items-center gap-2 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-2 text-sm"
@@ -2517,11 +2517,11 @@ export function Conductor() {
           <div className="space-y-6">
             <div className="text-center">
               <div className="inline-flex items-center gap-2 rounded-full border border-[var(--theme-border)] bg-[var(--theme-card)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--theme-muted)]">
-                Conductor
+                orchestrator
                 <span className="size-2 rounded-full bg-emerald-400" />
               </div>
             </div>
-            {conductor.streamError && (
+            {orchestrator.streamError && (
               <div className="rounded-2xl border border-[var(--theme-danger-border)] bg-[var(--theme-danger-soft)] px-5 py-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-start gap-3">
@@ -2533,14 +2533,14 @@ export function Conductor() {
                         Mission failed
                       </p>
                       <p className="mt-1 text-sm text-[var(--theme-danger)]/90">
-                        {conductor.streamError}
+                        {orchestrator.streamError}
                       </p>
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Button
                       type="button"
-                      onClick={() => void conductor.retryMission()}
+                      onClick={() => void orchestrator.retryMission()}
                       className="rounded-xl border border-[var(--theme-danger-border)] bg-[var(--theme-danger-soft)] px-4 text-[var(--theme-danger)] hover:bg-[var(--theme-danger-soft-strong)]"
                     >
                       Retry Mission
@@ -2562,26 +2562,26 @@ export function Conductor() {
                   <p
                     className={cn(
                       'text-xs font-semibold uppercase tracking-[0.24em]',
-                      conductor.streamError
+                      orchestrator.streamError
                         ? 'text-red-400'
                         : 'text-[var(--theme-accent)]',
                     )}
                   >
-                    {conductor.streamError
+                    {orchestrator.streamError
                       ? 'Mission Stopped'
                       : 'Mission Complete'}
                   </p>
                   <h1 className="mt-2 text-xl font-semibold tracking-tight text-[var(--theme-text)] sm:text-2xl">
-                    {conductor.goal}
+                    {orchestrator.goal}
                   </h1>
                   <p className="mt-2 text-xs text-[var(--theme-muted-2)]">
                     {completedWorkers}/
                     {Math.max(totalWorkers, completedWorkers)} workers finished
                     ·{' '}
                     {formatElapsedTime(
-                      conductor.missionStartedAt,
-                      conductor.completedAt
-                        ? new Date(conductor.completedAt).getTime()
+                      orchestrator.missionStartedAt,
+                      orchestrator.completedAt
+                        ? new Date(orchestrator.completedAt).getTime()
                         : now,
                     )}{' '}
                     total elapsed
@@ -2649,7 +2649,7 @@ export function Conductor() {
               </section>
             ) : completePhaseProjectPath &&
               previewState.loading &&
-              !conductor.streamError ? (
+              !orchestrator.streamError ? (
               <section className="overflow-hidden rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-6 shadow-[0_24px_80px_var(--theme-shadow)]">
                 <div className="flex items-center gap-3 text-sm text-[var(--theme-muted)]">
                   <div className="size-4 animate-spin rounded-full border-2 border-[var(--theme-border)] border-t-[var(--theme-accent)]" />
@@ -2661,10 +2661,10 @@ export function Conductor() {
             {/* Worker output fallback — show when no iframe preview is available */}
             {(!completePhaseProjectPath || previewState.unavailable) &&
               (() => {
-                const outputSections = conductor.workers
+                const outputSections = orchestrator.workers
                   .map((worker, index) => {
                     const output = (
-                      conductor.workerOutputs[worker.key] ??
+                      orchestrator.workerOutputs[worker.key] ??
                       getLastAssistantMessage(
                         worker.raw.messages as
                           | Array<HistoryMessage>
@@ -2693,7 +2693,7 @@ export function Conductor() {
                             `### ${s.persona.emoji} ${s.persona.name} · ${s.label}\n\n${s.output}`,
                         )
                         .join('\n\n---\n\n')
-                    : conductor.streamText.trim()
+                    : orchestrator.streamText.trim()
 
                 if (!fallbackText) return null
 
@@ -2720,7 +2720,7 @@ export function Conductor() {
                 )
               })()}
 
-            {conductor.tasks.length > 1 && completedTaskOutputs.length > 0 && (
+            {orchestrator.tasks.length > 1 && completedTaskOutputs.length > 0 && (
               <section className="overflow-hidden rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-6 shadow-[0_24px_80px_var(--theme-shadow)]">
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -2778,12 +2778,12 @@ export function Conductor() {
                 <span
                   className={cn(
                     'rounded-full px-3 py-1 text-xs font-medium',
-                    conductor.streamError
+                    orchestrator.streamError
                       ? 'border border-red-400/35 bg-red-500/10 text-red-300'
                       : 'border border-emerald-400/35 bg-emerald-500/10 text-emerald-300',
                   )}
                 >
-                  {conductor.streamError ? 'Stopped' : 'Complete'}
+                  {orchestrator.streamError ? 'Stopped' : 'Complete'}
                 </span>
               </div>
               <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-5 py-4">
@@ -2791,9 +2791,9 @@ export function Conductor() {
                   <Markdown className="max-h-[400px] max-w-none overflow-auto text-sm text-[var(--theme-text)]">
                     {completeSummary}
                   </Markdown>
-                ) : conductor.streamText ? (
+                ) : orchestrator.streamText ? (
                   <Markdown className="max-h-[400px] max-w-none overflow-auto text-sm text-[var(--theme-text)]">
-                    {conductor.streamText}
+                    {orchestrator.streamText}
                   </Markdown>
                 ) : (
                   <p className="text-sm text-[var(--theme-muted)]">
@@ -2801,9 +2801,9 @@ export function Conductor() {
                   </p>
                 )}
               </div>
-              {conductor.workers.length > 0 && (
+              {orchestrator.workers.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  {conductor.workers.map((worker, index) => {
+                  {orchestrator.workers.map((worker, index) => {
                     const persona = getAgentPersona(index)
                     const shortModelName = getShortModelName(worker.model)
                     return (
@@ -2839,14 +2839,14 @@ export function Conductor() {
                   />
                 </div>
               )}
-              {conductor.streamText && completeSummary && (
+              {orchestrator.streamText && completeSummary && (
                 <details className="mt-4 overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-5 py-4">
                   <summary className="cursor-pointer text-xs font-medium text-[var(--theme-muted)]">
                     Raw Agent Output
                   </summary>
                   <div className="mt-4 border-t border-[var(--theme-border)] pt-4">
                     <Markdown className="max-h-[400px] max-w-none overflow-auto text-sm text-[var(--theme-text)]">
-                      {conductor.streamText}
+                      {orchestrator.streamText}
                     </Markdown>
                   </div>
                 </details>
@@ -2902,16 +2902,16 @@ export function Conductor() {
                     value={continueDraft}
                     onChange={(event) => setContinueDraft(event.target.value)}
                     placeholder="Continue with additional instructions..."
-                    disabled={conductor.isSending}
+                    disabled={orchestrator.isSending}
                     className="w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none transition-colors placeholder:text-[var(--theme-muted-2)] focus:border-[var(--theme-accent)] disabled:cursor-not-allowed disabled:opacity-60"
                   />
                   <div className="flex justify-end">
                     <button
                       type="submit"
-                      disabled={!continueDraft.trim() || conductor.isSending}
+                      disabled={!continueDraft.trim() || orchestrator.isSending}
                       className={cn(
                         'inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-medium transition-colors sm:min-w-[96px]',
-                        !continueDraft.trim() || conductor.isSending
+                        !continueDraft.trim() || orchestrator.isSending
                           ? 'cursor-not-allowed border border-[var(--theme-border)] bg-[var(--theme-card2)] text-[var(--theme-muted)] opacity-60'
                           : 'border border-[var(--theme-border)] bg-[var(--theme-accent-soft)] text-[var(--theme-text)] hover:border-[var(--theme-accent)] hover:bg-[var(--theme-accent-soft-strong)]',
                       )}
@@ -2921,7 +2921,7 @@ export function Conductor() {
                         size={16}
                         strokeWidth={1.8}
                       />
-                      {conductor.isSending ? 'Sending' : 'Send'}
+                      {orchestrator.isSending ? 'Sending' : 'Send'}
                     </button>
                   </div>
                 </form>
@@ -2942,21 +2942,21 @@ export function Conductor() {
         <div className="flex w-full flex-col gap-6">
           <div className="text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-[var(--theme-border)] bg-[var(--theme-card)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--theme-muted)]">
-              Conductor
+              orchestrator
               <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
             </div>
           </div>
           <section className="overflow-hidden rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-5 py-5 shadow-[0_24px_80px_var(--theme-shadow)]">
             <div className="text-center">
               <h1 className="line-clamp-2 text-xl font-semibold tracking-tight text-[var(--theme-text)] sm:text-2xl">
-                {conductor.goal}
+                {orchestrator.goal}
               </h1>
               <div className="mt-2 flex items-center justify-center gap-2 text-xs text-[var(--theme-muted)]">
                 <span>
                   {formatElapsedMilliseconds(
-                    conductor.isPaused
-                      ? conductor.pausedElapsedMs
-                      : conductor.missionElapsedMs,
+                    orchestrator.isPaused
+                      ? orchestrator.pausedElapsedMs
+                      : orchestrator.missionElapsedMs,
                   )}
                 </span>
                 <span className="text-[var(--theme-border)]">·</span>
@@ -2966,7 +2966,7 @@ export function Conductor() {
                 <span className="text-[var(--theme-border)]">·</span>
                 <span>{activeWorkerCount} active</span>
               </div>
-              {conductor.isPaused ? (
+              {orchestrator.isPaused ? (
                 <div className="mt-3 flex justify-center">
                   <span className="rounded-full border border-[var(--theme-accent)] bg-[var(--theme-accent-soft)] px-3 py-1 text-xs font-medium text-[var(--theme-accent-strong)] animate-pulse">
                     Paused
@@ -2983,7 +2983,7 @@ export function Conductor() {
             <div className="mt-3 flex items-center justify-center gap-2">
               <button
                 type="button"
-                onClick={() => void conductor.stopMission()}
+                onClick={() => void orchestrator.stopMission()}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--theme-danger-border, color-mix(in srgb, var(--theme-danger) 35%, white))] bg-[var(--theme-danger-soft, color-mix(in srgb, var(--theme-danger) 12%, transparent))] px-3 py-1.5 text-xs font-medium text-[var(--theme-danger)] transition-colors hover:bg-[var(--theme-danger-soft-strong, color-mix(in srgb, var(--theme-danger) 18%, transparent))]"
               >
                 <span>■</span> Stop Mission
@@ -2991,14 +2991,14 @@ export function Conductor() {
               <button
                 type="button"
                 disabled={
-                  !conductor.orchestratorSessionKey || conductor.isPausing
+                  !orchestrator.orchestratorSessionKey || orchestrator.isPausing
                 }
                 onClick={async () => {
-                  if (!conductor.orchestratorSessionKey) return
+                  if (!orchestrator.orchestratorSessionKey) return
                   try {
-                    await conductor.pauseAgent(
-                      conductor.orchestratorSessionKey,
-                      !conductor.isPaused,
+                    await orchestrator.pauseAgent(
+                      orchestrator.orchestratorSessionKey,
+                      !orchestrator.isPaused,
                     )
                   } catch {
                     // best effort
@@ -3006,23 +3006,23 @@ export function Conductor() {
                 }}
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
-                  !conductor.orchestratorSessionKey || conductor.isPausing
+                  !orchestrator.orchestratorSessionKey || orchestrator.isPausing
                     ? 'cursor-not-allowed border-[var(--theme-border)] bg-[var(--theme-card2)] text-[var(--theme-muted)] opacity-50'
-                    : conductor.isPaused
+                    : orchestrator.isPaused
                       ? 'border-[var(--theme-accent)] bg-[var(--theme-accent-soft)] text-[var(--theme-accent-strong)] hover:bg-[var(--theme-accent-soft-strong)]'
                       : 'border-[var(--theme-border)] bg-[var(--theme-card2)] text-[var(--theme-muted)] hover:border-[var(--theme-accent)] hover:text-[var(--theme-text)]',
                 )}
               >
-                <span>{conductor.isPaused ? '▶' : '⏸'}</span>{' '}
-                {conductor.isPausing
+                <span>{orchestrator.isPaused ? '▶' : '⏸'}</span>{' '}
+                {orchestrator.isPausing
                   ? '...'
-                  : conductor.isPaused
+                  : orchestrator.isPaused
                     ? 'Resume'
                     : 'Pause'}
               </button>
             </div>
           </section>
-          {conductor.timeoutWarning && (
+          {orchestrator.timeoutWarning && (
             <section className="rounded-2xl border border-[var(--theme-warning-border)] bg-[var(--theme-warning-soft)] px-5 py-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -3037,14 +3037,14 @@ export function Conductor() {
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Button
                     type="button"
-                    onClick={conductor.dismissTimeoutWarning}
+                    onClick={orchestrator.dismissTimeoutWarning}
                     className="rounded-xl border border-[var(--theme-warning-border)] bg-[var(--theme-card)] px-4 text-[var(--theme-text)] hover:bg-[var(--theme-card2)]"
                   >
                     Keep Waiting
                   </Button>
                   <Button
                     type="button"
-                    onClick={() => void conductor.stopMission()}
+                    onClick={() => void orchestrator.stopMission()}
                     className="rounded-xl border border-[var(--theme-warning-border)] bg-[var(--theme-warning-soft)] px-4 text-[var(--theme-warning)] hover:bg-[var(--theme-warning-soft-strong)]"
                   >
                     Stop Mission
@@ -3059,24 +3059,24 @@ export function Conductor() {
               missionRunning
               onViewOutput={() => {}}
               processType="parallel"
-              companyName="Conductor Office"
+              companyName="orchestrator Office"
               containerHeight={360}
               hideHeader
             />
           </section>
 
-          {conductor.tasks.length > 0 ? (
+          {orchestrator.tasks.length > 0 ? (
             <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
               <div className="space-y-2">
                 <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--theme-muted)]">
                   Tasks (
                   {
-                    conductor.tasks.filter((task) => task.status === 'complete')
+                    orchestrator.tasks.filter((task) => task.status === 'complete')
                       .length
                   }
-                  /{conductor.tasks.length})
+                  /{orchestrator.tasks.length})
                 </h2>
-                {conductor.tasks.map((task) => {
+                {orchestrator.tasks.map((task) => {
                   const isSelected = selectedTaskId === task.id
                   const statusDot =
                     task.status === 'complete'
@@ -3126,13 +3126,13 @@ export function Conductor() {
                 ) : null}
                 {(() => {
                   const selectedTask = selectedTaskId
-                    ? conductor.tasks.find((task) => task.id === selectedTaskId)
+                    ? orchestrator.tasks.find((task) => task.id === selectedTaskId)
                     : null
                   const displayWorkers = selectedTask?.workerKey
-                    ? conductor.workers.filter(
+                    ? orchestrator.workers.filter(
                         (worker) => worker.key === selectedTask.workerKey,
                       )
-                    : conductor.workers
+                    : orchestrator.workers
                   return (
                     <div className="grid gap-3 md:grid-cols-2">
                       {displayWorkers.map((worker, index) => {
@@ -3141,7 +3141,7 @@ export function Conductor() {
                             key={worker.key}
                             worker={worker}
                             index={index}
-                            conductor={conductor}
+                            orchestrator={orchestrator}
                             now={now}
                           />
                         )
@@ -3162,18 +3162,18 @@ export function Conductor() {
           ) : (
             <div className="space-y-3">
               <div className="grid gap-3 md:grid-cols-2">
-                {conductor.workers.map((worker, index) => {
+                {orchestrator.workers.map((worker, index) => {
                   return (
                     <WorkerCard
                       key={worker.key}
                       worker={worker}
                       index={index}
-                      conductor={conductor}
+                      orchestrator={orchestrator}
                       now={now}
                     />
                   )
                 })}
-                {conductor.workers.length === 0 && (
+                {orchestrator.workers.length === 0 && (
                   <div className="rounded-2xl border border-dashed border-[var(--theme-border)] bg-[var(--theme-card)] px-4 py-8 text-center text-sm text-[var(--theme-muted)] md:col-span-2">
                     <div className="flex items-center justify-center gap-3">
                       <div className="size-4 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />

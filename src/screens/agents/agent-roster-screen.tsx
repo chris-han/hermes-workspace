@@ -8,14 +8,15 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react'
 import { seedAgentPresets } from './agent-presets'
 import { OrchestratorCard } from './components/orchestrator-card'
-import { OperationsAgentCard } from './components/operations-agent-card'
-import { OperationsAgentDetail } from './components/operations-agent-detail'
-import { OperationsNewAgentModal } from './components/operations-new-agent-modal'
-import { OperationsSettingsModal } from './components/operations-settings-modal'
+import { AgentRosterCard } from './components/agent-roster-card'
+import { AgentRosterDetail } from './components/agent-roster-detail'
+import { AgentRosterNewAgentModal } from './components/agent-roster-new-agent-modal'
+import { AgentRosterSettingsModal } from './components/agent-roster-settings-modal'
 import { FullOutputsView } from './components/full-outputs-view'
-import { useOperations } from './hooks/use-operations'
+import { useAgentRoster } from './hooks/use-agent-roster'
 import type { CSSProperties } from 'react'
 import { Button } from '@/components/ui/button'
+import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/screens/dashboard/lib/formatters'
 
@@ -58,7 +59,7 @@ export const THEME_STYLE: CSSProperties = {
     'color-mix(in srgb, var(--theme-success) 32%, white)',
 }
 
-export function OperationsScreen() {
+export function AgentRosterScreen() {
   useEffect(() => {
     seedAgentPresets()
   }, [])
@@ -81,7 +82,7 @@ export function OperationsScreen() {
     isSavingAgent,
     deleteAgent,
     isDeletingAgent,
-  } = useOperations()
+  } = useAgentRoster()
 
   const isLoading =
     configQuery.isPending || sessionsQuery.isPending || cronJobsQuery.isPending
@@ -112,7 +113,7 @@ export function OperationsScreen() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
                   <h1 className="text-3xl font-semibold leading-none text-[var(--theme-text)]">
-                    Operations
+                    {t('nav.agentRoster')}
                   </h1>
                   <span className="rounded-md border border-[var(--theme-border)] bg-[var(--theme-card2)] px-2 py-1 text-[11px] font-medium text-[var(--theme-muted)]">
                     {agents.length} agents
@@ -181,7 +182,7 @@ export function OperationsScreen() {
 
         {isLoading ? (
           <section className="rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] px-6 py-12 text-center text-sm text-[var(--theme-muted)]">
-            Loading Operations roster…
+            Loading Agent Roster…
           </section>
         ) : error ? (
           <section className="rounded-card border border-[var(--theme-danger-border)] bg-[var(--theme-danger-soft)] px-6 py-12 text-center text-sm text-[var(--theme-danger)]">
@@ -207,7 +208,7 @@ export function OperationsScreen() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04, duration: 0.22 }}
                 >
-                  <OperationsAgentCard
+                  <AgentRosterCard
                     agent={agent}
                     onOpenSettings={(agentId) => setSettingsAgentId(agentId)}
                   />
@@ -278,7 +279,7 @@ export function OperationsScreen() {
         )}
       </section>
 
-      <OperationsNewAgentModal
+      <AgentRosterNewAgentModal
         open={newAgentOpen}
         defaultModel={defaultModel}
         onClose={() => setNewAgentOpen(false)}
@@ -286,14 +287,14 @@ export function OperationsScreen() {
         isSaving={isCreatingAgent}
       />
 
-      <OperationsSettingsModal
+      <AgentRosterSettingsModal
         open={settingsOpen}
         settings={settings}
         onClose={() => setSettingsOpen(false)}
         onSave={saveSettings}
       />
 
-      <OperationsAgentDetail
+      <AgentRosterDetail
         open={Boolean(settingsAgent)}
         agent={settingsAgent}
         onClose={() => setSettingsAgentId(null)}

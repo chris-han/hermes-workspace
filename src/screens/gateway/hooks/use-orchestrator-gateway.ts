@@ -20,7 +20,7 @@ type HistoryResponse = {
 
 type MissionPhase = 'idle' | 'decomposing' | 'running' | 'complete'
 
-export type ConductorSettings = {
+export type orchestratorSettings = {
   orchestratorModel: string
   workerModel: string
   projectsDir: string
@@ -28,9 +28,9 @@ export type ConductorSettings = {
   supervised: boolean
 }
 
-const ACTIVE_MISSION_STORAGE_KEY = 'conductor:active-mission'
-const CONDUCTOR_SETTINGS_STORAGE_KEY = 'conductor-settings'
-const DEFAULT_CONDUCTOR_SETTINGS: ConductorSettings = {
+const ACTIVE_MISSION_STORAGE_KEY = 'orchestrator:active-mission'
+const orchestrator_SETTINGS_STORAGE_KEY = 'orchestrator-settings'
+const DEFAULT_orchestrator_SETTINGS: orchestratorSettings = {
   orchestratorModel: '',
   workerModel: '',
   projectsDir: '',
@@ -52,7 +52,7 @@ type PersistedMission = {
   streamText: string
   planText: string
   completedAt: string | null
-  tasks: Array<ConductorTask>
+  tasks: Array<orchestratorTask>
 }
 
 type StreamEvent =
@@ -68,7 +68,7 @@ type StreamEvent =
   | { type: 'error'; message: string }
   | { type: 'started'; runId?: string; sessionKey?: string }
 
-export type ConductorWorker = {
+export type orchestratorWorker = {
   key: string
   label: string
   model: string | null
@@ -81,7 +81,7 @@ export type ConductorWorker = {
   raw: GatewaySession
 }
 
-export type ConductorTask = {
+export type orchestratorTask = {
   id: string
   title: string
   status: 'pending' | 'running' | 'complete' | 'failed'
@@ -115,7 +115,7 @@ export type MissionHistoryEntry = {
   error?: string | null
 }
 
-const HISTORY_STORAGE_KEY = 'conductor:history'
+const HISTORY_STORAGE_KEY = 'orchestrator:history'
 const MAX_HISTORY_ENTRIES = 50
 
 const AGENT_NAMES = [
@@ -137,8 +137,8 @@ function getAgentPersona(index: number) {
   }
 }
 
-function extractTasksFromPlan(planText: string): Array<ConductorTask> {
-  const tasks: Array<ConductorTask> = []
+function extractTasksFromPlan(planText: string): Array<orchestratorTask> {
+  const tasks: Array<orchestratorTask> = []
   const patterns = [
     /^\s*(\d+)\.\s+(.+)$/gm,
     /^\s*#{1,3}\s+(?:Step\s+)?(\d+)[.:]\s*(.+)$/gm,
@@ -260,7 +260,7 @@ function loadPersistedMission(): PersistedMission | null {
         : toIso(parsed.completedAt)
     const tasks = Array.isArray(parsed.tasks)
       ? parsed.tasks
-          .map((task): ConductorTask | null => {
+          .map((task): orchestratorTask | null => {
             const record = readRecord(task)
             if (!record) return null
             const id = readString(record.id)
@@ -291,7 +291,7 @@ function loadPersistedMission(): PersistedMission | null {
                   : readString(record.output),
             }
           })
-          .filter((task): task is ConductorTask => task !== null)
+          .filter((task): task is orchestratorTask => task !== null)
       : []
 
     if (
@@ -332,24 +332,24 @@ function loadPersistedMission(): PersistedMission | null {
   }
 }
 
-function loadConductorSettings(): ConductorSettings {
+function loadorchestratorSettings(): orchestratorSettings {
   try {
-    const raw = globalThis.localStorage?.getItem(CONDUCTOR_SETTINGS_STORAGE_KEY)
-    if (!raw) return DEFAULT_CONDUCTOR_SETTINGS
+    const raw = globalThis.localStorage?.getItem(orchestrator_SETTINGS_STORAGE_KEY)
+    if (!raw) return DEFAULT_orchestrator_SETTINGS
     const parsed = JSON.parse(raw) as Record<string, unknown>
     return {
       orchestratorModel:
         typeof parsed.orchestratorModel === 'string'
           ? parsed.orchestratorModel
-          : DEFAULT_CONDUCTOR_SETTINGS.orchestratorModel,
+          : DEFAULT_orchestrator_SETTINGS.orchestratorModel,
       workerModel:
         typeof parsed.workerModel === 'string'
           ? parsed.workerModel
-          : DEFAULT_CONDUCTOR_SETTINGS.workerModel,
+          : DEFAULT_orchestrator_SETTINGS.workerModel,
       projectsDir:
         typeof parsed.projectsDir === 'string'
           ? parsed.projectsDir
-          : DEFAULT_CONDUCTOR_SETTINGS.projectsDir,
+          : DEFAULT_orchestrator_SETTINGS.projectsDir,
       maxParallel: Math.min(
         5,
         Math.max(
@@ -357,23 +357,23 @@ function loadConductorSettings(): ConductorSettings {
           typeof parsed.maxParallel === 'number' &&
             Number.isFinite(parsed.maxParallel)
             ? Math.round(parsed.maxParallel)
-            : DEFAULT_CONDUCTOR_SETTINGS.maxParallel,
+            : DEFAULT_orchestrator_SETTINGS.maxParallel,
         ),
       ),
       supervised:
         typeof parsed.supervised === 'boolean'
           ? parsed.supervised
-          : DEFAULT_CONDUCTOR_SETTINGS.supervised,
+          : DEFAULT_orchestrator_SETTINGS.supervised,
     }
   } catch {
-    return DEFAULT_CONDUCTOR_SETTINGS
+    return DEFAULT_orchestrator_SETTINGS
   }
 }
 
-function persistConductorSettings(settings: ConductorSettings): void {
+function persistorchestratorSettings(settings: orchestratorSettings): void {
   try {
     globalThis.localStorage?.setItem(
-      CONDUCTOR_SETTINGS_STORAGE_KEY,
+      orchestrator_SETTINGS_STORAGE_KEY,
       JSON.stringify(settings),
     )
   } catch {
@@ -495,7 +495,7 @@ function readContextTokens(session: GatewaySession): number {
 function deriveWorkerStatus(
   session: GatewaySession,
   updatedAt: string | null,
-): ConductorWorker['status'] {
+): orchestratorWorker['status'] {
   const status = readString(session.status)?.toLowerCase()
   if (
     status &&
@@ -522,7 +522,7 @@ function deriveWorkerStatus(
 }
 
 function workersLookComplete(
-  workers: Array<ConductorWorker>,
+  workers: Array<orchestratorWorker>,
   staleAfterMs: number,
 ): boolean {
   if (workers.length === 0) return false
@@ -551,7 +551,7 @@ function formatTokenUsage(totalTokens: number, contextTokens: number): string {
   return `${totalTokens.toLocaleString()} tok`
 }
 
-function toWorker(session: GatewaySession): ConductorWorker | null {
+function toWorker(session: GatewaySession): orchestratorWorker | null {
   const key = readString(session.key)
   if (!key) return null
   const label = readString(session.label) ?? 'worker'
@@ -640,9 +640,9 @@ function extractProjectPath(text: string): string | null {
 }
 
 function buildMissionOutputPath(
-  workers: Array<ConductorWorker>,
+  workers: Array<orchestratorWorker>,
   workerOutputs: Record<string, string>,
-  tasks: Array<ConductorTask>,
+  tasks: Array<orchestratorTask>,
   streamText: string,
 ): string | null {
   const workerOutputTexts = [
@@ -671,7 +671,7 @@ function buildMissionOutputPath(
   return null
 }
 
-function summarizeWorkers(workers: Array<ConductorWorker>): Array<string> {
+function summarizeWorkers(workers: Array<orchestratorWorker>): Array<string> {
   return workers.map((worker) => {
     const output = getLastAssistantMessage(
       worker.raw.messages as Array<HistoryMessage> | undefined,
@@ -739,7 +739,7 @@ function buildCompleteSummary(params: {
 }
 
 function buildMissionOutputText(
-  workers: Array<ConductorWorker>,
+  workers: Array<orchestratorWorker>,
   workerOutputs: Record<string, string>,
   streamText: string,
 ): string {
@@ -777,7 +777,7 @@ async function fetchWorkerOutput(
   return getLastAssistantMessage(payload.messages)
 }
 
-export function useConductorGateway() {
+export function useorchestratorGateway() {
   const [initialMission] = useState<PersistedMission | null>(() =>
     loadPersistedMission(),
   )
@@ -822,7 +822,7 @@ export function useConductorGateway() {
   const [workerOutputs, setWorkerOutputs] = useState<Record<string, string>>(
     () => initialMission?.workerOutputs ?? {},
   )
-  const [tasks, setTasks] = useState<Array<ConductorTask>>(
+  const [tasks, setTasks] = useState<Array<orchestratorTask>>(
     () => initialMission?.tasks ?? [],
   )
   const [missionHistory, setMissionHistory] = useState<
@@ -830,8 +830,8 @@ export function useConductorGateway() {
   >(() => loadMissionHistory())
   const [selectedHistoryEntry, setSelectedHistoryEntry] =
     useState<MissionHistoryEntry | null>(null)
-  const [conductorSettings, setConductorSettings] = useState<ConductorSettings>(
-    () => loadConductorSettings(),
+  const [orchestratorSettings, setorchestratorSettings] = useState<orchestratorSettings>(
+    () => loadorchestratorSettings(),
   )
   const doneRef = useRef(initialMission?.phase === 'complete')
   const seenToolCallRef = useRef(false)
@@ -840,7 +840,7 @@ export function useConductorGateway() {
   const lastWorkerSnapshotRef = useRef('')
 
   const sessionsQuery = useQuery({
-    queryKey: ['conductor', 'gateway', 'sessions'],
+    queryKey: ['orchestrator', 'gateway', 'sessions'],
     queryFn: async () => {
       const payload = await fetchSessions()
       const sessions = Array.isArray(payload.sessions) ? payload.sessions : []
@@ -858,7 +858,7 @@ export function useConductorGateway() {
           }
 
           // Match by worker label pattern
-          if (label.startsWith('worker-') || label.startsWith('conductor-')) {
+          if (label.startsWith('worker-') || label.startsWith('orchestrator-')) {
             if (
               missionWorkerLabels.size > 0 &&
               missionWorkerLabels.has(label)
@@ -895,7 +895,7 @@ export function useConductorGateway() {
           return false
         })
         .map(toWorker)
-        .filter((session): session is ConductorWorker => session !== null)
+        .filter((session): session is orchestratorWorker => session !== null)
         .sort((a, b) => {
           const statusRank = { running: 0, idle: 1, complete: 2, stale: 3 }
           const rankDiff = statusRank[a.status] - statusRank[b.status]
@@ -916,7 +916,7 @@ export function useConductorGateway() {
   })
 
   const recentSessionsQuery = useQuery({
-    queryKey: ['conductor', 'recent-sessions'],
+    queryKey: ['orchestrator', 'recent-sessions'],
     queryFn: async () => {
       const payload = await fetchSessions()
       const sessions = Array.isArray(payload.sessions) ? payload.sessions : []
@@ -1150,7 +1150,7 @@ export function useConductorGateway() {
         const worker = workers[index]
         if (!worker) return task
         const workerOutput = workerOutputs[worker.key] ?? null
-        const newStatus: ConductorTask['status'] =
+        const newStatus: orchestratorTask['status'] =
           worker.status === 'complete'
             ? 'complete'
             : worker.status === 'stale'
@@ -1266,8 +1266,8 @@ export function useConductorGateway() {
   ])
 
   useEffect(() => {
-    persistConductorSettings(conductorSettings)
-  }, [conductorSettings])
+    persistorchestratorSettings(orchestratorSettings)
+  }, [orchestratorSettings])
 
   useEffect(() => {
     if (phase === 'idle') {
@@ -1349,7 +1349,7 @@ export function useConductorGateway() {
       settings,
     }: {
       nextGoal: string
-      settings: ConductorSettings
+      settings: orchestratorSettings
     }) => {
       const trimmed = nextGoal.trim()
       if (!trimmed) throw new Error('Mission goal required')
@@ -1379,7 +1379,7 @@ export function useConductorGateway() {
       setPhase('decomposing')
 
       // Spawn a dedicated orchestrator session via the server
-      const response = await fetch('/api/conductor-spawn', {
+      const response = await fetch('/api/orchestrator-spawn', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ goal: trimmed, ...settings }),
@@ -1520,7 +1520,7 @@ export function useConductorGateway() {
     ]
 
     try {
-      await fetch('/api/conductor-stop', {
+      await fetch('/api/orchestrator-stop', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ sessionKeys }),
@@ -1544,7 +1544,7 @@ export function useConductorGateway() {
     await new Promise((resolve) => setTimeout(resolve, 100))
     await sendMission.mutateAsync({
       nextGoal: currentGoal,
-      settings: conductorSettings,
+      settings: orchestratorSettings,
     })
   }
 
@@ -1574,10 +1574,10 @@ export function useConductorGateway() {
     recentSessions: recentSessionsQuery.data ?? [],
     missionWorkerKeys,
     workerOutputs,
-    conductorSettings,
-    setConductorSettings,
+    orchestratorSettings,
+    setorchestratorSettings,
     sendMission: (nextGoal: string) =>
-      sendMission.mutateAsync({ nextGoal, settings: conductorSettings }),
+      sendMission.mutateAsync({ nextGoal, settings: orchestratorSettings }),
     pauseAgent: (sessionKey: string, pause: boolean) =>
       pauseAgent.mutateAsync({ sessionKey, pause }),
     isSending: sendMission.isPending,

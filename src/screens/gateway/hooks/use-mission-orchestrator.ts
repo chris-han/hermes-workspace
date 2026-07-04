@@ -411,7 +411,7 @@ export function useMissionOrchestrator() {
     ): Promise<string> => {
       const suffix = Math.random().toString(36).slice(2, 8)
       const baseName = member.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
-      const friendlyId = `conductor-${baseName}-${suffix}`
+      const friendlyId = `orchestrator-${baseName}-${suffix}`
       const reuseExisting = options?.reuseExisting !== false
       const labelSuffix = options?.labelSuffix
         ? ` (${options.labelSuffix})`

@@ -6,7 +6,7 @@ import {
   Settings01Icon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import type { OperationsSettings } from '../hooks/use-operations'
+import type { AgentRosterSettings } from '../hooks/use-agent-roster'
 import type { GatewayModelCatalogEntry } from '@/lib/gateway-api'
 import { Button } from '@/components/ui/button'
 import { fetchModels } from '@/lib/gateway-api'
@@ -137,16 +137,16 @@ function ModelSelector({
   )
 }
 
-export function OperationsSettingsModal({
+export function AgentRosterSettingsModal({
   open,
   settings,
   onClose,
   onSave,
 }: {
   open: boolean
-  settings: OperationsSettings
+  settings: AgentRosterSettings
   onClose: () => void
-  onSave: (settings: OperationsSettings) => void
+  onSave: (settings: AgentRosterSettings) => void
 }) {
   const [draft, setDraft] = useState(settings)
 
@@ -155,7 +155,7 @@ export function OperationsSettingsModal({
   }, [settings, open])
 
   const modelsQuery = useQuery({
-    queryKey: ['operations', 'models'],
+    queryKey: ['agentRoster', 'models'],
     queryFn: fetchModels,
     enabled: open,
   })
@@ -190,10 +190,10 @@ export function OperationsSettingsModal({
             </div>
             <div>
               <h2 className="text-xl font-semibold text-[var(--theme-text)]">
-                Operations Settings
+                Agent Roster Settings
               </h2>
               <p className="mt-1 text-sm text-[var(--theme-muted-2)]">
-                Defaults stored locally for the Operations screen.
+                Defaults stored locally for the Agent Roster screen.
               </p>
             </div>
           </div>

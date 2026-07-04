@@ -1,19 +1,19 @@
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-export type CrewPlatformInfo = {
+export type MissionControlPlatformInfo = {
   state: 'connected' | 'disconnected' | string
   updatedAt: string
 }
 
-export type CrewMember = {
+export type MissionControlMember = {
   id: string
   displayName: string
   role: string
   profileFound: boolean
   gatewayState: 'running' | 'stopped' | 'unknown' | string
   processAlive: boolean
-  platforms: Record<string, CrewPlatformInfo>
+  platforms: Record<string, MissionControlPlatformInfo>
   model: string
   provider: string
   lastSessionTitle: string | null
@@ -27,35 +27,35 @@ export type CrewMember = {
   assignedTaskCount: number
 }
 
-export type CrewStatus = {
-  crew: Array<CrewMember>
+export type MissionControlStatus = {
+  crew: Array<MissionControlMember>
   fetchedAt: number
 }
 
-export type CrewOnlineStatus = 'online' | 'offline' | 'unknown'
+export type MissionControlOnlineStatus = 'online' | 'offline' | 'unknown'
 
-export function getOnlineStatus(member: CrewMember): CrewOnlineStatus {
+export function getOnlineStatus(member: MissionControlMember): MissionControlOnlineStatus {
   if (!member.profileFound) return 'unknown'
   if (member.gatewayState === 'unknown') return 'unknown'
   if (member.gatewayState === 'running' && member.processAlive) return 'online'
   return 'offline'
 }
 
-const QUERY_KEY = ['crew', 'status'] as const
+const QUERY_KEY = ['mission-control', 'status'] as const
 const POLL_INTERVAL_MS = 30_000
 
-async function fetchCrewStatus(): Promise<CrewStatus> {
-  const res = await fetch('/api/crew-status')
-  if (!res.ok) throw new Error(`Failed to fetch crew status: ${res.status}`)
-  return res.json() as Promise<CrewStatus>
+async function fetchMissionControlStatus(): Promise<MissionControlStatus> {
+  const res = await fetch('/api/mission-control-status')
+  if (!res.ok) throw new Error(`Failed to fetch mission-control status: ${res.status}`)
+  return res.json() as Promise<MissionControlStatus>
 }
 
-export function useCrewStatus() {
+export function useMissionControlStatus() {
   const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: QUERY_KEY,
-    queryFn: fetchCrewStatus,
+    queryFn: fetchMissionControlStatus,
     refetchInterval: POLL_INTERVAL_MS,
     refetchIntervalInBackground: false,
     staleTime: 20_000,

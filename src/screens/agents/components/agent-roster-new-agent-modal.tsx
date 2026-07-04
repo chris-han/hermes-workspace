@@ -149,7 +149,7 @@ function ModelSelector({
   )
 }
 
-export function OperationsNewAgentModal({
+export function AgentRosterNewAgentModal({
   open,
   defaultModel,
   onClose,
@@ -196,7 +196,7 @@ export function OperationsNewAgentModal({
   }
 
   const modelsQuery = useQuery({
-    queryKey: ['operations', 'models'],
+    queryKey: ['agentRoster', 'models'],
     queryFn: fetchModels,
     enabled: open,
   })
@@ -230,7 +230,7 @@ export function OperationsNewAgentModal({
                 New Agent
               </h2>
               <p className="mt-1 text-sm text-[var(--theme-muted-2)]">
-                Add a persistent Operations agent to the roster.
+                Add a persistent agent to the roster.
               </p>
             </div>
           </div>

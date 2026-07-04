@@ -16,7 +16,7 @@ function displayJobName(job: CronJob, agentId: string): string {
   return job.name
 }
 
-export function OperationsAgentJobs({
+export function AgentRosterJobs({
   agentId,
   jobs,
   slugifyJobLabel,
@@ -36,7 +36,7 @@ export function OperationsAgentJobs({
       await toggleCronJob(payload)
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['operations', 'cron'] })
+      await queryClient.invalidateQueries({ queryKey: ['agentRoster', 'cron'] })
     },
     onError: (error) => {
       toast(
@@ -66,7 +66,7 @@ export function OperationsAgentJobs({
       setSchedule('0 9 * * *')
       setDescription('')
       setAdding(false)
-      await queryClient.invalidateQueries({ queryKey: ['operations', 'cron'] })
+      await queryClient.invalidateQueries({ queryKey: ['agentRoster', 'cron'] })
       toast('Cron job created', { type: 'success' })
     },
     onError: (error) => {

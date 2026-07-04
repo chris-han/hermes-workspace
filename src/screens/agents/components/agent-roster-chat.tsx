@@ -7,7 +7,7 @@ import { Markdown } from '@/components/prompt-kit/markdown'
 import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/screens/dashboard/lib/formatters'
 
-export function OperationsAgentChat({
+export function AgentRosterChat({
   agentId,
   agentName,
 }: {

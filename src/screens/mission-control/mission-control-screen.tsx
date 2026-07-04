@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import type { CSSProperties } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -11,9 +10,15 @@ import {
   Wifi01Icon,
   WifiOffIcon,
 } from '@hugeicons/core-free-icons'
-import type { CrewMember, CrewOnlineStatus } from '@/hooks/use-crew-status'
+import type {
+  MissionControlMember,
+  MissionControlOnlineStatus,
+} from '@/hooks/use-mission-control-status'
 import { cn } from '@/lib/utils'
-import { getOnlineStatus, useCrewStatus } from '@/hooks/use-crew-status'
+import {
+  getOnlineStatus,
+  useMissionControlStatus,
+} from '@/hooks/use-mission-control-status'
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -31,7 +36,7 @@ function formatTokens(n: number): string {
 
 function formatCost(n: number | null): string {
   if (n === null) return '—'
-  return `$${n.toFixed(2)}`
+  return `${n.toFixed(2)}`
 }
 
 function formatRelativeTime(unixSeconds: number | null): string {
@@ -56,23 +61,23 @@ function formatUpdatedAgo(fetchedAt: number | null): string {
 
 // ── Status dot ──────────────────────────────────────────────────────
 
-function StatusDot({ status }: { status: CrewOnlineStatus }) {
+function StatusDot({ status }: { status: MissionControlOnlineStatus }) {
   return (
     <div className="flex items-center gap-1.5">
       <span
         className={cn(
           'inline-block size-2 rounded-full',
-          status === 'online' && 'bg-green-500',
-          status === 'offline' && 'bg-red-500',
-          status === 'unknown' && 'bg-gray-500',
+          status === 'online' && 'bg-success',
+          status === 'offline' && 'bg-danger',
+          status === 'unknown' && 'bg-muted-foreground',
         )}
       />
       <span
         className={cn(
           'text-[10px] font-semibold uppercase tracking-widest',
-          status === 'online' && 'text-green-400',
-          status === 'offline' && 'text-red-400',
-          status === 'unknown' && 'text-gray-500',
+          status === 'online' && 'text-success',
+          status === 'offline' && 'text-danger',
+          status === 'unknown' && 'text-muted-foreground',
         )}
       >
         {status}
@@ -85,25 +90,32 @@ function StatusDot({ status }: { status: CrewOnlineStatus }) {
 
 function SkeletonCard() {
   return (
-    <div className="rounded-lg border border-[var(--theme-border)] bg-[var(--theme-card)] overflow-hidden animate-pulse">
-      <div className="border-l-[3px] border-l-[#B87333] p-4 h-full">
-        <div className="flex justify-between mb-3">
-          <div className="h-2.5 bg-[var(--theme-hover)] rounded w-16" />
-          <div className="h-4 bg-[var(--theme-hover)] rounded w-20" />
+    <div className="rounded-card border border-border bg-card overflow-hidden animate-pulse">
+      <div className="p-4 h-full space-y-3">
+        <div className="flex justify-between items-center mb-1">
+          <div className="h-4 bg-muted rounded w-20" />
+          <div className="h-4 bg-muted rounded w-24" />
         </div>
-        <div className="h-7 bg-[var(--theme-hover)] rounded w-28 mb-1" />
-        <div className="h-3 bg-[var(--theme-hover)] rounded w-36 mb-4" />
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div>
+          <div className="h-7 bg-muted rounded w-32 mb-1.5" />
+          <div className="h-4 bg-muted rounded w-40" />
+        </div>
+        <div className="h-5 bg-muted rounded w-48" />
+        <div className="grid grid-cols-3 gap-2">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="rounded border border-[var(--theme-border)] bg-[var(--theme-hover)] h-14"
+              className="rounded-md border border-border bg-muted/50 h-16"
             />
           ))}
         </div>
         <div className="flex justify-between">
-          <div className="h-3 bg-[var(--theme-hover)] rounded w-20" />
-          <div className="h-3 bg-[var(--theme-hover)] rounded w-20" />
+          <div className="h-4 bg-muted rounded w-24" />
+          <div className="h-4 bg-muted rounded w-24" />
+        </div>
+        <div className="flex justify-between">
+          <div className="h-4 bg-muted rounded w-20" />
+          <div className="h-4 bg-muted rounded w-20" />
         </div>
       </div>
     </div>
@@ -112,17 +124,10 @@ function SkeletonCard() {
 
 // ── Agent card ──────────────────────────────────────────────────────
 
-function AgentCard({ member }: { member: CrewMember }) {
+function AgentCard({ member }: { member: MissionControlMember }) {
   const navigate = useNavigate()
   const status = getOnlineStatus(member)
   const telegramPlatform = member.platforms.telegram
-
-  const borderColor =
-    status === 'online'
-      ? '#B87333'
-      : status === 'offline'
-        ? '#ef4444'
-        : '#6b7280'
 
   const handleViewTasks = () => {
     void navigate({ to: '/tasks', search: { assignee: member.id } })
@@ -135,31 +140,25 @@ function AgentCard({ member }: { member: CrewMember }) {
   return (
     <div
       className={cn(
-        'rounded-lg border border-[var(--theme-border)] bg-[var(--theme-card)] overflow-hidden',
-        'transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.35)]',
-        status === 'offline' && 'opacity-70',
+        'rounded-card border border-border bg-card overflow-hidden',
+        'transition-all duration-200 hover:shadow-md hover:border-border',
+        status === 'offline' && 'opacity-60',
       )}
     >
-      <div
-        className="theme-left-status-border p-4 h-full flex flex-col gap-3"
-        style={{ '--status-border-color': borderColor } as CSSProperties}
-      >
+      <div className="p-4 h-full flex flex-col gap-3">
         {/* Top row: status dot + role */}
         <div className="flex items-start justify-between gap-2">
           <StatusDot status={status} />
-          <span className="text-[9px] font-medium text-[var(--theme-muted)] uppercase tracking-wider text-right bg-[var(--theme-hover)] border border-[var(--theme-border)] px-1.5 py-0.5 rounded-sm">
+          <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider text-right bg-muted border border-border px-1.5 py-0.5 rounded-md">
             {member.role}
           </span>
         </div>
         {/* Agent name + model */}
         <div>
-          <h3
-            className="text-xl font-bold tracking-tight"
-            style={{ color: '#f59e0b' }}
-          >
+          <h3 className="text-xl font-bold tracking-tight text-primary">
             {member.displayName || member.id}
           </h3>
-          <p className="text-xs text-[var(--theme-muted)] mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {member.model} · {member.provider}
           </p>
           {telegramPlatform && (
@@ -173,11 +172,11 @@ function AgentCard({ member }: { member: CrewMember }) {
                 size={10}
                 className={cn(
                   telegramPlatform.state === 'connected'
-                    ? 'text-green-400'
-                    : 'text-gray-500',
+                    ? 'text-success'
+                    : 'text-muted-foreground',
                 )}
               />
-              <span className="text-[10px] text-[var(--theme-muted)]">
+              <span className="text-[10px] text-muted-foreground">
                 Telegram: {telegramPlatform.state}
               </span>
             </div>
@@ -186,14 +185,14 @@ function AgentCard({ member }: { member: CrewMember }) {
 
         {/* Last active */}
         <div>
-          <p className="text-[11px] text-[var(--theme-muted)]">
+          <p className="text-[11px] text-muted-foreground">
             Last active:{' '}
-            <span className="text-[var(--theme-text)]">
+            <span className="text-foreground">
               {formatRelativeTime(member.lastSessionAt)}
             </span>
           </p>
           {member.lastSessionTitle && (
-            <p className="text-[11px] text-[var(--theme-muted)] italic truncate mt-0.5">
+            <p className="text-[11px] text-muted-foreground italic truncate mt-0.5">
               "{member.lastSessionTitle}"
             </p>
           )}
@@ -208,12 +207,10 @@ function AgentCard({ member }: { member: CrewMember }) {
           ].map(({ label, value }) => (
             <div
               key={label}
-              className="rounded border border-[var(--theme-border)] bg-[var(--theme-hover)] px-2 py-2 text-center"
+              className="rounded-md border border-border bg-muted/50 px-2 py-2 text-center"
             >
-              <div className="text-sm font-bold" style={{ color: '#f59e0b' }}>
-                {value}
-              </div>
-              <div className="text-[9px] text-[var(--theme-muted)] uppercase tracking-widest mt-0.5">
+              <div className="text-sm font-bold text-primary">{value}</div>
+              <div className="text-[9px] text-muted-foreground uppercase tracking-widest mt-0.5">
                 {label}
               </div>
             </div>
@@ -222,15 +219,15 @@ function AgentCard({ member }: { member: CrewMember }) {
 
         {/* Tokens + cost */}
         <div className="flex justify-between text-[11px]">
-          <span className="text-[var(--theme-muted)]">
+          <span className="text-muted-foreground">
             Tokens:{' '}
-            <span className="text-[var(--theme-text)]">
+            <span className="text-foreground">
               {formatTokens(member.totalTokens)}
             </span>
           </span>
-          <span className="text-[var(--theme-muted)]">
+          <span className="text-muted-foreground">
             Est. cost:{' '}
-            <span className="text-[var(--theme-text)]">
+            <span className="text-foreground">
               {formatCost(member.estimatedCostUsd)}
             </span>
           </span>
@@ -238,29 +235,27 @@ function AgentCard({ member }: { member: CrewMember }) {
 
         {/* Cron + tasks */}
         <div className="flex justify-between text-[11px]">
-          <span className="text-[var(--theme-muted)]">
+          <span className="text-muted-foreground">
             Crons:{' '}
-            <span className="text-[var(--theme-text)]">
-              {member.cronJobCount}
-            </span>
+            <span className="text-foreground">{member.cronJobCount}</span>
           </span>
-          <span className="text-[var(--theme-muted)]">
+          <span className="text-muted-foreground">
             Tasks:{' '}
-            <span className="text-[var(--theme-text)]">
+            <span className="text-foreground">
               {member.assignedTaskCount} assigned
             </span>
           </span>
         </div>
 
         {/* Divider */}
-        <div className="border-t border-[var(--theme-border)]" />
+        <div className="border-t border-border" />
 
         {/* Footer actions */}
         <div className="flex justify-between">
           <button
             type="button"
             onClick={handleViewTasks}
-            className="flex items-center gap-1 text-[11px] text-[var(--theme-muted)] hover:text-[#B87333] hover:bg-[var(--theme-hover)] px-2 py-1 rounded transition-colors -ml-2"
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted px-2.5 py-1.5 rounded-button transition-colors -ml-2.5"
           >
             <HugeiconsIcon icon={CheckListIcon} size={12} />
             Tasks
@@ -268,7 +263,7 @@ function AgentCard({ member }: { member: CrewMember }) {
           <button
             type="button"
             onClick={handleViewJobs}
-            className="flex items-center gap-1 text-[11px] text-[var(--theme-muted)] hover:text-[#B87333] hover:bg-[var(--theme-hover)] px-2 py-1 rounded transition-colors -mr-2"
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted px-2.5 py-1.5 rounded-button transition-colors -mr-2.5"
           >
             <HugeiconsIcon icon={Clock01Icon} size={12} />
             Cron Jobs
@@ -297,12 +292,13 @@ function useUpdatedAgo(fetchedAt: number | null): string {
 
 // ── Main screen ─────────────────────────────────────────────────────
 
-export function CrewScreen() {
-  const { crew, lastUpdated, isLoading, isError, refetch } = useCrewStatus()
+export function MissionControlScreen() {
+  const { crew, lastUpdated, isLoading, isError, refetch } =
+    useMissionControlStatus()
   const updatedAgo = useUpdatedAgo(lastUpdated)
 
-  const displayCrew = [...crew].sort((a, b) => {
-    const rank = (member: CrewMember) => {
+  const displayMembers = [...crew].sort((a, b) => {
+    const rank = (member: MissionControlMember) => {
       const status = getOnlineStatus(member)
       if (status === 'online') return 0
       if (status === 'offline') return 1
@@ -313,14 +309,14 @@ export function CrewScreen() {
     return (a.displayName || a.id).localeCompare(b.displayName || b.id)
   })
 
-  const onlineCount = displayCrew.filter(
+  const onlineCount = displayMembers.filter(
     (m) => getOnlineStatus(m) === 'online',
   ).length
-  const assignedTaskCount = displayCrew.reduce(
+  const assignedTaskCount = displayMembers.reduce(
     (sum, member) => sum + member.assignedTaskCount,
     0,
   )
-  const runningCronCount = displayCrew.reduce(
+  const runningCronCount = displayMembers.reduce(
     (sum, member) => sum + member.cronJobCount,
     0,
   )
@@ -333,44 +329,34 @@ export function CrewScreen() {
     <div className="flex h-full flex-col gap-6 overflow-auto p-4 md:p-6">
       {/* ── Header ── */}
       <div className="space-y-4">
-        <div
-          className="h-px"
-          style={{
-            background: 'linear-gradient(to right, #B87333, transparent)',
-          }}
-        />
+        <div className="h-px bg-gradient-to-r from-primary/50 to-transparent" />
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="max-w-3xl space-y-2">
             <div>
-              <h1
-                className="text-2xl font-bold tracking-[0.18em] uppercase"
-                style={{ color: '#f59e0b' }}
-              >
-                Crew Status
+              <h1 className="text-2xl font-bold tracking-[0.18em] uppercase text-primary">
+                Mission Control
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--theme-muted)]">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 Live agent health across profiles, recent session activity,
                 assigned tasks, and cron coverage.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em]">
-              <span className="rounded-full border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 py-1 text-[var(--theme-muted)]">
-                <span className="text-[var(--theme-text)]">
-                  {displayCrew.length}
-                </span>{' '}
-                crew
+              <span className="rounded-button border border-border bg-card px-3 py-1 text-muted-foreground">
+                <span className="text-foreground">{displayMembers.length}</span>{' '}
+                members
               </span>
-              <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-emerald-300">
+              <span className="rounded-button border border-success/30 bg-success/10 px-3 py-1 text-success">
                 {onlineCount} online
               </span>
-              <span className="rounded-full border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 py-1 text-[var(--theme-muted)]">
+              <span className="rounded-button border border-border bg-card px-3 py-1 text-muted-foreground">
                 {assignedTaskCount} assigned tasks
               </span>
-              <span className="rounded-full border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 py-1 text-[var(--theme-muted)]">
+              <span className="rounded-button border border-border bg-card px-3 py-1 text-muted-foreground">
                 {runningCronCount} cron jobs
               </span>
               {updatedAgo ? (
-                <span className="rounded-full border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 py-1 text-[var(--theme-muted)]">
+                <span className="rounded-button border border-border bg-card px-3 py-1 text-muted-foreground">
                   Updated {updatedAgo}
                 </span>
               ) : null}
@@ -381,9 +367,9 @@ export function CrewScreen() {
             onClick={handleRefresh}
             disabled={isLoading}
             className={cn(
-              'inline-flex items-center gap-2 rounded-full border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 py-2 text-xs font-medium text-[var(--theme-muted)] shadow-sm transition-all',
-              'hover:border-[#B87333]/40 hover:text-[#f59e0b] hover:shadow-[0_0_0_1px_rgba(184,115,51,0.12)]',
-              'disabled:cursor-not-allowed disabled:opacity-40',
+              'inline-flex items-center gap-2 rounded-button border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition-all',
+              'hover:bg-muted hover:scale-105 active:scale-95',
+              'disabled:cursor-not-allowed disabled:opacity-50',
             )}
           >
             <HugeiconsIcon
@@ -394,18 +380,13 @@ export function CrewScreen() {
             Refresh manifest
           </button>
         </div>
-        <div
-          className="h-px"
-          style={{
-            background: 'linear-gradient(to right, #B87333, transparent)',
-          }}
-        />
+        <div className="h-px bg-gradient-to-r from-primary/50 to-transparent" />
       </div>
 
       {/* ── Error state ── */}
       {isError && !isLoading && (
-        <div className="rounded-lg border border-red-800/40 bg-red-900/10 p-4 text-sm text-red-400">
-          Failed to load crew status.{' '}
+        <div className="rounded-card border border-destructive/30 bg-destructive/10 p-4 text-sm text-danger">
+          Failed to load Mission Control status.{' '}
           <button
             type="button"
             onClick={handleRefresh}
@@ -417,13 +398,14 @@ export function CrewScreen() {
       )}
 
       {/* ── Card grid ── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {isLoading
           ? Array.from({ length: 5 }, (_, i) => <SkeletonCard key={i} />)
-          : displayCrew.map((member) => (
+          : displayMembers.map((member) => (
               <AgentCard key={member.id} member={member} />
             ))}
       </div>
     </div>
   )
 }
+

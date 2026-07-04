@@ -10,7 +10,7 @@ import {
   formatRelativeTime,
 } from '@/screens/dashboard/lib/formatters'
 
-// Hermes-Workspace adapter: Operations is backed by Hermes profiles
+// Hermes-Workspace adapter: AgentRoster is backed by Hermes profiles
 // (each profile = one persistent agent). Profiles live at ~/.hermes/profiles/<name>/
 // with their own config.yaml, sessions, skills.
 type HermesProfileSummary = {
@@ -34,7 +34,7 @@ export type GatewayConfigAgent = {
   agentDir?: string
 }
 
-export type OperationsAgentMeta = {
+export type AgentRosterAgentMeta = {
   emoji: string
   description: string
   systemPrompt: string
@@ -42,15 +42,15 @@ export type OperationsAgentMeta = {
   createdAt: string
 }
 
-export type OperationsSettings = {
+export type AgentRosterSettings = {
   defaultModel: string
   autoApprove: boolean
   activityFeedLength: number
 }
 
-export type OperationsAgentStatus = 'active' | 'idle' | 'error'
+export type AgentRosterAgentStatus = 'active' | 'idle' | 'error'
 
-export type OperationsOutputItem = {
+export type AgentRosterOutputItem = {
   id: string
   agentId: string
   summary: string
@@ -58,10 +58,10 @@ export type OperationsOutputItem = {
   source: 'session' | 'cron'
 }
 
-export type OperationsAgent = GatewayConfigAgent & {
-  meta: OperationsAgentMeta
+export type AgentRosterAgent = GatewayConfigAgent & {
+  meta: AgentRosterAgentMeta
   shortModel: string
-  status: OperationsAgentStatus
+  status: AgentRosterAgentStatus
   sessionKey: string
   sessions: Array<GatewaySession>
   latestSession: GatewaySession | null
@@ -71,7 +71,7 @@ export type OperationsAgent = GatewayConfigAgent & {
   activityLabel: string
   progressValue: number
   progressStatus: 'running' | 'queued' | 'failed' | 'complete' | 'thinking'
-  recentOutputs: Array<OperationsOutputItem>
+  recentOutputs: Array<AgentRosterOutputItem>
 }
 
 type ConfigPayload = {
@@ -99,8 +99,8 @@ type ConfigPayload = {
   [key: string]: unknown
 }
 
-const META_STORAGE_PREFIX = 'operations:agents:'
-const SETTINGS_STORAGE_KEY = 'operations-settings'
+const META_STORAGE_PREFIX = 'agent-roster:agents:'
+const SETTINGS_STORAGE_KEY = 'agent-roster-settings'
 
 const COLOR_PALETTE = [
   { body: '#3b82f6', accent: '#93c5fd' },
@@ -235,8 +235,8 @@ async function fetchHermesProfiles(): Promise<Array<HermesProfileSummary>> {
 }
 
 // Adapt Hermes profiles into the ConfigPayload shape that the existing
-// Operations UI expects. Each profile becomes one agent.
-async function fetchOperationsConfig(): Promise<ConfigPayload> {
+// AgentRoster UI expects. Each profile becomes one agent.
+async function fetchAgentRosterConfig(): Promise<ConfigPayload> {
   const profiles = await fetchHermesProfiles()
   const list = profiles.map((profile) => ({
     id: profile.name,
@@ -245,7 +245,7 @@ async function fetchOperationsConfig(): Promise<ConfigPayload> {
     workspace: profile.path,
     agentDir: profile.path,
   }))
-  // Default-profile model becomes the operations defaultModel suggestion
+  // Default-profile model becomes the agentRoster defaultModel suggestion
   const defaultModel = profiles.find((p) => p.name === 'default')?.model || ''
   return {
     ok: true,
@@ -315,7 +315,7 @@ async function deleteHermesProfile(name: string) {
   }
 }
 
-function loadAgentMeta(agentId: string): OperationsAgentMeta {
+function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
   if (typeof window === 'undefined') {
     return {
       emoji: createFallbackEmoji(agentId),
@@ -338,7 +338,7 @@ function loadAgentMeta(agentId: string): OperationsAgentMeta {
       }
     }
 
-    const parsed = JSON.parse(raw) as Partial<OperationsAgentMeta>
+    const parsed = JSON.parse(raw) as Partial<AgentRosterAgentMeta>
     return {
       emoji: readString(parsed.emoji) || createFallbackEmoji(agentId),
       description: readString(parsed.description),
@@ -357,7 +357,7 @@ function loadAgentMeta(agentId: string): OperationsAgentMeta {
   }
 }
 
-function persistAgentMeta(agentId: string, meta: OperationsAgentMeta) {
+function persistAgentMeta(agentId: string, meta: AgentRosterAgentMeta) {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(
     `${META_STORAGE_PREFIX}${agentId}`,
@@ -370,7 +370,7 @@ function removeAgentMeta(agentId: string) {
   window.localStorage.removeItem(`${META_STORAGE_PREFIX}${agentId}`)
 }
 
-function loadSettings(): OperationsSettings {
+function loadSettings(): AgentRosterSettings {
   if (typeof window === 'undefined') {
     return { defaultModel: '', autoApprove: false, activityFeedLength: 5 }
   }
@@ -381,7 +381,7 @@ function loadSettings(): OperationsSettings {
       return { defaultModel: '', autoApprove: false, activityFeedLength: 5 }
     }
 
-    const parsed = JSON.parse(raw) as Partial<OperationsSettings>
+    const parsed = JSON.parse(raw) as Partial<AgentRosterSettings>
     const activityFeedLength = Number(parsed.activityFeedLength)
 
     return {
@@ -397,7 +397,7 @@ function loadSettings(): OperationsSettings {
   }
 }
 
-function persistSettings(settings: OperationsSettings) {
+function persistSettings(settings: AgentRosterSettings) {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
 }
@@ -425,7 +425,7 @@ function getAgentSessions(
 
 function getAgentStatus(
   latestSession: GatewaySession | null,
-): OperationsAgentStatus {
+): AgentRosterAgentStatus {
   if (!latestSession) return 'idle'
 
   const status = readString(latestSession.status).toLowerCase()
@@ -438,9 +438,9 @@ function getAgentStatus(
 }
 
 function getProgressStatus(
-  status: OperationsAgentStatus,
+  status: AgentRosterAgentStatus,
   latestSession: GatewaySession | null,
-): OperationsAgent['progressStatus'] {
+): AgentRosterAgent['progressStatus'] {
   if (status === 'error') return 'failed'
   if (status === 'active') return 'running'
 
@@ -452,7 +452,7 @@ function getProgressStatus(
 }
 
 function getProgressValue(
-  status: OperationsAgentStatus,
+  status: AgentRosterAgentStatus,
   latestSession: GatewaySession | null,
 ): number {
   const rawProgress = latestSession?.progress
@@ -486,7 +486,7 @@ function slugifyJobLabel(value: string): string {
 function buildCronOutput(
   job: CronJob,
   agentId: string,
-): OperationsOutputItem | null {
+): AgentRosterOutputItem | null {
   const startedAt = readTimestamp(job.lastRun?.startedAt)
   const summary = truncate(
     readString(job.lastRun?.deliverySummary) ||
@@ -508,7 +508,7 @@ function buildCronOutput(
 function buildSessionOutput(
   session: GatewaySession,
   agentId: string,
-): OperationsOutputItem | null {
+): AgentRosterOutputItem | null {
   const timestamp =
     readTimestamp(session.updatedAt) ?? readTimestamp(session.createdAt)
   const summary = truncate(extractSessionText(session))
@@ -523,26 +523,26 @@ function buildSessionOutput(
   }
 }
 
-export function getOperationsSessionKey(agentId: string): string {
+export function getAgentRosterSessionKey(agentId: string): string {
   return `agent:main:ops-${agentId}`
 }
 
-export function useOperations() {
+export function useAgentRoster() {
   const queryClient = useQueryClient()
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
-  const [settings, setSettings] = useState<OperationsSettings>(() =>
+  const [settings, setSettings] = useState<AgentRosterSettings>(() =>
     loadSettings(),
   )
   const [metaVersion, setMetaVersion] = useState(0)
 
   const configQuery = useQuery({
-    queryKey: ['operations', 'config'],
-    queryFn: fetchOperationsConfig,
+    queryKey: ['agentRoster', 'config'],
+    queryFn: fetchAgentRosterConfig,
     refetchInterval: 30_000,
   })
 
   const sessionsQuery = useQuery({
-    queryKey: ['operations', 'sessions'],
+    queryKey: ['agentRoster', 'sessions'],
     queryFn: async () => {
       const response = await fetchSessions()
       return Array.isArray(response.sessions) ? response.sessions : []
@@ -551,7 +551,7 @@ export function useOperations() {
   })
 
   const cronJobsQuery = useQuery({
-    queryKey: ['operations', 'cron'],
+    queryKey: ['agentRoster', 'cron'],
     queryFn: fetchCronJobs,
     refetchInterval: 30_000,
   })
@@ -559,7 +559,7 @@ export function useOperations() {
   const agents = useMemo(() => {
     const parsed = configQuery.data?.parsed
     const allAgents = normalizeAgentList(parsed?.agents?.list)
-    // Filter out system/internal agents — only show operations agents
+    // Filter out system/internal agents — only show agentRoster agents
     const HIDDEN_AGENTS = new Set([
       'main',
       'pc1-coder',
@@ -595,7 +595,7 @@ export function useOperations() {
         ),
         ...jobs.map((job) => buildCronOutput(job, agent.id)),
       ]
-        .filter((item): item is OperationsOutputItem => Boolean(item))
+        .filter((item): item is AgentRosterOutputItem => Boolean(item))
         .sort((left, right) => right.timestamp - left.timestamp)
         .slice(0, 5)
 
@@ -604,7 +604,7 @@ export function useOperations() {
         meta,
         shortModel: formatModelName(agent.model || 'Custom'),
         status,
-        sessionKey: getOperationsSessionKey(agent.id),
+        sessionKey: getAgentRosterSessionKey(agent.id),
         sessions: agentSessions,
         latestSession,
         jobs,
@@ -618,7 +618,7 @@ export function useOperations() {
         progressValue: getProgressValue(status, latestSession),
         progressStatus: getProgressStatus(status, latestSession),
         recentOutputs,
-      } satisfies OperationsAgent
+      } satisfies AgentRosterAgent
     })
   }, [configQuery.data, sessionsQuery.data, cronJobsQuery.data, metaVersion])
 
@@ -676,7 +676,7 @@ export function useOperations() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['operations', 'config'],
+        queryKey: ['agentRoster', 'config'],
       })
       toast('Agent created', { type: 'success' })
     },
@@ -714,7 +714,7 @@ export function useOperations() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['operations', 'config'],
+        queryKey: ['agentRoster', 'config'],
       })
       toast('Agent settings saved', { type: 'success' })
     },
@@ -737,10 +737,10 @@ export function useOperations() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['operations', 'config'],
+        queryKey: ['agentRoster', 'config'],
       })
       await queryClient.invalidateQueries({
-        queryKey: ['operations', 'sessions'],
+        queryKey: ['agentRoster', 'sessions'],
       })
       toast('Agent deleted', { type: 'success' })
     },
@@ -753,17 +753,17 @@ export function useOperations() {
 
   function saveAgentMeta(
     agentId: string,
-    partial: Partial<OperationsAgentMeta>,
+    partial: Partial<AgentRosterAgentMeta>,
   ) {
     const nextMeta = { ...loadAgentMeta(agentId), ...partial }
     persistAgentMeta(agentId, nextMeta)
     setMetaVersion((value) => value + 1)
   }
 
-  function saveSettings(nextSettings: OperationsSettings) {
+  function saveSettings(nextSettings: AgentRosterSettings) {
     setSettings(nextSettings)
     persistSettings(nextSettings)
-    toast('Operations settings saved', { type: 'success' })
+    toast('Agent Roster settings saved', { type: 'success' })
   }
 
   return {
@@ -789,11 +789,12 @@ export function useOperations() {
     saveAgentMeta,
     refreshAll: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['operations', 'config'] }),
-        queryClient.invalidateQueries({ queryKey: ['operations', 'sessions'] }),
-        queryClient.invalidateQueries({ queryKey: ['operations', 'cron'] }),
+        queryClient.invalidateQueries({ queryKey: ['agentRoster', 'config'] }),
+        queryClient.invalidateQueries({ queryKey: ['agentRoster', 'sessions'] }),
+        queryClient.invalidateQueries({ queryKey: ['agentRoster', 'cron'] }),
       ])
     },
     slugifyJobLabel,
   }
 }
+

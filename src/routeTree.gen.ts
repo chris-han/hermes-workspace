@@ -15,13 +15,13 @@ import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SessionEventsRouteImport } from './routes/session-events'
 import { Route as ProfilesRouteImport } from './routes/profiles'
-import { Route as OperationsRouteImport } from './routes/operations'
+import { Route as OrchestratorRouteImport } from './routes/orchestrator'
 import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as KanbanRouteImport } from './routes/kanban'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as ConductorRouteImport } from './routes/conductor'
+import { Route as AgentRosterRouteImport } from './routes/agent-roster'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
@@ -58,6 +58,7 @@ import { Route as ApiPluginsRouteImport } from './routes/api/plugins'
 import { Route as ApiPingRouteImport } from './routes/api/ping'
 import { Route as ApiPathsRouteImport } from './routes/api/paths'
 import { Route as ApiModelsRouteImport } from './routes/api/models'
+import { Route as ApiMissionControlStatusRouteImport } from './routes/api/mission-control-status'
 import { Route as ApiMemoryRouteImport } from './routes/api/memory'
 import { Route as ApiLocalProvidersRouteImport } from './routes/api/local-providers'
 import { Route as ApiHistoryRouteImport } from './routes/api/history'
@@ -68,7 +69,6 @@ import { Route as ApiHermesConfigRouteImport } from './routes/api/hermes-config'
 import { Route as ApiGatewayStatusRouteImport } from './routes/api/gateway-status'
 import { Route as ApiFilesRouteImport } from './routes/api/files'
 import { Route as ApiEventsRouteImport } from './routes/api/events'
-import { Route as ApiCrewStatusRouteImport } from './routes/api/crew-status'
 import { Route as ApiContextUsageRouteImport } from './routes/api/context-usage'
 import { Route as ApiConnectionStatusRouteImport } from './routes/api/connection-status'
 import { Route as ApiConfigPatchRouteImport } from './routes/api/config-patch'
@@ -145,9 +145,9 @@ const ProfilesRoute = ProfilesRouteImport.update({
   path: '/profiles',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OperationsRoute = OperationsRouteImport.update({
-  id: '/operations',
-  path: '/operations',
+const OrchestratorRoute = OrchestratorRouteImport.update({
+  id: '/orchestrator',
+  path: '/orchestrator',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MemoryRoute = MemoryRouteImport.update({
@@ -175,9 +175,9 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConductorRoute = ConductorRouteImport.update({
-  id: '/conductor',
-  path: '/conductor',
+const AgentRosterRoute = AgentRosterRouteImport.update({
+  id: '/agent-roster',
+  path: '/agent-roster',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SplatRoute = SplatRouteImport.update({
@@ -362,6 +362,11 @@ const ApiModelsRoute = ApiModelsRouteImport.update({
   path: '/api/models',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMissionControlStatusRoute = ApiMissionControlStatusRouteImport.update({
+  id: '/api/mission-control-status',
+  path: '/api/mission-control-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMemoryRoute = ApiMemoryRouteImport.update({
   id: '/api/memory',
   path: '/api/memory',
@@ -410,11 +415,6 @@ const ApiFilesRoute = ApiFilesRouteImport.update({
 const ApiEventsRoute = ApiEventsRouteImport.update({
   id: '/api/events',
   path: '/api/events',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCrewStatusRoute = ApiCrewStatusRouteImport.update({
-  id: '/api/crew-status',
-  path: '/api/crew-status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiContextUsageRoute = ApiContextUsageRouteImport.update({
@@ -649,13 +649,13 @@ const ApiSessionsSessionKeyActiveRunRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/conductor': typeof ConductorRoute
+  '/agent-roster': typeof AgentRosterRoute
   '/dashboard': typeof DashboardRoute
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
   '/memory': typeof MemoryRoute
-  '/operations': typeof OperationsRoute
+  '/orchestrator': typeof OrchestratorRoute
   '/profiles': typeof ProfilesRoute
   '/session-events': typeof SessionEventsRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -671,7 +671,6 @@ export interface FileRoutesByFullPath {
   '/api/config-patch': typeof ApiConfigPatchRoute
   '/api/connection-status': typeof ApiConnectionStatusRoute
   '/api/context-usage': typeof ApiContextUsageRoute
-  '/api/crew-status': typeof ApiCrewStatusRoute
   '/api/events': typeof ApiEventsRoute
   '/api/files': typeof ApiFilesRoute
   '/api/gateway-status': typeof ApiGatewayStatusRoute
@@ -682,6 +681,7 @@ export interface FileRoutesByFullPath {
   '/api/history': typeof ApiHistoryRoute
   '/api/local-providers': typeof ApiLocalProvidersRoute
   '/api/memory': typeof ApiMemoryRouteWithChildren
+  '/api/mission-control-status': typeof ApiMissionControlStatusRoute
   '/api/models': typeof ApiModelsRoute
   '/api/paths': typeof ApiPathsRoute
   '/api/ping': typeof ApiPingRoute
@@ -756,13 +756,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/conductor': typeof ConductorRoute
+  '/agent-roster': typeof AgentRosterRoute
   '/dashboard': typeof DashboardRoute
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
   '/memory': typeof MemoryRoute
-  '/operations': typeof OperationsRoute
+  '/orchestrator': typeof OrchestratorRoute
   '/profiles': typeof ProfilesRoute
   '/session-events': typeof SessionEventsRoute
   '/skills': typeof SkillsRoute
@@ -777,7 +777,6 @@ export interface FileRoutesByTo {
   '/api/config-patch': typeof ApiConfigPatchRoute
   '/api/connection-status': typeof ApiConnectionStatusRoute
   '/api/context-usage': typeof ApiContextUsageRoute
-  '/api/crew-status': typeof ApiCrewStatusRoute
   '/api/events': typeof ApiEventsRoute
   '/api/files': typeof ApiFilesRoute
   '/api/gateway-status': typeof ApiGatewayStatusRoute
@@ -788,6 +787,7 @@ export interface FileRoutesByTo {
   '/api/history': typeof ApiHistoryRoute
   '/api/local-providers': typeof ApiLocalProvidersRoute
   '/api/memory': typeof ApiMemoryRouteWithChildren
+  '/api/mission-control-status': typeof ApiMissionControlStatusRoute
   '/api/models': typeof ApiModelsRoute
   '/api/paths': typeof ApiPathsRoute
   '/api/ping': typeof ApiPingRoute
@@ -863,13 +863,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/conductor': typeof ConductorRoute
+  '/agent-roster': typeof AgentRosterRoute
   '/dashboard': typeof DashboardRoute
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
   '/memory': typeof MemoryRoute
-  '/operations': typeof OperationsRoute
+  '/orchestrator': typeof OrchestratorRoute
   '/profiles': typeof ProfilesRoute
   '/session-events': typeof SessionEventsRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -885,7 +885,6 @@ export interface FileRoutesById {
   '/api/config-patch': typeof ApiConfigPatchRoute
   '/api/connection-status': typeof ApiConnectionStatusRoute
   '/api/context-usage': typeof ApiContextUsageRoute
-  '/api/crew-status': typeof ApiCrewStatusRoute
   '/api/events': typeof ApiEventsRoute
   '/api/files': typeof ApiFilesRoute
   '/api/gateway-status': typeof ApiGatewayStatusRoute
@@ -896,6 +895,7 @@ export interface FileRoutesById {
   '/api/history': typeof ApiHistoryRoute
   '/api/local-providers': typeof ApiLocalProvidersRoute
   '/api/memory': typeof ApiMemoryRouteWithChildren
+  '/api/mission-control-status': typeof ApiMissionControlStatusRoute
   '/api/models': typeof ApiModelsRoute
   '/api/paths': typeof ApiPathsRoute
   '/api/ping': typeof ApiPingRoute
@@ -972,13 +972,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
-    | '/conductor'
+    | '/agent-roster'
     | '/dashboard'
     | '/files'
     | '/jobs'
     | '/kanban'
     | '/memory'
-    | '/operations'
+    | '/orchestrator'
     | '/profiles'
     | '/session-events'
     | '/settings'
@@ -994,7 +994,6 @@ export interface FileRouteTypes {
     | '/api/config-patch'
     | '/api/connection-status'
     | '/api/context-usage'
-    | '/api/crew-status'
     | '/api/events'
     | '/api/files'
     | '/api/gateway-status'
@@ -1005,6 +1004,7 @@ export interface FileRouteTypes {
     | '/api/history'
     | '/api/local-providers'
     | '/api/memory'
+    | '/api/mission-control-status'
     | '/api/models'
     | '/api/paths'
     | '/api/ping'
@@ -1079,13 +1079,13 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$'
-    | '/conductor'
+    | '/agent-roster'
     | '/dashboard'
     | '/files'
     | '/jobs'
     | '/kanban'
     | '/memory'
-    | '/operations'
+    | '/orchestrator'
     | '/profiles'
     | '/session-events'
     | '/skills'
@@ -1100,7 +1100,6 @@ export interface FileRouteTypes {
     | '/api/config-patch'
     | '/api/connection-status'
     | '/api/context-usage'
-    | '/api/crew-status'
     | '/api/events'
     | '/api/files'
     | '/api/gateway-status'
@@ -1111,6 +1110,7 @@ export interface FileRouteTypes {
     | '/api/history'
     | '/api/local-providers'
     | '/api/memory'
+    | '/api/mission-control-status'
     | '/api/models'
     | '/api/paths'
     | '/api/ping'
@@ -1185,13 +1185,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$'
-    | '/conductor'
+    | '/agent-roster'
     | '/dashboard'
     | '/files'
     | '/jobs'
     | '/kanban'
     | '/memory'
-    | '/operations'
+    | '/orchestrator'
     | '/profiles'
     | '/session-events'
     | '/settings'
@@ -1207,7 +1207,6 @@ export interface FileRouteTypes {
     | '/api/config-patch'
     | '/api/connection-status'
     | '/api/context-usage'
-    | '/api/crew-status'
     | '/api/events'
     | '/api/files'
     | '/api/gateway-status'
@@ -1218,6 +1217,7 @@ export interface FileRouteTypes {
     | '/api/history'
     | '/api/local-providers'
     | '/api/memory'
+    | '/api/mission-control-status'
     | '/api/models'
     | '/api/paths'
     | '/api/ping'
@@ -1293,13 +1293,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
-  ConductorRoute: typeof ConductorRoute
+  AgentRosterRoute: typeof AgentRosterRoute
   DashboardRoute: typeof DashboardRoute
   FilesRoute: typeof FilesRoute
   JobsRoute: typeof JobsRoute
   KanbanRoute: typeof KanbanRoute
   MemoryRoute: typeof MemoryRoute
-  OperationsRoute: typeof OperationsRoute
+  OrchestratorRoute: typeof OrchestratorRoute
   ProfilesRoute: typeof ProfilesRoute
   SessionEventsRoute: typeof SessionEventsRoute
   SettingsRoute: typeof SettingsRouteWithChildren
@@ -1315,7 +1315,6 @@ export interface RootRouteChildren {
   ApiConfigPatchRoute: typeof ApiConfigPatchRoute
   ApiConnectionStatusRoute: typeof ApiConnectionStatusRoute
   ApiContextUsageRoute: typeof ApiContextUsageRoute
-  ApiCrewStatusRoute: typeof ApiCrewStatusRoute
   ApiEventsRoute: typeof ApiEventsRoute
   ApiFilesRoute: typeof ApiFilesRoute
   ApiGatewayStatusRoute: typeof ApiGatewayStatusRoute
@@ -1326,6 +1325,7 @@ export interface RootRouteChildren {
   ApiHistoryRoute: typeof ApiHistoryRoute
   ApiLocalProvidersRoute: typeof ApiLocalProvidersRoute
   ApiMemoryRoute: typeof ApiMemoryRouteWithChildren
+  ApiMissionControlStatusRoute: typeof ApiMissionControlStatusRoute
   ApiModelsRoute: typeof ApiModelsRoute
   ApiPathsRoute: typeof ApiPathsRoute
   ApiPingRoute: typeof ApiPingRoute
@@ -1420,11 +1420,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfilesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/operations': {
-      id: '/operations'
-      path: '/operations'
-      fullPath: '/operations'
-      preLoaderRoute: typeof OperationsRouteImport
+    '/orchestrator': {
+      id: '/orchestrator'
+      path: '/orchestrator'
+      fullPath: '/orchestrator'
+      preLoaderRoute: typeof OrchestratorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/memory': {
@@ -1462,11 +1462,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/conductor': {
-      id: '/conductor'
-      path: '/conductor'
-      fullPath: '/conductor'
-      preLoaderRoute: typeof ConductorRouteImport
+    '/agent-roster': {
+      id: '/agent-roster'
+      path: '/agent-roster'
+      fullPath: '/agent-roster'
+      preLoaderRoute: typeof AgentRosterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$': {
@@ -1721,6 +1721,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiModelsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mission-control-status': {
+      id: '/api/mission-control-status'
+      path: '/api/mission-control-status'
+      fullPath: '/api/mission-control-status'
+      preLoaderRoute: typeof ApiMissionControlStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/memory': {
       id: '/api/memory'
       path: '/api/memory'
@@ -1789,13 +1796,6 @@ declare module '@tanstack/react-router' {
       path: '/api/events'
       fullPath: '/api/events'
       preLoaderRoute: typeof ApiEventsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/crew-status': {
-      id: '/api/crew-status'
-      path: '/api/crew-status'
-      fullPath: '/api/crew-status'
-      preLoaderRoute: typeof ApiCrewStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/context-usage': {
@@ -2233,13 +2233,13 @@ const ApiUploadRouteWithChildren = ApiUploadRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
-  ConductorRoute: ConductorRoute,
+  AgentRosterRoute: AgentRosterRoute,
   DashboardRoute: DashboardRoute,
   FilesRoute: FilesRoute,
   JobsRoute: JobsRoute,
   KanbanRoute: KanbanRoute,
   MemoryRoute: MemoryRoute,
-  OperationsRoute: OperationsRoute,
+  OrchestratorRoute: OrchestratorRoute,
   ProfilesRoute: ProfilesRoute,
   SessionEventsRoute: SessionEventsRoute,
   SettingsRoute: SettingsRouteWithChildren,
@@ -2255,7 +2255,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiConfigPatchRoute: ApiConfigPatchRoute,
   ApiConnectionStatusRoute: ApiConnectionStatusRoute,
   ApiContextUsageRoute: ApiContextUsageRoute,
-  ApiCrewStatusRoute: ApiCrewStatusRoute,
   ApiEventsRoute: ApiEventsRoute,
   ApiFilesRoute: ApiFilesRoute,
   ApiGatewayStatusRoute: ApiGatewayStatusRoute,
@@ -2266,6 +2265,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHistoryRoute: ApiHistoryRoute,
   ApiLocalProvidersRoute: ApiLocalProvidersRoute,
   ApiMemoryRoute: ApiMemoryRouteWithChildren,
+  ApiMissionControlStatusRoute: ApiMissionControlStatusRoute,
   ApiModelsRoute: ApiModelsRoute,
   ApiPathsRoute: ApiPathsRoute,
   ApiPingRoute: ApiPingRoute,

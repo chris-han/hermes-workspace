@@ -18,8 +18,8 @@ import {
   ORCHESTRATOR_PROGRESS_STATUS,
   ORCHESTRATOR_PROGRESS_VALUE,
 } from './orchestrator-visuals'
-import type { OperationsChatMessage } from '../hooks/use-agent-chat'
-import type { OperationsAgent } from '../hooks/use-operations'
+import type { AgentRosterChatMessage } from '../hooks/use-agent-chat'
+import type { AgentRosterAgent } from '../hooks/use-agent-roster'
 import { Button } from '@/components/ui/button'
 import { AgentProgress } from '@/components/agent-view/agent-progress'
 import { PixelAvatar } from '@/components/agent-swarm/pixel-avatar'
@@ -28,7 +28,7 @@ import { toast } from '@/components/ui/toast'
 import { runCronJob, toggleCronJob } from '@/lib/cron-api'
 import { cn } from '@/lib/utils'
 
-function getStatusStyles(status: OperationsAgent['status']) {
+function getStatusStyles(status: AgentRosterAgent['status']) {
   if (status === 'error') {
     return {
       dot: 'bg-[var(--theme-danger)]',
@@ -69,15 +69,15 @@ function displayJobName(jobName: string, agentId: string) {
   return jobName
 }
 
-function describeJob(job: OperationsAgent['jobs'][number]) {
+function describeJob(job: AgentRosterAgent['jobs'][number]) {
   return job.description?.trim() || job.schedule
 }
 
-function isWorkspaceAlias(agent: OperationsAgent) {
+function isWorkspaceAlias(agent: AgentRosterAgent) {
   return agent.id === 'default'
 }
 
-export function OperationsInlineChat({
+export function AgentRosterInlineChat({
   agentName,
   messages,
   sendMessage,
@@ -85,7 +85,7 @@ export function OperationsInlineChat({
   error,
 }: {
   agentName: string
-  messages: Array<OperationsChatMessage>
+  messages: Array<AgentRosterChatMessage>
   sendMessage: (message: string) => Promise<unknown>
   isSending: boolean
   error: string | null
@@ -188,11 +188,11 @@ export function OperationsInlineChat({
   )
 }
 
-export function OperationsAgentCard({
+export function AgentRosterCard({
   agent,
   onOpenSettings,
 }: {
-  agent: OperationsAgent
+  agent: AgentRosterAgent
   onOpenSettings: (agentId: string) => void
 }) {
   const queryClient = useQueryClient()
@@ -233,7 +233,7 @@ export function OperationsAgentCard({
     mutationFn: async (payload: { jobId: string; enabled: boolean }) =>
       toggleCronJob(payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['operations', 'cron'] })
+      await queryClient.invalidateQueries({ queryKey: ['agentRoster', 'cron'] })
     },
     onError: (mutationError) => {
       toast(
@@ -248,7 +248,7 @@ export function OperationsAgentCard({
   const runCronMutation = useMutation({
     mutationFn: async (jobId: string) => runCronJob(jobId),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['operations', 'cron'] })
+      await queryClient.invalidateQueries({ queryKey: ['agentRoster', 'cron'] })
       toast('Cron job started', { type: 'success' })
     },
     onError: (mutationError) => {
@@ -463,7 +463,7 @@ export function OperationsAgentCard({
       </AnimatePresence>
 
       <div className="min-h-0 flex-1">
-        <OperationsInlineChat
+        <AgentRosterInlineChat
           agentName={agent.name}
           messages={messages}
           sendMessage={sendMessage}

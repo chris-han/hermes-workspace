@@ -34,9 +34,9 @@
 
 ## 📸 Screenshots
 
-|                 Chat                 |                   Conductor                    |
+|                 Chat                 |                   Orchestrator                    |
 | :----------------------------------: | :--------------------------------------------: |
-| ![Chat](./docs/screenshots/chat.png) | ![Conductor](./docs/screenshots/conductor.png) |
+| ![Chat](./docs/screenshots/chat.png) | ![Orchestrator](./docs/screenshots/orchestrator.png) |
 
 |                   Dashboard                    |                  Memory                  |
 | :--------------------------------------------: | :--------------------------------------: |

@@ -978,13 +978,13 @@ export function AgentViewPanel() {
                   size="icon-sm"
                   variant="ghost"
                   onClick={function handleExpandHub() {
-                    navigate({ to: '/conductor' })
+                    navigate({ to: '/orchestrator' })
                     setTimeout(() => {
                       setOpen(false)
                     }, 0)
                   }}
-                  aria-label="Open Conductor"
-                  title="Open Conductor"
+                  aria-label="Open orchestrator"
+                  title="Open orchestrator"
                 >
                   <HugeiconsIcon
                     icon={ArrowExpand01Icon}

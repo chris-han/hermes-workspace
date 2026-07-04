@@ -11,7 +11,7 @@ import {
 } from '../../server/gateway-capabilities'
 import { resolveActiveWorkspaceRoot } from '../../server/workspace-root'
 
-type CrewDefinition = {
+type MemberDefinition = {
   id: string
   displayName: string
   role: string
@@ -36,7 +36,7 @@ function titleCase(value: string): string {
     .join(' ')
 }
 
-export function buildCrewDefinitions(base: string): Array<CrewDefinition> {
+export function buildMemberDefinitions(base: string): Array<MemberDefinition> {
   const profilesDir = join(base, 'profiles')
   const dynamicProfiles = existsSync(profilesDir)
     ? readdirSync(profilesDir, { withFileTypes: true })
@@ -243,7 +243,7 @@ async function fetchAssignedTaskCounts(): Promise<Record<string, number>> {
   }
 }
 
-export const Route = createFileRoute('/api/crew-status')({
+export const Route = createFileRoute('/api/mission-control-status')({
   server: {
     handlers: {
       GET: async ({ request }) => {
@@ -251,9 +251,9 @@ export const Route = createFileRoute('/api/crew-status')({
         const taskCounts = await fetchAssignedTaskCounts()
         const workspace = await resolveActiveWorkspaceRoot(request.headers)
         const baseHermesHome = workspace.hermesHome || join(workspace.path, '.hermes')
-        const crewDefinitions = buildCrewDefinitions(baseHermesHome)
+        const memberDefinitions = buildMemberDefinitions(baseHermesHome)
 
-        const crew = crewDefinitions.map((member) => {
+        const crew = memberDefinitions.map((member) => {
           const hermesHome = getHermesHome(baseHermesHome, member.profilePath)
           const profileFound = existsSync(hermesHome)
 

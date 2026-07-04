@@ -11,10 +11,19 @@ import {
   YAxis,
 } from 'recharts'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { Moon02Icon, Sun02Icon } from '@hugeicons/core-free-icons'
+import {
+  Moon02Icon,
+  Sun02Icon,
+  Chat01Icon,
+  BinaryCodeIcon,
+  AccountSetting01Icon,
+  Book01Icon,
+  Mail01Icon,
+  Briefcase01Icon,
+  FlashIcon,
+} from '@hugeicons/core-free-icons'
 import type { ReactNode } from 'react'
 import type { HermesSession } from '@/server/hermes-api'
-import { chatQueryKeys } from '@/screens/chat/chat-queries'
 import { getUnavailableReason } from '@/lib/feature-gates'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { cn } from '@/lib/utils'
@@ -37,64 +46,17 @@ function formatNumber(n: number): string {
   return String(n)
 }
 
-function themeColor(name: string, fallback: string): string {
-  if (typeof document === 'undefined') return fallback
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue(name)
-    .trim()
-  return value || fallback
-}
+// ── Dashboard Card ───────────────────────────────────────────────────
 
-function alpha(color: string, amount: number): string {
-  const pct = Math.max(0, Math.min(100, Math.round(amount * 100)))
-  return `color-mix(in srgb, ${color} ${pct}%, transparent)`
-}
-
-function readDashboardPalette() {
-  return {
-    accent: themeColor('--theme-accent', '#6366f1'),
-    accentSecondary: themeColor('--theme-accent-secondary', '#8b5cf6'),
-    success: themeColor('--theme-success', '#22c55e'),
-    warning: themeColor('--theme-warning', '#f59e0b'),
-    danger: themeColor('--theme-danger', '#ef4444'),
-    muted: themeColor('--theme-muted', '#6b7280'),
-    border: themeColor('--theme-border', '#333333'),
-    card: themeColor('--theme-card', '#1a1a2e'),
-    text: themeColor('--theme-text', '#e5e7eb'),
-  }
-}
-
-function useDashboardPalette() {
-  const [palette, setPalette] = useState(readDashboardPalette)
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return undefined
-    const refresh = () => setPalette(readDashboardPalette())
-    refresh()
-    const observer = new MutationObserver(refresh)
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme', 'style', 'class'],
-    })
-    return () => observer.disconnect()
-  }, [])
-
-  return palette
-}
-
-// ── Glass Card ───────────────────────────────────────────────────
-
-function GlassCard({
+function DashboardCard({
   title,
   titleRight,
-  accentColor,
   noPadding,
   className,
   children,
 }: {
   title?: string
   titleRight?: ReactNode
-  accentColor?: string
   noPadding?: boolean
   className?: string
   children: ReactNode
@@ -102,26 +64,13 @@ function GlassCard({
   return (
     <div
       className={cn(
-        'relative flex flex-col overflow-hidden rounded-xl border transition-colors',
+        'relative flex flex-col overflow-hidden rounded-card border border-border bg-card transition-colors',
         className,
       )}
-      style={{
-        background: 'var(--theme-card)',
-        borderColor: 'var(--theme-border)',
-      }}
     >
-      {accentColor && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-[2px]"
-          style={{
-            background: `linear-gradient(90deg, ${accentColor}, ${accentColor}50, transparent)`,
-          }}
-        />
-      )}
       {title && (
         <div className="flex items-center justify-between px-5 pt-4 pb-0">
-          <h3 className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted">
+          <h3 className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             {title}
           </h3>
           {titleRight}
@@ -136,17 +85,7 @@ function GlassCard({
 
 function EnhancedBadge({ label = 'Enhanced API' }: { label?: string }) {
   return (
-    <span
-      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]"
-      style={{
-        border: `1px solid ${themeColor('--theme-accent-border', 'rgba(245, 158, 11, 0.28)')}`,
-        background: themeColor(
-          '--theme-accent-subtle',
-          'rgba(245, 158, 11, 0.12)',
-        ),
-        color: themeColor('--theme-accent', '#f59e0b'),
-      }}
-    >
+    <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
       {label}
     </span>
   )
@@ -160,16 +99,11 @@ function UnavailableWidget({
   description: string
 }) {
   return (
-    <GlassCard
-      title={title}
-      titleRight={<EnhancedBadge />}
-      accentColor={themeColor('--theme-warning', '#f59e0b')}
-      className="h-full"
-    >
-      <div className="flex h-full min-h-[180px] items-center justify-center rounded-lg border border-dashed border-[var(--theme-border)] bg-[var(--theme-card2)] px-4 text-center">
-        <p className="text-sm text-muted">{description}</p>
+    <DashboardCard title={title} titleRight={<EnhancedBadge />} className="h-full">
+      <div className="flex h-full min-h-[180px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 px-4 text-center">
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-    </GlassCard>
+    </DashboardCard>
   )
 }
 
@@ -191,25 +125,25 @@ function SystemGlance({
   cost: string
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-5 py-2.5 backdrop-blur-sm">
+    <div className="flex items-center gap-3 rounded-card border border-border bg-card px-5 py-2.5 backdrop-blur-sm">
       <span
         className={cn(
           'size-2 shrink-0 rounded-full',
-          connected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500',
+          connected ? 'bg-success animate-pulse' : 'bg-danger',
         )}
       />
       <div className="flex flex-1 items-center gap-x-4 overflow-x-auto">
-        <span className="text-xs font-medium text-ink">{model}</span>
-        <span className="text-muted">·</span>
-        <span className="text-xs text-neutral-500">{provider}</span>
-        <span className="text-muted">·</span>
-        <span className="text-xs text-neutral-500">{sessions} sessions</span>
-        <span className="text-muted">·</span>
-        <span className="text-xs font-bold tabular-nums text-ink">
+        <span className="text-xs font-medium text-foreground">{model}</span>
+        <span className="text-muted-foreground">·</span>
+        <span className="text-xs text-muted-foreground">{provider}</span>
+        <span className="text-muted-foreground">·</span>
+        <span className="text-xs text-muted-foreground">{sessions} sessions</span>
+        <span className="text-muted-foreground">·</span>
+        <span className="text-xs font-bold tabular-nums text-foreground">
           {tokens} tokens
         </span>
-        <span className="text-muted">·</span>
-        <span className="text-xs text-neutral-400">{cost}</span>
+        <span className="text-muted-foreground">·</span>
+        <span className="text-xs text-muted-foreground">{cost}</span>
       </div>
     </div>
   )
@@ -222,46 +156,42 @@ function MetricTile({
   value,
   sub,
   icon,
-  accentColor,
+  iconClass,
 }: {
   label: string
   value: string
   sub?: string
-  icon: string
-  accentColor: string
+  icon: React.ElementType
+  iconClass: string
 }) {
   return (
-    <GlassCard accentColor={accentColor}>
+    <DashboardCard>
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-0.5">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             {label}
           </div>
-          <div className="text-2xl font-bold tabular-nums text-ink">
+          <div className="text-2xl font-bold tabular-nums text-foreground">
             {value}
           </div>
-          {sub && <div className="text-[11px] text-muted">{sub}</div>}
+          {sub && <div className="text-[11px] text-muted-foreground">{sub}</div>}
         </div>
         <div
-          className="flex size-8 items-center justify-center rounded-lg text-base"
-          style={{ background: `${accentColor}15` }}
+          className={cn(
+            'flex size-8 items-center justify-center rounded-lg text-base',
+            iconClass,
+          )}
         >
-          {icon}
+          <HugeiconsIcon icon={icon} size={16} />
         </div>
       </div>
-    </GlassCard>
+    </DashboardCard>
   )
 }
 
 // ── Activity Chart ───────────────────────────────────────────────
 
-function ActivityChart({
-  sessions,
-  palette,
-}: {
-  sessions: Array<HermesSession>
-  palette: ReturnType<typeof readDashboardPalette>
-}) {
+function ActivityChart({ sessions }: { sessions: Array<HermesSession> }) {
   const chartData = useMemo(() => {
     const dayMap = new Map<string, { sessions: number; messages: number }>()
     const now = Date.now() / 1000
@@ -296,10 +226,9 @@ function ActivityChart({
   }, [sessions])
 
   return (
-    <GlassCard
+    <DashboardCard
       title="Activity"
-      titleRight={<span className="text-[10px] text-muted">14 days</span>}
-      accentColor={palette.accent}
+      titleRight={<span className="text-[10px] text-muted-foreground">14 days</span>}
       className="h-full"
     >
       <div className="h-[200px] w-full -ml-2">
@@ -312,42 +241,42 @@ function ActivityChart({
               <linearGradient id="g-sessions" x1="0" y1="0" x2="0" y2="1">
                 <stop
                   offset="0%"
-                  stopColor={palette.accent}
+                  stopColor="hsl(var(--primary))"
                   stopOpacity={0.3}
                 />
                 <stop
                   offset="100%"
-                  stopColor={palette.accent}
+                  stopColor="hsl(var(--primary))"
                   stopOpacity={0}
                 />
               </linearGradient>
               <linearGradient id="g-messages" x1="0" y1="0" x2="0" y2="1">
                 <stop
                   offset="0%"
-                  stopColor={palette.success}
+                  stopColor="hsl(var(--success))"
                   stopOpacity={0.2}
                 />
                 <stop
                   offset="100%"
-                  stopColor={palette.success}
+                  stopColor="hsl(var(--success))"
                   stopOpacity={0}
                 />
               </linearGradient>
             </defs>
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke={palette.border}
+              stroke="hsl(var(--border))"
               opacity={0.45}
             />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 10, fill: palette.muted }}
+              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
               yAxisId="left"
-              tick={{ fontSize: 10, fill: palette.success }}
+              tick={{ fill: 'hsl(var(--success))', fontSize: 10 }}
               axisLine={false}
               tickLine={false}
               allowDecimals={false}
@@ -356,7 +285,7 @@ function ActivityChart({
             <YAxis
               yAxisId="right"
               orientation="right"
-              tick={{ fontSize: 10, fill: palette.accent }}
+              tick={{ fill: 'hsl(var(--primary))', fontSize: 10 }}
               axisLine={false}
               tickLine={false}
               allowDecimals={false}
@@ -364,18 +293,21 @@ function ActivityChart({
             />
             <Tooltip
               contentStyle={{
-                background: palette.card,
-                border: `1px solid ${palette.border}`,
-                borderRadius: '8px',
+                background: 'hsl(var(--card))',
+                border: `1px solid hsl(var(--border))`,
+                borderRadius: '12px',
                 fontSize: '11px',
               }}
-              labelStyle={{ color: palette.muted, fontSize: '10px' }}
+              labelStyle={{
+                color: 'hsl(var(--muted-foreground))',
+                fontSize: '10px',
+              }}
             />
             <Area
               yAxisId="left"
               type="monotone"
               dataKey="messages"
-              stroke={palette.success}
+              stroke="hsl(var(--success))"
               fill="url(#g-messages)"
               strokeWidth={1.5}
               dot={false}
@@ -384,7 +316,7 @@ function ActivityChart({
               yAxisId="right"
               type="monotone"
               dataKey="sessions"
-              stroke={palette.accent}
+              stroke="hsl(var(--primary))"
               fill="url(#g-sessions)"
               strokeWidth={2}
               dot={false}
@@ -392,33 +324,23 @@ function ActivityChart({
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-2 flex items-center gap-5 text-[10px] text-muted">
+      <div className="mt-2 flex items-center gap-5 text-[10px] text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span
-            className="size-2 rounded-full"
-            style={{ background: palette.accent }}
-          />
+          <span className="size-2 rounded-full bg-primary" />
           Sessions
         </span>
         <span className="flex items-center gap-1.5">
-          <span
-            className="size-2 rounded-full"
-            style={{ background: palette.success }}
-          />
+          <span className="size-2 rounded-full bg-success" />
           Messages
         </span>
       </div>
-    </GlassCard>
+    </DashboardCard>
   )
 }
 
 // ── Model Card ───────────────────────────────────────────────────
 
-function ModelCard({
-  palette,
-}: {
-  palette: ReturnType<typeof readDashboardPalette>
-}) {
+function ModelCard() {
   const sessionsAvailable = useFeatureAvailable('sessions')
   const configAvailable = useFeatureAvailable('config')
   const configQuery = useQuery({
@@ -455,77 +377,64 @@ function ModelCard({
   }
 
   return (
-    <GlassCard
+    <DashboardCard
       title="Model"
       titleRight={
         <span
           className={cn(
             'inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full',
-            connected
-              ? 'text-emerald-400 bg-emerald-500/10'
-              : 'text-red-400 bg-red-500/10',
+            connected ? 'text-success bg-success/10' : 'text-danger bg-danger/10',
           )}
         >
           <span
             className={cn(
               'size-1.5 rounded-full',
-              connected ? 'bg-emerald-500' : 'bg-red-500',
+              connected ? 'bg-success' : 'bg-danger',
             )}
           />
           {connected ? 'Online' : 'Offline'}
         </span>
       }
-      accentColor={connected ? palette.success : palette.danger}
       className="h-full"
     >
       <div className="space-y-2">
-        <div className="flex items-center gap-3 rounded-lg p-2.5 bg-[var(--theme-card2)] border border-[var(--theme-border)]">
-          <div
-            className="flex size-7 items-center justify-center rounded-md text-sm"
-            style={{
-              background: alpha(palette.accent, 0.1),
-              color: palette.accent,
-            }}
-          >
+        <div className="flex items-center gap-3 rounded-lg p-2.5 bg-muted/50 border border-border">
+          <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary text-sm">
             🤖
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-mono text-[13px] font-bold text-ink truncate">
+            <div className="font-mono text-[13px] font-bold text-foreground truncate">
               {typeof modelName === 'string' ? modelName : '—'}
             </div>
-            <div className="text-[10px] text-muted font-mono truncate">
+            <div className="text-[10px] text-muted-foreground font-mono truncate">
               {provider}
               {baseUrl ? ` · ${baseUrl}` : ''}
             </div>
           </div>
         </div>
         {fallbackModel && (
-          <div className="flex items-center gap-3 rounded-lg p-2.5 bg-[var(--theme-card2)] border border-[var(--theme-border)]">
-            <div className="flex size-7 items-center justify-center rounded-md bg-amber-500/10 text-sm">
+          <div className="flex items-center gap-3 rounded-lg p-2.5 bg-muted/50 border border-border">
+            <div className="flex size-7 items-center justify-center rounded-md bg-warning/10 text-sm">
               🔄
             </div>
             <div className="min-w-0 flex-1">
-              <div className="font-mono text-[13px] text-ink truncate">
+              <div className="font-mono text-[13px] text-foreground truncate">
                 {fallbackModel}
               </div>
-              <div className="text-[10px] text-muted font-mono truncate">
+              <div className="text-[10px] text-muted-foreground font-mono truncate">
                 {(fallbackBlock?.provider as string) ?? ''}
               </div>
             </div>
           </div>
         )}
       </div>
-    </GlassCard>
+    </DashboardCard>
   )
 }
 
 // ── Skills Widget ────────────────────────────────────────────────
 
-function SkillsWidget({
-  palette,
-}: {
-  palette: ReturnType<typeof readDashboardPalette>
-}) {
+function SkillsWidget() {
   const skillsAvailable = useFeatureAvailable('skills')
   const skillsQuery = useQuery({
     queryKey: ['hermes-skills'],
@@ -553,17 +462,16 @@ function SkillsWidget({
   }
 
   return (
-    <GlassCard
+    <DashboardCard
       title="Skills"
       titleRight={
-        <span className="text-[10px] text-muted">
+        <span className="text-[10px] text-muted-foreground">
           {skills.length} installed
         </span>
       }
-      accentColor={palette.warning}
     >
       {skills.length === 0 ? (
-        <div className="text-xs text-neutral-400 py-4 text-center">
+        <div className="text-xs text-muted-foreground py-4 text-center">
           No skills installed
         </div>
       ) : (
@@ -571,20 +479,20 @@ function SkillsWidget({
           {skills.slice(0, 6).map((skill, i) => (
             <div
               key={String(skill.name ?? i)}
-              className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-[var(--theme-card2)] transition-colors"
+              className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-muted/50 transition-colors"
             >
-              <span className="text-xs">📦</span>
-              <span className="text-xs font-medium text-ink truncate flex-1">
+              <HugeiconsIcon icon={Book01Icon} size={14} className="text-muted-foreground" />
+              <span className="text-xs font-medium text-foreground truncate flex-1">
                 {String(skill.name ?? 'Unnamed')}
               </span>
               {skill.enabled !== false && (
-                <span className="size-1.5 rounded-full bg-emerald-500/60" />
+                <span className="size-1.5 rounded-full bg-success/60" />
               )}
             </div>
           ))}
         </div>
       )}
-    </GlassCard>
+    </DashboardCard>
   )
 }
 
@@ -593,15 +501,15 @@ function SkillsWidget({
 function QuickAction({
   label,
   icon,
+  iconClass,
   onClick,
-  accentColor,
   disabled,
   badge,
 }: {
   label: string
-  icon: string
+  icon: React.ElementType
+  iconClass: string
   onClick: () => void
-  accentColor: string
   disabled?: boolean
   badge?: string
 }) {
@@ -611,36 +519,29 @@ function QuickAction({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'relative overflow-hidden flex min-h-12 w-full items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition-all',
-        'border-[var(--theme-border)] bg-[var(--theme-card)] text-left',
+        'relative overflow-hidden flex min-h-12 w-full items-center gap-3 rounded-button border px-4 py-3 text-sm font-medium transition-all',
+        'border-border bg-card text-left',
         disabled
           ? 'cursor-not-allowed opacity-60'
-          : 'hover:border-[var(--theme-accent-border)] hover:scale-[1.01] active:scale-[0.99]',
+          : 'hover:border-primary/20 hover:bg-muted hover:scale-[1.02] active:scale-[0.98]',
       )}
     >
       <div
-        className="flex size-7 shrink-0 items-center justify-center rounded-md text-sm"
-        style={{ background: `${accentColor}18` }}
+        className={cn(
+          'flex size-7 shrink-0 items-center justify-center rounded-md text-sm',
+          iconClass,
+        )}
       >
-        {icon}
+        <HugeiconsIcon icon={icon} size={16} />
       </div>
-      <span
-        className="min-w-0 flex-1 text-xs font-semibold"
-        style={{ color: 'var(--theme-text)' }}
-      >
+      <span className="min-w-0 flex-1 text-xs font-semibold text-foreground">
         {label}
       </span>
       {badge ? (
-        <span className="ml-auto shrink-0 rounded-full border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-amber-700">
+        <span className="ml-auto shrink-0 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-primary">
           {badge}
         </span>
       ) : null}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-[2px]"
-        style={{
-          background: `linear-gradient(90deg, ${accentColor}, transparent)`,
-        }}
-      />
     </button>
   )
 }
@@ -651,12 +552,10 @@ function SessionRow({
   session,
   maxTokens,
   onClick,
-  palette,
 }: {
   session: HermesSession
   maxTokens: number
   onClick: () => void
-  palette: ReturnType<typeof readDashboardPalette>
 }) {
   const tokens = (session.input_tokens ?? 0) + (session.output_tokens ?? 0)
   const msgs = session.message_count ?? 0
@@ -667,25 +566,19 @@ function SessionRow({
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left px-4 py-2.5 rounded-lg hover:bg-[var(--theme-card2)] transition-colors group"
+      className="w-full text-left px-4 py-2.5 rounded-lg hover:bg-muted transition-colors group"
     >
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-[13px] font-medium text-ink truncate flex-1 group-hover:text-ink">
+        <span className="text-[13px] font-medium text-foreground truncate flex-1 group-hover:text-primary">
           {session.title || session.id}
         </span>
-        <span className="text-[10px] tabular-nums text-muted shrink-0">
+        <span className="text-[10px] tabular-nums text-muted-foreground shrink-0">
           {session.started_at ? timeAgo(session.started_at) : ''}
         </span>
       </div>
-      <div className="mb-1.5 flex items-center gap-2 text-[10px] text-neutral-500">
+      <div className="mb-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
         {session.model && (
-          <span
-            className="rounded px-1.5 py-0.5 font-mono text-[9px] font-medium"
-            style={{
-              background: alpha(palette.accent, 0.1),
-              color: palette.accent,
-            }}
-          >
+          <span className="rounded-md px-1.5 py-0.5 font-mono text-[9px] font-medium bg-primary/10 text-primary">
             {session.model}
           </span>
         )}
@@ -693,12 +586,11 @@ function SessionRow({
         {tools > 0 && <span>{tools} tools</span>}
         {tokens > 0 && <span>{formatNumber(tokens)} tok</span>}
       </div>
-      <div className="h-[3px] rounded-full w-full bg-[var(--theme-border)] overflow-hidden">
+      <div className="h-[3px] rounded-full w-full bg-border overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-700"
+          className="h-full rounded-full transition-all duration-700 bg-gradient-to-r from-primary to-primary/50"
           style={{
             width: `${barWidth}%`,
-            background: `linear-gradient(90deg, ${palette.accent}, ${palette.accentSecondary})`,
           }}
         />
       </div>
@@ -776,8 +668,7 @@ export function DashboardScreen() {
     return max
   }, [recentSessions])
 
-  const costEstimate = `~$${((stats.totalTokens / 1_000_000) * 5).toFixed(2)}`
-  const palette = useDashboardPalette()
+  const costEstimate = `~${((stats.totalTokens / 1_000_000) * 5).toFixed(2)}`
 
   const updateSettings = useSettingsStore((state) => state.updateSettings)
   const [isDark, setIsDark] = useState(() => {
@@ -797,15 +688,14 @@ export function DashboardScreen() {
           type="button"
           aria-label="Open navigation menu"
           onClick={openHamburgerMenu}
-          className="flex items-center justify-center w-11 h-11 rounded-xl active:bg-white/10 transition-colors touch-manipulation"
+          className="flex items-center justify-center w-11 h-11 rounded-xl active:bg-muted/50 transition-colors touch-manipulation"
         >
           <svg
             width="20"
             height="16"
             viewBox="0 0 20 16"
             fill="none"
-            className="opacity-70"
-            style={{ color: 'var(--color-ink, #111)' }}
+            className="opacity-70 text-foreground"
           >
             <path
               d="M1 1.5H19M1 8H19M1 14.5H13"
@@ -845,8 +735,7 @@ export function DashboardScreen() {
             updateSettings({ theme: nextMode })
             setIsDark(nextMode === 'dark')
           }}
-          className="flex items-center justify-center w-11 h-11 rounded-xl active:bg-white/10 transition-colors touch-manipulation"
-          style={{ color: 'var(--theme-muted)' }}
+          className="flex items-center justify-center w-11 h-11 rounded-xl active:bg-muted/50 transition-colors touch-manipulation text-muted-foreground"
         >
           <HugeiconsIcon
             icon={isDark ? Sun02Icon : Moon02Icon}
@@ -861,24 +750,16 @@ export function DashboardScreen() {
           <img
             src="/logo.svg"
             alt="semantier logo"
-            className="relative size-20 rounded-xl"
-            style={{
-              border: '0px solid var(--theme-border)',
-              padding: '4px',
-              background: 'var(--theme-card)',
-            }}
+            className="relative size-20 rounded-card bg-card p-1"
           />
-          <p
-            className="brand-wordmark text-[11px] font-semibold"
-            style={{ color: 'var(--theme-muted)' }}
-          >
+          <p className="brand-wordmark text-[11px] font-semibold text-muted-foreground">
             semantier
           </p>
           <div className="mt-1 grid w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4">
             <QuickAction
               label="New Chat"
-              icon="💬"
-              accentColor={palette.accent}
+              icon={Chat01Icon}
+              iconClass="bg-primary/10 text-primary"
               onClick={() =>
                 navigate({
                   to: '/chat/$sessionKey',
@@ -888,22 +769,22 @@ export function DashboardScreen() {
             />
             <QuickAction
               label="Terminal"
-              icon="💻"
-              accentColor={palette.success}
+              icon={BinaryCodeIcon}
+              iconClass="bg-success/10 text-success"
               onClick={() => navigate({ to: '/terminal' })}
             />
             <QuickAction
               label="Skills"
-              icon="🧩"
-              accentColor={palette.warning}
+              icon={Book01Icon}
+              iconClass="bg-warning/10 text-warning"
               onClick={() => navigate({ to: '/skills' })}
               disabled={!skillsAvailable}
               badge={!skillsAvailable ? 'Enhanced' : undefined}
             />
             <QuickAction
               label="Settings"
-              icon="⚙️"
-              accentColor={palette.accentSecondary}
+              icon={AccountSetting01Icon}
+              iconClass="bg-info/10 text-info"
               onClick={() => navigate({ to: '/settings' })}
             />
           </div>
@@ -915,27 +796,27 @@ export function DashboardScreen() {
             <MetricTile
               label="Sessions"
               value={formatNumber(stats.totalSessions)}
-              icon="💬"
-              accentColor={palette.accent}
+              icon={Chat01Icon}
+              iconClass="bg-primary/10 text-primary"
             />
             <MetricTile
               label="Messages"
               value={formatNumber(stats.totalMessages)}
-              icon="✉️"
-              accentColor={palette.success}
+              icon={Mail01Icon}
+              iconClass="bg-success/10 text-success"
             />
             <MetricTile
               label="Tool Calls"
               value={formatNumber(stats.totalToolCalls)}
-              icon="🔧"
-              accentColor={palette.warning}
+              icon={Briefcase01Icon}
+              iconClass="bg-warning/10 text-warning"
             />
             <MetricTile
               label="Tokens"
               value={formatNumber(stats.totalTokens)}
               sub={costEstimate}
-              icon="⚡"
-              accentColor={palette.accentSecondary}
+              icon={FlashIcon}
+              iconClass="bg-info/10 text-info"
             />
           </div>
         ) : (
@@ -949,7 +830,7 @@ export function DashboardScreen() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
           <div className="lg:col-span-5">
             {sessionsAvailable ? (
-              <ActivityChart sessions={sessions} palette={palette} />
+              <ActivityChart sessions={sessions} />
             ) : (
               <UnavailableWidget
                 title="Activity"
@@ -958,21 +839,21 @@ export function DashboardScreen() {
             )}
           </div>
           <div className="lg:col-span-4">
-            <ModelCard palette={palette} />
+            <ModelCard />
           </div>
           <div className="lg:col-span-3">
-            <SkillsWidget palette={palette} />
+            <SkillsWidget />
           </div>
         </div>
 
         {/* ── Recent Sessions (minimal) ── */}
         {sessionsAvailable ? (
-          <GlassCard
+          <DashboardCard
             title="Recent Sessions"
             titleRight={
               <button
                 type="button"
-                className="text-[10px] text-muted hover:text-neutral-300 transition-colors"
+                className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() =>
                   navigate({
                     to: '/chat/$sessionKey',
@@ -983,12 +864,11 @@ export function DashboardScreen() {
                 View all →
               </button>
             }
-            accentColor={palette.accent}
             noPadding
           >
             <div className="py-1">
               {recentSessions.length === 0 ? (
-                <div className="text-xs text-neutral-400 py-8 text-center">
+                <div className="text-xs text-muted-foreground py-8 text-center">
                   No sessions yet — start a chat!
                 </div>
               ) : (
@@ -997,7 +877,6 @@ export function DashboardScreen() {
                     key={s.id}
                     session={s}
                     maxTokens={maxTokens}
-                    palette={palette}
                     onClick={() =>
                       navigate({
                         to: '/chat/$sessionKey',
@@ -1008,7 +887,7 @@ export function DashboardScreen() {
                 ))
               )}
             </div>
-          </GlassCard>
+          </DashboardCard>
         ) : (
           <UnavailableWidget
             title="Recent Sessions"
@@ -1019,3 +898,4 @@ export function DashboardScreen() {
     </div>
   )
 }
+

@@ -604,8 +604,8 @@ function ChatSidebarComponent({
   const isJobsActive = pathname === '/jobs'
   const isMemoryActive = pathname === '/memory'
   const isTasksActive = pathname === '/tasks'
-  const isConductorActive = pathname === '/conductor'
-  const isOperationsActive = pathname === '/operations'
+  const isorchestratorActive = pathname === '/orchestrator'
+  const isAgentRosterActive = pathname === '/agent-roster'
   const mainRoutes = ['/chat', '/new', '/files', '/terminal']
   const knowledgeRoutes = ['/memory', '/skills', '/settings/data-connections']
   const systemRoutes = ['/settings', '/logs']
@@ -910,17 +910,17 @@ function ChatSidebarComponent({
     },
     {
       kind: 'link',
-      to: '/conductor',
+      to: '/orchestrator',
       icon: Rocket01Icon,
-      label: t('nav.conductor'),
-      active: isConductorActive,
+      label: t('nav.orchestrator'),
+      active: isorchestratorActive,
     },
     {
       kind: 'link',
-      to: '/operations',
+      to: '/agent-roster',
       icon: UserGroupIcon,
-      label: t('nav.operations'),
-      active: isOperationsActive,
+      label: t('nav.agentRoster'),
+      active: isAgentRosterActive,
     },
   ]
 
@@ -951,7 +951,7 @@ function ChatSidebarComponent({
       kind: 'link',
       to: '/profiles',
       icon: UserMultipleIcon,
-      label: t('nav.profiles'),
+      label: t('nav.missionControl'),
       active: pathname === '/profiles',
     },
   ]

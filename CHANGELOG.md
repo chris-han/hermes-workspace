@@ -12,14 +12,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Zero-fork architecture** — dual gateway/dashboard routing; workspace talks directly to vanilla `hermes-agent` 0.10.0+ via standard endpoints (`/v1/models`, `/api/sessions`, `/api/skills`, `/api/config`, `/api/jobs`)
 - **One-liner curl installer** — `curl -fsSL … | bash` provisions workspace + gateway + defaults
 - **Hermes-Nous theme** — dark + light editorial variants with cobalt/paper surface pass, thin 1px architectural borders, editorial type accents
-- **Conductor** (`/conductor`) — mission-control surface ported from Clawsuite; spawn missions, assign workers, watch live output and costs
+- **Orchestrator** (`/orchestrator`) — mission-control surface ported from Clawsuite; spawn missions, assign workers, watch live output and costs
 - **Operations** (`/operations`) — agent registry / sessions manager ported from Clawsuite; pause, steer, kill live agents with role and model insight
 - **Synthesized tool pills** — inline tool-call rendering from dashboard stream markers when running against zero-fork gateway
 - **Landing parity pass** — hero, features, screenshots, setup, OG image, mobile theme toggle
 - **Task board status vs. assignee** decoupling
 - **Local-model chat session persistence** — local sessions appear in history + session list
 - **Memory is local-fs first** — honors `HERMES_HOME`, no gateway dependency
-- **Splash + screenshots refresh** — Conductor, Dashboard, Tasks, Jobs captured in new editorial theme
+- **Splash + screenshots refresh** — Orchestrator, Dashboard, Tasks, Jobs captured in new editorial theme
 
 ### Changed
 

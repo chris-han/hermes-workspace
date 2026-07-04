@@ -229,7 +229,7 @@ function parseConfigPayload(payload: ConfigPayload): ConfigPayload {
 }
 
 async function fetchHermesProfiles(): Promise<Array<HermesProfileSummary>> {
-  const response = await fetch('/api/profiles/list')
+  const response = await fetch('/api/profiles/list', { cache: 'no-store' })
   const contentType = response.headers.get('content-type') || ''
   if (!contentType.includes('json')) {
     throw new Error('/api/profiles/list returned non-JSON')
@@ -337,7 +337,6 @@ function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
       description: '',
       systemPrompt: '',
       displayName: undefined,
-      avatarDataUrl: undefined,
       color: createFallbackColor(agentId),
       createdAt: new Date().toISOString(),
     }
@@ -351,7 +350,6 @@ function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
         description: '',
         systemPrompt: '',
         displayName: undefined,
-        avatarDataUrl: undefined,
         color: createFallbackColor(agentId),
         createdAt: new Date().toISOString(),
       }
@@ -363,7 +361,6 @@ function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
       description: readString(parsed.description),
       systemPrompt: readString(parsed.systemPrompt),
       displayName: readString(parsed.displayName),
-      avatarDataUrl: readString(parsed.avatarDataUrl),
       color: readString(parsed.color) || createFallbackColor(agentId),
       createdAt: readString(parsed.createdAt) || new Date().toISOString(),
     }
@@ -373,7 +370,6 @@ function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
       description: '',
       systemPrompt: '',
       displayName: undefined,
-      avatarDataUrl: undefined,
       color: createFallbackColor(agentId),
       createdAt: new Date().toISOString(),
     }
@@ -627,7 +623,7 @@ export function useAgentRoster() {
         meta: {
           ...meta,
           displayName: readString(agent.displayName) || meta.displayName,
-          avatarDataUrl: readString(agent.avatarDataUrl) || meta.avatarDataUrl,
+          avatarDataUrl: readString(agent.avatarDataUrl),
         },
         shortModel: formatModelName(agent.model || 'Custom'),
         status,

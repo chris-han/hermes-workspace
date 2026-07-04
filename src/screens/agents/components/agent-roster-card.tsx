@@ -253,9 +253,7 @@ export function AgentRosterCard({
         : 'idle'
   const provider = resolveProvider(agent)
   const statusBadgeClass = getStatusBadgeClasses(status.label)
-  const useImageAvatar =
-    Boolean(agent.meta.avatarDataUrl && !avatarLoadFailed) &&
-    !aliasesOrchestrator
+  const useImageAvatar = Boolean(agent.meta.avatarDataUrl && !avatarLoadFailed)
 
   const toggleMutation = useMutation({
     mutationFn: async (payload: { jobId: string; enabled: boolean }) =>

@@ -951,7 +951,7 @@ function ChatSidebarComponent({
       kind: 'link',
       to: '/profiles',
       icon: UserMultipleIcon,
-      label: t('nav.missionControl'),
+      label: t('nav.profiles'),
       active: pathname === '/profiles',
     },
   ]

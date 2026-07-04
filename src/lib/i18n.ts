@@ -181,7 +181,7 @@ const ZH: typeof EN = {
   'nav.dataConnections': '数据连接',
   'nav.memory': '记忆',
   'nav.skills': '技能',
-  'nav.profiles': '配置',
+  'nav.profiles': '角色配置',
   'nav.settings': '设置',
   'skills.installed': '已安装',
   'skills.marketplace': '市场',

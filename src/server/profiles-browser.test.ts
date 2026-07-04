@@ -21,15 +21,15 @@ describe('listProfiles', () => {
   })
 
   it('reads profiles from the active workspace hermes home', () => {
-    const hermesHome = '/repo/workspaces/ws-123/.hermes'
+    const hermesHome = '/repo/workspaces/ws-123'
 
     expect(getProfilesRoot(hermesHome)).toBe(
-      '/repo/workspaces/ws-123/.hermes/profiles',
+      '/repo/workspaces/ws-123/profiles',
     )
   })
 
   it('always includes the default profile even when a named profile is active', () => {
-    const hermesRoot = path.join(tempHome, '.hermes')
+    const hermesRoot = tempHome
     const profilesRoot = path.join(hermesRoot, 'profiles')
     const namedProfileRoot = path.join(profilesRoot, 'jarvis')
 

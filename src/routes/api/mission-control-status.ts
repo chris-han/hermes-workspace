@@ -9,7 +9,10 @@ import {
   HERMES_API,
   ensureGatewayProbed,
 } from '../../server/gateway-capabilities'
-import { resolveActiveWorkspaceRoot } from '../../server/workspace-root'
+import {
+  requireWorkspaceHermesHome,
+  resolveActiveWorkspaceRoot,
+} from '../../server/workspace-root'
 
 type MemberDefinition = {
   id: string
@@ -250,7 +253,7 @@ export const Route = createFileRoute('/api/mission-control-status')({
         ensureGatewayProbed()
         const taskCounts = await fetchAssignedTaskCounts()
         const workspace = await resolveActiveWorkspaceRoot(request.headers)
-        const baseHermesHome = workspace.hermesHome || join(workspace.path, '.hermes')
+        const baseHermesHome = requireWorkspaceHermesHome(workspace)
         const memberDefinitions = buildMemberDefinitions(baseHermesHome)
 
         const crew = memberDefinitions.map((member) => {

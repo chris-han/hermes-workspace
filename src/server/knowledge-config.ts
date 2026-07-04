@@ -29,12 +29,11 @@ const REPO_ROOT = path.resolve(
 const REPO_BOOTSTRAP_ROOT = path.join(REPO_ROOT, 'bootstrap')
 
 function getConfigPath(workspaceRoot?: string): string {
-  if (workspaceRoot) {
-    const appStateRoot = resolveWorkspaceAppStateRoot(workspaceRoot)
-    return path.join(appStateRoot, 'knowledge-config.json')
+  if (!workspaceRoot) {
+    throw new Error('workspaceRoot is required for knowledge config path')
   }
-  const hermesHome = path.join(os.homedir(), '.hermes')
-  return path.join(hermesHome, 'knowledge-config.json')
+  const appStateRoot = resolveWorkspaceAppStateRoot(workspaceRoot)
+  return path.join(appStateRoot, 'knowledge-config.json')
 }
 
 function defaultWorkspaceKnowledgePath(workspaceRoot: string): string {
@@ -155,12 +154,8 @@ export function getKnowledgeBaseEffectiveRoot(
   }
   // fallback: legacy env var or default
   if (process.env.KNOWLEDGE_DIR) return path.resolve(process.env.KNOWLEDGE_DIR)
-
-  if (workspaceRoot) {
-    return path.resolve(workspaceRoot, 'knowledge-base')
+  if (!workspaceRoot) {
+    throw new Error('workspaceRoot is required for knowledge root resolution')
   }
-
-  const hermesKnowledge = path.join(os.homedir(), '.hermes', 'knowledge')
-  if (fs.existsSync(hermesKnowledge)) return hermesKnowledge
-  return hermesKnowledge
+  return path.resolve(workspaceRoot, 'knowledge-base')
 }

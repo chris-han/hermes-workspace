@@ -1,5 +1,4 @@
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 
 export type MemoryFileMeta = {
@@ -31,11 +30,11 @@ function normalizeWorkspaceRoot(options: MemoryRootOptions = {}): string {
   const explicitRoot = options.workspaceRoot?.trim()
   if (explicitRoot) return explicitRoot
 
-  // Honor HERMES_HOME when set (e.g. ~/.hermes-vanilla for running alongside prod).
-  // Fall back to ~/.hermes for the default install location.
+  // Honor HERMES_HOME when set so deployments may explicitly target a different
+  // workspace-local Hermes home.
   const envHome = process.env.HERMES_HOME?.trim()
   if (envHome) return envHome
-  return path.join(os.homedir(), '.hermes')
+  throw new Error('workspaceRoot or HERMES_HOME is required')
 }
 
 export function getMemoryWorkspaceRoot(options: MemoryRootOptions = {}): string {

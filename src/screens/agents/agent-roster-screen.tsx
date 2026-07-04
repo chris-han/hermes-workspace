@@ -6,6 +6,7 @@ import {
   Settings01Icon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 import { seedAgentPresets } from './agent-presets'
 import { OrchestratorCard } from './components/orchestrator-card'
 import { AgentRosterCard } from './components/agent-roster-card'
@@ -17,7 +18,6 @@ import { useAgentRoster } from './hooks/use-agent-roster'
 import type { CSSProperties } from 'react'
 import { Button } from '@/components/ui/button'
 import { t } from '@/lib/i18n'
-import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/screens/dashboard/lib/formatters'
 
 export const THEME_STYLE: CSSProperties = {
@@ -127,32 +127,36 @@ export function AgentRosterScreen() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex rounded-button border border-[var(--theme-border)] bg-[var(--theme-card2)] p-1">
-                <button
-                  type="button"
-                  onClick={() => setView('overview')}
-                  className={cn(
-                    'cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors',
-                    view === 'overview'
-                      ? 'bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)]'
-                      : 'text-[var(--theme-muted)] hover:bg-[var(--theme-card2)]',
-                  )}
+              <Tabs
+                value={view}
+                onValueChange={(value) =>
+                  setView(value as 'overview' | 'outputs')
+                }
+              >
+                <TabsList
+                  variant="underline"
+                  className="w-full justify-start gap-2 border-b border-[var(--theme-border)] bg-transparent px-0"
                 >
-                  Overview
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView('outputs')}
-                  className={cn(
-                    'cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors',
-                    view === 'outputs'
-                      ? 'bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)]'
-                      : 'text-[var(--theme-muted)] hover:bg-[var(--theme-card2)]',
-                  )}
-                >
-                  Outputs
-                </button>
-              </div>
+                  <TabsTab
+                    value="overview"
+                    className="min-w-0 rounded-none px-1 text-[var(--theme-muted)] data-active:text-[var(--theme-text)] [&[data-active]_.tab-badge]:border-[var(--theme-accent)] [&[data-active]_.tab-badge]:bg-[var(--theme-accent-soft)] [&[data-active]_.tab-badge]:text-[var(--theme-text)]"
+                  >
+                    <span>Overview</span>
+                    <span className="tab-badge inline-flex min-w-[1.25rem] items-center justify-center rounded-full border border-[var(--theme-border)] bg-[var(--theme-card)] px-1.5 py-0.5 text-[11px] font-semibold leading-none text-[var(--theme-muted)]">
+                      {agents.length}
+                    </span>
+                  </TabsTab>
+                  <TabsTab
+                    value="outputs"
+                    className="min-w-0 rounded-none px-1 text-[var(--theme-muted)] data-active:text-[var(--theme-text)] [&[data-active]_.tab-badge]:border-[var(--theme-accent)] [&[data-active]_.tab-badge]:bg-[var(--theme-accent-soft)] [&[data-active]_.tab-badge]:text-[var(--theme-text)]"
+                  >
+                    <span>Outputs</span>
+                    <span className="tab-badge inline-flex min-w-[1.25rem] items-center justify-center rounded-full border border-[var(--theme-border)] bg-[var(--theme-card)] px-1.5 py-0.5 text-[11px] font-semibold leading-none text-[var(--theme-muted)]">
+                      {recentActivity.length}
+                    </span>
+                  </TabsTab>
+                </TabsList>
+              </Tabs>
               <Button
                 className="cursor-pointer bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)] hover:bg-[var(--theme-accent-strong)]"
                 onClick={() => setNewAgentOpen(true)}

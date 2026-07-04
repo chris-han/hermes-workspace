@@ -79,7 +79,7 @@ describe('resolveActiveWorkspaceRoot', () => {
           slug: 'alice_zhang',
           root: '/home/chris/repo/semantier/workspaces/bb685f18514b4dc89018900bbb4687eb',
           hermes_home:
-            '/home/chris/repo/semantier/workspaces/bb685f18514b4dc89018900bbb4687eb/.hermes',
+            '/home/chris/repo/semantier/workspaces/bb685f18514b4dc89018900bbb4687eb',
         },
       }),
     })

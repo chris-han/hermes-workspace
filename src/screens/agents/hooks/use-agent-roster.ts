@@ -11,10 +11,12 @@ import {
 } from '@/screens/dashboard/lib/formatters'
 
 // Hermes-Workspace adapter: AgentRoster is backed by Hermes profiles
-// (each profile = one persistent agent). Profiles live at ~/.hermes/profiles/<name>/
+// (each profile = one persistent agent). Profiles are resolved from workspace hermesHome.
 // with their own config.yaml, sessions, skills.
 type HermesProfileSummary = {
   name: string
+  displayName?: string
+  avatarDataUrl?: string
   path: string
   active: boolean
   exists: boolean
@@ -29,7 +31,10 @@ type HermesProfileSummary = {
 export type GatewayConfigAgent = {
   id: string
   name: string
+  displayName?: string
+  avatarDataUrl?: string
   model: string
+  provider?: string
   workspace?: string
   agentDir?: string
 }
@@ -38,6 +43,8 @@ export type AgentRosterAgentMeta = {
   emoji: string
   description: string
   systemPrompt: string
+  displayName?: string
+  avatarDataUrl?: string
   color: string
   createdAt: string
 }
@@ -203,6 +210,9 @@ function normalizeAgentList(input: unknown): Array<GatewayConfigAgent> {
       id,
       name: readString(row.name) || id,
       model: readString(row.model),
+      displayName: readString(row.displayName) || undefined,
+      avatarDataUrl: readString(row.avatarDataUrl) || undefined,
+      provider: readString(row.provider) || undefined,
       workspace: readString(row.workspace) || undefined,
       agentDir: readString(row.agentDir) || undefined,
     })
@@ -240,8 +250,13 @@ async function fetchAgentRosterConfig(): Promise<ConfigPayload> {
   const profiles = await fetchHermesProfiles()
   const list = profiles.map((profile) => ({
     id: profile.name,
-    name: profile.name === 'default' ? 'Workspace' : profile.name,
+    name:
+      profile.displayName?.trim() ||
+      profile.name,
+    displayName: profile.displayName?.trim(),
+    avatarDataUrl: readString(profile.avatarDataUrl),
     model: profile.model || '',
+    provider: readString(profile.provider),
     workspace: profile.path,
     agentDir: profile.path,
   }))
@@ -321,6 +336,8 @@ function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
       emoji: createFallbackEmoji(agentId),
       description: '',
       systemPrompt: '',
+      displayName: undefined,
+      avatarDataUrl: undefined,
       color: createFallbackColor(agentId),
       createdAt: new Date().toISOString(),
     }
@@ -333,6 +350,8 @@ function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
         emoji: createFallbackEmoji(agentId),
         description: '',
         systemPrompt: '',
+        displayName: undefined,
+        avatarDataUrl: undefined,
         color: createFallbackColor(agentId),
         createdAt: new Date().toISOString(),
       }
@@ -343,6 +362,8 @@ function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
       emoji: readString(parsed.emoji) || createFallbackEmoji(agentId),
       description: readString(parsed.description),
       systemPrompt: readString(parsed.systemPrompt),
+      displayName: readString(parsed.displayName),
+      avatarDataUrl: readString(parsed.avatarDataUrl),
       color: readString(parsed.color) || createFallbackColor(agentId),
       createdAt: readString(parsed.createdAt) || new Date().toISOString(),
     }
@@ -351,6 +372,8 @@ function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
       emoji: createFallbackEmoji(agentId),
       description: '',
       systemPrompt: '',
+      displayName: undefined,
+      avatarDataUrl: undefined,
       color: createFallbackColor(agentId),
       createdAt: new Date().toISOString(),
     }
@@ -601,7 +624,11 @@ export function useAgentRoster() {
 
       return {
         ...agent,
-        meta,
+        meta: {
+          ...meta,
+          displayName: readString(agent.displayName) || meta.displayName,
+          avatarDataUrl: readString(agent.avatarDataUrl) || meta.avatarDataUrl,
+        },
         shortModel: formatModelName(agent.model || 'Custom'),
         status,
         sessionKey: getAgentRosterSessionKey(agent.id),
@@ -692,6 +719,7 @@ export function useAgentRoster() {
       agentId: string
       name: string
       model: string
+      provider: string
       emoji: string
       systemPrompt: string
     }) => {
@@ -699,8 +727,11 @@ export function useAgentRoster() {
       // survive across machines / clients.
       const patch: Record<string, unknown> = {}
       if (input.model.trim()) patch.model = input.model.trim()
+      if (input.name.trim()) patch.display_name = input.name.trim()
       if (input.systemPrompt.trim())
         patch.system_prompt = input.systemPrompt.trim()
+      if (input.provider.trim()) patch.provider = input.provider.trim()
+      if (!input.provider.trim()) patch.provider = undefined
       if (Object.keys(patch).length > 0) {
         await updateHermesProfile(input.agentId, patch)
       }
@@ -797,4 +828,3 @@ export function useAgentRoster() {
     slugifyJobLabel,
   }
 }
-

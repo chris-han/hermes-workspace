@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -22,6 +22,8 @@ import { cn } from '@/lib/utils'
 
 type ProfileSummary = {
   name: string
+  displayName?: string
+  avatarDataUrl?: string
   path: string
   active: boolean
   exists: boolean
@@ -35,6 +37,8 @@ type ProfileSummary = {
 
 type ProfileDetail = {
   name: string
+  displayName?: string
+  avatarDataUrl?: string
   path: string
   active: boolean
   config: Record<string, unknown>
@@ -42,6 +46,14 @@ type ProfileDetail = {
   hasEnv: boolean
   sessionsDir?: string
   skillsDir?: string
+  soulPath?: string
+  soul?: string
+}
+
+type ModelOption = {
+  id: string
+  name?: string
+  provider?: string
 }
 
 async function readJson<T>(url: string): Promise<T> {
@@ -66,12 +78,35 @@ function formatDate(value?: string): string {
   }).format(parsed)
 }
 
-function StatChip({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-lg border border-primary-200 bg-primary-100/60 px-2.5 py-1 text-xs text-primary-700">
-      <span className="font-semibold text-primary-900">{value}</span> {label}
-    </div>
-  )
+const PROFILE_IMAGE_MAX_DIMENSION = 128
+const PROFILE_IMAGE_MAX_FILE_SIZE = 10 * 1024 * 1024
+
+function readOptionalString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function resolveDisplayName(profile: { name: string; displayName?: string }): string {
+  return (profile.displayName?.trim() || profile.name).trim()
+}
+
+function resolveProfileProvider(profile: {
+  provider?: string
+  model?: string
+}): string {
+  const configured = profile.provider?.trim()
+  if (configured) return configured
+
+  const model = profile.model?.trim()
+  const slashIndex = model ? model.indexOf('/') : -1
+  if (slashIndex > 0) return model.slice(0, slashIndex)
+
+  return 'no provider'
+}
+
+function inferProviderFromModel(model: string): string {
+  const slashIndex = model.indexOf('/')
+  if (slashIndex <= 0) return ''
+  return model.slice(0, slashIndex)
 }
 
 function ProfileStat({
@@ -87,13 +122,13 @@ function ProfileStat({
     <div className="flex flex-col items-center py-2.5 px-1">
       <div
         className={cn(
-          'text-sm font-bold text-primary-900 dark:text-neutral-100',
+          'text-sm font-bold text-foreground',
           truncate && 'max-w-[72px] truncate text-xs',
         )}
       >
         {value}
       </div>
-      <div className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-primary-400 dark:text-neutral-500">
+      <div className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
     </div>
@@ -110,12 +145,21 @@ export function ProfilesScreen() {
   const [cloneFrom, setCloneFrom] = useState('')
   const [wizardProvider, setWizardProvider] = useState('')
   const [wizardModel, setWizardModel] = useState('')
-  const [allModels, setAllModels] = useState<
-    Array<{ id: string; name?: string; provider?: string }>
-  >([])
+  const [allModels, setAllModels] = useState<Array<ModelOption>>([])
   const [loadingModels, setLoadingModels] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [busyName, setBusyName] = useState<string | null>(null)
+  const [detailDisplayName, setDetailDisplayName] = useState('')
+  const [detailProvider, setDetailProvider] = useState('')
+  const [detailModel, setDetailModel] = useState('')
+  const [detailSoul, setDetailSoul] = useState('')
+  const [detailAvatarDataUrl, setDetailAvatarDataUrl] = useState<string | null>(
+    null,
+  )
+  const [detailErrorMessage, setDetailErrorMessage] = useState<string | null>(
+    null,
+  )
+  const [detailSaving, setDetailSaving] = useState(false)
 
   const profilesQuery = useQuery({
     queryKey: ['profiles', 'list'],
@@ -147,6 +191,7 @@ export function ProfilesScreen() {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(body),
     })
     const payload = await response.json().catch(() => ({}))
@@ -156,14 +201,111 @@ export function ProfilesScreen() {
     return payload
   }
 
+  async function handleProfileAvatarUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setDetailErrorMessage('Unsupported file type.')
+      return
+    }
+    if (file.size > PROFILE_IMAGE_MAX_FILE_SIZE) {
+      setDetailErrorMessage('Image too large (max 10MB).')
+      return
+    }
+    setDetailErrorMessage(null)
+    setDetailSaving(true)
+    try {
+      const url = URL.createObjectURL(file)
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const imageInstance = new Image()
+        imageInstance.onload = () => resolve(imageInstance)
+        imageInstance.onerror = () => reject(new Error('Failed to load image'))
+        imageInstance.src = url
+      })
+      const scale = Math.min(
+        1,
+        PROFILE_IMAGE_MAX_DIMENSION / Math.max(image.width, image.height),
+      )
+      const width = Math.round(image.width * scale)
+      const height = Math.round(image.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const context = canvas.getContext('2d')
+      if (!context) {
+        throw new Error('Failed to process image.')
+      }
+      context.imageSmoothingQuality = 'high'
+      context.drawImage(image, 0, 0, width, height)
+      URL.revokeObjectURL(url)
+      const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
+      setDetailAvatarDataUrl(canvas.toDataURL(outputType, 0.82))
+    } catch {
+      setDetailErrorMessage('Failed to process image.')
+    } finally {
+      setDetailSaving(false)
+    }
+  }
+
+  async function handleSaveProfileDetails() {
+    const targetProfileName = detailsName || detailQuery.data?.profile?.name || 'default'
+    setDetailSaving(true)
+    setDetailErrorMessage(null)
+    try {
+      const patchPayload = {
+        name: targetProfileName,
+        patch: undefined as Record<string, unknown> | undefined,
+      }
+      const sanitizedModel = detailModel.trim()
+      const patch: Record<string, unknown> = {
+        display_name: detailDisplayName.trim() || null,
+        soul: detailSoul || null,
+      }
+      const normalizedProvider = detailProvider.trim()
+      if (normalizedProvider) {
+        patch.provider = normalizedProvider
+      }
+      if (sanitizedModel) {
+        patch.model = sanitizedModel
+      }
+      if (detailAvatarDataUrl === null) {
+        patch.avatar_data_url = null
+      } else if (detailAvatarDataUrl) {
+        patch.avatar_data_url = detailAvatarDataUrl
+      }
+      patchPayload.patch = patch
+
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.debug('[profiles.save] posting', patchPayload)
+      }
+
+      const response = (await postJson('/api/profiles/update', patchPayload)) as {
+        ok?: boolean
+        profile?: Record<string, unknown>
+      }
+      if (response.ok === false) {
+        throw new Error('Failed to save profile details')
+      }
+      await refreshProfiles()
+      await detailQuery.refetch()
+      toast('Profile identity saved', { type: 'success' })
+    } catch (error) {
+      setDetailErrorMessage(
+        error instanceof Error ? error.message : 'Failed to save profile details',
+      )
+    } finally {
+      setDetailSaving(false)
+    }
+  }
+
   const fetchAllModels = useCallback(async () => {
     setLoadingModels(true)
     try {
       const res = await fetch('/api/models')
       if (res.ok) {
-        const result = (await res.json()) as {
-          models?: Array<{ id: string; name?: string; provider?: string }>
-        }
+        const result = (await res.json()) as { models?: Array<ModelOption> }
         setAllModels(result.models || [])
       }
     } catch {
@@ -178,9 +320,77 @@ export function ProfilesScreen() {
     }
   }, [createOpen, wizardStep, allModels.length, fetchAllModels])
 
+  useEffect(() => {
+    const profile = detailQuery.data?.profile
+    if (!detailsName || !profile) return
+    setDetailDisplayName(profile.displayName || '')
+    const configuredProvider = readOptionalString(profile.config?.provider as unknown)
+    const configuredModel = readOptionalString(profile.config?.model as unknown)
+    setDetailProvider(
+      configuredProvider || inferProviderFromModel(configuredModel) || '',
+    )
+    setDetailModel(configuredModel)
+    setDetailSoul(profile.soul || '')
+    setDetailAvatarDataUrl(profile.avatarDataUrl ?? null)
+    setDetailErrorMessage(null)
+  }, [
+    detailsName,
+    detailQuery.data?.profile?.displayName,
+    detailQuery.data?.profile?.avatarDataUrl,
+    detailQuery.data?.profile?.name,
+    detailQuery.data?.profile?.config?.provider,
+    detailQuery.data?.profile?.config?.model,
+    detailQuery.data?.profile?.soul,
+  ])
+
   const nameValid =
     /^[A-Za-z0-9_-]+$/.test(newProfileName.trim()) &&
     newProfileName.trim() !== 'default'
+
+  const detailProviderOptions = useMemo(() => {
+    const providers = new Set<string>()
+    for (const model of allModels) {
+      const provider = (model.provider || '').trim()
+      if (provider) providers.add(provider)
+    }
+    if (detailProvider && !providers.has(detailProvider)) {
+      providers.add(detailProvider)
+    }
+    return Array.from(providers).sort((a, b) => a.localeCompare(b))
+  }, [allModels, detailProvider])
+
+  const detailModelOptions = useMemo(() => {
+    const selectedProviderModels = allModels
+      .filter((m) => (m.provider || '').trim() === detailProvider)
+      .map((m) => ({ id: m.id, name: m.name || m.id }))
+
+    if (!selectedProviderModels.length && detailModel) {
+      return [{ id: detailModel, name: detailModel }]
+    }
+    if (
+      detailModel &&
+      !selectedProviderModels.some((model) => model.id === detailModel)
+    ) {
+      return [{ id: detailModel, name: detailModel }, ...selectedProviderModels]
+    }
+    return selectedProviderModels
+  }, [allModels, detailProvider, detailModel])
+
+  useEffect(() => {
+    if (detailsName && allModels.length === 0) {
+      void fetchAllModels()
+    }
+  }, [detailsName, allModels.length, fetchAllModels])
+
+  useEffect(() => {
+    if (!detailProvider) return
+    const hasProviderModel = detailModelOptions.some(
+      (m) => m.id === detailModel,
+    )
+    if (!hasProviderModel && detailModelOptions.length > 0) {
+      setDetailModel(detailModelOptions[0].id)
+    }
+  }, [detailProvider, detailModelOptions, detailModel])
 
   function resetWizard() {
     setNewProfileName('')
@@ -278,15 +488,14 @@ export function ProfilesScreen() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 md:px-6">
-      <div className="flex flex-col gap-3 rounded-2xl border border-primary-200 bg-primary-50/80 p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 rounded-card border border-border bg-card p-4 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <HugeiconsIcon icon={UserGroupIcon} size={22} strokeWidth={1.7} />
-            <h1 className="text-lg font-semibold text-primary-900">Profiles</h1>
+            <h1 className="text-lg font-semibold text-foreground">Profiles</h1>
           </div>
-          <p className="mt-1 text-sm text-primary-600">
-            Browse and manage Hermes profiles stored under the active
-            workspace&apos;s <span className="font-mono">.hermes/profiles</span>.
+          <p className="mt-1 text-sm text-muted-foreground">
+            Browse and manage Hermes profiles for the active workspace.
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="gap-2">
@@ -298,14 +507,15 @@ export function ProfilesScreen() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {sorted.map((profile) => {
           const busy = busyName === profile.name
+          const provider = resolveProfileProvider(profile)
           return (
             <article
               key={profile.name}
-              className="group relative overflow-hidden rounded-2xl border border-primary-200 bg-primary-50/80 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+              className="group relative overflow-hidden rounded-card border border-border bg-card shadow-sm"
             >
               {/* Active glow accent */}
               {profile.active && (
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-accent-500 to-emerald-400" />
+                <div className="absolute inset-x-0 top-0 h-1 bg-primary" />
               )}
 
               {/* Centered avatar hero */}
@@ -315,18 +525,18 @@ export function ProfilesScreen() {
                     className={cn(
                       'rounded-full p-1',
                       profile.active
-                        ? 'bg-gradient-to-br from-emerald-400 via-accent-500 to-emerald-500 shadow-lg shadow-emerald-500/20'
-                        : 'bg-gradient-to-br from-primary-200 to-primary-300 dark:from-neutral-700 dark:to-neutral-600',
+                        ? 'bg-gradient-to-br from-primary to-primary shadow-lg shadow-primary/20'
+                        : 'bg-muted',
                     )}
                   >
                     <img
-                      src="/logo.svg"
-                      alt={profile.name}
+                      src={profile.avatarDataUrl || '/logo.svg'}
+                      alt={resolveDisplayName(profile)}
                       className={cn(
                         'size-20 rounded-full border-2 object-cover',
                         profile.active
-                          ? 'border-border'
-                          : 'border-primary-50 dark:border-border',
+                          ? 'border-background'
+                          : 'border-card',
                       )}
                       style={{
                         filter: profile.active
@@ -335,32 +545,24 @@ export function ProfilesScreen() {
                       }}
                     />
                   </div>
-                  {profile.active && (
-                    <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full border-2 border-border bg-emerald-500 px-2 py-0.5">
-                      <HugeiconsIcon
-                        icon={CheckmarkCircle02Icon}
-                        size={10}
-                        strokeWidth={2.5}
-                        className="text-white"
-                      />
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-white">
-                        Active
-                      </span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Name + provider */}
-                <h2 className="mt-3 text-center text-lg font-bold text-primary-900 dark:text-neutral-100">
-                  {profile.name}
+                <h2 className="mt-3 text-center text-lg font-bold text-foreground">
+                  {resolveDisplayName(profile)}
                 </h2>
-                <span className="mt-1 inline-block rounded-full bg-primary-100 px-2.5 py-0.5 text-[11px] font-medium text-primary-600 dark:bg-neutral-800 dark:text-neutral-400">
-                  {profile.provider || 'no provider'}
+                <span className="mt-1 inline-block rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  {provider}
                 </span>
+                {profile.active ? (
+                  <div className="mt-2 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold border-[var(--theme-success)] bg-[color-mix(in_srgb,var(--theme-success)_18%,transparent)] text-[var(--theme-success)]">
+                    Active
+                  </div>
+                ) : null}
               </div>
 
               {/* Stats ring */}
-              <div className="mx-4 mt-4 grid grid-cols-4 divide-x divide-primary-200 rounded-xl border border-primary-200 bg-primary-100/50 dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900/50">
+              <div className="mx-4 mt-4 grid grid-cols-4 divide-x divide-border rounded-md border border-border bg-muted/50">
                 <ProfileStat label="Skills" value={profile.skillCount} />
                 <ProfileStat label="Sessions" value={profile.sessionCount} />
                 <ProfileStat
@@ -375,22 +577,22 @@ export function ProfilesScreen() {
               </div>
 
               {/* Updated timestamp */}
-              <div className="mx-4 mt-3 flex items-center justify-center gap-1.5 text-xs text-primary-400 dark:text-neutral-500">
+              <div className="mx-4 mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                 <HugeiconsIcon icon={Clock01Icon} size={12} strokeWidth={1.7} />
                 {formatDate(profile.updatedAt)}
               </div>
 
               {/* Actions */}
-              <div className="mt-4 flex border-t border-primary-200 dark:border-neutral-800">
+              <div className="mt-4 flex border-t border-border">
                 <button
                   type="button"
                   onClick={() => void handleActivate(profile.name)}
                   disabled={profile.active || busy}
                   className={cn(
-                    'flex flex-1 items-center justify-center gap-1.5 border-r border-primary-200 py-2.5 text-xs font-semibold transition-colors dark:border-neutral-800',
+                    'flex flex-1 items-center justify-center gap-1.5 border-r border-border py-2.5 text-xs font-semibold transition-colors',
                     profile.active
-                      ? 'cursor-default text-primary-300 dark:text-neutral-600'
-                      : 'text-primary-700 hover:bg-primary-100 dark:text-neutral-300 dark:hover:bg-neutral-900',
+                      ? 'cursor-default text-muted-foreground/50'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                   )}
                 >
                   <HugeiconsIcon
@@ -403,7 +605,7 @@ export function ProfilesScreen() {
                 <button
                   type="button"
                   onClick={() => setDetailsName(profile.name)}
-                  className="flex flex-1 items-center justify-center gap-1.5 border-r border-primary-200 py-2.5 text-xs font-semibold text-primary-700 transition-colors hover:bg-primary-100 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-900"
+                  className="flex flex-1 items-center justify-center gap-1.5 border-r border-border py-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   <HugeiconsIcon
                     icon={Folder01Icon}
@@ -418,7 +620,7 @@ export function ProfilesScreen() {
                     setRenameTarget(profile)
                     setRenameValue(profile.name)
                   }}
-                  className="flex flex-1 items-center justify-center gap-1.5 border-r border-primary-200 py-2.5 text-xs font-semibold text-primary-700 transition-colors hover:bg-primary-100 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-900"
+                  className="flex flex-1 items-center justify-center gap-1.5 border-r border-border py-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   <HugeiconsIcon
                     icon={Edit02Icon}
@@ -434,8 +636,8 @@ export function ProfilesScreen() {
                   className={cn(
                     'flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-colors',
                     profile.active
-                      ? 'cursor-default text-primary-300 dark:text-neutral-600'
-                      : 'text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20',
+                      ? 'cursor-default text-muted-foreground/50'
+                      : 'text-destructive hover:bg-destructive/10',
                   )}
                 >
                   <HugeiconsIcon
@@ -452,7 +654,7 @@ export function ProfilesScreen() {
       </div>
 
       {sorted.length === 0 && !profilesQuery.isLoading ? (
-        <div className="rounded-2xl border border-dashed border-primary-200 bg-primary-50/70 p-8 text-center text-sm text-primary-600">
+        <div className="rounded-card border border-dashed border-border bg-muted p-8 text-center text-sm text-muted-foreground">
           No named profiles found yet. The active profile is{' '}
           <span className="font-semibold">{activeProfile}</span>.
         </div>
@@ -467,16 +669,16 @@ export function ProfilesScreen() {
       >
         <DialogContent className="w-[min(560px,94vw)] max-w-none p-0">
           {/* ── Header ─────────────────────────────────── */}
-          <div className="border-b border-primary-200 px-6 pb-4 pt-5 dark:border-neutral-800">
+          <div className="border-b border-border px-6 pb-4 pt-5">
             <div className="flex items-center gap-3">
-              <div className="inline-flex size-10 items-center justify-center rounded-xl border border-primary-200 bg-primary-100/70 dark:border-neutral-700 dark:bg-neutral-900">
+              <div className="inline-flex size-10 items-center justify-center rounded-lg border border-border bg-muted">
                 <HugeiconsIcon icon={Add01Icon} size={20} strokeWidth={1.7} />
               </div>
               <div>
                 <DialogTitle className="text-base font-semibold">
                   Create profile
                 </DialogTitle>
-                <p className="mt-0.5 text-xs text-primary-500 dark:text-neutral-400">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {wizardStep === 1
                     ? 'Name & template'
                     : wizardStep === 2
@@ -494,10 +696,10 @@ export function ProfilesScreen() {
                     className={cn(
                       'flex size-7 items-center justify-center rounded-full text-xs font-bold transition-colors',
                       wizardStep > step
-                        ? 'bg-emerald-500 text-white'
+                        ? 'bg-primary text-primary-foreground'
                         : wizardStep === step
-                          ? 'bg-accent-500 text-white'
-                          : 'border border-primary-200 bg-primary-100 text-primary-400 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500',
+                          ? 'bg-primary text-primary-foreground'
+                          : 'border border-border bg-muted text-muted-foreground',
                     )}
                   >
                     {wizardStep > step ? (
@@ -514,9 +716,7 @@ export function ProfilesScreen() {
                     <div
                       className={cn(
                         'h-0.5 flex-1 rounded-full transition-colors',
-                        wizardStep > step
-                          ? 'bg-emerald-400'
-                          : 'bg-primary-200 dark:bg-neutral-700',
+                        wizardStep > step ? 'bg-primary' : 'bg-border',
                       )}
                     />
                   )}
@@ -530,7 +730,7 @@ export function ProfilesScreen() {
             {wizardStep === 1 && (
               <div className="space-y-5">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-neutral-400">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Profile name
                   </label>
                   <Input
@@ -541,21 +741,21 @@ export function ProfilesScreen() {
                     autoFocus
                   />
                   {newProfileName.trim() && !nameValid ? (
-                    <p className="text-xs text-red-500">
+                    <p className="text-xs text-destructive">
                       Use letters, numbers, underscores, or hyphens. Cannot be
                       &quot;default&quot;.
                     </p>
                   ) : newProfileName.trim() && nameValid ? (
-                    <p className="text-xs text-emerald-600">✓ Valid name</p>
+                    <p className="text-xs text-success">✓ Valid name</p>
                   ) : (
-                    <p className="text-xs text-primary-400 dark:text-neutral-500">
+                    <p className="text-xs text-muted-foreground">
                       Choose a short, memorable identifier
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-neutral-400">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     <span className="flex items-center gap-1.5">
                       <HugeiconsIcon
                         icon={Copy01Icon}
@@ -568,27 +768,28 @@ export function ProfilesScreen() {
                   <select
                     value={cloneFrom}
                     onChange={(e) => setCloneFrom(e.target.value)}
-                    className="h-11 w-full rounded-xl border border-primary-200 bg-primary-50 px-3 text-sm text-primary-900 outline-none transition-colors focus:border-accent-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                    className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
                   >
                     <option value="">Start fresh — empty config</option>
                     {profiles.map((p) => (
-                      <option key={p.name} value={p.name}>
-                        {p.name} {p.model ? `(${p.model})` : ''}{' '}
-                        {p.active ? '• active' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-primary-400 dark:text-neutral-500">
+                    <option key={p.name} value={p.name}>
+                      {resolveDisplayName(p)} {p.model ? `(${p.model})` : ''}{' '}
+                      {p.active ? '• active' : ''}
+                    </option>
+                  ))}
+                </select>
+                  <p className="text-xs text-muted-foreground">
                     Copies config, skills path, and env from the selected
                     profile
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-primary-200 bg-primary-50/60 p-3 dark:border-neutral-800 dark:bg-neutral-900/40">
-                  <p className="text-xs text-primary-500 dark:text-neutral-400">
-                    Profiles are stored under the active workspace&apos;s{' '}
-                    <code className="rounded bg-primary-100 px-1 py-0.5 font-mono text-[11px] dark:bg-neutral-800">
-                      .hermes/profiles/&lt;name&gt;/
+                <div className="rounded-md border border-border bg-muted p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Profiles are stored under the active workspace&apos;s
+                    configured Hermes root with each profile directory under{' '}
+                    <code className="rounded bg-muted/50 px-1 py-0.5 font-mono text-[11px]">
+                      /profiles/
                     </code>{' '}
                     with their own config, skills, sessions, and env.
                   </p>
@@ -599,15 +800,15 @@ export function ProfilesScreen() {
             {wizardStep === 2 && (
               <div className="space-y-5">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-neutral-400">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Default model
                   </label>
                   {loadingModels ? (
-                    <div className="flex h-11 items-center rounded-xl border border-primary-200 bg-primary-50 px-3 text-sm text-primary-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-500">
+                    <div className="flex h-11 items-center rounded-md border border-border bg-background px-3 text-sm text-muted-foreground">
                       Loading configured models…
                     </div>
                   ) : allModels.length === 0 ? (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+                    <div className="rounded-md border border-border bg-muted p-3 text-xs text-muted-foreground">
                       No models found. Make sure Project Agent is running and
                       has models configured.
                     </div>
@@ -620,7 +821,7 @@ export function ProfilesScreen() {
                         const matched = allModels.find((m) => m.id === modelId)
                         setWizardProvider(matched?.provider || '')
                       }}
-                      className="h-11 w-full rounded-xl border border-primary-200 bg-primary-50 px-3 text-sm text-primary-900 outline-none transition-colors focus:border-accent-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                      className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
                     >
                       <option value="">Skip — configure later</option>
                       {allModels.map((m) => (
@@ -632,7 +833,7 @@ export function ProfilesScreen() {
                     </select>
                   )}
                   {wizardModel && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                    <p className="text-xs text-success">
                       ✓ {wizardModel}
                       {wizardProvider ? ` via ${wizardProvider}` : ''}
                     </p>
@@ -640,8 +841,8 @@ export function ProfilesScreen() {
                 </div>
 
                 {!wizardModel && !loadingModels && allModels.length > 0 && (
-                  <div className="rounded-xl border border-primary-200 bg-primary-50/60 p-3 dark:border-neutral-800 dark:bg-neutral-900/40">
-                    <p className="text-xs text-primary-500 dark:text-neutral-400">
+                  <div className="rounded-md border border-border bg-muted p-3">
+                    <p className="text-xs text-muted-foreground">
                       Select a model or skip to configure later from profile
                       details or config.yaml.
                     </p>
@@ -652,8 +853,8 @@ export function ProfilesScreen() {
 
             {wizardStep === 3 && (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-primary-200 bg-primary-50/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/60">
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary-500 dark:text-neutral-400">
+                <div className="rounded-card border border-border bg-card p-4">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Profile summary
                   </h3>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -674,11 +875,11 @@ export function ProfilesScreen() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-                  <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                <div className="rounded-md border border-success/30 bg-success/10 p-3">
+                  <p className="text-xs text-success-foreground">
                     This will create{' '}
-                    <code className="rounded bg-emerald-100 px-1 py-0.5 font-mono text-[11px] dark:bg-emerald-900/40">
-                      .hermes/profiles/{newProfileName.trim()}/
+                    <code className="rounded bg-success/20 px-1 py-0.5 font-mono text-[11px]">
+                      profiles/{newProfileName.trim()}/
                     </code>{' '}
                     with config.yaml
                     {cloneFrom ? ` cloned from ${cloneFrom}` : ''}, skills/, and
@@ -690,7 +891,7 @@ export function ProfilesScreen() {
           </div>
 
           {/* ── Footer ─────────────────────────────────── */}
-          <div className="flex items-center justify-between border-t border-primary-200 px-6 py-4 dark:border-neutral-800">
+          <div className="flex items-center justify-between border-t border-border px-6 py-4">
             <div>
               {wizardStep > 1 && (
                 <Button
@@ -757,18 +958,18 @@ export function ProfilesScreen() {
         }}
       >
         <DialogContent className="w-[min(440px,94vw)] max-w-none p-0">
-          <div className="border-b border-primary-200 px-6 pb-4 pt-5 dark:border-neutral-800">
+          <div className="border-b border-border px-6 pb-4 pt-5">
             <div className="flex items-center gap-3">
-              <div className="inline-flex size-10 items-center justify-center rounded-xl border border-primary-200 bg-primary-100/70 dark:border-neutral-700 dark:bg-neutral-900">
+              <div className="inline-flex size-10 items-center justify-center rounded-lg border border-border bg-muted">
                 <HugeiconsIcon icon={Edit02Icon} size={20} strokeWidth={1.7} />
               </div>
               <div>
                 <DialogTitle className="text-base font-semibold">
                   Rename profile
                 </DialogTitle>
-                <p className="mt-0.5 text-xs text-primary-500 dark:text-neutral-400">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   Renaming{' '}
-                  <span className="font-semibold text-primary-700 dark:text-neutral-200">
+                  <span className="font-semibold text-foreground">
                     {renameTarget?.name}
                   </span>
                 </p>
@@ -777,7 +978,7 @@ export function ProfilesScreen() {
           </div>
           <div className="px-6 py-5 space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-neutral-400">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 New name
               </label>
               <Input
@@ -789,13 +990,13 @@ export function ProfilesScreen() {
               />
               {renameValue.trim() &&
                 !/^[A-Za-z0-9_-]+$/.test(renameValue.trim()) && (
-                  <p className="text-xs text-red-500">
+                  <p className="text-xs text-destructive">
                     Use letters, numbers, underscores, or hyphens.
                   </p>
                 )}
             </div>
           </div>
-          <div className="flex justify-end gap-2 border-t border-primary-200 px-6 py-3 dark:border-neutral-800">
+          <div className="flex justify-end gap-2 border-t border-border px-6 py-3">
             <Button
               variant="outline"
               size="sm"
@@ -823,22 +1024,33 @@ export function ProfilesScreen() {
 
       <DialogRoot
         open={Boolean(detailsName)}
-        onOpenChange={(open) => !open && setDetailsName(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailErrorMessage(null)
+            setDetailSaving(false)
+            setDetailsName(null)
+          }
+        }}
       >
         <DialogContent className="w-[min(640px,94vw)] max-w-none p-0 max-h-[85vh] flex flex-col">
           {/* Header */}
-          <div className="shrink-0 border-b border-primary-200 px-6 pb-4 pt-5 dark:border-neutral-800">
+          <div className="shrink-0 border-b border-border px-6 pb-4 pt-5">
             <div className="flex items-center gap-3">
               <img
-                src="/logo.svg"
-                alt={detailsName || ''}
-                className="size-12 rounded-full border-2 border-primary-200 object-cover dark:border-neutral-700"
+                src={detailAvatarDataUrl || '/logo.svg'}
+                alt={detailDisplayName || detailsName || ''}
+                className="size-12 rounded-full border-2 border-border object-cover"
               />
               <div className="min-w-0">
                 <DialogTitle className="text-base font-semibold">
-                  {detailsName}
+                  {resolveDisplayName(
+                    detailQuery.data?.profile ?? {
+                      name: detailsName || '',
+                      displayName: detailDisplayName,
+                    },
+                  )}
                 </DialogTitle>
-                <p className="mt-0.5 text-xs text-primary-500 dark:text-neutral-400">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   Profile details &amp; configuration
                 </p>
               </div>
@@ -849,9 +1061,122 @@ export function ProfilesScreen() {
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
             {detailQuery.data?.profile ? (
               <div className="space-y-4 text-sm">
+                <div className="grid gap-3 rounded-lg border border-border bg-muted/50 p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Display name
+                    </span>
+                    <Input
+                      value={detailDisplayName}
+                      onChange={(event) =>
+                        setDetailDisplayName(event.target.value)
+                      }
+                      placeholder={detailQuery.data.profile.name}
+                      className="h-10"
+                    />
+                  </label>
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Avatar
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <label className="block">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfileAvatarUpload}
+                          disabled={detailSaving}
+                          aria-label="Upload profile avatar"
+                          className="block w-full cursor-pointer text-xs text-foreground md:max-w-xs file:mr-2 file:cursor-pointer file:rounded-md file:border file:border-border file:bg-muted file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-foreground file:transition-colors hover:file:bg-muted/80 disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                      </label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDetailAvatarDataUrl(null)}
+                        disabled={detailSaving || !detailAvatarDataUrl}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Provider
+                    </span>
+                    <select
+                      value={detailProvider}
+                      onChange={(event) => {
+                        setDetailProvider(event.target.value)
+                        setDetailModel('')
+                      }}
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+                    >
+                      <option value="">Select provider</option>
+                      {detailProviderOptions.map((provider) => (
+                        <option key={provider} value={provider}>
+                          {provider}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Model
+                    </span>
+                    <select
+                      value={detailModel}
+                      onChange={(event) => setDetailModel(event.target.value)}
+                      disabled={!detailProvider}
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary disabled:opacity-60"
+                    >
+                      {!detailProvider ? (
+                        <option value="">Select provider first</option>
+                      ) : detailModelOptions.length === 0 ? (
+                        <option value="">No models available</option>
+                      ) : (
+                        <>
+                          <option value="">Select model</option>
+                          {detailModelOptions.map((model) => (
+                            <option key={model.id} value={model.id}>
+                              {model.name || model.id}
+                            </option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  </label>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/50 p-3">
+                  <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    SOUL.md
+                  </div>
+                  <p className="mb-2 break-all text-xs text-muted-foreground">
+                    {detailQuery.data.profile.soulPath || 'No SOUL.md file'}
+                  </p>
+                  <textarea
+                    value={detailSoul}
+                    onChange={(event) => setDetailSoul(event.target.value)}
+                    placeholder="Paste or write SOUL.md content here..."
+                    className="h-36 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-0"
+                  />
+                  <div className="mt-2 flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDetailSoul('')}
+                      disabled={detailSaving || !detailSoul}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <DetailField
-                    label="Name"
+                    label="Profile ID"
                     value={detailQuery.data.profile.name}
                   />
                   <DetailField
@@ -885,8 +1210,13 @@ export function ProfilesScreen() {
                     muted={!detailQuery.data.profile.skillsDir}
                   />
                 </div>
-                <div className="rounded-xl border border-primary-200 bg-primary-50/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/60">
-                  <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary-500 dark:text-neutral-400">
+                {detailErrorMessage ? (
+                  <p className="text-xs text-destructive" role="alert">
+                    {detailErrorMessage}
+                  </p>
+                ) : null}
+                <div className="rounded-lg border border-border bg-muted/50 p-4">
+                  <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     <HugeiconsIcon
                       icon={Key01Icon}
                       size={14}
@@ -894,31 +1224,42 @@ export function ProfilesScreen() {
                     />{' '}
                     Config
                   </div>
-                  <pre className="max-h-48 overflow-auto rounded-lg border border-primary-200 bg-primary-100/70 p-3 text-xs leading-relaxed text-primary-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
+                  <pre className="max-h-48 overflow-auto rounded-md border border-border bg-muted p-3 text-xs leading-relaxed text-foreground">
                     {JSON.stringify(detailQuery.data.profile.config, null, 2)}
                   </pre>
                 </div>
               </div>
             ) : detailQuery.isLoading ? (
-              <div className="flex min-h-[120px] items-center justify-center text-sm text-primary-500 dark:text-neutral-400">
+              <div className="flex min-h-[120px] items-center justify-center text-sm text-muted-foreground">
                 Loading profile\u2026
               </div>
             ) : (
-              <div className="flex min-h-[120px] items-center justify-center text-sm text-red-500">
+              <div className="flex min-h-[120px] items-center justify-center text-sm text-destructive">
                 Failed to load profile.
               </div>
             )}
           </div>
 
           {/* Footer */}
-          <div className="shrink-0 flex justify-end border-t border-primary-200 px-6 py-3 dark:border-neutral-800">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDetailsName(null)}
-            >
-              Close
-            </Button>
+          <div className="shrink-0 flex justify-end border-t border-border px-6 py-3">
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDetailsName(null)}
+                disabled={detailSaving}
+              >
+                Close
+              </Button>
+              <Button
+                size="sm"
+                type="button"
+                onClick={() => void handleSaveProfileDetails()}
+                disabled={detailSaving}
+              >
+                {detailSaving ? 'Saving…' : 'Save identity'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </DialogRoot>
@@ -936,16 +1277,16 @@ function SummaryField({
   muted?: boolean
 }) {
   return (
-    <div className="rounded-lg border border-primary-200 bg-primary-100/60 p-2.5 dark:border-neutral-700 dark:bg-neutral-800/60">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-primary-400 dark:text-neutral-500">
+    <div className="rounded-md border border-border bg-muted p-2.5">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
       <div
         className={cn(
           'mt-0.5 text-sm font-medium',
           muted
-            ? 'text-primary-400 dark:text-neutral-500'
-            : 'text-primary-900 dark:text-neutral-100',
+            ? 'text-muted-foreground'
+            : 'text-foreground',
         )}
       >
         {value}
@@ -972,11 +1313,11 @@ function DetailField({
   return (
     <div
       className={cn(
-        'rounded-xl border border-primary-200 bg-primary-50/80 p-3 dark:border-neutral-800 dark:bg-neutral-900/60',
+        'rounded-lg border border-border bg-muted/50 p-3',
         full && 'sm:col-span-2',
       )}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-primary-400 dark:text-neutral-500">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
       <div
@@ -984,10 +1325,10 @@ function DetailField({
           'mt-1 text-sm break-all',
           mono && 'font-mono text-xs',
           muted
-            ? 'text-primary-400 dark:text-neutral-500'
+            ? 'text-muted-foreground'
             : accent
-              ? 'font-semibold text-emerald-600 dark:text-emerald-400'
-              : 'text-primary-900 dark:text-neutral-100',
+              ? 'font-semibold text-success'
+              : 'text-foreground',
         )}
       >
         {value}

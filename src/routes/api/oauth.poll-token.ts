@@ -1,17 +1,20 @@
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import { z } from 'zod'
+import { resolveWorkspaceHermesHomeFromBackend } from '../../server/hermes-home'
 
 const BodySchema = z.object({
   provider: z.string(),
   deviceCode: z.string(),
 })
 
-function saveNousTokens(accessToken: string, refreshToken?: string) {
-  const hermesDir = path.join(os.homedir(), '.hermes')
+function saveNousTokens(
+  accessToken: string,
+  refreshToken: string | undefined,
+  hermesDir: string,
+) {
   const authPath = path.join(hermesDir, 'auth.json')
 
   let existing: Record<string, unknown> = {}
@@ -95,9 +98,13 @@ export const Route = createFileRoute('/api/oauth/poll-token')({
             }
 
             if (data.access_token) {
+              const hermesDir = await resolveWorkspaceHermesHomeFromBackend(
+                request.headers,
+              )
               saveNousTokens(
                 String(data.access_token),
                 data.refresh_token ? String(data.refresh_token) : undefined,
+                hermesDir,
               )
               return json({
                 status: 'success',

@@ -77,6 +77,28 @@ function isWorkspaceAlias(agent: AgentRosterAgent) {
   return agent.id === 'default'
 }
 
+function resolveProvider(agent: AgentRosterAgent) {
+  const configured = agent.provider?.trim()
+  if (configured) return configured
+
+  const slashIndex = agent.model.indexOf('/')
+  if (slashIndex > 0) return agent.model.slice(0, slashIndex)
+
+  return 'Auto'
+}
+
+function getStatusBadgeClasses(statusLabel: string): string {
+  if (statusLabel === 'Active') {
+    return 'border-[var(--theme-success)] bg-[color-mix(in_srgb,var(--theme-success)_18%,transparent)] text-[var(--theme-success)]'
+  }
+
+  if (statusLabel === 'Error') {
+    return 'border-[var(--theme-danger)] bg-[color-mix(in_srgb,var(--theme-danger)_18%,transparent)] text-[var(--theme-danger)]'
+  }
+
+  return 'border-[var(--theme-muted)] bg-[color-mix(in_srgb,var(--theme-muted)_18%,transparent)] text-[var(--theme-muted)]'
+}
+
 export function AgentRosterInlineChat({
   agentName,
   messages,
@@ -197,7 +219,8 @@ export function AgentRosterCard({
 }) {
   const queryClient = useQueryClient()
   const status = getStatusStyles(agent.status)
-  const displayName = stripEmojiPrefix(agent.name)
+  const displayName = stripEmojiPrefix(agent.meta.displayName || agent.name)
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false)
   const [showCronPanel, setShowCronPanel] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const { messages, sendMessage, isSending, error } = useAgentChat(
@@ -228,6 +251,11 @@ export function AgentRosterCard({
       : agent.status === 'active'
         ? 'running'
         : 'idle'
+  const provider = resolveProvider(agent)
+  const statusBadgeClass = getStatusBadgeClasses(status.label)
+  const useImageAvatar =
+    Boolean(agent.meta.avatarDataUrl && !avatarLoadFailed) &&
+    !aliasesOrchestrator
 
   const toggleMutation = useMutation({
     mutationFn: async (payload: { jobId: string; enabled: boolean }) =>
@@ -300,17 +328,8 @@ export function AgentRosterCard({
 
         <div className="flex w-full justify-center px-20">
           <h3 className="min-w-0 text-center text-sm font-semibold text-[var(--theme-text)]">
-            <span className="inline-flex max-w-full items-center justify-center gap-2">
+            <span className="inline-flex max-w-full items-center justify-center">
               <span className="truncate">{displayName}</span>
-              <span
-                className={cn(
-                  'h-2 w-2 shrink-0 rounded-full',
-                  agent.status === 'active' && !isPaused && 'animate-pulse',
-                  status.dot,
-                )}
-                aria-label={status.label}
-                title={status.label}
-              />
             </span>
           </h3>
         </div>
@@ -353,12 +372,21 @@ export function AgentRosterCard({
             className={progressClassName}
           />
           <div className="absolute inset-0 flex items-center justify-center">
-            <PixelAvatar
-              size={40}
-              color={avatarColor}
-              accentColor={avatarAccentColor}
-              status={avatarStatus}
-            />
+            {useImageAvatar ? (
+              <img
+                src={agent.meta.avatarDataUrl}
+                alt={displayName}
+                className="size-10 rounded-full border border-[var(--theme-muted)] object-cover"
+                onError={() => setAvatarLoadFailed(true)}
+              />
+            ) : (
+              <PixelAvatar
+                size={40}
+                color={avatarColor}
+                accentColor={avatarAccentColor}
+                status={avatarStatus}
+              />
+            )}
           </div>
         </div>
 
@@ -370,6 +398,27 @@ export function AgentRosterCard({
             ? `${agent.jobs.length} scheduled job${agent.jobs.length === 1 ? '' : 's'}`
             : 'Manual only'}
         </p>
+        <p className="w-full truncate text-[10px] text-[var(--theme-muted)]">
+          Provider: {provider}
+        </p>
+        <div
+          className={cn(
+            'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+            statusBadgeClass,
+          )}
+          aria-label={status.label}
+          title={status.label}
+        >
+          <span
+            className={cn(
+              'h-2 w-2 shrink-0 rounded-full',
+              status.dot,
+              status.label === 'Active' && !isPaused && 'animate-pulse',
+            )}
+            aria-label={status.label}
+          />
+          {status.label}
+        </div>
       </div>
 
       <AnimatePresence initial={false}>

@@ -176,9 +176,10 @@ export function AgentRosterDetail({
   open: boolean
   agent: AgentRosterAgent | null
   onClose: () => void
-  onSave: (input: {
+ onSave: (input: {
     agentId: string
     name: string
+    provider: string
     model: string
     emoji: string
     systemPrompt: string
@@ -188,6 +189,7 @@ export function AgentRosterDetail({
   isDeleting: boolean
 }) {
   const [name, setName] = useState('')
+  const [provider, setProvider] = useState('')
   const [emoji, setEmoji] = useState('🤖')
   const [model, setModel] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
@@ -196,6 +198,7 @@ export function AgentRosterDetail({
     if (!agent || !open) return
     setName(agent.name)
     setEmoji(agent.meta.emoji)
+    setProvider(agent.provider || '')
     setModel(agent.model || '')
     setSystemPrompt(agent.meta.systemPrompt)
   }, [agent, open])
@@ -239,7 +242,7 @@ export function AgentRosterDetail({
                 Agent Settings
               </p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--theme-text)]">
-                {agent.name}
+                {agent.meta.displayName || agent.name}
               </h2>
               <p className="mt-2 text-sm text-[var(--theme-muted-2)]">
                 Update this agent without leaving the roster.
@@ -259,7 +262,7 @@ export function AgentRosterDetail({
         <div className="mt-6 grid gap-4 md:grid-cols-[1.2fr_0.6fr]">
           <label className="space-y-2">
             <span className="text-sm font-medium text-[var(--theme-text)]">
-              Name
+              Display name
             </span>
             <input
               value={name}
@@ -279,6 +282,21 @@ export function AgentRosterDetail({
             />
           </label>
         </div>
+
+        <label className="mt-4 block space-y-2">
+          <span className="text-sm font-medium text-[var(--theme-text)]">
+            Provider
+          </span>
+          <input
+            value={provider}
+            onChange={(event) => setProvider(event.target.value)}
+            placeholder="OpenAI-compatible provider ID"
+            className="w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none focus:ring-2 focus:ring-[var(--theme-accent)]"
+          />
+          <span className="text-xs text-[var(--theme-muted)]">
+            Optional. Leave empty to use profile model routing rules.
+          </span>
+        </label>
 
         <label className="mt-4 block space-y-2">
           <span className="text-sm font-medium text-[var(--theme-text)]">
@@ -323,6 +341,7 @@ export function AgentRosterDetail({
                 void onSave({
                   agentId: agent.id,
                   name,
+                  provider,
                   model,
                   emoji,
                   systemPrompt,

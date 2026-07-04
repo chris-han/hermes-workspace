@@ -1,10 +1,11 @@
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import YAML from 'yaml'
 
 export type ProfileSummary = {
   name: string
+  displayName?: string
+  avatarDataUrl?: string
   path: string
   active: boolean
   exists: boolean
@@ -18,7 +19,11 @@ export type ProfileSummary = {
 
 export type ProfileDetail = {
   name: string
+  displayName?: string
+  avatarDataUrl?: string
   path: string
+  soulPath?: string
+  soul?: string
   active: boolean
   config: Record<string, unknown>
   envPath?: string
@@ -27,13 +32,24 @@ export type ProfileDetail = {
   skillsDir?: string
 }
 
-function getHermesRoot(): string {
-  return path.join(os.homedir(), '.hermes')
+const DEFAULT_PROFILE_DISPLAY_NAME = 'semantier-core'
+const PROFILE_SOUL_FILE = 'SOUL.md'
+
+function resolveProfileDisplayName(
+  profileName: string,
+  value?: string,
+): string | undefined {
+  const resolved = readOptionalString(value)
+  if (resolved) return resolved
+  return profileName === 'default' ? DEFAULT_PROFILE_DISPLAY_NAME : undefined
 }
 
 function resolveHermesHome(hermesHome?: string): string {
   const raw = hermesHome?.trim()
-  return path.resolve(raw && raw.length > 0 ? raw : getHermesRoot())
+  if (!raw) {
+    throw new Error('hermesHome is required')
+  }
+  return path.resolve(raw)
 }
 
 export function getProfilesRoot(hermesHome: string): string {
@@ -72,6 +88,75 @@ function readYamlConfig(configPath: string): Record<string, unknown> {
   } catch {
     return {}
   }
+}
+
+function readOptionalString(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : undefined
+  }
+  return undefined
+}
+
+function extractProfileModel(config: Record<string, unknown>): string | undefined {
+  const directModel = readOptionalString(config.model)
+  if (directModel) return directModel
+  if (config.model && typeof config.model === 'object' && !Array.isArray(config.model)) {
+    const model = readOptionalString(
+      (config.model as Record<string, unknown>).default,
+    )
+    if (model) return model
+    return readOptionalString((config.model as Record<string, unknown>).model)
+  }
+  return undefined
+}
+
+function normalizeModelForWrite(value: unknown): string | undefined {
+  if (typeof value === 'string') return readOptionalString(value)
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const asRecord = value as Record<string, unknown>
+    return (
+      readOptionalString(asRecord.default) ||
+      readOptionalString(asRecord.model) ||
+      readOptionalString(asRecord.id)
+    )
+  }
+  return undefined
+}
+
+function inferProviderFromModel(model: string): string {
+  const slashIndex = model.indexOf('/')
+  if (slashIndex <= 0) return ''
+  return model.slice(0, slashIndex)
+}
+
+function extractProfileProvider(config: Record<string, unknown>): string | undefined {
+  const directProvider = readOptionalString(config.provider)
+  if (directProvider) return directProvider
+
+  if (config.model && typeof config.model === 'object' && !Array.isArray(config.model)) {
+    const nestedProvider = readOptionalString(
+      (config.model as Record<string, unknown>).provider,
+    )
+    if (nestedProvider) return nestedProvider
+  }
+
+  const inferredModel = extractProfileModel(config)
+  return inferredModel ? inferProviderFromModel(inferredModel) : undefined
+}
+
+function readOptionalText(filePath: string): string | undefined {
+  if (!fs.existsSync(filePath)) return undefined
+  try {
+    return fs.readFileSync(filePath, 'utf-8')
+  } catch {
+    return undefined
+  }
+}
+
+function toOptionalString(value: unknown): string | undefined {
+  if (typeof value === 'string') return value
+  return undefined
 }
 
 function countFilesRecursive(
@@ -149,6 +234,8 @@ export function listProfiles(hermesHome: string): Array<ProfileSummary> {
       const skillsDir = path.join(profilePath, 'skills')
       const sessionsDir = path.join(profilePath, 'sessions')
       const config = readYamlConfig(configPath)
+      const normalizedModel = extractProfileModel(config)
+      const normalizedProvider = extractProfileProvider(config)
       const skillCount = countFilesRecursive(
         skillsDir,
         (full) => path.basename(full) === 'SKILL.md',
@@ -158,12 +245,13 @@ export function listProfiles(hermesHome: string): Array<ProfileSummary> {
       )
       results.push({
         name,
+        displayName: resolveProfileDisplayName(name, readOptionalString(config.display_name)),
+        avatarDataUrl: readOptionalString(config.avatar_data_url),
         path: profilePath,
         active: name === activeProfile,
         exists: true,
-        model: typeof config.model === 'string' ? config.model : undefined,
-        provider:
-          typeof config.provider === 'string' ? config.provider : undefined,
+        model: normalizedModel,
+        provider: normalizedProvider,
         skillCount,
         sessionCount,
         hasEnv: fs.existsSync(envPath),
@@ -179,13 +267,17 @@ export function listProfiles(hermesHome: string): Array<ProfileSummary> {
   }
 
   const config = readYamlConfig(path.join(root, 'config.yaml'))
+  const normalizedModel = extractProfileModel(config)
+  const normalizedProvider = extractProfileProvider(config)
   results.unshift({
     name: 'default',
+    displayName: resolveProfileDisplayName('default', config.display_name),
+    avatarDataUrl: readOptionalString(config.avatar_data_url),
     path: root,
     active: activeProfile === 'default',
     exists: true,
-    model: typeof config.model === 'string' ? config.model : undefined,
-    provider: typeof config.provider === 'string' ? config.provider : undefined,
+    model: normalizedModel,
+    provider: normalizedProvider,
     skillCount: countFilesRecursive(
       path.join(root, 'skills'),
       (full) => path.basename(full) === 'SKILL.md',
@@ -218,11 +310,23 @@ export function readProfile(name: string, hermesHome: string): ProfileDetail {
   const envPath = path.join(profilePath, '.env')
   const sessionsDir = path.join(profilePath, 'sessions')
   const skillsDir = path.join(profilePath, 'skills')
+  const soulPath = path.join(profilePath, PROFILE_SOUL_FILE)
+  const config = readYamlConfig(configPath)
+  const normalizedModel = extractProfileModel(config)
+  const normalizedProvider = extractProfileProvider(config)
   return {
     name: normalized,
+    displayName: resolveProfileDisplayName(normalized, config.display_name),
+    avatarDataUrl: readOptionalString(config.avatar_data_url),
+    soulPath: fs.existsSync(soulPath) ? soulPath : undefined,
+    soul: readOptionalText(soulPath),
     path: profilePath,
     active: normalized === active,
-    config: readYamlConfig(configPath),
+    config: {
+      ...config,
+      model: normalizedModel,
+      provider: normalizedProvider,
+    },
     envPath: fs.existsSync(envPath) ? envPath : undefined,
     hasEnv: fs.existsSync(envPath),
     sessionsDir: fs.existsSync(sessionsDir) ? sessionsDir : undefined,
@@ -259,6 +363,7 @@ export function createProfile(
   fs.mkdirSync(profilePath, { recursive: true })
 
   const configPath = path.join(profilePath, 'config.yaml')
+  const soulPath = path.join(profilePath, PROFILE_SOUL_FILE)
 
   // Clone config from source profile if specified
   if (options?.cloneFrom) {
@@ -268,6 +373,11 @@ export function createProfile(
       sourceName,
       'config.yaml',
     )
+    const sourceSoulPath = path.join(
+      getProfilesRoot(root),
+      sourceName,
+      PROFILE_SOUL_FILE,
+    )
     if (fs.existsSync(sourceConfigPath)) {
       fs.copyFileSync(sourceConfigPath, configPath)
     } else {
@@ -276,6 +386,9 @@ export function createProfile(
         YAML.stringify({ model: '', provider: '' }),
         'utf-8',
       )
+    }
+    if (fs.existsSync(sourceSoulPath)) {
+      fs.copyFileSync(sourceSoulPath, soulPath)
     }
   } else {
     fs.writeFileSync(
@@ -326,14 +439,94 @@ export function updateProfileConfig(
       : path.join(getProfilesRoot(root), validateProfileName(normalized))
   if (!fs.existsSync(profilePath)) throw new Error('Profile not found')
   const configPath = path.join(profilePath, 'config.yaml')
+  const soulPath = path.join(profilePath, PROFILE_SOUL_FILE)
   const current = readYamlConfig(configPath)
-  const merged = { ...current, ...patch }
+  const hasSoulPatch = Object.prototype.hasOwnProperty.call(patch, 'soul')
+  const hasModelPatch = Object.prototype.hasOwnProperty.call(patch, 'model')
+  const hasProviderPatch = Object.prototype.hasOwnProperty.call(patch, 'provider')
+  const providerPatch =
+    typeof patch.provider === 'string'
+      ? patch.provider.trim() || undefined
+      : undefined
+  const merged: Record<string, unknown> = { ...current }
+  for (const [key, value] of Object.entries(patch)) {
+    if (key === 'soul') continue
+    if (key === 'provider') continue
+    if (key === 'model') continue
+    merged[key] = value
+  }
+  const existingProvider = extractProfileProvider(merged as Record<string, unknown>)
+  const existingModel = extractProfileModel(merged as Record<string, unknown>)
+  if (hasModelPatch) {
+    if (patch.model === null) {
+      delete merged.model
+    } else {
+      const nextModel = normalizeModelForWrite(patch.model)
+      if (nextModel !== undefined) {
+        const modelPatchObject =
+          patch.model && typeof patch.model === 'object' && !Array.isArray(patch.model)
+            ? (patch.model as Record<string, unknown>)
+            : {}
+        const inferredProvider = inferProviderFromModel(nextModel)
+        const modelProviderPatch =
+          typeof modelPatchObject.provider === 'string'
+            ? modelPatchObject.provider.trim()
+            : undefined
+        const resolvedProvider =
+          providerPatch || modelProviderPatch || inferredProvider || existingProvider
+        const mergedModel =
+          merged.model &&
+          typeof merged.model === 'object' &&
+          !Array.isArray(merged.model)
+            ? (merged.model as Record<string, unknown>)
+            : {}
+        if (resolvedProvider) {
+          merged.model = {
+            ...mergedModel,
+            ...modelPatchObject,
+            default: nextModel,
+            provider: resolvedProvider,
+          }
+          merged.provider = resolvedProvider
+        } else {
+          merged.model = nextModel
+        }
+      } else {
+        delete merged.model
+      }
+    }
+  } else if (hasProviderPatch) {
+    const currentModel = merged.model
+    if (typeof currentModel === 'object' && currentModel !== null) {
+      merged.model = {
+        ...(currentModel as Record<string, unknown>),
+        ...(providerPatch ? { provider: providerPatch } : {}),
+      }
+    } else if (existingModel !== undefined) {
+      merged.model = {
+        default: existingModel,
+        ...(providerPatch ? { provider: providerPatch } : {}),
+      }
+    } else {
+      delete merged.model
+    }
+  }
+  if (hasProviderPatch && providerPatch !== undefined) {
+    merged.provider = providerPatch
+  }
   // Strip undefined keys
   for (const key of Object.keys(merged)) {
     if (merged[key] === undefined) delete merged[key]
   }
   fs.mkdirSync(path.dirname(configPath), { recursive: true })
   fs.writeFileSync(configPath, YAML.stringify(merged), 'utf-8')
+  if (hasSoulPatch) {
+    if (Object.prototype.hasOwnProperty.call(patch, 'soul') && patch.soul == null) {
+      if (fs.existsSync(soulPath)) fs.unlinkSync(soulPath)
+    } else if (toOptionalString(patch.soul) !== undefined) {
+      fs.writeFileSync(soulPath, patch.soul as string, 'utf-8')
+    }
+  }
   return readProfile(normalized, root)
 }
 

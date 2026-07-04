@@ -264,6 +264,12 @@ export function resolveDefaultPublicWorkspaceRoot(): never {
   fallbackWorkspaceRoot()
 }
 
+export function requireWorkspaceHermesHome(
+  workspace: ActiveWorkspaceRoot,
+): string {
+  return path.resolve(workspace.path)
+}
+
 export function workspaceRootExists(targetPath: string): boolean {
   return fs.existsSync(targetPath)
 }

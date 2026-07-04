@@ -1,5 +1,4 @@
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import YAML from 'yaml'
 import {
@@ -7,6 +6,7 @@ import {
   readKnowledgeBaseConfig,
 } from './knowledge-config'
 import type { KnowledgeBaseSource } from './knowledge-config'
+import { resolveWorkspaceAppStateRoot } from './workspace-root'
 
 type KnowledgeBrowserContext = {
   datasetType?: string | null
@@ -130,16 +130,18 @@ function extractWikilinks(content: string): Array<string> {
 // ─── Legacy env-var fallback ──────────────────────────────────────────────────
 
 function getLegacyKnowledgeRoot(workspaceRoot?: string): string {
-  if (workspaceRoot) {
-    return path.resolve(workspaceRoot, 'knowledge-base')
+  if (!workspaceRoot) {
+    throw new Error('workspaceRoot is required for knowledge root resolution')
   }
-  if (process.env.KNOWLEDGE_DIR) return path.resolve(process.env.KNOWLEDGE_DIR)
-  const hermesHome = path.join(os.homedir(), '.hermes')
-  const hermesKnowledge = path.join(hermesHome, 'knowledge')
-  if (fs.existsSync(hermesKnowledge)) return hermesKnowledge
-  const homeKnowledge = path.join(os.homedir(), 'knowledge', 'wiki')
-  if (fs.existsSync(homeKnowledge)) return homeKnowledge
-  return hermesKnowledge
+  return path.resolve(workspaceRoot, 'knowledge-base')
+}
+
+function resolveWorkspaceRoot(workspaceRoot?: string): string {
+  const raw = workspaceRoot?.trim()
+  if (!raw) {
+    throw new Error('workspaceRoot is required for knowledge browser')
+  }
+  return path.resolve(raw)
 }
 
 // ─── GitHub Knowledge Provider ─────────────────────────────────────────────────
@@ -151,18 +153,20 @@ type GitHubEntry =
 class GitHubKnowledgeProvider {
   private readonly cacheDir: string
   private readonly branch: string
+  private readonly workspaceRoot: string
 
   constructor(
     private readonly repo: string,
     branch: string,
     private readonly repoPath: string,
+    workspaceRoot: string,
   ) {
     const safeRepo = repo.replace('/', '_')
     const safePath = repoPath.replace(/^\//, '').replace(/\//g, '_')
     this.branch = branch
+    this.workspaceRoot = path.resolve(workspaceRoot)
     const base = path.join(
-      os.homedir(),
-      '.hermes',
+      resolveWorkspaceAppStateRoot(this.workspaceRoot),
       'knowledge-cache',
       'github',
       safeRepo,
@@ -174,8 +178,7 @@ class GitHubKnowledgeProvider {
 
   private get cacheRoot(): string {
     return path.join(
-      os.homedir(),
-      '.hermes',
+      resolveWorkspaceAppStateRoot(this.workspaceRoot),
       'knowledge-cache',
       'github',
       this.repo.replace('/', '_'),
@@ -282,6 +285,7 @@ function getKnowledgeRoot(
       source.repo,
       source.branch,
       source.path,
+      resolveWorkspaceRoot(workspaceRoot),
     )
     return provider.root
   }
@@ -308,6 +312,7 @@ export function knowledgeRootExists(
         config.source.repo,
         config.source.branch,
         config.source.path,
+        resolveWorkspaceRoot(workspaceRoot),
       )
       return provider.isCached()
     }
@@ -341,6 +346,7 @@ export async function syncKnowledgeSource(
       source.repo,
       source.branch,
       source.path,
+      resolveWorkspaceRoot(workspaceRoot),
     )
     await provider.sync()
     return { source, success: true }

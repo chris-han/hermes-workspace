@@ -1964,7 +1964,7 @@ function AccessControlContent() {
               <Input
                 value={adminHomeInput}
                 onChange={(e) => setAdminHomeInput(e.target.value)}
-                placeholder="/home/chris/repo/semantier/agent/.hermes"
+                placeholder="/absolute/path/to/shared-workspace-root"
                 className="h-8 flex-1 rounded-md text-xs font-mono"
               />
               <Button

@@ -43,7 +43,7 @@ describe('resolveHermesHomeForWorkspace', () => {
         role: 'regular',
         administratorHome: '/home/chris/repo/semantier/agent/.hermes',
       }),
-    ).toBe(path.resolve('/repo/workspaces/public/.hermes'))
+    ).toBe(path.resolve('/repo/workspaces/public'))
   })
 
   it('uses administrator home override for administrator mode', () => {
@@ -52,7 +52,7 @@ describe('resolveHermesHomeForWorkspace', () => {
         role: 'administrator',
         administratorHome: '/home/chris/repo/semantier/agent/.hermes',
       }),
-    ).toBe(path.resolve('/home/chris/repo/semantier/agent/.hermes'))
+    ).toBe(path.resolve('/repo/workspaces/public'))
   })
 })
 

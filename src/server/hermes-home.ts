@@ -70,10 +70,7 @@ export function resolveHermesHomeForWorkspace(
   accessControl: HermesAccessControl,
 ): string {
   const normalizedWorkspaceRoot = path.resolve(workspaceRoot)
-  if (accessControl.role === 'administrator') {
-    return path.resolve(accessControl.administratorHome)
-  }
-  return path.resolve(normalizedWorkspaceRoot, '.hermes')
+  return normalizedWorkspaceRoot
 }
 
 export async function readWorkspaceAccessControl(
@@ -153,9 +150,6 @@ export async function resolveHermesHomeFromBackend(
   requestHeaders?: HeadersInit | Headers,
 ): Promise<string> {
   const activeWorkspace = await resolveActiveWorkspaceRoot(requestHeaders)
-  if (activeWorkspace.hermesHome?.trim()) {
-    return path.resolve(activeWorkspace.hermesHome)
-  }
   const accessControl = await readWorkspaceAccessControl(activeWorkspace.path)
   return resolveHermesHomeForWorkspace(activeWorkspace.path, accessControl)
 }
@@ -194,7 +188,7 @@ export async function resolveHermesAccessControlFromBackend(
   const activeWorkspace = await resolveActiveWorkspaceRoot(requestHeaders)
   const accessControl = await readWorkspaceAccessControl(activeWorkspace.path)
   const workspaceRoot = path.resolve(activeWorkspace.path)
-  const workspaceHermesHome = path.resolve(workspaceRoot, '.hermes')
+  const workspaceHermesHome = workspaceRoot
   const effectiveHermesHome = resolveHermesHomeForWorkspace(
     workspaceRoot,
     accessControl,
@@ -220,7 +214,7 @@ export async function updateHermesAccessControlFromBackend(
     await fsp.mkdir(next.administratorHome, { recursive: true })
   }
 
-  const workspaceHermesHome = path.resolve(workspaceRoot, '.hermes')
+  const workspaceHermesHome = workspaceRoot
   const effectiveHermesHome = resolveHermesHomeForWorkspace(
     workspaceRoot,
     next,

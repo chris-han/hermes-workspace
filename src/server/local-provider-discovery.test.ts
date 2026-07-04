@@ -34,7 +34,9 @@ describe('local-provider-discovery', () => {
   })
 
   it('uses the active backend workspace config when request headers are provided', async () => {
-    resolveHermesConfigPathFromBackend.mockResolvedValue('/tmp/workspace/.hermes/config.yaml')
+    resolveHermesConfigPathFromBackend.mockResolvedValue(
+      '/tmp/workspace/config.yaml',
+    )
     readFileSync.mockReturnValue(
       'custom_providers:\n  - name: ollama\n    base_url: http://127.0.0.1:11434/v1\n',
     )

@@ -54,7 +54,7 @@ export function TerminalPanel({ isMobile }: TerminalPanelProps) {
     try {
       const parsed = JSON.parse(stored) as Array<TerminalTabState>
       return parsed.length
-        ? parsed
+        ? parsed.map((tab) => ({ ...tab, sessionId: undefined }))
         : [{ id: crypto.randomUUID(), title: 'Terminal 1' }]
     } catch {
       return [{ id: crypto.randomUUID(), title: 'Terminal 1' }]

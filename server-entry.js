@@ -6,6 +6,7 @@ import server from './dist/server/server.js'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const CLIENT_DIR = join(__dirname, 'dist', 'client')
+const WORKSPACE_FRAME_ANCESTORS_CSP = "frame-ancestors 'none'"
 
 const port = parseInt(process.env.PORT || '3000', 10)
 const host = process.env.HOST || '0.0.0.0'
@@ -84,6 +85,7 @@ async function tryServeStatic(req, res) {
       'Content-Type': contentType,
       'Content-Length': data.length,
     }
+    headers['Content-Security-Policy'] = WORKSPACE_FRAME_ANCESTORS_CSP
 
     // Cache hashed assets aggressively (they have content hashes in filenames)
     if (pathname.startsWith('/assets/')) {
@@ -134,10 +136,12 @@ const httpServer = createServer(async (req, res) => {
 
   try {
     const response = await server.fetch(request)
+    const responseHeaders = Object.fromEntries(response.headers.entries())
+    responseHeaders['Content-Security-Policy'] = WORKSPACE_FRAME_ANCESTORS_CSP
 
     res.writeHead(
       response.status,
-      Object.fromEntries(response.headers.entries()),
+      responseHeaders,
     )
 
     if (response.body) {

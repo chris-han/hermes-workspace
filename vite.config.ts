@@ -79,6 +79,7 @@ const config = defineConfig(({ mode, command }) => {
   let workspaceDaemonRestarting = false
   let workspaceDaemonChild: ChildProcess | null = null
   let workspaceDaemonRetryCount = 0
+  const workspaceFrameAncestorsCsp = "frame-ancestors 'none'"
   const workspaceDaemonPort = '3099'
   const daemonCwd = resolve('workspace-daemon')
   const daemonSrcEntry = resolve('workspace-daemon/src/server.ts')
@@ -576,6 +577,15 @@ const config = defineConfig(({ mode, command }) => {
       },
       // Client-only: replace process.env references in client bundles
       // Server bundles must keep real process.env for Docker runtime env vars
+      {
+        name: 'workspace-csp-headers',
+        configureServer(server) {
+          server.middlewares.use((_req, res, next) => {
+            res.setHeader('Content-Security-Policy', workspaceFrameAncestorsCsp)
+            next()
+          })
+        },
+      },
       {
         name: 'client-process-env',
         enforce: 'pre',

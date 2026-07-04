@@ -32,7 +32,6 @@ const APP_CSP = [
   "base-uri 'self'",
   "object-src 'none'",
   "form-action 'self'",
-  "frame-ancestors 'none'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
@@ -184,6 +183,10 @@ export const Route = createRootRoute({
       {
         name: 'theme-color',
         content: '#0A0E1A',
+      },
+      {
+        name: 'mobile-web-app-capable',
+        content: 'yes',
       },
       {
         name: 'apple-mobile-web-app-capable',

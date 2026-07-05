@@ -6,12 +6,11 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
 
 const SCHEDULE_PRESETS = [
+  { label: 'Every 1m', value: 'every 1m' },
+  { label: 'Every 5m', value: 'every 5m' },
   { label: 'Every 15m', value: 'every 15m' },
   { label: 'Every 30m', value: 'every 30m' },
   { label: 'Every 1h', value: 'every 1h' },
-  { label: 'Every 6h', value: 'every 6h' },
-  { label: 'Daily', value: '0 9 * * *' },
-  { label: 'Weekly', value: '0 9 * * 1' },
 ] as const
 
 const DELIVERY_OPTIONS = ['local', 'telegram', 'discord'] as const
@@ -20,6 +19,10 @@ type RepeatMode = 'once' | 'limited' | 'forever'
 
 function isPresetSchedule(value: string): boolean {
   return SCHEDULE_PRESETS.some((preset) => preset.value === value)
+}
+
+function readMinuteInterval(value: string): string | null {
+  return value.match(/^every\s+(\d+)m$/i)?.[1] ?? null
 }
 
 type CreateJobDialogProps = {
@@ -100,9 +103,14 @@ export function CreateJobDialog({
       .map((skill) => skill.trim())
       .filter(Boolean)
 
+    const schedule =
+      form.scheduleMode === 'custom'
+        ? `every ${Math.max(1, Number.parseInt(form.schedule, 10) || 1)}m`
+        : form.schedule.trim()
+
     void onSubmit({
       name: form.name.trim(),
-      schedule: form.schedule.trim(),
+      schedule,
       prompt: form.prompt.trim(),
       deliver: form.deliver.length > 0 ? form.deliver : undefined,
       skills: skills.length > 0 ? Array.from(new Set(skills)) : undefined,
@@ -199,7 +207,7 @@ export function CreateJobDialog({
                     className="mt-1 text-xs"
                     style={{ color: 'var(--theme-muted)' }}
                   >
-                    Pick a preset interval or switch to a custom cron string.
+                    Pick a preset interval or enter a custom number of minutes.
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -214,7 +222,7 @@ export function CreateJobDialog({
                           nextValue === 'custom' ? 'custom' : 'preset',
                         schedule:
                           nextValue === 'custom'
-                            ? current.schedule
+                            ? (readMinuteInterval(current.schedule) ?? '10')
                             : nextValue,
                       }))
                     }}
@@ -229,15 +237,18 @@ export function CreateJobDialog({
                         {preset.label}
                       </option>
                     ))}
-                    <option value="custom">Custom cron</option>
+                    <option value="custom">Custom minutes</option>
                   </select>
                 </div>
                 {form.scheduleMode === 'custom' ? (
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
-                      Custom schedule
+                      Custom minutes
                     </label>
                     <input
+                      type="number"
+                      min="1"
+                      step="1"
                       value={form.schedule}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -245,7 +256,7 @@ export function CreateJobDialog({
                           schedule: event.target.value,
                         }))
                       }
-                      placeholder="0 9 * * *"
+                      placeholder="10"
                       required
                       className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                       style={{
@@ -257,7 +268,7 @@ export function CreateJobDialog({
                       className="text-xs"
                       style={{ color: 'var(--theme-muted)' }}
                     >
-                      Enter a cron expression when the preset list is not enough.
+                      The job will run every N minutes, for example `10` becomes `every 10m`.
                     </p>
                   </div>
                 ) : (

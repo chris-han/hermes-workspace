@@ -7,12 +7,11 @@ import { Cancel01Icon } from '@hugeicons/core-free-icons'
 import type { HermesJob } from '@/lib/jobs-api'
 
 const SCHEDULE_PRESETS = [
+  { label: 'Every 1m', value: 'every 1m' },
+  { label: 'Every 5m', value: 'every 5m' },
   { label: 'Every 15m', value: 'every 15m' },
   { label: 'Every 30m', value: 'every 30m' },
   { label: 'Every 1h', value: 'every 1h' },
-  { label: 'Every 6h', value: 'every 6h' },
-  { label: 'Daily', value: '0 9 * * *' },
-  { label: 'Weekly', value: '0 9 * * 1' },
 ] as const
 
 const DELIVERY_OPTIONS = ['local', 'telegram', 'discord'] as const
@@ -21,6 +20,10 @@ type RepeatMode = 'once' | 'limited' | 'forever'
 
 function isPresetSchedule(value: string): boolean {
   return SCHEDULE_PRESETS.some((preset) => preset.value === value)
+}
+
+function readMinuteInterval(value: string): string | null {
+  return value.match(/^every\s+(\d+)m$/i)?.[1] ?? null
 }
 
 type EditJobDialogProps = {
@@ -63,6 +66,8 @@ function readScheduleValue(job: HermesJob): string {
 
 function getInitialState(job: HermesJob | null) {
   const scheduleValue = job ? readScheduleValue(job) : 'every 30m'
+  const customMinutes = readMinuteInterval(scheduleValue)
+  const isPreset = isPresetSchedule(scheduleValue)
   const repeatTimes = job?.repeat?.times
   const repeatCompleted = job?.repeat?.completed ?? 0
   const remainingRepeats =
@@ -78,10 +83,8 @@ function getInitialState(job: HermesJob | null) {
 
   return {
     name: job?.name ?? '',
-    schedule: scheduleValue,
-    scheduleMode: isPresetSchedule(scheduleValue)
-      ? ('preset' as ScheduleMode)
-      : ('custom' as ScheduleMode),
+    schedule: isPreset ? scheduleValue : (customMinutes ?? '10'),
+    scheduleMode: isPreset ? ('preset' as ScheduleMode) : ('custom' as ScheduleMode),
     prompt: job?.prompt ?? '',
     skillsInput: Array.isArray(job?.skills) ? job.skills.join(', ') : '',
     deliver:
@@ -148,9 +151,14 @@ export function EditJobDialog({
       .map((skill) => skill.trim())
       .filter(Boolean)
 
+    const schedule =
+      form.scheduleMode === 'custom'
+        ? `every ${Math.max(1, Number.parseInt(form.schedule, 10) || 1)}m`
+        : form.schedule.trim()
+
     void onSubmit({
       name: form.name.trim(),
-      schedule: form.schedule.trim(),
+      schedule,
       prompt: form.prompt.trim(),
       deliver: form.deliver.length > 0 ? form.deliver : undefined,
       skills: skills.length > 0 ? Array.from(new Set(skills)) : undefined,
@@ -247,7 +255,7 @@ export function EditJobDialog({
                     className="mt-1 text-xs"
                     style={{ color: 'var(--theme-muted)' }}
                   >
-                    Pick a preset interval or switch to a custom cron string.
+                    Pick a preset interval or enter a custom number of minutes.
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -262,7 +270,7 @@ export function EditJobDialog({
                           nextValue === 'custom' ? 'custom' : 'preset',
                         schedule:
                           nextValue === 'custom'
-                            ? current.schedule
+                            ? (readMinuteInterval(current.schedule) ?? '10')
                             : nextValue,
                       }))
                     }}
@@ -277,15 +285,18 @@ export function EditJobDialog({
                         {preset.label}
                       </option>
                     ))}
-                    <option value="custom">Custom cron</option>
+                    <option value="custom">Custom minutes</option>
                   </select>
                 </div>
                 {form.scheduleMode === 'custom' ? (
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
-                      Custom schedule
+                      Custom minutes
                     </label>
                     <input
+                      type="number"
+                      min="1"
+                      step="1"
                       value={form.schedule}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -293,7 +304,7 @@ export function EditJobDialog({
                           schedule: event.target.value,
                         }))
                       }
-                      placeholder="0 9 * * *"
+                      placeholder="10"
                       required
                       className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1"
                       style={{
@@ -301,6 +312,12 @@ export function EditJobDialog({
                         color: 'var(--theme-text)',
                       }}
                     />
+                    <p
+                      className="text-xs"
+                      style={{ color: 'var(--theme-muted)' }}
+                    >
+                      The job will run every N minutes, for example `10` becomes `every 10m`.
+                    </p>
                   </div>
                 ) : (
                   <div className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-2.5 text-xs text-[var(--theme-muted)]">

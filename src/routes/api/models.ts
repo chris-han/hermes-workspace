@@ -4,6 +4,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { ensureGatewayProbed } from '../../server/hermes-api'
 import {
   resolveHermesConfigPathFromBackend,
+  resolveHermesEnvPathFromBackend,
   resolveHermesPathFromBackend,
 } from '../../server/hermes-home'
 import { WorkspaceAuthRequiredError } from '../../server/workspace-root'
@@ -82,6 +83,32 @@ function readHermesModelsJson(modelsPath: string): Array<ModelEntry> {
   }
 }
 
+function readEnv(envPath: string): Record<string, string> {
+  try {
+    const raw = fs.readFileSync(envPath, 'utf-8')
+    const env: Record<string, string> = {}
+    for (const line of raw.split('\n')) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) continue
+      const eqIdx = trimmed.indexOf('=')
+      if (eqIdx > 0) {
+        const key = trimmed.slice(0, eqIdx).trim()
+        let value = trimmed.slice(eqIdx + 1).trim()
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1)
+        }
+        env[key] = value
+      }
+    }
+    return env
+  } catch {
+    return {}
+  }
+}
+
 /**
  * Read the default model from the active Hermes config.yaml without a YAML parser.
  * Looks for "default: <model-id>" under the "model:" section.
@@ -101,6 +128,21 @@ function readHermesDefaultModel(configPath: string): ModelEntry | null {
   }
 }
 
+export function readHermesDefaultModelFromEnv(envPath: string): ModelEntry | null {
+  const env = readEnv(envPath)
+  const rawModel = (env.HERMES_INFERENCE_MODEL || env.HERMES_MODEL || '').trim()
+  if (!rawModel) return null
+
+  const providerFromEnv = (env.HERMES_INFERENCE_PROVIDER || '').trim().toLowerCase()
+  const provider = providerFromEnv || (rawModel.includes('/') ? rawModel.split('/')[0] : '')
+
+  return {
+    id: rawModel,
+    name: rawModel,
+    ...(provider ? { provider } : {}),
+  }
+}
+
 export const Route = createFileRoute('/api/models')({
   server: {
     handlers: {
@@ -115,10 +157,12 @@ export const Route = createFileRoute('/api/models')({
           const configPath = await resolveHermesConfigPathFromBackend(
             request.headers,
           )
+          const envPath = await resolveHermesEnvPathFromBackend(request.headers)
+          const env = readEnv(envPath)
 
           // Primary: read user-configured models from the active Hermes home.
-          let models = readHermesModelsJson(modelsPath)
-          let source = 'models.json'
+          const models = readHermesModelsJson(modelsPath)
+          const source = 'models.json'
 
           // Ensure the default model from config.yaml is always included
           const defaultModel = readHermesDefaultModel(configPath)
@@ -129,19 +173,40 @@ export const Route = createFileRoute('/api/models')({
             }
           }
 
+          const configuredProviderSet = new Set<string>()
+
+          if (env.HERMES_INFERENCE_PROVIDER) {
+            configuredProviderSet.add(env.HERMES_INFERENCE_PROVIDER.trim().toLowerCase())
+          }
+
+          const envDefaultModel = readHermesDefaultModelFromEnv(envPath)
+          if (envDefaultModel) {
+            const hasEnvDefault = models.some(
+              (m) =>
+                m.id === envDefaultModel.id &&
+                m.provider === envDefaultModel.provider,
+            )
+            if (!hasEnvDefault) {
+              models.unshift(envDefaultModel)
+            }
+            if (envDefaultModel.provider) {
+              configuredProviderSet.add(
+                envDefaultModel.provider.trim().toLowerCase(),
+              )
+            }
+          }
+
           // In semantier-unicell mode, models come exclusively from the agent
           // wrapper (models.json / config.yaml). No fallback to /v1/models or
           // local provider discovery is performed.
 
-          const configuredProviders = Array.from(
-            new Set(
-              models
-                .map((model) =>
-                  typeof model.provider === 'string' ? model.provider : '',
-                )
-                .filter(Boolean),
-            ),
-          )
+          for (const model of models) {
+            if (typeof model.provider === 'string' && model.provider) {
+              configuredProviderSet.add(model.provider.trim().toLowerCase())
+            }
+          }
+
+          const configuredProviders = Array.from(configuredProviderSet)
 
           return json({
             ok: true,

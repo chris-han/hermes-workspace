@@ -147,6 +147,57 @@ function writeEnv(
   fs.writeFileSync(envPath, lines.join('\n') + '\n', 'utf-8')
 }
 
+export function resolveActiveModelFromConfigAndEnv(
+  config: Record<string, unknown>,
+  env: Record<string, string>,
+): {
+  activeProvider: string
+  activeModel: string
+} {
+  const modelField = config.model
+  let activeModel = ''
+  let activeProvider = ''
+
+  if (typeof modelField === 'string') {
+    activeModel = modelField
+    activeProvider = (config.provider as string) || ''
+  } else if (modelField && typeof modelField === 'object') {
+    const modelObj = modelField as Record<string, unknown>
+    activeModel = (modelObj.default as string) || ''
+    activeProvider =
+      (modelObj.provider as string) || (config.provider as string) || ''
+  }
+
+  if (activeProvider || activeModel) {
+    return {
+      activeProvider: activeProvider || '',
+      activeModel: activeModel || '',
+    }
+  }
+
+  const envModel =
+    (env.HERMES_INFERENCE_MODEL || env.HERMES_MODEL || '').trim()
+  const envProvider = (env.HERMES_INFERENCE_PROVIDER || '').trim().toLowerCase()
+
+  if (!envModel && !envProvider) {
+    return { activeProvider, activeModel }
+  }
+
+  if (envModel) {
+    activeModel = envModel
+    if (!activeProvider) {
+      activeProvider = envProvider ||
+        (envModel.includes('/') ? envModel.split('/')[0] : '')
+    }
+  }
+
+  if (!activeProvider) {
+    activeProvider = envProvider
+  }
+
+  return { activeProvider, activeModel }
+}
+
 function maskKey(key: string): string {
   if (!key || key.length < 8) return '***'
   return key.slice(0, 4) + '...' + key.slice(-4)
@@ -251,21 +302,10 @@ export const Route = createFileRoute('/api/hermes-config')({
             }),
           )
 
-          // Get active provider/model from config
-          // Support both flat keys (model: "gpt-5.4", provider: "openai-codex")
-          // and legacy nested format (model: { default: "...", provider: "..." })
-          const modelField = config.model
-          let activeModel = ''
-          let activeProvider = ''
-          if (typeof modelField === 'string') {
-            activeModel = modelField
-            activeProvider = (config.provider as string) || ''
-          } else if (modelField && typeof modelField === 'object') {
-            const modelObj = modelField as Record<string, unknown>
-            activeModel = (modelObj.default as string) || ''
-            activeProvider =
-              (modelObj.provider as string) || (config.provider as string) || ''
-          }
+          // Get active provider/model from config, with env fallback when config
+          // is not yet seeded.
+          const { activeProvider, activeModel } =
+            resolveActiveModelFromConfigAndEnv(config, env)
 
           return Response.json({
             config,

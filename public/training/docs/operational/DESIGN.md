@@ -125,27 +125,27 @@ This is a **hard constraint** for brand consistency and accessibility:
 ### Font Family
 ```css
 /* UI / Cards / Default */
---font-ui: 'Autaut Grotesk', 'Times New Roman', -apple-system, system-ui,
+--font-ui: 'Plus Jakarta Sans', 'Times New Roman', -apple-system, system-ui,
            'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
            'Hiragino Kaku Gothic Pro', 'Meiryo', 'MS PGothic', Arial, sans-serif;
 
 /* Reports / Long-form */
---font-report-ui: 'Autaut Grotesk', 'Times New Roman', -apple-system, system-ui,
+--font-report-ui: 'Plus Jakarta Sans', 'Times New Roman', -apple-system, system-ui,
                   'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC',
                   'Microsoft YaHei', Arial, sans-serif;
 ```
 
 **Loading strategy:**
 - **Noto Sans SC**: Google Fonts `@import` with weights 400, 500, 700, `display=swap`
-- **Autaut Grotesk**: Self-hosted `/font/AutautGrotesk-Regular.woff2`, `font-weight: 400`, `font-display: swap`
+- **Plus Jakarta Sans**: Self-hosted `/font/PlusJakartaSans-Regular.woff2` (converted from available OTFs), `font-weight: 400`, `font-display: swap`
 - **JetBrains Mono**: Google Fonts or self-hosted for monospace
 
-### ⚠️ Autaut Grotesk Weight Limitation
+### ⚠️ Plus Jakarta Sans Weight Limitation
 **Only weight 400 (Regular) is loaded.** The `@font-face` declaration loads a single static file:
 ```css
 @font-face {
-  font-family: "Autaut Grotesk";
-  src: url("/font/AutautGrotesk-Regular.woff2") format("woff2");
+  font-family: "Plus Jakarta Sans";
+  src: url("/font/PlusJakartaSans-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -159,13 +159,13 @@ The variable font file (`AutautGrotesk-VF.woff2`) exists in `public/font/` but i
 
 ### Hierarchy
 
-**Note on weights:** Only 400 is loaded for Autaut Grotesk. 500/600/700 are browser-synthesized. Noto Sans SC and Noto Serif SC load real weights from Google Fonts.
+**Note on weights:** Only 400 is loaded for Plus Jakarta Sans in the current static asset set. 500/600/700 may be browser-synthesized unless additional WOFF2 weights are provided. Noto Sans SC and Noto Serif SC load real weights from Google Fonts.
 
 | Role | Font | Size | Weight | Line Height | Letter Spacing | Notes |
 |------|------|------|--------|-------------|----------------|-------|
-| Display Hero | Noto Sans SC / Autaut Grotesk (en) | 70px (4.38rem) | 700 | 0.85 | normal | Maximum impact, `--font-ui`. 700 is synthesized for Autaut Grotesk. |
-| Section Heading | Noto Sans SC / Autaut Grotesk (en) | 28px (1.75rem) | 700 | normal | -0.5px | Negative tracking. 700 is synthesized for Autaut Grotesk. |
-| Body / UI | Noto Sans SC / Autaut Grotesk (en) | 16px (1.00rem) | 500 | 1.60 | normal | Cards, nav, data; `--font-ui`. 500 is synthesized for Autaut Grotesk. |
+| Display Hero | Noto Sans SC / Plus Jakarta Sans (en) | 70px (4.38rem) | 700 | 0.85 | normal | Maximum impact, `--font-ui`. 700 may be synthesized if only 400 is loaded. |
+| Section Heading | Noto Sans SC / Plus Jakarta Sans (en) | 28px (1.75rem) | 700 | normal | -0.5px | Negative tracking. 700 may be synthesized if only 400 is loaded. |
+| Body / UI | Noto Sans SC / Plus Jakarta Sans (en) | 16px (1.00rem) | 500 | 1.60 | normal | Cards, nav, data; `--font-ui`. 500 may be synthesized if only 400 is loaded. |
 | Caption Bold | Noto Sans SC | 14px (0.88rem) | 700 | normal | normal | Strong metadata. Real 700 from Google Fonts. |
 | Caption | Noto Sans SC | 12px (0.75rem) | 400–500 | 1.50 | normal | Small text, tags |
 | Button | Noto Sans SC | 12px (0.75rem) | 500 | normal | normal | Button labels. 500 is synthesized for Autaut Grotesk. |
@@ -218,13 +218,13 @@ The brand name "semantier" is rendered as **plain text**, not as an image.
 
 Wordmark rules:
 - Always render it as lowercase `semantier`
-- Always use Autaut Grotesk for the wordmark on UI surfaces
+-- Always use Plus Jakarta Sans for the wordmark on UI surfaces
 - Never title-case or uppercase the wordmark in navigation, splash, auth, or empty states
 
 **Sidebar (expanded)**
 - Layout: `flex items-center gap-2`
 - Mark: `h-8 w-8 rounded-button object-contain shrink-0 bg-transparent`
-- Wordmark: lowercase `semantier` in Autaut Grotesk, `font-bold text-base text-foreground`
+- Wordmark: lowercase `semantier` in Plus Jakarta Sans, `font-bold text-base text-foreground`
 
 **Sidebar (collapsed)**
 - Layout: `flex items-center justify-center`
@@ -234,7 +234,7 @@ Wordmark rules:
 **Welcome / Hero screen**
 - Container: `mx-auto flex h-14 w-14 items-center justify-center rounded-button bg-primary shadow-sm`
 - Mark: `block h-14 w-14 object-contain object-center`
-- Wordmark: lowercase `semantier` in Autaut Grotesk, `text-xl font-bold tracking-tight text-foreground md:text-2xl`
+- Wordmark: lowercase `semantier` in Plus Jakarta Sans, `text-xl font-bold tracking-tight text-foreground md:text-2xl`
 
 ### Logo Styling Rules
 - **Never** use a PNG logo for the UI wordmark — always use plain text with `font-bold`

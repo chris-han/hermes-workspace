@@ -13,9 +13,28 @@
 @import 'tailwindcss';
 
 @font-face {
-  font-family: 'Autaut Grotesk';
-  src: url('/font/AutautGrotesk-Regular.woff2') format('woff2');
+  font-family: 'Plus Jakarta Sans';
+  src: url('/font/PlusJakartaSans-Regular.woff2') format('woff2'),
+       url('/font/PlusJakartaDisplay-Regular.otf') format('opentype');
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('/font/PlusJakartaSans-Medium.woff2') format('woff2'),
+       url('/font/PlusJakartaDisplay-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('/font/PlusJakartaSans-Light.woff2') format('woff2'),
+       url('/font/PlusJakartaDisplay-Light.otf') format('opentype');
+  font-weight: 300;
   font-style: normal;
   font-display: swap;
 }
@@ -26,11 +45,11 @@
 :root {
   --tabbar-h: 0px;
   --font-ui:
-    'Autaut Grotesk', 'Times New Roman', -apple-system, system-ui,
+    'Plus Jakarta Sans', 'Times New Roman', -apple-system, system-ui,
     'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
     'Hiragino Kaku Gothic Pro', 'Meiryo', 'MS PGothic', Arial, sans-serif;
   --font-report-ui:
-    'Autaut Grotesk', 'Times New Roman', -apple-system, system-ui,
+    'Plus Jakarta Sans', 'Times New Roman', -apple-system, system-ui,
     'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', Arial,
     sans-serif;
   /* Design-system radius tokens (theme-safe: does not override Tailwind base radius scale) */

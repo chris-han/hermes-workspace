@@ -1,5 +1,9 @@
 # Semantier About Page Content Plan
 
+## Canonical Narrative Reference
+
+This document derives from [`../docs/semantier-narrative-framework.md`](../docs/semantier-narrative-framework.md), the single source of truth for Semantier's category, mission, paradigm, and messaging hierarchy. Changes to those elements must be made in the Narrative Framework first, then propagated here.
+
 ## Purpose
 
 The About page should answer one question:
@@ -11,7 +15,7 @@ Why are we called Semantier?
 The answer:
 
 ```text
-Because AI-native organizations need a semantic tier: a governed layer where meaning, authority, responsibility, and action become explicit before AI-generated work can enter mission-critical execution.
+Because AI-native organizations need the Semantic Tier: the governed enterprise tier where meaning, authority, responsibility, and action become explicit before AI-generated work can enter mission-critical execution. This tier is the foundation of Certainty Infrastructure.
 ```
 
 The page should deepen the landing page thesis:
@@ -31,7 +35,7 @@ Semantier combines two ideas:
 
 ```text
 Semantic: meaning, interpretation, concepts, rules, and organizational understanding.
-Tier: an architectural layer, not a feature, not a chatbot, and not a dashboard.
+Tier: an architectural tier, not a feature, not a chatbot, and not a dashboard.
 ```
 
 Semantier means:
@@ -57,7 +61,7 @@ How decisions can be replayed later
 The About page should make one argument clearly:
 
 ```text
-AI-native organizations cannot be governed only at the model layer or workflow layer.
+AI-native organizations cannot be governed only at the model tier or workflow tier.
 They need a semantic tier between human value anchors and agentic action.
 ```
 
@@ -72,7 +76,7 @@ Dashboards display.
 But none of these alone decides what an action means, who has authority, whether it is legitimate, and whether it can be trusted later.
 ```
 
-Semantier exists to fill that missing layer.
+Semantier exists to fill that missing tier.
 
 ## Page Structure
 
@@ -87,13 +91,19 @@ About Semantier
 Headline:
 
 ```text
-Semantier is the semantic tier for AI-native organizations.
+Semantier pioneers the Semantic Tier.
+```
+
+Mission line:
+
+```text
+The Certainty Infrastructure for AI-native Enterprises.
 ```
 
 Subheadline:
 
 ```text
-As AI experts begin to propose and execute enterprise work, organizations need a governed place where meaning, authority, policy, and responsibility are made explicit before action.
+As AI experts begin to propose and execute enterprise work, organizations need a governed tier where meaning, authority, policy, and responsibility become explicit before action. Semantier turns semantic uncertainty into governed certainty.
 ```
 
 Support line:
@@ -105,7 +115,7 @@ That is why we are called Semantier.
 Visual concept:
 
 ```text
-A layered organizational stack:
+A tiered organizational stack:
 
 Human Value Anchor
 Semantic Tier
@@ -129,7 +139,7 @@ Every organization already has semantics: the meanings behind customer, employee
 
 AI-native organizations cannot rely on implicit meaning. Once AI experts start proposing actions across finance, HR, compliance, sales, delivery, procurement, and operations, meanings must become explicit, governed, versioned, and replayable.
 
-Semantier is named for this missing layer: the semantic tier.
+Semantier is named for this missing tier: the semantic tier.
 ```
 
 Short version:
@@ -149,7 +159,7 @@ The Semantic Tier is where meaning becomes governance.
 Body:
 
 ```text
-The Semantic Tier is the organizational layer that sits between human value anchors and AI-generated action. It translates purpose, policy, authority, and responsibility into machine-checkable governance structures.
+The Semantic Tier is the organizational tier that sits between human value anchors and AI-generated action. It translates purpose, policy, authority, and responsibility into machine-checkable governance structures.
 ```
 
 It governs:
@@ -211,16 +221,16 @@ What the Semantic Tier is not.
 Comparison:
 
 ```text
-It is not a model layer.
+It is not a model tier.
 Models generate proposals, but they do not own organizational authority.
 
-It is not a workflow layer.
+It is not a workflow tier.
 Workflows route tasks, but they do not determine whether an action is legitimate.
 
-It is not a database layer.
+It is not a database tier.
 Databases store records, but they do not decide what those records mean.
 
-It is not a dashboard layer.
+It is not a dashboard tier.
 Dashboards display state, but they do not govern action.
 
 It is not a policy PDF.
@@ -230,7 +240,7 @@ Documents describe rules, but they do not enforce replayable execution.
 Semantier is:
 
 ```text
-The governed semantic layer that connects human value anchors to AI expert action.
+The governed semantic tier that connects human value anchors to AI expert action.
 ```
 
 ### 6. The Core Governance Chain
@@ -377,7 +387,7 @@ Semantier is the semantic tier for AI-native organizations.
 ### Short Explanation
 
 ```text
-Semantier is named for the Semantic Tier: the governance layer where human value, organizational meaning, authority, policy, and AI expert action become one executable system.
+Semantier is named for the Semantic Tier: the governance tier where human value, organizational meaning, authority, policy, and AI expert action become one executable system.
 ```
 
 ### Technical Explanation
@@ -389,7 +399,7 @@ The Semantic Tier sits between human value anchors and agentic execution. It def
 ### Product Explanation
 
 ```text
-Semantier gives enterprise-service AI experts a governed place to act. Finance, HR, and other functions share the same semantic layer, evidence layer, authority layer, and replay layer.
+Semantier gives enterprise-service AI experts a governed place to act. Finance, HR, and other functions share the same semantic tier, evidence tier, authority tier, and replay tier.
 ```
 
 ## Tone

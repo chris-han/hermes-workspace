@@ -5,6 +5,11 @@
 @import '@fontsource/eb-garamond/800.css';
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/manrope/300.css';
+@import '@fontsource/manrope/400.css';
+@import '@fontsource/manrope/500.css';
+@import '@fontsource/manrope/600.css';
+@import '@fontsource/manrope/700.css';
 @import '@fontsource/noto-sans-sc/400.css';
 @import '@fontsource/noto-sans-sc/500.css';
 @import '@fontsource/noto-sans-sc/700.css';
@@ -12,44 +17,17 @@
 @import '@fontsource/noto-serif-sc/600.css';
 @import 'tailwindcss';
 
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  src: url('/font/PlusJakartaSans-Regular.woff2') format('woff2'),
-       url('/font/PlusJakartaDisplay-Regular.otf') format('opentype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  src: url('/font/PlusJakartaSans-Medium.woff2') format('woff2'),
-       url('/font/PlusJakartaDisplay-Medium.otf') format('opentype');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  src: url('/font/PlusJakartaSans-Light.woff2') format('woff2'),
-       url('/font/PlusJakartaDisplay-Light.otf') format('opentype');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* Tailwind v4 — enable dark: variant on .dark class (set by __root.tsx) */
 @variant dark (&:where(.dark, .dark *));
 
 :root {
   --tabbar-h: 0px;
   --font-ui:
-    'Plus Jakarta Sans', 'Times New Roman', -apple-system, system-ui,
+    'Manrope', 'Times New Roman', -apple-system, system-ui,
     'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
     'Hiragino Kaku Gothic Pro', 'Meiryo', 'MS PGothic', Arial, sans-serif;
   --font-report-ui:
-    'Plus Jakarta Sans', 'Times New Roman', -apple-system, system-ui,
+    'Manrope', 'Times New Roman', -apple-system, system-ui,
     'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', Arial,
     sans-serif;
   /* Design-system radius tokens (theme-safe: does not override Tailwind base radius scale) */
@@ -455,7 +433,7 @@ body {
 
 .brand-wordmark {
   font-family:
-    'Autaut Grotesk',
+    'Manrope',
     'Noto Sans SC',
     -apple-system,
     system-ui,

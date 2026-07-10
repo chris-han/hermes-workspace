@@ -125,50 +125,43 @@ This is a **hard constraint** for brand consistency and accessibility:
 ### Font Family
 ```css
 /* UI / Cards / Default */
---font-ui: 'Plus Jakarta Sans', 'Times New Roman', -apple-system, system-ui,
+--font-ui: 'Manrope', 'Times New Roman', -apple-system, system-ui,
            'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
            'Hiragino Kaku Gothic Pro', 'Meiryo', 'MS PGothic', Arial, sans-serif;
 
 /* Reports / Long-form */
---font-report-ui: 'Plus Jakarta Sans', 'Times New Roman', -apple-system, system-ui,
+--font-report-ui: 'Manrope', 'Times New Roman', -apple-system, system-ui,
                   'Noto Sans SC', 'Segoe UI', Roboto, 'PingFang SC',
                   'Microsoft YaHei', Arial, sans-serif;
 ```
 
 **Loading strategy:**
 - **Noto Sans SC**: Google Fonts `@import` with weights 400, 500, 700, `display=swap`
-- **Plus Jakarta Sans**: Self-hosted `/font/PlusJakartaSans-Regular.woff2` (converted from available OTFs), `font-weight: 400`, `font-display: swap`
+- **Manrope**: Google Fonts or `@fontsource/manrope` with weights 300, 400, 500, 600, 700, `display=swap`
 - **JetBrains Mono**: Google Fonts or self-hosted for monospace
 
-### ⚠️ Plus Jakarta Sans Weight Limitation
-**Only weight 400 (Regular) is loaded.** The `@font-face` declaration loads a single static file:
+### Manrope Weight Coverage
+Load real Manrope weights for the UI scale so medium, semibold, and bold text do not rely on browser-synthesized faux weights:
 ```css
-@font-face {
-  font-family: "Plus Jakarta Sans";
-  src: url("/font/PlusJakartaSans-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
+@import '@fontsource/manrope/300.css';
+@import '@fontsource/manrope/400.css';
+@import '@fontsource/manrope/500.css';
+@import '@fontsource/manrope/600.css';
+@import '@fontsource/manrope/700.css';
 ```
-
-The variable font file (`AutautGrotesk-VF.woff2`) exists in `public/font/` but is **not currently loaded**.
-`Monument Grotesk` files also exist in `public/font/` but are **unused** in the current codebase.
-
-**Result:** `font-medium` (500), `font-semibold` (600), and `font-bold` (700) are **browser-synthesized** (faux bold). The browser algorithmically thickens the 400 glyphs. This is intentional in the current implementation — all UI text uses these weights extensively.
 
 ### Hierarchy
 
-**Note on weights:** Only 400 is loaded for Plus Jakarta Sans in the current static asset set. 500/600/700 may be browser-synthesized unless additional WOFF2 weights are provided. Noto Sans SC and Noto Serif SC load real weights from Google Fonts.
+**Note on weights:** Manrope, Noto Sans SC, and Noto Serif SC should load real weights for the documented hierarchy.
 
 | Role | Font | Size | Weight | Line Height | Letter Spacing | Notes |
 |------|------|------|--------|-------------|----------------|-------|
-| Display Hero | Noto Sans SC / Plus Jakarta Sans (en) | 70px (4.38rem) | 700 | 0.85 | normal | Maximum impact, `--font-ui`. 700 may be synthesized if only 400 is loaded. |
-| Section Heading | Noto Sans SC / Plus Jakarta Sans (en) | 28px (1.75rem) | 700 | normal | -0.5px | Negative tracking. 700 may be synthesized if only 400 is loaded. |
-| Body / UI | Noto Sans SC / Plus Jakarta Sans (en) | 16px (1.00rem) | 500 | 1.60 | normal | Cards, nav, data; `--font-ui`. 500 may be synthesized if only 400 is loaded. |
+| Display Hero | Noto Sans SC / Manrope (en) | 70px (4.38rem) | 700 | 0.85 | normal | Maximum impact, `--font-ui`. |
+| Section Heading | Noto Sans SC / Manrope (en) | 28px (1.75rem) | 700 | normal | -0.5px | Negative tracking. |
+| Body / UI | Noto Sans SC / Manrope (en) | 16px (1.00rem) | 500 | 1.60 | normal | Cards, nav, data; `--font-ui`. |
 | Caption Bold | Noto Sans SC | 14px (0.88rem) | 700 | normal | normal | Strong metadata. Real 700 from Google Fonts. |
 | Caption | Noto Sans SC | 12px (0.75rem) | 400–500 | 1.50 | normal | Small text, tags |
-| Button | Noto Sans SC | 12px (0.75rem) | 500 | normal | normal | Button labels. 500 is synthesized for Autaut Grotesk. |
+| Button | Noto Sans SC | 12px (0.75rem) | 500 | normal | normal | Button labels. |
 | Report Body | Noto Serif SC | 16px (1.00rem) | 400 | 1.80 | 0.02em | Long‑form reports. Real 400 from Google Fonts. |
 | Report Heading | Noto Serif SC | 22px (1.375rem) | 600 | 1.30 | -0.3px | Report section titles. Real 600 from Google Fonts. |
 
@@ -218,13 +211,13 @@ The brand name "semantier" is rendered as **plain text**, not as an image.
 
 Wordmark rules:
 - Always render it as lowercase `semantier`
--- Always use Plus Jakarta Sans for the wordmark on UI surfaces
+- Always use Manrope for the wordmark on UI surfaces
 - Never title-case or uppercase the wordmark in navigation, splash, auth, or empty states
 
 **Sidebar (expanded)**
 - Layout: `flex items-center gap-2`
 - Mark: `h-8 w-8 rounded-button object-contain shrink-0 bg-transparent`
-- Wordmark: lowercase `semantier` in Plus Jakarta Sans, `font-bold text-base text-foreground`
+- Wordmark: lowercase `semantier` in Manrope, `font-bold text-base text-foreground`
 
 **Sidebar (collapsed)**
 - Layout: `flex items-center justify-center`
@@ -234,7 +227,7 @@ Wordmark rules:
 **Welcome / Hero screen**
 - Container: `mx-auto flex h-14 w-14 items-center justify-center rounded-button bg-primary shadow-sm`
 - Mark: `block h-14 w-14 object-contain object-center`
-- Wordmark: lowercase `semantier` in Plus Jakarta Sans, `text-xl font-bold tracking-tight text-foreground md:text-2xl`
+- Wordmark: lowercase `semantier` in Manrope, `text-xl font-bold tracking-tight text-foreground md:text-2xl`
 
 ### Logo Styling Rules
 - **Never** use a PNG logo for the UI wordmark — always use plain text with `font-bold`
@@ -488,7 +481,7 @@ Large radius (`rounded-card` / 20px, `rounded-xl`) is reserved for primary conte
 - Don't use the Wise Green as background for large surfaces — it's for buttons and accents
 - Don't skip the scale animation on buttons
 - Don't use traditional shadows — ring shadows only
-- Don't load `AutautGrotesk-VF.woff2` or `Monument Grotesk` unless you explicitly intend to use them — they are present in `public/font/` but unused in the current frontend
+- Don't add local font files under `public/font/` unless the frontend explicitly references them — the current frontend uses package or CDN font loading
 
 ---
 

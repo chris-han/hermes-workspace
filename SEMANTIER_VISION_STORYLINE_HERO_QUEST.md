@@ -1,5 +1,9 @@
 # Semantier Vision Storyline: Social Post Narrative
 
+## Canonical Narrative Reference
+
+This document derives from [`../docs/semantier-narrative-framework.md`](../docs/semantier-narrative-framework.md), the single source of truth for Semantier's category, mission, paradigm, and messaging hierarchy. Changes to those elements must be made in the Narrative Framework first, then propagated here.
+
 ## Purpose
 
 This document defines the founder-story narrative for Semantier in a more social-post, storytelling style.
@@ -174,7 +178,7 @@ This is why we are building Semantier.
 
 Semantier means Semantic Tier.
 
-The Semantic Tier is the missing layer in AI-native organizations.
+The Semantic Tier is the missing tier in AI-native organizations—and the foundation of a new category: Certainty Infrastructure.
 
 It is the place where an organization defines:
 
@@ -195,7 +199,7 @@ Dashboards display.
 
 But none of those alone governs meaning.
 
-The Semantic Tier governs meaning so that AI agents can act inside human value, organizational authority, and replayable responsibility.
+The Semantic Tier governs meaning so that AI agents can act inside human value, organizational authority, and replayable responsibility. By reducing semantic uncertainty before execution, it creates the governed certainty that AI-native enterprises need to operate at scale.
 
 This is especially urgent in Finance and HR.
 
@@ -233,7 +237,7 @@ That is why Semantier starts with enterprise services, especially Finance and HR
 AI Native Organizational OS.
 ```
 
-An operating layer where AI experts can propose work, but every mission-critical action is checked against facts, meaning, authority, policy, justification, replay, and auditability.
+An operating tier where AI experts can propose work, but every mission-critical action is checked against facts, meaning, authority, policy, justification, replay, and auditability.
 
 The challenge now is scale.
 
@@ -324,7 +328,7 @@ Govern the action.
 
 Businesses cannot deploy agents into finance, HR, compliance, legal, and operations because a model sounds reasonable. Mission-critical adoption requires a human value anchor: purpose, authority, responsibility, policy, evidence, replay, and accountability.
 
-That anchor needs an operating layer.
+That anchor needs an operating tier.
 
 That is why we are building Semantier.
 
@@ -378,6 +382,12 @@ What happens when AI agents take on mission-critical business roles?
 Hero headline:
 
 ```text
+The Certainty Infrastructure for AI-native Enterprises.
+```
+
+Paradigm line:
+
+```text
 Don’t align the mind.
 Govern the action.
 ```
@@ -385,7 +395,7 @@ Govern the action.
 Hero body:
 
 ```text
-AI-native businesses will need more than smart agents. They will need a human value anchor, a shared semantic tier, and governance gates that decide whether agentic actions are justified, authorized, replayable, and safe to execute.
+Semantier pioneers the Semantic Tier: the enterprise tier that turns semantic uncertainty into governed certainty by deciding whether agentic actions are justified, authorized, replayable, and admissible for execution.
 ```
 
 ## Website Vision Section
@@ -415,7 +425,7 @@ Body:
 ```text
 We believe the next generation of businesses will be built with AI experts inside the workflow. But mission-critical work cannot depend on plausible answers alone. It needs human value, authority, policy, evidence, and replayable responsibility.
 
-That is why we are building the Semantic Tier: the governance layer where meaning becomes operational before AI-generated action enters the business.
+That is why we are building the Semantic Tier: the governance tier where meaning becomes operational before AI-generated action enters the business.
 ```
 
 ## Do Not Say

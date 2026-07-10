@@ -1,8 +1,12 @@
 # Semantier Landing Page Content Plan
 
+## Canonical Narrative Reference
+
+This document derives from [`../docs/semantier-narrative-framework.md`](../docs/semantier-narrative-framework.md), the single source of truth for Semantier's category, mission, paradigm, and messaging hierarchy. Changes to those elements must be made in the Narrative Framework first, then propagated here.
+
 ## Purpose
 
-Create a landing page for Semantier that explains the core idea from the semantic governance paper and introduces the product as an AI Native Organizational OS for enterprise services.
+Create a landing page for Semantier that introduces a new enterprise technology category: the Semantic Tier—the Certainty Infrastructure for AI-native Enterprises. The page should explain how Semantier turns semantic uncertainty into governed certainty by making agentic actions justified, authorized, replayable, and auditable before execution.
 
 Use `SEMANTIER_VISION_STORYLINE_HERO_QUEST.md` as the narrative spine for the page: future AI-native organization problem, human value anchor, Semantic Tier, governed action, scale challenge, and future work.
 
@@ -37,14 +41,37 @@ Investors, enterprise architects, governance leaders, and researchers evaluating
 
 ## Positioning
 
+Category-defining statement:
+
+```text
+Semantier pioneers the Semantic Tier—the Certainty Infrastructure for AI-native Enterprises.
+```
+
+Mission:
+
+```text
+Build the Certainty Infrastructure for AI-native Enterprises.
+```
+
 Short positioning:
 
 ```text
-Semantier is an AI Native Organizational OS for enterprise services.
-AI experts can propose actions. Semantier governs whether those actions are admissible for execution.
+Semantier is the Semantic Tier for AI-native enterprises. AI experts can propose actions; Semantier governs whether those actions are justified, authorized, replayable, and admissible for execution.
 ```
 
 Core category:
+
+```text
+The Semantic Tier
+```
+
+Value category:
+
+```text
+Certainty Infrastructure
+```
+
+Product architecture:
 
 ```text
 AI Native Organizational OS
@@ -54,6 +81,16 @@ Application frame:
 
 ```text
 Governed AI experts for enterprise services.
+```
+
+Canonical hierarchy:
+
+```text
+Semantic Tier = what Semantier is.
+Certainty Infrastructure = why enterprises need it.
+Enterprise consent = how organizational authority becomes explicit.
+Governed action = how certainty is enforced at runtime.
+AI Native Organizational OS = the broader system enabled by the tier.
 ```
 
 First two enterprise functions:
@@ -80,16 +117,16 @@ It needs a human value anchor expressed through authority, policy, responsibilit
 Semantier turns that anchor into governed action.
 ```
 
-### Level 2: Product Category
+### Level 2: Category And Mission
 
 ```text
-An AI Native Organizational OS for enterprise services.
+The Semantic Tier—the Certainty Infrastructure for AI-native Enterprises.
 ```
 
 Meaning:
 
 ```text
-Semantier is the operating layer where human value anchors, AI experts, human roles, business facts, authority boundaries, and execution records become one governed system.
+Semantier establishes the missing enterprise tier where human value anchors, AI experts, human roles, business facts, authority boundaries, and execution records become one governed system. It reduces semantic uncertainty before that uncertainty becomes execution risk, coordination cost, or organizational drift.
 ```
 
 ### Level 3: Product Function
@@ -128,10 +165,16 @@ Goal: establish the new paradigm in one screen.
 Eyebrow:
 
 ```text
-AI Native Organizational OS
+The Semantic Tier for AI-native Enterprises
 ```
 
 Headline:
+
+```text
+The Certainty Infrastructure for AI-native Enterprises.
+```
+
+Paradigm line:
 
 ```text
 Don’t align the mind.
@@ -141,7 +184,7 @@ Govern the action.
 Subheadline:
 
 ```text
-Mission-critical enterprise AI needs a human value anchor before it can be trusted. Semantier turns that anchor into governed action: justified, authorized, replayable, and safe to execute.
+Semantier turns semantic uncertainty into governed certainty. It makes mission-critical AI actions justified, authorized, replayable, and auditable before execution.
 ```
 
 Primary CTA:
@@ -279,7 +322,7 @@ Governed AI experts for enterprise services.
 Body:
 
 ```text
-Semantier is not one chatbot. It is a governed expert network for enterprise functions. Each AI expert works inside the same organizational OS: shared facts, shared authority structure, shared policy layer, shared replay bindings, and shared audit trail.
+Semantier is not one chatbot. It is a governed expert network for enterprise functions. Each AI expert works inside the same organizational OS: shared facts, shared authority structure, shared policy tier, shared replay bindings, and shared audit trail.
 ```
 
 Product modules:
@@ -376,7 +419,7 @@ Stronger link between work, responsibility, and governance
 
 ### 8. Trust Stack
 
-Goal: introduce the technical trust layer in accessible language.
+Goal: introduce the technical trust tier in accessible language.
 
 Section title:
 
@@ -550,13 +593,13 @@ Positioning as only finance-led
 ### One-liner
 
 ```text
-Semantier governs AI expert actions for enterprise services.
+Semantier pioneers the Semantic Tier—the Certainty Infrastructure for AI-native Enterprises.
 ```
 
 ### Short Pitch
 
 ```text
-Semantier is an AI Native Organizational OS. It lets AI experts propose finance, HR, and operational actions, while semantic governance decides whether those actions are justified, authorized, replayable, and safe to execute.
+Semantier is the Semantic Tier for AI-native enterprises. It turns semantic uncertainty into governed certainty by deciding whether AI-proposed finance, HR, and operational actions are justified, authorized, replayable, and admissible for execution.
 ```
 
 ### Research Pitch

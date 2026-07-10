@@ -97,7 +97,7 @@ First two enterprise functions:
 
 ```text
 Finance: governance of economic facts.
-HR: governance of organizational and human facts.
+HR: governance of organizational order and trust.
 ```
 
 ## Message Hierarchy
@@ -152,7 +152,7 @@ Meaning:
 
 ```text
 Finance governs money, risk, tax, budget, and external trust.
-HR governs people, roles, authority, performance, and organizational learning.
+HR governs organizational order: trust, roles, authority, responsibility, decision quality, and organizational learning.
 Together they form the first operating core for AI-native organizations.
 ```
 
@@ -332,7 +332,7 @@ Finance Expert
 Handles invoices, expenses, revenue recognition support, payment priority, close exceptions, tax readiness, and management-accounting interpretations.
 
 HR Expert
-Handles role changes, hiring approvals, compensation exceptions, performance interpretation, policy eligibility, authority boundaries, and organizational learning records.
+Handles role changes, hiring approvals, compensation exceptions, performance interpretation, policy eligibility, authority boundaries, decision trajectory evidence, and organizational learning records.
 
 Governance Core
 Provides fact admission, semantic policy validation, justification checks, replay bindings, exception routing, and audit evidence.
@@ -380,20 +380,24 @@ Better management consensus
 Reusable benchmark data from real workflows
 ```
 
-### 7. HR: Governance of Organizational Facts
+### 7. HR: Governance of Organizational Order And Trust
 
 Goal: show expansion beyond finance without overclaiming.
 
 Section title:
 
 ```text
-HR governs the facts of people, roles, and authority.
+HR governs trust as organizational execution capacity.
 ```
 
 Body:
 
 ```text
-AI-native organizations cannot govern money without governing people. HR workflows define who can approve, who is responsible, how roles change, how performance is interpreted, and how organizational learning is captured.
+AI-native organizations cannot govern money without governing the trust structure that makes people effective. A common founder mistake is to treat reliability as something solved by screening: find "reliable people" once and the organization will execute. That assumes people are static. In reality, people change, incentives shift, contexts evolve, and decision quality must be governed over time.
+
+Semantier should frame HR as trust governance, not employee surveillance. The system does not watch every discrete action in real time. It supports trusted decisions and evaluates decision quality from continuous decision trajectories: what evidence was used, which authority was invoked, which policies applied, where exceptions appeared, how corrections were handled, and whether outcomes can be replayed.
+
+This is the operational version of "trust, but verify." HR workflows become the place where role, authority, responsibility, trust, and organizational learning are governed together.
 ```
 
 Example workflows:
@@ -405,16 +409,17 @@ Compensation exception routing
 Performance-review evidence organization
 Policy eligibility checks
 Organizational learning and responsibility records
+Decision trajectory review for role, authority, and trust decisions
 ```
 
 Customer value:
 
 ```text
 Clearer authority boundaries
-Less subjective policy drift
-Better evidence for people decisions
+Trust decisions based on trajectory evidence, not static impressions
+Better support for people and role decisions
 More consistent exception handling
-Stronger link between work, responsibility, and governance
+Stronger link between work, responsibility, learning, and governance
 ```
 
 ### 8. Trust Stack
@@ -511,6 +516,7 @@ Three points:
 AI experts multiply enterprise action.
 Manual approval cannot scale to every AI-generated decision.
 Regulated work still requires evidence, authority, and auditability.
+Trust governance must use decision trajectories, not constant surveillance.
 ```
 
 ### 11. PMF / Pilot CTA

@@ -3,13 +3,17 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
+  useRouterState,
 } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import appCss from '../styles.css?url'
 import { getRootSurfaceState } from './-root-layout-state'
 import { getRootLayoutMode } from './-root-layout-utils'
-import { unregisterServiceWorkers, wrapInlineScript } from './-root-runtime-guards'
+import {
+  unregisterServiceWorkers,
+  wrapInlineScript,
+} from './-root-runtime-guards'
 import { SearchModal } from '@/components/search/search-modal'
 import { TerminalShortcutListener } from '@/components/terminal-shortcut-listener'
 import { GlobalShortcutListener } from '@/components/global-shortcut-listener'
@@ -63,8 +67,10 @@ const themeScript = `
 
   try {
     const root = document.documentElement
+    const isPublicLanding = window.location.pathname === '/'
+    const landingTheme = localStorage.getItem('semantier-landing-theme') === 'dark' ? 'semantier' : 'semantier-light'
     const storedTheme = localStorage.getItem('${THEME_STORAGE_KEY}')
-    const theme = ${JSON.stringify(VALID_THEMES)}.includes(storedTheme) ? storedTheme : '${DEFAULT_THEME}'
+    const theme = isPublicLanding ? landingTheme : (${JSON.stringify(VALID_THEMES)}.includes(storedTheme) ? storedTheme : '${DEFAULT_THEME}')
     const lightThemes = ['hermes-nous-light', 'hermes-official-light', 'hermes-classic-light', 'hermes-slate-light', 'semantier-light']
     const isDark = !lightThemes.includes(theme)
     root.classList.remove('light', 'dark', 'system')
@@ -144,7 +150,8 @@ export const Route = createRootRoute({
       },
       {
         property: 'og:description',
-        content: 'Semantier workspace for chat, tools, files, memory, and jobs.',
+        content:
+          'Semantier workspace for chat, tools, files, memory, and jobs.',
       },
       {
         property: 'og:image',
@@ -173,7 +180,8 @@ export const Route = createRootRoute({
       },
       {
         name: 'twitter:description',
-        content: 'Semantier workspace for chat, tools, files, memory, and jobs.',
+        content:
+          'Semantier workspace for chat, tools, files, memory, and jobs.',
       },
       {
         name: 'twitter:image',
@@ -245,11 +253,16 @@ export const Route = createRootRoute({
 const queryClient = new QueryClient()
 
 function RootLayout() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  const isPublicLanding = pathname === '/'
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(
     null,
   )
 
   useEffect(() => {
+    if (isPublicLanding) return undefined
     initializeSettingsAppearance()
 
     const syncOnboardingCompletion = () => {
@@ -322,7 +335,11 @@ function RootLayout() {
         handleOnboardingCompleteChanged,
       )
     }
-  }, [])
+  }, [isPublicLanding])
+
+  if (isPublicLanding) {
+    return <Outlet />
+  }
 
   const rootSurfaceState = getRootSurfaceState(onboardingComplete)
 
@@ -390,6 +407,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           dangerouslySetInnerHTML={{
             __html: wrapInlineScript(`
           (function(){
+            if (window.location.pathname === '/') return;
             if (document.getElementById('splash-screen')) return;
             var bg = '#0A0E1A', txt = '#E6EAF2', muted = '#9AA5BD', accent = '#6366F1';
             try {

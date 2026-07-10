@@ -299,13 +299,17 @@ Finance governs economic facts: cash, revenue, cost, margin, tax, budget, risk, 
 HR:
 
 ```text
-HR governs organizational facts: people, roles, authority, performance, compensation, responsibility, and learning.
+HR governs organizational order and trust: people, roles, authority, responsibility, compensation, decision quality, and learning.
 ```
 
 Why this matters:
 
 ```text
-An AI-native organization cannot safely execute financial actions without knowing who has authority. It cannot safely execute people decisions without knowing which policies, roles, and responsibilities apply. Finance and HR are separate functions, but they meet inside the Semantic Tier.
+An AI-native organization cannot safely execute financial actions without knowing who has authority. It cannot safely execute people decisions without knowing which policies, roles, responsibilities, and trust conditions apply. Finance and HR are separate functions, but they meet inside the Semantic Tier.
+
+Semantier's HR thesis is not that reliable people are found once through screening. That is a static theory of people. People change; context changes; incentives change; decision quality changes. Organizational execution comes from trust, and trust has to be governed.
+
+That governance should not mean real-time surveillance of every employee action. It should mean "trust, but verify": support trusted decisions and evaluate decision quality through continuous decision trajectories, including evidence, authority, policy fit, exceptions, corrections, and replayable outcomes.
 ```
 
 ### 8. What We Believe

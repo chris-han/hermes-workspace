@@ -239,6 +239,9 @@ export function resolveChatEmptyStatePromptProfile(params: {
   ) {
     return 'smb_default'
   }
+  if (!organizationId && !datasetType && !industryCode) {
+    return 'smb_default'
+  }
   return 'generic'
 }
 

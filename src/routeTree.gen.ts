@@ -21,6 +21,7 @@ import { Route as KanbanRouteImport } from './routes/kanban'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as AgentRosterRouteImport } from './routes/agent-roster'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
@@ -173,6 +174,11 @@ const FilesRoute = FilesRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentRosterRoute = AgentRosterRouteImport.update({
@@ -650,6 +656,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/agent-roster': typeof AgentRosterRoute
+  '/app': typeof AppRoute
   '/dashboard': typeof DashboardRoute
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
@@ -757,6 +764,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/agent-roster': typeof AgentRosterRoute
+  '/app': typeof AppRoute
   '/dashboard': typeof DashboardRoute
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
@@ -864,6 +872,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/agent-roster': typeof AgentRosterRoute
+  '/app': typeof AppRoute
   '/dashboard': typeof DashboardRoute
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
@@ -973,6 +982,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/agent-roster'
+    | '/app'
     | '/dashboard'
     | '/files'
     | '/jobs'
@@ -1080,6 +1090,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/agent-roster'
+    | '/app'
     | '/dashboard'
     | '/files'
     | '/jobs'
@@ -1186,6 +1197,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/agent-roster'
+    | '/app'
     | '/dashboard'
     | '/files'
     | '/jobs'
@@ -1294,6 +1306,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
   AgentRosterRoute: typeof AgentRosterRoute
+  AppRoute: typeof AppRoute
   DashboardRoute: typeof DashboardRoute
   FilesRoute: typeof FilesRoute
   JobsRoute: typeof JobsRoute
@@ -1460,6 +1473,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agent-roster': {
@@ -2234,6 +2254,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
   AgentRosterRoute: AgentRosterRoute,
+  AppRoute: AppRoute,
   DashboardRoute: DashboardRoute,
   FilesRoute: FilesRoute,
   JobsRoute: JobsRoute,

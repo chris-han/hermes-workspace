@@ -231,6 +231,42 @@ organizational learning.
 
 If AI-native businesses cannot govern money and people, they cannot govern themselves.
 
+But "governing people" does not mean treating humans as static assets or monitoring every employee action.
+
+Founders often carry a hidden assumption: reliable people must be selected. Hire the right people, screen harder, and trust will take care of itself.
+
+That assumption is incomplete.
+
+People are not static.
+Context changes.
+Incentives change.
+Responsibility changes.
+Decision quality changes.
+
+Organizational execution comes from trust. And trust needs continuous governance.
+
+The useful principle is closer to Ronald Reagan's line:
+
+```text
+Trust, but verify.
+```
+
+Historically, that was difficult to operationalize because the cost of verification was too high. Either the organization trusted blindly, or it created expensive supervision and approval bottlenecks.
+
+The Semantic Tier creates another path. It does not supervise every discrete employee action in real time. It gives teams trusted decision support and evaluates decision quality through continuous decision trajectories:
+
+```text
+what evidence was used,
+which authority was invoked,
+which policy applied,
+where exceptions appeared,
+how corrections were handled,
+whether outcomes can be replayed,
+and whether judgment quality improves over time.
+```
+
+That is why HR is not only a "people facts" domain. It is where organizational trust becomes governable.
+
 That is why Semantier starts with enterprise services, especially Finance and HR, but the larger vision is broader:
 
 ```text
@@ -347,7 +383,7 @@ We start with enterprise services, especially Finance and HR:
 
 ```text
 Finance governs money.
-HR governs people.
+HR governs organizational trust.
 ```
 
 If AI-native businesses cannot govern money and people, they cannot govern themselves.

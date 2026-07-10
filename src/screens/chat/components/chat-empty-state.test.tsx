@@ -60,6 +60,17 @@ describe('chat empty state prompt profiles', () => {
     )
   })
 
+  it('uses the SMB walkthrough when anonymous auth has no organization context', () => {
+    const profile = resolveChatEmptyStatePromptProfile({})
+
+    expect(profile).toBe('smb_default')
+    expect(
+      categoriesForPromptProfile(profile)[0]?.examples.map(
+        (item) => item.title,
+      ),
+    ).toContain('试用 索阳 示例公司 — 60 秒获得洞察')
+  })
+
   it('falls back to the generic profile for non-demo organizations', () => {
     const profile = resolveChatEmptyStatePromptProfile({
       organizationId: 'org_real_customer',

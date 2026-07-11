@@ -7,10 +7,8 @@ import {
   Chat01Icon,
   CheckListIcon,
   Clock01Icon,
-  ComputerTerminal01Icon,
   Copy01Icon,
   DashboardSquare01Icon,
-  File01Icon,
   MessageMultiple01Icon,
   Moon02Icon,
   PencilEdit02Icon,
@@ -599,14 +597,12 @@ function ChatSidebarComponent({
   const _isSettingsActive = pathname === '/settings'
   const isSkillsActive = pathname === '/skills'
   const isDataConnectionsActive = pathname === '/settings/data-connections'
-  const isFilesActive = pathname === '/files'
-  const isTerminalActive = pathname === '/terminal'
   const isJobsActive = pathname === '/jobs'
   const isMemoryActive = pathname === '/memory'
   const isTasksActive = pathname === '/tasks'
   const isorchestratorActive = pathname === '/orchestrator'
   const isAgentRosterActive = pathname === '/agent-roster'
-  const mainRoutes = ['/chat', '/new', '/files', '/terminal']
+  const mainRoutes = ['/chat', '/new']
   const knowledgeRoutes = ['/memory', '/skills', '/settings/data-connections']
   const systemRoutes = ['/settings', '/logs']
 
@@ -879,20 +875,6 @@ function ChatSidebarComponent({
       icon: MessageMultiple01Icon,
       label: t('nav.chat'),
       active: isChatActive,
-    },
-    {
-      kind: 'link',
-      to: '/files',
-      icon: File01Icon,
-      label: t('nav.files'),
-      active: isFilesActive,
-    },
-    {
-      kind: 'link',
-      to: '/terminal',
-      icon: ComputerTerminal01Icon,
-      label: t('nav.terminal'),
-      active: isTerminalActive,
     },
     {
       kind: 'link',

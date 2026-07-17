@@ -125,6 +125,12 @@ type ArtifactEntry =
   | { kind: 'persisted'; artifact: PersistedArtifact }
   | { kind: 'activity'; artifact: ActivityEvent }
 
+export function persistedArtifactDisplayTitle(
+  artifact: Pick<PersistedArtifact, 'relativePath' | 'filename' | 'path'>,
+): string {
+  return artifact.relativePath || artifact.filename || artifact.path
+}
+
 function readNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
@@ -337,7 +343,7 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
       {artifacts.map((entry, index) => {
         const isPersisted = entry.kind === 'persisted'
         const title = isPersisted
-          ? entry.artifact.filename || entry.artifact.path
+          ? persistedArtifactDisplayTitle(entry.artifact)
           : entry.artifact.text
         const time = isPersisted
           ? formatArtifactTime(entry.artifact.timestamp)

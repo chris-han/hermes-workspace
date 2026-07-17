@@ -89,6 +89,8 @@ function cleanUserText(raw: string): string {
 
   // Remove System: [...] prefix messages (exec completions, heartbeat prompts)
   text = text.replace(/^System:\s*\[[^\]]*\]\s*/i, '')
+  text = text.replace(/^\[System:[\s\S]*\]\s*$/i, '')
+  text = text.replace(/^\[The user sent a document:[\s\S]*\]\s*$/i, '')
 
   // Remove heartbeat prompt text
   text = text.replace(

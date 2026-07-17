@@ -74,4 +74,41 @@ describe('textFromMessage — think block stripping (regression #double-reply)',
     // User message should not have think-block stripping applied
     expect(textFromMessage(msg)).toBe('<think>something</think>my question')
   })
+
+  it('strips bracketed internal System verification nudges from user messages', () => {
+    const msg: ChatMessage = {
+      id: 'u2',
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text:
+            '[System: You edited code in this turn, but the workspace does not have fresh passing verification evidence yet.\n\n' +
+            'Verification status: unverified\n\n' +
+            'Changed paths:\n- `/tmp/report.md`]',
+        },
+      ],
+      createdAt: Date.now(),
+    }
+
+    expect(textFromMessage(msg)).toBe('')
+  })
+
+  it('strips internal document attachment context from user messages', () => {
+    const msg: ChatMessage = {
+      id: 'u3',
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text:
+            "[The user sent a document: 'invoice.pdf'. It is saved at: /home/chris/.hermes/cache/documents/doc.pdf. " +
+            'Its text is not inlined here. To read it in a Semantier workspace, pass this saved path to the registered document extraction tool.]',
+        },
+      ],
+      createdAt: Date.now(),
+    }
+
+    expect(textFromMessage(msg)).toBe('')
+  })
 })

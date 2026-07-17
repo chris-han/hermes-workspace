@@ -37,21 +37,45 @@ describe('linkifyRunDirectoryFooter', () => {
     expect(linkifyRunDirectoryFooter(line)).toBe(line)
   })
 
-  it('rewrites Chinese saved-report footer into a files deep link', () => {
+  it('rewrites Chinese saved-report footer into an inspector artifact link', () => {
     const line =
       '报告全文已保存至 /home/chris/repo/semantier-runtime/workspaces/ws123/sessions/session_abc/artifacts/tax_report.md'
 
     expect(linkifyRunDirectoryFooter(line)).toContain(
-      '报告全文已保存至 [/home/chris/repo/semantier-runtime/workspaces/ws123/sessions/session_abc/artifacts/tax_report.md](/files?path=sessions%2Fsession_abc%2Fartifacts%2Ftax_report.md)',
+      '报告全文已保存至 [/sessions/session_abc/artifacts/tax_report.md](#artifact=tax_report.md)',
     )
   })
 
-  it('rewrites backticked saved-report footer into a files deep link', () => {
+  it('rewrites backticked saved-report footer into an inspector artifact link', () => {
     const line =
       'Report saved to: `/home/chris/repo/semantier-runtime/workspaces/ws123/sessions/session_abc/artifacts/tax_report.md`'
 
     expect(linkifyRunDirectoryFooter(line)).toContain(
-      'Report saved to: [/home/chris/repo/semantier-runtime/workspaces/ws123/sessions/session_abc/artifacts/tax_report.md](/files?path=sessions%2Fsession_abc%2Fartifacts%2Ftax_report.md)',
+      'Report saved to: [/sessions/session_abc/artifacts/tax_report.md](#artifact=tax_report.md)',
     )
+  })
+
+  it('rewrites file-path lines into inspector artifact selector links', () => {
+    const line =
+      '- **文件路径**: `/sessions/session_2633894eda13/artifacts/reimbursement/REIM-20260717-001.md`'
+
+    expect(linkifyRunDirectoryFooter(line)).toBe(
+      '- **文件路径**: [/sessions/session_2633894eda13/artifacts/reimbursement/REIM-20260717-001.md](#artifact=reimbursement%2FREIM-20260717-001.md)',
+    )
+  })
+
+  it('removes duplicate raw Inspector link lines', () => {
+    const markdown = [
+      '- **文件路径**: `/sessions/session_2633894eda13/artifacts/reim.md`',
+      '- **Inspector 链接**: `/sessions/session_2633894eda13/artifacts/reim.md/raw`',
+    ].join('\n')
+
+    const normalized = linkifyRunDirectoryFooter(markdown)
+
+    expect(normalized).toContain(
+      '- **文件路径**: [/sessions/session_2633894eda13/artifacts/reim.md](#artifact=reim.md)',
+    )
+    expect(normalized).not.toContain('Inspector 链接')
+    expect(normalized).not.toContain('/raw')
   })
 })

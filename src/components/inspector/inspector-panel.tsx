@@ -7,23 +7,36 @@ import { getUnavailableReason } from '@/lib/feature-gates'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { cn } from '@/lib/utils'
 
-// ── Store ─────────────────────────────────────────────────────────────────────
+// ── Tab types ─────────────────────────────────────────────────────────────────
+
+type TabId = 'activity' | 'artifacts' | 'memory' | 'skills' | 'logs'
 
 type InspectorStore = {
   isOpen: boolean
+  activeTab: TabId
+  highlightedArtifact: string | null
+  clearHighlightedArtifact: () => void
+  openArtifact: (artifactRef: string) => void
+  setActiveTab: (tab: TabId) => void
   setOpen: (open: boolean) => void
   toggle: () => void
 }
 
 export const useInspectorStore = create<InspectorStore>((set) => ({
   isOpen: false,
+  activeTab: 'activity',
+  highlightedArtifact: null,
+  clearHighlightedArtifact: () => set({ highlightedArtifact: null }),
+  openArtifact: (artifactRef) =>
+    set({
+      activeTab: 'artifacts',
+      highlightedArtifact: artifactRef,
+      isOpen: true,
+    }),
+  setActiveTab: (activeTab) => set({ activeTab }),
   setOpen: (open) => set({ isOpen: open }),
   toggle: () => set((state) => ({ isOpen: !state.isOpen })),
 }))
-
-// ── Tab types ─────────────────────────────────────────────────────────────────
-
-type TabId = 'activity' | 'artifacts' | 'memory' | 'skills' | 'logs'
 
 const TABS: Array<{
   id: TabId
@@ -125,6 +138,8 @@ type ArtifactEntry =
   | { kind: 'persisted'; artifact: PersistedArtifact }
   | { kind: 'activity'; artifact: ActivityEvent }
 
+const ARTIFACT_REFRESH_INTERVAL_MS = 2500
+
 export function persistedArtifactDisplayTitle(
   artifact: Pick<PersistedArtifact, 'relativePath' | 'filename' | 'path'>,
 ): string {
@@ -154,6 +169,38 @@ function artifactKeys(artifact: PersistedArtifact): Array<string> {
     artifact.filename,
     artifact.rawUrl,
   ].filter(Boolean)
+}
+
+function normalizeArtifactRef(value: string): string {
+  let normalized = value.trim().replace(/\\/g, '/')
+  if (normalized.startsWith('#artifact=')) {
+    normalized = normalized.slice('#artifact='.length)
+  }
+  try {
+    normalized = decodeURIComponent(normalized)
+  } catch {
+    // Keep the original value when it is not URI encoded.
+  }
+  normalized = normalized.replace(/\/raw$/, '')
+  const marker = '/artifacts/'
+  const markerIndex = normalized.indexOf(marker)
+  if (markerIndex >= 0) {
+    normalized = normalized.slice(markerIndex + marker.length)
+  }
+  return normalized.replace(/^\/+/, '')
+}
+
+export function artifactMatchesHighlight(
+  artifact: PersistedArtifact,
+  highlight: string | null,
+): boolean {
+  if (!highlight) return false
+  const target = normalizeArtifactRef(highlight)
+  if (!target) return false
+  return artifactKeys(artifact).some((key) => {
+    const normalizedKey = normalizeArtifactRef(key)
+    return normalizedKey === target || normalizedKey.endsWith(`/${target}`)
+  })
 }
 
 function artifactRawHref(rawUrl: string): string {
@@ -245,16 +292,22 @@ function normalizePersistedArtifacts(
 
 function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
   const events = useActivityStore((s) => s.events)
+  const highlightedArtifact = useInspectorStore((s) => s.highlightedArtifact)
+  const highlightedArtifactRef = useRef<HTMLDivElement | null>(null)
   const [persistedArtifacts, setPersistedArtifacts] = useState<
     Array<PersistedArtifact>
   >([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const activityArtifacts = events.filter(
-    (event) =>
-      event.type === 'artifact' &&
-      sessionKey &&
-      getActivityEventSessionKey(event) === sessionKey,
+  const activityArtifacts = useMemo(
+    () =>
+      events.filter(
+        (event) =>
+          event.type === 'artifact' &&
+          sessionKey &&
+          getActivityEventSessionKey(event) === sessionKey,
+      ),
+    [events, sessionKey],
   )
 
   useEffect(() => {
@@ -265,23 +318,27 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
       return
     }
     let cancelled = false
-    setLoading(true)
-    setError(null)
-    fetch(
-      `/api/semantier-proxy/sessions/${encodeURIComponent(sessionKey)}/trajectory`,
-    )
-      .then((res) => {
-        if (res.status === 404) return null
+    async function loadArtifacts(showLoading: boolean) {
+      if (showLoading) setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch(
+          `/api/semantier-proxy/sessions/${encodeURIComponent(sessionKey)}/trajectory`,
+        )
+        if (res.status === 404) {
+          if (!cancelled) {
+            setPersistedArtifacts([])
+            setLoading(false)
+          }
+          return null
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json() as Promise<SessionTrajectoryPayload>
-      })
-      .then((json) => {
+        const json = (await res.json()) as SessionTrajectoryPayload
         if (!cancelled) {
           setPersistedArtifacts(normalizePersistedArtifacts(json))
           setLoading(false)
         }
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         if (!cancelled) {
           setError(
             err instanceof Error ? err.message : 'Failed to load artifacts',
@@ -289,9 +346,16 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
           setPersistedArtifacts([])
           setLoading(false)
         }
-      })
+      }
+      return null
+    }
+    void loadArtifacts(true)
+    const interval = window.setInterval(() => {
+      void loadArtifacts(false)
+    }, ARTIFACT_REFRESH_INTERVAL_MS)
     return () => {
       cancelled = true
+      window.clearInterval(interval)
     }
   }, [sessionKey])
 
@@ -317,6 +381,14 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
       .map((artifact): ArtifactEntry => ({ kind: 'activity', artifact }))
     return [...persisted, ...activity]
   }, [activityArtifacts, persistedArtifacts])
+
+  useEffect(() => {
+    if (!highlightedArtifact || !highlightedArtifactRef.current) return
+    highlightedArtifactRef.current.scrollIntoView({
+      block: 'center',
+      behavior: 'smooth',
+    })
+  }, [artifacts, highlightedArtifact])
 
   if (!sessionKey) {
     return <EmptyState text="Open a session to see artifacts" />
@@ -362,13 +434,25 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
         const persistedMeta = isPersisted
           ? [entry.artifact.path, size, time].filter(Boolean).join(' · ')
           : ''
+        const isHighlighted =
+          isPersisted &&
+          artifactMatchesHighlight(entry.artifact, highlightedArtifact)
         return (
           <div
             key={`${entry.kind}-${title}-${index}`}
-            className="rounded-lg px-3 py-2 text-xs leading-relaxed"
+            ref={isHighlighted ? highlightedArtifactRef : undefined}
+            className={cn(
+              'rounded-lg px-3 py-2 text-xs leading-relaxed transition-colors',
+              isHighlighted && 'ring-2',
+            )}
             style={{
               backgroundColor: 'var(--theme-card)',
-              border: '1px solid var(--theme-border)',
+              border: `1px solid ${
+                isHighlighted ? 'var(--theme-accent)' : 'var(--theme-border)'
+              }`,
+              boxShadow: isHighlighted
+                ? '0 0 0 2px color-mix(in srgb, var(--theme-accent) 18%, transparent)'
+                : undefined,
               color: 'var(--theme-text)',
             }}
           >
@@ -1778,9 +1862,10 @@ export function InspectorPanel({
   sessionKey?: string | null
 }) {
   const isOpen = useInspectorStore((s) => s.isOpen)
+  const activeTab = useInspectorStore((s) => s.activeTab)
+  const setActiveTab = useInspectorStore((s) => s.setActiveTab)
   const memoryAvailable = useFeatureAvailable('memory')
   const skillsAvailable = useFeatureAvailable('skills')
-  const [activeTab, setActiveTab] = useState<TabId>('activity')
 
   useEffect(() => {
     if (activeTab === 'memory' && !memoryAvailable) {
@@ -1790,6 +1875,19 @@ export function InspectorPanel({
       setActiveTab('activity')
     }
   }, [activeTab, memoryAvailable, skillsAvailable])
+
+  useEffect(() => {
+    function openArtifactFromHash() {
+      const hash = window.location.hash
+      if (!hash.startsWith('#artifact=')) return
+      useInspectorStore
+        .getState()
+        .openArtifact(hash.slice('#artifact='.length))
+    }
+    openArtifactFromHash()
+    window.addEventListener('hashchange', openArtifactFromHash)
+    return () => window.removeEventListener('hashchange', openArtifactFromHash)
+  }, [])
 
   return (
     <div

@@ -40,13 +40,50 @@ function normalizeFilesTargetPath(pathValue: string): string {
   return hostPath.replace(/^\/+/, '')
 }
 
+function artifactDeepLinkFromPath(
+  pathValue: string,
+): { displayPath: string; href: string } | null {
+  const normalized = pathValue.trim().replace(/\\/g, '/').replace(/\/raw$/, '')
+  const match = normalized.match(/\/sessions\/([^/\s`]+)\/artifacts\/([^\s`]+)$/)
+  if (!match?.[1] || !match[2]) return null
+  const sessionId = decodeURIComponent(match[1])
+  const relativePath = match[2]
+    .split('/')
+    .map((part) => decodeURIComponent(part))
+    .join('/')
+  const displayPath = `/sessions/${sessionId}/artifacts/${relativePath}`
+  return {
+    displayPath,
+    href: `#artifact=${encodeURIComponent(relativePath)}`,
+  }
+}
+
 export function linkifyRunDirectoryFooter(markdown: string): string {
   if (!markdown) return markdown
 
-  return markdown.replace(
+  const withoutDuplicateInspectorLinks = markdown.replace(
+    /^\s*[-*]?\s*(?:\*\*)?(?:Inspector 链接|Inspector link)(?:\*\*)?\s*[:：]\s*`?\/sessions\/[^\n`]+?\/artifacts\/[^\n`]+?`?\s*$/gim,
+    '',
+  )
+
+  return withoutDuplicateInspectorLinks
+    .replace(
+      /^(\s*[-*]?\s*(?:\*\*)?(?:文件路径|Document path|File path|Artifact path)(?:\*\*)?\s*[:：]\s*)(`?)(\/[^\n`]+?)\2\s*$/gim,
+      (_fullMatch, prefix: string, _quote: string, rawPath: string) => {
+        if (!rawPath || rawPath.includes('](')) return `${prefix}${rawPath}`
+        const artifactLink = artifactDeepLinkFromPath(rawPath)
+        if (!artifactLink) return `${prefix}${rawPath}`
+        return `${prefix}[${artifactLink.displayPath}](${artifactLink.href})`
+      },
+    )
+    .replace(
     /^(\s*(?:Run directory:|Report directory:|Artifact saved to:?|File saved to:?|Report saved to:?|报告已保存至[:：]?|报告全文已保存至[:：]?)\s*)(`?)(\/[^\n`]+?)\2\s*$/gim,
     (_fullMatch, prefix: string, _quote: string, rawPath: string) => {
       if (!rawPath || rawPath.includes('](')) return `${prefix}${rawPath}`
+      const artifactLink = artifactDeepLinkFromPath(rawPath)
+      if (artifactLink) {
+        return `${prefix}[${artifactLink.displayPath}](${artifactLink.href})`
+      }
       const targetPath = normalizeFilesTargetPath(rawPath)
       if (!targetPath) return `${prefix}${rawPath}`
       const href = `/files?path=${encodeURIComponent(targetPath)}`
@@ -170,18 +207,7 @@ const INITIAL_COMPONENTS: Partial<Components> = {
         id={id}
         className="mt-5 mb-2 text-xl leading-tight font-medium text-primary-950 text-balance first:mt-0"
       >
-        <a
-          href={`#${id}`}
-          className="group/heading inline-flex items-center gap-1 no-underline"
-        >
-          <span>{children}</span>
-          <span
-            aria-hidden="true"
-            className="text-primary-500 opacity-0 transition-opacity group-hover/heading:opacity-100"
-          >
-            #
-          </span>
-        </a>
+        {children}
       </h2>
     )
   },
@@ -192,18 +218,7 @@ const INITIAL_COMPONENTS: Partial<Components> = {
         id={id}
         className="mt-4 mb-1.5 text-lg leading-tight font-medium text-primary-950 text-balance first:mt-0"
       >
-        <a
-          href={`#${id}`}
-          className="group/heading inline-flex items-center gap-1 no-underline"
-        >
-          <span>{children}</span>
-          <span
-            aria-hidden="true"
-            className="text-primary-500 opacity-0 transition-opacity group-hover/heading:opacity-100"
-          >
-            #
-          </span>
-        </a>
+        {children}
       </h3>
     )
   },
@@ -263,8 +278,20 @@ const INITIAL_COMPONENTS: Partial<Components> = {
     const openInNewTab = Boolean(
       normalizedHref && /^https?:\/\//i.test(normalizedHref),
     )
+    const isArtifactSelector = Boolean(
+      normalizedHref?.startsWith('#artifact='),
+    )
 
     function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
+      if (isArtifactSelector && normalizedHref) {
+        e.preventDefault()
+        if (window.location.hash === normalizedHref) {
+          window.dispatchEvent(new HashChangeEvent('hashchange'))
+        } else {
+          window.location.hash = normalizedHref
+        }
+        return
+      }
       if (isInternalSpaPath && normalizedHref) {
         e.preventDefault()
         void navigate({ to: normalizedHref as string })

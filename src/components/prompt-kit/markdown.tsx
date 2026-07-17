@@ -62,13 +62,13 @@ export function linkifyRunDirectoryFooter(markdown: string): string {
   if (!markdown) return markdown
 
   const withoutDuplicateInspectorLinks = markdown.replace(
-    /^\s*[-*]?\s*(?:\*\*)?(?:Inspector 链接|Inspector link)(?:\*\*)?\s*[:：]\s*`?\/sessions\/[^\n`]+?\/artifacts\/[^\n`]+?`?\s*$/gim,
+    /^\s*[-*]?\s*(?:\*\*)?(?:Inspector 链接|Inspector link)(?:(?:\s*[:：]\s*(?:\*\*)?)|(?:(?:\*\*)?\s*[:：]))\s*`?\/sessions\/[^\n`]+?\/artifacts\/[^\n`]+?`?\s*$/gim,
     '',
   )
 
   return withoutDuplicateInspectorLinks
     .replace(
-      /^(\s*[-*]?\s*(?:\*\*)?(?:文件路径|Document path|File path|Artifact path)(?:\*\*)?\s*[:：]\s*)(`?)(\/[^\n`]+?)\2\s*$/gim,
+      /^(\s*[-*]?\s*(?:\*\*)?(?:文件路径|Document path|File path|Artifact path)(?:(?:\s*[:：]\s*(?:\*\*)?)|(?:(?:\*\*)?\s*[:：]))\s*)(`?)(\/[^\n`]+?)\2\s*$/gim,
       (_fullMatch, prefix: string, _quote: string, rawPath: string) => {
         if (!rawPath || rawPath.includes('](')) return `${prefix}${rawPath}`
         const artifactLink = artifactDeepLinkFromPath(rawPath)

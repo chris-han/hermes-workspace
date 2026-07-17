@@ -64,10 +64,19 @@ describe('linkifyRunDirectoryFooter', () => {
     )
   })
 
+  it('rewrites gateway file-path lines when the colon is inside bold text', () => {
+    const line =
+      '**文件路径:** `/sessions/session_12a47895b4c2/artifacts/reimbursement/REIM-20260717-001.md`'
+
+    expect(linkifyRunDirectoryFooter(line)).toBe(
+      '**文件路径:** [/sessions/session_12a47895b4c2/artifacts/reimbursement/REIM-20260717-001.md](#artifact=reimbursement%2FREIM-20260717-001.md)',
+    )
+  })
+
   it('removes duplicate raw Inspector link lines', () => {
     const markdown = [
       '- **文件路径**: `/sessions/session_2633894eda13/artifacts/reim.md`',
-      '- **Inspector 链接**: `/sessions/session_2633894eda13/artifacts/reim.md/raw`',
+      '- **Inspector 链接:** `/sessions/session_2633894eda13/artifacts/reim.md/raw`',
     ].join('\n')
 
     const normalized = linkifyRunDirectoryFooter(markdown)

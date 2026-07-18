@@ -41,15 +41,17 @@ export const Route = createFileRoute('/memory')({
           }
           className="h-full min-h-0 gap-0"
         >
-          <div className="border-b border-primary-200 px-3 pt-3 dark:border-neutral-800 md:px-4 md:pt-4">
-            <TabsList
-              variant="underline"
-              className="w-full justify-start gap-1"
-            >
-              <TabsTab value="memory">Memory</TabsTab>
-              <TabsTab value="knowledge">Knowledge</TabsTab>
-              <TabsTab value="governance">Governance</TabsTab>
-            </TabsList>
+          <div className="border-b border-primary-200 dark:border-neutral-800">
+            <div className="mx-auto w-full max-w-[1200px] px-4 pt-4 sm:px-6 lg:px-8">
+              <TabsList
+                variant="underline"
+                className="w-full justify-start gap-1"
+              >
+                <TabsTab value="memory">Memory</TabsTab>
+                <TabsTab value="knowledge">Knowledge</TabsTab>
+                <TabsTab value="governance">Governance</TabsTab>
+              </TabsList>
+            </div>
           </div>
 
           <TabsPanel value="memory" className="min-h-0 flex-1">

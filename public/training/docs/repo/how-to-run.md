@@ -3,6 +3,10 @@
 Runtime for evaluating semantic phi documents against type definitions, running
 the Semantier wrapper web surface, and bootstrapping the local EOS runtime.
 
+> Training copy policy: this file mirrors the root `how-to-run.md` operational
+> contract. Keep startup, bootstrap, session artifact, output path, and
+> lakehouse guidance synchronized with the root guide.
+
 ## Setup
 
 ```bash
@@ -49,17 +53,19 @@ Current behavior:
   the same runtime root
 - replaces an existing Semantier web runtime when `--replace` is used
 
-Useful variants:
+Supported variants:
 
 ```bash
 semantier run --replace --host 0.0.0.0 --port 9000
-semantier run --host 127.0.0.1 --port 8899
 ```
 
 Integrated-runtime note:
 
 - Use `semantier run --replace` as the only supported runtime start command
   for Semantier deployments.
+- Do not document or automate non-`--replace` runtime starts in operational
+  runbooks. Local debugging without `--replace` is outside the supported
+  deployment contract.
 - `semantier webapi run --replace` remains a legacy alias path and should not
   be used in operational runbooks, deployment automation, or docs.
 
@@ -87,6 +93,16 @@ Important boundary note:
   runtime capability exists; required Python dependencies must load
   deterministically at startup, while runtime-exposed capabilities must be
   inspected through the system inventory surfaces
+
+## Session trajectory artifacts
+
+Session trajectories are stored as workspace-owned, session-scoped JSONL logs
+under the session `logs/` directory (for example,
+`workspaces/<workspace_id>/sessions/<session_id>/logs/session_<file_key>.trajectory.jsonl`).
+
+Legacy root-level files such as `trajectory_samples.jsonl` and
+`failed_trajectories.jsonl` are not part of the supported Semantier runtime
+artifact contract and should not be used for operational reads.
 
 ## Gateway commands
 
@@ -180,11 +196,17 @@ from synthetic simulation data.
 uv run semantier-industry-sim --dataset construction_3_year --output all
 ```
 
-2. Seed EOS runtime (`.semantier-home/eos.db`):
+2. Seed EOS runtime (`.semantier-home/eos.db`) and refresh the local
+   lakehouse (`.semantier-home/lakehouse`):
 
 ```bash
-semantier bootstrap --replace
+cd /home/chris/repo/semantier-runtime
+uv run semantier bootstrap --replace
 ```
+
+This runs `bash bootstrap/bootstrap.sh --replace`. The script seeds SQLite demo
+records and runs a final lakehouse materialization step after all demo
+organizations are seeded.
 
 This populates the SQLite database with:
 
@@ -209,13 +231,39 @@ Data source semantics:
 
 ## Bootstrap quick guide
 
-Use this section when you want deterministic demo data in EOS SQLite.
+Use this section when you want deterministic demo data in EOS SQLite and a
+fresh local lakehouse manifest for `governed_query`.
 
 ```bash
 source .venv/bin/activate
-semantier bootstrap --replace
-semantier bootstrap cleanup --dry-run
-semantier bootstrap cleanup
+cd /home/chris/repo/semantier-runtime
+uv run semantier bootstrap --replace
+uv run semantier bootstrap cleanup --dry-run
+uv run semantier bootstrap cleanup
+```
+
+The bootstrap command seeds demo/runtime artifacts and refreshes
+`.semantier-home/lakehouse` at the end of the script. It does not upload or
+promote REAL company source files. For demo status checks, use demo mode:
+
+```python
+real_company_setup_status_payload(
+    organization_id="org_construction_3_year_cn",
+    dataset_type="DEMO",
+)
+```
+
+That should return `DEMO_ACTIVE`.
+
+If `eos.db` changes after bootstrap, run the lakehouse materializer once more
+to refresh the manifest hash:
+
+```bash
+uv run python bootstrap/bootstrap_materialize_lakehouse.py \
+  --db-path .semantier-home/eos.db \
+  --sim-json .semantier-home/sim.json \
+  --output-dir .semantier-home/lakehouse \
+  --replace
 ```
 
 Equivalent make shortcuts:
@@ -229,8 +277,8 @@ make cleanup
 Expected outputs:
 
 - runtime DB: `.semantier-home/eos.db`
-- bootstrap output: `bootstrap/output/`
-- reports: `bootstrap/output/reports/`
+- bootstrap output: `.semantier-home/bootstrap-output/`
+- reports: `.semantier-home/bootstrap-output/reports/`
 
 Safety notes:
 

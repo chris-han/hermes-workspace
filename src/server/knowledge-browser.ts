@@ -133,7 +133,7 @@ function getLegacyKnowledgeRoot(workspaceRoot?: string): string {
   if (!workspaceRoot) {
     throw new Error('workspaceRoot is required for knowledge root resolution')
   }
-  return path.resolve(workspaceRoot, 'knowledge-base')
+  return path.resolve(workspaceRoot, 'wiki')
 }
 
 function resolveWorkspaceRoot(workspaceRoot?: string): string {

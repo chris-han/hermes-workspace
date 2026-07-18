@@ -52,6 +52,19 @@ type KnowledgeListResponse = {
   source?: KnowledgeSourceDraft
 }
 
+type KnowledgeResolvedConfig = {
+  configuredPath?: string
+  effectiveRoot?: string
+  effectiveRootLabel?: string
+  usesWorkspaceDefault?: boolean
+  upstreamWikiPath?: string
+}
+
+type KnowledgeConfigResponse = {
+  config?: { source?: KnowledgeSourceDraft }
+  resolved?: KnowledgeResolvedConfig
+}
+
 type KnowledgeReadResponse = {
   page?: WikiPageMeta
   content?: string
@@ -290,15 +303,20 @@ export function KnowledgeBrowserScreen() {
   const [savePending, setSavePending] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [resolvedConfig, setResolvedConfig] =
+    useState<KnowledgeResolvedConfig | null>(null)
   const queryClient = useQueryClient()
 
   useEffect(() => {
     if (!settingsOpen) return
     fetch('/api/knowledge/config')
       .then((r) => r.json())
-      .then((data: { config?: { source: KnowledgeSourceDraft } }) => {
+      .then((data: KnowledgeConfigResponse) => {
         if (data.config?.source) {
           setSettingsSource(data.config.source)
+        }
+        if (data.resolved) {
+          setResolvedConfig(data.resolved)
         }
       })
       .catch(() => {})
@@ -459,6 +477,10 @@ export function KnowledgeBrowserScreen() {
       await queryClient.invalidateQueries({
         queryKey: ['knowledge', 'list'],
       })
+      const refreshed = (await readJson<KnowledgeConfigResponse>(
+        '/api/knowledge/config',
+      ))
+      setResolvedConfig(refreshed.resolved ?? null)
       setSettingsOpen(false)
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Save failed')
@@ -582,6 +604,9 @@ export function KnowledgeBrowserScreen() {
                   <KnowledgeSourceForm
                     value={settingsSource}
                     onChange={setSettingsSource}
+                    onUseWorkspaceDefault={() =>
+                      setSettingsSource({ type: 'local', path: 'wiki' })
+                    }
                     onSave={handleSaveSource}
                     onSync={
                       settingsSource.type === 'github'
@@ -592,6 +617,17 @@ export function KnowledgeBrowserScreen() {
                     syncing={syncing}
                     error={syncError}
                     mode="dialog"
+                    configuredPathLabel={
+                      resolvedConfig?.configuredPath
+                        ? resolvedConfig.configuredPath
+                        : '(workspace default)'
+                    }
+                    effectiveRootLabel={
+                      resolvedConfig?.effectiveRootLabel ||
+                      resolvedConfig?.effectiveRoot ||
+                      knowledgeRoot
+                    }
+                    upstreamWikiPathLabel={resolvedConfig?.upstreamWikiPath}
                   />
                 </div>
               </DialogContent>

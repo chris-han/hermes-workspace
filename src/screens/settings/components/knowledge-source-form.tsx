@@ -8,12 +8,16 @@ export type KnowledgeSourceDraft =
 type KnowledgeSourceFormProps = {
   value: KnowledgeSourceDraft
   onChange: (next: KnowledgeSourceDraft) => void
+  onUseWorkspaceDefault?: () => void
   onSave: () => Promise<void> | void
   onSync?: () => Promise<void> | void
   saving: boolean
   syncing: boolean
   error: string | null
   mode: 'embedded' | 'dialog'
+  configuredPathLabel?: string
+  effectiveRootLabel?: string
+  upstreamWikiPathLabel?: string
 }
 
 export function createDefaultKnowledgeSourceDraft(): KnowledgeSourceDraft {
@@ -23,12 +27,16 @@ export function createDefaultKnowledgeSourceDraft(): KnowledgeSourceDraft {
 export function KnowledgeSourceForm({
   value,
   onChange,
+  onUseWorkspaceDefault,
   onSave,
   onSync,
   saving,
   syncing,
   error,
   mode,
+  configuredPathLabel,
+  effectiveRootLabel,
+  upstreamWikiPathLabel,
 }: KnowledgeSourceFormProps) {
   const containerClassName =
     mode === 'embedded'
@@ -91,12 +99,24 @@ export function KnowledgeSourceForm({
 
       {value.type === 'local' ? (
         <div className="space-y-2">
-          <label
-            className="text-sm font-medium"
-            htmlFor="knowledge-source-local-path"
-          >
-            Folder path
-          </label>
+          <div className="flex items-center justify-between gap-3">
+            <label
+              className="text-sm font-medium"
+              htmlFor="knowledge-source-local-path"
+            >
+              Folder path
+            </label>
+            {onUseWorkspaceDefault ? (
+              <button
+                type="button"
+                onClick={onUseWorkspaceDefault}
+                className="rounded-lg border border-border px-2 py-1 text-xs font-medium transition-colors hover:bg-primary-100 dark:hover:bg-neutral-900"
+                style={{ color: 'var(--theme-text)' }}
+              >
+                Use LLM Wiki default
+              </button>
+            ) : null}
+          </div>
           <input
             id="knowledge-source-local-path"
             type="text"
@@ -114,6 +134,28 @@ export function KnowledgeSourceForm({
               color: 'var(--theme-text)',
             }}
           />
+          {(configuredPathLabel || effectiveRootLabel || upstreamWikiPathLabel) && (
+            <div className="space-y-1 rounded-lg border border-primary-200 bg-primary-50/70 px-3 py-2 text-xs dark:border-neutral-800 dark:bg-neutral-900/60">
+              {configuredPathLabel ? (
+                <p>
+                  <span className="font-medium">Saved config:</span>{' '}
+                  {configuredPathLabel}
+                </p>
+              ) : null}
+              {effectiveRootLabel ? (
+                <p>
+                  <span className="font-medium">Effective root:</span>{' '}
+                  {effectiveRootLabel}
+                </p>
+              ) : null}
+              {upstreamWikiPathLabel ? (
+                <p>
+                  <span className="font-medium">Agent WIKI_PATH:</span>{' '}
+                  {upstreamWikiPathLabel}
+                </p>
+              ) : null}
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

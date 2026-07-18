@@ -12,6 +12,15 @@ export type KnowledgeBaseConfig = {
   source: KnowledgeBaseSource
 }
 
+export type KnowledgeBaseResolvedConfig = {
+  config: KnowledgeBaseConfig
+  effectiveRoot: string
+  configuredPath: string
+  effectiveRootLabel: string
+  usesWorkspaceDefault: boolean
+  upstreamWikiPath: string
+}
+
 const DEFAULT_CONFIG: KnowledgeBaseConfig = {
   source: { type: 'local', path: '' },
 }
@@ -27,6 +36,8 @@ const REPO_ROOT = path.resolve(
   '..',
 )
 const REPO_BOOTSTRAP_ROOT = path.join(REPO_ROOT, 'bootstrap')
+export const WORKSPACE_WIKI_DIRNAME = 'wiki'
+export const LEGACY_WORKSPACE_KNOWLEDGE_DIRNAME = 'knowledge-base'
 
 function getConfigPath(workspaceRoot?: string): string {
   if (!workspaceRoot) {
@@ -37,7 +48,19 @@ function getConfigPath(workspaceRoot?: string): string {
 }
 
 function defaultWorkspaceKnowledgePath(workspaceRoot: string): string {
-  return path.join(workspaceRoot, 'knowledge-base')
+  return path.join(workspaceRoot, WORKSPACE_WIKI_DIRNAME)
+}
+
+function formatEffectiveRootLabel(
+  workspaceRoot: string,
+  effectiveRoot: string,
+): string {
+  const relative = path.relative(path.resolve(workspaceRoot), effectiveRoot)
+  if (!relative || relative === '.') return WORKSPACE_WIKI_DIRNAME
+  if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+    return relative.split(path.sep).join('/')
+  }
+  return effectiveRoot
 }
 
 function isRealCompanyContext(context?: KnowledgeConfigContext): boolean {
@@ -144,18 +167,56 @@ export function getKnowledgeBaseEffectiveRoot(
   workspaceRoot?: string,
   context?: KnowledgeConfigContext,
 ): string {
-  const config = readKnowledgeBaseConfig(workspaceRoot, context)
-  if (config.source.type === 'local') {
-    const configuredRoot = resolveConfiguredLocalPath(
-      config.source.path,
-      workspaceRoot,
-    )
-    if (configuredRoot) return configuredRoot
-  }
-  // fallback: legacy env var or default
-  if (process.env.KNOWLEDGE_DIR) return path.resolve(process.env.KNOWLEDGE_DIR)
+  return resolveKnowledgeBaseConfig(workspaceRoot, context).effectiveRoot
+}
+
+export function resolveKnowledgeBaseConfig(
+  workspaceRoot?: string,
+  context?: KnowledgeConfigContext,
+): KnowledgeBaseResolvedConfig {
   if (!workspaceRoot) {
     throw new Error('workspaceRoot is required for knowledge root resolution')
   }
-  return path.resolve(workspaceRoot, 'knowledge-base')
+  const config = readKnowledgeBaseConfig(workspaceRoot, context)
+  const upstreamWikiPath = path.resolve(
+    workspaceRoot,
+    WORKSPACE_WIKI_DIRNAME,
+  )
+
+  if (config.source.type === 'local') {
+    const configuredPath = config.source.path.trim()
+    const configuredRoot = resolveConfiguredLocalPath(configuredPath, workspaceRoot)
+    const effectiveRoot = configuredRoot || upstreamWikiPath
+    return {
+      config,
+      effectiveRoot,
+      configuredPath,
+      effectiveRootLabel: formatEffectiveRootLabel(workspaceRoot, effectiveRoot),
+      usesWorkspaceDefault:
+        !configuredPath ||
+        path.resolve(effectiveRoot) === path.resolve(upstreamWikiPath),
+      upstreamWikiPath,
+    }
+  }
+
+  if (process.env.KNOWLEDGE_DIR) {
+    const effectiveRoot = path.resolve(process.env.KNOWLEDGE_DIR)
+    return {
+      config,
+      effectiveRoot,
+      configuredPath: config.source.path,
+      effectiveRootLabel: effectiveRoot,
+      usesWorkspaceDefault: false,
+      upstreamWikiPath,
+    }
+  }
+
+  return {
+    config,
+    effectiveRoot: upstreamWikiPath,
+    configuredPath: config.source.path,
+    effectiveRootLabel: formatEffectiveRootLabel(workspaceRoot, upstreamWikiPath),
+    usesWorkspaceDefault: true,
+    upstreamWikiPath,
+  }
 }

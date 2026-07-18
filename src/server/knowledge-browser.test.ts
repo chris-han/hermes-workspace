@@ -14,12 +14,12 @@ describe('knowledge-browser workspace isolation', () => {
     }
   })
 
-  it('lists and reads pages from the active workspace knowledge-base only', () => {
+  it('lists and reads pages from the active workspace wiki only', () => {
     const workspaceA = fs.mkdtempSync(path.join(os.tmpdir(), 'knowledge-a-'))
     const workspaceB = fs.mkdtempSync(path.join(os.tmpdir(), 'knowledge-b-'))
     createdRoots.push(workspaceA, workspaceB)
 
-    const knowledgeA = path.join(workspaceA, 'knowledge-base')
+    const knowledgeA = path.join(workspaceA, 'wiki')
     fs.mkdirSync(knowledgeA, { recursive: true })
     fs.writeFileSync(
       path.join(knowledgeA, 'semantier.md'),

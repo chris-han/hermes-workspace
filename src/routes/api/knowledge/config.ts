@@ -3,6 +3,7 @@ import { json } from '@tanstack/react-start'
 import {
   normalizeKnowledgeBaseConfigForWorkspace,
   readKnowledgeBaseConfig,
+  resolveKnowledgeBaseConfig,
   writeKnowledgeBaseConfig,
 } from '../../../server/knowledge-config'
 import type { KnowledgeBaseConfig } from '../../../server/knowledge-config'
@@ -19,10 +20,12 @@ export const Route = createFileRoute('/api/knowledge/config')({
           const activeWorkspace = await resolveActiveWorkspaceRoot(
             request.headers,
           )
+          const resolved = resolveKnowledgeBaseConfig(activeWorkspace.path, {
+            datasetType: activeWorkspace.datasetType,
+          })
           return json({
-            config: readKnowledgeBaseConfig(activeWorkspace.path, {
-              datasetType: activeWorkspace.datasetType,
-            }),
+            config: resolved.config,
+            resolved,
           })
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {

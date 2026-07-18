@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   getKnowledgeBaseEffectiveRoot,
   readKnowledgeBaseConfig,
+  resolveKnowledgeBaseConfig,
   writeKnowledgeBaseConfig,
 } from './knowledge-config'
 
@@ -28,12 +29,12 @@ describe('knowledge-config workspace scoping', () => {
     }
   })
 
-  it('defaults to workspace knowledge-base when no workspace config exists', () => {
+  it('defaults to workspace wiki when no workspace config exists', () => {
     const workspaceRoot = makeWorkspaceRoot('knowledge-config-default-')
     createdRoots.push(workspaceRoot)
 
     expect(getKnowledgeBaseEffectiveRoot(workspaceRoot)).toBe(
-      path.resolve(workspaceRoot, 'knowledge-base'),
+      path.resolve(workspaceRoot, 'wiki'),
     )
   })
 
@@ -66,7 +67,7 @@ describe('knowledge-config workspace scoping', () => {
       path.resolve(workspaceA, 'notes/wiki'),
     )
     expect(getKnowledgeBaseEffectiveRoot(workspaceB)).toBe(
-      path.resolve(workspaceB, 'knowledge-base'),
+      path.resolve(workspaceB, 'wiki'),
     )
   })
 
@@ -78,7 +79,7 @@ describe('knowledge-config workspace scoping', () => {
       readKnowledgeBaseConfig(workspaceRoot, { datasetType: 'REAL' }).source,
     ).toEqual({
       type: 'local',
-      path: path.join(workspaceRoot, 'knowledge-base'),
+      path: path.join(workspaceRoot, 'wiki'),
     })
   })
 
@@ -106,7 +107,40 @@ describe('knowledge-config workspace scoping', () => {
       readKnowledgeBaseConfig(workspaceRoot, { datasetType: 'REAL' }).source,
     ).toEqual({
       type: 'local',
-      path: path.join(workspaceRoot, 'knowledge-base'),
+      path: path.join(workspaceRoot, 'wiki'),
     })
+  })
+
+  it('preserves explicit legacy workspace knowledge-base path', () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-config-legacy-')
+    createdRoots.push(workspaceRoot)
+
+    writeKnowledgeBaseConfig(
+      {
+        source: {
+          type: 'local',
+          path: 'knowledge-base',
+        },
+      },
+      workspaceRoot,
+    )
+
+    const resolved = resolveKnowledgeBaseConfig(workspaceRoot)
+    expect(resolved.configuredPath).toBe('knowledge-base')
+    expect(resolved.effectiveRoot).toBe(path.resolve(workspaceRoot, 'knowledge-base'))
+    expect(resolved.usesWorkspaceDefault).toBe(false)
+    expect(resolved.upstreamWikiPath).toBe(path.resolve(workspaceRoot, 'wiki'))
+  })
+
+  it('exposes configured path and effective root separately for UI', () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-config-resolved-')
+    createdRoots.push(workspaceRoot)
+
+    const resolved = resolveKnowledgeBaseConfig(workspaceRoot)
+
+    expect(resolved.configuredPath).toBe('')
+    expect(resolved.effectiveRoot).toBe(path.resolve(workspaceRoot, 'wiki'))
+    expect(resolved.effectiveRootLabel).toBe('wiki')
+    expect(resolved.usesWorkspaceDefault).toBe(true)
   })
 })

@@ -127,9 +127,53 @@ describe('knowledge-config workspace scoping', () => {
 
     const resolved = resolveKnowledgeBaseConfig(workspaceRoot)
     expect(resolved.configuredPath).toBe('knowledge-base')
-    expect(resolved.effectiveRoot).toBe(path.resolve(workspaceRoot, 'knowledge-base'))
+    expect(resolved.effectiveRoot).toBe(
+      path.resolve(workspaceRoot, 'knowledge-base'),
+    )
     expect(resolved.usesWorkspaceDefault).toBe(false)
     expect(resolved.upstreamWikiPath).toBe(path.resolve(workspaceRoot, 'wiki'))
+  })
+
+  it('keeps unsafe absolute saved paths as metadata but uses workspace wiki effectively', () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-config-unsafe-')
+    createdRoots.push(workspaceRoot)
+    const unsafe = path.join(os.tmpdir(), 'host-global-wiki')
+
+    writeKnowledgeBaseConfig(
+      {
+        source: {
+          type: 'local',
+          path: unsafe,
+        },
+      },
+      workspaceRoot,
+    )
+
+    const resolved = resolveKnowledgeBaseConfig(workspaceRoot)
+    expect(resolved.configuredPath).toBe(unsafe)
+    expect(resolved.effectiveRoot).toBe(path.resolve(workspaceRoot, 'wiki'))
+    expect(resolved.upstreamWikiPath).toBe(path.resolve(workspaceRoot, 'wiki'))
+    expect(resolved.usesWorkspaceDefault).toBe(true)
+  })
+
+  it('does not use host-global ~/wiki as an authenticated effective root', () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-config-home-wiki-')
+    createdRoots.push(workspaceRoot)
+
+    writeKnowledgeBaseConfig(
+      {
+        source: {
+          type: 'local',
+          path: '~/wiki',
+        },
+      },
+      workspaceRoot,
+    )
+
+    const resolved = resolveKnowledgeBaseConfig(workspaceRoot)
+    expect(resolved.configuredPath).toBe('~/wiki')
+    expect(resolved.effectiveRoot).toBe(path.resolve(workspaceRoot, 'wiki'))
+    expect(resolved.effectiveRoot).not.toBe(path.resolve(os.homedir(), 'wiki'))
   })
 
   it('exposes configured path and effective root separately for UI', () => {

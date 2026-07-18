@@ -77,6 +77,13 @@ function localPathInsideWorkspace(
   return !relative.startsWith('..') && !path.isAbsolute(relative)
 }
 
+function rootIsInsideWorkspace(root: string, workspaceRoot: string): boolean {
+  const resolvedRoot = path.resolve(root)
+  const resolvedWorkspace = path.resolve(workspaceRoot)
+  const relative = path.relative(resolvedWorkspace, resolvedRoot)
+  return !relative.startsWith('..') && !path.isAbsolute(relative)
+}
+
 function isRepoBootstrapLocalPath(
   configuredPath: string,
   workspaceRoot?: string,
@@ -178,20 +185,26 @@ export function resolveKnowledgeBaseConfig(
     throw new Error('workspaceRoot is required for knowledge root resolution')
   }
   const config = readKnowledgeBaseConfig(workspaceRoot, context)
-  const upstreamWikiPath = path.resolve(
-    workspaceRoot,
-    WORKSPACE_WIKI_DIRNAME,
-  )
+  const upstreamWikiPath = path.resolve(workspaceRoot, WORKSPACE_WIKI_DIRNAME)
 
   if (config.source.type === 'local') {
     const configuredPath = config.source.path.trim()
-    const configuredRoot = resolveConfiguredLocalPath(configuredPath, workspaceRoot)
-    const effectiveRoot = configuredRoot || upstreamWikiPath
+    const configuredRoot = resolveConfiguredLocalPath(
+      configuredPath,
+      workspaceRoot,
+    )
+    const effectiveRoot =
+      configuredRoot && rootIsInsideWorkspace(configuredRoot, workspaceRoot)
+        ? configuredRoot
+        : upstreamWikiPath
     return {
       config,
       effectiveRoot,
       configuredPath,
-      effectiveRootLabel: formatEffectiveRootLabel(workspaceRoot, effectiveRoot),
+      effectiveRootLabel: formatEffectiveRootLabel(
+        workspaceRoot,
+        effectiveRoot,
+      ),
       usesWorkspaceDefault:
         !configuredPath ||
         path.resolve(effectiveRoot) === path.resolve(upstreamWikiPath),
@@ -215,7 +228,10 @@ export function resolveKnowledgeBaseConfig(
     config,
     effectiveRoot: upstreamWikiPath,
     configuredPath: config.source.path,
-    effectiveRootLabel: formatEffectiveRootLabel(workspaceRoot, upstreamWikiPath),
+    effectiveRootLabel: formatEffectiveRootLabel(
+      workspaceRoot,
+      upstreamWikiPath,
+    ),
     usesWorkspaceDefault: true,
     upstreamWikiPath,
   }

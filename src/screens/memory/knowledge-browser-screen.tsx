@@ -14,7 +14,10 @@ import {
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import type { KnowledgeSourceDraft } from '@/screens/settings/components/knowledge-source-form'
+import type {
+  KnowledgeSourceDraft,
+  KnowledgeSourceModalViewModel,
+} from '@/screens/settings/components/knowledge-source-form'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import {
   DialogContent,
@@ -63,6 +66,70 @@ type KnowledgeResolvedConfig = {
 type KnowledgeConfigResponse = {
   config?: { source?: KnowledgeSourceDraft }
   resolved?: KnowledgeResolvedConfig
+}
+
+type KnowledgeFilesResponse = {
+  configuredPath: string
+  effectiveRoot: string
+  effectiveRootLabel: string
+  path: string
+  breadcrumb: Array<{ label: string; path: string }>
+  fileCount: number
+  directoryCount: number
+  entries: KnowledgeSourceModalViewModel['browser']['entries']
+}
+
+type KnowledgeUploadResult =
+  | {
+      ok: true
+      kind: 'direct_write'
+      originalName: string
+      storedName: string
+      path: string
+      renamed: boolean
+    }
+  | {
+      ok: true
+      kind: 'staged_for_ingest'
+      originalName: string
+      storedName: string
+      size: number
+      retryUploadRef: string
+      requiresIngest: true
+      ingestKind: 'document_extraction' | 'table_ingestion'
+      canonicalArtifactKind: 'canonical_document' | 'canonical_table'
+      targetWikiPath?: string
+    }
+  | {
+      ok: false
+      kind: 'file_failure'
+      originalName: string
+      message: string
+    }
+
+type KnowledgeIngestResult =
+  | {
+      ok: true
+      originalName: string
+      storedMarkdownPath: string
+      parserMethod: string
+      normalizedDocumentArtifactRef: string
+    }
+  | {
+      ok: false
+      originalName?: string
+      message: string
+      retryUploadRef?: string
+    }
+
+type ModalStatus = KnowledgeSourceModalViewModel['status']
+
+const EMPTY_MODAL_STATUS: ModalStatus = {
+  kind: 'idle',
+  message: '',
+  failures: [],
+  renamed: [],
+  ingested: [],
 }
 
 type KnowledgeReadResponse = {
@@ -300,20 +367,36 @@ export function KnowledgeBrowserScreen() {
   const [settingsSource, setSettingsSource] = useState<KnowledgeSourceDraft>(
     createDefaultKnowledgeSourceDraft(),
   )
+  const [savedSettingsSource, setSavedSettingsSource] =
+    useState<KnowledgeSourceDraft | null>(null)
   const [savePending, setSavePending] = useState(false)
+  const [uploadPending, setUploadPending] = useState(false)
+  const [ingestPending, setIngestPending] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [modalStatus, setModalStatus] =
+    useState<ModalStatus>(EMPTY_MODAL_STATUS)
+  const [browserPath, setBrowserPath] = useState('')
+  const [reviewRows, setReviewRows] = useState<
+    KnowledgeSourceModalViewModel['reviewRows']
+  >([])
   const [resolvedConfig, setResolvedConfig] =
     useState<KnowledgeResolvedConfig | null>(null)
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (!settingsOpen) return
+    if (!settingsOpen) {
+      setModalStatus(EMPTY_MODAL_STATUS)
+      setReviewRows([])
+      setBrowserPath('')
+      return
+    }
     fetch('/api/knowledge/config')
       .then((r) => r.json())
       .then((data: KnowledgeConfigResponse) => {
         if (data.config?.source) {
           setSettingsSource(data.config.source)
+          setSavedSettingsSource(data.config.source)
         }
         if (data.resolved) {
           setResolvedConfig(data.resolved)
@@ -321,6 +404,33 @@ export function KnowledgeBrowserScreen() {
       })
       .catch(() => {})
   }, [settingsOpen])
+
+  useEffect(() => {
+    if (!settingsOpen || modalStatus.kind !== 'saved') return
+    const timeout = window.setTimeout(() => {
+      setModalStatus((current) =>
+        current.kind === 'saved' ? EMPTY_MODAL_STATUS : current,
+      )
+    }, 6000)
+    return () => window.clearTimeout(timeout)
+  }, [modalStatus.kind, settingsOpen])
+
+  useEffect(() => {
+    if (
+      !settingsOpen ||
+      (modalStatus.kind !== 'uploaded' && modalStatus.kind !== 'review')
+    ) {
+      return
+    }
+    const timeout = window.setTimeout(() => {
+      setModalStatus((current) =>
+        current.kind === 'uploaded' || current.kind === 'review'
+          ? EMPTY_MODAL_STATUS
+          : current,
+      )
+    }, 6000)
+    return () => window.clearTimeout(timeout)
+  }, [modalStatus.kind, settingsOpen])
 
   const deferredSearch = useDeferredValue(searchInput)
   const searchTerm = deferredSearch.trim()
@@ -396,6 +506,15 @@ export function KnowledgeBrowserScreen() {
     enabled: graphOpen,
   })
 
+  const knowledgeFilesQuery = useQuery({
+    queryKey: ['knowledge', 'files', browserPath],
+    queryFn: () =>
+      readJson<KnowledgeFilesResponse>(
+        `/api/knowledge/files?path=${encodeURIComponent(browserPath)}`,
+      ),
+    enabled: settingsOpen && settingsSource.type === 'local',
+  })
+
   const page = readQuery.data?.page ?? null
   const content = readQuery.data?.content ?? ''
   const backlinks = readQuery.data?.backlinks ?? []
@@ -407,6 +526,127 @@ export function KnowledgeBrowserScreen() {
     `Tell me about: ${page?.title || selectedPath || 'this page'}\n\nContext:\n${content.slice(0, 500)}`,
   )}`
   const searchResults = searchQuery.data?.results ?? []
+
+  const settingsDirty = useMemo(() => {
+    return (
+      JSON.stringify(settingsSource) !== JSON.stringify(savedSettingsSource)
+    )
+  }, [savedSettingsSource, settingsSource])
+
+  const effectiveModalStatus = useMemo<ModalStatus>(() => {
+    if (savePending)
+      return { ...EMPTY_MODAL_STATUS, kind: 'saving', message: 'Saving...' }
+    if (syncing)
+      return { ...EMPTY_MODAL_STATUS, kind: 'syncing', message: 'Syncing...' }
+    if (uploadPending)
+      return { ...EMPTY_MODAL_STATUS, kind: 'syncing', message: 'Uploading...' }
+    if (ingestPending)
+      return {
+        ...EMPTY_MODAL_STATUS,
+        kind: 'ingesting',
+        message: 'Importing...',
+      }
+    if (syncError) {
+      return {
+        kind: 'failed',
+        message: syncError,
+        failures: [{ filename: 'knowledge', error: syncError }],
+        renamed: [],
+        ingested: [],
+      }
+    }
+    if (modalStatus.kind !== 'idle') return modalStatus
+    if (settingsDirty)
+      return {
+        ...EMPTY_MODAL_STATUS,
+        kind: 'dirty',
+        message: 'Unsaved changes',
+      }
+    return EMPTY_MODAL_STATUS
+  }, [
+    ingestPending,
+    modalStatus,
+    savePending,
+    settingsDirty,
+    syncError,
+    syncing,
+    uploadPending,
+  ])
+
+  const modalViewModel = useMemo<KnowledgeSourceModalViewModel>(() => {
+    const files = knowledgeFilesQuery.data
+    return {
+      source: settingsSource,
+      savedSource: savedSettingsSource,
+      configuredPath: resolvedConfig?.configuredPath || '',
+      savedConfiguredPath: resolvedConfig?.configuredPath || '',
+      effectiveRootLabel:
+        files?.effectiveRootLabel ||
+        resolvedConfig?.effectiveRootLabel ||
+        resolvedConfig?.effectiveRoot ||
+        knowledgeRoot,
+      upstreamWikiPathLabel: resolvedConfig?.upstreamWikiPath || 'wiki',
+      usesWorkspaceDefault: resolvedConfig?.usesWorkspaceDefault ?? true,
+      dirty: settingsDirty,
+      status: effectiveModalStatus,
+      browser: {
+        currentPath: files?.path || browserPath,
+        breadcrumb: files?.breadcrumb || [{ label: 'wiki', path: '' }],
+        fileCount: files?.fileCount ?? 0,
+        directoryCount: files?.directoryCount ?? 0,
+        entries: files?.entries || [],
+        loading: knowledgeFilesQuery.isLoading,
+        error:
+          knowledgeFilesQuery.error instanceof Error
+            ? knowledgeFilesQuery.error.message
+            : null,
+        uploadTargetPath: files?.path || browserPath,
+      },
+      upload: {
+        pending: uploadPending,
+        acceptedExtensions: [
+          '.md',
+          '.markdown',
+          '.txt',
+          '.json',
+          '.yaml',
+          '.yml',
+          '.pdf',
+          '.docx',
+          '.png',
+          '.jpg',
+          '.jpeg',
+          '.html',
+          '.htm',
+          '.xml',
+          '.csv',
+          '.xlsx',
+        ],
+      },
+      reviewRows,
+      contextEngineering: {
+        authorityLabel:
+          reviewRows.length > 0
+            ? 'canonical_artifact_derivative'
+            : 'curation_context',
+        candidateOnly: true,
+        governedPromotionRequired: true,
+      },
+    }
+  }, [
+    browserPath,
+    effectiveModalStatus,
+    knowledgeFilesQuery.data,
+    knowledgeFilesQuery.error,
+    knowledgeFilesQuery.isLoading,
+    knowledgeRoot,
+    resolvedConfig,
+    reviewRows,
+    savedSettingsSource,
+    settingsDirty,
+    settingsSource,
+    uploadPending,
+  ])
 
   function resolveWikiPath(rawValue: string): string | null {
     const decoded = decodeURIComponent(rawValue)
@@ -424,10 +664,218 @@ export function KnowledgeBrowserScreen() {
     setMobileTreeOpen(false)
   }
 
+  function handleBrowseKnowledgeFolder(pathValue: string) {
+    setBrowserPath(pathValue)
+    setModalStatus((current) =>
+      current.kind === 'failed' || current.kind === 'dirty'
+        ? current
+        : EMPTY_MODAL_STATUS,
+    )
+  }
+
+  async function refreshKnowledgeConfig() {
+    const refreshed = await readJson<KnowledgeConfigResponse>(
+      '/api/knowledge/config',
+    )
+    setResolvedConfig(refreshed.resolved ?? null)
+    if (refreshed.config?.source) {
+      setSettingsSource(refreshed.config.source)
+      setSavedSettingsSource(refreshed.config.source)
+    }
+  }
+
+  async function handleUploadKnowledgeFiles(files: Array<File>) {
+    setUploadPending(true)
+    setSyncError(null)
+    setModalStatus({
+      ...EMPTY_MODAL_STATUS,
+      kind: 'syncing',
+      message: 'Uploading...',
+    })
+    try {
+      const form = new FormData()
+      for (const uploadFile of files) form.append('files', uploadFile)
+      form.append('path', modalViewModel.browser.uploadTargetPath)
+      const response = await fetch('/api/knowledge/upload', {
+        method: 'POST',
+        body: form,
+      })
+      const payload = (await response.json().catch(() => null)) as
+        | Array<KnowledgeUploadResult>
+        | { message?: string; error?: string }
+        | null
+      if (!response.ok) {
+        const message =
+          payload && !Array.isArray(payload)
+            ? payload.message ||
+              payload.error ||
+              `Upload failed (${response.status})`
+            : `Upload failed (${response.status})`
+        setModalStatus({
+          kind: 'failed',
+          message,
+          failures: [{ filename: 'upload', error: message }],
+          renamed: [],
+          ingested: [],
+        })
+        return
+      }
+      const results = Array.isArray(payload) ? payload : []
+      const failures = results
+        .filter(
+          (result): result is Extract<KnowledgeUploadResult, { ok: false }> =>
+            !result.ok,
+        )
+        .map((result) => ({
+          filename: result.originalName,
+          error: result.message,
+        }))
+      const directWrites = results.filter(
+        (
+          result,
+        ): result is Extract<KnowledgeUploadResult, { kind: 'direct_write' }> =>
+          result.ok && result.kind === 'direct_write',
+      )
+      const staged = results.filter(
+        (
+          result,
+        ): result is Extract<
+          KnowledgeUploadResult,
+          { kind: 'staged_for_ingest' }
+        > => result.ok && result.kind === 'staged_for_ingest',
+      )
+      setReviewRows((current) => [
+        ...current,
+        ...staged.map((result) => ({
+          originalName: result.originalName,
+          storedName: result.storedName,
+          size: result.size,
+          retryUploadRef: result.retryUploadRef,
+          targetWikiPath: result.targetWikiPath,
+          ingestKind: result.ingestKind,
+          canonicalArtifactKind: result.canonicalArtifactKind,
+        })),
+      ])
+      const renamed = directWrites
+        .filter((result) => result.renamed)
+        .map((result) => ({
+          originalName: result.originalName,
+          storedName: result.storedName,
+        }))
+      if (directWrites.length > 0) {
+        await queryClient.invalidateQueries({ queryKey: ['knowledge', 'list'] })
+        await queryClient.invalidateQueries({
+          queryKey: ['knowledge', 'files'],
+        })
+      }
+      setModalStatus({
+        kind:
+          failures.length > 0
+            ? 'failed'
+            : staged.length > 0
+              ? 'review'
+              : 'uploaded',
+        message:
+          failures.length > 0
+            ? 'Some files failed'
+            : staged.length > 0
+              ? 'Files are staged for review'
+              : 'Uploaded',
+        failures,
+        renamed,
+        ingested: [],
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Upload failed'
+      setModalStatus({
+        kind: 'failed',
+        message,
+        failures: [{ filename: 'upload', error: message }],
+        renamed: [],
+        ingested: [],
+      })
+    } finally {
+      setUploadPending(false)
+    }
+  }
+
+  async function handleIngestKnowledgeUpload(uploadRef: string) {
+    setIngestPending(true)
+    setSyncError(null)
+    setModalStatus({
+      ...EMPTY_MODAL_STATUS,
+      kind: 'ingesting',
+      message: 'Importing...',
+    })
+    try {
+      const response = await fetch('/api/knowledge/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uploadRef,
+          confirmed: true,
+          targetDir: modalViewModel.browser.uploadTargetPath || 'raw',
+        }),
+      })
+      const result = (await response.json()) as KnowledgeIngestResult
+      if (!response.ok || !result.ok) {
+        const message =
+          'message' in result
+            ? result.message
+            : `Import failed (${response.status})`
+        setModalStatus({
+          kind: 'failed',
+          message,
+          failures: [
+            { filename: result.originalName || 'import', error: message },
+          ],
+          renamed: [],
+          ingested: [],
+        })
+        return
+      }
+      setReviewRows((current) =>
+        current.filter((row) => row.retryUploadRef !== uploadRef),
+      )
+      await queryClient.invalidateQueries({ queryKey: ['knowledge', 'list'] })
+      await queryClient.invalidateQueries({ queryKey: ['knowledge', 'files'] })
+      setModalStatus({
+        kind: 'uploaded',
+        message: 'Imported',
+        failures: [],
+        renamed: [],
+        ingested: [
+          {
+            originalName: result.originalName,
+            storedMarkdownPath: result.storedMarkdownPath,
+            parserMethod: result.parserMethod,
+            normalizedDocumentArtifactRef: result.normalizedDocumentArtifactRef,
+          },
+        ],
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Import failed'
+      setModalStatus({
+        kind: 'failed',
+        message,
+        failures: [{ filename: 'import', error: message }],
+        renamed: [],
+        ingested: [],
+      })
+    } finally {
+      setIngestPending(false)
+    }
+  }
+
   async function handleSyncSource() {
     if (settingsSource.type !== 'github') return
     setSyncing(true)
     setSyncError(null)
+    setModalStatus({
+      ...EMPTY_MODAL_STATUS,
+      kind: 'syncing',
+      message: 'Syncing...',
+    })
     try {
       const res = await fetch('/api/knowledge/sync', {
         method: 'POST',
@@ -445,6 +893,11 @@ export function KnowledgeBrowserScreen() {
         await queryClient.invalidateQueries({
           queryKey: ['knowledge', 'list'],
         })
+        setModalStatus({
+          ...EMPTY_MODAL_STATUS,
+          kind: 'saved',
+          message: 'Synced',
+        })
       }
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Sync failed')
@@ -456,6 +909,11 @@ export function KnowledgeBrowserScreen() {
   async function handleSaveSource() {
     setSavePending(true)
     setSyncError(null)
+    setModalStatus({
+      ...EMPTY_MODAL_STATUS,
+      kind: 'saving',
+      message: 'Saving...',
+    })
     try {
       const source =
         settingsSource.type === 'local'
@@ -477,11 +935,11 @@ export function KnowledgeBrowserScreen() {
       await queryClient.invalidateQueries({
         queryKey: ['knowledge', 'list'],
       })
-      const refreshed = (await readJson<KnowledgeConfigResponse>(
-        '/api/knowledge/config',
-      ))
-      setResolvedConfig(refreshed.resolved ?? null)
-      setSettingsOpen(false)
+      await refreshKnowledgeConfig()
+      await queryClient.invalidateQueries({
+        queryKey: ['knowledge', 'files'],
+      })
+      setModalStatus({ ...EMPTY_MODAL_STATUS, kind: 'saved', message: 'Saved' })
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Save failed')
     } finally {
@@ -581,7 +1039,7 @@ export function KnowledgeBrowserScreen() {
                 }
               />
               <DialogContent
-                className="sm:max-w-md theme-border-1"
+                className="w-[min(920px,94vw)] max-w-none theme-border-1"
                 popupStyle={{
                   backgroundColor: 'var(--theme-bg)',
                   color: 'var(--theme-text)',
@@ -602,32 +1060,31 @@ export function KnowledgeBrowserScreen() {
                   </div>
 
                   <KnowledgeSourceForm
-                    value={settingsSource}
+                    viewModel={modalViewModel}
                     onChange={setSettingsSource}
                     onUseWorkspaceDefault={() =>
                       setSettingsSource({ type: 'local', path: 'wiki' })
                     }
+                    onBrowse={handleBrowseKnowledgeFolder}
+                    onUpload={handleUploadKnowledgeFiles}
                     onSave={handleSaveSource}
                     onSync={
                       settingsSource.type === 'github'
                         ? handleSyncSource
                         : undefined
                     }
-                    saving={savePending}
-                    syncing={syncing}
-                    error={syncError}
-                    mode="dialog"
-                    configuredPathLabel={
-                      resolvedConfig?.configuredPath
-                        ? resolvedConfig.configuredPath
-                        : '(workspace default)'
+                    onIngest={handleIngestKnowledgeUpload}
+                    onRemoveReviewRow={(uploadRef) =>
+                      setReviewRows((current) =>
+                        current.filter(
+                          (row) => row.retryUploadRef !== uploadRef,
+                        ),
+                      )
                     }
-                    effectiveRootLabel={
-                      resolvedConfig?.effectiveRootLabel ||
-                      resolvedConfig?.effectiveRoot ||
-                      knowledgeRoot
-                    }
-                    upstreamWikiPathLabel={resolvedConfig?.upstreamWikiPath}
+                    onDismissStatus={() => {
+                      setSyncError(null)
+                      setModalStatus(EMPTY_MODAL_STATUS)
+                    }}
                   />
                 </div>
               </DialogContent>

@@ -6,7 +6,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { writeKnowledgeBaseConfig } from './knowledge-config'
 import {
   KNOWLEDGE_UPLOAD_LIMITS,
+  createKnowledgeDirectory,
   listKnowledgeDirectory,
+  listKnowledgeTree,
   validateKnowledgeUploadLimits,
   writeKnowledgeUpload,
 } from './knowledge-files'
@@ -66,6 +68,47 @@ describe('knowledge-files workspace operations', () => {
     expect(listed.effectiveRootLabel).toBe('knowledge-base')
   })
 
+  it('can force file operations to the workspace wiki root despite config', async () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-files-force-wiki-')
+    createdRoots.push(workspaceRoot)
+    writeKnowledgeBaseConfig(
+      { source: { type: 'local', path: 'knowledge-base' } },
+      workspaceRoot,
+    )
+    fsSync.mkdirSync(path.join(workspaceRoot, 'wiki', 'team'), {
+      recursive: true,
+    })
+    fsSync.mkdirSync(path.join(workspaceRoot, 'knowledge-base', 'legacy'), {
+      recursive: true,
+    })
+
+    const tree = await listKnowledgeTree(workspaceRoot, {
+      forceWorkspaceWikiRoot: true,
+    })
+    const upload = await writeKnowledgeUpload(
+      workspaceRoot,
+      file('note.md', '# Note'),
+      'team',
+      { forceWorkspaceWikiRoot: true },
+    )
+
+    expect(tree.effectiveRoot).toBe(path.join(workspaceRoot, 'wiki'))
+    expect(tree.root.children?.map((entry) => entry.name)).toEqual(['team'])
+    expect(upload).toMatchObject({
+      ok: true,
+      kind: 'direct_write',
+      path: 'team/note.md',
+    })
+    expect(
+      fsSync.existsSync(path.join(workspaceRoot, 'wiki', 'team', 'note.md')),
+    ).toBe(true)
+    expect(
+      fsSync.existsSync(
+        path.join(workspaceRoot, 'knowledge-base', 'team', 'note.md'),
+      ),
+    ).toBe(false)
+  })
+
   it('rejects traversal outside wiki root', async () => {
     const workspaceRoot = makeWorkspaceRoot('knowledge-files-traversal-')
     createdRoots.push(workspaceRoot)
@@ -73,6 +116,31 @@ describe('knowledge-files workspace operations', () => {
     await expect(
       listKnowledgeDirectory(workspaceRoot, '../secret'),
     ).rejects.toThrow('Path is outside wiki root')
+  })
+
+  it('creates a sanitized subfolder under the selected wiki folder', async () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-files-create-folder-')
+    createdRoots.push(workspaceRoot)
+
+    await expect(
+      createKnowledgeDirectory(workspaceRoot, null, ' Team Notes '),
+    ).resolves.toEqual({
+      ok: true,
+      name: 'Team Notes',
+      path: 'Team Notes',
+    })
+    await expect(
+      createKnowledgeDirectory(workspaceRoot, 'Team Notes', '2026'),
+    ).resolves.toEqual({
+      ok: true,
+      name: '2026',
+      path: 'Team Notes/2026',
+    })
+    expect(
+      fsSync
+        .statSync(path.join(workspaceRoot, 'wiki', 'Team Notes', '2026'))
+        .isDirectory(),
+    ).toBe(true)
   })
 
   it('sanitizes names and direct-writes text-like wiki sources', async () => {

@@ -64,6 +64,7 @@ export const Route = createFileRoute('/api/knowledge/upload')({
                 typeof targetPath === 'string' ? targetPath : null,
                 {
                   datasetType: activeWorkspace.datasetType,
+                  forceWorkspaceWikiRoot: true,
                   ingestMode:
                     ingestMode === 'extract' || ingestMode === 'table'
                       ? ingestMode

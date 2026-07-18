@@ -79,6 +79,13 @@ type KnowledgeFilesResponse = {
   entries: KnowledgeSourceModalViewModel['browser']['entries']
 }
 
+type KnowledgeFilesTreeResponse = {
+  configuredPath: string
+  effectiveRoot: string
+  effectiveRootLabel: string
+  root: KnowledgeSourceModalViewModel['browser']['treeRoot']
+}
+
 type KnowledgeUploadResult =
   | {
       ok: true
@@ -377,6 +384,7 @@ export function KnowledgeBrowserScreen() {
   const [modalStatus, setModalStatus] =
     useState<ModalStatus>(EMPTY_MODAL_STATUS)
   const [browserPath, setBrowserPath] = useState('')
+  const [queuedUploadFiles, setQueuedUploadFiles] = useState<Array<File>>([])
   const [reviewRows, setReviewRows] = useState<
     KnowledgeSourceModalViewModel['reviewRows']
   >([])
@@ -389,6 +397,7 @@ export function KnowledgeBrowserScreen() {
       setModalStatus(EMPTY_MODAL_STATUS)
       setReviewRows([])
       setBrowserPath('')
+      setQueuedUploadFiles([])
       return
     }
     fetch('/api/knowledge/config')
@@ -515,6 +524,13 @@ export function KnowledgeBrowserScreen() {
     enabled: settingsOpen && settingsSource.type === 'local',
   })
 
+  const knowledgeFilesTreeQuery = useQuery({
+    queryKey: ['knowledge', 'files', 'tree'],
+    queryFn: () =>
+      readJson<KnowledgeFilesTreeResponse>('/api/knowledge/files?tree=1'),
+    enabled: settingsOpen && settingsSource.type === 'local',
+  })
+
   const page = readQuery.data?.page ?? null
   const content = readQuery.data?.content ?? ''
   const backlinks = readQuery.data?.backlinks ?? []
@@ -575,6 +591,15 @@ export function KnowledgeBrowserScreen() {
 
   const modalViewModel = useMemo<KnowledgeSourceModalViewModel>(() => {
     const files = knowledgeFilesQuery.data
+    const treeData = knowledgeFilesTreeQuery.data
+    const filesError =
+      knowledgeFilesQuery.error instanceof Error
+        ? knowledgeFilesQuery.error.message
+        : null
+    const treeError =
+      knowledgeFilesTreeQuery.error instanceof Error
+        ? knowledgeFilesTreeQuery.error.message
+        : null
     return {
       source: settingsSource,
       savedSource: savedSettingsSource,
@@ -595,15 +620,23 @@ export function KnowledgeBrowserScreen() {
         fileCount: files?.fileCount ?? 0,
         directoryCount: files?.directoryCount ?? 0,
         entries: files?.entries || [],
-        loading: knowledgeFilesQuery.isLoading,
-        error:
-          knowledgeFilesQuery.error instanceof Error
-            ? knowledgeFilesQuery.error.message
-            : null,
+        treeRoot: treeData?.root || {
+          name: 'wiki',
+          path: '',
+          kind: 'directory',
+          children: [],
+        },
+        loading:
+          knowledgeFilesQuery.isLoading || knowledgeFilesTreeQuery.isLoading,
+        error: filesError || treeError,
         uploadTargetPath: files?.path || browserPath,
       },
       upload: {
         pending: uploadPending,
+        queuedFiles: queuedUploadFiles.map((file) => ({
+          name: file.name,
+          size: file.size,
+        })),
         acceptedExtensions: [
           '.md',
           '.markdown',
@@ -639,6 +672,9 @@ export function KnowledgeBrowserScreen() {
     knowledgeFilesQuery.data,
     knowledgeFilesQuery.error,
     knowledgeFilesQuery.isLoading,
+    knowledgeFilesTreeQuery.data,
+    knowledgeFilesTreeQuery.error,
+    knowledgeFilesTreeQuery.isLoading,
     knowledgeRoot,
     resolvedConfig,
     reviewRows,
@@ -646,6 +682,7 @@ export function KnowledgeBrowserScreen() {
     settingsDirty,
     settingsSource,
     uploadPending,
+    queuedUploadFiles,
   ])
 
   function resolveWikiPath(rawValue: string): string | null {
@@ -673,6 +710,66 @@ export function KnowledgeBrowserScreen() {
     )
   }
 
+  function handleQueueUploadFiles(files: Array<File>) {
+    setQueuedUploadFiles(files)
+    setModalStatus({
+      ...EMPTY_MODAL_STATUS,
+      kind: 'idle',
+      message: `${files.length} ${files.length === 1 ? 'file' : 'files'} ready to upload`,
+    })
+  }
+
+  async function handleCreateKnowledgeFolder(folderName: string) {
+    setSyncError(null)
+    setModalStatus({
+      ...EMPTY_MODAL_STATUS,
+      kind: 'syncing',
+      message: 'Creating folder...',
+    })
+    try {
+      const response = await fetch('/api/knowledge/files', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parentPath: modalViewModel.browser.currentPath,
+          folderName,
+        }),
+      })
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string
+        path?: string
+      }
+      if (!response.ok) {
+        const message =
+          payload.error || `Create folder failed (${response.status})`
+        setModalStatus({
+          kind: 'failed',
+          message,
+          failures: [{ filename: folderName, error: message }],
+          renamed: [],
+          ingested: [],
+        })
+        return
+      }
+      await queryClient.invalidateQueries({ queryKey: ['knowledge', 'files'] })
+      setModalStatus({
+        ...EMPTY_MODAL_STATUS,
+        kind: 'saved',
+        message: `Created ${payload.path || folderName}`,
+      })
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Create folder failed'
+      setModalStatus({
+        kind: 'failed',
+        message,
+        failures: [{ filename: folderName, error: message }],
+        renamed: [],
+        ingested: [],
+      })
+    }
+  }
+
   async function refreshKnowledgeConfig() {
     const refreshed = await readJson<KnowledgeConfigResponse>(
       '/api/knowledge/config',
@@ -684,7 +781,9 @@ export function KnowledgeBrowserScreen() {
     }
   }
 
-  async function handleUploadKnowledgeFiles(files: Array<File>) {
+  async function handleUploadQueuedKnowledgeFiles() {
+    const files = queuedUploadFiles
+    if (files.length === 0) return
     setUploadPending(true)
     setSyncError(null)
     setModalStatus({
@@ -767,6 +866,9 @@ export function KnowledgeBrowserScreen() {
         await queryClient.invalidateQueries({
           queryKey: ['knowledge', 'files'],
         })
+      }
+      if (directWrites.length > 0 || staged.length > 0) {
+        setQueuedUploadFiles([])
       }
       setModalStatus({
         kind:
@@ -1045,7 +1147,7 @@ export function KnowledgeBrowserScreen() {
                   color: 'var(--theme-text)',
                 }}
               >
-                <div className="space-y-4">
+                <div className="max-h-[calc(90vh-2rem)] space-y-5 overflow-y-auto p-4 sm:p-6">
                   <div>
                     <DialogTitle className="text-base font-semibold">
                       Knowledge Base Settings
@@ -1066,7 +1168,10 @@ export function KnowledgeBrowserScreen() {
                       setSettingsSource({ type: 'local', path: 'wiki' })
                     }
                     onBrowse={handleBrowseKnowledgeFolder}
-                    onUpload={handleUploadKnowledgeFiles}
+                    onQueueUploadFiles={handleQueueUploadFiles}
+                    onClearUploadQueue={() => setQueuedUploadFiles([])}
+                    onUploadQueued={handleUploadQueuedKnowledgeFiles}
+                    onCreateFolder={handleCreateKnowledgeFolder}
                     onSave={handleSaveSource}
                     onSync={
                       settingsSource.type === 'github'

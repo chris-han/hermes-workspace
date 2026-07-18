@@ -1,7 +1,10 @@
 import path from 'node:path'
 import * as fs from 'node:fs/promises'
 
-import { resolveKnowledgeBaseConfig } from './knowledge-config'
+import {
+  WORKSPACE_WIKI_DIRNAME,
+  resolveKnowledgeBaseConfig,
+} from './knowledge-config'
 
 export type KnowledgeFileEntry = {
   name: string
@@ -9,6 +12,7 @@ export type KnowledgeFileEntry = {
   kind: 'directory' | 'file'
   size?: number
   modified?: string
+  children?: Array<KnowledgeFileEntry>
 }
 
 export type KnowledgeUploadDirectWrite = {
@@ -111,6 +115,7 @@ const COLLISION_LIMIT = 100
 
 type KnowledgeFilesContext = {
   datasetType?: string | null
+  forceWorkspaceWikiRoot?: boolean
 }
 
 type KnowledgeUploadContext = KnowledgeFilesContext & {
@@ -138,6 +143,19 @@ function resolveEffectiveWikiRoot(
   context?: KnowledgeFilesContext,
 ) {
   const resolved = resolveKnowledgeBaseConfig(workspaceRoot, context)
+  if (context?.forceWorkspaceWikiRoot) {
+    const effectiveRoot = path.join(
+      path.resolve(workspaceRoot),
+      WORKSPACE_WIKI_DIRNAME,
+    )
+    return {
+      ...resolved,
+      effectiveRoot,
+      effectiveRootLabel: WORKSPACE_WIKI_DIRNAME,
+      usesWorkspaceDefault: true,
+      upstreamWikiPath: effectiveRoot,
+    }
+  }
   ensureInsideRoot(workspaceRoot, resolved.effectiveRoot)
   return resolved
 }
@@ -172,6 +190,81 @@ function buildBreadcrumb(
     breadcrumb.push({ label: part, path: current })
   }
   return breadcrumb
+}
+
+async function readKnowledgeTree(
+  effectiveRoot: string,
+  directory: string,
+  depth: number,
+  maxDepth: number,
+): Promise<Array<KnowledgeFileEntry>> {
+  if (depth > maxDepth) return []
+  const dirents = await fs.readdir(directory, { withFileTypes: true })
+  const entries = await Promise.all(
+    dirents
+      .filter((entry) => entry.name !== '.git' && entry.name !== 'node_modules')
+      .map(async (entry): Promise<KnowledgeFileEntry | null> => {
+        const fullPath = path.join(directory, entry.name)
+        const relativePath = relativeToWikiRoot(effectiveRoot, fullPath)
+        if (relativePath.startsWith('..')) return null
+        const stats = await fs.stat(fullPath)
+        if (!stats.isDirectory() && !stats.isFile()) return null
+        return {
+          name: entry.name,
+          path: relativePath,
+          kind: stats.isDirectory() ? 'directory' : 'file',
+          size: stats.isFile() ? stats.size : undefined,
+          modified: stats.mtime.toISOString(),
+          children: stats.isDirectory()
+            ? await readKnowledgeTree(
+                effectiveRoot,
+                fullPath,
+                depth + 1,
+                maxDepth,
+              )
+            : undefined,
+        }
+      }),
+  )
+  const filtered = entries.filter(
+    (entry): entry is KnowledgeFileEntry => !!entry,
+  )
+  filtered.sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1
+    return a.name.localeCompare(b.name)
+  })
+  return filtered
+}
+
+export async function listKnowledgeTree(
+  workspaceRoot: string,
+  context?: KnowledgeFilesContext,
+  maxDepth = 4,
+): Promise<{
+  configuredPath: string
+  effectiveRoot: string
+  effectiveRootLabel: string
+  root: KnowledgeFileEntry
+}> {
+  const resolved = resolveEffectiveWikiRoot(workspaceRoot, context)
+  const root = path.resolve(resolved.effectiveRoot)
+  await fs.mkdir(root, { recursive: true })
+  return {
+    configuredPath: resolved.configuredPath,
+    effectiveRoot: resolved.effectiveRoot,
+    effectiveRootLabel: resolved.effectiveRootLabel,
+    root: {
+      name: 'wiki',
+      path: '',
+      kind: 'directory',
+      children: await readKnowledgeTree(
+        resolved.effectiveRoot,
+        root,
+        0,
+        maxDepth,
+      ),
+    },
+  }
 }
 
 export async function listKnowledgeDirectory(
@@ -234,6 +327,38 @@ export async function listKnowledgeDirectory(
     directoryCount: filtered.filter((entry) => entry.kind === 'directory')
       .length,
     entries: filtered,
+  }
+}
+
+export async function createKnowledgeDirectory(
+  workspaceRoot: string,
+  parentPath: string | null | undefined,
+  folderName: string,
+  context?: KnowledgeFilesContext,
+): Promise<{
+  ok: true
+  name: string
+  path: string
+}> {
+  const resolved = resolveEffectiveWikiRoot(workspaceRoot, context)
+  const parentDirectory = resolveTargetDirectory(
+    resolved.effectiveRoot,
+    parentPath,
+  )
+  await fs.mkdir(parentDirectory, { recursive: true })
+  const sanitizedName = sanitizeKnowledgeFilename(folderName)
+  if (!sanitizedName || sanitizedName.includes('.')) {
+    throw new Error('Folder name is invalid')
+  }
+  const targetDirectory = ensureInsideRoot(
+    resolved.effectiveRoot,
+    path.join(parentDirectory, sanitizedName),
+  )
+  await fs.mkdir(targetDirectory, { recursive: false })
+  return {
+    ok: true,
+    name: sanitizedName,
+    path: relativeToWikiRoot(resolved.effectiveRoot, targetDirectory),
   }
 }
 

@@ -7,6 +7,7 @@ import { writeKnowledgeBaseConfig } from './knowledge-config'
 import {
   KNOWLEDGE_UPLOAD_LIMITS,
   createKnowledgeDirectory,
+  deleteKnowledgeFile,
   listKnowledgeDirectory,
   listKnowledgeTree,
   validateKnowledgeUploadLimits,
@@ -141,6 +142,58 @@ describe('knowledge-files workspace operations', () => {
         .statSync(path.join(workspaceRoot, 'wiki', 'Team Notes', '2026'))
         .isDirectory(),
     ).toBe(true)
+  })
+
+  it('treats an existing knowledge folder as ready', async () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-files-existing-folder-')
+    createdRoots.push(workspaceRoot)
+    fsSync.mkdirSync(path.join(workspaceRoot, 'wiki', '招投标'), {
+      recursive: true,
+    })
+
+    await expect(
+      createKnowledgeDirectory(workspaceRoot, null, '招投标'),
+    ).resolves.toEqual({
+      ok: true,
+      name: '招投标',
+      path: '招投标',
+    })
+  })
+
+  it('deletes a knowledge file inside the workspace wiki root', async () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-files-delete-file-')
+    createdRoots.push(workspaceRoot)
+    fsSync.mkdirSync(path.join(workspaceRoot, 'wiki', '招投标'), {
+      recursive: true,
+    })
+    fsSync.writeFileSync(
+      path.join(workspaceRoot, 'wiki', '招投标', 'source.pdf'),
+      'pdf',
+    )
+
+    await expect(
+      deleteKnowledgeFile(workspaceRoot, '招投标/source.pdf'),
+    ).resolves.toEqual({
+      ok: true,
+      path: '招投标/source.pdf',
+    })
+    expect(
+      fsSync.existsSync(
+        path.join(workspaceRoot, 'wiki', '招投标', 'source.pdf'),
+      ),
+    ).toBe(false)
+  })
+
+  it('rejects deleting a knowledge directory through file delete', async () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-files-delete-dir-')
+    createdRoots.push(workspaceRoot)
+    fsSync.mkdirSync(path.join(workspaceRoot, 'wiki', '招投标'), {
+      recursive: true,
+    })
+
+    await expect(deleteKnowledgeFile(workspaceRoot, '招投标')).rejects.toThrow(
+      'Only files can be deleted here',
+    )
   })
 
   it('sanitizes names and direct-writes text-like wiki sources', async () => {

@@ -7,6 +7,7 @@ import {
 } from '../../../server/knowledge-entitlement'
 import {
   createKnowledgeDirectory,
+  deleteKnowledgeFile,
   listKnowledgeDirectory,
   listKnowledgeTree,
 } from '../../../server/knowledge-files'
@@ -107,6 +108,49 @@ export const Route = createFileRoute('/api/knowledge/files')({
                 error instanceof Error
                   ? error.message
                   : 'Failed to create knowledge folder',
+            },
+            { status: 500 },
+          )
+        }
+      },
+      DELETE: async ({ request }) => {
+        try {
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
+          await requireKnowledgeEntitlement(
+            activeWorkspace,
+            'write',
+            request.headers,
+          )
+          const body = (await request.json().catch(() => ({}))) as {
+            path?: unknown
+          }
+          if (typeof body.path !== 'string') {
+            return json({ error: 'path is required' }, { status: 400 })
+          }
+          const deleted = await deleteKnowledgeFile(
+            activeWorkspace.path,
+            body.path,
+            {
+              datasetType: activeWorkspace.datasetType,
+              forceWorkspaceWikiRoot: true,
+            },
+          )
+          return json(deleted)
+        } catch (error) {
+          if (error instanceof WorkspaceAuthRequiredError) {
+            return json({ error: error.message }, { status: 401 })
+          }
+          if (error instanceof KnowledgeEntitlementRequiredError) {
+            return json({ error: error.message }, { status: 403 })
+          }
+          return json(
+            {
+              error:
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to delete knowledge file',
             },
             { status: 500 },
           )

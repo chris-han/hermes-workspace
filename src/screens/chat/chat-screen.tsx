@@ -86,6 +86,7 @@ import { FileExplorerSidebar } from '@/components/file-explorer'
 import { SEARCH_MODAL_EVENTS } from '@/hooks/use-search-modal'
 import { SIDEBAR_TOGGLE_EVENT } from '@/hooks/use-global-shortcuts'
 import { useWorkspaceStore } from '@/stores/workspace-store'
+import { useChatActivityStore } from '@/stores/chat-activity-store'
 import { TerminalPanel } from '@/components/terminal-panel'
 import { InspectorPanel } from '@/components/inspector/inspector-panel'
 import {
@@ -201,10 +202,11 @@ async function ensureChatSession(label: string): Promise<{
   sessionKey: string
   friendlyId: string
 }> {
+  const sessionLabel = buildSessionCreateLabel(label)
   const response = await fetch('/api/sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ label }),
+    body: JSON.stringify({ label: sessionLabel }),
   })
   if (!response.ok) {
     throw new Error(`Create session failed: ${response.status}`)
@@ -224,6 +226,14 @@ async function ensureChatSession(label: string): Promise<{
     sessionKey: payload.sessionKey,
     friendlyId: payload.friendlyId || payload.sessionKey,
   }
+}
+
+function buildSessionCreateLabel(label: string): string {
+  const normalized = label.replace(/\s+/g, ' ').trim()
+  if (!normalized) return 'New Session'
+  return normalized.length > 97
+    ? `${normalized.slice(0, 97).trim()}...`
+    : normalized
 }
 
 async function uploadChatDocuments(
@@ -626,6 +636,7 @@ export function ChatScreen({
   const lastAssistantSignature = useRef('')
   const refreshHistoryRef = useRef<() => void>(() => {})
   const retriedQueuedMessageKeysRef = useRef(new Set<string>())
+  const consumedUrlMessageRef = useRef('')
   const hasSeenDisconnectRef = useRef(false)
   const hadErrorRef = useRef(false)
   const [pendingApprovals, setPendingApprovals] = useState<
@@ -846,7 +857,8 @@ export function ChatScreen({
           ? agentIdValue
           : 'hermes'
       const resolvedSessionForApproval =
-        typeof payload.sessionKey === 'string' && payload.sessionKey.trim().length > 0
+        typeof payload.sessionKey === 'string' &&
+        payload.sessionKey.trim().length > 0
           ? payload.sessionKey.trim()
           : inspectorSessionKeyRef.current
 
@@ -867,9 +879,9 @@ export function ChatScreen({
       })
 
       addApproval({
-          sessionKey: resolvedSessionForApproval || '',
-          command: action,
-          timestamp: Date.now(),
+        sessionKey: resolvedSessionForApproval || '',
+        command: action,
+        timestamp: Date.now(),
         agentId,
         agentName,
         action,
@@ -951,7 +963,8 @@ export function ChatScreen({
   const resolvePendingApproval = useCallback(
     async (approval: ApprovalRequest, status: 'approved' | 'denied') => {
       const resolvedSessionForApproval =
-        typeof approval.sessionKey === 'string' && approval.sessionKey.trim().length > 0
+        typeof approval.sessionKey === 'string' &&
+        approval.sessionKey.trim().length > 0
           ? approval.sessionKey.trim()
           : inspectorSessionKeyRef.current
 
@@ -1674,7 +1687,9 @@ export function ChatScreen({
   }, [suggestion, resolvedSessionKey, dismiss])
 
   // Sync chat activity to global store for sidebar orchestrator avatar
-  const setLocalActivity = _noopSetActivity
+  const setLocalActivity = useChatActivityStore(
+    (state) => state.setLocalActivity,
+  )
   useEffect(() => {
     if (liveToolActivity.length > 0) {
       setLocalActivity('tool-use')
@@ -2653,6 +2668,26 @@ export function ChatScreen({
       isDemoWalkthroughRunning,
     ],
   )
+
+  useEffect(() => {
+    if (!isNewChat || embedded || typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const message = params.get('message')?.trim()
+    if (!message || consumedUrlMessageRef.current === message) return
+    consumedUrlMessageRef.current = message
+    params.delete('message')
+    const nextSearch = params.toString()
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}`,
+    )
+    send(message, [], false, {
+      reset: () => {},
+      setValue: () => {},
+      setAttachments: () => {},
+    })
+  }, [embedded, isNewChat, send])
 
   const handleAbortStreaming = useCallback(() => {
     const activeSend = activeSendRef.current

@@ -4,6 +4,7 @@ import {
   ArrowUp01Icon,
   BrainIcon,
   CodeIcon,
+  Delete01Icon,
   File01Icon,
   Folder01Icon,
   Link01Icon,
@@ -92,6 +93,7 @@ type KnowledgeReviewRow = {
   storedName: string
   size: number
   retryUploadRef: string
+  sourceWikiPath?: string
   targetWikiPath?: string
   ingestKind: 'document_extraction' | 'table_ingestion'
   canonicalArtifactKind: 'canonical_document' | 'canonical_table'
@@ -287,26 +289,31 @@ function normalizeWikiToken(value: string): string {
   return value.trim().toLowerCase().replace(/\\/g, '/').replace(/\.md$/i, '')
 }
 
+function getParentWikiPath(value?: string): string {
+  if (!value) return ''
+  const normalized = value
+    .split('\\')
+    .join('/')
+    .replace(/^\/+|\/+$/g, '')
+  const index = normalized.lastIndexOf('/')
+  return index >= 0 ? normalized.slice(0, index) : ''
+}
+
 function isMarkdownKnowledgeFile(entry: KnowledgeTreeEntry): boolean {
   const lower = entry.name.toLowerCase()
   return lower.endsWith('.md') || lower.endsWith('.markdown')
 }
 
-function filterKnowledgeFileTree(
+function filterKnowledgeFolderTree(
   entry: KnowledgeTreeEntry,
-  mode: KnowledgeFileViewMode,
-  isRoot = true,
 ): KnowledgeTreeEntry | null {
   if (entry.kind === 'file') {
-    const markdown = isMarkdownKnowledgeFile(entry)
-    if (mode === 'wiki' ? markdown : !markdown) return entry
     return null
   }
 
   const children = (entry.children ?? [])
-    .map((child) => filterKnowledgeFileTree(child, mode, false))
+    .map((child) => filterKnowledgeFolderTree(child))
     .filter((child): child is KnowledgeTreeEntry => Boolean(child))
-  if (!isRoot && children.length === 0) return null
   return { ...entry, children }
 }
 
@@ -474,7 +481,11 @@ export function KnowledgeBrowserScreen() {
   const [reviewRows, setReviewRows] = useState<Array<KnowledgeReviewRow>>([])
   const [fileViewMode, setFileViewMode] =
     useState<KnowledgeFileViewMode>('source')
-  const [newFolderName, setNewFolderName] = useState('')
+  const [folderPromptOpen, setFolderPromptOpen] = useState(false)
+  const [folderPromptValue, setFolderPromptValue] = useState('')
+  const [deletingFilePaths, setDeletingFilePaths] = useState<Set<string>>(
+    () => new Set(),
+  )
   const [expandedFilePaths, setExpandedFilePaths] = useState<Set<string>>(
     () => new Set(['']),
   )
@@ -528,9 +539,6 @@ export function KnowledgeBrowserScreen() {
   useEffect(() => {
     if (!settingsOpen) {
       setModalStatus(EMPTY_MODAL_STATUS)
-      setReviewRows([])
-      setBrowserPath('')
-      setQueuedUploadFiles([])
       return
     }
     fetch('/api/knowledge/config')
@@ -654,14 +662,14 @@ export function KnowledgeBrowserScreen() {
       readJson<KnowledgeFilesResponse>(
         `/api/knowledge/files?path=${encodeURIComponent(browserPath)}`,
       ),
-    enabled: settingsOpen && settingsSource.type === 'local',
+    enabled: settingsSource.type === 'local',
   })
 
   const knowledgeFilesTreeQuery = useQuery({
     queryKey: ['knowledge', 'files', 'tree'],
     queryFn: () =>
       readJson<KnowledgeFilesTreeResponse>('/api/knowledge/files?tree=1'),
-    enabled: settingsOpen && settingsSource.type === 'local',
+    enabled: settingsSource.type === 'local',
   })
 
   const page = readQuery.data?.page ?? null
@@ -671,7 +679,7 @@ export function KnowledgeBrowserScreen() {
     () => preprocessWikiMarkdown(content),
     [content],
   )
-  const askUrl = `/chat?message=${encodeURIComponent(
+  const askUrl = `/chat/new?message=${encodeURIComponent(
     `Tell me about: ${page?.title || selectedPath || 'this page'}\n\nContext:\n${content.slice(0, 500)}`,
   )}`
   const searchResults = searchQuery.data?.results ?? []
@@ -687,14 +695,6 @@ export function KnowledgeBrowserScreen() {
       return { ...EMPTY_MODAL_STATUS, kind: 'saving', message: 'Saving...' }
     if (syncing)
       return { ...EMPTY_MODAL_STATUS, kind: 'syncing', message: 'Syncing...' }
-    if (uploadPending)
-      return { ...EMPTY_MODAL_STATUS, kind: 'syncing', message: 'Uploading...' }
-    if (ingestPending)
-      return {
-        ...EMPTY_MODAL_STATUS,
-        kind: 'ingesting',
-        message: 'Importing...',
-      }
     if (syncError) {
       return {
         kind: 'failed',
@@ -704,7 +704,6 @@ export function KnowledgeBrowserScreen() {
         ingested: [],
       }
     }
-    if (modalStatus.kind !== 'idle') return modalStatus
     if (settingsDirty)
       return {
         ...EMPTY_MODAL_STATUS,
@@ -712,15 +711,7 @@ export function KnowledgeBrowserScreen() {
         message: 'Unsaved changes',
       }
     return EMPTY_MODAL_STATUS
-  }, [
-    ingestPending,
-    modalStatus,
-    savePending,
-    settingsDirty,
-    syncError,
-    syncing,
-    uploadPending,
-  ])
+  }, [savePending, settingsDirty, syncError, syncing])
 
   const modalViewModel = useMemo<KnowledgeSourceModalViewModel>(() => {
     return {
@@ -766,12 +757,12 @@ export function KnowledgeBrowserScreen() {
       children: [],
     }
     return (
-      filterKnowledgeFileTree(root, fileViewMode) || {
+      filterKnowledgeFolderTree(root) || {
         ...root,
         children: [],
       }
     )
-  }, [fileViewMode, knowledgeFilesTreeQuery.data])
+  }, [knowledgeFilesTreeQuery.data])
 
   const currentDirectoryEntries = useMemo(
     () =>
@@ -796,10 +787,48 @@ export function KnowledgeBrowserScreen() {
         : null
   const filesLoading =
     knowledgeFilesQuery.isLoading || knowledgeFilesTreeQuery.isLoading
-  const queuedUploadView = queuedUploadFiles.map((file) => ({
+  const queuedUploadView = queuedUploadFiles.map((file, index) => ({
+    index,
     name: file.name,
     size: file.size,
   }))
+  const currentReviewRows = reviewRows.filter((row) => {
+    const sourceParent = getParentWikiPath(row.sourceWikiPath)
+    const targetParent = getParentWikiPath(row.targetWikiPath)
+    return sourceParent === browserPath || targetParent === browserPath
+  })
+  const currentEntryPathSet = new Set(
+    currentDirectoryEntries.map((entry) => entry.path),
+  )
+  const currentReviewBySourcePath = new Map(
+    currentReviewRows
+      .filter(
+        (row) =>
+          row.sourceWikiPath && currentEntryPathSet.has(row.sourceWikiPath),
+      )
+      .map((row) => [row.sourceWikiPath!, row]),
+  )
+  const currentUnmatchedReviewRows = currentReviewRows.filter(
+    (row) =>
+      !row.sourceWikiPath || !currentEntryPathSet.has(row.sourceWikiPath),
+  )
+  const activityByUploadRef = new Map(
+    knowledgeActivity
+      .filter((item) => item.uploadRef)
+      .map((item) => [item.uploadRef, item]),
+  )
+  const currentFolderActivityRows = knowledgeActivity.filter((item) => {
+    if (item.uploadRef) return false
+    return (
+      item.id.startsWith(`folder:${browserPath}:`) ||
+      item.id.startsWith('knowledge-upload-failed:') ||
+      item.id.startsWith('knowledge-upload-error:')
+    )
+  })
+  const currentFolderStatusRowCount =
+    queuedUploadView.length +
+    currentReviewRows.length +
+    currentFolderActivityRows.length
 
   function resolveWikiPath(rawValue: string): string | null {
     const decoded = decodeURIComponent(rawValue)
@@ -854,12 +883,26 @@ export function KnowledgeBrowserScreen() {
     })
   }
 
-  async function handleCreateKnowledgeFolder(folderName: string) {
+  async function handleCreateFolderPromptSubmit() {
+    const nextName = folderPromptValue.trim()
+    if (!nextName) return
+    const created = await handleCreateKnowledgeFolder(nextName)
+    if (created) {
+      setFolderPromptValue('')
+      setFolderPromptOpen(false)
+    }
+  }
+
+  async function handleCreateKnowledgeFolder(
+    folderName: string,
+  ): Promise<boolean> {
     setSyncError(null)
-    setModalStatus({
-      ...EMPTY_MODAL_STATUS,
-      kind: 'syncing',
-      message: 'Creating folder...',
+    const activityId = `folder:${browserPath}:${folderName}`
+    upsertKnowledgeActivity({
+      id: activityId,
+      status: 'running',
+      label: folderName,
+      detail: `Creating folder in wiki/${browserPath || ''}`,
     })
     try {
       const response = await fetch('/api/knowledge/files', {
@@ -877,30 +920,97 @@ export function KnowledgeBrowserScreen() {
       if (!response.ok) {
         const message =
           payload.error || `Create folder failed (${response.status})`
-        setModalStatus({
-          kind: 'failed',
-          message,
-          failures: [{ filename: folderName, error: message }],
-          renamed: [],
-          ingested: [],
+        upsertKnowledgeActivity({
+          id: activityId,
+          status: 'failed',
+          label: folderName,
+          detail: message,
         })
-        return
+        return false
       }
       await queryClient.invalidateQueries({ queryKey: ['knowledge', 'files'] })
-      setModalStatus({
-        ...EMPTY_MODAL_STATUS,
-        kind: 'saved',
-        message: `Created ${payload.path || folderName}`,
+      if (payload.path) {
+        setBrowserPath(payload.path)
+        setExpandedFilePaths((current) => {
+          const next = new Set(current)
+          next.add('')
+          next.add(payload.path!)
+          return next
+        })
+      }
+      upsertKnowledgeActivity({
+        id: activityId,
+        status: 'done',
+        label: folderName,
+        detail: `Folder ready at wiki/${payload.path || folderName}`,
       })
+      return true
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Create folder failed'
-      setModalStatus({
-        kind: 'failed',
-        message,
-        failures: [{ filename: folderName, error: message }],
-        renamed: [],
-        ingested: [],
+      upsertKnowledgeActivity({
+        id: activityId,
+        status: 'failed',
+        label: folderName,
+        detail: message,
+      })
+      return false
+    }
+  }
+
+  async function handleDeleteKnowledgeFile(pathValue: string) {
+    if (!window.confirm(`Delete ${pathValue}?`)) return
+    setDeletingFilePaths((current) => {
+      const next = new Set(current)
+      next.add(pathValue)
+      return next
+    })
+    upsertKnowledgeActivity({
+      id: `knowledge-delete:${pathValue}`,
+      status: 'running',
+      label: pathValue,
+      detail: 'Deleting source file...',
+    })
+    try {
+      const response = await fetch('/api/knowledge/files', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: pathValue }),
+      })
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string
+        path?: string
+      }
+      if (!response.ok) {
+        throw new Error(payload.error || `Delete failed (${response.status})`)
+      }
+      setReviewRows((current) =>
+        current.filter(
+          (row) =>
+            row.sourceWikiPath !== pathValue &&
+            row.targetWikiPath !== pathValue,
+        ),
+      )
+      await queryClient.invalidateQueries({ queryKey: ['knowledge', 'files'] })
+      await queryClient.invalidateQueries({ queryKey: ['knowledge', 'list'] })
+      upsertKnowledgeActivity({
+        id: `knowledge-delete:${pathValue}`,
+        status: 'done',
+        label: pathValue,
+        detail: `Deleted wiki/${payload.path || pathValue}`,
+      })
+    } catch (err) {
+      upsertKnowledgeActivity({
+        id: `knowledge-delete:${pathValue}`,
+        status: 'failed',
+        label: pathValue,
+        detail: err instanceof Error ? err.message : 'Delete failed',
+      })
+    } finally {
+      setDeletingFilePaths((current) => {
+        const next = new Set(current)
+        next.delete(pathValue)
+        return next
       })
     }
   }
@@ -1017,6 +1127,9 @@ export function KnowledgeBrowserScreen() {
           storedName: result.storedName,
           size: result.size,
           retryUploadRef: result.retryUploadRef,
+          sourceWikiPath: browserPath
+            ? `${browserPath}/${result.storedName}`
+            : result.storedName,
           targetWikiPath: result.targetWikiPath,
           ingestKind: result.ingestKind,
           canonicalArtifactKind: result.canonicalArtifactKind,
@@ -1410,72 +1523,6 @@ export function KnowledgeBrowserScreen() {
           </div>
         </div>
 
-        {knowledgeActivity.length > 0 ? (
-          <div className="px-3 pt-3 md:px-4">
-            <section className="space-y-2 rounded-xl border border-primary-200 bg-primary-50/80 p-3 dark:border-neutral-800 dark:bg-neutral-950">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                  Knowledge import status
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setKnowledgeActivity([])}
-                  className="rounded-md border border-primary-200 px-2 py-1 text-xs font-medium text-primary-500 hover:bg-primary-100 dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-900"
-                >
-                  Clear
-                </button>
-              </div>
-              <div className="grid gap-2 md:grid-cols-2">
-                {knowledgeActivity.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex min-w-0 items-start justify-between gap-3 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-900/60"
-                  >
-                    <div className="flex min-w-0 items-start gap-2">
-                      <span
-                        className={cn(
-                          'mt-1 size-2 shrink-0 rounded-full',
-                          item.status === 'running' &&
-                            'animate-pulse bg-amber-500',
-                          item.status === 'waiting' && 'bg-sky-500',
-                          item.status === 'done' && 'bg-emerald-500',
-                          item.status === 'failed' && 'bg-red-500',
-                        )}
-                      />
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium text-primary-900 dark:text-neutral-100">
-                          {item.label}
-                        </span>
-                        <span className="block truncate text-xs text-primary-500 dark:text-neutral-400">
-                          {item.detail}
-                        </span>
-                      </span>
-                    </div>
-                    {item.uploadRef &&
-                    (item.status === 'waiting' || item.status === 'failed') ? (
-                      <button
-                        type="button"
-                        disabled={ingestPending}
-                        onClick={() =>
-                          void handleIngestKnowledgeUpload(item.uploadRef!)
-                        }
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-accent-600 bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <HugeiconsIcon
-                          icon={Upload01Icon}
-                          size={14}
-                          strokeWidth={1.7}
-                        />
-                        Build wiki page
-                      </button>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-        ) : null}
-
         <div className="flex flex-wrap items-center justify-between gap-3 px-3 pt-3 md:px-4">
           <div className="inline-flex rounded-lg border border-primary-200 bg-primary-50 p-1 dark:border-neutral-800 dark:bg-neutral-950">
             {(['source', 'wiki'] as const).map((mode) => (
@@ -1484,10 +1531,10 @@ export function KnowledgeBrowserScreen() {
                 type="button"
                 onClick={() => setFileViewMode(mode)}
                 className={cn(
-                  'rounded-md px-3 py-1.5 text-sm font-semibold transition-colors',
+                  'rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors',
                   fileViewMode === mode
-                    ? 'bg-accent-500 text-white shadow-sm'
-                    : 'text-primary-600 hover:bg-primary-100 dark:text-neutral-300 dark:hover:bg-neutral-900',
+                    ? 'border-primary-200 bg-white text-primary-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50'
+                    : 'border-transparent bg-transparent text-primary-600 hover:bg-primary-100 dark:text-neutral-300 dark:hover:bg-neutral-900',
                 )}
               >
                 {mode === 'source' ? 'Source files' : 'Wiki pages'}
@@ -1528,20 +1575,38 @@ export function KnowledgeBrowserScreen() {
                 )}
               >
                 <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-xs">
-                  {(
-                    knowledgeFilesQuery.data?.breadcrumb || [
-                      { label: 'wiki', path: '' },
-                    ]
-                  ).map((crumb, index) => (
-                    <button
-                      key={`${crumb.path}:${index}`}
-                      type="button"
-                      onClick={() => handleBrowseKnowledgeFolder(crumb.path)}
-                      className="rounded-md border border-primary-200 px-2 py-1 font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
-                    >
-                      {crumb.label}
-                    </button>
-                  ))}
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    {(
+                      knowledgeFilesQuery.data?.breadcrumb || [
+                        { label: 'wiki', path: '' },
+                      ]
+                    ).map((crumb, index) => (
+                      <button
+                        key={`${crumb.path}:${index}`}
+                        type="button"
+                        onClick={() => handleBrowseKnowledgeFolder(crumb.path)}
+                        className="rounded-md border border-primary-200 px-2 py-1 font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                      >
+                        {crumb.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFolderPromptValue('')
+                      setFolderPromptOpen(true)
+                    }}
+                    title="New folder"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-primary-200 px-2 py-1 font-semibold hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                  >
+                    <HugeiconsIcon
+                      icon={Folder01Icon}
+                      size={14}
+                      strokeWidth={1.7}
+                    />
+                    New folder
+                  </button>
                 </div>
                 <section className="rounded-xl border border-primary-200 bg-primary-50/80 p-1 dark:border-neutral-800 dark:bg-neutral-900/60">
                   {filesLoading ? (
@@ -1678,6 +1743,9 @@ export function KnowledgeBrowserScreen() {
                     </div>
                     <div className="text-xs text-primary-400 dark:text-neutral-500">
                       {currentDirectoryCount} folders · {currentFileCount} files
+                      {currentFolderStatusRowCount > 0
+                        ? ` · ${currentFolderStatusRowCount} pending`
+                        : ''}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -1718,7 +1786,7 @@ export function KnowledgeBrowserScreen() {
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-auto p-3">
-                  <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+                  <div className="grid gap-3">
                     <div className="space-y-3">
                       <section className="rounded-xl border border-primary-200 bg-primary-50/80 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
                         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
@@ -1728,7 +1796,8 @@ export function KnowledgeBrowserScreen() {
                           <StateBox label="Loading folder..." />
                         ) : filesError ? (
                           <StateBox label={filesError} error />
-                        ) : currentDirectoryEntries.length === 0 ? (
+                        ) : currentDirectoryEntries.length === 0 &&
+                          currentFolderStatusRowCount === 0 ? (
                           <StateBox
                             label={
                               fileViewMode === 'source'
@@ -1738,183 +1807,290 @@ export function KnowledgeBrowserScreen() {
                           />
                         ) : (
                           <div className="divide-y divide-primary-200 overflow-hidden rounded-lg border border-primary-200 dark:divide-neutral-800 dark:border-neutral-800">
-                            {currentDirectoryEntries.map((entry) => (
-                              <button
-                                key={entry.path}
-                                type="button"
-                                onClick={() => {
-                                  if (entry.kind === 'directory') {
-                                    handleBrowseKnowledgeFolder(entry.path)
-                                    setExpandedFilePaths((current) => {
-                                      const next = new Set(current)
-                                      next.add(entry.path)
-                                      return next
-                                    })
-                                  }
-                                }}
-                                className={cn(
-                                  'flex w-full items-center justify-between gap-3 bg-primary-50 px-3 py-2 text-left text-sm transition-colors dark:bg-neutral-950',
-                                  entry.kind === 'directory' &&
-                                    'hover:bg-primary-100 dark:hover:bg-neutral-900',
-                                )}
+                            {queuedUploadView.map((file) => (
+                              <div
+                                key={`queued:${file.index}:${file.name}:${file.size}`}
+                                className="flex w-full items-center justify-between gap-3 bg-primary-50 px-3 py-2 text-left text-sm dark:bg-neutral-950"
                               >
                                 <span className="flex min-w-0 items-center gap-2">
                                   <HugeiconsIcon
-                                    icon={
-                                      entry.kind === 'directory'
-                                        ? Folder01Icon
-                                        : File01Icon
-                                    }
+                                    icon={File01Icon}
                                     size={16}
                                     strokeWidth={1.7}
                                     className="shrink-0"
                                   />
                                   <span className="min-w-0 truncate">
-                                    {entry.name}
+                                    {file.name}
                                   </span>
                                 </span>
-                                <span className="shrink-0 text-xs text-primary-400 dark:text-neutral-500">
-                                  {entry.kind === 'file'
-                                    ? formatBytes(entry.size)
-                                    : 'Folder'}
+                                <span className="flex shrink-0 items-center gap-2">
+                                  <StatusPill status="waiting" label="Queued" />
+                                  <button
+                                    type="button"
+                                    disabled={uploadPending}
+                                    onClick={() =>
+                                      void handleUploadQueuedKnowledgeFiles()
+                                    }
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-accent-600 bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    <HugeiconsIcon
+                                      icon={Upload01Icon}
+                                      size={14}
+                                      strokeWidth={1.7}
+                                    />
+                                    {uploadPending ? 'Uploading' : 'Upload'}
+                                  </button>
+                                  <span className="text-xs text-primary-400 dark:text-neutral-500">
+                                    {formatBytes(file.size)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setQueuedUploadFiles((current) =>
+                                        current.filter(
+                                          (_item, index) =>
+                                            index !== file.index,
+                                        ),
+                                      )
+                                    }
+                                    className="rounded-lg border border-primary-200 px-2 py-1.5 text-xs font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                                  >
+                                    Remove
+                                  </button>
                                 </span>
-                              </button>
+                              </div>
                             ))}
-                          </div>
-                        )}
-                      </section>
-
-                      {reviewRows.length > 0 ? (
-                        <section className="space-y-2 rounded-xl border border-primary-200 bg-primary-50/80 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
-                          <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                            Ready to build
-                          </div>
-                          {reviewRows.map((row) => (
-                            <div
-                              key={row.retryUploadRef}
-                              className="flex items-start justify-between gap-3 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-950"
-                            >
-                              <div className="min-w-0">
-                                <div className="truncate font-medium text-primary-900 dark:text-neutral-100">
-                                  {row.originalName}
-                                </div>
-                                <div className="text-xs text-primary-500 dark:text-neutral-400">
-                                  {row.ingestKind} · {formatBytes(row.size)}
-                                </div>
-                                {row.targetWikiPath ? (
-                                  <div className="mt-1 truncate text-xs text-primary-500 dark:text-neutral-400">
-                                    {row.targetWikiPath}
-                                  </div>
-                                ) : null}
-                              </div>
-                              <div className="flex shrink-0 gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    void handleIngestKnowledgeUpload(
-                                      row.retryUploadRef,
-                                    )
-                                  }
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-accent-600 bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600"
-                                >
-                                  <HugeiconsIcon
-                                    icon={Upload01Icon}
-                                    size={14}
-                                    strokeWidth={1.7}
-                                  />
-                                  Build wiki page
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setReviewRows((current) =>
-                                      current.filter(
-                                        (item) =>
-                                          item.retryUploadRef !==
-                                          row.retryUploadRef,
-                                      ),
-                                    )
-                                  }
-                                  className="rounded-lg border border-primary-200 px-2 py-1.5 text-xs font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </section>
-                      ) : null}
-                    </div>
-
-                    <aside className="space-y-3">
-                      <section className="space-y-2 rounded-xl border border-primary-200 bg-primary-50/80 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
-                        <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                          Create folder
-                        </div>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={newFolderName}
-                            onChange={(event) =>
-                              setNewFolderName(event.target.value)
-                            }
-                            placeholder="Folder name"
-                            className="min-w-0 flex-1 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm outline-none dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
-                          />
-                          <button
-                            type="button"
-                            disabled={!newFolderName.trim()}
-                            onClick={async () => {
-                              const nextName = newFolderName.trim()
-                              if (!nextName) return
-                              await handleCreateKnowledgeFolder(nextName)
-                              setNewFolderName('')
-                            }}
-                            className="rounded-lg border border-primary-200 px-3 py-2 text-sm font-semibold hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
-                          >
-                            Create
-                          </button>
-                        </div>
-                      </section>
-
-                      <section className="space-y-2 rounded-xl border border-primary-200 bg-primary-50/80 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                            Upload queue
-                          </div>
-                          {queuedUploadFiles.length > 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => setQueuedUploadFiles([])}
-                              className="text-xs font-semibold text-primary-600 hover:text-primary-900 dark:text-neutral-300 dark:hover:text-neutral-100"
-                            >
-                              Clear
-                            </button>
-                          ) : null}
-                        </div>
-                        {queuedUploadView.length === 0 ? (
-                          <div className="text-sm text-primary-500 dark:text-neutral-400">
-                            No files queued.
-                          </div>
-                        ) : (
-                          <div className="max-h-44 space-y-1 overflow-y-auto">
-                            {queuedUploadView.map((file) => (
+                            {currentUnmatchedReviewRows.map((row) => (
                               <div
-                                key={`${file.name}:${file.size}`}
-                                className="flex items-center justify-between gap-3 rounded-md border border-primary-200 px-2 py-1.5 text-xs dark:border-neutral-800"
+                                key={row.retryUploadRef}
+                                className="flex w-full items-center justify-between gap-3 bg-primary-50 px-3 py-2 text-left text-sm dark:bg-neutral-950"
                               >
-                                <span className="min-w-0 truncate">
-                                  {file.name}
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <HugeiconsIcon
+                                    icon={File01Icon}
+                                    size={16}
+                                    strokeWidth={1.7}
+                                    className="shrink-0"
+                                  />
+                                  <span className="min-w-0">
+                                    <span className="block truncate font-medium">
+                                      {row.storedName}
+                                    </span>
+                                    <span className="block truncate text-xs text-primary-500 dark:text-neutral-400">
+                                      Builds {row.targetWikiPath || 'wiki page'}
+                                    </span>
+                                  </span>
                                 </span>
-                                <span className="shrink-0 text-primary-400 dark:text-neutral-500">
-                                  {formatBytes(file.size)}
+                                <span className="flex shrink-0 items-center gap-2">
+                                  <StatusPill
+                                    status={
+                                      activityByUploadRef.get(
+                                        row.retryUploadRef,
+                                      )?.status || 'waiting'
+                                    }
+                                    label={
+                                      activityByUploadRef.get(
+                                        row.retryUploadRef,
+                                      )?.status === 'running'
+                                        ? 'Building'
+                                        : activityByUploadRef.get(
+                                              row.retryUploadRef,
+                                            )?.status === 'failed'
+                                          ? 'Failed'
+                                          : 'Needs build'
+                                    }
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={ingestPending}
+                                    onClick={() =>
+                                      void handleIngestKnowledgeUpload(
+                                        row.retryUploadRef,
+                                      )
+                                    }
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-accent-600 bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    <HugeiconsIcon
+                                      icon={Upload01Icon}
+                                      size={14}
+                                      strokeWidth={1.7}
+                                    />
+                                    Build
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setReviewRows((current) =>
+                                        current.filter(
+                                          (item) =>
+                                            item.retryUploadRef !==
+                                            row.retryUploadRef,
+                                        ),
+                                      )
+                                    }
+                                    className="rounded-lg border border-primary-200 px-2 py-1.5 text-xs font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                                  >
+                                    Remove
+                                  </button>
                                 </span>
                               </div>
                             ))}
+                            {currentFolderActivityRows.map((item) => (
+                              <div
+                                key={item.id}
+                                className="flex w-full items-center justify-between gap-3 bg-primary-50 px-3 py-2 text-left text-sm dark:bg-neutral-950"
+                              >
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <HugeiconsIcon
+                                    icon={File01Icon}
+                                    size={16}
+                                    strokeWidth={1.7}
+                                    className="shrink-0"
+                                  />
+                                  <span className="min-w-0">
+                                    <span className="block truncate font-medium">
+                                      {item.label}
+                                    </span>
+                                    <span className="block truncate text-xs text-primary-500 dark:text-neutral-400">
+                                      {item.detail}
+                                    </span>
+                                  </span>
+                                </span>
+                                <StatusPill status={item.status} />
+                              </div>
+                            ))}
+                            {currentDirectoryEntries.map((entry) => {
+                              const reviewRow =
+                                entry.kind === 'file'
+                                  ? currentReviewBySourcePath.get(entry.path)
+                                  : undefined
+                              const activity = reviewRow
+                                ? activityByUploadRef.get(
+                                    reviewRow.retryUploadRef,
+                                  )
+                                : undefined
+                              const deleting = deletingFilePaths.has(entry.path)
+                              const status = activity?.status || 'waiting'
+                              const statusLabel =
+                                activity?.status === 'running'
+                                  ? 'Building'
+                                  : activity?.status === 'failed'
+                                    ? 'Failed'
+                                    : 'Needs build'
+
+                              if (entry.kind === 'directory') {
+                                return (
+                                  <button
+                                    key={entry.path}
+                                    type="button"
+                                    onClick={() => {
+                                      handleBrowseKnowledgeFolder(entry.path)
+                                      setExpandedFilePaths((current) => {
+                                        const next = new Set(current)
+                                        next.add(entry.path)
+                                        return next
+                                      })
+                                    }}
+                                    className="flex w-full items-center justify-between gap-3 bg-primary-50 px-3 py-2 text-left text-sm transition-colors hover:bg-primary-100 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+                                  >
+                                    <span className="flex min-w-0 items-center gap-2">
+                                      <HugeiconsIcon
+                                        icon={Folder01Icon}
+                                        size={16}
+                                        strokeWidth={1.7}
+                                        className="shrink-0"
+                                      />
+                                      <span className="min-w-0 truncate">
+                                        {entry.name}
+                                      </span>
+                                    </span>
+                                    <span className="shrink-0 text-xs text-primary-400 dark:text-neutral-500">
+                                      Folder
+                                    </span>
+                                  </button>
+                                )
+                              }
+
+                              return (
+                                <div
+                                  key={entry.path}
+                                  className="flex w-full items-center justify-between gap-3 bg-primary-50 px-3 py-2 text-left text-sm dark:bg-neutral-950"
+                                >
+                                  <span className="flex min-w-0 items-center gap-2">
+                                    <HugeiconsIcon
+                                      icon={File01Icon}
+                                      size={16}
+                                      strokeWidth={1.7}
+                                      className="shrink-0"
+                                    />
+                                    <span className="min-w-0">
+                                      <span className="block truncate">
+                                        {entry.name}
+                                      </span>
+                                      {reviewRow?.targetWikiPath ? (
+                                        <span className="block truncate text-xs text-primary-500 dark:text-neutral-400">
+                                          Builds {reviewRow.targetWikiPath}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  </span>
+                                  <span className="flex shrink-0 items-center gap-2">
+                                    {reviewRow ? (
+                                      <>
+                                        <StatusPill
+                                          status={status}
+                                          label={statusLabel}
+                                        />
+                                        <button
+                                          type="button"
+                                          disabled={
+                                            ingestPending ||
+                                            activity?.status === 'running'
+                                          }
+                                          onClick={() =>
+                                            void handleIngestKnowledgeUpload(
+                                              reviewRow.retryUploadRef,
+                                            )
+                                          }
+                                          className="inline-flex items-center gap-1.5 rounded-lg border border-accent-600 bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                          <HugeiconsIcon
+                                            icon={Upload01Icon}
+                                            size={14}
+                                            strokeWidth={1.7}
+                                          />
+                                          Build
+                                        </button>
+                                      </>
+                                    ) : null}
+                                    <span className="text-xs text-primary-400 dark:text-neutral-500">
+                                      {formatBytes(entry.size)}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={deleting}
+                                      onClick={() =>
+                                        void handleDeleteKnowledgeFile(
+                                          entry.path,
+                                        )
+                                      }
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-primary-200 px-2 py-1.5 text-xs font-medium transition-colors hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                                    >
+                                      <HugeiconsIcon
+                                        icon={Delete01Icon}
+                                        size={14}
+                                        strokeWidth={1.7}
+                                      />
+                                      {deleting ? 'Deleting' : 'Delete'}
+                                    </button>
+                                  </span>
+                                </div>
+                              )
+                            })}
                           </div>
                         )}
                       </section>
-                    </aside>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2147,6 +2323,54 @@ export function KnowledgeBrowserScreen() {
           </section>
         </div>
 
+        <DialogRoot
+          open={folderPromptOpen}
+          onOpenChange={(open) => {
+            setFolderPromptOpen(open)
+            if (!open) setFolderPromptValue('')
+          }}
+        >
+          <DialogContent>
+            <div className="space-y-3 p-5">
+              <DialogTitle>New Folder</DialogTitle>
+              <DialogDescription>
+                Create a folder inside wiki/{browserPath || ''}.
+              </DialogDescription>
+              <input
+                value={folderPromptValue}
+                onChange={(event) => setFolderPromptValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    void handleCreateFolderPromptSubmit()
+                  }
+                }}
+                className="w-full rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFolderPromptOpen(false)
+                    setFolderPromptValue('')
+                  }}
+                  className="rounded-lg border border-primary-200 px-3 py-2 text-sm font-semibold hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!folderPromptValue.trim()}
+                  onClick={() => void handleCreateFolderPromptSubmit()}
+                  className="rounded-lg border border-accent-600 bg-accent-500 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </DialogRoot>
+
         <DialogRoot open={graphOpen} onOpenChange={setGraphOpen}>
           <DialogContent className="w-[min(980px,94vw)] max-w-none p-0">
             <div className="border-b border-primary-200 px-5 py-4 dark:border-neutral-800">
@@ -2334,6 +2558,36 @@ function InlineBadge({ label }: { label: string }) {
   return (
     <span className="rounded-full border border-primary-200 bg-primary-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
       {label}
+    </span>
+  )
+}
+
+function StatusPill({
+  status,
+  label,
+}: {
+  status: KnowledgeActivityStatus
+  label?: string
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
+      <span
+        className={cn(
+          'size-1.5 rounded-full',
+          status === 'running' && 'bg-primary-500 dark:bg-neutral-300',
+          status === 'waiting' && 'bg-primary-400 dark:bg-neutral-500',
+          status === 'done' && 'bg-primary-600 dark:bg-neutral-200',
+          status === 'failed' && 'bg-red-600 dark:bg-red-300',
+        )}
+      />
+      {label ||
+        (status === 'running'
+          ? 'Running'
+          : status === 'waiting'
+            ? 'Waiting'
+            : status === 'done'
+              ? 'Done'
+              : 'Failed')}
     </span>
   )
 }

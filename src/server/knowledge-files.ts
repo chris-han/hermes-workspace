@@ -354,11 +354,57 @@ export async function createKnowledgeDirectory(
     resolved.effectiveRoot,
     path.join(parentDirectory, sanitizedName),
   )
-  await fs.mkdir(targetDirectory, { recursive: false })
+  try {
+    await fs.mkdir(targetDirectory, { recursive: false })
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'EEXIST') {
+      const stats = await fs.stat(targetDirectory).catch(() => null)
+      if (stats?.isDirectory()) {
+        return {
+          ok: true,
+          name: sanitizedName,
+          path: relativeToWikiRoot(resolved.effectiveRoot, targetDirectory),
+        }
+      }
+    }
+    throw error
+  }
   return {
     ok: true,
     name: sanitizedName,
     path: relativeToWikiRoot(resolved.effectiveRoot, targetDirectory),
+  }
+}
+
+export async function deleteKnowledgeFile(
+  workspaceRoot: string,
+  requestedPath: string | null | undefined,
+  context?: KnowledgeFilesContext,
+): Promise<{
+  ok: true
+  path: string
+}> {
+  const resolved = resolveEffectiveWikiRoot(workspaceRoot, context)
+  const rawPath = requestedPath?.trim() ?? ''
+  if (!rawPath) {
+    throw new Error('File path is required')
+  }
+  if (path.isAbsolute(rawPath)) {
+    throw new Error('Path is outside wiki root')
+  }
+  const targetPath = ensureInsideRoot(
+    resolved.effectiveRoot,
+    path.resolve(resolved.effectiveRoot, rawPath),
+  )
+  const stats = await fs.stat(targetPath)
+  if (!stats.isFile()) {
+    throw new Error('Only files can be deleted here')
+  }
+  await fs.unlink(targetPath)
+  return {
+    ok: true,
+    path: relativeToWikiRoot(resolved.effectiveRoot, targetPath),
   }
 }
 

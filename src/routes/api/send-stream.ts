@@ -14,6 +14,7 @@ import {
   markRunStatus,
   persistRunTrajectory,
   setRunThinking,
+  upsertRunToolCall,
 } from '../../server/run-store'
 import {
   WorkspaceAuthRequiredError,

@@ -7,14 +7,17 @@ import {
   SatelliteIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DataConnectionStatusCard } from './components/data-connection-status-card'
 import { CompanyDatasetImportPanel } from './components/company-dataset-import-panel'
 import {
   KnowledgeSourceForm,
   createDefaultKnowledgeSourceDraft,
 } from './components/knowledge-source-form'
-import type { KnowledgeSourceDraft } from './components/knowledge-source-form'
+import type {
+  KnowledgeSourceDraft,
+  KnowledgeSourceModalViewModel,
+} from './components/knowledge-source-form'
 import type { DataConnectionsSummary } from '@/server/data-connections'
 import { toast } from '@/components/ui/toast'
 import { useOrganizationSettings } from '@/lib/organization-membership'
@@ -28,6 +31,13 @@ type SummaryResponse = {
 type KnowledgeConfigResponse = {
   config?: {
     source?: KnowledgeSourceDraft
+  }
+  resolved?: {
+    configuredPath?: string
+    effectiveRoot?: string
+    effectiveRootLabel?: string
+    usesWorkspaceDefault?: boolean
+    upstreamWikiPath?: string
   }
   error?: string
 }
@@ -56,6 +66,9 @@ export function DataConnectionsScreen() {
   const [draft, setDraft] = useState<KnowledgeSourceDraft>(
     createDefaultKnowledgeSourceDraft(),
   )
+  const [savedDraft, setSavedDraft] = useState<KnowledgeSourceDraft>(
+    createDefaultKnowledgeSourceDraft(),
+  )
   const [savePending, setSavePending] = useState(false)
   const [syncPending, setSyncPending] = useState(false)
   const [knowledgeError, setKnowledgeError] = useState<string | null>(null)
@@ -73,8 +86,97 @@ export function DataConnectionsScreen() {
 
   useEffect(() => {
     const source = knowledgeConfigQuery.data?.config?.source
-    if (source) setDraft(source)
+    if (source) {
+      setDraft(source)
+      setSavedDraft(source)
+    }
   }, [knowledgeConfigQuery.data?.config?.source])
+
+  const knowledgeDirty = useMemo(() => {
+    return JSON.stringify(draft) !== JSON.stringify(savedDraft)
+  }, [draft, savedDraft])
+
+  const knowledgeStatus = useMemo<
+    KnowledgeSourceModalViewModel['status']
+  >(() => {
+    const error = knowledgeError ?? knowledgeConfigQuery.data?.error ?? null
+    if (savePending) {
+      return {
+        kind: 'saving',
+        message: 'Saving...',
+        failures: [],
+        renamed: [],
+        ingested: [],
+      }
+    }
+    if (syncPending) {
+      return {
+        kind: 'syncing',
+        message: 'Syncing...',
+        failures: [],
+        renamed: [],
+        ingested: [],
+      }
+    }
+    if (error) {
+      return {
+        kind: 'failed',
+        message: error,
+        failures: [{ filename: 'knowledge', error }],
+        renamed: [],
+        ingested: [],
+      }
+    }
+    if (knowledgeDirty) {
+      return {
+        kind: 'dirty',
+        message: 'Unsaved changes',
+        failures: [],
+        renamed: [],
+        ingested: [],
+      }
+    }
+    return {
+      kind: 'idle',
+      message: '',
+      failures: [],
+      renamed: [],
+      ingested: [],
+    }
+  }, [
+    knowledgeConfigQuery.data?.error,
+    knowledgeDirty,
+    knowledgeError,
+    savePending,
+    syncPending,
+  ])
+
+  const knowledgeViewModel = useMemo<KnowledgeSourceModalViewModel>(() => {
+    const resolved = knowledgeConfigQuery.data?.resolved
+    return {
+      source: draft,
+      savedSource: savedDraft,
+      configuredPath: resolved?.configuredPath || '',
+      savedConfiguredPath: resolved?.configuredPath || '',
+      effectiveRootLabel:
+        resolved?.effectiveRootLabel || resolved?.effectiveRoot || 'wiki',
+      upstreamWikiPathLabel: resolved?.upstreamWikiPath || 'wiki',
+      usesWorkspaceDefault: resolved?.usesWorkspaceDefault ?? true,
+      dirty: knowledgeDirty,
+      status: knowledgeStatus,
+      contextEngineering: {
+        authorityLabel: 'raw_source',
+        candidateOnly: true,
+        governedPromotionRequired: true,
+      },
+    }
+  }, [
+    draft,
+    knowledgeConfigQuery.data?.resolved,
+    knowledgeDirty,
+    knowledgeStatus,
+    savedDraft,
+  ])
 
   async function handleSave() {
     setSavePending(true)
@@ -101,6 +203,8 @@ export function DataConnectionsScreen() {
         throw new Error(payload.error || `Save failed (${response.status})`)
       }
       await queryClient.invalidateQueries({ queryKey: ['knowledge'] })
+      setDraft(source)
+      setSavedDraft(source)
       toast('Knowledge source saved', { type: 'success' })
     } catch (error) {
       const message =
@@ -250,14 +354,14 @@ export function DataConnectionsScreen() {
           </div>
 
           <KnowledgeSourceForm
-            value={draft}
+            viewModel={knowledgeViewModel}
             onChange={setDraft}
+            onUseWorkspaceDefault={() =>
+              setDraft({ type: 'local', path: 'wiki' })
+            }
             onSave={handleSave}
             onSync={draft.type === 'github' ? handleSync : undefined}
-            saving={savePending}
-            syncing={syncPending}
-            error={knowledgeError ?? knowledgeConfigQuery.data?.error ?? null}
-            mode="embedded"
+            onDismissStatus={() => setKnowledgeError(null)}
           />
         </section>
 

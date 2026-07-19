@@ -537,13 +537,8 @@ async function stageKnowledgeUpload(
   const workspaceId =
     context?.workspaceId || path.basename(path.resolve(workspaceRoot))
   const sessionId = context?.sessionId || 'knowledge-ui'
-  const uploadsDir = path.join(
-    path.resolve(workspaceRoot),
-    'sessions',
-    sessionId,
-    'uploads',
-    'knowledge-wiki',
-  )
+  const resolved = resolveEffectiveWikiRoot(workspaceRoot, context)
+  const uploadsDir = resolveTargetDirectory(resolved.effectiveRoot, targetDir)
   const bytes = new Uint8Array(await file.arrayBuffer())
   await fs.mkdir(uploadsDir, { recursive: true })
   const written = await writeWithCollisionSuffix(

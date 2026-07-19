@@ -259,14 +259,22 @@ describe('knowledge-files workspace operations', () => {
     createdRoots.push(workspaceRoot)
 
     await expect(
-      writeKnowledgeUpload(workspaceRoot, file('doc.pdf', 'pdf')),
+      writeKnowledgeUpload(workspaceRoot, file('doc.pdf', 'pdf'), '招投标'),
     ).resolves.toMatchObject({
       ok: true,
       kind: 'staged_for_ingest',
+      storedName: 'doc.pdf',
       requiresIngest: true,
       ingestKind: 'document_extraction',
       canonicalArtifactKind: 'canonical_document',
+      targetWikiPath: '招投标/doc.md',
     })
+    expect(
+      fsSync.readFileSync(
+        path.join(workspaceRoot, 'wiki', '招投标', 'doc.pdf'),
+        'utf-8',
+      ),
+    ).toBe('pdf')
 
     await expect(
       writeKnowledgeUpload(workspaceRoot, file('sheet.xlsx', 'xlsx')),

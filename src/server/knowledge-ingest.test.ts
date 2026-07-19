@@ -4,6 +4,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ingestKnowledgeUpload } from './knowledge-ingest'
+import { writeKnowledgeBaseConfig } from './knowledge-config'
 import { writeKnowledgeUpload } from './knowledge-files'
 
 function makeWorkspaceRoot(prefix: string): string {
@@ -76,7 +77,7 @@ describe('knowledge-ingest governed import', () => {
 
     expect(extractDocumentContent).toHaveBeenCalledWith(
       expect.objectContaining({
-        document_ref: upload.stagedUploadRef,
+        document_ref: 'wiki/source.pdf',
         mode: 'live',
       }),
     )
@@ -95,6 +96,56 @@ describe('knowledge-ingest governed import', () => {
         'utf-8',
       ),
     ).toContain('Extracted text')
+  })
+
+  it('can force parser-backed imports into the selected workspace wiki folder', async () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-ingest-force-wiki-')
+    createdRoots.push(workspaceRoot)
+    writeKnowledgeBaseConfig(
+      { source: { type: 'local', path: 'knowledge-base' } },
+      workspaceRoot,
+    )
+    const upload = await writeKnowledgeUpload(
+      workspaceRoot,
+      file('source.docx', 'docx'),
+      '招投标',
+      { forceWorkspaceWikiRoot: true },
+    )
+    if (!upload.ok || upload.kind !== 'staged_for_ingest')
+      throw new Error('stage failed')
+
+    const result = await ingestKnowledgeUpload(
+      workspaceRoot,
+      {
+        uploadRef: upload.stagedUploadRef,
+        confirmed: true,
+        targetDir: '招投标',
+        forceWorkspaceWikiRoot: true,
+      },
+      {
+        extractDocumentContent: async () => ({
+          normalized_document_artifact_ref: 'canonical_document:v1:doc',
+          parser: { method: 'document_extraction.local.v1' },
+          text_blocks: [{ text: '招投标 extracted text' }],
+        }),
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      storedMarkdownPath: '招投标/source.md',
+    })
+    expect(
+      fsSync.readFileSync(
+        path.join(workspaceRoot, 'wiki', '招投标', 'source.md'),
+        'utf-8',
+      ),
+    ).toContain('招投标 extracted text')
+    expect(
+      fsSync.existsSync(
+        path.join(workspaceRoot, 'knowledge-base', '招投标', 'source.md'),
+      ),
+    ).toBe(false)
   })
 
   it('routes xlsx refs through the table ingestion boundary before wiki rendering', async () => {

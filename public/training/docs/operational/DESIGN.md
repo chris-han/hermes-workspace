@@ -296,6 +296,9 @@ Large radius (`rounded-card` / 20px, `rounded-xl`) is reserved for primary conte
 | Badge / chip | `rounded-md` (12px) or `rounded-full` |
 | Image attachment wrapper | `rounded-md` (12px) |
 
+#### Native Dropdown Option Surfaces
+Provider/model configuration selects and other native `<select>` controls must theme their popup options as well as the closed trigger. The closed control uses `--theme-input` or `--theme-card`, `--theme-border`, and `--theme-text`; each `<option>` uses `--theme-card` + `--theme-text`; the selected option uses `--theme-accent` + `--theme-accent-foreground`. Do not leave native dropdowns with browser-default white option backgrounds or blue selected rows in dark themed workspace surfaces.
+
 ---
 
 **Primary Green CTA**

@@ -111,6 +111,7 @@ import { Route as ApiKnowledgeListRouteImport } from './routes/api/knowledge/lis
 import { Route as ApiKnowledgeIngestRouteImport } from './routes/api/knowledge/ingest'
 import { Route as ApiKnowledgeGraphRouteImport } from './routes/api/knowledge/graph'
 import { Route as ApiKnowledgeFilesRouteImport } from './routes/api/knowledge/files'
+import { Route as ApiKnowledgeEventsRouteImport } from './routes/api/knowledge/events'
 import { Route as ApiKnowledgeConfigRouteImport } from './routes/api/knowledge/config'
 import { Route as ApiHermesTasksTaskIdRouteImport } from './routes/api/hermes-tasks.$taskId'
 import { Route as ApiHermesProxySplatRouteImport } from './routes/api/hermes-proxy/$'
@@ -631,6 +632,11 @@ const ApiKnowledgeFilesRoute = ApiKnowledgeFilesRouteImport.update({
   path: '/api/knowledge/files',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiKnowledgeEventsRoute = ApiKnowledgeEventsRouteImport.update({
+  id: '/api/knowledge/events',
+  path: '/api/knowledge/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiKnowledgeConfigRoute = ApiKnowledgeConfigRouteImport.update({
   id: '/api/knowledge/config',
   path: '/api/knowledge/config',
@@ -746,6 +752,7 @@ export interface FileRoutesByFullPath {
   '/api/hermes-proxy/$': typeof ApiHermesProxySplatRoute
   '/api/hermes-tasks/$taskId': typeof ApiHermesTasksTaskIdRoute
   '/api/knowledge/config': typeof ApiKnowledgeConfigRoute
+  '/api/knowledge/events': typeof ApiKnowledgeEventsRoute
   '/api/knowledge/files': typeof ApiKnowledgeFilesRoute
   '/api/knowledge/graph': typeof ApiKnowledgeGraphRoute
   '/api/knowledge/ingest': typeof ApiKnowledgeIngestRoute
@@ -856,6 +863,7 @@ export interface FileRoutesByTo {
   '/api/hermes-proxy/$': typeof ApiHermesProxySplatRoute
   '/api/hermes-tasks/$taskId': typeof ApiHermesTasksTaskIdRoute
   '/api/knowledge/config': typeof ApiKnowledgeConfigRoute
+  '/api/knowledge/events': typeof ApiKnowledgeEventsRoute
   '/api/knowledge/files': typeof ApiKnowledgeFilesRoute
   '/api/knowledge/graph': typeof ApiKnowledgeGraphRoute
   '/api/knowledge/ingest': typeof ApiKnowledgeIngestRoute
@@ -968,6 +976,7 @@ export interface FileRoutesById {
   '/api/hermes-proxy/$': typeof ApiHermesProxySplatRoute
   '/api/hermes-tasks/$taskId': typeof ApiHermesTasksTaskIdRoute
   '/api/knowledge/config': typeof ApiKnowledgeConfigRoute
+  '/api/knowledge/events': typeof ApiKnowledgeEventsRoute
   '/api/knowledge/files': typeof ApiKnowledgeFilesRoute
   '/api/knowledge/graph': typeof ApiKnowledgeGraphRoute
   '/api/knowledge/ingest': typeof ApiKnowledgeIngestRoute
@@ -1081,6 +1090,7 @@ export interface FileRouteTypes {
     | '/api/hermes-proxy/$'
     | '/api/hermes-tasks/$taskId'
     | '/api/knowledge/config'
+    | '/api/knowledge/events'
     | '/api/knowledge/files'
     | '/api/knowledge/graph'
     | '/api/knowledge/ingest'
@@ -1191,6 +1201,7 @@ export interface FileRouteTypes {
     | '/api/hermes-proxy/$'
     | '/api/hermes-tasks/$taskId'
     | '/api/knowledge/config'
+    | '/api/knowledge/events'
     | '/api/knowledge/files'
     | '/api/knowledge/graph'
     | '/api/knowledge/ingest'
@@ -1302,6 +1313,7 @@ export interface FileRouteTypes {
     | '/api/hermes-proxy/$'
     | '/api/hermes-tasks/$taskId'
     | '/api/knowledge/config'
+    | '/api/knowledge/events'
     | '/api/knowledge/files'
     | '/api/knowledge/graph'
     | '/api/knowledge/ingest'
@@ -1404,6 +1416,7 @@ export interface RootRouteChildren {
   ApiDataConnectionsSummaryRoute: typeof ApiDataConnectionsSummaryRoute
   ApiHermesProxySplatRoute: typeof ApiHermesProxySplatRoute
   ApiKnowledgeConfigRoute: typeof ApiKnowledgeConfigRoute
+  ApiKnowledgeEventsRoute: typeof ApiKnowledgeEventsRoute
   ApiKnowledgeFilesRoute: typeof ApiKnowledgeFilesRoute
   ApiKnowledgeGraphRoute: typeof ApiKnowledgeGraphRoute
   ApiKnowledgeIngestRoute: typeof ApiKnowledgeIngestRoute
@@ -2144,6 +2157,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiKnowledgeFilesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/knowledge/events': {
+      id: '/api/knowledge/events'
+      path: '/api/knowledge/events'
+      fullPath: '/api/knowledge/events'
+      preLoaderRoute: typeof ApiKnowledgeEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/knowledge/config': {
       id: '/api/knowledge/config'
       path: '/api/knowledge/config'
@@ -2376,6 +2396,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDataConnectionsSummaryRoute: ApiDataConnectionsSummaryRoute,
   ApiHermesProxySplatRoute: ApiHermesProxySplatRoute,
   ApiKnowledgeConfigRoute: ApiKnowledgeConfigRoute,
+  ApiKnowledgeEventsRoute: ApiKnowledgeEventsRoute,
   ApiKnowledgeFilesRoute: ApiKnowledgeFilesRoute,
   ApiKnowledgeGraphRoute: ApiKnowledgeGraphRoute,
   ApiKnowledgeIngestRoute: ApiKnowledgeIngestRoute,

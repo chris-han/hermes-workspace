@@ -88,7 +88,10 @@ import { SIDEBAR_TOGGLE_EVENT } from '@/hooks/use-global-shortcuts'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { TerminalPanel } from '@/components/terminal-panel'
 import { InspectorPanel } from '@/components/inspector/inspector-panel'
-import { setActivitySessionKey } from '@/components/inspector/activity-store'
+import {
+  pushActivity,
+  setActivitySessionKey,
+} from '@/components/inspector/activity-store'
 import { useTerminalPanelStore } from '@/stores/terminal-panel-store'
 import { useModelSuggestions } from '@/hooks/use-model-suggestions'
 import { ModelSuggestionToast } from '@/components/model-suggestion-toast'
@@ -102,8 +105,6 @@ import { useResearchCard } from '@/hooks/use-research-card'
 import { useTapDebug } from '@/hooks/use-tap-debug'
 import { useChatMode } from '@/hooks/use-chat-mode'
 
-// Activity store removed — not used in Hermes Workspace
-const _noopSetActivity = (_s: string) => {}
 const FIRST_DEMO_WALKTHROUGH_PROMPT =
   '基于当前组织的 demo dataset，生成营业分析，重点说明收入结构、项目毛利、回款节奏、现金压力和需要关注的经营异常。'
 
@@ -742,6 +743,11 @@ export function ChatScreen({
       activeSessionKey ||
       null
 
+  const inspectorSessionKeyRef = useRef<string | null>(null)
+  useEffect(() => {
+    inspectorSessionKeyRef.current = inspectorSessionKey
+  }, [inspectorSessionKey])
+
   // On remount, check if the server still has an active run for this session.
   // If so, re-set waitingForResponse in the store so the UI shows the spinner.
   useActiveRunCheck({
@@ -839,8 +845,31 @@ export function ChatScreen({
         typeof agentIdValue === 'string' && agentIdValue.trim().length > 0
           ? agentIdValue
           : 'hermes'
+      const resolvedSessionForApproval =
+        typeof payload.sessionKey === 'string' && payload.sessionKey.trim().length > 0
+          ? payload.sessionKey.trim()
+          : inspectorSessionKeyRef.current
+
+      pushActivity({
+        type: 'user_decision',
+        time: new Date().toLocaleTimeString(),
+        text: `Approval requested: ${action}`,
+        details: {
+          event: 'approval',
+          phase: 'requested',
+          agentId,
+          agentName,
+          action,
+          context,
+          approvalId: approvalId || null,
+          sessionKey: resolvedSessionForApproval,
+        },
+      })
 
       addApproval({
+          sessionKey: resolvedSessionForApproval || '',
+          command: action,
+          timestamp: Date.now(),
         agentId,
         agentName,
         action,
@@ -921,6 +950,27 @@ export function ChatScreen({
 
   const resolvePendingApproval = useCallback(
     async (approval: ApprovalRequest, status: 'approved' | 'denied') => {
+      const resolvedSessionForApproval =
+        typeof approval.sessionKey === 'string' && approval.sessionKey.trim().length > 0
+          ? approval.sessionKey.trim()
+          : inspectorSessionKeyRef.current
+
+      pushActivity({
+        type: 'user_decision',
+        time: new Date().toLocaleTimeString(),
+        text: `${status === 'approved' ? 'Approved' : 'Denied'}: ${approval.action || approval.command || 'approval'}`,
+        details: {
+          event: 'approval',
+          phase: status,
+          approvalId: approval.approvalId ?? null,
+          agentId: approval.agentId ?? null,
+          agentName: approval.agentName ?? null,
+          action: approval.action ?? approval.command ?? null,
+          context: approval.context ?? null,
+          sessionKey: resolvedSessionForApproval,
+        },
+      })
+
       const nextApprovals = loadApprovals().map((entry) => {
         if (entry.id !== approval.id) return entry
         return {

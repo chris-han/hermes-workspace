@@ -644,6 +644,27 @@ function ActivityExpandedDetails({ event }: { event: ActivityEvent }) {
     )
   }
 
+  if (eventType === 'approval') {
+    const phase = typeof details.phase === 'string' ? details.phase : null
+    const agentName =
+      typeof details.agentName === 'string' ? details.agentName : null
+    const action = typeof details.action === 'string' ? details.action : event.text
+    const approvalId =
+      typeof details.approvalId === 'string' ? details.approvalId : null
+    const sessionKey =
+      typeof details.sessionKey === 'string' ? details.sessionKey : null
+    return (
+      <div className="space-y-2">
+        <DetailRow label="status" value={phase || 'requested'} />
+        <DetailRow label="agent" value={agentName} />
+        <DetailRow label="action" value={action} />
+        <DetailRow label="approval id" value={approvalId} />
+        <DetailRow label="session" value={sessionKey} />
+        <JsonDetailBlock label="context" value={details.context} />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-2">
       <DetailRow label="type" value={event.type} />
@@ -701,6 +722,9 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
   const [persistedEvents, setPersistedEvents] = useState<Array<ActivityEvent>>(
     [],
   )
+  const [activityFilter, setActivityFilter] = useState<
+    'all_activity' | 'all_decisions' | 'agent_decisions' | 'user_decisions'
+  >('all_activity')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const filteredEvents = useMemo(() => {
@@ -720,6 +744,39 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
     }
     return merged
   }, [events, persistedEvents, sessionKey])
+
+  const visibleEvents = useMemo(() => {
+    function isAgentDecision(event: ActivityEvent): boolean {
+      const details = event.details ?? {}
+      const detailsEvent =
+        typeof details.event === 'string' ? details.event : undefined
+      const phase = typeof details.phase === 'string' ? details.phase : undefined
+      return (
+        (detailsEvent === 'tool' && phase === 'complete') ||
+        detailsEvent === 'done' ||
+        event.type === 'assistant_complete'
+      )
+    }
+
+    function isUserDecision(event: ActivityEvent): boolean {
+      const details = event.details ?? {}
+      const detailsEvent =
+        typeof details.event === 'string' ? details.event : undefined
+      return detailsEvent === 'approval' || event.type === 'user_decision'
+    }
+
+    if (activityFilter === 'all_activity') return filteredEvents
+    if (activityFilter === 'agent_decisions') {
+      return filteredEvents.filter((event) => isAgentDecision(event))
+    }
+    if (activityFilter === 'user_decisions') {
+      return filteredEvents.filter((event) => isUserDecision(event))
+    }
+    return filteredEvents.filter(
+      (event) => isAgentDecision(event) || isUserDecision(event),
+    )
+  }, [activityFilter, filteredEvents])
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({})
 
@@ -758,18 +815,14 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
-  }, [filteredEvents.length])
+  }, [visibleEvents.length])
 
   if (!sessionKey) {
     return <EmptyState text="Open a session to see activity" />
   }
 
-  if (loading && filteredEvents.length === 0) {
+  if (loading && visibleEvents.length === 0) {
     return <LoadingState text="Loading activity..." />
-  }
-
-  if (filteredEvents.length === 0) {
-    return <EmptyState text="No activity recorded for this session" />
   }
 
   const toggleExpanded = (key: string) => {
@@ -784,6 +837,46 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
       ref={scrollRef}
       className="space-y-1 p-3 overflow-auto max-h-[calc(100vh-140px)]"
     >
+      <div className="mb-2 flex flex-wrap items-center gap-1">
+        {(
+          [
+            { value: 'all_activity', label: 'All Activity' },
+            { value: 'all_decisions', label: 'All Decisions' },
+            { value: 'agent_decisions', label: 'Agent Decisions' },
+            { value: 'user_decisions', label: 'User Decisions' },
+          ] as Array<{
+            value:
+              | 'all_activity'
+              | 'all_decisions'
+              | 'agent_decisions'
+              | 'user_decisions'
+            label: string
+          }>
+        ).map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            onClick={() => setActivityFilter(item.value)}
+            className="rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]"
+            style={{
+              borderColor:
+                activityFilter === item.value
+                  ? 'var(--theme-accent)'
+                  : 'var(--theme-border)',
+              color:
+                activityFilter === item.value
+                  ? 'var(--theme-accent)'
+                  : 'var(--theme-muted)',
+              background:
+                activityFilter === item.value
+                  ? 'var(--theme-card)'
+                  : 'var(--theme-card2)',
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
       {error ? (
         <div
           className="rounded-md px-2 py-1.5 text-xs"
@@ -795,7 +888,10 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
           {error}
         </div>
       ) : null}
-      {filteredEvents.map((event: ActivityEvent, i: number) => (
+      {visibleEvents.length === 0 ? (
+        <EmptyState text="No events match this filter for this session" />
+      ) : null}
+      {visibleEvents.map((event: ActivityEvent, i: number) => (
         <div
           key={i}
           className="rounded-md text-xs"

@@ -1112,7 +1112,7 @@ export function ProfilesScreen() {
                         setDetailProvider(event.target.value)
                         setDetailModel('')
                       }}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+                      className="role-config-select h-10 w-full rounded-md border px-3 text-sm outline-none transition-colors"
                     >
                       <option value="">Select provider</option>
                       {detailProviderOptions.map((provider) => (
@@ -1130,7 +1130,7 @@ export function ProfilesScreen() {
                       value={detailModel}
                       onChange={(event) => setDetailModel(event.target.value)}
                       disabled={!detailProvider}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary disabled:opacity-60"
+                      className="role-config-select h-10 w-full rounded-md border px-3 text-sm outline-none transition-colors disabled:opacity-60"
                     >
                       {!detailProvider ? (
                         <option value="">Select provider first</option>

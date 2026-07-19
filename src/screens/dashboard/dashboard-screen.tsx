@@ -24,6 +24,11 @@ import {
 } from '@hugeicons/core-free-icons'
 import type { ReactNode } from 'react'
 import type { HermesSession } from '@/server/hermes-api'
+import {
+  fetchGatewayApprovals,
+  resolveGatewayApproval,
+  type GatewayApprovalEntry,
+} from '@/lib/gateway-api'
 import { getUnavailableReason } from '@/lib/feature-gates'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { cn } from '@/lib/utils'
@@ -44,6 +49,358 @@ function formatNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(n)
+}
+
+function timeAgoMs(ts?: number): string {
+  if (!ts || !Number.isFinite(ts)) return 'unknown'
+  const diff = Date.now() - ts
+  if (diff < 60_000) return `${Math.max(1, Math.floor(diff / 1000))}s ago`
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
+  return `${Math.floor(diff / 86_400_000)}d ago`
+}
+
+type AccessControlResponse = {
+  ok?: boolean
+  accessControl?: {
+    role?: 'regular' | 'administrator'
+  }
+}
+
+type DecisionStatus = 'cleared' | 'paused' | 'blocked'
+type DecisionSource = 'user_approval' | 'agent_decision'
+type DecisionFilter = 'all' | DecisionSource
+
+type DashboardDecision = {
+  id: string
+  gatewayApprovalId?: string
+  agentName: string
+  actionLabel: string
+  context: string
+  status: DecisionStatus
+  source: DecisionSource
+  requestedAt?: number
+}
+
+type SessionActivityPayload = {
+  events?: Array<Record<string, unknown>>
+}
+
+type SessionActivityEvent = {
+  type?: unknown
+  time?: unknown
+  text?: unknown
+  details?: unknown
+}
+
+function parseEventTimestamp(value: unknown): number | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined
+  const parsed = Date.parse(value)
+  return Number.isNaN(parsed) ? undefined : parsed
+}
+
+function normalizeAgentDecisionsFromActivity(
+  sessionId: string,
+  payload: SessionActivityPayload | null,
+): Array<DashboardDecision> {
+  const rawEvents = Array.isArray(payload?.events) ? payload.events : []
+  const out: Array<DashboardDecision> = []
+
+  rawEvents.forEach((entry, index) => {
+    const event = entry as SessionActivityEvent
+    const details =
+      event.details && typeof event.details === 'object'
+        ? (event.details as Record<string, unknown>)
+        : {}
+    const detailsEvent =
+      typeof details.event === 'string' ? details.event : undefined
+    const phase = typeof details.phase === 'string' ? details.phase : undefined
+    const isToolComplete = detailsEvent === 'tool' && phase === 'complete'
+    const isAssistantComplete =
+      event.type === 'assistant_complete' || detailsEvent === 'done'
+
+    if (!isToolComplete && !isAssistantComplete) return
+
+    const errorMessage =
+      typeof details.errorMessage === 'string' ? details.errorMessage.trim() : ''
+    const status: DecisionStatus = errorMessage ? 'blocked' : 'cleared'
+    const actionLabel =
+      typeof details.toolName === 'string' && details.toolName.trim()
+        ? details.toolName
+        : typeof event.text === 'string' && event.text.trim()
+          ? event.text
+          : 'Agent decision'
+    const preview =
+      typeof details.preview === 'string' && details.preview.trim()
+        ? details.preview
+        : ''
+
+    out.push({
+      id: `agent:${sessionId}:${index}:${String(event.type ?? 'event')}`,
+      agentName: `Session ${sessionId.slice(0, 8)}`,
+      actionLabel,
+      context: preview,
+      status,
+      source: 'agent_decision',
+      requestedAt: parseEventTimestamp(event.time),
+    })
+  })
+
+  return out
+}
+
+function normalizeDecisionStatus(
+  status?: GatewayApprovalEntry['status'],
+): DecisionStatus {
+  if (status === 'approved') return 'cleared'
+  if (status === 'denied') return 'blocked'
+  return 'paused'
+}
+
+function decisionActionLabel(entry: GatewayApprovalEntry): string {
+  if (typeof entry.action === 'string' && entry.action.trim().length > 0) {
+    return entry.action.trim()
+  }
+  if (typeof entry.tool === 'string' && entry.tool.trim().length > 0) {
+    return entry.tool.trim()
+  }
+  return 'Approval requested'
+}
+
+function decisionContextLabel(entry: GatewayApprovalEntry): string {
+  if (typeof entry.context === 'string' && entry.context.trim().length > 0) {
+    return entry.context.trim()
+  }
+  if (entry.input === undefined) return ''
+  try {
+    return JSON.stringify(entry.input)
+  } catch {
+    return ''
+  }
+}
+
+function normalizeDashboardDecision(
+  entry: GatewayApprovalEntry,
+): DashboardDecision | null {
+  if (!entry.id) return null
+  return {
+    id: entry.id,
+    gatewayApprovalId: entry.id,
+    agentName: entry.agentName ?? entry.sessionKey ?? 'Gateway',
+    actionLabel: decisionActionLabel(entry),
+    context: decisionContextLabel(entry),
+    status: normalizeDecisionStatus(entry.status),
+    source: 'user_approval',
+    requestedAt: entry.requestedAt,
+  }
+}
+
+function calculateAavrProxy(decisions: Array<DashboardDecision>): number | null {
+  const total = decisions.length
+  if (total === 0) return null
+  const cleared = decisions.filter((decision) => decision.status === 'cleared')
+    .length
+  return cleared / total
+}
+
+function statusTone(status: DecisionStatus): string {
+  if (status === 'blocked') return 'text-danger bg-danger/10 border-danger/20'
+  if (status === 'paused') return 'text-warning bg-warning/10 border-warning/20'
+  return 'text-success bg-success/10 border-success/20'
+}
+
+function DecisionRow({
+  decision,
+  onApprove,
+  onDeny,
+  busy,
+}: {
+  decision: DashboardDecision
+  onApprove: (approvalId: string) => void
+  onDeny: (approvalId: string) => void
+  busy: boolean
+}) {
+  const isPending = decision.status === 'paused'
+  return (
+    <div className="flex flex-col gap-3 border-b border-border px-4 py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[13px] font-medium text-foreground">
+            {decision.agentName}
+          </span>
+          <span
+            className={cn(
+              'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]',
+              statusTone(decision.status),
+            )}
+          >
+            {decision.status}
+          </span>
+        </div>
+        <div className="truncate text-sm text-foreground">
+          {decision.actionLabel}
+        </div>
+        {decision.context ? (
+          <div className="truncate text-xs text-muted-foreground">
+            {decision.context}
+          </div>
+        ) : null}
+      </div>
+      <div className="flex items-center gap-2 sm:justify-end">
+        <span className="text-[10px] tabular-nums text-muted-foreground">
+          {timeAgoMs(decision.requestedAt)}
+        </span>
+        {isPending ? (
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onDeny(decision.gatewayApprovalId ?? decision.id)}
+              className="rounded-full border border-danger/20 bg-danger/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-danger transition-colors hover:bg-danger/15 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Block
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onApprove(decision.gatewayApprovalId ?? decision.id)}
+              className="rounded-full border border-success/20 bg-success/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-success transition-colors hover:bg-success/15 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Clear
+            </button>
+          </>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function AdminEnforcementPanel({
+  decisions,
+  pendingCount,
+  clearedCount,
+  blockedCount,
+  aavrProxy,
+  filter,
+  onFilterChange,
+  onApprove,
+  onDeny,
+  busyDecisionId,
+}: {
+  decisions: Array<DashboardDecision>
+  pendingCount: number
+  clearedCount: number
+  blockedCount: number
+  aavrProxy: number | null
+  filter: DecisionFilter
+  onFilterChange: (next: DecisionFilter) => void
+  onApprove: (approvalId: string) => void
+  onDeny: (approvalId: string) => void
+  busyDecisionId: string | null
+}) {
+  const latest = decisions.slice(0, 7)
+
+  return (
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+      <div className="lg:col-span-4">
+        <DashboardCard title="North Star" className="h-full">
+          <div className="flex h-full min-h-[240px] flex-col justify-between gap-4">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                AAVR
+              </div>
+              <div className="mt-2 text-4xl font-bold tabular-nums text-foreground">
+                {aavrProxy === null ? '—' : `${Math.round(aavrProxy * 100)}%`}
+              </div>
+              <div className="mt-2 text-sm text-muted-foreground">
+                Live governed autonomy proxy from cleared agent decisions.
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+              <div className="rounded-2xl border border-border bg-muted/40 px-2 py-3">
+                <div className="text-lg font-semibold tabular-nums text-foreground">
+                  {pendingCount}
+                </div>
+                Pending
+              </div>
+              <div className="rounded-2xl border border-border bg-muted/40 px-2 py-3">
+                <div className="text-lg font-semibold tabular-nums text-foreground">
+                  {clearedCount}
+                </div>
+                Cleared
+              </div>
+              <div className="rounded-2xl border border-border bg-muted/40 px-2 py-3">
+                <div className="text-lg font-semibold tabular-nums text-foreground">
+                  {blockedCount}
+                </div>
+                Blocked
+              </div>
+            </div>
+          </div>
+        </DashboardCard>
+      </div>
+
+      <div className="lg:col-span-8">
+        <DashboardCard
+          title="Decisions - Last Hour"
+          titleRight={
+            <div className="text-[10px] text-muted-foreground">
+              {clearedCount} cleared · {pendingCount} paused · {blockedCount}{' '}
+              blocked
+            </div>
+          }
+          noPadding
+          className="h-full"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
+            <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+              Filter
+            </div>
+            <div className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 p-1">
+              {(
+                [
+                  { value: 'all', label: 'All decisions' },
+                  { value: 'user_approval', label: 'User approvals' },
+                  { value: 'agent_decision', label: 'Agent decisions' },
+                ] as Array<{ value: DecisionFilter; label: string }>
+              ).map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => onFilterChange(item.value)}
+                  className={cn(
+                    'rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] transition-colors',
+                    filter === item.value
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="py-1">
+            {latest.length === 0 ? (
+              <div className="flex min-h-[220px] items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                No decisions for the selected filter in the last hour.
+              </div>
+            ) : (
+              latest.map((decision) => (
+                <DecisionRow
+                  key={decision.id}
+                  decision={decision}
+                  onApprove={onApprove}
+                  onDeny={onDeny}
+                  busy={busyDecisionId === (decision.gatewayApprovalId ?? decision.id)}
+                />
+              ))
+            )}
+          </div>
+        </DashboardCard>
+      </div>
+    </div>
+  )
 }
 
 // ── Dashboard Card ───────────────────────────────────────────────────
@@ -604,6 +961,16 @@ export function DashboardScreen() {
   const navigate = useNavigate()
   const sessionsAvailable = useFeatureAvailable('sessions')
   const skillsAvailable = useFeatureAvailable('skills')
+  const accessControlQuery = useQuery({
+    queryKey: ['dashboard', 'access-control'],
+    queryFn: async () => {
+      const res = await fetch('/api/paths')
+      if (!res.ok) return null
+      return (await res.json()) as AccessControlResponse
+    },
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  })
   const sessionsQuery = useQuery({
     // Use a dedicated query key — NOT chatQueryKeys.sessions — to avoid
     // cache collisions with the chat sidebar which fetches fewer sessions
@@ -632,7 +999,105 @@ export function DashboardScreen() {
     enabled: sessionsAvailable,
   })
 
+  const approvalsQuery = useQuery({
+    queryKey: ['dashboard', 'gateway-approvals'],
+    queryFn: async () => fetchGatewayApprovals(),
+    staleTime: 0,
+    refetchInterval: 2_000,
+    enabled:
+      (accessControlQuery.data?.accessControl?.role ?? 'regular') ===
+      'administrator',
+  })
+
   const sessions = sessionsQuery.data ?? []
+  const isAdministrator =
+    (accessControlQuery.data?.accessControl?.role ?? 'regular') ===
+    'administrator'
+
+  const recentSessionIds = useMemo(
+    () =>
+      [...sessions]
+        .sort((a, b) => (b.started_at ?? 0) - (a.started_at ?? 0))
+        .slice(0, 12)
+        .map((session) => session.id),
+    [sessions],
+  )
+
+  const activityDecisionQuery = useQuery({
+    queryKey: ['dashboard', 'session-activity-decisions', recentSessionIds],
+    queryFn: async () => {
+      const perSession = await Promise.all(
+        recentSessionIds.map(async (sessionId) => {
+          const res = await fetch(
+            `/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionId)}/activity`,
+          )
+          if (!res.ok) return [] as Array<DashboardDecision>
+          const payload = (await res.json()) as SessionActivityPayload
+          return normalizeAgentDecisionsFromActivity(sessionId, payload)
+        }),
+      )
+      return perSession.flat()
+    },
+    staleTime: 5_000,
+    refetchInterval: 30_000,
+    enabled: isAdministrator && recentSessionIds.length > 0,
+  })
+
+  const decisions = useMemo(
+    () =>
+      [
+        ...(approvalsQuery.data?.pending ?? approvalsQuery.data?.approvals ?? [])
+          .map(normalizeDashboardDecision)
+          .filter((entry): entry is DashboardDecision => Boolean(entry)),
+        ...(activityDecisionQuery.data ?? []),
+      ]
+        .filter(
+          (decision) =>
+            !decision.requestedAt || Date.now() - decision.requestedAt <= 3_600_000,
+        )
+        .sort((a, b) => (b.requestedAt ?? 0) - (a.requestedAt ?? 0)),
+    [approvalsQuery.data, activityDecisionQuery.data],
+  )
+
+  const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>('all')
+
+  const visibleDecisions = useMemo(() => {
+    if (decisionFilter === 'all') return decisions
+    return decisions.filter((item) => item.source === decisionFilter)
+  }, [decisions, decisionFilter])
+
+  const approvalStats = useMemo(() => {
+    const pendingCount = visibleDecisions.filter(
+      (item) => item.status === 'paused',
+    ).length
+    const clearedCount = visibleDecisions.filter(
+      (item) => item.status === 'cleared',
+    ).length
+    const blockedCount = visibleDecisions.filter(
+      (item) => item.status === 'blocked',
+    ).length
+    return {
+      pendingCount,
+      clearedCount,
+      blockedCount,
+      aavrProxy: calculateAavrProxy(visibleDecisions),
+    }
+  }, [visibleDecisions])
+
+  const [busyDecisionId, setBusyDecisionId] = useState<string | null>(null)
+
+  async function handleResolveDecision(
+    approvalId: string,
+    action: 'approve' | 'deny',
+  ) {
+    setBusyDecisionId(approvalId)
+    try {
+      await resolveGatewayApproval(approvalId, action)
+      await approvalsQuery.refetch()
+    } finally {
+      setBusyDecisionId(null)
+    }
+  }
 
   const stats = useMemo(() => {
     let totalMessages = 0,
@@ -789,6 +1254,25 @@ export function DashboardScreen() {
             />
           </div>
         </div>
+
+        {isAdministrator ? (
+          <AdminEnforcementPanel
+            decisions={visibleDecisions}
+            pendingCount={approvalStats.pendingCount}
+            clearedCount={approvalStats.clearedCount}
+            blockedCount={approvalStats.blockedCount}
+            aavrProxy={approvalStats.aavrProxy}
+            filter={decisionFilter}
+            onFilterChange={setDecisionFilter}
+            onApprove={(approvalId) => {
+              void handleResolveDecision(approvalId, 'approve')
+            }}
+            onDeny={(approvalId) => {
+              void handleResolveDecision(approvalId, 'deny')
+            }}
+            busyDecisionId={busyDecisionId}
+          />
+        ) : null}
 
         {/* ── Metrics Row ── */}
         {sessionsAvailable ? (

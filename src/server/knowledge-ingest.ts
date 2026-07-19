@@ -1,5 +1,8 @@
+import { execFile } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import * as fs from 'node:fs/promises'
+import { promisify } from 'node:util'
 
 import {
   KNOWLEDGE_UPLOAD_LIMITS,
@@ -7,7 +10,10 @@ import {
   limitFailure,
   sanitizeKnowledgeFilename,
 } from './knowledge-files'
-import { resolveKnowledgeBaseConfig } from './knowledge-config'
+import {
+  WORKSPACE_WIKI_DIRNAME,
+  resolveKnowledgeBaseConfig,
+} from './knowledge-config'
 import type { KnowledgeLimitFailure } from './knowledge-files'
 
 type CanonicalDocumentBlock = {
@@ -27,6 +33,20 @@ type CanonicalDocumentArtifact = {
   warnings?: Array<string>
 }
 
+type DocumentExtractionPluginResult = {
+  status?: string
+  error_code?: string
+  document?: CanonicalDocumentArtifact
+  artifacts?: {
+    normalized_document_artifact_ref?: string
+    source_artifact_ref?: string
+    provider_artifact_refs?: Array<string>
+  }
+  parser?: { method?: string }
+}
+
+const execFileAsync = promisify(execFile)
+
 export type KnowledgeIngestRequest = {
   uploadRef: string
   confirmed: boolean
@@ -34,6 +54,7 @@ export type KnowledgeIngestRequest = {
   languageHint?: string | null
   workspaceId?: string | null
   sessionId?: string | null
+  forceWorkspaceWikiRoot?: boolean
 }
 
 export type KnowledgeIngestSuccess = {
@@ -71,6 +92,15 @@ export type KnowledgeIngestResult =
   | KnowledgeLimitFailure
 
 export type KnowledgeIngestDependencies = {
+  emitEvent?: (event: {
+    stage: 'extract' | 'build' | 'complete'
+    status: 'running' | 'done' | 'failed'
+    label: string
+    detail?: string
+    filename?: string
+    targetPath?: string
+    uploadRef?: string
+  }) => void
   extractDocumentContent?: (args: {
     document_ref: string
     workspace_id: string
@@ -210,6 +240,108 @@ function renderDocumentMarkdown(
   }
 }
 
+function findSemantierRuntimeRoot(): string {
+  let current = path.resolve(process.cwd())
+  for (let index = 0; index < 8; index += 1) {
+    if (
+      existsSync(
+        path.join(current, 'src', 'plugins', 'document_extraction', 'tools.py'),
+      )
+    ) {
+      return current
+    }
+    const parent = path.dirname(current)
+    if (parent === current) break
+    current = parent
+  }
+  throw new Error('document_extraction plugin is not available')
+}
+
+async function extractDocumentContentWithPlugin(
+  workspaceRoot: string,
+  args: {
+    document_ref: string
+    workspace_id: string
+    session_id: string
+    mode: 'live'
+    language_hint?: string | null
+  },
+): Promise<CanonicalDocumentArtifact> {
+  const runtimeRoot = findSemantierRuntimeRoot()
+  const pythonPath = path.join(runtimeRoot, 'src')
+  const script = [
+    'import json, sys',
+    'from plugins.document_extraction.tools import extract_document_content',
+    'payload = json.loads(sys.argv[1])',
+    'result = extract_document_content(payload)',
+    'print(result)',
+  ].join('\n')
+  const { stdout } = await execFileAsync(
+    process.env.PYTHON || 'python3',
+    ['-c', script, JSON.stringify(args)],
+    {
+      cwd: runtimeRoot,
+      env: {
+        ...process.env,
+        HERMES_HOME: path.resolve(workspaceRoot),
+        SESSION_HERMES_HOME: path.resolve(workspaceRoot),
+        SESSION_ID: args.session_id,
+        PYTHONPATH: process.env.PYTHONPATH
+          ? `${pythonPath}${path.delimiter}${process.env.PYTHONPATH}`
+          : pythonPath,
+      },
+      maxBuffer: 20 * 1024 * 1024,
+    },
+  )
+  const parsed = JSON.parse(stdout) as DocumentExtractionPluginResult
+  if (parsed.status === 'error') {
+    throw new Error(parsed.error_code || 'document extraction failed')
+  }
+  const document = parsed.document ?? {}
+  return {
+    ...document,
+    artifact_ref:
+      document.artifact_ref ||
+      parsed.artifacts?.normalized_document_artifact_ref,
+    normalized_document_artifact_ref:
+      document.normalized_document_artifact_ref ||
+      parsed.artifacts?.normalized_document_artifact_ref,
+    source_hash: document.source_hash,
+    parser: document.parser || parsed.parser,
+    warnings: document.warnings ?? [],
+  }
+}
+
+async function ingestTableArtifactWithDocumentExtraction(
+  workspaceRoot: string,
+  args: {
+    document_ref: string
+    upload_ref: string
+    workspace_id: string
+    session_id: string
+    mode: 'live'
+  },
+): Promise<{
+  canonical_table_artifact_ref: string
+  parser_method?: string
+  warnings?: Array<string>
+}> {
+  const artifact = await extractDocumentContentWithPlugin(workspaceRoot, {
+    document_ref: args.document_ref,
+    workspace_id: args.workspace_id,
+    session_id: args.session_id,
+    mode: args.mode,
+  })
+  return {
+    canonical_table_artifact_ref:
+      artifact.normalized_document_artifact_ref ||
+      artifact.artifact_ref ||
+      'canonical_table.unavailable',
+    parser_method: artifact.parser?.method || 'document_extraction.local.v1',
+    warnings: artifact.warnings,
+  }
+}
+
 export async function ingestKnowledgeUpload(
   workspaceRoot: string,
   request: KnowledgeIngestRequest,
@@ -261,7 +393,16 @@ export async function ingestKnowledgeUpload(
     }
   }
 
-  const resolved = resolveKnowledgeBaseConfig(workspaceRoot)
+  const configured = resolveKnowledgeBaseConfig(workspaceRoot)
+  const resolved = request.forceWorkspaceWikiRoot
+    ? {
+        ...configured,
+        effectiveRoot: path.join(
+          path.resolve(workspaceRoot),
+          WORKSPACE_WIKI_DIRNAME,
+        ),
+      }
+    : configured
   ensureInsideRoot(workspaceRoot, resolved.effectiveRoot)
   const outputDir = resolveTargetDirectory(
     resolved.effectiveRoot,
@@ -270,17 +411,42 @@ export async function ingestKnowledgeUpload(
   await fs.mkdir(outputDir, { recursive: true })
 
   try {
+    deps.emitEvent?.({
+      stage: 'extract',
+      status: 'running',
+      label: `Extracting ${staged.originalName}`,
+      detail: staged.relativePath,
+      filename: staged.originalName,
+      targetPath: staged.relativePath,
+      uploadRef: request.uploadRef,
+    })
     if (staged.ingestKind === 'table_ingestion') {
       const ingestTableArtifact =
         deps.ingestTableArtifact ??
-        (() => {
-          throw new Error('table_ingestion boundary is not available')
-        })
+        ((args) =>
+          ingestTableArtifactWithDocumentExtraction(workspaceRoot, {
+            document_ref: staged.relativePath,
+            upload_ref: args.upload_ref,
+            workspace_id: args.workspace_id,
+            session_id: args.session_id,
+            mode: args.mode,
+          }))
       const table = await ingestTableArtifact({
         upload_ref: request.uploadRef,
         workspace_id: request.workspaceId || staged.workspaceId,
         session_id: request.sessionId || staged.sessionId,
         mode: 'live',
+      })
+      deps.emitEvent?.({
+        stage: 'build',
+        status: 'running',
+        label: `Building wiki page for ${staged.originalName}`,
+        detail: toPosixPath(path.relative(resolved.effectiveRoot, outputDir)),
+        filename: staged.originalName,
+        targetPath: toPosixPath(
+          path.relative(resolved.effectiveRoot, outputDir),
+        ),
+        uploadRef: request.uploadRef,
       })
       const filename = sanitizeKnowledgeFilename(
         `${path.basename(staged.originalName, path.extname(staged.originalName))}.md`,
@@ -298,13 +464,23 @@ export async function ingestKnowledgeUpload(
         filename,
         markdown,
       )
+      const storedMarkdownPath = toPosixPath(
+        path.relative(resolved.effectiveRoot, written.fullPath),
+      )
+      deps.emitEvent?.({
+        stage: 'complete',
+        status: 'done',
+        label: `Built wiki page for ${staged.originalName}`,
+        detail: `wiki/${storedMarkdownPath}`,
+        filename: staged.originalName,
+        targetPath: storedMarkdownPath,
+        uploadRef: request.uploadRef,
+      })
       return {
         ok: true,
         status: written.renamed ? 'renamed' : 'parsed',
         originalName: staged.originalName,
-        storedMarkdownPath: toPosixPath(
-          path.relative(resolved.effectiveRoot, written.fullPath),
-        ),
+        storedMarkdownPath,
         parserMethod: table.parser_method || 'table_ingestion',
         sourceUploadRef: request.uploadRef,
         normalizedDocumentArtifactRef: table.canonical_table_artifact_ref,
@@ -317,17 +493,22 @@ export async function ingestKnowledgeUpload(
 
     const extractDocumentContent =
       deps.extractDocumentContent ??
-      (() => {
-        throw new Error(
-          'document_extraction.extract_document_content is not available',
-        )
-      })
+      ((args) => extractDocumentContentWithPlugin(workspaceRoot, args))
     const artifact = await extractDocumentContent({
-      document_ref: request.uploadRef,
+      document_ref: staged.relativePath,
       workspace_id: request.workspaceId || staged.workspaceId,
       session_id: request.sessionId || staged.sessionId,
       mode: 'live',
       language_hint: request.languageHint,
+    })
+    deps.emitEvent?.({
+      stage: 'build',
+      status: 'running',
+      label: `Building wiki page for ${staged.originalName}`,
+      detail: toPosixPath(path.relative(resolved.effectiveRoot, outputDir)),
+      filename: staged.originalName,
+      targetPath: toPosixPath(path.relative(resolved.effectiveRoot, outputDir)),
+      uploadRef: request.uploadRef,
     })
     const rendered = renderDocumentMarkdown(
       staged.originalName,
@@ -342,13 +523,23 @@ export async function ingestKnowledgeUpload(
       filename,
       rendered.markdown,
     )
+    const storedMarkdownPath = toPosixPath(
+      path.relative(resolved.effectiveRoot, written.fullPath),
+    )
+    deps.emitEvent?.({
+      stage: 'complete',
+      status: 'done',
+      label: `Built wiki page for ${staged.originalName}`,
+      detail: `wiki/${storedMarkdownPath}`,
+      filename: staged.originalName,
+      targetPath: storedMarkdownPath,
+      uploadRef: request.uploadRef,
+    })
     return {
       ok: true,
       status: rendered.empty ? 'empty' : written.renamed ? 'renamed' : 'parsed',
       originalName: staged.originalName,
-      storedMarkdownPath: toPosixPath(
-        path.relative(resolved.effectiveRoot, written.fullPath),
-      ),
+      storedMarkdownPath,
       parserMethod: rendered.parserMethod,
       sourceUploadRef: request.uploadRef,
       normalizedDocumentArtifactRef: rendered.artifactRef,
@@ -359,6 +550,15 @@ export async function ingestKnowledgeUpload(
       governedPromotionRequired: true,
     }
   } catch (error) {
+    deps.emitEvent?.({
+      stage: 'complete',
+      status: 'failed',
+      label: `Wiki build failed: ${staged.originalName}`,
+      detail: error instanceof Error ? error.message : 'Parser failed',
+      filename: staged.originalName,
+      targetPath: staged.relativePath,
+      uploadRef: request.uploadRef,
+    })
     return {
       ok: false,
       status: 'failed',

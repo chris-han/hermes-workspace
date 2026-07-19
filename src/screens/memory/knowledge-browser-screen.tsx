@@ -10,6 +10,7 @@ import {
   Message01Icon,
   Search01Icon,
   Settings01Icon,
+  Upload01Icon,
 } from '@hugeicons/core-free-icons'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -76,15 +77,46 @@ type KnowledgeFilesResponse = {
   breadcrumb: Array<{ label: string; path: string }>
   fileCount: number
   directoryCount: number
-  entries: KnowledgeSourceModalViewModel['browser']['entries']
+  entries: Array<KnowledgeTreeEntry>
 }
 
 type KnowledgeFilesTreeResponse = {
   configuredPath: string
   effectiveRoot: string
   effectiveRootLabel: string
-  root: KnowledgeSourceModalViewModel['browser']['treeRoot']
+  root: KnowledgeTreeEntry
 }
+
+type KnowledgeReviewRow = {
+  originalName: string
+  storedName: string
+  size: number
+  retryUploadRef: string
+  targetWikiPath?: string
+  ingestKind: 'document_extraction' | 'table_ingestion'
+  canonicalArtifactKind: 'canonical_document' | 'canonical_table'
+}
+
+type KnowledgeFileViewMode = 'source' | 'wiki'
+
+const KNOWLEDGE_UPLOAD_EXTENSIONS = [
+  '.md',
+  '.markdown',
+  '.txt',
+  '.json',
+  '.yaml',
+  '.yml',
+  '.pdf',
+  '.docx',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.html',
+  '.htm',
+  '.xml',
+  '.csv',
+  '.xlsx',
+]
 
 type KnowledgeUploadResult =
   | {
@@ -130,6 +162,26 @@ type KnowledgeIngestResult =
     }
 
 type ModalStatus = KnowledgeSourceModalViewModel['status']
+
+type KnowledgeActivityStatus = 'running' | 'waiting' | 'done' | 'failed'
+
+type KnowledgeActivityRow = {
+  id: string
+  status: KnowledgeActivityStatus
+  label: string
+  detail: string
+  uploadRef?: string
+}
+
+type KnowledgeStatusEvent = {
+  id?: string
+  status?: KnowledgeActivityStatus
+  label?: string
+  detail?: string
+  filename?: string
+  targetPath?: string
+  uploadRef?: string
+}
 
 const EMPTY_MODAL_STATUS: ModalStatus = {
   kind: 'idle',
@@ -233,6 +285,40 @@ function highlightMatch(
 
 function normalizeWikiToken(value: string): string {
   return value.trim().toLowerCase().replace(/\\/g, '/').replace(/\.md$/i, '')
+}
+
+function isMarkdownKnowledgeFile(entry: KnowledgeTreeEntry): boolean {
+  const lower = entry.name.toLowerCase()
+  return lower.endsWith('.md') || lower.endsWith('.markdown')
+}
+
+function filterKnowledgeFileTree(
+  entry: KnowledgeTreeEntry,
+  mode: KnowledgeFileViewMode,
+  isRoot = true,
+): KnowledgeTreeEntry | null {
+  if (entry.kind === 'file') {
+    const markdown = isMarkdownKnowledgeFile(entry)
+    if (mode === 'wiki' ? markdown : !markdown) return entry
+    return null
+  }
+
+  const children = (entry.children ?? [])
+    .map((child) => filterKnowledgeFileTree(child, mode, false))
+    .filter((child): child is KnowledgeTreeEntry => Boolean(child))
+  if (!isRoot && children.length === 0) return null
+  return { ...entry, children }
+}
+
+function filterKnowledgeDirectoryEntries(
+  entries: Array<KnowledgeTreeEntry>,
+  mode: KnowledgeFileViewMode,
+): Array<KnowledgeTreeEntry> {
+  return entries.filter((entry) => {
+    if (entry.kind === 'directory') return true
+    const markdown = isMarkdownKnowledgeFile(entry)
+    return mode === 'wiki' ? markdown : !markdown
+  })
 }
 
 function preprocessWikiMarkdown(content: string): string {
@@ -385,12 +471,59 @@ export function KnowledgeBrowserScreen() {
     useState<ModalStatus>(EMPTY_MODAL_STATUS)
   const [browserPath, setBrowserPath] = useState('')
   const [queuedUploadFiles, setQueuedUploadFiles] = useState<Array<File>>([])
-  const [reviewRows, setReviewRows] = useState<
-    KnowledgeSourceModalViewModel['reviewRows']
+  const [reviewRows, setReviewRows] = useState<Array<KnowledgeReviewRow>>([])
+  const [fileViewMode, setFileViewMode] =
+    useState<KnowledgeFileViewMode>('source')
+  const [newFolderName, setNewFolderName] = useState('')
+  const [expandedFilePaths, setExpandedFilePaths] = useState<Set<string>>(
+    () => new Set(['']),
+  )
+  const [knowledgeActivity, setKnowledgeActivity] = useState<
+    Array<KnowledgeActivityRow>
   >([])
   const [resolvedConfig, setResolvedConfig] =
     useState<KnowledgeResolvedConfig | null>(null)
   const queryClient = useQueryClient()
+
+  useEffect(() => {
+    const events = new EventSource('/api/knowledge/events')
+    const handleStatus = (event: MessageEvent) => {
+      try {
+        const payload = JSON.parse(event.data) as KnowledgeStatusEvent
+        if (
+          !payload.status ||
+          !['running', 'waiting', 'done', 'failed'].includes(payload.status)
+        ) {
+          return
+        }
+        upsertKnowledgeActivity({
+          id: payload.uploadRef
+            ? `knowledge-event:${payload.uploadRef}`
+            : `knowledge-event:${payload.id || Date.now()}`,
+          status: payload.status,
+          label: payload.label || 'Knowledge import status',
+          detail:
+            payload.detail || payload.targetPath || payload.filename || '',
+          uploadRef: payload.uploadRef,
+        })
+        if (payload.status === 'done') {
+          void queryClient.invalidateQueries({
+            queryKey: ['knowledge', 'list'],
+          })
+          void queryClient.invalidateQueries({
+            queryKey: ['knowledge', 'files'],
+          })
+        }
+      } catch {
+        /* ignore malformed event payloads */
+      }
+    }
+    events.addEventListener('knowledge_status', handleStatus)
+    return () => {
+      events.removeEventListener('knowledge_status', handleStatus)
+      events.close()
+    }
+  }, [queryClient])
 
   useEffect(() => {
     if (!settingsOpen) {
@@ -590,23 +723,13 @@ export function KnowledgeBrowserScreen() {
   ])
 
   const modalViewModel = useMemo<KnowledgeSourceModalViewModel>(() => {
-    const files = knowledgeFilesQuery.data
-    const treeData = knowledgeFilesTreeQuery.data
-    const filesError =
-      knowledgeFilesQuery.error instanceof Error
-        ? knowledgeFilesQuery.error.message
-        : null
-    const treeError =
-      knowledgeFilesTreeQuery.error instanceof Error
-        ? knowledgeFilesTreeQuery.error.message
-        : null
     return {
       source: settingsSource,
       savedSource: savedSettingsSource,
       configuredPath: resolvedConfig?.configuredPath || '',
       savedConfiguredPath: resolvedConfig?.configuredPath || '',
       effectiveRootLabel:
-        files?.effectiveRootLabel ||
+        knowledgeFilesQuery.data?.effectiveRootLabel ||
         resolvedConfig?.effectiveRootLabel ||
         resolvedConfig?.effectiveRoot ||
         knowledgeRoot,
@@ -614,49 +737,6 @@ export function KnowledgeBrowserScreen() {
       usesWorkspaceDefault: resolvedConfig?.usesWorkspaceDefault ?? true,
       dirty: settingsDirty,
       status: effectiveModalStatus,
-      browser: {
-        currentPath: files?.path || browserPath,
-        breadcrumb: files?.breadcrumb || [{ label: 'wiki', path: '' }],
-        fileCount: files?.fileCount ?? 0,
-        directoryCount: files?.directoryCount ?? 0,
-        entries: files?.entries || [],
-        treeRoot: treeData?.root || {
-          name: 'wiki',
-          path: '',
-          kind: 'directory',
-          children: [],
-        },
-        loading:
-          knowledgeFilesQuery.isLoading || knowledgeFilesTreeQuery.isLoading,
-        error: filesError || treeError,
-        uploadTargetPath: files?.path || browserPath,
-      },
-      upload: {
-        pending: uploadPending,
-        queuedFiles: queuedUploadFiles.map((file) => ({
-          name: file.name,
-          size: file.size,
-        })),
-        acceptedExtensions: [
-          '.md',
-          '.markdown',
-          '.txt',
-          '.json',
-          '.yaml',
-          '.yml',
-          '.pdf',
-          '.docx',
-          '.png',
-          '.jpg',
-          '.jpeg',
-          '.html',
-          '.htm',
-          '.xml',
-          '.csv',
-          '.xlsx',
-        ],
-      },
-      reviewRows,
       contextEngineering: {
         authorityLabel:
           reviewRows.length > 0
@@ -670,20 +750,56 @@ export function KnowledgeBrowserScreen() {
     browserPath,
     effectiveModalStatus,
     knowledgeFilesQuery.data,
-    knowledgeFilesQuery.error,
-    knowledgeFilesQuery.isLoading,
-    knowledgeFilesTreeQuery.data,
-    knowledgeFilesTreeQuery.error,
-    knowledgeFilesTreeQuery.isLoading,
     knowledgeRoot,
     resolvedConfig,
     reviewRows,
     savedSettingsSource,
     settingsDirty,
     settingsSource,
-    uploadPending,
-    queuedUploadFiles,
   ])
+
+  const knowledgeFileTreeRoot = useMemo<KnowledgeTreeEntry>(() => {
+    const root = knowledgeFilesTreeQuery.data?.root || {
+      name: 'wiki',
+      path: '',
+      kind: 'directory' as const,
+      children: [],
+    }
+    return (
+      filterKnowledgeFileTree(root, fileViewMode) || {
+        ...root,
+        children: [],
+      }
+    )
+  }, [fileViewMode, knowledgeFilesTreeQuery.data])
+
+  const currentDirectoryEntries = useMemo(
+    () =>
+      filterKnowledgeDirectoryEntries(
+        knowledgeFilesQuery.data?.entries || [],
+        fileViewMode,
+      ),
+    [fileViewMode, knowledgeFilesQuery.data],
+  )
+
+  const currentFileCount = currentDirectoryEntries.filter(
+    (entry) => entry.kind === 'file',
+  ).length
+  const currentDirectoryCount = currentDirectoryEntries.filter(
+    (entry) => entry.kind === 'directory',
+  ).length
+  const filesError =
+    knowledgeFilesQuery.error instanceof Error
+      ? knowledgeFilesQuery.error.message
+      : knowledgeFilesTreeQuery.error instanceof Error
+        ? knowledgeFilesTreeQuery.error.message
+        : null
+  const filesLoading =
+    knowledgeFilesQuery.isLoading || knowledgeFilesTreeQuery.isLoading
+  const queuedUploadView = queuedUploadFiles.map((file) => ({
+    name: file.name,
+    size: file.size,
+  }))
 
   function resolveWikiPath(rawValue: string): string | null {
     const decoded = decodeURIComponent(rawValue)
@@ -719,6 +835,25 @@ export function KnowledgeBrowserScreen() {
     })
   }
 
+  function upsertKnowledgeActivity(row: KnowledgeActivityRow) {
+    setKnowledgeActivity((current) => {
+      const next = current.filter((item) => item.id !== row.id)
+      return [row, ...next].slice(0, 8)
+    })
+  }
+
+  function toggleFileTreePath(pathValue: string) {
+    setExpandedFilePaths((current) => {
+      const next = new Set(current)
+      if (next.has(pathValue)) {
+        if (pathValue) next.delete(pathValue)
+      } else {
+        next.add(pathValue)
+      }
+      return next
+    })
+  }
+
   async function handleCreateKnowledgeFolder(folderName: string) {
     setSyncError(null)
     setModalStatus({
@@ -731,7 +866,7 @@ export function KnowledgeBrowserScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          parentPath: modalViewModel.browser.currentPath,
+          parentPath: browserPath,
           folderName,
         }),
       })
@@ -786,6 +921,13 @@ export function KnowledgeBrowserScreen() {
     if (files.length === 0) return
     setUploadPending(true)
     setSyncError(null)
+    const uploadTargetPath = browserPath || '(wiki root)'
+    upsertKnowledgeActivity({
+      id: 'knowledge-upload-current',
+      status: 'running',
+      label: `Uploading ${files.length} ${files.length === 1 ? 'file' : 'files'}`,
+      detail: `Target: wiki/${uploadTargetPath === '(wiki root)' ? '' : uploadTargetPath}`,
+    })
     setModalStatus({
       ...EMPTY_MODAL_STATUS,
       kind: 'syncing',
@@ -794,7 +936,7 @@ export function KnowledgeBrowserScreen() {
     try {
       const form = new FormData()
       for (const uploadFile of files) form.append('files', uploadFile)
-      form.append('path', modalViewModel.browser.uploadTargetPath)
+      form.append('path', browserPath)
       const response = await fetch('/api/knowledge/upload', {
         method: 'POST',
         body: form,
@@ -843,6 +985,31 @@ export function KnowledgeBrowserScreen() {
           { kind: 'staged_for_ingest' }
         > => result.ok && result.kind === 'staged_for_ingest',
       )
+      for (const result of directWrites) {
+        upsertKnowledgeActivity({
+          id: `knowledge-upload:${result.path}`,
+          status: 'done',
+          label: `Uploaded ${result.storedName}`,
+          detail: `Source file is in wiki/${result.path}`,
+        })
+      }
+      for (const result of staged) {
+        upsertKnowledgeActivity({
+          id: `knowledge-upload:${result.retryUploadRef}`,
+          status: 'waiting',
+          label: `Uploaded ${result.storedName}`,
+          detail: `Source file is in wiki/${uploadTargetPath === '(wiki root)' ? result.storedName : `${uploadTargetPath}/${result.storedName}`}; waiting for import to build ${result.targetWikiPath || 'wiki markdown'}`,
+          uploadRef: result.retryUploadRef,
+        })
+      }
+      for (const failure of failures) {
+        upsertKnowledgeActivity({
+          id: `knowledge-upload-failed:${failure.filename}:${Date.now()}`,
+          status: 'failed',
+          label: `Upload failed: ${failure.filename}`,
+          detail: failure.error,
+        })
+      }
       setReviewRows((current) => [
         ...current,
         ...staged.map((result) => ({
@@ -861,7 +1028,7 @@ export function KnowledgeBrowserScreen() {
           originalName: result.originalName,
           storedName: result.storedName,
         }))
-      if (directWrites.length > 0) {
+      if (directWrites.length > 0 || staged.length > 0) {
         await queryClient.invalidateQueries({ queryKey: ['knowledge', 'list'] })
         await queryClient.invalidateQueries({
           queryKey: ['knowledge', 'files'],
@@ -887,8 +1054,25 @@ export function KnowledgeBrowserScreen() {
         renamed,
         ingested: [],
       })
+      if (failures.length === 0) {
+        upsertKnowledgeActivity({
+          id: 'knowledge-upload-current',
+          status: staged.length > 0 ? 'waiting' : 'done',
+          label: staged.length > 0 ? 'Upload complete' : 'Upload complete',
+          detail:
+            staged.length > 0
+              ? `${staged.length} ${staged.length === 1 ? 'file needs' : 'files need'} import before wiki pages are built`
+              : 'File tree refreshed',
+        })
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed'
+      upsertKnowledgeActivity({
+        id: `knowledge-upload-error:${Date.now()}`,
+        status: 'failed',
+        label: 'Upload failed',
+        detail: message,
+      })
       setModalStatus({
         kind: 'failed',
         message,
@@ -902,8 +1086,16 @@ export function KnowledgeBrowserScreen() {
   }
 
   async function handleIngestKnowledgeUpload(uploadRef: string) {
+    const reviewRow = reviewRows.find((row) => row.retryUploadRef === uploadRef)
     setIngestPending(true)
     setSyncError(null)
+    upsertKnowledgeActivity({
+      id: `knowledge-import:${uploadRef}`,
+      status: 'running',
+      label: `Building wiki page${reviewRow ? ` from ${reviewRow.originalName}` : ''}`,
+      detail: `Target: ${reviewRow?.targetWikiPath || browserPath || 'wiki markdown'}`,
+      uploadRef,
+    })
     setModalStatus({
       ...EMPTY_MODAL_STATUS,
       kind: 'ingesting',
@@ -916,7 +1108,7 @@ export function KnowledgeBrowserScreen() {
         body: JSON.stringify({
           uploadRef,
           confirmed: true,
-          targetDir: modalViewModel.browser.uploadTargetPath || 'raw',
+          targetDir: browserPath || 'raw',
         }),
       })
       const result = (await response.json()) as KnowledgeIngestResult
@@ -941,6 +1133,13 @@ export function KnowledgeBrowserScreen() {
       )
       await queryClient.invalidateQueries({ queryKey: ['knowledge', 'list'] })
       await queryClient.invalidateQueries({ queryKey: ['knowledge', 'files'] })
+      upsertKnowledgeActivity({
+        id: `knowledge-import:${uploadRef}`,
+        status: 'done',
+        label: `Built wiki page for ${result.originalName}`,
+        detail: `Markdown: wiki/${result.storedMarkdownPath}`,
+        uploadRef,
+      })
       setModalStatus({
         kind: 'uploaded',
         message: 'Imported',
@@ -957,6 +1156,13 @@ export function KnowledgeBrowserScreen() {
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Import failed'
+      upsertKnowledgeActivity({
+        id: `knowledge-import:${uploadRef}`,
+        status: 'failed',
+        label: `Wiki build failed${reviewRow ? `: ${reviewRow.originalName}` : ''}`,
+        detail: message,
+        uploadRef,
+      })
       setModalStatus({
         kind: 'failed',
         message,
@@ -1029,11 +1235,22 @@ export function KnowledgeBrowserScreen() {
               branch: settingsSource.branch || 'main',
               path: settingsSource.path || '',
             }
-      await fetch('/api/knowledge/config', {
+      const response = await fetch('/api/knowledge/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source }),
       })
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string
+          message?: string
+        } | null
+        throw new Error(
+          payload?.error ||
+            payload?.message ||
+            `Save failed (${response.status})`,
+        )
+      }
       await queryClient.invalidateQueries({
         queryKey: ['knowledge', 'list'],
       })
@@ -1041,7 +1258,16 @@ export function KnowledgeBrowserScreen() {
       await queryClient.invalidateQueries({
         queryKey: ['knowledge', 'files'],
       })
+      if (reviewRows.length > 0) {
+        setModalStatus({
+          ...EMPTY_MODAL_STATUS,
+          kind: 'review',
+          message: 'Review and import staged files before closing',
+        })
+        return
+      }
       setModalStatus({ ...EMPTY_MODAL_STATUS, kind: 'saved', message: 'Saved' })
+      setSettingsOpen(false)
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Save failed')
     } finally {
@@ -1167,24 +1393,11 @@ export function KnowledgeBrowserScreen() {
                     onUseWorkspaceDefault={() =>
                       setSettingsSource({ type: 'local', path: 'wiki' })
                     }
-                    onBrowse={handleBrowseKnowledgeFolder}
-                    onQueueUploadFiles={handleQueueUploadFiles}
-                    onClearUploadQueue={() => setQueuedUploadFiles([])}
-                    onUploadQueued={handleUploadQueuedKnowledgeFiles}
-                    onCreateFolder={handleCreateKnowledgeFolder}
                     onSave={handleSaveSource}
                     onSync={
                       settingsSource.type === 'github'
                         ? handleSyncSource
                         : undefined
-                    }
-                    onIngest={handleIngestKnowledgeUpload}
-                    onRemoveReviewRow={(uploadRef) =>
-                      setReviewRows((current) =>
-                        current.filter(
-                          (row) => row.retryUploadRef !== uploadRef,
-                        ),
-                      )
                     }
                     onDismissStatus={() => {
                       setSyncError(null)
@@ -1197,6 +1410,95 @@ export function KnowledgeBrowserScreen() {
           </div>
         </div>
 
+        {knowledgeActivity.length > 0 ? (
+          <div className="px-3 pt-3 md:px-4">
+            <section className="space-y-2 rounded-xl border border-primary-200 bg-primary-50/80 p-3 dark:border-neutral-800 dark:bg-neutral-950">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                  Knowledge import status
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setKnowledgeActivity([])}
+                  className="rounded-md border border-primary-200 px-2 py-1 text-xs font-medium text-primary-500 hover:bg-primary-100 dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-900"
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="grid gap-2 md:grid-cols-2">
+                {knowledgeActivity.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex min-w-0 items-start justify-between gap-3 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-900/60"
+                  >
+                    <div className="flex min-w-0 items-start gap-2">
+                      <span
+                        className={cn(
+                          'mt-1 size-2 shrink-0 rounded-full',
+                          item.status === 'running' &&
+                            'animate-pulse bg-amber-500',
+                          item.status === 'waiting' && 'bg-sky-500',
+                          item.status === 'done' && 'bg-emerald-500',
+                          item.status === 'failed' && 'bg-red-500',
+                        )}
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-primary-900 dark:text-neutral-100">
+                          {item.label}
+                        </span>
+                        <span className="block truncate text-xs text-primary-500 dark:text-neutral-400">
+                          {item.detail}
+                        </span>
+                      </span>
+                    </div>
+                    {item.uploadRef &&
+                    (item.status === 'waiting' || item.status === 'failed') ? (
+                      <button
+                        type="button"
+                        disabled={ingestPending}
+                        onClick={() =>
+                          void handleIngestKnowledgeUpload(item.uploadRef!)
+                        }
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-accent-600 bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <HugeiconsIcon
+                          icon={Upload01Icon}
+                          size={14}
+                          strokeWidth={1.7}
+                        />
+                        Build wiki page
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap items-center justify-between gap-3 px-3 pt-3 md:px-4">
+          <div className="inline-flex rounded-lg border border-primary-200 bg-primary-50 p-1 dark:border-neutral-800 dark:bg-neutral-950">
+            {(['source', 'wiki'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setFileViewMode(mode)}
+                className={cn(
+                  'rounded-md px-3 py-1.5 text-sm font-semibold transition-colors',
+                  fileViewMode === mode
+                    ? 'bg-accent-500 text-white shadow-sm'
+                    : 'text-primary-600 hover:bg-primary-100 dark:text-neutral-300 dark:hover:bg-neutral-900',
+                )}
+              >
+                {mode === 'source' ? 'Source files' : 'Wiki pages'}
+              </button>
+            ))}
+          </div>
+          <div className="text-xs text-primary-500 dark:text-neutral-400">
+            Target folder: wiki/{browserPath || ''}
+          </div>
+        </div>
+
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 md:grid-cols-[320px_minmax(0,1fr)] md:p-4">
           <aside className="flex min-h-0 flex-col rounded-2xl border border-primary-200 bg-primary-50 dark:border-neutral-800 dark:bg-neutral-950">
             <button
@@ -1205,7 +1507,9 @@ export function KnowledgeBrowserScreen() {
               onClick={() => setMobileTreeOpen((value) => !value)}
             >
               <span className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                Knowledge Pages ({filteredPages.length})
+                {fileViewMode === 'source'
+                  ? `Source Files (${currentFileCount})`
+                  : `Knowledge Pages (${filteredPages.length})`}
               </span>
               <span className="text-primary-500 dark:text-neutral-400 md:hidden">
                 <HugeiconsIcon
@@ -1216,7 +1520,48 @@ export function KnowledgeBrowserScreen() {
               </span>
             </button>
 
-            {!knowledgeExists && !listQuery.isLoading ? (
+            {fileViewMode === 'source' ? (
+              <div
+                className={cn(
+                  'min-h-0 flex-1 px-2 pb-2',
+                  !mobileTreeOpen && 'hidden md:block',
+                )}
+              >
+                <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-xs">
+                  {(
+                    knowledgeFilesQuery.data?.breadcrumb || [
+                      { label: 'wiki', path: '' },
+                    ]
+                  ).map((crumb, index) => (
+                    <button
+                      key={`${crumb.path}:${index}`}
+                      type="button"
+                      onClick={() => handleBrowseKnowledgeFolder(crumb.path)}
+                      className="rounded-md border border-primary-200 px-2 py-1 font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                    >
+                      {crumb.label}
+                    </button>
+                  ))}
+                </div>
+                <section className="rounded-xl border border-primary-200 bg-primary-50/80 p-1 dark:border-neutral-800 dark:bg-neutral-900/60">
+                  {filesLoading ? (
+                    <StateBox label="Loading source files..." />
+                  ) : filesError ? (
+                    <StateBox label={filesError} error />
+                  ) : knowledgeFileTreeRoot.children?.length ? (
+                    <KnowledgeFileTree
+                      entry={knowledgeFileTreeRoot}
+                      expanded={expandedFilePaths}
+                      selectedPath={browserPath}
+                      onToggle={toggleFileTreePath}
+                      onSelectFolder={handleBrowseKnowledgeFolder}
+                    />
+                  ) : (
+                    <StateBox label="No source files found" />
+                  )}
+                </section>
+              </div>
+            ) : !knowledgeExists && !listQuery.isLoading ? (
               <div className="px-3 pb-3">
                 <EmptyKnowledgeState knowledgeRoot={knowledgeRoot} />
               </div>
@@ -1324,226 +1669,481 @@ export function KnowledgeBrowserScreen() {
           </aside>
 
           <section className="min-h-0 rounded-2xl border border-primary-200 bg-primary-50 dark:border-neutral-800 dark:bg-neutral-950">
-            <div className="flex items-center justify-between border-b border-primary-200 px-3 py-2 dark:border-neutral-800">
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-primary-900 dark:text-neutral-100">
-                  {page?.title || selectedPath || 'Select a page'}
-                </div>
-                {page ? (
-                  <div className="text-xs text-primary-400 dark:text-neutral-500">
-                    {page.path} · {formatBytes(page.size)} ·{' '}
-                    {formatDate(page.updated || page.modified)}
+            {fileViewMode === 'source' ? (
+              <div className="flex h-full min-h-0 flex-col">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary-200 px-3 py-2 dark:border-neutral-800">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                      Source files in wiki/{browserPath || ''}
+                    </div>
+                    <div className="text-xs text-primary-400 dark:text-neutral-500">
+                      {currentDirectoryCount} folders · {currentFileCount} files
+                    </div>
                   </div>
-                ) : null}
-              </div>
-              {page ? (
-                <a
-                  href={askUrl}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-primary-200 px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
-                >
-                  <HugeiconsIcon
-                    icon={Message01Icon}
-                    size={14}
-                    strokeWidth={1.7}
-                  />
-                  Ask agent about this
-                </a>
-              ) : null}
-            </div>
-
-            <div className="h-full overflow-auto p-2 md:p-3">
-              {listQuery.isLoading ? (
-                <StateBox label="Loading knowledge base..." />
-              ) : listQuery.error instanceof Error ? (
-                <StateBox label={listQuery.error.message} error />
-              ) : !knowledgeExists ? (
-                <EmptyKnowledgeState knowledgeRoot={knowledgeRoot} />
-              ) : !selectedPath ? (
-                <StateBox label="Select a page to start browsing" />
-              ) : readQuery.isLoading ? (
-                <StateBox label="Loading page..." />
-              ) : readQuery.error instanceof Error ? (
-                <StateBox label={readQuery.error.message} error />
-              ) : !page ? (
-                <StateBox label="Page not found" error />
-              ) : (
-                <div
-                  className="rounded-xl theme-border-1"
-                  style={{
-                    backgroundColor: 'var(--theme-card)',
-                  }}
-                >
-                  <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_260px]">
-                    <div className="min-w-0 space-y-4">
-                      {focusedResult && focusedResult.path === page.path ? (
-                        <div className="rounded-xl border border-yellow-300/40 bg-yellow-300/10 px-3 py-2 text-sm text-primary-900 dark:text-yellow-50">
-                          <div className="font-medium">
-                            Search hit at line {focusLine}
-                          </div>
-                          <div className="mt-1 text-xs opacity-80">
-                            {focusedResult.text}
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {page.summary ? (
-                        <div className="rounded-xl border border-primary-200 bg-primary-50/70 px-3 py-2 text-sm text-primary-700 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-300">
-                          {page.summary}
-                        </div>
-                      ) : null}
-
-                      <Markdown
-                        className="gap-3"
-                        components={{
-                          a: function KnowledgeLink({ children, href }) {
-                            if (href?.startsWith('wiki:')) {
-                              const resolvedPath = resolveWikiPath(
-                                href.slice('wiki:'.length),
-                              )
-                              return (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (resolvedPath)
-                                      handleSelectPath(resolvedPath)
-                                  }}
-                                  className="inline-flex items-center gap-1 text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500 dark:text-neutral-100"
-                                >
-                                  <HugeiconsIcon
-                                    icon={Link01Icon}
-                                    size={14}
-                                    strokeWidth={1.7}
-                                  />
-                                  <span>{children}</span>
-                                </button>
-                              )
-                            }
-
-                            return (
-                              <a
-                                href={href}
-                                className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                {children}
-                              </a>
-                            )
-                          },
+                  <div className="flex flex-wrap gap-2">
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-primary-200 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800">
+                      <HugeiconsIcon
+                        icon={Upload01Icon}
+                        size={14}
+                        strokeWidth={1.7}
+                      />
+                      Choose files
+                      <input
+                        type="file"
+                        multiple
+                        className="hidden"
+                        accept={KNOWLEDGE_UPLOAD_EXTENSIONS.join(',')}
+                        disabled={uploadPending}
+                        onChange={(event) => {
+                          const files = Array.from(event.target.files ?? [])
+                          event.target.value = ''
+                          if (files.length > 0) handleQueueUploadFiles(files)
                         }}
-                      >
-                        {processedContent}
-                      </Markdown>
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => void handleUploadQueuedKnowledgeFiles()}
+                      disabled={uploadPending || queuedUploadFiles.length === 0}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-accent-600 bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <HugeiconsIcon
+                        icon={Upload01Icon}
+                        size={14}
+                        strokeWidth={1.7}
+                      />
+                      {uploadPending ? 'Uploading...' : 'Upload'}
+                    </button>
+                  </div>
+                </div>
 
-                      <section className="rounded-xl border border-primary-200 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
-                        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary-900 dark:text-neutral-100">
-                          <HugeiconsIcon
-                            icon={Link01Icon}
-                            size={16}
-                            strokeWidth={1.7}
-                          />
-                          Backlinks
+                <div className="min-h-0 flex-1 overflow-auto p-3">
+                  <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+                    <div className="space-y-3">
+                      <section className="rounded-xl border border-primary-200 bg-primary-50/80 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+                        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                          Current folder
                         </div>
-                        {backlinks.length === 0 ? (
-                          <div className="text-sm text-primary-500 dark:text-neutral-400">
-                            No pages link here yet.
-                          </div>
+                        {filesLoading ? (
+                          <StateBox label="Loading folder..." />
+                        ) : filesError ? (
+                          <StateBox label={filesError} error />
+                        ) : currentDirectoryEntries.length === 0 ? (
+                          <StateBox
+                            label={
+                              fileViewMode === 'source'
+                                ? 'No source files in this folder'
+                                : 'No wiki files in this folder'
+                            }
+                          />
                         ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {backlinks.map((backlink) => {
-                              const backlinkPath =
-                                resolveWikiPath(backlink) || backlink
-                              return (
-                                <button
-                                  key={backlink}
-                                  type="button"
-                                  onClick={() => handleSelectPath(backlinkPath)}
-                                  className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
-                                >
-                                  {backlink}
-                                </button>
-                              )
-                            })}
+                          <div className="divide-y divide-primary-200 overflow-hidden rounded-lg border border-primary-200 dark:divide-neutral-800 dark:border-neutral-800">
+                            {currentDirectoryEntries.map((entry) => (
+                              <button
+                                key={entry.path}
+                                type="button"
+                                onClick={() => {
+                                  if (entry.kind === 'directory') {
+                                    handleBrowseKnowledgeFolder(entry.path)
+                                    setExpandedFilePaths((current) => {
+                                      const next = new Set(current)
+                                      next.add(entry.path)
+                                      return next
+                                    })
+                                  }
+                                }}
+                                className={cn(
+                                  'flex w-full items-center justify-between gap-3 bg-primary-50 px-3 py-2 text-left text-sm transition-colors dark:bg-neutral-950',
+                                  entry.kind === 'directory' &&
+                                    'hover:bg-primary-100 dark:hover:bg-neutral-900',
+                                )}
+                              >
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <HugeiconsIcon
+                                    icon={
+                                      entry.kind === 'directory'
+                                        ? Folder01Icon
+                                        : File01Icon
+                                    }
+                                    size={16}
+                                    strokeWidth={1.7}
+                                    className="shrink-0"
+                                  />
+                                  <span className="min-w-0 truncate">
+                                    {entry.name}
+                                  </span>
+                                </span>
+                                <span className="shrink-0 text-xs text-primary-400 dark:text-neutral-500">
+                                  {entry.kind === 'file'
+                                    ? formatBytes(entry.size)
+                                    : 'Folder'}
+                                </span>
+                              </button>
+                            ))}
                           </div>
                         )}
                       </section>
+
+                      {reviewRows.length > 0 ? (
+                        <section className="space-y-2 rounded-xl border border-primary-200 bg-primary-50/80 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+                          <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                            Ready to build
+                          </div>
+                          {reviewRows.map((row) => (
+                            <div
+                              key={row.retryUploadRef}
+                              className="flex items-start justify-between gap-3 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-950"
+                            >
+                              <div className="min-w-0">
+                                <div className="truncate font-medium text-primary-900 dark:text-neutral-100">
+                                  {row.originalName}
+                                </div>
+                                <div className="text-xs text-primary-500 dark:text-neutral-400">
+                                  {row.ingestKind} · {formatBytes(row.size)}
+                                </div>
+                                {row.targetWikiPath ? (
+                                  <div className="mt-1 truncate text-xs text-primary-500 dark:text-neutral-400">
+                                    {row.targetWikiPath}
+                                  </div>
+                                ) : null}
+                              </div>
+                              <div className="flex shrink-0 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void handleIngestKnowledgeUpload(
+                                      row.retryUploadRef,
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-accent-600 bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600"
+                                >
+                                  <HugeiconsIcon
+                                    icon={Upload01Icon}
+                                    size={14}
+                                    strokeWidth={1.7}
+                                  />
+                                  Build wiki page
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setReviewRows((current) =>
+                                      current.filter(
+                                        (item) =>
+                                          item.retryUploadRef !==
+                                          row.retryUploadRef,
+                                      ),
+                                    )
+                                  }
+                                  className="rounded-lg border border-primary-200 px-2 py-1.5 text-xs font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </section>
+                      ) : null}
                     </div>
 
                     <aside className="space-y-3">
-                      <MetadataCard label="Type" value={page.type} />
-                      <MetadataCard label="Domain" value={page.domain} />
-                      <MetadataCard label="Status" value={page.status} />
-                      <MetadataCard
-                        label="Created"
-                        value={formatDate(page.created)}
-                      />
-                      <MetadataCard
-                        label="Updated"
-                        value={formatDate(page.updated || page.modified)}
-                      />
-                      <MetadataCard
-                        label="Size"
-                        value={formatBytes(page.size)}
-                      />
-                      <div className="rounded-xl border border-primary-200 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+                      <section className="space-y-2 rounded-xl border border-primary-200 bg-primary-50/80 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
                         <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                          Tags
+                          Create folder
                         </div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {page.tags.length === 0 ? (
-                            <span className="text-sm text-primary-500 dark:text-neutral-400">
-                              No tags
-                            </span>
-                          ) : (
-                            page.tags.map((tag) => (
-                              <button
-                                key={tag}
-                                type="button"
-                                onClick={() => setSelectedTag(tag)}
-                                className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
-                              >
-                                #{tag}
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                      <div className="rounded-xl border border-primary-200 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
-                        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                          <HugeiconsIcon
-                            icon={CodeIcon}
-                            size={14}
-                            strokeWidth={1.7}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newFolderName}
+                            onChange={(event) =>
+                              setNewFolderName(event.target.value)
+                            }
+                            placeholder="Folder name"
+                            className="min-w-0 flex-1 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm outline-none dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
                           />
-                          Wikilinks
+                          <button
+                            type="button"
+                            disabled={!newFolderName.trim()}
+                            onClick={async () => {
+                              const nextName = newFolderName.trim()
+                              if (!nextName) return
+                              await handleCreateKnowledgeFolder(nextName)
+                              setNewFolderName('')
+                            }}
+                            className="rounded-lg border border-primary-200 px-3 py-2 text-sm font-semibold hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                          >
+                            Create
+                          </button>
                         </div>
-                        {page.wikilinks.length === 0 ? (
+                      </section>
+
+                      <section className="space-y-2 rounded-xl border border-primary-200 bg-primary-50/80 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                            Upload queue
+                          </div>
+                          {queuedUploadFiles.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => setQueuedUploadFiles([])}
+                              className="text-xs font-semibold text-primary-600 hover:text-primary-900 dark:text-neutral-300 dark:hover:text-neutral-100"
+                            >
+                              Clear
+                            </button>
+                          ) : null}
+                        </div>
+                        {queuedUploadView.length === 0 ? (
                           <div className="text-sm text-primary-500 dark:text-neutral-400">
-                            No outbound links
+                            No files queued.
                           </div>
                         ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {page.wikilinks.map((link) => {
-                              const linkPath = resolveWikiPath(link) || link
-                              return (
-                                <button
-                                  key={link}
-                                  type="button"
-                                  onClick={() => handleSelectPath(linkPath)}
-                                  className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
-                                >
-                                  {link}
-                                </button>
-                              )
-                            })}
+                          <div className="max-h-44 space-y-1 overflow-y-auto">
+                            {queuedUploadView.map((file) => (
+                              <div
+                                key={`${file.name}:${file.size}`}
+                                className="flex items-center justify-between gap-3 rounded-md border border-primary-200 px-2 py-1.5 text-xs dark:border-neutral-800"
+                              >
+                                <span className="min-w-0 truncate">
+                                  {file.name}
+                                </span>
+                                <span className="shrink-0 text-primary-400 dark:text-neutral-500">
+                                  {formatBytes(file.size)}
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         )}
-                      </div>
+                      </section>
                     </aside>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between border-b border-primary-200 px-3 py-2 dark:border-neutral-800">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                      {page?.title || selectedPath || 'Select a page'}
+                    </div>
+                    {page ? (
+                      <div className="text-xs text-primary-400 dark:text-neutral-500">
+                        {page.path} · {formatBytes(page.size)} ·{' '}
+                        {formatDate(page.updated || page.modified)}
+                      </div>
+                    ) : null}
+                  </div>
+                  {page ? (
+                    <a
+                      href={askUrl}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-primary-200 px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                    >
+                      <HugeiconsIcon
+                        icon={Message01Icon}
+                        size={14}
+                        strokeWidth={1.7}
+                      />
+                      Ask agent about this
+                    </a>
+                  ) : null}
+                </div>
+
+                <div className="h-full overflow-auto p-2 md:p-3">
+                  {listQuery.isLoading ? (
+                    <StateBox label="Loading knowledge base..." />
+                  ) : listQuery.error instanceof Error ? (
+                    <StateBox label={listQuery.error.message} error />
+                  ) : !knowledgeExists ? (
+                    <EmptyKnowledgeState knowledgeRoot={knowledgeRoot} />
+                  ) : !selectedPath ? (
+                    <StateBox label="Select a page to start browsing" />
+                  ) : readQuery.isLoading ? (
+                    <StateBox label="Loading page..." />
+                  ) : readQuery.error instanceof Error ? (
+                    <StateBox label={readQuery.error.message} error />
+                  ) : !page ? (
+                    <StateBox label="Page not found" error />
+                  ) : (
+                    <div
+                      className="rounded-xl theme-border-1"
+                      style={{
+                        backgroundColor: 'var(--theme-card)',
+                      }}
+                    >
+                      <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_260px]">
+                        <div className="min-w-0 space-y-4">
+                          {focusedResult && focusedResult.path === page.path ? (
+                            <div className="rounded-xl border border-yellow-300/40 bg-yellow-300/10 px-3 py-2 text-sm text-primary-900 dark:text-yellow-50">
+                              <div className="font-medium">
+                                Search hit at line {focusLine}
+                              </div>
+                              <div className="mt-1 text-xs opacity-80">
+                                {focusedResult.text}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {page.summary ? (
+                            <div className="rounded-xl border border-primary-200 bg-primary-50/70 px-3 py-2 text-sm text-primary-700 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-300">
+                              {page.summary}
+                            </div>
+                          ) : null}
+
+                          <Markdown
+                            className="gap-3"
+                            components={{
+                              a: function KnowledgeLink({ children, href }) {
+                                if (href?.startsWith('wiki:')) {
+                                  const resolvedPath = resolveWikiPath(
+                                    href.slice('wiki:'.length),
+                                  )
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (resolvedPath)
+                                          handleSelectPath(resolvedPath)
+                                      }}
+                                      className="inline-flex items-center gap-1 text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500 dark:text-neutral-100"
+                                    >
+                                      <HugeiconsIcon
+                                        icon={Link01Icon}
+                                        size={14}
+                                        strokeWidth={1.7}
+                                      />
+                                      <span>{children}</span>
+                                    </button>
+                                  )
+                                }
+
+                                return (
+                                  <a
+                                    href={href}
+                                    className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    {children}
+                                  </a>
+                                )
+                              },
+                            }}
+                          >
+                            {processedContent}
+                          </Markdown>
+
+                          <section className="rounded-xl border border-primary-200 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+                            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                              <HugeiconsIcon
+                                icon={Link01Icon}
+                                size={16}
+                                strokeWidth={1.7}
+                              />
+                              Backlinks
+                            </div>
+                            {backlinks.length === 0 ? (
+                              <div className="text-sm text-primary-500 dark:text-neutral-400">
+                                No pages link here yet.
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {backlinks.map((backlink) => {
+                                  const backlinkPath =
+                                    resolveWikiPath(backlink) || backlink
+                                  return (
+                                    <button
+                                      key={backlink}
+                                      type="button"
+                                      onClick={() =>
+                                        handleSelectPath(backlinkPath)
+                                      }
+                                      className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
+                                    >
+                                      {backlink}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </section>
+                        </div>
+
+                        <aside className="space-y-3">
+                          <MetadataCard label="Type" value={page.type} />
+                          <MetadataCard label="Domain" value={page.domain} />
+                          <MetadataCard label="Status" value={page.status} />
+                          <MetadataCard
+                            label="Created"
+                            value={formatDate(page.created)}
+                          />
+                          <MetadataCard
+                            label="Updated"
+                            value={formatDate(page.updated || page.modified)}
+                          />
+                          <MetadataCard
+                            label="Size"
+                            value={formatBytes(page.size)}
+                          />
+                          <div className="rounded-xl border border-primary-200 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+                            <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                              Tags
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {page.tags.length === 0 ? (
+                                <span className="text-sm text-primary-500 dark:text-neutral-400">
+                                  No tags
+                                </span>
+                              ) : (
+                                page.tags.map((tag) => (
+                                  <button
+                                    key={tag}
+                                    type="button"
+                                    onClick={() => setSelectedTag(tag)}
+                                    className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
+                                  >
+                                    #{tag}
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-primary-200 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+                            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                              <HugeiconsIcon
+                                icon={CodeIcon}
+                                size={14}
+                                strokeWidth={1.7}
+                              />
+                              Wikilinks
+                            </div>
+                            {page.wikilinks.length === 0 ? (
+                              <div className="text-sm text-primary-500 dark:text-neutral-400">
+                                No outbound links
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {page.wikilinks.map((link) => {
+                                  const linkPath = resolveWikiPath(link) || link
+                                  return (
+                                    <button
+                                      key={link}
+                                      type="button"
+                                      onClick={() => handleSelectPath(linkPath)}
+                                      className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
+                                    >
+                                      {link}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </aside>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </section>
         </div>
 
@@ -1650,6 +2250,86 @@ function TreeSection({
   )
 }
 
+function KnowledgeFileTree({
+  entry,
+  depth = 0,
+  expanded,
+  selectedPath,
+  onToggle,
+  onSelectFolder,
+}: {
+  entry: KnowledgeTreeEntry
+  depth?: number
+  expanded: Set<string>
+  selectedPath: string
+  onToggle: (path: string) => void
+  onSelectFolder: (path: string) => void
+}) {
+  const isDirectory = entry.kind === 'directory'
+  const isExpanded = expanded.has(entry.path)
+  const isSelected = selectedPath === entry.path
+  const paddingLeft = 12 + depth * 14
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => {
+          if (isDirectory) {
+            onSelectFolder(entry.path)
+            onToggle(entry.path)
+          }
+        }}
+        className={cn(
+          'flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm transition-colors',
+          isSelected
+            ? 'bg-accent-500/15 text-accent-600 dark:text-accent-400'
+            : 'text-primary-900 hover:bg-primary-100 dark:text-neutral-200 dark:hover:bg-neutral-900',
+          !isDirectory && 'cursor-default opacity-80',
+        )}
+        style={{ paddingLeft }}
+        aria-current={isSelected ? 'true' : undefined}
+      >
+        {isDirectory ? (
+          <span
+            className={cn(
+              'w-3 shrink-0 text-[10px] transition-transform',
+              isExpanded && 'rotate-90',
+            )}
+          >
+            ▶
+          </span>
+        ) : (
+          <span className="w-3 shrink-0" />
+        )}
+        <HugeiconsIcon
+          icon={isDirectory ? Folder01Icon : File01Icon}
+          size={15}
+          strokeWidth={1.7}
+          className="shrink-0"
+        />
+        <span className="min-w-0 flex-1 truncate">{entry.name}</span>
+      </button>
+
+      {isDirectory && isExpanded && entry.children?.length ? (
+        <div>
+          {entry.children.map((child) => (
+            <KnowledgeFileTree
+              key={child.path || 'wiki'}
+              entry={child}
+              depth={depth + 1}
+              expanded={expanded}
+              selectedPath={selectedPath}
+              onToggle={onToggle}
+              onSelectFolder={onSelectFolder}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function InlineBadge({ label }: { label: string }) {
   return (
     <span className="rounded-full border border-primary-200 bg-primary-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
@@ -1709,10 +2389,12 @@ function EmptyKnowledgeState({ knowledgeRoot }: { knowledgeRoot: string }) {
   return (
     <div className="flex min-h-32 flex-col justify-center rounded-xl border border-primary-200 bg-primary-50 px-4 py-5 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
       <div className="text-base font-semibold text-primary-900 dark:text-neutral-100">
-        No knowledge base found
+        No wiki pages found
       </div>
       <p className="mt-2 text-pretty">
-        Create markdown files in <code>{knowledgeRoot}</code> to get started.
+        Markdown pages can live anywhere under <code>{knowledgeRoot}</code>,
+        including subfolders. Uploaded PDF and DOCX files appear after you build
+        them into Markdown pages.
       </p>
       <a
         href="https://karpathy.ai/"

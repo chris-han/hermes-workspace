@@ -9,6 +9,7 @@ import {
   validateKnowledgeUploadLimits,
   writeKnowledgeUpload,
 } from '../../../server/knowledge-files'
+import { emitKnowledgeEvent } from '../../../server/knowledge-event-bus'
 import {
   WorkspaceAuthRequiredError,
   resolveActiveWorkspaceRoot,
@@ -56,6 +57,14 @@ export const Route = createFileRoute('/api/knowledge/upload')({
           const targetPath = form.get('path')
           const ingestMode = form.get('ingestMode')
           const sessionId = form.get('session_id')
+          emitKnowledgeEvent({
+            workspaceId: activeWorkspace.workspaceId,
+            sessionId: typeof sessionId === 'string' ? sessionId : null,
+            stage: 'upload',
+            status: 'running',
+            label: 'Uploading knowledge files',
+            detail: `${files.length} ${files.length === 1 ? 'file' : 'files'} selected`,
+          })
           const results = await Promise.all(
             files.map((file) =>
               writeKnowledgeUpload(
@@ -75,6 +84,52 @@ export const Route = createFileRoute('/api/knowledge/upload')({
               ),
             ),
           )
+          for (const result of results) {
+            if (!result.ok) {
+              emitKnowledgeEvent({
+                workspaceId: activeWorkspace.workspaceId,
+                sessionId: typeof sessionId === 'string' ? sessionId : null,
+                stage: 'upload',
+                status: 'failed',
+                label: `Upload failed: ${result.filename}`,
+                detail: result.error,
+                filename: result.filename,
+              })
+              continue
+            }
+            emitKnowledgeEvent({
+              workspaceId: activeWorkspace.workspaceId,
+              sessionId: typeof sessionId === 'string' ? sessionId : null,
+              stage:
+                result.kind === 'staged_for_ingest' ? 'review' : 'complete',
+              status: result.kind === 'staged_for_ingest' ? 'waiting' : 'done',
+              label:
+                result.kind === 'staged_for_ingest'
+                  ? `Uploaded ${result.storedName}`
+                  : `Saved ${result.storedName}`,
+              detail:
+                result.kind === 'staged_for_ingest'
+                  ? 'Waiting for wiki page build'
+                  : 'File tree refreshed',
+              filename: result.originalName,
+              targetPath:
+                result.kind === 'staged_for_ingest'
+                  ? result.targetWikiPath
+                  : result.relativePath,
+              uploadRef:
+                result.kind === 'staged_for_ingest'
+                  ? result.stagedUploadRef
+                  : undefined,
+            })
+          }
+          emitKnowledgeEvent({
+            workspaceId: activeWorkspace.workspaceId,
+            sessionId: typeof sessionId === 'string' ? sessionId : null,
+            stage: 'upload',
+            status: results.some((result) => !result.ok) ? 'failed' : 'done',
+            label: 'Knowledge upload complete',
+            detail: `${results.filter((result) => result.ok).length}/${results.length} files accepted`,
+          })
           return json(results)
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {

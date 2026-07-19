@@ -5,6 +5,7 @@ import {
   KnowledgeEntitlementRequiredError,
   requireKnowledgeEntitlement,
 } from '../../../server/knowledge-entitlement'
+import { emitKnowledgeEvent } from '../../../server/knowledge-event-bus'
 import { ingestKnowledgeUpload } from '../../../server/knowledge-ingest'
 import {
   WorkspaceAuthRequiredError,
@@ -55,17 +56,33 @@ export const Route = createFileRoute('/api/knowledge/ingest')({
               { status: 400 },
             )
           }
-          const result = await ingestKnowledgeUpload(activeWorkspace.path, {
-            uploadRef: body.uploadRef,
-            confirmed: true,
-            targetDir:
-              typeof body.targetDir === 'string' ? body.targetDir : null,
-            languageHint:
-              typeof body.languageHint === 'string' ? body.languageHint : null,
-            workspaceId: activeWorkspace.workspaceId,
-            sessionId:
-              typeof body.sessionId === 'string' ? body.sessionId : null,
-          })
+          const result = await ingestKnowledgeUpload(
+            activeWorkspace.path,
+            {
+              uploadRef: body.uploadRef,
+              confirmed: true,
+              targetDir:
+                typeof body.targetDir === 'string' ? body.targetDir : null,
+              languageHint:
+                typeof body.languageHint === 'string'
+                  ? body.languageHint
+                  : null,
+              workspaceId: activeWorkspace.workspaceId,
+              sessionId:
+                typeof body.sessionId === 'string' ? body.sessionId : null,
+              forceWorkspaceWikiRoot: true,
+            },
+            {
+              emitEvent: (event) => {
+                emitKnowledgeEvent({
+                  workspaceId: activeWorkspace.workspaceId,
+                  sessionId:
+                    typeof body.sessionId === 'string' ? body.sessionId : null,
+                  ...event,
+                })
+              },
+            },
+          )
           const status =
             !result.ok && 'scope' in result && result.scope === 'ingest'
               ? 413

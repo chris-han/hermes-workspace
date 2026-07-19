@@ -768,6 +768,26 @@
   background-color: var(--theme-card2) !important;
 }
 
+.role-config-select {
+  background-color: var(--theme-input, var(--theme-card));
+  border-color: var(--theme-border);
+  color: var(--theme-text);
+}
+
+.role-config-select option {
+  background-color: var(--theme-card);
+  color: var(--theme-text);
+}
+
+.role-config-select option:checked {
+  background-color: var(--theme-accent);
+  color: var(--theme-accent-foreground);
+}
+
+.role-config-select:focus {
+  border-color: var(--theme-focus);
+}
+
 .theme-border {
   border-color: var(--theme-border) !important;
 }

@@ -132,10 +132,6 @@ type PortableHistoryMessage = {
   content: string
 }
 
-type KnowledgeContextRequest = {
-  path: string
-}
-
 const PDF_MIME_TYPE = 'application/pdf'
 
 function normalizeMimeType(value: unknown): string {
@@ -2042,7 +2038,6 @@ export function ChatScreen({
       fastMode = false,
       skipOptimistic = false,
       existingClientId = '',
-      knowledgeContext?: KnowledgeContextRequest,
     ) {
       // Read from ref so we always get the latest value without capturing it in deps
       const currentThinkingLevel = thinkingLevelRef.current
@@ -2216,7 +2211,6 @@ export function ChatScreen({
         thinking:
           currentThinkingLevel === 'off' ? undefined : currentThinkingLevel,
         fastMode,
-        knowledgeContext,
         model: currentModel || undefined,
         idempotencyKey: optimisticClientId || crypto.randomUUID(),
       }).catch((err: unknown) => {
@@ -2547,7 +2541,6 @@ export function ChatScreen({
       attachments: Array<ChatComposerAttachment>,
       fastMode: boolean,
       helpers: ChatComposerHelpers,
-      knowledgeContext?: KnowledgeContextRequest,
     ) => {
       const trimmedBody = body.trim()
       if (trimmedBody.length === 0 && attachments.length === 0) return
@@ -2561,7 +2554,7 @@ export function ChatScreen({
 
       // Deduplicate sends with identical content within a 500ms window.
       // This prevents double-fire from paste events that trigger multiple send paths.
-      const sendKey = `${trimmedBody}|${attachments.map((a) => `${a.name}:${a.size}`).join(',')}|${knowledgeContext?.path ?? ''}`
+      const sendKey = `${trimmedBody}|${attachments.map((a) => `${a.name}:${a.size}`).join(',')}`
       const now = Date.now()
       if (
         sendKey === lastSendKeyRef.current &&
@@ -2627,7 +2620,6 @@ export function ChatScreen({
               typeof optimisticMessage.clientId === 'string'
                 ? optimisticMessage.clientId
                 : '',
-              knowledgeContext,
             )
             if (!embedded) {
               navigate({
@@ -2660,7 +2652,6 @@ export function ChatScreen({
         fastMode,
         false,
         '',
-        knowledgeContext,
       )
     },
     [
@@ -2684,12 +2675,10 @@ export function ChatScreen({
     if (!isNewChat || embedded || typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     const message = params.get('message')?.trim()
-    const knowledgePath = params.get('knowledgePath')?.trim() || ''
-    const consumedKey = `${message || ''}|${knowledgePath}`
+    const consumedKey = message || ''
     if (!message || consumedUrlMessageRef.current === consumedKey) return
     consumedUrlMessageRef.current = consumedKey
     params.delete('message')
-    params.delete('knowledgePath')
     const nextSearch = params.toString()
     window.history.replaceState(
       window.history.state,
@@ -2705,7 +2694,6 @@ export function ChatScreen({
         setValue: () => {},
         setAttachments: () => {},
       },
-      knowledgePath ? { path: knowledgePath } : undefined,
     )
   }, [embedded, isNewChat, send])
 

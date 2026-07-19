@@ -452,6 +452,25 @@ export async function getMemory(): Promise<unknown> {
   return hermesGet('/api/memory')
 }
 
+export async function listMemory(): Promise<unknown> {
+  return hermesGet('/api/memory/list')
+}
+
+export async function readMemory(path: string): Promise<unknown> {
+  return hermesGet(`/api/memory/read?path=${encodeURIComponent(path)}`)
+}
+
+export async function searchMemory(query: string): Promise<unknown> {
+  return hermesGet(`/api/memory/search?q=${encodeURIComponent(query)}`)
+}
+
+export async function writeMemory(body: {
+  path: string
+  content: string
+}): Promise<unknown> {
+  return hermesPost('/api/memory/write', body)
+}
+
 // ── Skills ───────────────────────────────────────────────────────
 
 export async function listSkills(): Promise<unknown> {

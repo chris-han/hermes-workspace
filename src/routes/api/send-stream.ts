@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { buildKnowledgeChatContext } from '../../server/knowledge-browser'
 import { requireJsonContentType } from '../../server/rate-limit'
 import { resolveSessionKey } from '../../server/session-utils'
 import {
@@ -15,7 +14,6 @@ import {
   markRunStatus,
   persistRunTrajectory,
   setRunThinking,
-  upsertRunToolCall,
 } from '../../server/run-store'
 import {
   WorkspaceAuthRequiredError,
@@ -79,12 +77,6 @@ function asMessage(value: unknown): string {
   return String(value || 'Request failed')
 }
 
-function readKnowledgeContextPath(value: unknown): string {
-  if (!value || typeof value !== 'object') return ''
-  const pathValue = (value as Record<string, unknown>).path
-  return typeof pathValue === 'string' ? pathValue.trim() : ''
-}
-
 function semantierErrorResponse(error: unknown): Response | null {
   if (!(error instanceof SemantierSessionApiError)) return null
 
@@ -144,9 +136,12 @@ export const Route = createFileRoute('/api/send-stream')({
             typeof body.model === 'string' ? body.model.trim() : ''
           const requestedThinking =
             typeof body.thinking === 'string' ? body.thinking.trim() : ''
-          const requestedKnowledgePath = readKnowledgeContextPath(
-            body.knowledgeContext,
-          )
+          if (body.knowledgeContext !== undefined) {
+            return buildJsonError(
+              'knowledgeContext is deprecated; send a /llm-wiki skill command instead',
+              400,
+            )
+          }
           const runId =
             (typeof body.idempotencyKey === 'string' &&
             body.idempotencyKey.trim().length > 0
@@ -174,24 +169,7 @@ export const Route = createFileRoute('/api/send-stream')({
             return buildJsonError(asMessage(error), 500)
           }
 
-          let resolvedSystemMessage = requestedThinking || undefined
-          if (requestedKnowledgePath) {
-            try {
-              const knowledgeContext = buildKnowledgeChatContext(
-                requestedKnowledgePath,
-                workspaceRoot,
-                { datasetType },
-              )
-              resolvedSystemMessage = [
-                resolvedSystemMessage,
-                knowledgeContext.systemMessage,
-              ]
-                .filter((part): part is string => Boolean(part && part.trim()))
-                .join('\n\n')
-            } catch (error) {
-              return buildJsonError(asMessage(error), 400)
-            }
-          }
+          const resolvedSystemMessage = requestedThinking || undefined
 
           const markRun = async (
             status:

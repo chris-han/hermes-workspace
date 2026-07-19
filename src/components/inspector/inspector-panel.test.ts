@@ -1,9 +1,19 @@
-import { describe, expect, it } from 'vitest'
+// @vitest-environment jsdom
+
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   artifactMatchesHighlight,
+  getInspectorCopy,
+  skillMatchesSessionAttachment,
+  useInspectorStore,
   persistedArtifactDisplayTitle,
 } from './inspector-panel'
+import { defaultStudioSettings, useSettingsStore } from '@/hooks/use-settings'
+
+vi.mock('@/hooks/use-feature-available', () => ({
+  useFeatureAvailable: () => true,
+}))
 
 describe('persistedArtifactDisplayTitle', () => {
   it('uses the relative path for nested session artifacts', () => {
@@ -46,6 +56,79 @@ describe('artifactMatchesHighlight', () => {
       artifactMatchesHighlight(
         artifact,
         '/sessions/session_abc/artifacts/reimbursement/REIM-20260717-001.md/raw',
+      ),
+    ).toBe(true)
+  })
+})
+
+describe('InspectorPanel', () => {
+  afterEach(() => {
+    useInspectorStore.setState({
+      isOpen: false,
+      activeTab: 'activity',
+      highlightedArtifact: null,
+    })
+    useSettingsStore.setState({
+      settings: { ...defaultStudioSettings, locale: 'en' },
+    })
+    vi.clearAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('builds Chinese copy when the workspace locale is zh', () => {
+    const copy = getInspectorCopy('zh')
+
+    expect(copy.title).toBe('检查器')
+    expect(copy.tabs.activity).toBe('活动')
+    expect(copy.tabs.artifacts).toBe('制品')
+    expect(copy.tabs.memory).toBe('记忆')
+    expect(copy.tabs.skills).toBe('技能')
+    expect(copy.tabs.logs).toBe('日志')
+    expect(copy.empty.openSessionToSeeActivity).toBe('打开一个会话以查看活动')
+  })
+
+  it('matches session-attached Hermes bundled skills exposed through the Semantier shim', () => {
+    expect(
+      skillMatchesSessionAttachment(
+        {
+          id: 'research/llm-wiki',
+          name: 'llm-wiki',
+          category: 'research',
+          description: 'Hermes bundled wiki research skill',
+          enabled: true,
+          builtin: true,
+          sourceLabel: 'Bundled',
+          hubIdentifier: 'hermes-agent/skills/research/llm-wiki',
+          hubSource: 'hermes-agent',
+          packagePath: 'hermes-agent/skills/research/llm-wiki',
+          packageType: 'bundled-skill',
+        },
+        new Set(['llm-wiki']),
+        new Set(),
+      ),
+    ).toBe(true)
+
+    expect(
+      skillMatchesSessionAttachment(
+        {
+          id: 'research/llm-wiki',
+          name: 'llm-wiki',
+          packagePath: 'hermes-agent/skills/research/llm-wiki',
+        },
+        new Set(['research/llm-wiki']),
+        new Set(),
+      ),
+    ).toBe(true)
+
+    expect(
+      skillMatchesSessionAttachment(
+        {
+          id: 'research/llm-wiki',
+          name: 'llm-wiki',
+          packagePath: 'hermes-agent/skills/research/llm-wiki',
+        },
+        new Set(),
+        new Set(['hermes-agent/skills/research/llm-wiki']),
       ),
     ).toBe(true)
   })

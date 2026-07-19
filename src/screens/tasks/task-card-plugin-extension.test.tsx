@@ -64,7 +64,7 @@ describe('TaskCard plugin UI extensions', () => {
 
     expect(screen.getByText('Planning sync')).toBeTruthy()
     expect(screen.getByText('awaiting_requester_decision')).toBeTruthy()
-    expect(screen.getByText('A. User')).toBeTruthy()
+    expect(screen.getByText(/Declined attendee:\s*A\. User/)).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Nudge' }))
     expect(onPluginAction).toHaveBeenCalledWith(

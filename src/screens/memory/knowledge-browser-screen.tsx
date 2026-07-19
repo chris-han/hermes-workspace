@@ -159,6 +159,7 @@ type KnowledgeIngestResult =
   | {
       ok: false
       originalName?: string
+      code?: string
       message: string
       retryUploadRef?: string
     }
@@ -197,6 +198,42 @@ type KnowledgeReadResponse = {
   page?: WikiPageMeta
   content?: string
   backlinks?: Array<string>
+}
+
+type GovernedKnowledgeEvidenceStep = {
+  stage?: string
+  ref?: string | null
+  hash?: string | null
+}
+
+type GovernedKnowledgeArtifact = {
+  artifact_id?: string
+  source_ref?: string
+  semantic_tier?: string
+  authority_domain?: string
+  tag_authority_level?: string
+  source_type?: string
+  authority_origin?: string
+  ingestion_status?: string
+  effective_from?: string
+  source_version?: string
+  extraction_method?: string
+  curator?: string
+  claim_count?: number
+  anchors?: Array<Record<string, unknown>>
+  ambiguities?: Array<string>
+  evidence_chain?: Array<GovernedKnowledgeEvidenceStep>
+}
+
+type KnowledgeAccessLineageResponse = {
+  active_knowledge_artifacts?: {
+    items?: Array<GovernedKnowledgeArtifact>
+  }
+}
+
+type PromotionGateOverride = {
+  reason: string
+  recordedAt: string
 }
 
 type KnowledgeSearchResult = {
@@ -335,6 +372,64 @@ function preprocessWikiMarkdown(content: string): string {
     const label = parts[1]?.trim() || target
     return `[${label}](wiki:${encodeURIComponent(target)})`
   })
+}
+
+function shortEvidenceValue(value?: string | null): string {
+  if (!value) return 'not recorded'
+  if (value.length <= 54) return value
+  return `${value.slice(0, 26)}...${value.slice(-18)}`
+}
+
+function normalizeLineageToken(value?: string | null): string {
+  return (value || '').toLowerCase().replace(/\\/g, '/')
+}
+
+function pageMatchesPromotedArtifact(
+  artifact: GovernedKnowledgeArtifact,
+  pagePath: string,
+  content: string,
+): boolean {
+  const pageNeedles = [
+    pagePath,
+    pagePath.replace(/\.md$/i, '.pdf'),
+    pagePath.replace(/\.md$/i, ''),
+  ].map(normalizeLineageToken)
+  const haystacks = [
+    artifact.source_ref,
+    artifact.source_version,
+    artifact.artifact_id,
+    ...(artifact.evidence_chain || []).flatMap((step) => [step.ref, step.hash]),
+    ...(artifact.anchors || []).flatMap((anchor) =>
+      Object.values(anchor).map((value) => String(value)),
+    ),
+    content,
+  ].map(normalizeLineageToken)
+
+  return haystacks.some((haystack) =>
+    pageNeedles.some((needle) => needle && haystack.includes(needle)),
+  )
+}
+
+function gateLabel(stage?: string): string {
+  return (stage || 'evidence')
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function displayAuthorityLevel(value?: string | null): string {
+  if (!value) return 'Unlabeled'
+  return value
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function extractAuthorityLevel(content: string): string | null {
+  const match = content.match(/^>\s*Authority level:\s*(.+)$/im)
+  return match?.[1]?.trim() || null
 }
 
 function buildKnowledgeTree(pages: Array<WikiPageMeta>): TreeNode {
@@ -479,6 +574,8 @@ export function KnowledgeBrowserScreen() {
   const [browserPath, setBrowserPath] = useState('')
   const [queuedUploadFiles, setQueuedUploadFiles] = useState<Array<File>>([])
   const [reviewRows, setReviewRows] = useState<Array<KnowledgeReviewRow>>([])
+  const [manualCurationJustifications, setManualCurationJustifications] =
+    useState<Record<string, string>>({})
   const [fileViewMode, setFileViewMode] =
     useState<KnowledgeFileViewMode>('source')
   const [folderPromptOpen, setFolderPromptOpen] = useState(false)
@@ -494,6 +591,22 @@ export function KnowledgeBrowserScreen() {
   >([])
   const [resolvedConfig, setResolvedConfig] =
     useState<KnowledgeResolvedConfig | null>(null)
+  const [selectedPromotionGate, setSelectedPromotionGate] = useState(0)
+  const [overrideDraft, setOverrideDraft] = useState('')
+  const [promotionGateOverrides, setPromotionGateOverrides] = useState<
+    Record<string, PromotionGateOverride>
+  >(() => {
+    if (typeof window === 'undefined') return {}
+    try {
+      const raw = window.localStorage.getItem('knowledge-promotion-overrides')
+      const parsed = raw ? JSON.parse(raw) : {}
+      return parsed && typeof parsed === 'object'
+        ? (parsed as Record<string, PromotionGateOverride>)
+        : {}
+    } catch {
+      return {}
+    }
+  })
   const queryClient = useQueryClient()
 
   useEffect(() => {
@@ -641,6 +754,17 @@ export function KnowledgeBrowserScreen() {
     enabled: Boolean(selectedPath),
   })
 
+  const knowledgeLineageQuery = useQuery({
+    queryKey: ['knowledge', 'promoted-lineage'],
+    queryFn: () =>
+      readJson<KnowledgeAccessLineageResponse>(
+        '/api/semantier-proxy/organizations/knowledge-access',
+      ),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    retry: false,
+  })
+
   const searchQuery = useQuery({
     queryKey: ['knowledge', 'search', searchTerm],
     queryFn: () =>
@@ -679,10 +803,59 @@ export function KnowledgeBrowserScreen() {
     () => preprocessWikiMarkdown(content),
     [content],
   )
-  const askUrl = `/chat/new?message=${encodeURIComponent(
-    `Tell me about ${page?.title || selectedPath || 'this wiki page'}`,
-  )}${selectedPath ? `&knowledgePath=${encodeURIComponent(selectedPath)}` : ''}`
+  const promotedArtifact = useMemo(() => {
+    if (!selectedPath || !content) return null
+    const artifacts =
+      knowledgeLineageQuery.data?.active_knowledge_artifacts?.items || []
+    return (
+      artifacts.find((artifact) =>
+        pageMatchesPromotedArtifact(artifact, selectedPath, content),
+      ) || null
+    )
+  }, [content, knowledgeLineageQuery.data, selectedPath])
+  const authorityLevel = useMemo(() => {
+    if (promotedArtifact?.tag_authority_level) {
+      return promotedArtifact.tag_authority_level
+    }
+    if (promotedArtifact?.semantic_tier) {
+      return promotedArtifact.semantic_tier
+    }
+    return extractAuthorityLevel(content)
+  }, [content, promotedArtifact])
+  const authorityBadgeLabel = authorityLevel
+    ? `Authority: ${displayAuthorityLevel(authorityLevel)}`
+    : null
+  const promotionGates = promotedArtifact?.evidence_chain || []
+  const selectedGate =
+    promotionGates[
+      Math.min(selectedPromotionGate, Math.max(0, promotionGates.length - 1))
+    ] || null
+  const selectedGateKey =
+    promotedArtifact && selectedGate
+      ? `${promotedArtifact.artifact_id || promotedArtifact.source_ref}:${selectedGate.stage || selectedPromotionGate}`
+      : ''
+  const selectedGateOverride = selectedGateKey
+    ? promotionGateOverrides[selectedGateKey]
+    : undefined
+  const askQuestion = `Tell me about ${page?.title || selectedPath || 'this wiki page'}`
+  const askMessage = selectedPath
+    ? `/llm-wiki Use wiki page ${JSON.stringify(selectedPath)} as the primary page. Read relevant related pages and answer: ${askQuestion}`
+    : `/llm-wiki ${askQuestion}`
+  const askUrl = `/chat/new?message=${encodeURIComponent(askMessage)}`
   const searchResults = searchQuery.data?.results ?? []
+
+  useEffect(() => {
+    setSelectedPromotionGate(0)
+    setOverrideDraft('')
+  }, [promotedArtifact?.artifact_id, selectedPath])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(
+      'knowledge-promotion-overrides',
+      JSON.stringify(promotionGateOverrides),
+    )
+  }, [promotionGateOverrides])
 
   const settingsDirty = useMemo(() => {
     return (
@@ -853,6 +1026,22 @@ export function KnowledgeBrowserScreen() {
         ? current
         : EMPTY_MODAL_STATUS,
     )
+  }
+
+  function recordPromotionGateOverride() {
+    const reason = overrideDraft.trim()
+    if (!selectedGateKey || !reason) return
+    setPromotionGateOverrides((current) => ({
+      ...current,
+      [selectedGateKey]: {
+        reason,
+        recordedAt: new Date().toISOString(),
+      },
+    }))
+    setOverrideDraft('')
+    if (selectedPromotionGate < promotionGates.length - 1) {
+      setSelectedPromotionGate((current) => current + 1)
+    }
   }
 
   function handleQueueUploadFiles(files: Array<File>) {
@@ -1222,6 +1411,8 @@ export function KnowledgeBrowserScreen() {
           uploadRef,
           confirmed: true,
           targetDir: browserPath || 'raw',
+          manualCurationJustification:
+            manualCurationJustifications[uploadRef]?.trim() || null,
         }),
       })
       const result = (await response.json()) as KnowledgeIngestResult
@@ -1230,9 +1421,22 @@ export function KnowledgeBrowserScreen() {
           'message' in result
             ? result.message
             : `Import failed (${response.status})`
+        const manualCurationRequired =
+          'code' in result && result.code === 'empty_artifact'
+        upsertKnowledgeActivity({
+          id: `knowledge-import:${uploadRef}`,
+          status: 'failed',
+          label: manualCurationRequired
+            ? `Manual curation required${reviewRow ? `: ${reviewRow.originalName}` : ''}`
+            : `Wiki build failed${reviewRow ? `: ${reviewRow.originalName}` : ''}`,
+          detail: message,
+          uploadRef,
+        })
         setModalStatus({
           kind: 'failed',
-          message,
+          message: manualCurationRequired
+            ? 'Manual curation required'
+            : message,
           failures: [
             { filename: result.originalName || 'import', error: message },
           ],
@@ -1244,6 +1448,11 @@ export function KnowledgeBrowserScreen() {
       setReviewRows((current) =>
         current.filter((row) => row.retryUploadRef !== uploadRef),
       )
+      setManualCurationJustifications((current) => {
+        const next = { ...current }
+        delete next[uploadRef]
+        return next
+      })
       await queryClient.invalidateQueries({ queryKey: ['knowledge', 'list'] })
       await queryClient.invalidateQueries({ queryKey: ['knowledge', 'files'] })
       upsertKnowledgeActivity({
@@ -1857,76 +2066,98 @@ export function KnowledgeBrowserScreen() {
                             {currentUnmatchedReviewRows.map((row) => (
                               <div
                                 key={row.retryUploadRef}
-                                className="flex w-full items-center justify-between gap-3 bg-primary-50 px-3 py-2 text-left text-sm dark:bg-neutral-950"
+                                className="w-full space-y-2 bg-primary-50 px-3 py-2 text-left text-sm dark:bg-neutral-950"
                               >
-                                <span className="flex min-w-0 items-center gap-2">
-                                  <HugeiconsIcon
-                                    icon={File01Icon}
-                                    size={16}
-                                    strokeWidth={1.7}
-                                    className="shrink-0"
-                                  />
-                                  <span className="min-w-0">
-                                    <span className="block truncate font-medium">
-                                      {row.storedName}
-                                    </span>
-                                    <span className="block truncate text-xs text-primary-500 dark:text-neutral-400">
-                                      Builds {row.targetWikiPath || 'wiki page'}
+                                <div className="flex w-full items-center justify-between gap-3">
+                                  <span className="flex min-w-0 items-center gap-2">
+                                    <HugeiconsIcon
+                                      icon={File01Icon}
+                                      size={16}
+                                      strokeWidth={1.7}
+                                      className="shrink-0"
+                                    />
+                                    <span className="min-w-0">
+                                      <span className="block truncate font-medium">
+                                        {row.storedName}
+                                      </span>
+                                      <span className="block truncate text-xs text-primary-500 dark:text-neutral-400">
+                                        Builds{' '}
+                                        {row.targetWikiPath || 'wiki page'}
+                                      </span>
                                     </span>
                                   </span>
-                                </span>
-                                <span className="flex shrink-0 items-center gap-2">
-                                  <StatusPill
-                                    status={
-                                      activityByUploadRef.get(
-                                        row.retryUploadRef,
-                                      )?.status || 'waiting'
-                                    }
-                                    label={
-                                      activityByUploadRef.get(
-                                        row.retryUploadRef,
-                                      )?.status === 'running'
-                                        ? 'Building'
-                                        : activityByUploadRef.get(
-                                              row.retryUploadRef,
-                                            )?.status === 'failed'
-                                          ? 'Failed'
-                                          : 'Needs build'
-                                    }
-                                  />
-                                  <button
-                                    type="button"
-                                    disabled={ingestPending}
-                                    onClick={() =>
-                                      void handleIngestKnowledgeUpload(
-                                        row.retryUploadRef,
-                                      )
-                                    }
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-accent-600 bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
-                                  >
-                                    <HugeiconsIcon
-                                      icon={Upload01Icon}
-                                      size={14}
-                                      strokeWidth={1.7}
+                                  <span className="flex shrink-0 items-center gap-2">
+                                    <StatusPill
+                                      status={
+                                        activityByUploadRef.get(
+                                          row.retryUploadRef,
+                                        )?.status || 'waiting'
+                                      }
+                                      label={
+                                        activityByUploadRef.get(
+                                          row.retryUploadRef,
+                                        )?.status === 'running'
+                                          ? 'Building'
+                                          : activityByUploadRef.get(
+                                                row.retryUploadRef,
+                                              )?.status === 'failed'
+                                            ? 'Failed'
+                                            : 'Needs build'
+                                      }
                                     />
-                                    Build
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setReviewRows((current) =>
-                                        current.filter(
-                                          (item) =>
-                                            item.retryUploadRef !==
-                                            row.retryUploadRef,
-                                        ),
-                                      )
-                                    }
-                                    className="rounded-lg border border-primary-200 px-2 py-1.5 text-xs font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
-                                  >
-                                    Remove
-                                  </button>
-                                </span>
+                                    <button
+                                      type="button"
+                                      disabled={ingestPending}
+                                      onClick={() =>
+                                        void handleIngestKnowledgeUpload(
+                                          row.retryUploadRef,
+                                        )
+                                      }
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-accent-600 bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                      <HugeiconsIcon
+                                        icon={Upload01Icon}
+                                        size={14}
+                                        strokeWidth={1.7}
+                                      />
+                                      Build
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setReviewRows((current) =>
+                                          current.filter(
+                                            (item) =>
+                                              item.retryUploadRef !==
+                                              row.retryUploadRef,
+                                          ),
+                                        )
+                                      }
+                                      className="rounded-lg border border-primary-200 px-2 py-1.5 text-xs font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                                    >
+                                      Remove
+                                    </button>
+                                  </span>
+                                </div>
+                                <textarea
+                                  value={
+                                    manualCurationJustifications[
+                                      row.retryUploadRef
+                                    ] || ''
+                                  }
+                                  onChange={(event) =>
+                                    setManualCurationJustifications(
+                                      (current) => ({
+                                        ...current,
+                                        [row.retryUploadRef]:
+                                          event.target.value,
+                                      }),
+                                    )
+                                  }
+                                  rows={2}
+                                  placeholder="Human justification for manual curation when extraction is empty"
+                                  className="w-full resize-none rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                                />
                               </div>
                             ))}
                             {currentFolderActivityRows.map((item) => (
@@ -2026,6 +2257,27 @@ export function KnowledgeBrowserScreen() {
                                           Builds {reviewRow.targetWikiPath}
                                         </span>
                                       ) : null}
+                                      {reviewRow ? (
+                                        <textarea
+                                          value={
+                                            manualCurationJustifications[
+                                              reviewRow.retryUploadRef
+                                            ] || ''
+                                          }
+                                          onChange={(event) =>
+                                            setManualCurationJustifications(
+                                              (current) => ({
+                                                ...current,
+                                                [reviewRow.retryUploadRef]:
+                                                  event.target.value,
+                                              }),
+                                            )
+                                          }
+                                          rows={2}
+                                          placeholder="Human justification for manual curation"
+                                          className="mt-2 block w-full min-w-80 resize-none rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                                        />
+                                      ) : null}
                                     </span>
                                   </span>
                                   <span className="flex shrink-0 items-center gap-2">
@@ -2092,8 +2344,13 @@ export function KnowledgeBrowserScreen() {
               <>
                 <div className="flex items-center justify-between border-b border-primary-200 px-3 py-2 dark:border-neutral-800">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-primary-900 dark:text-neutral-100">
-                      {page?.title || selectedPath || 'Select a page'}
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <div className="truncate text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                        {page?.title || selectedPath || 'Select a page'}
+                      </div>
+                      {authorityBadgeLabel ? (
+                        <InlineBadge label={authorityBadgeLabel} active />
+                      ) : null}
                     </div>
                     {page ? (
                       <div className="text-xs text-primary-400 dark:text-neutral-500">
@@ -2252,6 +2509,28 @@ export function KnowledgeBrowserScreen() {
                           <MetadataCard
                             label="Size"
                             value={formatBytes(page.size)}
+                          />
+                          <MetadataCard
+                            label="Authority"
+                            value={
+                              authorityLevel
+                                ? displayAuthorityLevel(authorityLevel)
+                                : 'Unlabeled'
+                            }
+                          />
+                          <PromotionLineageCard
+                            artifact={promotedArtifact}
+                            gates={promotionGates}
+                            selectedIndex={selectedPromotionGate}
+                            selectedGate={selectedGate}
+                            selectedOverride={selectedGateOverride}
+                            overrideDraft={overrideDraft}
+                            onSelectGate={(index) => {
+                              setSelectedPromotionGate(index)
+                              setOverrideDraft('')
+                            }}
+                            onOverrideDraftChange={setOverrideDraft}
+                            onRecordOverride={recordPromotionGateOverride}
                           />
                           <div className="rounded-xl border border-primary-200 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
                             <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
@@ -2635,6 +2914,163 @@ function TagPill({
     >
       {label} <span className="opacity-70">{count}</span>
     </button>
+  )
+}
+
+function PromotionLineageCard({
+  artifact,
+  gates,
+  selectedIndex,
+  selectedGate,
+  selectedOverride,
+  overrideDraft,
+  onSelectGate,
+  onOverrideDraftChange,
+  onRecordOverride,
+}: {
+  artifact: GovernedKnowledgeArtifact | null
+  gates: Array<GovernedKnowledgeEvidenceStep>
+  selectedIndex: number
+  selectedGate: GovernedKnowledgeEvidenceStep | null
+  selectedOverride?: PromotionGateOverride
+  overrideDraft: string
+  onSelectGate: (index: number) => void
+  onOverrideDraftChange: (value: string) => void
+  onRecordOverride: () => void
+}) {
+  return (
+    <div className="rounded-xl border border-primary-200 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+      <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+        Promote lineage
+      </div>
+      {!artifact ? (
+        <div className="mt-2 text-sm text-primary-500 dark:text-neutral-400">
+          No governed promotion is linked to this page.
+        </div>
+      ) : (
+        <div className="mt-3 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <InlineBadge label={artifact.ingestion_status || 'ACTIVE'} />
+            <InlineBadge label={artifact.semantic_tier || 'T3'} />
+            <InlineBadge label={artifact.authority_domain || 'compliance'} />
+          </div>
+          <div className="text-xs text-primary-500 dark:text-neutral-400">
+            {artifact.claim_count ?? 0} claims · {artifact.source_type} ·{' '}
+            {artifact.authority_origin}
+          </div>
+
+          <div className="space-y-1.5">
+            {gates.map((gate, index) => {
+              const selected = index === selectedIndex
+              return (
+                <button
+                  key={`${gate.stage || 'gate'}:${index}`}
+                  type="button"
+                  onClick={() => onSelectGate(index)}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors',
+                    selected
+                      ? 'border-accent-500/60 bg-accent-500/10'
+                      : 'border-primary-200 bg-primary-50 hover:bg-primary-100 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold',
+                      selected
+                        ? 'bg-accent-500 text-white'
+                        : 'bg-primary-100 text-primary-600 dark:bg-neutral-800 dark:text-neutral-300',
+                    )}
+                  >
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-semibold text-primary-900 dark:text-neutral-100">
+                      {gateLabel(gate.stage)}
+                    </span>
+                    <span className="block truncate text-[10px] text-primary-500 dark:text-neutral-400">
+                      {shortEvidenceValue(gate.hash)}
+                    </span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          {selectedGate ? (
+            <div className="rounded-lg border border-primary-200 bg-primary-50 p-2.5 dark:border-neutral-800 dark:bg-neutral-950">
+              <div className="text-xs font-semibold text-primary-900 dark:text-neutral-100">
+                {gateLabel(selectedGate.stage)}
+              </div>
+              <dl className="mt-2 space-y-2 text-xs">
+                <div>
+                  <dt className="font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                    Evidence
+                  </dt>
+                  <dd className="mt-0.5 break-all text-primary-800 dark:text-neutral-200">
+                    {selectedGate.ref || 'not recorded'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                    Hash
+                  </dt>
+                  <dd className="mt-0.5 break-all font-mono text-primary-800 dark:text-neutral-200">
+                    {selectedGate.hash || 'not recorded'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                    Justification
+                  </dt>
+                  <dd className="mt-0.5 text-primary-800 dark:text-neutral-200">
+                    {selectedGate.stage === 'curation_upload'
+                      ? 'Curation material was registered before authority use.'
+                      : selectedGate.stage === 'normalized_artifact'
+                        ? 'Extraction output is linked and hash-pinned.'
+                        : selectedGate.stage === 'governed_kgl_artifact'
+                          ? 'Promotion entered the governed KGL artifact store.'
+                          : 'Artifact is active under the current knowledge lifecycle.'}
+                  </dd>
+                </div>
+              </dl>
+
+              {selectedOverride ? (
+                <div className="mt-3 rounded-lg border border-accent-500/30 bg-accent-500/10 p-2 text-xs text-primary-900 dark:text-neutral-100">
+                  <div className="font-semibold">Override recorded</div>
+                  <div className="mt-1 text-primary-600 dark:text-neutral-300">
+                    {selectedOverride.reason}
+                  </div>
+                  <div className="mt-1 font-mono text-[10px] text-primary-500 dark:text-neutral-400">
+                    {selectedOverride.recordedAt}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  <textarea
+                    value={overrideDraft}
+                    onChange={(event) =>
+                      onOverrideDraftChange(event.target.value)
+                    }
+                    rows={3}
+                    placeholder="Reason or justification"
+                    className="w-full resize-none rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                  />
+                  <button
+                    type="button"
+                    disabled={!overrideDraft.trim()}
+                    onClick={onRecordOverride}
+                    className="w-full rounded-lg border border-accent-600 bg-accent-500 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Override and continue
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -100,6 +100,69 @@ describe('knowledge-ingest governed import', () => {
         'utf-8',
       ),
     ).toContain('Extracted text')
+    expect(
+      fsSync.readFileSync(
+        path.join(workspaceRoot, 'wiki', 'raw', 'source.md'),
+        'utf-8',
+      ),
+    ).toContain('Authority level: curation_only')
+  })
+
+  it('executes the installed document extraction plugin package for wiki imports', async () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-ingest-installed-plugin-')
+    createdRoots.push(workspaceRoot)
+    const pluginRoot = path.join(
+      workspaceRoot,
+      'plugins',
+      'document_extraction',
+    )
+    fsSync.mkdirSync(pluginRoot, { recursive: true })
+    fsSync.writeFileSync(path.join(pluginRoot, '__init__.py'), '', 'utf-8')
+    fsSync.writeFileSync(
+      path.join(pluginRoot, 'tools.py'),
+      [
+        'import json',
+        '',
+        'def extract_document_content(args, **_kw):',
+        '    return json.dumps({',
+        '        "status": "completed",',
+        '        "document": {',
+        '            "normalized_document_artifact_ref": "plugin-artifact:v1:installed",',
+        '            "parser": {"method": "installed_document_extract_plugin"},',
+        '            "text_blocks": [{"text": "Text from installed plugin package"}],',
+        '            "warnings": [],',
+        '        },',
+        '        "artifacts": {"normalized_document_artifact_ref": "plugin-artifact:v1:installed"},',
+        '        "parser": {"method": "installed_document_extract_plugin"},',
+        '    }, ensure_ascii=False)',
+      ].join('\n'),
+      'utf-8',
+    )
+    const upload = await writeKnowledgeUpload(
+      workspaceRoot,
+      file('source.pdf', 'pdf'),
+    )
+    if (!upload.ok || upload.kind !== 'staged_for_ingest')
+      throw new Error('stage failed')
+
+    const result = await ingestKnowledgeUpload(workspaceRoot, {
+      uploadRef: upload.stagedUploadRef,
+      confirmed: true,
+      workspaceId: path.basename(workspaceRoot),
+      sessionId: `${path.basename(workspaceRoot)}:knowledge-ui`,
+    })
+
+    expect(result).toMatchObject({
+      ok: true,
+      parserMethod: 'installed_document_extract_plugin',
+      normalizedDocumentArtifactRef: 'plugin-artifact:v1:installed',
+    })
+    expect(
+      fsSync.readFileSync(
+        path.join(workspaceRoot, 'wiki', 'raw', 'source.md'),
+        'utf-8',
+      ),
+    ).toContain('Text from installed plugin package')
   })
 
   it('can force parser-backed imports into the selected workspace wiki folder', async () => {
@@ -208,6 +271,176 @@ describe('knowledge-ingest governed import', () => {
     expect(markdown).not.toContain('%PDF-1.5')
     expect(markdown).not.toContain('1 0 obj')
     expect(markdown).not.toContain('stream')
+  })
+
+  it('does not write markdown for an unextractable empty PDF artifact', async () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-ingest-empty-pdf-')
+    createdRoots.push(workspaceRoot)
+    const upload = await writeKnowledgeUpload(
+      workspaceRoot,
+      binaryFile(
+        '中华人民共和国招标投标法.pdf',
+        new Uint8Array([37, 80, 68, 70]),
+        'application/pdf',
+      ),
+      '招投标',
+      { forceWorkspaceWikiRoot: true },
+    )
+    if (!upload.ok || upload.kind !== 'staged_for_ingest')
+      throw new Error('stage failed')
+
+    const result = await ingestKnowledgeUpload(
+      workspaceRoot,
+      {
+        uploadRef: upload.stagedUploadRef,
+        confirmed: true,
+        targetDir: '招投标',
+        languageHint: 'zh',
+        forceWorkspaceWikiRoot: true,
+      },
+      {
+        extractDocumentContent: async () => ({
+          normalized_document_artifact_ref:
+            'artifacts/document_extraction/empty-law.json',
+          parser: { method: 'pdf_unextractable' },
+          text_blocks: [],
+          blocks: [],
+          tables: [],
+        }),
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: 'failed',
+      code: 'empty_artifact',
+      retryUploadRef: upload.stagedUploadRef,
+    })
+    expect(
+      fsSync.existsSync(
+        path.join(workspaceRoot, 'wiki', '招投标', '中华人民共和国招标投标法.md'),
+      ),
+    ).toBe(false)
+  })
+
+  it('writes curation markdown for an unextractable PDF when human justification is provided', async () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-ingest-justified-pdf-')
+    createdRoots.push(workspaceRoot)
+    const upload = await writeKnowledgeUpload(
+      workspaceRoot,
+      binaryFile(
+        '中华人民共和国招标投标法.pdf',
+        new Uint8Array([37, 80, 68, 70]),
+        'application/pdf',
+      ),
+      '招投标',
+      { forceWorkspaceWikiRoot: true },
+    )
+    if (!upload.ok || upload.kind !== 'staged_for_ingest')
+      throw new Error('stage failed')
+
+    const result = await ingestKnowledgeUpload(
+      workspaceRoot,
+      {
+        uploadRef: upload.stagedUploadRef,
+        confirmed: true,
+        targetDir: '招投标',
+        forceWorkspaceWikiRoot: true,
+        manualCurationJustification:
+          'Reviewer confirmed this is curation material only and requires governed promotion before authority use.',
+      },
+      {
+        extractDocumentContent: async () => ({
+          normalized_document_artifact_ref:
+            'artifacts/document_extraction/empty-law.json',
+          parser: { method: 'pdf_unextractable' },
+          text_blocks: [],
+          blocks: [],
+          tables: [],
+        }),
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: 'empty',
+      storedMarkdownPath: '招投标/中华人民共和国招标投标法.md',
+      parserMethod: 'pdf_unextractable',
+    })
+    const markdown = fsSync.readFileSync(
+      path.join(workspaceRoot, 'wiki', '招投标', '中华人民共和国招标投标法.md'),
+      'utf-8',
+    )
+    expect(markdown).toContain('Parser method: pdf_unextractable')
+    expect(markdown).toContain('Authority level: curation_only')
+    expect(markdown).toContain('Human curation justification:')
+    expect(markdown).toContain('requires governed promotion before authority use')
+  })
+
+  it('replaces the exact existing markdown for the same source upload ref', async () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-ingest-replace-pdf-')
+    createdRoots.push(workspaceRoot)
+    const upload = await writeKnowledgeUpload(
+      workspaceRoot,
+      binaryFile('中华人民共和国招标投标法.pdf', new Uint8Array([37, 80]), 'application/pdf'),
+      '招投标',
+      { forceWorkspaceWikiRoot: true },
+    )
+    if (!upload.ok || upload.kind !== 'staged_for_ingest')
+      throw new Error('stage failed')
+    const exactPath = path.join(
+      workspaceRoot,
+      'wiki',
+      '招投标',
+      '中华人民共和国招标投标法.md',
+    )
+    fsSync.writeFileSync(
+      exactPath,
+      [
+        '# 中华人民共和国招标投标法.pdf',
+        '',
+        '> Curation material only. Governed promotion is required before authority use.',
+        `> Source upload ref: ${upload.stagedUploadRef}`,
+        '> Normalized artifact ref: artifacts/document_extraction/old.json',
+        '> Parser method: pdf_unextractable',
+      ].join('\n'),
+    )
+
+    const result = await ingestKnowledgeUpload(
+      workspaceRoot,
+      {
+        uploadRef: upload.stagedUploadRef,
+        confirmed: true,
+        targetDir: '招投标',
+        forceWorkspaceWikiRoot: true,
+        manualCurationJustification: 'Reviewer approved curation markdown refresh.',
+      },
+      {
+        extractDocumentContent: async () => ({
+          normalized_document_artifact_ref:
+            'artifacts/document_extraction/ef698189d9f9.json',
+          parser: { method: 'pdf_unextractable' },
+          text_blocks: [],
+          blocks: [],
+          tables: [],
+        }),
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      storedMarkdownPath: '招投标/中华人民共和国招标投标法.md',
+      status: 'empty',
+    })
+    expect(
+      fsSync.existsSync(
+        path.join(workspaceRoot, 'wiki', '招投标', '中华人民共和国招标投标法-2.md'),
+      ),
+    ).toBe(false)
+    const markdown = fsSync.readFileSync(exactPath, 'utf-8')
+    expect(markdown).toContain('Authority level: curation_only')
+    expect(markdown).toContain('Reviewer approved curation markdown refresh.')
+    expect(markdown).toContain('artifacts/document_extraction/ef698189d9f9.json')
   })
 
   it('routes xlsx refs through the table ingestion boundary before wiki rendering', async () => {

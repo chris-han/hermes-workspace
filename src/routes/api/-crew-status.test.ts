@@ -4,10 +4,10 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
-  buildCrewDefinitions,
+  buildMemberDefinitions,
   getHermesHome,
   readCronJobCount,
-} from './crew-status'
+} from './mission-control-status'
 
 describe('crew-status workspace helpers', () => {
   let tempRoot = ''
@@ -25,7 +25,7 @@ describe('crew-status workspace helpers', () => {
     fs.mkdirSync(path.join(hermesHome, 'profiles', 'writer'), { recursive: true })
     fs.mkdirSync(path.join(hermesHome, 'profiles', 'reviewer'), { recursive: true })
 
-    const crew = buildCrewDefinitions(hermesHome)
+    const crew = buildMemberDefinitions(hermesHome)
 
     expect(crew.map((member) => member.id)).toEqual([
       'workspace',

@@ -2877,16 +2877,6 @@ function SkillsGrid({
                   platforms={skill.platformCompatibility}
                 />
                 <VersionChips item={skill} />
-                {skill.contentHash ? (
-                  <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
-                    {skill.contentHash}
-                  </span>
-                ) : null}
-                {hasUpdate && skill.latestHash ? (
-                  <span className="rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
-                    latest {skill.latestHash}
-                  </span>
-                ) : null}
                 <span className="rounded-md border border-border bg-primary-100/50 px-2 py-0.5 text-xs text-primary-500">
                   {skill.category}
                 </span>

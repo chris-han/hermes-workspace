@@ -66,6 +66,9 @@ type ParsedKnowledgePage = {
   raw: string
 }
 
+const PROHIBITED_AUTHORITY_USE_MARKER =
+  'Authority use: prohibited_until_governed_promotion'
+
 function shouldSkipDirectory(name: string): boolean {
   return name === '.git' || name === 'node_modules'
 }
@@ -453,6 +456,10 @@ function stripGeneratedProvenance(content: string): string {
     .trim()
 }
 
+function hasProhibitedAuthorityUse(page: ParsedKnowledgePage): boolean {
+  return page.raw.includes(PROHIBITED_AUTHORITY_USE_MARKER)
+}
+
 function truncateForContext(content: string, maxChars: number): string {
   const trimmed = stripGeneratedProvenance(content)
   if (trimmed.length <= maxChars) return trimmed
@@ -671,11 +678,19 @@ export function buildKnowledgeChatContext(
   }
 
   const includedRelated = Array.from(related.values()).slice(0, maxRelatedPages)
+  const primaryAuthorityUseProhibited = hasProhibitedAuthorityUse(primary)
   const sections = [
     '## Knowledge Base Wiki Context',
     '',
     'Use this governed wiki markdown context for the user request. The selected page is already built from the source material; do not re-extract source PDFs unless the user explicitly asks.',
     'Curation material still requires governed promotion before authority use.',
+    primaryAuthorityUseProhibited
+      ? [
+          `The selected page wiki/${primary.meta.path} is marked Authority use: prohibited_until_governed_promotion.`,
+          'Do not answer from this page, related context, or model prior knowledge as though it were authoritative.',
+          'If the user asks about the selected material before governed promotion, state that the page is curation-only and authority use is unavailable until governed promotion; ask for governed promotion or manual curation instead.',
+        ].join(' ')
+      : '',
     '',
     `### Selected Page: ${primary.meta.title}`,
     `Path: wiki/${primary.meta.path}`,

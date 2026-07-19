@@ -123,4 +123,42 @@ describe('knowledge-browser workspace isolation', () => {
     expect(context.systemMessage).toContain('同标签页面用于补充法律背景')
     expect(context.systemMessage).not.toContain('Curation material only.')
   })
+
+  it('blocks authoritative answers from curation-only pages pending governed promotion', () => {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'knowledge-auth-'))
+    createdRoots.push(workspace)
+
+    const knowledgeRoot = path.join(workspace, 'wiki', '招投标')
+    fs.mkdirSync(knowledgeRoot, { recursive: true })
+    fs.writeFileSync(
+      path.join(knowledgeRoot, '中华人民共和国招标投标法.md'),
+      [
+        '# 中华人民共和国招标投标法.pdf',
+        '',
+        '> Curation material only. Governed promotion is required before authority use.',
+        '> Authority level: curation_only',
+        '> Authority use: prohibited_until_governed_promotion',
+        '> Normalized artifact ref: artifacts/document_extraction/ef698189d9f9.json',
+        '> Parser method: pdf_unextractable',
+        '> Human curation justification: this ls law',
+      ].join('\n'),
+      'utf-8',
+    )
+
+    const context = buildKnowledgeChatContext(
+      '招投标/中华人民共和国招标投标法.md',
+      workspace,
+    )
+
+    expect(context.systemMessage).toContain(
+      'Authority use: prohibited_until_governed_promotion',
+    )
+    expect(context.systemMessage).toContain(
+      'Do not answer from this page, related context, or model prior knowledge as though it were authoritative.',
+    )
+    expect(context.systemMessage).toContain(
+      'authority use is unavailable until governed promotion',
+    )
+    expect(context.systemMessage).not.toContain('Human curation justification')
+  })
 })

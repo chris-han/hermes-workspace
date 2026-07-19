@@ -46,12 +46,14 @@ type DocumentExtractionPluginResult = {
 }
 
 const execFileAsync = promisify(execFile)
+const CURATION_AUTHORITY_LEVEL = 'curation_only'
 
 export type KnowledgeIngestRequest = {
   uploadRef: string
   confirmed: boolean
   targetDir?: string | null
   languageHint?: string | null
+  manualCurationJustification?: string | null
   workspaceId?: string | null
   sessionId?: string | null
   forceWorkspaceWikiRoot?: boolean
@@ -164,14 +166,26 @@ async function writeMarkdownWithCollision(
   directory: string,
   filename: string,
   content: string,
+  options: { replaceIfContains?: string } = {},
 ) {
   const ext = path.extname(filename)
   const basename = filename.slice(0, filename.length - ext.length)
   for (let index = 1; index <= 100; index += 1) {
     const storedName = index === 1 ? filename : `${basename}-${index}${ext}`
     const fullPath = path.join(directory, storedName)
+    if (index === 1 && options.replaceIfContains) {
+      try {
+        const existing = await fs.readFile(fullPath, 'utf-8')
+        if (existing.includes(options.replaceIfContains)) {
+          await fs.writeFile(fullPath, content, 'utf-8')
+          return { storedName, fullPath, renamed: false, replaced: true }
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      }
+    }
     if (await writeFileExclusive(fullPath, content)) {
-      return { storedName, fullPath, renamed: index > 1 }
+      return { storedName, fullPath, renamed: index > 1, replaced: false }
     }
   }
   throw new Error('Upload name collision limit reached')
@@ -207,6 +221,7 @@ function renderDocumentMarkdown(
   originalName: string,
   uploadRef: string,
   artifact: CanonicalDocumentArtifact,
+  manualCurationJustification?: string | null,
 ): {
   markdown: string
   empty: boolean
@@ -227,10 +242,15 @@ function renderDocumentMarkdown(
     .filter(Boolean)
   const provenance = [
     '> Curation material only. Governed promotion is required before authority use.',
+    `> Authority level: ${CURATION_AUTHORITY_LEVEL}`,
+    '> Authority use: prohibited_until_governed_promotion',
     `> Source upload ref: ${uploadRef}`,
     `> Normalized artifact ref: ${artifactRef}`,
     `> Parser method: ${parserMethod}`,
     artifact.source_hash ? `> Source hash: ${artifact.source_hash}` : '',
+    manualCurationJustification?.trim()
+      ? `> Human curation justification: ${manualCurationJustification.trim()}`
+      : '',
   ].filter(Boolean)
   return {
     markdown: [`# ${originalName}`, '', ...provenance, '', ...body].join('\n'),
@@ -257,6 +277,20 @@ function findSemantierRuntimeRoot(): string {
   throw new Error('document_extraction plugin is not available')
 }
 
+function documentExtractionPythonPath(
+  runtimeRoot: string,
+  workspaceRoot: string,
+): string {
+  return [
+    path.join(path.resolve(workspaceRoot), 'plugins'),
+    path.join(runtimeRoot, '.semantier-home', 'plugins'),
+    path.join(runtimeRoot, 'src', 'plugins'),
+    path.join(runtimeRoot, 'src'),
+  ]
+    .filter((candidate) => existsSync(candidate))
+    .join(path.delimiter)
+}
+
 async function extractDocumentContentWithPlugin(
   workspaceRoot: string,
   args: {
@@ -268,10 +302,10 @@ async function extractDocumentContentWithPlugin(
   },
 ): Promise<CanonicalDocumentArtifact> {
   const runtimeRoot = findSemantierRuntimeRoot()
-  const pythonPath = path.join(runtimeRoot, 'src')
+  const pythonPath = documentExtractionPythonPath(runtimeRoot, workspaceRoot)
   const script = [
     'import json, sys',
-    'from plugins.document_extraction.tools import extract_document_content',
+    'from document_extraction.tools import extract_document_content',
     'payload = json.loads(sys.argv[1])',
     'result = extract_document_content(payload)',
     'print(result)',
@@ -455,6 +489,8 @@ export async function ingestKnowledgeUpload(
         `# ${staged.originalName}`,
         '',
         '> Spreadsheet wiki summary is curation material only.',
+        `> Authority level: ${CURATION_AUTHORITY_LEVEL}`,
+        '> Authority use: prohibited_until_governed_promotion',
         `> Source upload ref: ${request.uploadRef}`,
         `> Canonical table artifact ref: ${table.canonical_table_artifact_ref}`,
         `> Parser method: ${table.parser_method || 'table_ingestion'}`,
@@ -463,6 +499,7 @@ export async function ingestKnowledgeUpload(
         outputDir,
         filename,
         markdown,
+        { replaceIfContains: `Source upload ref: ${request.uploadRef}` },
       )
       const storedMarkdownPath = toPosixPath(
         path.relative(resolved.effectiveRoot, written.fullPath),
@@ -514,7 +551,35 @@ export async function ingestKnowledgeUpload(
       staged.originalName,
       request.uploadRef,
       artifact,
+      request.manualCurationJustification,
     )
+    const manualCurationJustification =
+      request.manualCurationJustification?.trim() || ''
+    if (
+      rendered.empty &&
+      rendered.parserMethod === 'pdf_unextractable' &&
+      !manualCurationJustification
+    ) {
+      const message =
+        'PDF text extraction returned no content. Manual curation is required before a wiki markdown page can be built.'
+      deps.emitEvent?.({
+        stage: 'complete',
+        status: 'failed',
+        label: `Manual curation required: ${staged.originalName}`,
+        detail: message,
+        filename: staged.originalName,
+        targetPath: staged.relativePath,
+        uploadRef: request.uploadRef,
+      })
+      return {
+        ok: false,
+        status: 'failed',
+        originalName: staged.originalName,
+        code: 'empty_artifact',
+        message,
+        retryUploadRef: request.uploadRef,
+      }
+    }
     const filename = sanitizeKnowledgeFilename(
       `${path.basename(staged.originalName, path.extname(staged.originalName))}.md`,
     )
@@ -522,6 +587,7 @@ export async function ingestKnowledgeUpload(
       outputDir,
       filename,
       rendered.markdown,
+      { replaceIfContains: `Source upload ref: ${request.uploadRef}` },
     )
     const storedMarkdownPath = toPosixPath(
       path.relative(resolved.effectiveRoot, written.fullPath),

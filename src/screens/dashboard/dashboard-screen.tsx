@@ -51,6 +51,19 @@ function formatNumber(n: number): string {
   return String(n)
 }
 
+function shortHash(value?: string | null): string {
+  if (!value) return 'not recorded'
+  const normalized = value.replace(/^sha256:/, '')
+  if (normalized.length <= 16) return value
+  return `${normalized.slice(0, 8)}…${normalized.slice(-6)}`
+}
+
+function shortRef(value?: string | null): string {
+  if (!value) return 'not recorded'
+  if (value.length <= 42) return value
+  return `${value.slice(0, 20)}…${value.slice(-14)}`
+}
+
 function timeAgoMs(ts?: number): string {
   if (!ts || !Number.isFinite(ts)) return 'unknown'
   const diff = Date.now() - ts
@@ -64,6 +77,38 @@ type AccessControlResponse = {
   ok?: boolean
   accessControl?: {
     role?: 'regular' | 'administrator'
+  }
+}
+
+type GovernedKnowledgeEvidenceStep = {
+  stage?: string
+  ref?: string | null
+  hash?: string | null
+}
+
+type GovernedKnowledgeArtifact = {
+  artifact_id?: string
+  source_ref?: string
+  semantic_tier?: string
+  authority_domain?: string
+  tag_authority_level?: string
+  source_type?: string
+  authority_origin?: string
+  ingestion_status?: string
+  effective_from?: string
+  source_version?: string
+  extraction_method?: string
+  curator?: string
+  claim_count?: number
+  evidence_chain?: Array<GovernedKnowledgeEvidenceStep>
+}
+
+type KnowledgeAccessDashboardResponse = {
+  active_knowledge_artifacts?: {
+    items?: Array<GovernedKnowledgeArtifact>
+    count?: number
+    source_surface?: string
+    lifecycle_contract?: string
   }
 }
 
@@ -853,6 +898,97 @@ function SkillsWidget() {
   )
 }
 
+function GovernedKnowledgeWidget() {
+  const knowledgeQuery = useQuery({
+    queryKey: ['dashboard', 'governed-knowledge'],
+    queryFn: async () => {
+      const res = await fetch(
+        '/api/semantier-proxy/organizations/knowledge-access',
+      )
+      if (!res.ok) return null
+      return (await res.json()) as KnowledgeAccessDashboardResponse
+    },
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    retry: false,
+  })
+
+  const artifacts =
+    knowledgeQuery.data?.active_knowledge_artifacts?.items?.slice(0, 3) ?? []
+  const first = artifacts[0]
+  const chain = first?.evidence_chain ?? []
+
+  return (
+    <DashboardCard
+      title="Governed Knowledge"
+      titleRight={
+        <span className="text-[10px] text-muted-foreground">
+          {knowledgeQuery.data?.active_knowledge_artifacts?.count ?? 0} active
+        </span>
+      }
+      className="h-full"
+    >
+      {!first ? (
+        <div className="flex min-h-[180px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 px-4 text-center text-sm text-muted-foreground">
+          No active governed artifacts visible for this workspace.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-border bg-muted/40 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-success/20 bg-success/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-success">
+                {first.ingestion_status ?? 'ACTIVE'}
+              </span>
+              <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
+                {first.semantic_tier ?? 'T3'}
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                {first.authority_domain ?? 'compliance'}
+              </span>
+            </div>
+            <div className="mt-2 truncate text-sm font-semibold text-foreground">
+              {shortRef(first.source_version || first.source_ref)}
+            </div>
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              {first.claim_count ?? 0} claims · {first.source_type} ·{' '}
+              {first.authority_origin}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {chain.map((step, index) => (
+              <div
+                key={`${step.stage ?? 'step'}:${index}`}
+                className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-0.5"
+              >
+                <div className="flex flex-col items-center">
+                  <div className="flex size-5 items-center justify-center rounded-full border border-border bg-card text-[10px] font-semibold text-muted-foreground">
+                    {index + 1}
+                  </div>
+                  {index < chain.length - 1 ? (
+                    <div className="h-6 w-px bg-border" />
+                  ) : null}
+                </div>
+                <div className="min-w-0 pb-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    {(step.stage ?? 'evidence').replace(/_/g, ' ')}
+                  </div>
+                  <div className="truncate text-xs text-foreground">
+                    {shortRef(step.ref)}
+                  </div>
+                  <div className="font-mono text-[10px] text-muted-foreground">
+                    {shortHash(step.hash)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </DashboardCard>
+  )
+}
+
 // ── Quick Action ─────────────────────────────────────────────────
 
 function QuickAction({
@@ -1330,6 +1466,8 @@ export function DashboardScreen() {
           </div>
         </div>
 
+        <GovernedKnowledgeWidget />
+
         {/* ── Recent Sessions (minimal) ── */}
         {sessionsAvailable ? (
           <DashboardCard
@@ -1382,4 +1520,3 @@ export function DashboardScreen() {
     </div>
   )
 }
-

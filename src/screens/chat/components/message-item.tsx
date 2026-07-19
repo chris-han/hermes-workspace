@@ -178,7 +178,7 @@ export function shouldRenderPrimaryAssistantText(params: {
   hasA2UiBlocks: boolean
 }): boolean {
   if (params.isUser) return true
-  return !params.hasA2UiBlocks
+  return !params.hasToolCalls && !params.hasA2UiBlocks
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -17,6 +17,7 @@ type IngestBody = {
   confirmed?: unknown
   targetDir?: unknown
   languageHint?: unknown
+  manualCurationJustification?: unknown
   sessionId?: unknown
 }
 
@@ -66,6 +67,10 @@ export const Route = createFileRoute('/api/knowledge/ingest')({
               languageHint:
                 typeof body.languageHint === 'string'
                   ? body.languageHint
+                  : null,
+              manualCurationJustification:
+                typeof body.manualCurationJustification === 'string'
+                  ? body.manualCurationJustification
                   : null,
               workspaceId: activeWorkspace.workspaceId,
               sessionId:

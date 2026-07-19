@@ -43,10 +43,6 @@ type PortableHistoryMessage = {
   content: string
 }
 
-type KnowledgeContextRequest = {
-  path: string
-}
-
 function resolveRunIdFromPayload(payload?: unknown): string {
   const data =
     payload && typeof payload === 'object'
@@ -790,7 +786,6 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
       thinking?: string
       fastMode?: boolean
       attachments?: Array<ChatAttachment>
-      knowledgeContext?: KnowledgeContextRequest
       idempotencyKey?: string
       model?: string
     }) => {
@@ -850,7 +845,6 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
             thinking: params.thinking,
             fastMode: params.fastMode,
             attachments: params.attachments,
-            knowledgeContext: params.knowledgeContext,
             idempotencyKey: params.idempotencyKey ?? crypto.randomUUID(),
             model: params.model || undefined,
             locale:

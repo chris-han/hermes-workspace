@@ -1,20 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { listMemoryFiles } from '../../../server/memory-browser'
-import { resolveWorkspaceHermesHomeFromBackend } from '../../../server/hermes-home'
+import { listMemory } from '../../../server/hermes-api'
 
 export const Route = createFileRoute('/api/memory/list')({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        // Memory is workspace-scoped local filesystem state. Resolve the active
-        // workspace Hermes home from the authenticated backend context instead
-        // of falling back to the server process' global HERMES_HOME.
+      GET: async () => {
         try {
-          const workspaceRoot = await resolveWorkspaceHermesHomeFromBackend(
-            request.headers,
-          )
-          return json({ files: listMemoryFiles({ workspaceRoot }) })
+          return json(await listMemory())
         } catch (error) {
           return json(
             {

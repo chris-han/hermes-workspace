@@ -18,6 +18,17 @@ type SlashCommandDefinition = {
   description: string
 }
 
+type SkillSummary = {
+  name?: unknown
+  description?: unknown
+  installed?: unknown
+  enabled?: unknown
+}
+
+type SkillsApiResponse = {
+  skills?: unknown
+}
+
 type SlashCommandMenuProps = {
   open: boolean
   query: string
@@ -39,25 +50,130 @@ const SLASH_COMMANDS: Array<SlashCommandDefinition> = [
   { command: '/help', description: 'Show available commands' },
 ]
 
+const SKILL_INVALID_CHARS = /[^a-z0-9-]/g
+const SKILL_MULTI_HYPHEN = /-+/g
+
+function commandForSkillName(name: string): string | null {
+  const normalized = name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/_+/g, '-')
+    .replace(SKILL_INVALID_CHARS, '')
+    .replace(SKILL_MULTI_HYPHEN, '-')
+    .replace(/^-|-$/g, '')
+
+  return normalized ? `/${normalized}` : null
+}
+
+function readString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function mergeInstalledSkillCommands(
+  baseCommands: Array<SlashCommandDefinition>,
+  skills: Array<SkillSummary>,
+): Array<SlashCommandDefinition> {
+  return mergeSlashCommands(baseCommands, skillsToSlashCommands(skills))
+}
+
+function skillsToSlashCommands(
+  skills: Array<SkillSummary>,
+): Array<SlashCommandDefinition> {
+  const skillCommands: Array<SlashCommandDefinition> = []
+  const seen = new Set<string>()
+
+  for (const skill of skills) {
+    if (skill.installed === false || skill.enabled === false) continue
+
+    const name = readString(skill.name)
+    if (!name) continue
+
+    const command = commandForSkillName(name)
+    if (!command || seen.has(command)) continue
+
+    seen.add(command)
+    skillCommands.push({
+      command,
+      description: readString(skill.description) || `Invoke the ${name} skill`,
+    })
+  }
+
+  return skillCommands.sort((left, right) => {
+    return left.command.localeCompare(right.command)
+  })
+}
+
+function mergeSlashCommands(
+  baseCommands: Array<SlashCommandDefinition>,
+  skillCommands: Array<SlashCommandDefinition>,
+): Array<SlashCommandDefinition> {
+  const seen = new Set(baseCommands.map((item) => item.command))
+  const nextCommands = [...baseCommands]
+
+  for (const item of skillCommands) {
+    if (seen.has(item.command)) continue
+    seen.add(item.command)
+    nextCommands.push(item)
+  }
+
+  return nextCommands
+}
+
+async function fetchInstalledSkillCommands(): Promise<
+  Array<SlashCommandDefinition>
+> {
+  const response = await fetch('/api/skills?tab=installed&limit=500')
+  if (!response.ok) return []
+
+  const payload = (await response.json().catch(() => ({}))) as SkillsApiResponse
+  if (!Array.isArray(payload.skills)) return []
+
+  return skillsToSlashCommands(payload.skills as Array<SkillSummary>)
+}
+
 const SlashCommandMenu = forwardRef(function SlashCommandMenu(
   { open, query, onSelect }: SlashCommandMenuProps,
   ref: Ref<SlashCommandMenuHandle>,
 ) {
   const [activeIndex, setActiveIndex] = useState(0)
+  const [skillCommands, setSkillCommands] = useState<
+    Array<SlashCommandDefinition>
+  >([])
   const filter = useAutocompleteFilter({ sensitivity: 'base' })
+  const commands = useMemo(() => {
+    return mergeSlashCommands(SLASH_COMMANDS, skillCommands)
+  }, [skillCommands])
+
+  useEffect(() => {
+    if (!open || skillCommands.length > 0) return
+
+    let cancelled = false
+    void fetchInstalledSkillCommands()
+      .then((items) => {
+        if (!cancelled) setSkillCommands(items)
+      })
+      .catch(() => {
+        if (!cancelled) setSkillCommands([])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, skillCommands.length])
 
   const filteredCommands = useMemo(() => {
     const normalizedQuery = query.trim()
-    if (!normalizedQuery) return SLASH_COMMANDS
+    if (!normalizedQuery) return commands
 
-    return SLASH_COMMANDS.filter((item) =>
+    return commands.filter((item) =>
       filter.contains(
         item,
         normalizedQuery,
         (target) => `${target.command} ${target.description}`,
       ),
     )
-  }, [filter, query])
+  }, [commands, filter, query])
 
   useEffect(() => {
     setActiveIndex(0)
@@ -148,7 +264,11 @@ const SlashCommandMenu = forwardRef(function SlashCommandMenu(
 })
 
 export {
+  commandForSkillName,
+  mergeInstalledSkillCommands,
+  mergeSlashCommands,
   SlashCommandMenu,
+  skillsToSlashCommands,
   type SlashCommandDefinition,
   type SlashCommandMenuHandle,
 }

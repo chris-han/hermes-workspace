@@ -165,14 +165,14 @@ function normalizeSkillConfigFields(value: unknown): Array<SkillConfigField> {
         : 'string'
 
     const options = Array.isArray(record.options)
-          ? record.options
-              .map((option) => {
-                const optRecord = asRecord(option)
-                const optionValue = readString(optRecord.value)
-                const label = readString(optRecord.label) || optionValue
-                if (!optionValue) return null
-                return { label, value: optionValue }
-              })
+      ? record.options
+          .map((option) => {
+            const optRecord = asRecord(option)
+            const optionValue = readString(optRecord.value)
+            const label = readString(optRecord.label) || optionValue
+            if (!optionValue) return null
+            return { label, value: optionValue }
+          })
           .filter((option): option is { label: string; value: string } =>
             Boolean(option),
           )
@@ -374,7 +374,7 @@ export const Route = createFileRoute('/api/skills')({
               : 'name'
           const page = Math.max(1, Number(url.searchParams.get('page') || '1'))
           const limit = Math.min(
-            60,
+            500,
             Math.max(1, Number(url.searchParams.get('limit') || '30')),
           )
 

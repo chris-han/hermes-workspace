@@ -7,6 +7,7 @@ import {
 } from '../../../server/knowledge-entitlement'
 import {
   type PromotionTargetAuthorityLevel,
+  approveKnowledgePromotionRequest,
   createKnowledgePromotionRequest,
 } from '../../../server/knowledge-promotion-requests'
 import {
@@ -22,6 +23,11 @@ type PromotionRequestBody = {
   jurisdiction?: unknown
   effectiveFrom?: unknown
   sourceVersion?: unknown
+}
+
+type PromotionApprovalBody = {
+  requestId?: unknown
+  justification?: unknown
 }
 
 function optionalString(value: unknown): string | null {
@@ -103,6 +109,48 @@ export const Route = createFileRoute('/api/knowledge/promotion-requests')({
                 error instanceof Error
                   ? error.message
                   : 'Failed to create promotion request',
+            },
+            { status: 400 },
+          )
+        }
+      },
+      PATCH: async ({ request }) => {
+        try {
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
+          const body = (await request
+            .json()
+            .catch(() => ({}))) as PromotionApprovalBody | null
+          if (!body || typeof body !== 'object') {
+            return json({ error: 'Invalid request body' }, { status: 400 })
+          }
+          if (typeof body.requestId !== 'string') {
+            return json({ error: 'requestId is required' }, { status: 400 })
+          }
+          const result = await approveKnowledgePromotionRequest(
+            activeWorkspace.path,
+            {
+              requestId: body.requestId,
+              justification: optionalString(body.justification),
+            },
+            {
+              datasetType: activeWorkspace.datasetType,
+              workspaceId: activeWorkspace.workspaceId,
+              userId: 'knowledge-ui-demo',
+            },
+          )
+          return json(result)
+        } catch (error) {
+          if (error instanceof WorkspaceAuthRequiredError) {
+            return json({ error: error.message }, { status: 401 })
+          }
+          return json(
+            {
+              error:
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to approve promotion request',
             },
             { status: 400 },
           )

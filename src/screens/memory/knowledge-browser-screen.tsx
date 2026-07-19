@@ -236,8 +236,10 @@ type PromotionTargetAuthorityLevel = 'T2' | 'T3' | 'T4' | 'T5'
 type KnowledgePromotionRequestResult = {
   ok?: boolean
   requestId?: string
-  status?: 'PENDING_REVIEW' | 'NEEDS_SOURCE_REGISTRATION'
+  approvalId?: string
+  status?: 'PENDING_REVIEW' | 'NEEDS_SOURCE_REGISTRATION' | 'APPROVED'
   requestPath?: string
+  approvalPath?: string
   blockers?: Array<string>
   error?: string
 }
@@ -3034,6 +3036,37 @@ function PromotionLineageCard({
     }
   }
 
+  async function approvePromotionRequest(requestId?: string) {
+    if (!requestId) return
+    setSubmitState({ kind: 'submitting' })
+    try {
+      const response = await fetch('/api/knowledge/promotion-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          justification:
+            promotionJustification.trim() || 'Demo approval from knowledge UI',
+        }),
+      })
+      const result = (await response
+        .json()
+        .catch(() => ({}))) as KnowledgePromotionRequestResult
+      if (!response.ok || !result.ok) {
+        throw new Error(
+          result.error || `Promotion approval failed (${response.status})`,
+        )
+      }
+      setSubmitState({ kind: 'done', result })
+    } catch (error) {
+      setSubmitState({
+        kind: 'failed',
+        message:
+          error instanceof Error ? error.message : 'Promotion approval failed',
+      })
+    }
+  }
+
   return (
     <div className="rounded-xl border border-primary-200 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
@@ -3124,6 +3157,21 @@ function PromotionLineageCard({
                     Missing: {submitState.result.blockers.join(', ')}
                   </span>
                 ) : null}
+                {submitState.result.status !== 'APPROVED' ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void approvePromotionRequest(submitState.result.requestId)
+                    }
+                    className="mt-2 w-full rounded-lg border border-primary-900 bg-primary-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-800 dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
+                  >
+                    Approve for demo
+                  </button>
+                ) : (
+                  <span className="mt-1 block text-primary-600 dark:text-neutral-300">
+                    Demo approval recorded: {submitState.result.approvalId}
+                  </span>
+                )}
               </div>
             ) : null}
             {submitState.kind === 'failed' ? (

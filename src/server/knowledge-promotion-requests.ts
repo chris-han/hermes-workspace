@@ -25,6 +25,14 @@ export type KnowledgePromotionRequest = {
   blockers: Array<string>
 }
 
+export type KnowledgePromotionApproval = {
+  ok: true
+  requestId: string
+  approvalId: string
+  status: 'APPROVED'
+  approvalPath: string
+}
+
 type KnowledgePromotionContext = {
   datasetType?: string | null
   workspaceId?: string | null
@@ -32,6 +40,7 @@ type KnowledgePromotionContext = {
 }
 
 const PROMOTION_REQUEST_DIR = '.governance/promotion-requests'
+const PROMOTION_APPROVAL_DIR = '.governance/promotion-approvals'
 const TARGET_AUTHORITY_LEVELS = new Set<PromotionTargetAuthorityLevel>([
   'T2',
   'T3',
@@ -63,6 +72,10 @@ function requestIdForPayload(payload: object): string {
 
 function contentHash(content: string): string {
   return `sha256:${crypto.createHash('sha256').update(content).digest('hex')}`
+}
+
+function hashObject(payload: object): string {
+  return crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex')
 }
 
 function extractQuotedLine(content: string, label: string): string | null {
@@ -210,5 +223,81 @@ export async function createKnowledgePromotionRequest(
     status: requestPayload.status,
     requestPath: toPosixPath(path.relative(wikiRoot, requestPath)),
     blockers,
+  }
+}
+
+export async function approveKnowledgePromotionRequest(
+  workspaceRoot: string,
+  input: {
+    requestId: string
+    justification?: string | null
+  },
+  context: KnowledgePromotionContext = {},
+): Promise<KnowledgePromotionApproval> {
+  const requestId = input.requestId.trim()
+  if (!/^kpr_[a-f0-9]{24}$/.test(requestId)) {
+    throw new Error('requestId is invalid')
+  }
+  const wikiRoot = path.join(
+    path.resolve(workspaceRoot),
+    WORKSPACE_WIKI_DIRNAME,
+  )
+  const requestPath = ensureInsideRoot(
+    path.resolve(workspaceRoot),
+    path.join(wikiRoot, PROMOTION_REQUEST_DIR, `${requestId}.json`),
+  )
+  const requestRaw = await fs.readFile(requestPath, 'utf-8')
+  const requestPayload = JSON.parse(requestRaw) as {
+    request_id?: string
+    blockers?: Array<string>
+    requested_target?: object
+    source_page?: object
+  }
+  if (requestPayload.request_id !== requestId) {
+    throw new Error('promotion request id mismatch')
+  }
+
+  const approvedAt = new Date().toISOString()
+  const approvalPayload = {
+    schema_version: 'knowledge_promotion_approval.v1',
+    request_id: requestId,
+    status: 'APPROVED',
+    approved_at: approvedAt,
+    approved_by: context.userId || 'knowledge-ui-demo',
+    workspace_id: context.workspaceId || null,
+    demo_mode: true,
+    role_gate_enforced: false,
+    activation_performed: false,
+    blockers_acknowledged: requestPayload.blockers || [],
+    requested_target: requestPayload.requested_target || null,
+    source_page: requestPayload.source_page || null,
+    justification: input.justification?.trim() || 'Demo approval',
+  }
+  const approvalId = `kpa_${hashObject(approvalPayload).slice(0, 24)}`
+  const approvalDir = ensureInsideRoot(
+    path.resolve(workspaceRoot),
+    path.join(wikiRoot, PROMOTION_APPROVAL_DIR),
+  )
+  const approvalPath = path.join(approvalDir, `${approvalId}.json`)
+  await fs.mkdir(approvalDir, { recursive: true })
+  await fs
+    .writeFile(
+      approvalPath,
+      `${JSON.stringify({ approval_id: approvalId, ...approvalPayload }, null, 2)}\n`,
+      {
+        encoding: 'utf-8',
+        flag: 'wx',
+      },
+    )
+    .catch(async (error: NodeJS.ErrnoException) => {
+      if (error.code !== 'EEXIST') throw error
+    })
+
+  return {
+    ok: true,
+    requestId,
+    approvalId,
+    status: 'APPROVED',
+    approvalPath: toPosixPath(path.relative(wikiRoot, approvalPath)),
   }
 }

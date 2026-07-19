@@ -3,7 +3,10 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { createKnowledgePromotionRequest } from './knowledge-promotion-requests'
+import {
+  approveKnowledgePromotionRequest,
+  createKnowledgePromotionRequest,
+} from './knowledge-promotion-requests'
 
 describe('knowledge promotion requests', () => {
   const createdRoots: Array<string> = []
@@ -61,5 +64,25 @@ describe('knowledge promotion requests', () => {
     expect(request.source_registration.normalized_artifact_ref).toBe(
       'artifacts/document_extraction/ef698189d9f9.json',
     )
+
+    const approval = await approveKnowledgePromotionRequest(workspace, {
+      requestId: result.requestId,
+      justification: 'Demo approval for walkthrough.',
+    })
+
+    expect(approval.status).toBe('APPROVED')
+    expect(approval.approvalPath).toMatch(
+      /^\.governance\/promotion-approvals\/kpa_[a-f0-9]+\.json$/,
+    )
+    const approvalRecord = JSON.parse(
+      fs.readFileSync(
+        path.join(workspace, 'wiki', approval.approvalPath),
+        'utf-8',
+      ),
+    )
+    expect(approvalRecord.demo_mode).toBe(true)
+    expect(approvalRecord.role_gate_enforced).toBe(false)
+    expect(approvalRecord.activation_performed).toBe(false)
+    expect(approvalRecord.request_id).toBe(result.requestId)
   })
 })

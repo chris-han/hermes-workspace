@@ -43,6 +43,12 @@ export type KnowledgeGraph = {
   edges: Array<{ source: string; target: string }>
 }
 
+export type KnowledgeChatContext = {
+  systemMessage: string
+  primaryPath: string
+  includedPaths: Array<string>
+}
+
 type FrontmatterData = {
   title?: string
   type?: string
@@ -439,6 +445,20 @@ function readParsedKnowledgeFile(
   }
 }
 
+function stripGeneratedProvenance(content: string): string {
+  return content
+    .split(/\r?\n/)
+    .filter((line) => !line.startsWith('> '))
+    .join('\n')
+    .trim()
+}
+
+function truncateForContext(content: string, maxChars: number): string {
+  const trimmed = stripGeneratedProvenance(content)
+  if (trimmed.length <= maxChars) return trimmed
+  return `${trimmed.slice(0, maxChars).trimEnd()}\n\n[Truncated]`
+}
+
 function walkKnowledgeDir(
   results: Array<ParsedKnowledgePage>,
   knowledgeRoot: string,
@@ -587,6 +607,105 @@ export function readKnowledgePage(
     meta: parsed.meta,
     content: parsed.content,
     backlinks,
+  }
+}
+
+export function buildKnowledgeChatContext(
+  relativePath: string,
+  workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
+  options: {
+    primaryMaxChars?: number
+    relatedMaxChars?: number
+    totalMaxChars?: number
+    maxRelatedPages?: number
+  } = {},
+): KnowledgeChatContext {
+  const primaryMaxChars = options.primaryMaxChars ?? 6000
+  const relatedMaxChars = options.relatedMaxChars ?? 1600
+  const totalMaxChars = options.totalMaxChars ?? 12000
+  const maxRelatedPages = options.maxRelatedPages ?? 6
+
+  const { fullPath, relativePath: safeRelativePath } = resolveKnowledgeFilePath(
+    relativePath,
+    workspaceRoot,
+    context,
+  )
+  const primary = readParsedKnowledgeFile(fullPath, safeRelativePath)
+  if (!primary) {
+    throw new Error(`ENOENT: Knowledge page not found: ${safeRelativePath}`)
+  }
+
+  const pages = getParsedKnowledgePages(workspaceRoot, context)
+  const resolveLink = createWikilinkResolver(pages)
+  const byPath = new Map(pages.map((page) => [page.meta.path, page]))
+  const primaryTags = new Set(primary.meta.tags)
+  const related = new Map<string, ParsedKnowledgePage>()
+
+  for (const link of primary.meta.wikilinks) {
+    const target = resolveLink(link)
+    if (target && target !== primary.meta.path) {
+      const page = byPath.get(target)
+      if (page) related.set(page.meta.path, page)
+    }
+  }
+
+  for (const page of pages) {
+    if (page.meta.path === primary.meta.path) continue
+    const linksToPrimary = page.meta.wikilinks.some(
+      (link) => resolveLink(link) === primary.meta.path,
+    )
+    if (linksToPrimary) related.set(page.meta.path, page)
+  }
+
+  for (const page of pages) {
+    if (page.meta.path === primary.meta.path || related.has(page.meta.path))
+      continue
+    if (
+      primaryTags.size > 0 &&
+      page.meta.tags.some((tag) => primaryTags.has(tag))
+    ) {
+      related.set(page.meta.path, page)
+    }
+    if (related.size >= maxRelatedPages) break
+  }
+
+  const includedRelated = Array.from(related.values()).slice(0, maxRelatedPages)
+  const sections = [
+    '## Knowledge Base Wiki Context',
+    '',
+    'Use this governed wiki markdown context for the user request. The selected page is already built from the source material; do not re-extract source PDFs unless the user explicitly asks.',
+    'Curation material still requires governed promotion before authority use.',
+    '',
+    `### Selected Page: ${primary.meta.title}`,
+    `Path: wiki/${primary.meta.path}`,
+    primary.meta.tags.length > 0 ? `Tags: ${primary.meta.tags.join(', ')}` : '',
+    primary.meta.wikilinks.length > 0
+      ? `Wikilinks: ${primary.meta.wikilinks.join(', ')}`
+      : '',
+    '',
+    truncateForContext(primary.content, primaryMaxChars),
+  ].filter(Boolean)
+
+  for (const page of includedRelated) {
+    sections.push(
+      '',
+      `### Related Page: ${page.meta.title}`,
+      `Path: wiki/${page.meta.path}`,
+      page.meta.tags.length > 0 ? `Tags: ${page.meta.tags.join(', ')}` : '',
+      '',
+      truncateForContext(page.content, relatedMaxChars),
+    )
+  }
+
+  const systemMessage = sections.join('\n').slice(0, totalMaxChars)
+  return {
+    systemMessage,
+    primaryPath: primary.meta.path,
+    includedPaths: [
+      primary.meta.path,
+      ...includedRelated.map((page) => page.meta.path),
+    ],
   }
 }
 

@@ -680,8 +680,8 @@ export function KnowledgeBrowserScreen() {
     [content],
   )
   const askUrl = `/chat/new?message=${encodeURIComponent(
-    `Tell me about: ${page?.title || selectedPath || 'this page'}\n\nContext:\n${content.slice(0, 500)}`,
-  )}`
+    `Tell me about ${page?.title || selectedPath || 'this wiki page'}`,
+  )}${selectedPath ? `&knowledgePath=${encodeURIComponent(selectedPath)}` : ''}`
   const searchResults = searchQuery.data?.results ?? []
 
   const settingsDirty = useMemo(() => {

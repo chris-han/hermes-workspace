@@ -152,25 +152,14 @@ describe('knowledge-ingest governed import', () => {
     ).toBe(false)
   })
 
-  it('builds a wiki page with extracted Chinese text from a real PDF', async () => {
-    const workspaceRoot = fsSync.mkdtempSync(
-      path.join(
-        path.resolve('..', 'workspaces'),
-        'knowledge-ingest-chinese-pdf-',
-      ),
-    )
+  it('builds a wiki page with extracted Chinese text from a PDF artifact', async () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-ingest-chinese-pdf-')
     createdRoots.push(workspaceRoot)
-    const sourcePath = path.resolve(
-      '..',
-      'docs',
-      'operational',
-      '中华人民共和国招标投标法.pdf',
-    )
     const upload = await writeKnowledgeUpload(
       workspaceRoot,
       binaryFile(
         '中华人民共和国招标投标法.pdf',
-        new Uint8Array(fsSync.readFileSync(sourcePath)),
+        new Uint8Array([37, 80, 68, 70]),
         'application/pdf',
       ),
       '招投标',
@@ -180,15 +169,29 @@ describe('knowledge-ingest governed import', () => {
       throw new Error('stage failed')
 
     const workspaceId = path.basename(workspaceRoot)
-    const result = await ingestKnowledgeUpload(workspaceRoot, {
-      uploadRef: upload.stagedUploadRef,
-      confirmed: true,
-      targetDir: '招投标',
-      languageHint: 'zh',
-      workspaceId,
-      sessionId: `${workspaceId}:knowledge-ui`,
-      forceWorkspaceWikiRoot: true,
-    })
+    const result = await ingestKnowledgeUpload(
+      workspaceRoot,
+      {
+        uploadRef: upload.stagedUploadRef,
+        confirmed: true,
+        targetDir: '招投标',
+        languageHint: 'zh',
+        workspaceId,
+        sessionId: `${workspaceId}:knowledge-ui`,
+        forceWorkspaceWikiRoot: true,
+      },
+      {
+        extractDocumentContent: async () => ({
+          normalized_document_artifact_ref:
+            'artifacts/document_extraction/chinese-law.json',
+          parser: { method: 'native_pdf' },
+          text_blocks: [
+            { text: '中华人民共和国招标投标法' },
+            { text: '第一条 为了规范招标投标活动，制定本法。' },
+          ],
+        }),
+      },
+    )
 
     expect(result).toMatchObject({
       ok: true,
@@ -197,12 +200,7 @@ describe('knowledge-ingest governed import', () => {
       parserMethod: 'native_pdf',
     })
     const markdown = fsSync.readFileSync(
-      path.join(
-        workspaceRoot,
-        'wiki',
-        '招投标',
-        '中华人民共和国招标投标法.md',
-      ),
+      path.join(workspaceRoot, 'wiki', '招投标', '中华人民共和国招标投标法.md'),
       'utf-8',
     )
     expect(markdown).toContain('中华人民共和国招标投标法')

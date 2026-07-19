@@ -1682,7 +1682,7 @@ export function KnowledgeBrowserScreen() {
                 )}
               >
                 <div className="space-y-3 overflow-y-auto pr-1 md:h-full">
-                  <section className="rounded-xl border border-primary-200 bg-primary-50/80 p-2 dark:border-neutral-800 dark:bg-neutral-900/60">
+                  <section className="rounded-lg border border-primary-200 bg-primary-50/80 p-2 dark:border-neutral-800 dark:bg-neutral-900/60">
                     <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-primary-400 dark:text-neutral-500">
                       Tags
                     </div>
@@ -1705,7 +1705,7 @@ export function KnowledgeBrowserScreen() {
                     </div>
                   </section>
 
-                  <section className="rounded-xl border border-primary-200 bg-primary-50/80 p-1 dark:border-neutral-800 dark:bg-neutral-900/60">
+                  <section className="rounded-lg border border-primary-200 bg-primary-50/80 p-1 dark:border-neutral-800 dark:bg-neutral-900/60">
                     {listQuery.isLoading ? (
                       <StateBox label="Loading knowledge pages..." />
                     ) : listQuery.error instanceof Error ? (
@@ -1798,13 +1798,7 @@ export function KnowledgeBrowserScreen() {
                           <StateBox label={filesError} error />
                         ) : currentDirectoryEntries.length === 0 &&
                           currentFolderStatusRowCount === 0 ? (
-                          <StateBox
-                            label={
-                              fileViewMode === 'source'
-                                ? 'No source files in this folder'
-                                : 'No wiki files in this folder'
-                            }
-                          />
+                          <StateBox label="No source files in this folder" />
                         ) : (
                           <div className="divide-y divide-primary-200 overflow-hidden rounded-lg border border-primary-200 dark:divide-neutral-800 dark:border-neutral-800">
                             {queuedUploadView.map((file) => (
@@ -2417,49 +2411,61 @@ function TreeSection({
   depth?: number
 }) {
   return (
-    <div className={cn('space-y-1', depth > 0 && 'mt-1')}>
+    <div className={cn('space-y-0.5', depth > 0 && 'mt-0.5')}>
       {node.path ? (
         <div
-          className="flex items-center gap-2 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400"
-          style={{ paddingLeft: `${depth * 12 + 8}px` }}
+          className="flex h-7 items-center gap-2 rounded-md px-2 text-xs font-semibold text-primary-500 dark:text-neutral-400"
+          style={{ paddingLeft: `${depth * 14 + 8}px` }}
         >
           <HugeiconsIcon icon={Folder01Icon} size={14} strokeWidth={1.7} />
           <span className="truncate">{node.name}</span>
         </div>
       ) : null}
 
-      {node.pages.map((page) => (
-        <button
-          key={page.path}
-          type="button"
-          onClick={() => onSelectPath(page.path)}
-          className={cn(
-            'block w-full rounded-lg border px-2.5 py-2 text-left transition-colors',
-            selectedPath === page.path
-              ? 'border-accent-500/70 bg-accent-500/10'
-              : 'border-primary-200 bg-primary-50/80 hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-800 dark:bg-neutral-900/60 dark:hover:border-neutral-700 dark:hover:bg-neutral-900',
-          )}
-          style={{ marginLeft: depth > 0 ? depth * 12 : 0 }}
-        >
-          <div className="flex items-start gap-2">
+      {node.pages.map((page) => {
+        const active = selectedPath === page.path
+        return (
+          <button
+            key={page.path}
+            type="button"
+            onClick={() => onSelectPath(page.path)}
+            className={cn(
+              'flex min-h-9 w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-sm transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)]',
+              active
+                ? 'border-[var(--theme-accent-secondary)] bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)] shadow-sm'
+                : 'border-transparent text-primary-900 hover:border-primary-200 hover:bg-primary-100 dark:text-neutral-200 dark:hover:border-neutral-800 dark:hover:bg-neutral-900',
+            )}
+            style={{ marginLeft: depth > 0 ? depth * 14 : 0 }}
+            aria-current={active ? 'page' : undefined}
+          >
             <HugeiconsIcon
               icon={File01Icon}
               size={16}
-              strokeWidth={1.7}
-              className="mt-0.5 shrink-0"
+              strokeWidth={1.8}
+              className={cn(
+                'shrink-0',
+                active
+                  ? 'text-[var(--theme-accent-foreground)]'
+                  : 'text-primary-500 dark:text-neutral-400',
+              )}
             />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-primary-900 dark:text-neutral-100">
-                {page.title}
-              </div>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {page.type ? <InlineBadge label={page.type} /> : null}
-                {page.status ? <InlineBadge label={page.status} /> : null}
-              </div>
+              <div className="truncate font-semibold">{page.title}</div>
+              {(page.type || page.status) && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {page.type ? (
+                    <InlineBadge label={page.type} active={active} />
+                  ) : null}
+                  {page.status ? (
+                    <InlineBadge label={page.status} active={active} />
+                  ) : null}
+                </div>
+              )}
             </div>
-          </div>
-        </button>
-      ))}
+          </button>
+        )
+      })}
 
       {node.folders.map((child) => (
         <TreeSection
@@ -2554,9 +2560,22 @@ function KnowledgeFileTree({
   )
 }
 
-function InlineBadge({ label }: { label: string }) {
+function InlineBadge({
+  label,
+  active = false,
+}: {
+  label: string
+  active?: boolean
+}) {
   return (
-    <span className="rounded-full border border-primary-200 bg-primary-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
+    <span
+      className={cn(
+        'rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+        active
+          ? 'border-[color-mix(in_srgb,var(--theme-accent-foreground)_35%,transparent)] bg-[color-mix(in_srgb,var(--theme-accent)_72%,white)] text-[var(--theme-accent-foreground)]'
+          : 'border-primary-200 bg-primary-100 text-primary-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300',
+      )}
+    >
       {label}
     </span>
   )

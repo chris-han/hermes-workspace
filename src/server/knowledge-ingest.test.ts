@@ -15,6 +15,10 @@ function file(name: string, content: string): File {
   return new File([content], name)
 }
 
+function binaryFile(name: string, content: Uint8Array, type: string): File {
+  return new File([content], name, { type })
+}
+
 describe('knowledge-ingest governed import', () => {
   const createdRoots: Array<string> = []
 
@@ -146,6 +150,66 @@ describe('knowledge-ingest governed import', () => {
         path.join(workspaceRoot, 'knowledge-base', '招投标', 'source.md'),
       ),
     ).toBe(false)
+  })
+
+  it('builds a wiki page with extracted Chinese text from a real PDF', async () => {
+    const workspaceRoot = fsSync.mkdtempSync(
+      path.join(
+        path.resolve('..', 'workspaces'),
+        'knowledge-ingest-chinese-pdf-',
+      ),
+    )
+    createdRoots.push(workspaceRoot)
+    const sourcePath = path.resolve(
+      '..',
+      'docs',
+      'operational',
+      '中华人民共和国招标投标法.pdf',
+    )
+    const upload = await writeKnowledgeUpload(
+      workspaceRoot,
+      binaryFile(
+        '中华人民共和国招标投标法.pdf',
+        new Uint8Array(fsSync.readFileSync(sourcePath)),
+        'application/pdf',
+      ),
+      '招投标',
+      { forceWorkspaceWikiRoot: true },
+    )
+    if (!upload.ok || upload.kind !== 'staged_for_ingest')
+      throw new Error('stage failed')
+
+    const workspaceId = path.basename(workspaceRoot)
+    const result = await ingestKnowledgeUpload(workspaceRoot, {
+      uploadRef: upload.stagedUploadRef,
+      confirmed: true,
+      targetDir: '招投标',
+      languageHint: 'zh',
+      workspaceId,
+      sessionId: `${workspaceId}:knowledge-ui`,
+      forceWorkspaceWikiRoot: true,
+    })
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: 'parsed',
+      storedMarkdownPath: '招投标/中华人民共和国招标投标法.md',
+      parserMethod: 'native_pdf',
+    })
+    const markdown = fsSync.readFileSync(
+      path.join(
+        workspaceRoot,
+        'wiki',
+        '招投标',
+        '中华人民共和国招标投标法.md',
+      ),
+      'utf-8',
+    )
+    expect(markdown).toContain('中华人民共和国招标投标法')
+    expect(markdown).toContain('第一条 为了规范招标投标活动')
+    expect(markdown).not.toContain('%PDF-1.5')
+    expect(markdown).not.toContain('1 0 obj')
+    expect(markdown).not.toContain('stream')
   })
 
   it('routes xlsx refs through the table ingestion boundary before wiki rendering', async () => {

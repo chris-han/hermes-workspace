@@ -18,7 +18,7 @@ import {
   ORCHESTRATOR_PROGRESS_STATUS,
   ORCHESTRATOR_PROGRESS_VALUE,
 } from './orchestrator-visuals'
-import type { AgentRosterChatMessage } from '../hooks/use-agent-chat'
+import type { OperationsChatMessage as AgentRosterChatMessage } from '../hooks/use-agent-chat'
 import type { AgentRosterAgent } from '../hooks/use-agent-roster'
 import { Button } from '@/components/ui/button'
 import { AgentProgress } from '@/components/agent-view/agent-progress'

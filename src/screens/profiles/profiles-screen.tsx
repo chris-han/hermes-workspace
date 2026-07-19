@@ -1,4 +1,10 @@
-import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  type ChangeEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -85,7 +91,10 @@ function readOptionalString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-function resolveDisplayName(profile: { name: string; displayName?: string }): string {
+function resolveDisplayName(profile: {
+  name: string
+  displayName?: string
+}): string {
   return (profile.displayName?.trim() || profile.name).trim()
 }
 
@@ -97,7 +106,8 @@ function resolveProfileProvider(profile: {
   if (configured) return configured
 
   const model = profile.model?.trim()
-  const slashIndex = model ? model.indexOf('/') : -1
+  if (!model) return 'no provider'
+  const slashIndex = model.indexOf('/')
   if (slashIndex > 0) return model.slice(0, slashIndex)
 
   return 'no provider'
@@ -201,7 +211,9 @@ export function ProfilesScreen() {
     return payload
   }
 
-  async function handleProfileAvatarUpload(event: ChangeEvent<HTMLInputElement>) {
+  async function handleProfileAvatarUpload(
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
@@ -249,7 +261,8 @@ export function ProfilesScreen() {
   }
 
   async function handleSaveProfileDetails() {
-    const targetProfileName = detailsName || detailQuery.data?.profile?.name || 'default'
+    const targetProfileName =
+      detailsName || detailQuery.data?.profile?.name || 'default'
     setDetailSaving(true)
     setDetailErrorMessage(null)
     try {
@@ -281,7 +294,10 @@ export function ProfilesScreen() {
         console.debug('[profiles.save] posting', patchPayload)
       }
 
-      const response = (await postJson('/api/profiles/update', patchPayload)) as {
+      const response = (await postJson(
+        '/api/profiles/update',
+        patchPayload,
+      )) as {
         ok?: boolean
         profile?: Record<string, unknown>
       }
@@ -293,7 +309,9 @@ export function ProfilesScreen() {
       toast('Profile identity saved', { type: 'success' })
     } catch (error) {
       setDetailErrorMessage(
-        error instanceof Error ? error.message : 'Failed to save profile details',
+        error instanceof Error
+          ? error.message
+          : 'Failed to save profile details',
       )
     } finally {
       setDetailSaving(false)
@@ -324,7 +342,9 @@ export function ProfilesScreen() {
     const profile = detailQuery.data?.profile
     if (!detailsName || !profile) return
     setDetailDisplayName(profile.displayName || '')
-    const configuredProvider = readOptionalString(profile.config?.provider as unknown)
+    const configuredProvider = readOptionalString(
+      profile.config?.provider as unknown,
+    )
     const configuredModel = readOptionalString(profile.config?.model as unknown)
     setDetailProvider(
       configuredProvider || inferProviderFromModel(configuredModel) || '',
@@ -534,9 +554,7 @@ export function ProfilesScreen() {
                       alt={resolveDisplayName(profile)}
                       className={cn(
                         'size-20 rounded-full border-2 object-cover',
-                        profile.active
-                          ? 'border-background'
-                          : 'border-card',
+                        profile.active ? 'border-background' : 'border-card',
                       )}
                       style={{
                         filter: profile.active
@@ -772,12 +790,12 @@ export function ProfilesScreen() {
                   >
                     <option value="">Start fresh — empty config</option>
                     {profiles.map((p) => (
-                    <option key={p.name} value={p.name}>
-                      {resolveDisplayName(p)} {p.model ? `(${p.model})` : ''}{' '}
-                      {p.active ? '• active' : ''}
-                    </option>
-                  ))}
-                </select>
+                      <option key={p.name} value={p.name}>
+                        {resolveDisplayName(p)} {p.model ? `(${p.model})` : ''}{' '}
+                        {p.active ? '• active' : ''}
+                      </option>
+                    ))}
+                  </select>
                   <p className="text-xs text-muted-foreground">
                     Copies config, skills path, and env from the selected
                     profile
@@ -1284,9 +1302,7 @@ function SummaryField({
       <div
         className={cn(
           'mt-0.5 text-sm font-medium',
-          muted
-            ? 'text-muted-foreground'
-            : 'text-foreground',
+          muted ? 'text-muted-foreground' : 'text-foreground',
         )}
       >
         {value}

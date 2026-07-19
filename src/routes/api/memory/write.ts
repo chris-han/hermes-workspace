@@ -1,7 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { writeMemory } from '../../../server/hermes-api'
+import { writeMemoryFile } from '../../../server/memory-browser'
 import { requireJsonContentType } from '../../../server/rate-limit'
+import {
+  resolveActiveWorkspaceRoot,
+  WorkspaceAuthRequiredError,
+} from '../../../server/workspace-root'
 
 export const Route = createFileRoute('/api/memory/write')({
   server: {
@@ -16,8 +20,17 @@ export const Route = createFileRoute('/api/memory/write')({
           }
           if (typeof body.path !== 'string') throw new Error('Path is required')
           const content = typeof body.content === 'string' ? body.content : ''
-          return json(await writeMemory({ path: body.path, content }))
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
+          const savedPath = writeMemoryFile(body.path, content, {
+            workspaceRoot: activeWorkspace.path,
+          })
+          return json({ success: true, path: savedPath })
         } catch (error) {
+          if (error instanceof WorkspaceAuthRequiredError) {
+            return json({ error: error.message }, { status: 401 })
+          }
           const message =
             error instanceof Error
               ? error.message

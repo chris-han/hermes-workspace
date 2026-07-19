@@ -39,7 +39,7 @@ import {
   shouldBlockZeroForkModelSwitch,
 } from './chat-composer-model-switch'
 import { fetchCurrentModelFromStatus, readText } from './chat-current-model'
-import type { Ref } from 'react'
+import type { CSSProperties, Ref } from 'react'
 
 import type { ModelCatalogEntry, ModelSwitchResponse } from '@/lib/model-types'
 import type {

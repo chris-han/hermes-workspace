@@ -1,0 +1,214 @@
+import crypto from 'node:crypto'
+import path from 'node:path'
+import * as fs from 'node:fs/promises'
+
+import { readKnowledgePage } from './knowledge-browser'
+import { WORKSPACE_WIKI_DIRNAME } from './knowledge-config'
+
+export type PromotionTargetAuthorityLevel = 'T2' | 'T3' | 'T4' | 'T5'
+
+export type KnowledgePromotionRequestInput = {
+  pagePath: string
+  targetAuthorityLevel: PromotionTargetAuthorityLevel
+  justification: string
+  sourceUri?: string | null
+  jurisdiction?: string | null
+  effectiveFrom?: string | null
+  sourceVersion?: string | null
+}
+
+export type KnowledgePromotionRequest = {
+  ok: true
+  requestId: string
+  status: 'PENDING_REVIEW' | 'NEEDS_SOURCE_REGISTRATION'
+  requestPath: string
+  blockers: Array<string>
+}
+
+type KnowledgePromotionContext = {
+  datasetType?: string | null
+  workspaceId?: string | null
+  userId?: string | null
+}
+
+const PROMOTION_REQUEST_DIR = '.governance/promotion-requests'
+const TARGET_AUTHORITY_LEVELS = new Set<PromotionTargetAuthorityLevel>([
+  'T2',
+  'T3',
+  'T4',
+  'T5',
+])
+
+function toPosixPath(input: string): string {
+  return input.split(path.sep).join('/')
+}
+
+function ensureInsideRoot(root: string, candidate: string): string {
+  const resolvedRoot = path.resolve(root)
+  const resolvedCandidate = path.resolve(candidate)
+  const relative = path.relative(resolvedRoot, resolvedCandidate)
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error('Path is outside wiki root')
+  }
+  return resolvedCandidate
+}
+
+function requestIdForPayload(payload: object): string {
+  const hash = crypto
+    .createHash('sha256')
+    .update(JSON.stringify(payload))
+    .digest('hex')
+  return `kpr_${hash.slice(0, 24)}`
+}
+
+function contentHash(content: string): string {
+  return `sha256:${crypto.createHash('sha256').update(content).digest('hex')}`
+}
+
+function extractQuotedLine(content: string, label: string): string | null {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = content.match(new RegExp(`^>\\s*${escaped}:\\s*(.+)$`, 'im'))
+  return match?.[1]?.trim() || null
+}
+
+function defaultSourceType(
+  targetAuthorityLevel: PromotionTargetAuthorityLevel,
+) {
+  if (targetAuthorityLevel === 'T2') return 'official_regulation'
+  if (targetAuthorityLevel === 'T4') return 'internal_policy'
+  return 'field_guide'
+}
+
+function defaultAuthorityOrigin(
+  targetAuthorityLevel: PromotionTargetAuthorityLevel,
+) {
+  if (targetAuthorityLevel === 'T2') return 'official_source'
+  if (targetAuthorityLevel === 'T4' || targetAuthorityLevel === 'T5') {
+    return 'internal_governance'
+  }
+  return 'interpretive_source'
+}
+
+function defaultAuthorityDomain(
+  targetAuthorityLevel: PromotionTargetAuthorityLevel,
+) {
+  if (targetAuthorityLevel === 'T2') return 'compliance'
+  if (targetAuthorityLevel === 'T5') return 'management'
+  return 'compliance'
+}
+
+function defaultTagAuthorityLevel(
+  targetAuthorityLevel: PromotionTargetAuthorityLevel,
+) {
+  if (targetAuthorityLevel === 'T2') return 'regulatory'
+  if (targetAuthorityLevel === 'T5') return 'management'
+  return 'operational'
+}
+
+export async function createKnowledgePromotionRequest(
+  workspaceRoot: string,
+  input: KnowledgePromotionRequestInput,
+  context: KnowledgePromotionContext = {},
+): Promise<KnowledgePromotionRequest> {
+  const pagePath = input.pagePath.trim()
+  const justification = input.justification.trim()
+  if (!pagePath) throw new Error('pagePath is required')
+  if (!TARGET_AUTHORITY_LEVELS.has(input.targetAuthorityLevel)) {
+    throw new Error('targetAuthorityLevel is invalid')
+  }
+  if (!justification) throw new Error('justification is required')
+
+  const page = readKnowledgePage(pagePath, workspaceRoot, {
+    datasetType: context.datasetType,
+    forceWorkspaceWikiRoot: true,
+  })
+  const sourceUploadRef = extractQuotedLine(page.content, 'Source upload ref')
+  const normalizedArtifactRef = extractQuotedLine(
+    page.content,
+    'Normalized artifact ref',
+  )
+  const parserMethod = extractQuotedLine(page.content, 'Parser method')
+  const humanCurationJustification = extractQuotedLine(
+    page.content,
+    'Human curation justification',
+  )
+  const sourceUri = input.sourceUri?.trim() || null
+  const jurisdiction = input.jurisdiction?.trim() || null
+  const effectiveFrom = input.effectiveFrom?.trim() || null
+  const sourceVersion = input.sourceVersion?.trim() || null
+  const blockers: Array<string> = []
+
+  if (input.targetAuthorityLevel === 'T2') {
+    if (!sourceUri) blockers.push('official_source_uri_required')
+    if (!jurisdiction) blockers.push('jurisdiction_required')
+    if (!effectiveFrom) blockers.push('effective_from_required')
+    if (!sourceVersion) blockers.push('source_version_required')
+  }
+
+  const requestedAt = new Date().toISOString()
+  const requestPayload = {
+    schema_version: 'knowledge_promotion_request.v1',
+    status:
+      blockers.length > 0 ? 'NEEDS_SOURCE_REGISTRATION' : 'PENDING_REVIEW',
+    requested_at: requestedAt,
+    requested_by: context.userId || 'knowledge-ui',
+    workspace_id: context.workspaceId || null,
+    source_page: {
+      path: page.meta.path,
+      title: page.meta.title,
+      content_hash: contentHash(page.content),
+      authority_level: extractQuotedLine(page.content, 'Authority level'),
+      authority_use: extractQuotedLine(page.content, 'Authority use'),
+    },
+    requested_target: {
+      semantic_tier: input.targetAuthorityLevel,
+      authority_domain: defaultAuthorityDomain(input.targetAuthorityLevel),
+      tag_authority_level: defaultTagAuthorityLevel(input.targetAuthorityLevel),
+      source_type: defaultSourceType(input.targetAuthorityLevel),
+      authority_origin: defaultAuthorityOrigin(input.targetAuthorityLevel),
+    },
+    source_registration: {
+      source_uri: sourceUri,
+      jurisdiction,
+      effective_from: effectiveFrom,
+      source_version: sourceVersion,
+      source_upload_ref: sourceUploadRef,
+      normalized_artifact_ref: normalizedArtifactRef,
+      parser_method: parserMethod,
+    },
+    justification,
+    human_curation_justification: humanCurationJustification,
+    blockers,
+  }
+  const requestId = requestIdForPayload(requestPayload)
+  const wikiRoot = path.join(
+    path.resolve(workspaceRoot),
+    WORKSPACE_WIKI_DIRNAME,
+  )
+  const requestDir = ensureInsideRoot(
+    path.resolve(workspaceRoot),
+    path.join(wikiRoot, PROMOTION_REQUEST_DIR),
+  )
+  const requestPath = path.join(requestDir, `${requestId}.json`)
+  await fs.mkdir(requestDir, { recursive: true })
+  await fs
+    .writeFile(
+      requestPath,
+      `${JSON.stringify({ request_id: requestId, ...requestPayload }, null, 2)}\n`,
+      {
+        encoding: 'utf-8',
+        flag: 'wx',
+      },
+    )
+    .catch(async (error: NodeJS.ErrnoException) => {
+      if (error.code !== 'EEXIST') throw error
+    })
+
+  return {
+    ok: true,
+    requestId,
+    status: requestPayload.status,
+    requestPath: toPosixPath(path.relative(wikiRoot, requestPath)),
+    blockers,
+  }
+}

@@ -37,7 +37,7 @@ const PROFILE_SOUL_FILE = 'SOUL.md'
 
 function resolveProfileDisplayName(
   profileName: string,
-  value?: string,
+  value?: unknown,
 ): string | undefined {
   const resolved = readOptionalString(value)
   if (resolved) return resolved
@@ -98,10 +98,16 @@ function readOptionalString(value: unknown): string | undefined {
   return undefined
 }
 
-function extractProfileModel(config: Record<string, unknown>): string | undefined {
+function extractProfileModel(
+  config: Record<string, unknown>,
+): string | undefined {
   const directModel = readOptionalString(config.model)
   if (directModel) return directModel
-  if (config.model && typeof config.model === 'object' && !Array.isArray(config.model)) {
+  if (
+    config.model &&
+    typeof config.model === 'object' &&
+    !Array.isArray(config.model)
+  ) {
     const model = readOptionalString(
       (config.model as Record<string, unknown>).default,
     )
@@ -130,11 +136,17 @@ function inferProviderFromModel(model: string): string {
   return model.slice(0, slashIndex)
 }
 
-function extractProfileProvider(config: Record<string, unknown>): string | undefined {
+function extractProfileProvider(
+  config: Record<string, unknown>,
+): string | undefined {
   const directProvider = readOptionalString(config.provider)
   if (directProvider) return directProvider
 
-  if (config.model && typeof config.model === 'object' && !Array.isArray(config.model)) {
+  if (
+    config.model &&
+    typeof config.model === 'object' &&
+    !Array.isArray(config.model)
+  ) {
     const nestedProvider = readOptionalString(
       (config.model as Record<string, unknown>).provider,
     )
@@ -245,7 +257,10 @@ export function listProfiles(hermesHome: string): Array<ProfileSummary> {
       )
       results.push({
         name,
-        displayName: resolveProfileDisplayName(name, readOptionalString(config.display_name)),
+        displayName: resolveProfileDisplayName(
+          name,
+          readOptionalString(config.display_name),
+        ),
         avatarDataUrl: readOptionalString(config.avatar_data_url),
         path: profilePath,
         active: name === activeProfile,
@@ -443,7 +458,10 @@ export function updateProfileConfig(
   const current = readYamlConfig(configPath)
   const hasSoulPatch = Object.prototype.hasOwnProperty.call(patch, 'soul')
   const hasModelPatch = Object.prototype.hasOwnProperty.call(patch, 'model')
-  const hasProviderPatch = Object.prototype.hasOwnProperty.call(patch, 'provider')
+  const hasProviderPatch = Object.prototype.hasOwnProperty.call(
+    patch,
+    'provider',
+  )
   const providerPatch =
     typeof patch.provider === 'string'
       ? patch.provider.trim() || undefined
@@ -455,7 +473,9 @@ export function updateProfileConfig(
     if (key === 'model') continue
     merged[key] = value
   }
-  const existingProvider = extractProfileProvider(merged as Record<string, unknown>)
+  const existingProvider = extractProfileProvider(
+    merged as Record<string, unknown>,
+  )
   const existingModel = extractProfileModel(merged as Record<string, unknown>)
   if (hasModelPatch) {
     if (patch.model === null) {
@@ -464,7 +484,9 @@ export function updateProfileConfig(
       const nextModel = normalizeModelForWrite(patch.model)
       if (nextModel !== undefined) {
         const modelPatchObject =
-          patch.model && typeof patch.model === 'object' && !Array.isArray(patch.model)
+          patch.model &&
+          typeof patch.model === 'object' &&
+          !Array.isArray(patch.model)
             ? (patch.model as Record<string, unknown>)
             : {}
         const inferredProvider = inferProviderFromModel(nextModel)
@@ -473,7 +495,10 @@ export function updateProfileConfig(
             ? modelPatchObject.provider.trim()
             : undefined
         const resolvedProvider =
-          providerPatch || modelProviderPatch || inferredProvider || existingProvider
+          providerPatch ||
+          modelProviderPatch ||
+          inferredProvider ||
+          existingProvider
         const mergedModel =
           merged.model &&
           typeof merged.model === 'object' &&
@@ -521,7 +546,10 @@ export function updateProfileConfig(
   fs.mkdirSync(path.dirname(configPath), { recursive: true })
   fs.writeFileSync(configPath, YAML.stringify(merged), 'utf-8')
   if (hasSoulPatch) {
-    if (Object.prototype.hasOwnProperty.call(patch, 'soul') && patch.soul == null) {
+    if (
+      Object.prototype.hasOwnProperty.call(patch, 'soul') &&
+      patch.soul == null
+    ) {
       if (fs.existsSync(soulPath)) fs.unlinkSync(soulPath)
     } else if (toOptionalString(patch.soul) !== undefined) {
       fs.writeFileSync(soulPath, patch.soul as string, 'utf-8')

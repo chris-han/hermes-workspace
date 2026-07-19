@@ -23,6 +23,7 @@ import {
   FlashIcon,
 } from '@hugeicons/core-free-icons'
 import type { ReactNode } from 'react'
+import type { IconSvgElement } from '@hugeicons/react'
 import type { HermesSession } from '@/server/hermes-api'
 import {
   fetchGatewayApprovals,
@@ -167,7 +168,9 @@ function normalizeAgentDecisionsFromActivity(
     if (!isToolComplete && !isAssistantComplete) return
 
     const errorMessage =
-      typeof details.errorMessage === 'string' ? details.errorMessage.trim() : ''
+      typeof details.errorMessage === 'string'
+        ? details.errorMessage.trim()
+        : ''
     const status: DecisionStatus = errorMessage ? 'blocked' : 'cleared'
     const actionLabel =
       typeof details.toolName === 'string' && details.toolName.trim()
@@ -240,11 +243,14 @@ function normalizeDashboardDecision(
   }
 }
 
-function calculateAavrProxy(decisions: Array<DashboardDecision>): number | null {
+function calculateAavrProxy(
+  decisions: Array<DashboardDecision>,
+): number | null {
   const total = decisions.length
   if (total === 0) return null
-  const cleared = decisions.filter((decision) => decision.status === 'cleared')
-    .length
+  const cleared = decisions.filter(
+    (decision) => decision.status === 'cleared',
+  ).length
   return cleared / total
 }
 
@@ -308,7 +314,9 @@ function DecisionRow({
             <button
               type="button"
               disabled={busy}
-              onClick={() => onApprove(decision.gatewayApprovalId ?? decision.id)}
+              onClick={() =>
+                onApprove(decision.gatewayApprovalId ?? decision.id)
+              }
               className="rounded-full border border-success/20 bg-success/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-success transition-colors hover:bg-success/15 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Clear
@@ -437,7 +445,10 @@ function AdminEnforcementPanel({
                   decision={decision}
                   onApprove={onApprove}
                   onDeny={onDeny}
-                  busy={busyDecisionId === (decision.gatewayApprovalId ?? decision.id)}
+                  busy={
+                    busyDecisionId ===
+                    (decision.gatewayApprovalId ?? decision.id)
+                  }
                 />
               ))
             )}
@@ -501,7 +512,11 @@ function UnavailableWidget({
   description: string
 }) {
   return (
-    <DashboardCard title={title} titleRight={<EnhancedBadge />} className="h-full">
+    <DashboardCard
+      title={title}
+      titleRight={<EnhancedBadge />}
+      className="h-full"
+    >
       <div className="flex h-full min-h-[180px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 px-4 text-center">
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
@@ -539,7 +554,9 @@ function SystemGlance({
         <span className="text-muted-foreground">·</span>
         <span className="text-xs text-muted-foreground">{provider}</span>
         <span className="text-muted-foreground">·</span>
-        <span className="text-xs text-muted-foreground">{sessions} sessions</span>
+        <span className="text-xs text-muted-foreground">
+          {sessions} sessions
+        </span>
         <span className="text-muted-foreground">·</span>
         <span className="text-xs font-bold tabular-nums text-foreground">
           {tokens} tokens
@@ -563,7 +580,7 @@ function MetricTile({
   label: string
   value: string
   sub?: string
-  icon: React.ElementType
+  icon: IconSvgElement
   iconClass: string
 }) {
   return (
@@ -576,7 +593,9 @@ function MetricTile({
           <div className="text-2xl font-bold tabular-nums text-foreground">
             {value}
           </div>
-          {sub && <div className="text-[11px] text-muted-foreground">{sub}</div>}
+          {sub && (
+            <div className="text-[11px] text-muted-foreground">{sub}</div>
+          )}
         </div>
         <div
           className={cn(
@@ -630,7 +649,9 @@ function ActivityChart({ sessions }: { sessions: Array<HermesSession> }) {
   return (
     <DashboardCard
       title="Activity"
-      titleRight={<span className="text-[10px] text-muted-foreground">14 days</span>}
+      titleRight={
+        <span className="text-[10px] text-muted-foreground">14 days</span>
+      }
       className="h-full"
     >
       <div className="h-[200px] w-full -ml-2">
@@ -785,7 +806,9 @@ function ModelCard() {
         <span
           className={cn(
             'inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full',
-            connected ? 'text-success bg-success/10' : 'text-danger bg-danger/10',
+            connected
+              ? 'text-success bg-success/10'
+              : 'text-danger bg-danger/10',
           )}
         >
           <span
@@ -883,7 +906,11 @@ function SkillsWidget() {
               key={String(skill.name ?? i)}
               className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-muted/50 transition-colors"
             >
-              <HugeiconsIcon icon={Book01Icon} size={14} className="text-muted-foreground" />
+              <HugeiconsIcon
+                icon={Book01Icon}
+                size={14}
+                className="text-muted-foreground"
+              />
               <span className="text-xs font-medium text-foreground truncate flex-1">
                 {String(skill.name ?? 'Unnamed')}
               </span>
@@ -1000,7 +1027,7 @@ function QuickAction({
   badge,
 }: {
   label: string
-  icon: React.ElementType
+  icon: IconSvgElement
   iconClass: string
   onClick: () => void
   disabled?: boolean
@@ -1182,14 +1209,19 @@ export function DashboardScreen() {
   const decisions = useMemo(
     () =>
       [
-        ...(approvalsQuery.data?.pending ?? approvalsQuery.data?.approvals ?? [])
+        ...(
+          approvalsQuery.data?.pending ??
+          approvalsQuery.data?.approvals ??
+          []
+        )
           .map(normalizeDashboardDecision)
           .filter((entry): entry is DashboardDecision => Boolean(entry)),
         ...(activityDecisionQuery.data ?? []),
       ]
         .filter(
           (decision) =>
-            !decision.requestedAt || Date.now() - decision.requestedAt <= 3_600_000,
+            !decision.requestedAt ||
+            Date.now() - decision.requestedAt <= 3_600_000,
         )
         .sort((a, b) => (b.requestedAt ?? 0) - (a.requestedAt ?? 0)),
     [approvalsQuery.data, activityDecisionQuery.data],
@@ -1323,8 +1355,7 @@ export function DashboardScreen() {
               'semantier-light': 'semantier',
             }
             const cur =
-              document.documentElement.getAttribute('data-theme') ||
-              'semantier'
+              document.documentElement.getAttribute('data-theme') || 'semantier'
             const nextDataTheme =
               LIGHT_DARK_PAIRS[cur] ||
               (isDark ? 'semantier-light' : 'semantier')

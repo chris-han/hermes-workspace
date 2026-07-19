@@ -16,7 +16,7 @@ function file(name: string, content: string): File {
 }
 
 function binaryFile(name: string, content: Uint8Array, type: string): File {
-  return new File([content], name, { type })
+  return new File([content.buffer as ArrayBuffer], name, { type })
 }
 
 describe('knowledge-ingest governed import', () => {
@@ -109,7 +109,9 @@ describe('knowledge-ingest governed import', () => {
   })
 
   it('executes the installed document extraction plugin package for wiki imports', async () => {
-    const workspaceRoot = makeWorkspaceRoot('knowledge-ingest-installed-plugin-')
+    const workspaceRoot = makeWorkspaceRoot(
+      'knowledge-ingest-installed-plugin-',
+    )
     createdRoots.push(workspaceRoot)
     const pluginRoot = path.join(
       workspaceRoot,
@@ -318,7 +320,12 @@ describe('knowledge-ingest governed import', () => {
     })
     expect(
       fsSync.existsSync(
-        path.join(workspaceRoot, 'wiki', '招投标', '中华人民共和国招标投标法.md'),
+        path.join(
+          workspaceRoot,
+          'wiki',
+          '招投标',
+          '中华人民共和国招标投标法.md',
+        ),
       ),
     ).toBe(false)
   })
@@ -374,7 +381,9 @@ describe('knowledge-ingest governed import', () => {
     expect(markdown).toContain('Parser method: pdf_unextractable')
     expect(markdown).toContain('Authority level: curation_only')
     expect(markdown).toContain('Human curation justification:')
-    expect(markdown).toContain('requires governed promotion before authority use')
+    expect(markdown).toContain(
+      'requires governed promotion before authority use',
+    )
   })
 
   it('replaces the exact existing markdown for the same source upload ref', async () => {
@@ -382,7 +391,11 @@ describe('knowledge-ingest governed import', () => {
     createdRoots.push(workspaceRoot)
     const upload = await writeKnowledgeUpload(
       workspaceRoot,
-      binaryFile('中华人民共和国招标投标法.pdf', new Uint8Array([37, 80]), 'application/pdf'),
+      binaryFile(
+        '中华人民共和国招标投标法.pdf',
+        new Uint8Array([37, 80]),
+        'application/pdf',
+      ),
       '招投标',
       { forceWorkspaceWikiRoot: true },
     )
@@ -413,7 +426,8 @@ describe('knowledge-ingest governed import', () => {
         confirmed: true,
         targetDir: '招投标',
         forceWorkspaceWikiRoot: true,
-        manualCurationJustification: 'Reviewer approved curation markdown refresh.',
+        manualCurationJustification:
+          'Reviewer approved curation markdown refresh.',
       },
       {
         extractDocumentContent: async () => ({
@@ -434,13 +448,20 @@ describe('knowledge-ingest governed import', () => {
     })
     expect(
       fsSync.existsSync(
-        path.join(workspaceRoot, 'wiki', '招投标', '中华人民共和国招标投标法-2.md'),
+        path.join(
+          workspaceRoot,
+          'wiki',
+          '招投标',
+          '中华人民共和国招标投标法-2.md',
+        ),
       ),
     ).toBe(false)
     const markdown = fsSync.readFileSync(exactPath, 'utf-8')
     expect(markdown).toContain('Authority level: curation_only')
     expect(markdown).toContain('Reviewer approved curation markdown refresh.')
-    expect(markdown).toContain('artifacts/document_extraction/ef698189d9f9.json')
+    expect(markdown).toContain(
+      'artifacts/document_extraction/ef698189d9f9.json',
+    )
   })
 
   it('routes xlsx refs through the table ingestion boundary before wiki rendering', async () => {

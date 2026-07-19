@@ -19,7 +19,10 @@ function makeWorkspaceRoot(prefix: string): string {
 }
 
 function file(name: string, content: string | Uint8Array): File {
-  return new File([content], name)
+  return new File(
+    [content instanceof Uint8Array ? (content.buffer as ArrayBuffer) : content],
+    name,
+  )
 }
 
 describe('knowledge-files workspace operations', () => {

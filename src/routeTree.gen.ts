@@ -107,6 +107,7 @@ import { Route as ApiKnowledgeUploadRouteImport } from './routes/api/knowledge/u
 import { Route as ApiKnowledgeSyncRouteImport } from './routes/api/knowledge/sync'
 import { Route as ApiKnowledgeSearchRouteImport } from './routes/api/knowledge/search'
 import { Route as ApiKnowledgeReadRouteImport } from './routes/api/knowledge/read'
+import { Route as ApiKnowledgePromotionRequestsRouteImport } from './routes/api/knowledge/promotion-requests'
 import { Route as ApiKnowledgeListRouteImport } from './routes/api/knowledge/list'
 import { Route as ApiKnowledgeIngestRouteImport } from './routes/api/knowledge/ingest'
 import { Route as ApiKnowledgeGraphRouteImport } from './routes/api/knowledge/graph'
@@ -612,6 +613,12 @@ const ApiKnowledgeReadRoute = ApiKnowledgeReadRouteImport.update({
   path: '/api/knowledge/read',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiKnowledgePromotionRequestsRoute =
+  ApiKnowledgePromotionRequestsRouteImport.update({
+    id: '/api/knowledge/promotion-requests',
+    path: '/api/knowledge/promotion-requests',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiKnowledgeListRoute = ApiKnowledgeListRouteImport.update({
   id: '/api/knowledge/list',
   path: '/api/knowledge/list',
@@ -757,6 +764,7 @@ export interface FileRoutesByFullPath {
   '/api/knowledge/graph': typeof ApiKnowledgeGraphRoute
   '/api/knowledge/ingest': typeof ApiKnowledgeIngestRoute
   '/api/knowledge/list': typeof ApiKnowledgeListRoute
+  '/api/knowledge/promotion-requests': typeof ApiKnowledgePromotionRequestsRoute
   '/api/knowledge/read': typeof ApiKnowledgeReadRoute
   '/api/knowledge/search': typeof ApiKnowledgeSearchRoute
   '/api/knowledge/sync': typeof ApiKnowledgeSyncRoute
@@ -868,6 +876,7 @@ export interface FileRoutesByTo {
   '/api/knowledge/graph': typeof ApiKnowledgeGraphRoute
   '/api/knowledge/ingest': typeof ApiKnowledgeIngestRoute
   '/api/knowledge/list': typeof ApiKnowledgeListRoute
+  '/api/knowledge/promotion-requests': typeof ApiKnowledgePromotionRequestsRoute
   '/api/knowledge/read': typeof ApiKnowledgeReadRoute
   '/api/knowledge/search': typeof ApiKnowledgeSearchRoute
   '/api/knowledge/sync': typeof ApiKnowledgeSyncRoute
@@ -981,6 +990,7 @@ export interface FileRoutesById {
   '/api/knowledge/graph': typeof ApiKnowledgeGraphRoute
   '/api/knowledge/ingest': typeof ApiKnowledgeIngestRoute
   '/api/knowledge/list': typeof ApiKnowledgeListRoute
+  '/api/knowledge/promotion-requests': typeof ApiKnowledgePromotionRequestsRoute
   '/api/knowledge/read': typeof ApiKnowledgeReadRoute
   '/api/knowledge/search': typeof ApiKnowledgeSearchRoute
   '/api/knowledge/sync': typeof ApiKnowledgeSyncRoute
@@ -1095,6 +1105,7 @@ export interface FileRouteTypes {
     | '/api/knowledge/graph'
     | '/api/knowledge/ingest'
     | '/api/knowledge/list'
+    | '/api/knowledge/promotion-requests'
     | '/api/knowledge/read'
     | '/api/knowledge/search'
     | '/api/knowledge/sync'
@@ -1206,6 +1217,7 @@ export interface FileRouteTypes {
     | '/api/knowledge/graph'
     | '/api/knowledge/ingest'
     | '/api/knowledge/list'
+    | '/api/knowledge/promotion-requests'
     | '/api/knowledge/read'
     | '/api/knowledge/search'
     | '/api/knowledge/sync'
@@ -1318,6 +1330,7 @@ export interface FileRouteTypes {
     | '/api/knowledge/graph'
     | '/api/knowledge/ingest'
     | '/api/knowledge/list'
+    | '/api/knowledge/promotion-requests'
     | '/api/knowledge/read'
     | '/api/knowledge/search'
     | '/api/knowledge/sync'
@@ -1421,6 +1434,7 @@ export interface RootRouteChildren {
   ApiKnowledgeGraphRoute: typeof ApiKnowledgeGraphRoute
   ApiKnowledgeIngestRoute: typeof ApiKnowledgeIngestRoute
   ApiKnowledgeListRoute: typeof ApiKnowledgeListRoute
+  ApiKnowledgePromotionRequestsRoute: typeof ApiKnowledgePromotionRequestsRoute
   ApiKnowledgeReadRoute: typeof ApiKnowledgeReadRoute
   ApiKnowledgeSearchRoute: typeof ApiKnowledgeSearchRoute
   ApiKnowledgeSyncRoute: typeof ApiKnowledgeSyncRoute
@@ -2129,6 +2143,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiKnowledgeReadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/knowledge/promotion-requests': {
+      id: '/api/knowledge/promotion-requests'
+      path: '/api/knowledge/promotion-requests'
+      fullPath: '/api/knowledge/promotion-requests'
+      preLoaderRoute: typeof ApiKnowledgePromotionRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/knowledge/list': {
       id: '/api/knowledge/list'
       path: '/api/knowledge/list'
@@ -2401,6 +2422,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiKnowledgeGraphRoute: ApiKnowledgeGraphRoute,
   ApiKnowledgeIngestRoute: ApiKnowledgeIngestRoute,
   ApiKnowledgeListRoute: ApiKnowledgeListRoute,
+  ApiKnowledgePromotionRequestsRoute: ApiKnowledgePromotionRequestsRoute,
   ApiKnowledgeReadRoute: ApiKnowledgeReadRoute,
   ApiKnowledgeSearchRoute: ApiKnowledgeSearchRoute,
   ApiKnowledgeSyncRoute: ApiKnowledgeSyncRoute,

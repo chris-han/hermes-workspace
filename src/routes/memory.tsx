@@ -1,10 +1,15 @@
-import { Suspense, lazy, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
 import BackendUnavailableState from '@/components/backend-unavailable-state'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { getUnavailableReason } from '@/lib/feature-gates'
+
+const memorySearchSchema = z.object({
+  tab: z.enum(['memory', 'knowledge', 'governance']).optional(),
+})
 
 const MemoryBrowserScreen = lazy(async () => {
   const module = await import('@/screens/memory/memory-browser-screen')
@@ -24,13 +29,19 @@ const GovernanceModelExplainer = lazy(async () => {
 
 export const Route = createFileRoute('/memory')({
   ssr: false,
+  validateSearch: memorySearchSchema,
   component: function MemoryRoute() {
+    const search = Route.useSearch()
     const [tab, setTab] = useState<'memory' | 'knowledge' | 'governance'>(
-      'memory',
+      search.tab || 'memory',
     )
     const memoryAvailable = useFeatureAvailable('memory')
 
     usePageTitle('Memory')
+
+    useEffect(() => {
+      if (search.tab) setTab(search.tab)
+    }, [search.tab])
 
     return (
       <div className="flex h-full min-h-0 flex-col">

@@ -91,9 +91,9 @@ export const Route = createFileRoute('/api/knowledge/upload')({
                 sessionId: typeof sessionId === 'string' ? sessionId : null,
                 stage: 'upload',
                 status: 'failed',
-                label: `Upload failed: ${result.filename}`,
-                detail: result.error,
-                filename: result.filename,
+                label: `Upload failed: ${result.originalName}`,
+                detail: result.message,
+                filename: result.originalName,
               })
               continue
             }
@@ -115,7 +115,7 @@ export const Route = createFileRoute('/api/knowledge/upload')({
               targetPath:
                 result.kind === 'staged_for_ingest'
                   ? result.targetWikiPath
-                  : result.relativePath,
+                  : result.path,
               uploadRef:
                 result.kind === 'staged_for_ingest'
                   ? result.stagedUploadRef

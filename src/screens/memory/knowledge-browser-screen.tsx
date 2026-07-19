@@ -19,6 +19,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import type {
   KnowledgeSourceDraft,
   KnowledgeSourceModalViewModel,
+  KnowledgeTreeEntry,
 } from '@/screens/settings/components/knowledge-source-form'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import {
@@ -119,7 +120,6 @@ const KNOWLEDGE_UPLOAD_EXTENSIONS = [
   '.csv',
   '.xlsx',
 ]
-
 type KnowledgeUploadResult =
   | {
       ok: true
@@ -229,6 +229,17 @@ type KnowledgeAccessLineageResponse = {
   active_knowledge_artifacts?: {
     items?: Array<GovernedKnowledgeArtifact>
   }
+}
+
+type PromotionTargetAuthorityLevel = 'T2' | 'T3' | 'T4' | 'T5'
+
+type KnowledgePromotionRequestResult = {
+  ok?: boolean
+  requestId?: string
+  status?: 'PENDING_REVIEW' | 'NEEDS_SOURCE_REGISTRATION'
+  requestPath?: string
+  blockers?: Array<string>
+  error?: string
 }
 
 type PromotionGateOverride = {
@@ -430,6 +441,16 @@ function displayAuthorityLevel(value?: string | null): string {
 function extractAuthorityLevel(content: string): string | null {
   const match = content.match(/^>\s*Authority level:\s*(.+)$/im)
   return match?.[1]?.trim() || null
+}
+
+function extractQuotedMetadata(content: string, label: string): string | null {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = content.match(new RegExp(`^>\\s*${escaped}:\\s*(.+)$`, 'im'))
+  return match?.[1]?.trim() || null
+}
+
+function defaultPromotionJustification(content: string): string {
+  return extractQuotedMetadata(content, 'Human curation justification') || ''
 }
 
 function buildKnowledgeTree(pages: Array<WikiPageMeta>): TreeNode {
@@ -2310,7 +2331,7 @@ export function KnowledgeBrowserScreen() {
                                       </>
                                     ) : null}
                                     <span className="text-xs text-primary-400 dark:text-neutral-500">
-                                      {formatBytes(entry.size)}
+                                      {formatBytes(entry.size ?? 0)}
                                     </span>
                                     <button
                                       type="button"
@@ -2349,7 +2370,7 @@ export function KnowledgeBrowserScreen() {
                         {page?.title || selectedPath || 'Select a page'}
                       </div>
                       {authorityBadgeLabel ? (
-                        <InlineBadge label={authorityBadgeLabel} active />
+                        <AuthorityBadgeLink label={authorityBadgeLabel} />
                       ) : null}
                     </div>
                     {page ? (
@@ -2510,8 +2531,7 @@ export function KnowledgeBrowserScreen() {
                             label="Size"
                             value={formatBytes(page.size)}
                           />
-                          <MetadataCard
-                            label="Authority"
+                          <AuthorityMetadataCard
                             value={
                               authorityLevel
                                 ? displayAuthorityLevel(authorityLevel)
@@ -2520,6 +2540,8 @@ export function KnowledgeBrowserScreen() {
                           />
                           <PromotionLineageCard
                             artifact={promotedArtifact}
+                            pagePath={selectedPath}
+                            content={content}
                             gates={promotionGates}
                             selectedIndex={selectedPromotionGate}
                             selectedGate={selectedGate}
@@ -2860,6 +2882,20 @@ function InlineBadge({
   )
 }
 
+function AuthorityBadgeLink({ label }: { label: string }) {
+  return (
+    <Link
+      to="/memory"
+      search={{ tab: 'governance' }}
+      hash="authority-levels"
+      className="rounded-md border border-[color-mix(in_srgb,var(--theme-accent-foreground)_35%,transparent)] bg-[color-mix(in_srgb,var(--theme-accent)_72%,white)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--theme-accent-foreground)] underline-offset-2 transition-colors hover:underline"
+      title="Explain Semantier authority levels and governed promotion"
+    >
+      {label}
+    </Link>
+  )
+}
+
 function StatusPill({
   status,
   label,
@@ -2919,6 +2955,8 @@ function TagPill({
 
 function PromotionLineageCard({
   artifact,
+  pagePath,
+  content,
   gates,
   selectedIndex,
   selectedGate,
@@ -2929,6 +2967,8 @@ function PromotionLineageCard({
   onRecordOverride,
 }: {
   artifact: GovernedKnowledgeArtifact | null
+  pagePath: string | null
+  content: string
   gates: Array<GovernedKnowledgeEvidenceStep>
   selectedIndex: number
   selectedGate: GovernedKnowledgeEvidenceStep | null
@@ -2938,14 +2978,182 @@ function PromotionLineageCard({
   onOverrideDraftChange: (value: string) => void
   onRecordOverride: () => void
 }) {
+  const [targetAuthorityLevel, setTargetAuthorityLevel] =
+    useState<PromotionTargetAuthorityLevel>('T2')
+  const [promotionJustification, setPromotionJustification] = useState(() =>
+    defaultPromotionJustification(content),
+  )
+  const [sourceUri, setSourceUri] = useState('')
+  const [jurisdiction, setJurisdiction] = useState('CN')
+  const [effectiveFrom, setEffectiveFrom] = useState('')
+  const [sourceVersion, setSourceVersion] = useState('')
+  const [submitState, setSubmitState] = useState<
+    | { kind: 'idle' }
+    | { kind: 'submitting' }
+    | { kind: 'done'; result: KnowledgePromotionRequestResult }
+    | { kind: 'failed'; message: string }
+  >({ kind: 'idle' })
+
+  useEffect(() => {
+    setPromotionJustification(defaultPromotionJustification(content))
+    setSubmitState({ kind: 'idle' })
+  }, [content, pagePath])
+
+  async function submitPromotionRequest() {
+    if (!pagePath || !promotionJustification.trim()) return
+    setSubmitState({ kind: 'submitting' })
+    try {
+      const response = await fetch('/api/knowledge/promotion-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pagePath,
+          targetAuthorityLevel,
+          justification: promotionJustification.trim(),
+          sourceUri: sourceUri.trim() || null,
+          jurisdiction: jurisdiction.trim() || null,
+          effectiveFrom: effectiveFrom.trim() || null,
+          sourceVersion: sourceVersion.trim() || null,
+        }),
+      })
+      const result = (await response
+        .json()
+        .catch(() => ({}))) as KnowledgePromotionRequestResult
+      if (!response.ok || !result.ok) {
+        throw new Error(
+          result.error || `Promotion request failed (${response.status})`,
+        )
+      }
+      setSubmitState({ kind: 'done', result })
+    } catch (error) {
+      setSubmitState({
+        kind: 'failed',
+        message:
+          error instanceof Error ? error.message : 'Promotion request failed',
+      })
+    }
+  }
+
   return (
     <div className="rounded-xl border border-primary-200 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
         Promote lineage
       </div>
       {!artifact ? (
-        <div className="mt-2 text-sm text-primary-500 dark:text-neutral-400">
-          No governed promotion is linked to this page.
+        <div className="mt-3 space-y-3">
+          <div className="text-sm text-primary-500 dark:text-neutral-400">
+            No governed promotion is linked to this page.
+          </div>
+          <div className="rounded-lg border border-primary-200 bg-primary-50 p-2.5 text-xs text-primary-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
+            To make this material usable as law or policy, register the official
+            source, pin the normalized artifact hash, pass schema and precedence
+            checks, then approve and activate it in Semantier core.
+          </div>
+          <div className="space-y-2 rounded-lg border border-primary-200 bg-white p-2.5 dark:border-neutral-800 dark:bg-neutral-950">
+            <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+              Target authority
+              <select
+                value={targetAuthorityLevel}
+                onChange={(event) =>
+                  setTargetAuthorityLevel(
+                    event.target.value as PromotionTargetAuthorityLevel,
+                  )
+                }
+                className="mt-1 w-full rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs normal-case tracking-normal text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+              >
+                <option value="T2">T2 Law / Regulation</option>
+                <option value="T3">T3 Doctrine / Standard</option>
+                <option value="T4">T4 Org Policy</option>
+                <option value="T5">T5 Scoped Preference</option>
+              </select>
+            </label>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+              Justification
+              <textarea
+                value={promotionJustification}
+                onChange={(event) =>
+                  setPromotionJustification(event.target.value)
+                }
+                rows={3}
+                placeholder="Why should this curation material enter governed review?"
+                className="mt-1 w-full resize-none rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs normal-case tracking-normal text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+              />
+            </label>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+              Official source URI
+              <input
+                value={sourceUri}
+                onChange={(event) => setSourceUri(event.target.value)}
+                placeholder="Required before T2 activation"
+                className="mt-1 w-full rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs normal-case tracking-normal text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+              />
+            </label>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                Jurisdiction
+                <input
+                  value={jurisdiction}
+                  onChange={(event) => setJurisdiction(event.target.value)}
+                  className="mt-1 w-full rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs normal-case tracking-normal text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                />
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                Effective from
+                <input
+                  value={effectiveFrom}
+                  onChange={(event) => setEffectiveFrom(event.target.value)}
+                  placeholder="YYYY-MM-DD"
+                  className="mt-1 w-full rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs normal-case tracking-normal text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                />
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                Source version
+                <input
+                  value={sourceVersion}
+                  onChange={(event) => setSourceVersion(event.target.value)}
+                  className="mt-1 w-full rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs normal-case tracking-normal text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                />
+              </label>
+            </div>
+            {submitState.kind === 'done' ? (
+              <div className="rounded-lg border border-accent-500/30 bg-accent-500/10 p-2 text-xs text-primary-900 dark:text-neutral-100">
+                Request {submitState.result.requestId} recorded as{' '}
+                {submitState.result.status}.
+                {submitState.result.blockers?.length ? (
+                  <span className="mt-1 block text-primary-600 dark:text-neutral-300">
+                    Missing: {submitState.result.blockers.join(', ')}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            {submitState.kind === 'failed' ? (
+              <div className="rounded-lg border border-red-300 bg-red-50 p-2 text-xs text-red-700">
+                {submitState.message}
+              </div>
+            ) : null}
+            <button
+              type="button"
+              disabled={
+                submitState.kind === 'submitting' ||
+                !pagePath ||
+                !promotionJustification.trim()
+              }
+              onClick={() => void submitPromotionRequest()}
+              className="w-full rounded-lg border border-accent-600 bg-accent-500 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitState.kind === 'submitting'
+                ? 'Submitting...'
+                : 'Request governed promotion'}
+            </button>
+          </div>
+          <Link
+            to="/memory"
+            search={{ tab: 'governance' }}
+            hash="promotion-path"
+            className="inline-flex w-full items-center justify-center rounded-lg border border-primary-200 bg-white px-3 py-2 text-xs font-semibold text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+          >
+            View governed promotion path
+          </Link>
         </div>
       ) : (
         <div className="mt-3 space-y-3">
@@ -3091,6 +3299,27 @@ function MetadataCard({
         {value}
       </div>
     </div>
+  )
+}
+
+function AuthorityMetadataCard({ value }: { value: string }) {
+  return (
+    <Link
+      to="/memory"
+      search={{ tab: 'governance' }}
+      hash="authority-levels"
+      className="block rounded-xl border border-primary-200 bg-primary-50/70 p-3 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-800 dark:bg-neutral-900/60 dark:hover:border-neutral-700 dark:hover:bg-neutral-900"
+    >
+      <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+        Authority
+      </div>
+      <div className="mt-1 text-sm text-primary-900 dark:text-neutral-100">
+        {value}
+      </div>
+      <div className="mt-2 text-xs text-primary-500 dark:text-neutral-400">
+        Explain levels and promotion
+      </div>
+    </Link>
   )
 }
 

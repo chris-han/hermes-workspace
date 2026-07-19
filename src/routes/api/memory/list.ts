@@ -1,14 +1,24 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { listMemory } from '../../../server/hermes-api'
+import { listMemoryFiles } from '../../../server/memory-browser'
+import {
+  resolveActiveWorkspaceRoot,
+  WorkspaceAuthRequiredError,
+} from '../../../server/workspace-root'
 
 export const Route = createFileRoute('/api/memory/list')({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
         try {
-          return json(await listMemory())
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
+          return json({ files: listMemoryFiles({ workspaceRoot: activeWorkspace.path }) })
         } catch (error) {
+          if (error instanceof WorkspaceAuthRequiredError) {
+            return json({ error: error.message }, { status: 401 })
+          }
           return json(
             {
               error:

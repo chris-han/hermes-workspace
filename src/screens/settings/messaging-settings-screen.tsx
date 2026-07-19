@@ -273,7 +273,7 @@ function feishuLiveChannels(
     return []
   }
   return value
-    .map((item) => {
+    .map((item): FeishuLiveChannel | null => {
       if (!item || typeof item !== 'object') {
         return null
       }
@@ -284,12 +284,12 @@ function feishuLiveChannels(
       }
       return {
         chat_id: chatId,
-        thread_id: String(row.thread_id ?? '').trim(),
-        chat_type: String(row.chat_type ?? '').trim(),
-        name: String(row.name ?? chatId).trim(),
+        thread_id: String(row.thread_id ?? '').trim() || undefined,
+        chat_type: String(row.chat_type ?? '').trim() || undefined,
+        name: String(row.name ?? chatId).trim() || undefined,
         last_active:
           typeof row.last_active === 'number' ? row.last_active : undefined,
-        session_id: String(row.session_id ?? '').trim(),
+        session_id: String(row.session_id ?? '').trim() || undefined,
       }
     })
     .filter((item): item is FeishuLiveChannel => item !== null)

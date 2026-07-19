@@ -162,6 +162,20 @@ export function readMemoryFile(
   return fs.readFileSync(fullPath, 'utf-8')
 }
 
+export function writeMemoryFile(
+  relativePath: string,
+  content: string,
+  options: MemoryRootOptions = {},
+): string {
+  const { fullPath, relativePath: safeRelativePath } = resolveMemoryFilePath(
+    relativePath,
+    options,
+  )
+  fs.mkdirSync(path.dirname(fullPath), { recursive: true })
+  fs.writeFileSync(fullPath, content, 'utf-8')
+  return safeRelativePath
+}
+
 export function searchMemoryFiles(
   query: string,
   options: MemoryRootOptions = {},

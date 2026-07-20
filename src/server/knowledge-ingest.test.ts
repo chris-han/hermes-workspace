@@ -89,6 +89,7 @@ describe('knowledge-ingest governed import', () => {
       ok: true,
       status: 'parsed',
       storedMarkdownPath: 'raw/source.md',
+      sourceFilePath: 'source.pdf',
       parserMethod: 'document_extraction.local.v1',
       normalizedDocumentArtifactRef: 'canonical_document:v1:abc',
       curationMaterial: true,
@@ -106,6 +107,12 @@ describe('knowledge-ingest governed import', () => {
         'utf-8',
       ),
     ).toContain('Authority level: curation_only')
+    expect(
+      fsSync.readFileSync(
+        path.join(workspaceRoot, 'wiki', 'raw', 'source.md'),
+        'utf-8',
+      ),
+    ).toContain('Source file: wiki/source.pdf')
   })
 
   it('executes the installed document extraction plugin package for wiki imports', async () => {
@@ -203,6 +210,7 @@ describe('knowledge-ingest governed import', () => {
     expect(result).toMatchObject({
       ok: true,
       storedMarkdownPath: '招投标/source.md',
+      sourceFilePath: '招投标/source.docx',
     })
     expect(
       fsSync.readFileSync(
@@ -487,9 +495,16 @@ describe('knowledge-ingest governed import', () => {
     ).resolves.toMatchObject({
       ok: true,
       storedMarkdownPath: 'raw/sheet.md',
+      sourceFilePath: 'sheet.xlsx',
       normalizedDocumentArtifactRef: 'canonical_table:v1:sheet',
     })
     expect(ingestTableArtifact).toHaveBeenCalled()
+    expect(
+      fsSync.readFileSync(
+        path.join(workspaceRoot, 'wiki', 'raw', 'sheet.md'),
+        'utf-8',
+      ),
+    ).toContain('Source file: wiki/sheet.xlsx')
   })
 
   it('returns retryable parser failure without writing partial markdown', async () => {

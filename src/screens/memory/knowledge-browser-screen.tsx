@@ -34,6 +34,7 @@ import {
   createDefaultKnowledgeSourceDraft,
 } from '@/screens/settings/components/knowledge-source-form'
 import { cn } from '@/lib/utils'
+import { useSettingsStore } from '@/hooks/use-settings'
 
 type WikiPageMeta = {
   path: string
@@ -153,6 +154,7 @@ type KnowledgeIngestResult =
       ok: true
       originalName: string
       storedMarkdownPath: string
+      sourceFilePath?: string
       parserMethod: string
       normalizedDocumentArtifactRef: string
     }
@@ -240,6 +242,7 @@ type KnowledgePromotionRequestResult = {
   status?: 'PENDING_REVIEW' | 'NEEDS_SOURCE_REGISTRATION' | 'APPROVED'
   requestPath?: string
   approvalPath?: string
+  approvedArtifact?: GovernedKnowledgeArtifact
   blockers?: Array<string>
   error?: string
 }
@@ -276,6 +279,136 @@ type KnowledgeGraphResponse = {
   nodes?: Array<KnowledgeGraphNode>
   edges?: Array<KnowledgeGraphEdge>
 }
+
+const KNOWLEDGE_COPY = {
+  en: {
+    searchPlaceholder: 'Search knowledge',
+    graphView: 'Graph view',
+    dataConnections: 'Data Connections',
+    settings: 'Settings',
+    knowledgeSettingsTitle: 'Knowledge Base Settings',
+    knowledgeSettingsDescription:
+      'Choose where your knowledge base is located. Changes take effect immediately.',
+    sourceFiles: 'Source files',
+    wikiPages: 'Wiki pages',
+    targetFolder: 'Target folder: wiki/',
+    sourceFilesCount: (count: number) => `Source Files (${count})`,
+    knowledgePagesCount: (count: number) => `Knowledge Pages (${count})`,
+    newFolder: 'New folder',
+    loadingSourceFiles: 'Loading source files...',
+    noSourceFiles: 'No source files found',
+    searchResults: 'Search Results',
+    searchingKnowledge: 'Searching knowledge...',
+    noMatchesFound: 'No matches found',
+    tags: 'Tags',
+    all: 'All',
+    loadingKnowledgePages: 'Loading knowledge pages...',
+    noPagesMatchTag: 'No pages match this tag',
+    noMarkdownPages: 'No markdown pages found',
+    sourceFilesIn: 'Source files in wiki/',
+    folderSummary: (folders: number, files: number, pending: number) =>
+      `${folders} folders · ${files} files${pending > 0 ? ` · ${pending} pending` : ''}`,
+    chooseFiles: 'Choose files',
+    uploading: 'Uploading...',
+    upload: 'Upload',
+    currentFolder: 'Current folder',
+    loadingFolder: 'Loading folder...',
+    noSourceFilesInFolder: 'No source files in this folder',
+    queued: 'Queued',
+    remove: 'Remove',
+    builds: 'Builds',
+    building: 'Building',
+    failed: 'Failed',
+    needsBuild: 'Needs build',
+    build: 'Build',
+    deleting: 'Deleting',
+    delete: 'Delete',
+    selectPage: 'Select a page',
+    askAgent: 'Ask agent about this',
+    loadingKnowledgeBase: 'Loading knowledge base...',
+    selectPageToStart: 'Select a page to start browsing',
+    loadingPage: 'Loading page...',
+    pageNotFound: 'Page not found',
+    searchHitAtLine: (line: number | null) => `Search hit at line ${line}`,
+    backlinks: 'Backlinks',
+    noBacklinks: 'No pages link here yet.',
+    noTags: 'No tags',
+    wikilinks: 'Wikilinks',
+    noOutboundLinks: 'No outbound links',
+    newFolderTitle: 'New Folder',
+    createFolderInside: 'Create a folder inside wiki/',
+    cancel: 'Cancel',
+    save: 'Save',
+    graphTitle: 'Knowledge graph',
+    graphDescription:
+      'Page relationships from wiki links. Click any node to open that page.',
+    loadingGraph: 'Loading graph...',
+    noGraphData: 'No graph data yet',
+  },
+  zh: {
+    searchPlaceholder: '搜索知识',
+    graphView: '图谱视图',
+    dataConnections: '数据连接',
+    settings: '设置',
+    knowledgeSettingsTitle: '知识库设置',
+    knowledgeSettingsDescription:
+      '选择 knowledge base 的位置。更改会立即生效。',
+    sourceFiles: '源文件',
+    wikiPages: 'wiki 页面',
+    targetFolder: '目标文件夹：wiki/',
+    sourceFilesCount: (count: number) => `源文件（${count}）`,
+    knowledgePagesCount: (count: number) => `知识页面（${count}）`,
+    newFolder: '新建文件夹',
+    loadingSourceFiles: '正在加载源文件...',
+    noSourceFiles: '未找到源文件',
+    searchResults: '搜索结果',
+    searchingKnowledge: '正在搜索知识...',
+    noMatchesFound: '没有匹配结果',
+    tags: '标签',
+    all: '全部',
+    loadingKnowledgePages: '正在加载知识页面...',
+    noPagesMatchTag: '没有页面匹配此标签',
+    noMarkdownPages: '未找到 Markdown 页面',
+    sourceFilesIn: 'wiki/ 中的源文件',
+    folderSummary: (folders: number, files: number, pending: number) =>
+      `${folders} 个文件夹 · ${files} 个文件${pending > 0 ? ` · ${pending} 个待处理` : ''}`,
+    chooseFiles: '选择文件',
+    uploading: '上传中...',
+    upload: '上传',
+    currentFolder: '当前文件夹',
+    loadingFolder: '正在加载文件夹...',
+    noSourceFilesInFolder: '此文件夹中没有源文件',
+    queued: '已排队',
+    remove: '移除',
+    builds: '生成',
+    building: '构建中',
+    failed: '失败',
+    needsBuild: '需要构建',
+    build: '构建',
+    deleting: '删除中',
+    delete: '删除',
+    selectPage: '选择页面',
+    askAgent: '询问 agent',
+    loadingKnowledgeBase: '正在加载知识库...',
+    selectPageToStart: '选择一个页面开始浏览',
+    loadingPage: '正在加载页面...',
+    pageNotFound: '页面未找到',
+    searchHitAtLine: (line: number | null) => `搜索命中第 ${line} 行`,
+    backlinks: '反向链接',
+    noBacklinks: '还没有页面链接到这里。',
+    noTags: '没有标签',
+    wikilinks: 'Wikilinks',
+    noOutboundLinks: '没有出站链接',
+    newFolderTitle: '新建文件夹',
+    createFolderInside: '在 wiki/ 中创建文件夹：',
+    cancel: '取消',
+    save: '保存',
+    graphTitle: '知识图谱',
+    graphDescription: '来自 wiki links 的页面关系。点击节点打开对应页面。',
+    loadingGraph: '正在加载图谱...',
+    noGraphData: '还没有图谱数据',
+  },
+} as const
 
 type TreeNode = {
   name: string
@@ -573,6 +706,8 @@ function GraphCanvas({
 }
 
 export function KnowledgeBrowserScreen() {
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const copy = locale === 'zh' ? KNOWLEDGE_COPY.zh : KNOWLEDGE_COPY.en
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [searchInput, setSearchInput] = useState('')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
@@ -625,6 +760,27 @@ export function KnowledgeBrowserScreen() {
       const parsed = raw ? JSON.parse(raw) : {}
       return parsed && typeof parsed === 'object'
         ? (parsed as Record<string, PromotionGateOverride>)
+        : {}
+    } catch {
+      return {}
+    }
+  })
+  const [demoApprovedArtifacts, setDemoApprovedArtifacts] = useState<
+    Record<string, GovernedKnowledgeArtifact>
+  >(() => {
+    if (typeof window === 'undefined') return {}
+    try {
+      const raw = window.localStorage.getItem(
+        'knowledge-latest-demo-approved-artifact',
+      )
+      const parsed = raw
+        ? (JSON.parse(raw) as {
+            pagePath?: string
+            artifact?: GovernedKnowledgeArtifact
+          })
+        : null
+      return parsed?.pagePath && parsed.artifact
+        ? { [parsed.pagePath]: parsed.artifact }
         : {}
     } catch {
       return {}
@@ -826,8 +982,12 @@ export function KnowledgeBrowserScreen() {
     () => preprocessWikiMarkdown(content),
     [content],
   )
+  const demoApprovedArtifact = selectedPath
+    ? demoApprovedArtifacts[selectedPath]
+    : null
   const promotedArtifact = useMemo(() => {
     if (!selectedPath || !content) return null
+    if (demoApprovedArtifact) return demoApprovedArtifact
     const artifacts =
       knowledgeLineageQuery.data?.active_knowledge_artifacts?.items || []
     return (
@@ -835,8 +995,14 @@ export function KnowledgeBrowserScreen() {
         pageMatchesPromotedArtifact(artifact, selectedPath, content),
       ) || null
     )
-  }, [content, knowledgeLineageQuery.data, selectedPath])
+  }, [content, demoApprovedArtifact, knowledgeLineageQuery.data, selectedPath])
   const authorityLevel = useMemo(() => {
+    if (
+      promotedArtifact?.ingestion_status === 'DEMO_APPROVED' &&
+      promotedArtifact.semantic_tier
+    ) {
+      return promotedArtifact.semantic_tier
+    }
     if (promotedArtifact?.tag_authority_level) {
       return promotedArtifact.tag_authority_level
     }
@@ -1482,7 +1648,9 @@ export function KnowledgeBrowserScreen() {
         id: `knowledge-import:${uploadRef}`,
         status: 'done',
         label: `Built wiki page for ${result.originalName}`,
-        detail: `Markdown: wiki/${result.storedMarkdownPath}`,
+        detail: result.sourceFilePath
+          ? `Source: wiki/${result.sourceFilePath}; Markdown: wiki/${result.storedMarkdownPath}`
+          : `Markdown: wiki/${result.storedMarkdownPath}`,
         uploadRef,
       })
       setModalStatus({
@@ -1651,7 +1819,7 @@ export function KnowledgeBrowserScreen() {
                 <input
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="Search knowledge"
+                  placeholder={copy.searchPlaceholder}
                   className="w-full rounded-xl theme-border-1 py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-accent-500"
                   style={{
                     backgroundColor: 'var(--theme-card)',
@@ -1671,7 +1839,7 @@ export function KnowledgeBrowserScreen() {
               }}
             >
               <HugeiconsIcon icon={Link01Icon} size={16} strokeWidth={1.7} />
-              Graph view
+              {copy.graphView}
             </button>
 
             <Link
@@ -1687,7 +1855,7 @@ export function KnowledgeBrowserScreen() {
                 size={16}
                 strokeWidth={1.7}
               />
-              <span className="hidden sm:inline">Data Connections</span>
+              <span className="hidden sm:inline">{copy.dataConnections}</span>
             </Link>
 
             <DialogRoot open={settingsOpen} onOpenChange={setSettingsOpen}>
@@ -1700,14 +1868,14 @@ export function KnowledgeBrowserScreen() {
                       backgroundColor: 'var(--theme-card)',
                       color: 'var(--theme-text)',
                     }}
-                    title="Knowledge base settings"
+                    title={copy.knowledgeSettingsTitle}
                   >
                     <HugeiconsIcon
                       icon={Settings01Icon}
                       size={16}
                       strokeWidth={1.7}
                     />
-                    <span className="hidden sm:inline">Settings</span>
+                    <span className="hidden sm:inline">{copy.settings}</span>
                   </button>
                 }
               />
@@ -1721,14 +1889,13 @@ export function KnowledgeBrowserScreen() {
                 <div className="max-h-[calc(90vh-2rem)] space-y-5 overflow-y-auto p-4 sm:p-6">
                   <div>
                     <DialogTitle className="text-base font-semibold">
-                      Knowledge Base Settings
+                      {copy.knowledgeSettingsTitle}
                     </DialogTitle>
                     <DialogDescription
                       className="mt-1 text-sm"
                       style={{ color: 'var(--theme-muted)' }}
                     >
-                      Choose where your knowledge base is located. Changes take
-                      effect immediately.
+                      {copy.knowledgeSettingsDescription}
                     </DialogDescription>
                   </div>
 
@@ -1769,12 +1936,13 @@ export function KnowledgeBrowserScreen() {
                     : 'border-transparent bg-transparent text-primary-600 hover:bg-primary-100 dark:text-neutral-300 dark:hover:bg-neutral-900',
                 )}
               >
-                {mode === 'source' ? 'Source files' : 'Wiki pages'}
+                {mode === 'source' ? copy.sourceFiles : copy.wikiPages}
               </button>
             ))}
           </div>
           <div className="text-xs text-primary-500 dark:text-neutral-400">
-            Target folder: wiki/{browserPath || ''}
+            {copy.targetFolder}
+            {browserPath || ''}
           </div>
         </div>
 
@@ -1787,8 +1955,8 @@ export function KnowledgeBrowserScreen() {
             >
               <span className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
                 {fileViewMode === 'source'
-                  ? `Source Files (${currentFileCount})`
-                  : `Knowledge Pages (${filteredPages.length})`}
+                  ? copy.sourceFilesCount(currentFileCount)
+                  : copy.knowledgePagesCount(filteredPages.length)}
               </span>
               <span className="text-primary-500 dark:text-neutral-400 md:hidden">
                 <HugeiconsIcon
@@ -1829,7 +1997,7 @@ export function KnowledgeBrowserScreen() {
                       setFolderPromptValue('')
                       setFolderPromptOpen(true)
                     }}
-                    title="New folder"
+                    title={copy.newFolder}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-primary-200 px-2 py-1 font-semibold hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
                   >
                     <HugeiconsIcon
@@ -1837,12 +2005,12 @@ export function KnowledgeBrowserScreen() {
                       size={14}
                       strokeWidth={1.7}
                     />
-                    New folder
+                    {copy.newFolder}
                   </button>
                 </div>
                 <section className="rounded-xl border border-primary-200 bg-primary-50/80 p-1 dark:border-neutral-800 dark:bg-neutral-900/60">
                   {filesLoading ? (
-                    <StateBox label="Loading source files..." />
+                    <StateBox label={copy.loadingSourceFiles} />
                   ) : filesError ? (
                     <StateBox label={filesError} error />
                   ) : knowledgeFileTreeRoot.children?.length ? (
@@ -1854,7 +2022,7 @@ export function KnowledgeBrowserScreen() {
                       onSelectFolder={handleBrowseKnowledgeFolder}
                     />
                   ) : (
-                    <StateBox label="No source files found" />
+                    <StateBox label={copy.noSourceFiles} />
                   )}
                 </section>
               </div>
@@ -1865,13 +2033,13 @@ export function KnowledgeBrowserScreen() {
             ) : searchTerm ? (
               <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
                 <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-primary-400 dark:text-neutral-500">
-                  Search Results
+                  {copy.searchResults}
                 </div>
                 <div className="space-y-1">
                   {searchQuery.isLoading ? (
-                    <StateBox label="Searching knowledge..." />
+                    <StateBox label={copy.searchingKnowledge} />
                   ) : searchResults.length === 0 ? (
-                    <StateBox label="No matches found" />
+                    <StateBox label={copy.noMatchesFound} />
                   ) : (
                     searchResults.map((result, index) => (
                       <button
@@ -1916,11 +2084,11 @@ export function KnowledgeBrowserScreen() {
                 <div className="space-y-3 overflow-y-auto pr-1 md:h-full">
                   <section className="rounded-lg border border-primary-200 bg-primary-50/80 p-2 dark:border-neutral-800 dark:bg-neutral-900/60">
                     <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-primary-400 dark:text-neutral-500">
-                      Tags
+                      {copy.tags}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       <TagPill
-                        label="All"
+                        label={copy.all}
                         count={pages.length}
                         active={selectedTag == null}
                         onClick={() => setSelectedTag(null)}
@@ -1939,15 +2107,15 @@ export function KnowledgeBrowserScreen() {
 
                   <section className="rounded-lg border border-primary-200 bg-primary-50/80 p-1 dark:border-neutral-800 dark:bg-neutral-900/60">
                     {listQuery.isLoading ? (
-                      <StateBox label="Loading knowledge pages..." />
+                      <StateBox label={copy.loadingKnowledgePages} />
                     ) : listQuery.error instanceof Error ? (
                       <StateBox label={listQuery.error.message} error />
                     ) : filteredPages.length === 0 ? (
                       <StateBox
                         label={
                           selectedTag
-                            ? 'No pages match this tag'
-                            : 'No markdown pages found'
+                            ? copy.noPagesMatchTag
+                            : copy.noMarkdownPages
                         }
                       />
                     ) : (
@@ -1971,13 +2139,15 @@ export function KnowledgeBrowserScreen() {
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary-200 px-3 py-2 dark:border-neutral-800">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold text-primary-900 dark:text-neutral-100">
-                      Source files in wiki/{browserPath || ''}
+                      {copy.sourceFilesIn}
+                      {browserPath || ''}
                     </div>
                     <div className="text-xs text-primary-400 dark:text-neutral-500">
-                      {currentDirectoryCount} folders · {currentFileCount} files
-                      {currentFolderStatusRowCount > 0
-                        ? ` · ${currentFolderStatusRowCount} pending`
-                        : ''}
+                      {copy.folderSummary(
+                        currentDirectoryCount,
+                        currentFileCount,
+                        currentFolderStatusRowCount,
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -1987,7 +2157,7 @@ export function KnowledgeBrowserScreen() {
                         size={14}
                         strokeWidth={1.7}
                       />
-                      Choose files
+                      {copy.chooseFiles}
                       <input
                         type="file"
                         multiple
@@ -2012,7 +2182,7 @@ export function KnowledgeBrowserScreen() {
                         size={14}
                         strokeWidth={1.7}
                       />
-                      {uploadPending ? 'Uploading...' : 'Upload'}
+                      {uploadPending ? copy.uploading : copy.upload}
                     </button>
                   </div>
                 </div>
@@ -2022,15 +2192,15 @@ export function KnowledgeBrowserScreen() {
                     <div className="space-y-3">
                       <section className="rounded-xl border border-primary-200 bg-primary-50/80 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
                         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                          Current folder
+                          {copy.currentFolder}
                         </div>
                         {filesLoading ? (
-                          <StateBox label="Loading folder..." />
+                          <StateBox label={copy.loadingFolder} />
                         ) : filesError ? (
                           <StateBox label={filesError} error />
                         ) : currentDirectoryEntries.length === 0 &&
                           currentFolderStatusRowCount === 0 ? (
-                          <StateBox label="No source files in this folder" />
+                          <StateBox label={copy.noSourceFilesInFolder} />
                         ) : (
                           <div className="divide-y divide-primary-200 overflow-hidden rounded-lg border border-primary-200 dark:divide-neutral-800 dark:border-neutral-800">
                             {queuedUploadView.map((file) => (
@@ -2050,7 +2220,10 @@ export function KnowledgeBrowserScreen() {
                                   </span>
                                 </span>
                                 <span className="flex shrink-0 items-center gap-2">
-                                  <StatusPill status="waiting" label="Queued" />
+                                  <StatusPill
+                                    status="waiting"
+                                    label={copy.queued}
+                                  />
                                   <button
                                     type="button"
                                     disabled={uploadPending}
@@ -2064,7 +2237,9 @@ export function KnowledgeBrowserScreen() {
                                       size={14}
                                       strokeWidth={1.7}
                                     />
-                                    {uploadPending ? 'Uploading' : 'Upload'}
+                                    {uploadPending
+                                      ? copy.uploading.replace('...', '')
+                                      : copy.upload}
                                   </button>
                                   <span className="text-xs text-primary-400 dark:text-neutral-500">
                                     {formatBytes(file.size)}
@@ -2081,7 +2256,7 @@ export function KnowledgeBrowserScreen() {
                                     }
                                     className="rounded-lg border border-primary-200 px-2 py-1.5 text-xs font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
                                   >
-                                    Remove
+                                    {copy.remove}
                                   </button>
                                 </span>
                               </div>
@@ -2104,7 +2279,7 @@ export function KnowledgeBrowserScreen() {
                                         {row.storedName}
                                       </span>
                                       <span className="block truncate text-xs text-primary-500 dark:text-neutral-400">
-                                        Builds{' '}
+                                        {copy.builds}{' '}
                                         {row.targetWikiPath || 'wiki page'}
                                       </span>
                                     </span>
@@ -2120,12 +2295,12 @@ export function KnowledgeBrowserScreen() {
                                         activityByUploadRef.get(
                                           row.retryUploadRef,
                                         )?.status === 'running'
-                                          ? 'Building'
+                                          ? copy.building
                                           : activityByUploadRef.get(
                                                 row.retryUploadRef,
                                               )?.status === 'failed'
-                                            ? 'Failed'
-                                            : 'Needs build'
+                                            ? copy.failed
+                                            : copy.needsBuild
                                       }
                                     />
                                     <button
@@ -2143,7 +2318,7 @@ export function KnowledgeBrowserScreen() {
                                         size={14}
                                         strokeWidth={1.7}
                                       />
-                                      Build
+                                      {copy.build}
                                     </button>
                                     <button
                                       type="button"
@@ -2158,7 +2333,7 @@ export function KnowledgeBrowserScreen() {
                                       }
                                       className="rounded-lg border border-primary-200 px-2 py-1.5 text-xs font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
                                     >
-                                      Remove
+                                      {copy.remove}
                                     </button>
                                   </span>
                                 </div>
@@ -2178,7 +2353,11 @@ export function KnowledgeBrowserScreen() {
                                     )
                                   }
                                   rows={2}
-                                  placeholder="Human justification for manual curation when extraction is empty"
+                                  placeholder={
+                                    locale === 'zh'
+                                      ? '当 extraction 为空时填写人工 curation justification'
+                                      : 'Human justification for manual curation when extraction is empty'
+                                  }
                                   className="w-full resize-none rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                                 />
                               </div>
@@ -2221,10 +2400,10 @@ export function KnowledgeBrowserScreen() {
                               const status = activity?.status || 'waiting'
                               const statusLabel =
                                 activity?.status === 'running'
-                                  ? 'Building'
+                                  ? copy.building
                                   : activity?.status === 'failed'
-                                    ? 'Failed'
-                                    : 'Needs build'
+                                    ? copy.failed
+                                    : copy.needsBuild
 
                               if (entry.kind === 'directory') {
                                 return (
@@ -2253,7 +2432,7 @@ export function KnowledgeBrowserScreen() {
                                       </span>
                                     </span>
                                     <span className="shrink-0 text-xs text-primary-400 dark:text-neutral-500">
-                                      Folder
+                                      {locale === 'zh' ? '文件夹' : 'Folder'}
                                     </span>
                                   </button>
                                 )
@@ -2277,7 +2456,8 @@ export function KnowledgeBrowserScreen() {
                                       </span>
                                       {reviewRow?.targetWikiPath ? (
                                         <span className="block truncate text-xs text-primary-500 dark:text-neutral-400">
-                                          Builds {reviewRow.targetWikiPath}
+                                          {copy.builds}{' '}
+                                          {reviewRow.targetWikiPath}
                                         </span>
                                       ) : null}
                                       {reviewRow ? (
@@ -2297,7 +2477,11 @@ export function KnowledgeBrowserScreen() {
                                             )
                                           }
                                           rows={2}
-                                          placeholder="Human justification for manual curation"
+                                          placeholder={
+                                            locale === 'zh'
+                                              ? '人工 curation justification'
+                                              : 'Human justification for manual curation'
+                                          }
                                           className="mt-2 block w-full min-w-80 resize-none rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                                         />
                                       ) : null}
@@ -2328,7 +2512,7 @@ export function KnowledgeBrowserScreen() {
                                             size={14}
                                             strokeWidth={1.7}
                                           />
-                                          Build
+                                          {copy.build}
                                         </button>
                                       </>
                                     ) : null}
@@ -2350,7 +2534,7 @@ export function KnowledgeBrowserScreen() {
                                         size={14}
                                         strokeWidth={1.7}
                                       />
-                                      {deleting ? 'Deleting' : 'Delete'}
+                                      {deleting ? copy.deleting : copy.delete}
                                     </button>
                                   </span>
                                 </div>
@@ -2369,7 +2553,7 @@ export function KnowledgeBrowserScreen() {
                   <div className="min-w-0">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <div className="truncate text-sm font-semibold text-primary-900 dark:text-neutral-100">
-                        {page?.title || selectedPath || 'Select a page'}
+                        {page?.title || selectedPath || copy.selectPage}
                       </div>
                       {authorityBadgeLabel ? (
                         <AuthorityBadgeLink label={authorityBadgeLabel} />
@@ -2392,26 +2576,26 @@ export function KnowledgeBrowserScreen() {
                         size={14}
                         strokeWidth={1.7}
                       />
-                      Ask agent about this
+                      {copy.askAgent}
                     </a>
                   ) : null}
                 </div>
 
                 <div className="h-full overflow-auto p-2 md:p-3">
                   {listQuery.isLoading ? (
-                    <StateBox label="Loading knowledge base..." />
+                    <StateBox label={copy.loadingKnowledgeBase} />
                   ) : listQuery.error instanceof Error ? (
                     <StateBox label={listQuery.error.message} error />
                   ) : !knowledgeExists ? (
                     <EmptyKnowledgeState knowledgeRoot={knowledgeRoot} />
                   ) : !selectedPath ? (
-                    <StateBox label="Select a page to start browsing" />
+                    <StateBox label={copy.selectPageToStart} />
                   ) : readQuery.isLoading ? (
-                    <StateBox label="Loading page..." />
+                    <StateBox label={copy.loadingPage} />
                   ) : readQuery.error instanceof Error ? (
                     <StateBox label={readQuery.error.message} error />
                   ) : !page ? (
-                    <StateBox label="Page not found" error />
+                    <StateBox label={copy.pageNotFound} error />
                   ) : (
                     <div
                       className="rounded-xl theme-border-1"
@@ -2424,7 +2608,7 @@ export function KnowledgeBrowserScreen() {
                           {focusedResult && focusedResult.path === page.path ? (
                             <div className="rounded-xl border border-yellow-300/40 bg-yellow-300/10 px-3 py-2 text-sm text-primary-900 dark:text-yellow-50">
                               <div className="font-medium">
-                                Search hit at line {focusLine}
+                                {copy.searchHitAtLine(focusLine)}
                               </div>
                               <div className="mt-1 text-xs opacity-80">
                                 {focusedResult.text}
@@ -2488,11 +2672,11 @@ export function KnowledgeBrowserScreen() {
                                 size={16}
                                 strokeWidth={1.7}
                               />
-                              Backlinks
+                              {copy.backlinks}
                             </div>
                             {backlinks.length === 0 ? (
                               <div className="text-sm text-primary-500 dark:text-neutral-400">
-                                No pages link here yet.
+                                {copy.noBacklinks}
                               </div>
                             ) : (
                               <div className="flex flex-wrap gap-2">
@@ -2518,19 +2702,28 @@ export function KnowledgeBrowserScreen() {
                         </div>
 
                         <aside className="space-y-3">
-                          <MetadataCard label="Type" value={page.type} />
-                          <MetadataCard label="Domain" value={page.domain} />
-                          <MetadataCard label="Status" value={page.status} />
                           <MetadataCard
-                            label="Created"
+                            label={locale === 'zh' ? '类型' : 'Type'}
+                            value={page.type}
+                          />
+                          <MetadataCard
+                            label={locale === 'zh' ? '领域' : 'Domain'}
+                            value={page.domain}
+                          />
+                          <MetadataCard
+                            label={locale === 'zh' ? '状态' : 'Status'}
+                            value={page.status}
+                          />
+                          <MetadataCard
+                            label={locale === 'zh' ? '创建时间' : 'Created'}
                             value={formatDate(page.created)}
                           />
                           <MetadataCard
-                            label="Updated"
+                            label={locale === 'zh' ? '更新时间' : 'Updated'}
                             value={formatDate(page.updated || page.modified)}
                           />
                           <MetadataCard
-                            label="Size"
+                            label={locale === 'zh' ? '大小' : 'Size'}
                             value={formatBytes(page.size)}
                           />
                           <AuthorityMetadataCard
@@ -2555,15 +2748,34 @@ export function KnowledgeBrowserScreen() {
                             }}
                             onOverrideDraftChange={setOverrideDraft}
                             onRecordOverride={recordPromotionGateOverride}
+                            onDemoApproved={(artifact) => {
+                              if (!selectedPath) return
+                              setDemoApprovedArtifacts((current) => ({
+                                ...current,
+                                [selectedPath]: artifact,
+                              }))
+                              try {
+                                window.localStorage.setItem(
+                                  'knowledge-latest-demo-approved-artifact',
+                                  JSON.stringify({
+                                    pagePath: selectedPath,
+                                    artifact,
+                                    recordedAt: new Date().toISOString(),
+                                  }),
+                                )
+                              } catch {
+                                // The badge still updates even if browser storage is unavailable.
+                              }
+                            }}
                           />
                           <div className="rounded-xl border border-primary-200 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
                             <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                              Tags
+                              {copy.tags}
                             </div>
                             <div className="mt-2 flex flex-wrap gap-2">
                               {page.tags.length === 0 ? (
                                 <span className="text-sm text-primary-500 dark:text-neutral-400">
-                                  No tags
+                                  {copy.noTags}
                                 </span>
                               ) : (
                                 page.tags.map((tag) => (
@@ -2586,11 +2798,11 @@ export function KnowledgeBrowserScreen() {
                                 size={14}
                                 strokeWidth={1.7}
                               />
-                              Wikilinks
+                              {copy.wikilinks}
                             </div>
                             {page.wikilinks.length === 0 ? (
                               <div className="text-sm text-primary-500 dark:text-neutral-400">
-                                No outbound links
+                                {copy.noOutboundLinks}
                               </div>
                             ) : (
                               <div className="flex flex-wrap gap-2">
@@ -2629,9 +2841,10 @@ export function KnowledgeBrowserScreen() {
         >
           <DialogContent>
             <div className="space-y-3 p-5">
-              <DialogTitle>New Folder</DialogTitle>
+              <DialogTitle>{copy.newFolderTitle}</DialogTitle>
               <DialogDescription>
-                Create a folder inside wiki/{browserPath || ''}.
+                {copy.createFolderInside}
+                {browserPath || ''}
               </DialogDescription>
               <input
                 value={folderPromptValue}
@@ -2653,7 +2866,7 @@ export function KnowledgeBrowserScreen() {
                   }}
                   className="rounded-lg border border-primary-200 px-3 py-2 text-sm font-semibold hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
                 >
-                  Cancel
+                  {copy.cancel}
                 </button>
                 <button
                   type="button"
@@ -2661,7 +2874,7 @@ export function KnowledgeBrowserScreen() {
                   onClick={() => void handleCreateFolderPromptSubmit()}
                   className="rounded-lg border border-accent-600 bg-accent-500 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Save
+                  {copy.save}
                 </button>
               </div>
             </div>
@@ -2671,19 +2884,18 @@ export function KnowledgeBrowserScreen() {
         <DialogRoot open={graphOpen} onOpenChange={setGraphOpen}>
           <DialogContent className="w-[min(980px,94vw)] max-w-none p-0">
             <div className="border-b border-primary-200 px-5 py-4 dark:border-neutral-800">
-              <DialogTitle>Knowledge graph</DialogTitle>
+              <DialogTitle>{copy.graphTitle}</DialogTitle>
               <DialogDescription>
-                Page relationships from wiki links. Click any node to open that
-                page.
+                {copy.graphDescription}
               </DialogDescription>
             </div>
             <div className="p-5">
               {graphQuery.isLoading ? (
-                <StateBox label="Loading graph..." />
+                <StateBox label={copy.loadingGraph} />
               ) : graphQuery.error instanceof Error ? (
                 <StateBox label={graphQuery.error.message} error />
               ) : (graphQuery.data?.nodes?.length ?? 0) === 0 ? (
-                <StateBox label="No graph data yet" />
+                <StateBox label={copy.noGraphData} />
               ) : (
                 <GraphCanvas
                   nodes={graphQuery.data?.nodes ?? []}
@@ -2885,13 +3097,18 @@ function InlineBadge({
 }
 
 function AuthorityBadgeLink({ label }: { label: string }) {
+  const locale = useSettingsStore((state) => state.settings.locale)
   return (
     <Link
       to="/memory"
       search={{ tab: 'governance' }}
       hash="authority-levels"
       className="rounded-md border border-[color-mix(in_srgb,var(--theme-accent-foreground)_35%,transparent)] bg-[color-mix(in_srgb,var(--theme-accent)_72%,white)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--theme-accent-foreground)] underline-offset-2 transition-colors hover:underline"
-      title="Explain Semantier authority levels and governed promotion"
+      title={
+        locale === 'zh'
+          ? '解释 Semantier authority levels 和 governed promotion'
+          : 'Explain Semantier authority levels and governed promotion'
+      }
     >
       {label}
     </Link>
@@ -2905,6 +3122,21 @@ function StatusPill({
   status: KnowledgeActivityStatus
   label?: string
 }) {
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const defaults =
+    locale === 'zh'
+      ? {
+          running: '运行中',
+          waiting: '等待中',
+          done: '完成',
+          failed: '失败',
+        }
+      : {
+          running: 'Running',
+          waiting: 'Waiting',
+          done: 'Done',
+          failed: 'Failed',
+        }
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
       <span
@@ -2917,13 +3149,7 @@ function StatusPill({
         )}
       />
       {label ||
-        (status === 'running'
-          ? 'Running'
-          : status === 'waiting'
-            ? 'Waiting'
-            : status === 'done'
-              ? 'Done'
-              : 'Failed')}
+        defaults[status]}
     </span>
   )
 }
@@ -2967,6 +3193,7 @@ function PromotionLineageCard({
   onSelectGate,
   onOverrideDraftChange,
   onRecordOverride,
+  onDemoApproved,
 }: {
   artifact: GovernedKnowledgeArtifact | null
   pagePath: string | null
@@ -2979,7 +3206,88 @@ function PromotionLineageCard({
   onSelectGate: (index: number) => void
   onOverrideDraftChange: (value: string) => void
   onRecordOverride: () => void
+  onDemoApproved: (artifact: GovernedKnowledgeArtifact) => void
 }) {
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const copy =
+    locale === 'zh'
+      ? {
+          promoteLineage: 'Promote lineage',
+          noPromotion: '此页面还没有关联 governed promotion。',
+          promotionHelp:
+            '如果要让这份材料作为法律或政策使用，需要注册官方 source、固定 normalized artifact hash、通过 schema 和 precedence checks，然后在 Semantier core 中审批并激活。',
+          targetAuthority: 'Target authority',
+          justification: 'Justification',
+          justificationPlaceholder:
+            '为什么这份 curation material 应进入 governed review？',
+          officialSourceUri: 'Official source URI',
+          sourceUriPlaceholder: 'T2 activation 前必填',
+          jurisdiction: 'Jurisdiction',
+          effectiveFrom: 'Effective from',
+          sourceVersion: 'Source version',
+          requestRecorded: 'Request',
+          recordedAs: '记录为',
+          missing: '缺少',
+          approveForDemo: 'Demo 审批',
+          demoApprovalRecorded: 'Demo approval 已记录',
+          viewPromotionPath: '查看 governed promotion path',
+          submitting: '提交中...',
+          requestPromotion: '提交 governed promotion',
+          claims: 'claims',
+          evidence: 'Evidence',
+          hash: 'Hash',
+          gateJustification: 'Justification',
+          notRecorded: '未记录',
+          overrideRecorded: 'Override 已记录',
+          overridePlaceholder: '原因或 justification',
+          overrideContinue: 'Override 并继续',
+          gateReasons: {
+            curation:
+              'Curation material 已在权威使用前完成注册。',
+            normalized: 'Extraction output 已链接并固定 hash。',
+            governed: 'Promotion 已进入 governed KGL artifact store。',
+            active: 'Artifact 在当前 knowledge lifecycle 下处于 active 状态。',
+          },
+        }
+      : {
+          promoteLineage: 'Promote lineage',
+          noPromotion: 'No governed promotion is linked to this page.',
+          promotionHelp:
+            'To make this material usable as law or policy, register the official source, pin the normalized artifact hash, pass schema and precedence checks, then approve and activate it in Semantier core.',
+          targetAuthority: 'Target authority',
+          justification: 'Justification',
+          justificationPlaceholder:
+            'Why should this curation material enter governed review?',
+          officialSourceUri: 'Official source URI',
+          sourceUriPlaceholder: 'Required before T2 activation',
+          jurisdiction: 'Jurisdiction',
+          effectiveFrom: 'Effective from',
+          sourceVersion: 'Source version',
+          requestRecorded: 'Request',
+          recordedAs: 'recorded as',
+          missing: 'Missing',
+          approveForDemo: 'Approve for demo',
+          demoApprovalRecorded: 'Demo approval recorded',
+          viewPromotionPath: 'View governed promotion path',
+          submitting: 'Submitting...',
+          requestPromotion: 'Request governed promotion',
+          claims: 'claims',
+          evidence: 'Evidence',
+          hash: 'Hash',
+          gateJustification: 'Justification',
+          notRecorded: 'not recorded',
+          overrideRecorded: 'Override recorded',
+          overridePlaceholder: 'Reason or justification',
+          overrideContinue: 'Override and continue',
+          gateReasons: {
+            curation:
+              'Curation material was registered before authority use.',
+            normalized: 'Extraction output is linked and hash-pinned.',
+            governed: 'Promotion entered the governed KGL artifact store.',
+            active:
+              'Artifact is active under the current knowledge lifecycle.',
+          },
+        }
   const [targetAuthorityLevel, setTargetAuthorityLevel] =
     useState<PromotionTargetAuthorityLevel>('T2')
   const [promotionJustification, setPromotionJustification] = useState(() =>
@@ -3057,6 +3365,9 @@ function PromotionLineageCard({
           result.error || `Promotion approval failed (${response.status})`,
         )
       }
+      if (result.approvedArtifact) {
+        onDemoApproved(result.approvedArtifact)
+      }
       setSubmitState({ kind: 'done', result })
     } catch (error) {
       setSubmitState({
@@ -3070,21 +3381,19 @@ function PromotionLineageCard({
   return (
     <div className="rounded-xl border border-primary-200 bg-primary-50/70 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-        Promote lineage
+        {copy.promoteLineage}
       </div>
       {!artifact ? (
         <div className="mt-3 space-y-3">
           <div className="text-sm text-primary-500 dark:text-neutral-400">
-            No governed promotion is linked to this page.
+            {copy.noPromotion}
           </div>
           <div className="rounded-lg border border-primary-200 bg-primary-50 p-2.5 text-xs text-primary-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
-            To make this material usable as law or policy, register the official
-            source, pin the normalized artifact hash, pass schema and precedence
-            checks, then approve and activate it in Semantier core.
+            {copy.promotionHelp}
           </div>
           <div className="space-y-2 rounded-lg border border-primary-200 bg-white p-2.5 dark:border-neutral-800 dark:bg-neutral-950">
             <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-              Target authority
+              {copy.targetAuthority}
               <select
                 value={targetAuthorityLevel}
                 onChange={(event) =>
@@ -3101,29 +3410,29 @@ function PromotionLineageCard({
               </select>
             </label>
             <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-              Justification
+              {copy.justification}
               <textarea
                 value={promotionJustification}
                 onChange={(event) =>
                   setPromotionJustification(event.target.value)
                 }
                 rows={3}
-                placeholder="Why should this curation material enter governed review?"
+                placeholder={copy.justificationPlaceholder}
                 className="mt-1 w-full resize-none rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs normal-case tracking-normal text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
               />
             </label>
             <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-              Official source URI
+              {copy.officialSourceUri}
               <input
                 value={sourceUri}
                 onChange={(event) => setSourceUri(event.target.value)}
-                placeholder="Required before T2 activation"
+                placeholder={copy.sourceUriPlaceholder}
                 className="mt-1 w-full rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs normal-case tracking-normal text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
               />
             </label>
             <div className="grid gap-2 sm:grid-cols-3">
               <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                Jurisdiction
+                {copy.jurisdiction}
                 <input
                   value={jurisdiction}
                   onChange={(event) => setJurisdiction(event.target.value)}
@@ -3131,7 +3440,7 @@ function PromotionLineageCard({
                 />
               </label>
               <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                Effective from
+                {copy.effectiveFrom}
                 <input
                   value={effectiveFrom}
                   onChange={(event) => setEffectiveFrom(event.target.value)}
@@ -3140,7 +3449,7 @@ function PromotionLineageCard({
                 />
               </label>
               <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                Source version
+                {copy.sourceVersion}
                 <input
                   value={sourceVersion}
                   onChange={(event) => setSourceVersion(event.target.value)}
@@ -3150,11 +3459,12 @@ function PromotionLineageCard({
             </div>
             {submitState.kind === 'done' ? (
               <div className="rounded-lg border border-accent-500/30 bg-accent-500/10 p-2 text-xs text-primary-900 dark:text-neutral-100">
-                Request {submitState.result.requestId} recorded as{' '}
+                {copy.requestRecorded} {submitState.result.requestId}{' '}
+                {copy.recordedAs}{' '}
                 {submitState.result.status}.
                 {submitState.result.blockers?.length ? (
                   <span className="mt-1 block text-primary-600 dark:text-neutral-300">
-                    Missing: {submitState.result.blockers.join(', ')}
+                    {copy.missing}: {submitState.result.blockers.join(', ')}
                   </span>
                 ) : null}
                 {submitState.result.status !== 'APPROVED' ? (
@@ -3165,12 +3475,23 @@ function PromotionLineageCard({
                     }
                     className="mt-2 w-full rounded-lg border border-primary-900 bg-primary-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-800 dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
                   >
-                    Approve for demo
+                    {copy.approveForDemo}
                   </button>
                 ) : (
-                  <span className="mt-1 block text-primary-600 dark:text-neutral-300">
-                    Demo approval recorded: {submitState.result.approvalId}
-                  </span>
+                  <>
+                    <span className="mt-1 block text-primary-600 dark:text-neutral-300">
+                      {copy.demoApprovalRecorded}:{' '}
+                      {submitState.result.approvalId}
+                    </span>
+                    <Link
+                      to="/memory"
+                      search={{ tab: 'governance' }}
+                      hash="promotion-evidence-chain"
+                      className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-primary-200 bg-white px-3 py-2 text-xs font-semibold text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                    >
+                      {copy.viewPromotionPath}
+                    </Link>
+                  </>
                 )}
               </div>
             ) : null}
@@ -3190,8 +3511,8 @@ function PromotionLineageCard({
               className="w-full rounded-lg border border-accent-600 bg-accent-500 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitState.kind === 'submitting'
-                ? 'Submitting...'
-                : 'Request governed promotion'}
+                ? copy.submitting
+                : copy.requestPromotion}
             </button>
           </div>
           <Link
@@ -3200,7 +3521,7 @@ function PromotionLineageCard({
             hash="promotion-path"
             className="inline-flex w-full items-center justify-center rounded-lg border border-primary-200 bg-white px-3 py-2 text-xs font-semibold text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
           >
-            View governed promotion path
+            {copy.viewPromotionPath}
           </Link>
         </div>
       ) : (
@@ -3211,9 +3532,17 @@ function PromotionLineageCard({
             <InlineBadge label={artifact.authority_domain || 'compliance'} />
           </div>
           <div className="text-xs text-primary-500 dark:text-neutral-400">
-            {artifact.claim_count ?? 0} claims · {artifact.source_type} ·{' '}
+            {artifact.claim_count ?? 0} {copy.claims} · {artifact.source_type} ·{' '}
             {artifact.authority_origin}
           </div>
+          <Link
+            to="/memory"
+            search={{ tab: 'governance' }}
+            hash="promotion-evidence-chain"
+            className="inline-flex w-full items-center justify-center rounded-lg border border-primary-200 bg-white px-3 py-2 text-xs font-semibold text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+          >
+            {copy.viewPromotionPath}
+          </Link>
 
           <div className="space-y-1.5">
             {gates.map((gate, index) => {
@@ -3261,39 +3590,39 @@ function PromotionLineageCard({
               <dl className="mt-2 space-y-2 text-xs">
                 <div>
                   <dt className="font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                    Evidence
+                    {copy.evidence}
                   </dt>
                   <dd className="mt-0.5 break-all text-primary-800 dark:text-neutral-200">
-                    {selectedGate.ref || 'not recorded'}
+                    {selectedGate.ref || copy.notRecorded}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                    Hash
+                    {copy.hash}
                   </dt>
                   <dd className="mt-0.5 break-all font-mono text-primary-800 dark:text-neutral-200">
-                    {selectedGate.hash || 'not recorded'}
+                    {selectedGate.hash || copy.notRecorded}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                    Justification
+                    {copy.gateJustification}
                   </dt>
                   <dd className="mt-0.5 text-primary-800 dark:text-neutral-200">
                     {selectedGate.stage === 'curation_upload'
-                      ? 'Curation material was registered before authority use.'
+                      ? copy.gateReasons.curation
                       : selectedGate.stage === 'normalized_artifact'
-                        ? 'Extraction output is linked and hash-pinned.'
+                        ? copy.gateReasons.normalized
                         : selectedGate.stage === 'governed_kgl_artifact'
-                          ? 'Promotion entered the governed KGL artifact store.'
-                          : 'Artifact is active under the current knowledge lifecycle.'}
+                          ? copy.gateReasons.governed
+                          : copy.gateReasons.active}
                   </dd>
                 </div>
               </dl>
 
               {selectedOverride ? (
                 <div className="mt-3 rounded-lg border border-accent-500/30 bg-accent-500/10 p-2 text-xs text-primary-900 dark:text-neutral-100">
-                  <div className="font-semibold">Override recorded</div>
+                  <div className="font-semibold">{copy.overrideRecorded}</div>
                   <div className="mt-1 text-primary-600 dark:text-neutral-300">
                     {selectedOverride.reason}
                   </div>
@@ -3309,7 +3638,7 @@ function PromotionLineageCard({
                       onOverrideDraftChange(event.target.value)
                     }
                     rows={3}
-                    placeholder="Reason or justification"
+                    placeholder={copy.overridePlaceholder}
                     className="w-full resize-none rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                   />
                   <button
@@ -3318,7 +3647,7 @@ function PromotionLineageCard({
                     onClick={onRecordOverride}
                     className="w-full rounded-lg border border-accent-600 bg-accent-500 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Override and continue
+                    {copy.overrideContinue}
                   </button>
                 </div>
               )}
@@ -3351,6 +3680,7 @@ function MetadataCard({
 }
 
 function AuthorityMetadataCard({ value }: { value: string }) {
+  const locale = useSettingsStore((state) => state.settings.locale)
   return (
     <Link
       to="/memory"
@@ -3359,28 +3689,41 @@ function AuthorityMetadataCard({ value }: { value: string }) {
       className="block rounded-xl border border-primary-200 bg-primary-50/70 p-3 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-800 dark:bg-neutral-900/60 dark:hover:border-neutral-700 dark:hover:bg-neutral-900"
     >
       <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-        Authority
+        {locale === 'zh' ? 'Authority' : 'Authority'}
       </div>
       <div className="mt-1 text-sm text-primary-900 dark:text-neutral-100">
         {value}
       </div>
       <div className="mt-2 text-xs text-primary-500 dark:text-neutral-400">
-        Explain levels and promotion
+        {locale === 'zh'
+          ? '解释等级和 promotion'
+          : 'Explain levels and promotion'}
       </div>
     </Link>
   )
 }
 
 function EmptyKnowledgeState({ knowledgeRoot }: { knowledgeRoot: string }) {
+  const locale = useSettingsStore((state) => state.settings.locale)
   return (
     <div className="flex min-h-32 flex-col justify-center rounded-xl border border-primary-200 bg-primary-50 px-4 py-5 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
       <div className="text-base font-semibold text-primary-900 dark:text-neutral-100">
-        No wiki pages found
+        {locale === 'zh' ? '未找到 wiki 页面' : 'No wiki pages found'}
       </div>
       <p className="mt-2 text-pretty">
-        Markdown pages can live anywhere under <code>{knowledgeRoot}</code>,
-        including subfolders. Uploaded PDF and DOCX files appear after you build
-        them into Markdown pages.
+        {locale === 'zh' ? (
+          <>
+            Markdown pages 可以放在 <code>{knowledgeRoot}</code>{' '}
+            下的任意位置，包括子文件夹。上传的 PDF 和 DOCX 文件会在构建为
+            Markdown pages 后显示。
+          </>
+        ) : (
+          <>
+            Markdown pages can live anywhere under <code>{knowledgeRoot}</code>,
+            including subfolders. Uploaded PDF and DOCX files appear after you
+            build them into Markdown pages.
+          </>
+        )}
       </p>
       <a
         href="https://karpathy.ai/"
@@ -3389,7 +3732,9 @@ function EmptyKnowledgeState({ knowledgeRoot }: { knowledgeRoot: string }) {
         className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary-900 underline decoration-primary-300 underline-offset-4 hover:decoration-primary-500 dark:text-neutral-100"
       >
         <HugeiconsIcon icon={Link01Icon} size={14} strokeWidth={1.7} />
-        See the Karpathy LLM wiki pattern
+        {locale === 'zh'
+          ? '查看 Karpathy LLM wiki pattern'
+          : 'See the Karpathy LLM wiki pattern'}
       </a>
     </div>
   )

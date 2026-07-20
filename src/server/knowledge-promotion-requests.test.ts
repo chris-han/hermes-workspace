@@ -71,6 +71,16 @@ describe('knowledge promotion requests', () => {
     })
 
     expect(approval.status).toBe('APPROVED')
+    expect(approval.approvedArtifact.semantic_tier).toBe('T2')
+    expect(approval.approvedArtifact.ingestion_status).toBe('DEMO_APPROVED')
+    expect(
+      approval.approvedArtifact.evidence_chain.map((step) => step.stage),
+    ).toEqual([
+      'curation_upload',
+      'normalized_artifact',
+      'promotion_request',
+      'demo_approval',
+    ])
     expect(approval.approvalPath).toMatch(
       /^\.governance\/promotion-approvals\/kpa_[a-f0-9]+\.json$/,
     )
@@ -84,5 +94,13 @@ describe('knowledge promotion requests', () => {
     expect(approvalRecord.role_gate_enforced).toBe(false)
     expect(approvalRecord.activation_performed).toBe(false)
     expect(approvalRecord.request_id).toBe(result.requestId)
+    expect(approvalRecord.approved_artifact.semantic_tier).toBe('T2')
+    expect(approvalRecord.approved_artifact.source_ref).toBe('raw/law.md')
+    expect(
+      approvalRecord.approved_artifact.evidence_chain.some(
+        (step: { stage?: string; ref?: string }) =>
+          step.stage === 'demo_approval' && step.ref === approval.approvalPath,
+      ),
+    ).toBe(true)
   })
 })

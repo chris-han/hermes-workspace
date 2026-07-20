@@ -15,4 +15,12 @@ describe('workspace i18n', () => {
     expect(t('nav.agentRoster')).toBe('组织构建')
     expect(t('nav.dataConnections')).toBe('数据连接')
   })
+
+  it('provides Chinese labels for memory screen tabs', () => {
+    syncLocaleFromSettings('zh')
+
+    expect(t('memory.tabs.memory')).toBe('记忆')
+    expect(t('memory.tabs.knowledge')).toBe('知识')
+    expect(t('memory.tabs.governance')).toBe('治理')
+  })
 })

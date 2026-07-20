@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
+import { useSettingsStore } from '@/hooks/use-settings'
 
 type MemoryFileMeta = {
   path: string
@@ -28,6 +29,52 @@ type ListResponse = { files?: Array<MemoryFileMeta> }
 type ReadResponse = { path?: string; content?: string }
 type SearchResponse = { results?: Array<MemorySearchMatch> }
 type WriteResponse = { success?: boolean; path?: string; error?: string }
+
+const MEMORY_COPY = {
+  en: {
+    searchPlaceholder: 'Search memory files',
+    fileList: (count: number) => `Memory Files (${count})`,
+    searchResults: 'Search Results',
+    searching: 'Searching...',
+    noMatches: 'No matches',
+    noFilesInFolder: 'No files in memory/ or memories/',
+    selectFile: 'Select a file',
+    loadingMetadata: 'Loading metadata...',
+    saving: 'Saving...',
+    save: 'Save',
+    cancel: 'Cancel',
+    unsavedChanges: 'Unsaved changes',
+    edit: 'Edit',
+    loadingMemoryFiles: 'Loading memory files...',
+    noMemoryFiles: 'No memory files found',
+    loadingFile: 'Loading file...',
+    discardChanges:
+      'You have unsaved changes. Discard them and switch files?',
+    saved: 'Saved',
+    saveFailed: 'Failed to save file',
+  },
+  zh: {
+    searchPlaceholder: '搜索记忆文件',
+    fileList: (count: number) => `记忆文件（${count}）`,
+    searchResults: '搜索结果',
+    searching: '搜索中...',
+    noMatches: '没有匹配结果',
+    noFilesInFolder: 'memory/ 或 memories/ 中没有文件',
+    selectFile: '选择文件',
+    loadingMetadata: '正在加载元数据...',
+    saving: '保存中...',
+    save: '保存',
+    cancel: '取消',
+    unsavedChanges: '未保存的更改',
+    edit: '编辑',
+    loadingMemoryFiles: '正在加载记忆文件...',
+    noMemoryFiles: '未找到记忆文件',
+    loadingFile: '正在加载文件...',
+    discardChanges: '你有未保存的更改。要放弃并切换文件吗？',
+    saved: '已保存',
+    saveFailed: '保存文件失败',
+  },
+} as const
 
 async function readJson<T>(url: string): Promise<T> {
   const response = await fetch(url)
@@ -104,6 +151,8 @@ function highlightMatch(
 }
 
 export function MemoryBrowserScreen() {
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const copy = locale === 'zh' ? MEMORY_COPY.zh : MEMORY_COPY.en
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [searchInput, setSearchInput] = useState('')
   const deferredSearch = useDeferredValue(searchInput)
@@ -187,9 +236,7 @@ export function MemoryBrowserScreen() {
       const confirmed =
         typeof window === 'undefined'
           ? true
-          : window.confirm(
-              'You have unsaved changes. Discard them and switch files?',
-            )
+          : window.confirm(copy.discardChanges)
       if (!confirmed) return false
     }
 
@@ -233,10 +280,9 @@ export function MemoryBrowserScreen() {
       await queryClient.invalidateQueries({ queryKey: ['memory'] })
       setIsEditing(false)
       setHasUnsavedChanges(false)
-      toast('Saved ✓', { type: 'success' })
+      toast(`${copy.saved} ✓`, { type: 'success' })
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to save file'
+      const message = error instanceof Error ? error.message : copy.saveFailed
       toast(message, { type: 'warning' })
     } finally {
       setIsSaving(false)
@@ -277,7 +323,7 @@ export function MemoryBrowserScreen() {
                 <input
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="Search memory files"
+                  placeholder={copy.searchPlaceholder}
                   className="w-full rounded-xl theme-border-1 py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-accent-500"
                   style={{
                     backgroundColor: 'var(--theme-card)',
@@ -297,7 +343,7 @@ export function MemoryBrowserScreen() {
               onClick={() => setMobileFilesOpen((value) => !value)}
             >
               <span className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
-                Memory Files ({fileItems.length})
+                {copy.fileList(fileItems.length)}
               </span>
               <span className="md:hidden text-primary-500 dark:text-neutral-400">
                 <HugeiconsIcon
@@ -311,16 +357,16 @@ export function MemoryBrowserScreen() {
             {searchEnabled ? (
               <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
                 <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-primary-400 dark:text-neutral-500">
-                  Search Results
+                  {copy.searchResults}
                 </div>
                 <div className="space-y-1">
                   {searchQuery.isLoading ? (
                     <div className="rounded-lg border border-primary-200 bg-primary-50/80 px-3 py-2 text-xs text-primary-400 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-500">
-                      Searching...
+                      {copy.searching}
                     </div>
                   ) : searchResults.length === 0 ? (
                     <div className="rounded-lg border border-primary-200 bg-primary-50/80 px-3 py-2 text-xs text-primary-400 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-500">
-                      No matches
+                      {copy.noMatches}
                     </div>
                   ) : (
                     searchResults.map((result, index) => (
@@ -381,7 +427,7 @@ export function MemoryBrowserScreen() {
                   </div>
                   {memoryFiles.length === 0 ? (
                     <div className="rounded-lg border border-primary-200 bg-primary-50/80 px-3 py-2 text-xs text-primary-400 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-500">
-                      No files in memory/ or memories/
+                      {copy.noFilesInFolder}
                     </div>
                   ) : (
                     memoryFiles.map((file) => (
@@ -404,13 +450,13 @@ export function MemoryBrowserScreen() {
             <div className="flex items-center justify-between border-b border-primary-200 px-3 py-2 dark:border-neutral-800">
               <div className="min-w-0">
                 <div className="truncate font-mono text-sm text-primary-900 dark:text-neutral-100">
-                  {selectedPath || 'Select a file'}
+                  {selectedPath || copy.selectFile}
                 </div>
                 {selectedPath ? (
                   <div className="text-xs text-primary-400 dark:text-neutral-500">
                     {selectedFileMeta?.size != null
                       ? `${formatBytes(selectedFileMeta.size)} · ${formatModified(selectedFileMeta.modified)}`
-                      : 'Loading metadata...'}
+                      : copy.loadingMetadata}
                   </div>
                 ) : null}
               </div>
@@ -424,7 +470,7 @@ export function MemoryBrowserScreen() {
                         onClick={handleSaveEditing}
                         className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {isSaving ? 'Saving...' : 'Save'}
+                        {isSaving ? copy.saving : copy.save}
                       </button>
                       <button
                         type="button"
@@ -432,11 +478,11 @@ export function MemoryBrowserScreen() {
                         onClick={handleCancelEditing}
                         className="rounded-md border border-primary-200 px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary-300 hover:bg-primary-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
                       >
-                        Cancel
+                        {copy.cancel}
                       </button>
                       {hasUnsavedChanges ? (
                         <span
-                          title="Unsaved changes"
+                          title={copy.unsavedChanges}
                           className="inline-block size-2 rounded-full bg-amber-400"
                         />
                       ) : null}
@@ -452,7 +498,7 @@ export function MemoryBrowserScreen() {
                         size={14}
                         strokeWidth={1.7}
                       />
-                      Edit
+                      {copy.edit}
                       {hasUnsavedChanges ? (
                         <span className="absolute -right-1 -top-1 size-2 rounded-full bg-amber-400" />
                       ) : null}
@@ -469,13 +515,13 @@ export function MemoryBrowserScreen() {
               )}
             >
               {filesQuery.isLoading ? (
-                <StateBox label="Loading memory files..." />
+                <StateBox label={copy.loadingMemoryFiles} />
               ) : filesQuery.error instanceof Error ? (
                 <StateBox label={filesQuery.error.message} error />
               ) : !selectedPath ? (
-                <StateBox label="No memory files found" />
+                <StateBox label={copy.noMemoryFiles} />
               ) : contentQuery.isLoading ? (
-                <StateBox label="Loading file..." />
+                <StateBox label={copy.loadingFile} />
               ) : contentQuery.error instanceof Error ? (
                 <StateBox label={contentQuery.error.message} error />
               ) : isEditing ? (

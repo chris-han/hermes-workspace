@@ -25,12 +25,35 @@ export type KnowledgePromotionRequest = {
   blockers: Array<string>
 }
 
+export type KnowledgePromotionApprovedArtifact = {
+  artifact_id: string
+  source_ref: string
+  semantic_tier: PromotionTargetAuthorityLevel
+  authority_domain: string
+  tag_authority_level: string
+  source_type: string
+  authority_origin: string
+  ingestion_status: 'DEMO_APPROVED'
+  effective_from?: string | null
+  source_version?: string | null
+  extraction_method?: string | null
+  curator: string
+  claim_count: number
+  ambiguities: Array<string>
+  evidence_chain: Array<{
+    stage: string
+    ref: string | null
+    hash: string | null
+  }>
+}
+
 export type KnowledgePromotionApproval = {
   ok: true
   requestId: string
   approvalId: string
   status: 'APPROVED'
   approvalPath: string
+  approvedArtifact: KnowledgePromotionApprovedArtifact
 }
 
 type KnowledgePromotionContext = {
@@ -75,7 +98,10 @@ function contentHash(content: string): string {
 }
 
 function hashObject(payload: object): string {
-  return crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex')
+  return crypto
+    .createHash('sha256')
+    .update(JSON.stringify(payload))
+    .digest('hex')
 }
 
 function extractQuotedLine(content: string, label: string): string | null {
@@ -250,20 +276,42 @@ export async function approveKnowledgePromotionRequest(
   const requestPayload = JSON.parse(requestRaw) as {
     request_id?: string
     blockers?: Array<string>
-    requested_target?: object
-    source_page?: object
+    requested_target?: {
+      semantic_tier?: PromotionTargetAuthorityLevel
+      authority_domain?: string
+      tag_authority_level?: string
+      source_type?: string
+      authority_origin?: string
+    }
+    source_page?: {
+      path?: string
+      title?: string
+      content_hash?: string
+      authority_level?: string | null
+      authority_use?: string | null
+    }
+    source_registration?: {
+      source_uri?: string | null
+      jurisdiction?: string | null
+      effective_from?: string | null
+      source_version?: string | null
+      source_upload_ref?: string | null
+      normalized_artifact_ref?: string | null
+      parser_method?: string | null
+    }
   }
   if (requestPayload.request_id !== requestId) {
     throw new Error('promotion request id mismatch')
   }
 
   const approvedAt = new Date().toISOString()
+  const approvedBy = context.userId || 'knowledge-ui-demo'
   const approvalPayload = {
     schema_version: 'knowledge_promotion_approval.v1',
     request_id: requestId,
     status: 'APPROVED',
     approved_at: approvedAt,
-    approved_by: context.userId || 'knowledge-ui-demo',
+    approved_by: approvedBy,
     workspace_id: context.workspaceId || null,
     demo_mode: true,
     role_gate_enforced: false,
@@ -279,11 +327,66 @@ export async function approveKnowledgePromotionRequest(
     path.join(wikiRoot, PROMOTION_APPROVAL_DIR),
   )
   const approvalPath = path.join(approvalDir, `${approvalId}.json`)
+  const approvalPathRelative = toPosixPath(
+    path.relative(wikiRoot, approvalPath),
+  )
+  const approvalHash = contentHash(
+    JSON.stringify({ approval_id: approvalId, ...approvalPayload }),
+  )
+  const target = requestPayload.requested_target || {}
+  const sourcePage = requestPayload.source_page || {}
+  const sourceRegistration = requestPayload.source_registration || {}
+  const approvedArtifact: KnowledgePromotionApprovedArtifact = {
+    artifact_id: `demo_${approvalId}`,
+    source_ref: sourcePage.path || requestId,
+    semantic_tier: target.semantic_tier || 'T3',
+    authority_domain: target.authority_domain || 'compliance',
+    tag_authority_level: target.tag_authority_level || 'operational',
+    source_type: target.source_type || 'field_guide',
+    authority_origin: target.authority_origin || 'internal_governance',
+    ingestion_status: 'DEMO_APPROVED',
+    effective_from: sourceRegistration.effective_from || null,
+    source_version: sourceRegistration.source_version || null,
+    extraction_method: sourceRegistration.parser_method || null,
+    curator: approvedBy,
+    claim_count: 1,
+    ambiguities: requestPayload.blockers || [],
+    evidence_chain: [
+      {
+        stage: 'curation_upload',
+        ref: sourceRegistration.source_upload_ref || sourcePage.path || null,
+        hash: sourcePage.content_hash || null,
+      },
+      {
+        stage: 'normalized_artifact',
+        ref: sourceRegistration.normalized_artifact_ref || null,
+        hash: sourcePage.content_hash || null,
+      },
+      {
+        stage: 'promotion_request',
+        ref: toPosixPath(path.relative(wikiRoot, requestPath)),
+        hash: contentHash(requestRaw),
+      },
+      {
+        stage: 'demo_approval',
+        ref: approvalPathRelative,
+        hash: approvalHash,
+      },
+    ],
+  }
   await fs.mkdir(approvalDir, { recursive: true })
   await fs
     .writeFile(
       approvalPath,
-      `${JSON.stringify({ approval_id: approvalId, ...approvalPayload }, null, 2)}\n`,
+      `${JSON.stringify(
+        {
+          approval_id: approvalId,
+          ...approvalPayload,
+          approved_artifact: approvedArtifact,
+        },
+        null,
+        2,
+      )}\n`,
       {
         encoding: 'utf-8',
         flag: 'wx',
@@ -298,6 +401,7 @@ export async function approveKnowledgePromotionRequest(
     requestId,
     approvalId,
     status: 'APPROVED',
-    approvalPath: toPosixPath(path.relative(wikiRoot, approvalPath)),
+    approvalPath: approvalPathRelative,
+    approvedArtifact,
   }
 }

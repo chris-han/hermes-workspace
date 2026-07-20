@@ -6,6 +6,8 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { getUnavailableReason } from '@/lib/feature-gates'
+import { t } from '@/lib/i18n'
+import { useSettingsStore } from '@/hooks/use-settings'
 
 const memorySearchSchema = z.object({
   tab: z.enum(['memory', 'knowledge', 'governance']).optional(),
@@ -36,15 +38,16 @@ export const Route = createFileRoute('/memory')({
       search.tab || 'memory',
     )
     const memoryAvailable = useFeatureAvailable('memory')
+    const locale = useSettingsStore((state) => state.settings.locale)
 
-    usePageTitle('Memory')
+    usePageTitle(t('nav.memory'))
 
     useEffect(() => {
       if (search.tab) setTab(search.tab)
     }, [search.tab])
 
     return (
-      <div className="flex h-full min-h-0 flex-col">
+      <div lang={locale} className="flex h-full min-h-0 flex-col">
         <Tabs
           value={tab}
           onValueChange={(value) =>
@@ -58,9 +61,15 @@ export const Route = createFileRoute('/memory')({
                 variant="underline"
                 className="w-full justify-start gap-1"
               >
-                <TabsTab value="memory">Memory</TabsTab>
-                <TabsTab value="knowledge">Knowledge</TabsTab>
-                <TabsTab value="governance">Governance</TabsTab>
+                <TabsTab value="memory">
+                  {t('memory.tabs.memory')}
+                </TabsTab>
+                <TabsTab value="knowledge">
+                  {t('memory.tabs.knowledge')}
+                </TabsTab>
+                <TabsTab value="governance">
+                  {t('memory.tabs.governance')}
+                </TabsTab>
               </TabsList>
             </div>
           </div>

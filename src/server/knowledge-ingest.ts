@@ -64,6 +64,7 @@ export type KnowledgeIngestSuccess = {
   status: 'parsed' | 'empty' | 'renamed'
   originalName: string
   storedMarkdownPath: string
+  sourceFilePath: string
   parserMethod: string
   sourceUploadRef: string
   normalizedDocumentArtifactRef: string
@@ -220,6 +221,7 @@ function blocksFromArtifact(artifact: CanonicalDocumentArtifact) {
 function renderDocumentMarkdown(
   originalName: string,
   uploadRef: string,
+  sourceFilePath: string,
   artifact: CanonicalDocumentArtifact,
   manualCurationJustification?: string | null,
 ): {
@@ -244,6 +246,7 @@ function renderDocumentMarkdown(
     '> Curation material only. Governed promotion is required before authority use.',
     `> Authority level: ${CURATION_AUTHORITY_LEVEL}`,
     '> Authority use: prohibited_until_governed_promotion',
+    `> Source file: wiki/${sourceFilePath}`,
     `> Source upload ref: ${uploadRef}`,
     `> Normalized artifact ref: ${artifactRef}`,
     `> Parser method: ${parserMethod}`,
@@ -442,6 +445,9 @@ export async function ingestKnowledgeUpload(
     resolved.effectiveRoot,
     request.targetDir,
   )
+  const sourceFilePath = toPosixPath(
+    path.relative(resolved.effectiveRoot, stagedPath),
+  )
   await fs.mkdir(outputDir, { recursive: true })
 
   try {
@@ -491,6 +497,7 @@ export async function ingestKnowledgeUpload(
         '> Spreadsheet wiki summary is curation material only.',
         `> Authority level: ${CURATION_AUTHORITY_LEVEL}`,
         '> Authority use: prohibited_until_governed_promotion',
+        `> Source file: wiki/${sourceFilePath}`,
         `> Source upload ref: ${request.uploadRef}`,
         `> Canonical table artifact ref: ${table.canonical_table_artifact_ref}`,
         `> Parser method: ${table.parser_method || 'table_ingestion'}`,
@@ -518,6 +525,7 @@ export async function ingestKnowledgeUpload(
         status: written.renamed ? 'renamed' : 'parsed',
         originalName: staged.originalName,
         storedMarkdownPath,
+        sourceFilePath,
         parserMethod: table.parser_method || 'table_ingestion',
         sourceUploadRef: request.uploadRef,
         normalizedDocumentArtifactRef: table.canonical_table_artifact_ref,
@@ -550,6 +558,7 @@ export async function ingestKnowledgeUpload(
     const rendered = renderDocumentMarkdown(
       staged.originalName,
       request.uploadRef,
+      sourceFilePath,
       artifact,
       request.manualCurationJustification,
     )
@@ -606,6 +615,7 @@ export async function ingestKnowledgeUpload(
       status: rendered.empty ? 'empty' : written.renamed ? 'renamed' : 'parsed',
       originalName: staged.originalName,
       storedMarkdownPath,
+      sourceFilePath,
       parserMethod: rendered.parserMethod,
       sourceUploadRef: request.uploadRef,
       normalizedDocumentArtifactRef: rendered.artifactRef,

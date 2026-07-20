@@ -1105,6 +1105,49 @@ type MemorySnapshot = {
   source?: string
 }
 
+export async function loadInspectorMemorySnapshots(
+  sessionKey: string | null = null,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Array<MemorySnapshot>> {
+  if (sessionKey) {
+    const sessionResponse = await fetchImpl(
+      `/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionKey)}/memory-snapshot`,
+    )
+    if (sessionResponse.ok) {
+      const json = (await sessionResponse.json().catch(() => ({}))) as Record<string, unknown>
+      const list = Array.isArray(json.snapshots) ? json.snapshots : []
+      const snapshots = list.map((entry: Record<string, unknown>) => ({
+        kind: String(entry.kind || ''),
+        title: String(entry.title || entry.kind || 'Memory snapshot'),
+        content: String(entry.content || ''),
+        source: typeof entry.source === 'string' ? entry.source : undefined,
+      }))
+      if (snapshots.length > 0) return snapshots
+    } else if (sessionResponse.status !== 404) {
+      throw new Error(`HTTP ${sessionResponse.status}`)
+    }
+  }
+
+  const response = await fetchImpl(
+    '/api/semantier-proxy/api/memory/read?path=MEMORY.md',
+  )
+  if (!response.ok) {
+    if (response.status === 404) return []
+    throw new Error(`HTTP ${response.status}`)
+  }
+  const json = (await response.json().catch(() => ({}))) as Record<string, unknown>
+  const content = String(json.content || '')
+  if (!content) return []
+  return [
+    {
+      kind: 'memory-file',
+      title: String(json.path || 'MEMORY.md'),
+      content,
+      source: 'live.memory.MEMORY.md',
+    },
+  ]
+}
+
 function MemoryRawPanel({ snapshot }: { snapshot: MemorySnapshot }) {
   const copy = useInspectorCopy()
   const [showRaw, setShowRaw] = useState(false)
@@ -1155,36 +1198,13 @@ function MemoryTab({ sessionKey }: { sessionKey: string | null }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!sessionKey) {
-      setSnapshots([])
-      setLoading(false)
-      setError(null)
-      return
-    }
     let cancelled = false
     setLoading(true)
     setError(null)
-    fetch(
-      `/api/semantier-proxy/api/sessions/${encodeURIComponent(
-        sessionKey,
-      )}/memory-snapshot`,
-    )
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
-      })
-      .then((json) => {
+    loadInspectorMemorySnapshots(sessionKey)
+      .then((list) => {
         if (!cancelled) {
-          const list = Array.isArray(json?.snapshots) ? json.snapshots : []
-          setSnapshots(
-            list.map((entry: Record<string, unknown>) => ({
-              kind: String(entry.kind || ''),
-              title: String(entry.title || entry.kind || 'Memory snapshot'),
-              content: String(entry.content || ''),
-              source:
-                typeof entry.source === 'string' ? entry.source : undefined,
-            })),
-          )
+          setSnapshots(list)
           setLoading(false)
         }
       })
@@ -1201,7 +1221,6 @@ function MemoryTab({ sessionKey }: { sessionKey: string | null }) {
 
   if (loading) return <LoadingState text={copy.loading.memory} />
   if (error) return <ErrorState text={`${copy.errors.memory}: ${error}`} />
-  if (!sessionKey) return <EmptyState text={copy.empty.noSessionSelected} />
   if (!snapshots || snapshots.length === 0)
     return (
       <EmptyState text={copy.empty.noMemorySnapshotInjected} />

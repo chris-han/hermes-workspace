@@ -172,8 +172,24 @@ export function writeMemoryFile(
     options,
   )
   fs.mkdirSync(path.dirname(fullPath), { recursive: true })
-  fs.writeFileSync(fullPath, content, 'utf-8')
+  const existingContent = fs.existsSync(fullPath)
+    ? fs.readFileSync(fullPath, 'utf-8')
+    : ''
+  const nextContent =
+    safeRelativePath === 'MEMORY.md' || safeRelativePath === 'USER.md'
+      ? appendCuratedMemoryContent(existingContent, content)
+      : content
+  fs.writeFileSync(fullPath, nextContent, 'utf-8')
   return safeRelativePath
+}
+
+function appendCuratedMemoryContent(existingContent: string, nextContent: string): string {
+  const trimmedExisting = existingContent.trim()
+  const trimmedNext = nextContent.trim()
+  if (!trimmedExisting || !trimmedNext) return nextContent
+  if (trimmedNext.includes(trimmedExisting)) return nextContent
+  const separator = existingContent.endsWith('\n') ? '' : '\n'
+  return `${existingContent}${separator}§\n${nextContent}`
 }
 
 export function searchMemoryFiles(

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   artifactMatchesHighlight,
   getInspectorCopy,
+  loadInspectorMemorySnapshots,
   skillMatchesSessionAttachment,
   useInspectorStore,
   persistedArtifactDisplayTitle,
@@ -131,5 +132,72 @@ describe('InspectorPanel', () => {
         new Set(['hermes-agent/skills/research/llm-wiki']),
       ),
     ).toBe(true)
+  })
+
+  it('loads the live MEMORY.md file in the inspector memory tab', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ path: 'MEMORY.md', content: 'new memory line' }),
+    })
+    const snapshots = await loadInspectorMemorySnapshots(null, fetchMock as typeof fetch)
+
+    expect(snapshots).toEqual([
+      {
+        kind: 'memory-file',
+        title: 'MEMORY.md',
+        content: 'new memory line',
+        source: 'live.memory.MEMORY.md',
+      },
+    ])
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/semantier-proxy/api/memory/read?path=MEMORY.md',
+    )
+  })
+
+  it('prefers the session memory snapshot when a session key is available', async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/memory-snapshot')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            snapshots: [
+              {
+                kind: 'session-memory',
+                title: 'Session Memory',
+                content: 'session item',
+                source: 'session_db.system_prompt',
+              },
+            ],
+          }),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ path: 'MEMORY.md', content: 'fallback memory' }),
+      })
+    })
+
+    const snapshots = await loadInspectorMemorySnapshots('session_5acbdc8a0d98', fetchMock as typeof fetch)
+
+    expect(snapshots).toEqual([
+      {
+        kind: 'session-memory',
+        title: 'Session Memory',
+        content: 'session item',
+        source: 'session_db.system_prompt',
+      },
+    ])
+  })
+
+  it('treats a missing live memory file as an empty state', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: 'Not found' }),
+    })
+
+    const snapshots = await loadInspectorMemorySnapshots(null, fetchMock as typeof fetch)
+
+    expect(snapshots).toEqual([])
   })
 })

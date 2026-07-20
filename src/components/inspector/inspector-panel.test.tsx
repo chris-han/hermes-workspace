@@ -135,16 +135,28 @@ describe('InspectorPanel', () => {
   })
 
   it('loads the live MEMORY.md file in the inspector memory tab', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ path: 'MEMORY.md', content: 'new memory line' }),
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('path=MEMORY.md')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ path: 'MEMORY.md', content: 'new memory line' }),
+        })
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({ error: 'Not found' }),
+      })
     })
-    const snapshots = await loadInspectorMemorySnapshots(null, fetchMock as typeof fetch)
+    const snapshots = await loadInspectorMemorySnapshots(
+      null,
+      fetchMock as typeof fetch,
+    )
 
     expect(snapshots).toEqual([
       {
-        kind: 'memory-file',
-        title: 'MEMORY.md',
+        kind: 'live-memory-file',
+        title: 'Live MEMORY.md',
         content: 'new memory line',
         source: 'live.memory.MEMORY.md',
       },
@@ -154,7 +166,7 @@ describe('InspectorPanel', () => {
     )
   })
 
-  it('prefers the session memory snapshot when a session key is available', async () => {
+  it('includes session memory snapshots and live memory when a session key is available', async () => {
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/memory-snapshot')) {
         return Promise.resolve({
@@ -171,13 +183,23 @@ describe('InspectorPanel', () => {
           }),
         })
       }
+      if (url.includes('path=USER.md')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ path: 'USER.md', content: 'live user memory' }),
+        })
+      }
       return Promise.resolve({
-        ok: true,
-        json: async () => ({ path: 'MEMORY.md', content: 'fallback memory' }),
+        ok: false,
+        status: 404,
+        json: async () => ({ error: 'Not found' }),
       })
     })
 
-    const snapshots = await loadInspectorMemorySnapshots('session_5acbdc8a0d98', fetchMock as typeof fetch)
+    const snapshots = await loadInspectorMemorySnapshots(
+      'session_5acbdc8a0d98',
+      fetchMock as typeof fetch,
+    )
 
     expect(snapshots).toEqual([
       {
@@ -185,6 +207,12 @@ describe('InspectorPanel', () => {
         title: 'Session Memory',
         content: 'session item',
         source: 'session_db.system_prompt',
+      },
+      {
+        kind: 'live-memory-file',
+        title: 'Live USER.md',
+        content: 'live user memory',
+        source: 'live.memory.USER.md',
       },
     ])
   })
@@ -196,7 +224,10 @@ describe('InspectorPanel', () => {
       json: async () => ({ error: 'Not found' }),
     })
 
-    const snapshots = await loadInspectorMemorySnapshots(null, fetchMock as typeof fetch)
+    const snapshots = await loadInspectorMemorySnapshots(
+      null,
+      fetchMock as typeof fetch,
+    )
 
     expect(snapshots).toEqual([])
   })

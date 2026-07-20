@@ -71,137 +71,139 @@ export function getInspectorCopy(locale: string) {
       skills: isChinese ? '技能' : 'Skills',
       logs: isChinese ? '日志' : 'Logs',
     },
-      loading: {
-        artifacts: isChinese ? '正在加载制品…' : 'Loading artifacts…',
-        activity: isChinese ? '正在加载活动…' : 'Loading activity...',
-        memory: isChinese ? '正在加载记忆…' : 'Loading memory…',
-        skills: isChinese ? '正在加载技能…' : 'Loading skills…',
-        sessionLog: isChinese ? '正在加载会话日志…' : 'Loading session log…',
-      },
-      empty: {
-        openSessionToSeeArtifacts: isChinese
-          ? '打开一个会话以查看制品'
-          : 'Open a session to see artifacts',
-        noArtifactsRecorded: isChinese
-          ? '此会话没有记录制品'
-          : 'No artifacts recorded for this session',
-        openSessionToSeeActivity: isChinese
-          ? '打开一个会话以查看活动'
-          : 'Open a session to see activity',
-        noEventsMatchFilter: isChinese
-          ? '此会话没有匹配此筛选条件的事件'
-          : 'No events match this filter for this session',
-        noMemorySnapshotInjected: isChinese
-          ? '此会话没有注入记忆快照'
-          : 'No memory snapshot was injected for this session',
-        noSessionSelected: isChinese ? '未选择会话' : 'No session selected',
-        openSessionToSeeSessionAttached: isChinese
-          ? '打开一个会话以查看附加的技能、插件和工具'
-          : 'Open a session to see session-attached skills, plugins, and tools',
-        noSessionAttached: isChinese
-          ? '未找到附加到会话的技能、插件或工具'
-          : 'No session-attached skills, plugins, or tools found',
-        noSessionLogAvailable: isChinese
-          ? '没有可用的会话日志'
-          : 'No session log available',
-        startConversationToSeeSessionLogs: isChinese
-          ? '开始对话以查看会话日志'
-          : 'Start a conversation to see session logs',
-        noMessagesRecordedInThisSessionLog: isChinese
-          ? '此会话日志中未记录消息'
-          : 'No messages recorded in this session log',
-      },
-      errors: {
-        artifacts: isChinese ? '制品' : 'Artifacts',
-        activity: isChinese ? '活动' : 'Activity',
-        memory: isChinese ? '记忆' : 'Memory',
-        skills: isChinese ? '技能' : 'Skills',
-        sessionLog: isChinese ? '会话日志' : 'Session log',
-      },
-      buttons: {
-        friendly: isChinese ? '友好视图' : 'Friendly View',
-        raw: isChinese ? '原始视图' : 'Raw View',
-        refresh: isChinese ? '↺ 刷新' : '↺ Refresh',
-        openReview: isChinese ? '打开会话事件审阅' : 'Open Session Event Review',
-        rawData: isChinese ? '原始' : 'Raw',
-      },
-      sections: {
-        session: isChinese ? '会话' : 'Session',
-        fullMessages: isChinese ? '完整消息' : 'Full Messages',
-        loadedSkills: isChinese ? '已加载技能' : 'Loaded Skills',
-        plugins: isChinese ? '插件' : 'Plugins',
-        tools: isChinese ? '工具' : 'Tools',
-        memorySnapshot: isChinese ? '记忆快照' : 'memory snapshot',
-      },
-      labels: {
-        key: isChinese ? '键：' : 'Key: ',
-        model: isChinese ? '模型：' : 'Model: ',
-        messages: isChinese ? '消息：' : 'Messages: ',
-        tools: isChinese ? '工具：' : 'Tools: ',
-        started: isChinese ? '开始：' : 'Started: ',
-        updated: isChinese ? '更新：' : 'Updated: ',
-        tool: isChinese ? '工具' : 'tool',
-        phase: isChinese ? '阶段' : 'phase',
-        callId: isChinese ? '调用 ID' : 'call id',
-        runId: isChinese ? '运行 ID' : 'run id',
-        path: isChinese ? '路径' : 'path',
-        preview: isChinese ? '预览' : 'preview',
-        args: isChinese ? '参数' : 'args',
-        result: isChinese ? '结果' : 'result',
-        status: isChinese ? '状态' : 'status',
-        session: isChinese ? '会话' : 'session',
-        artifact: isChinese ? '制品' : 'artifact',
-        kind: isChinese ? '类型' : 'kind',
-        error: isChinese ? '错误' : 'error',
-        agent: isChinese ? '代理' : 'agent',
-        action: isChinese ? '动作' : 'action',
-        approvalId: isChinese ? '审批 ID' : 'approval id',
-        context: isChinese ? '上下文' : 'context',
-        type: isChinese ? '类型' : 'type',
-        text: isChinese ? '文本' : 'text',
-        time: isChinese ? '时间' : 'time',
-        raw: isChinese ? '原始' : 'raw',
-        event: isChinese ? '事件' : 'event',
-        sessionTools: isChinese ? '会话工具' : 'Session tools',
-        toolsets: isChinese ? '工具集' : 'Toolsets',
-      },
-      filters: {
-        allActivity: isChinese ? '全部活动' : 'All Activity',
-        allDecisions: isChinese ? '全部决策' : 'All Decisions',
-        agentDecisions: isChinese ? '代理决策' : 'Agent Decisions',
-        userDecisions: isChinese ? '用户决策' : 'User Decisions',
-      },
-      states: {
-        disabled: isChinese ? '已禁用' : 'disabled',
-        unavailable: isChinese ? '当前环境不可用' : 'Unavailable in current environment',
-        notConfigured: isChinese ? '未配置' : 'Not configured',
-        uncategorized: isChinese ? '未分类' : 'Uncategorized',
-        registered: isChinese ? '已注册' : 'registered',
-        started: isChinese ? '已开始' : 'started',
-        requested: isChinese ? '已请求' : 'requested',
-        complete: isChinese ? '已完成' : 'complete',
-        friendly: isChinese ? '友好' : 'Friendly',
-        raw: isChinese ? '原始' : 'Raw',
-      },
-      counts: {
-        artifactsEmitted: (count: number) =>
-          isChinese
-            ? `代理输出的制品 ${count} 项`
-            : `${count} artifacts emitted by the agent`,
-        memorySnapshotsUsed: (count: number) =>
-          isChinese
-            ? `本会话使用了 ${count} 个记忆快照`
-            : `${count} memory snapshot${count === 1 ? '' : 's'} used in this session`,
-        loadedSkills: (count: number) =>
-          isChinese ? `已加载技能（${count}）` : `Loaded Skills (${count})`,
-        plugins: (count: number) =>
-          isChinese ? `插件（${count}）` : `Plugins (${count})`,
-        tools: (sessionTools: number, toolsets: number) =>
-          isChinese
-            ? `工具（${sessionTools > 0 ? `${sessionTools} 个会话内` : `${toolsets} 个工具集`}）`
-            : `Tools (${sessionTools > 0 ? `${sessionTools} in session` : `${toolsets} toolsets`})`,
-        fullMessages: (count: number) =>
-          isChinese ? `完整消息（${count}）` : `Full Messages (${count})`,
+    loading: {
+      artifacts: isChinese ? '正在加载制品…' : 'Loading artifacts…',
+      activity: isChinese ? '正在加载活动…' : 'Loading activity...',
+      memory: isChinese ? '正在加载记忆…' : 'Loading memory…',
+      skills: isChinese ? '正在加载技能…' : 'Loading skills…',
+      sessionLog: isChinese ? '正在加载会话日志…' : 'Loading session log…',
+    },
+    empty: {
+      openSessionToSeeArtifacts: isChinese
+        ? '打开一个会话以查看制品'
+        : 'Open a session to see artifacts',
+      noArtifactsRecorded: isChinese
+        ? '此会话没有记录制品'
+        : 'No artifacts recorded for this session',
+      openSessionToSeeActivity: isChinese
+        ? '打开一个会话以查看活动'
+        : 'Open a session to see activity',
+      noEventsMatchFilter: isChinese
+        ? '此会话没有匹配此筛选条件的事件'
+        : 'No events match this filter for this session',
+      noMemorySnapshotInjected: isChinese
+        ? '此会话没有注入记忆快照'
+        : 'No memory snapshot was injected for this session',
+      noSessionSelected: isChinese ? '未选择会话' : 'No session selected',
+      openSessionToSeeSessionAttached: isChinese
+        ? '打开一个会话以查看附加的技能、插件和工具'
+        : 'Open a session to see session-attached skills, plugins, and tools',
+      noSessionAttached: isChinese
+        ? '未找到附加到会话的技能、插件或工具'
+        : 'No session-attached skills, plugins, or tools found',
+      noSessionLogAvailable: isChinese
+        ? '没有可用的会话日志'
+        : 'No session log available',
+      startConversationToSeeSessionLogs: isChinese
+        ? '开始对话以查看会话日志'
+        : 'Start a conversation to see session logs',
+      noMessagesRecordedInThisSessionLog: isChinese
+        ? '此会话日志中未记录消息'
+        : 'No messages recorded in this session log',
+    },
+    errors: {
+      artifacts: isChinese ? '制品' : 'Artifacts',
+      activity: isChinese ? '活动' : 'Activity',
+      memory: isChinese ? '记忆' : 'Memory',
+      skills: isChinese ? '技能' : 'Skills',
+      sessionLog: isChinese ? '会话日志' : 'Session log',
+    },
+    buttons: {
+      friendly: isChinese ? '友好视图' : 'Friendly View',
+      raw: isChinese ? '原始视图' : 'Raw View',
+      refresh: isChinese ? '↺ 刷新' : '↺ Refresh',
+      openReview: isChinese ? '打开会话事件审阅' : 'Open Session Event Review',
+      rawData: isChinese ? '原始' : 'Raw',
+    },
+    sections: {
+      session: isChinese ? '会话' : 'Session',
+      fullMessages: isChinese ? '完整消息' : 'Full Messages',
+      loadedSkills: isChinese ? '已加载技能' : 'Loaded Skills',
+      plugins: isChinese ? '插件' : 'Plugins',
+      tools: isChinese ? '工具' : 'Tools',
+      memorySnapshot: isChinese ? '记忆快照' : 'memory snapshot',
+    },
+    labels: {
+      key: isChinese ? '键：' : 'Key: ',
+      model: isChinese ? '模型：' : 'Model: ',
+      messages: isChinese ? '消息：' : 'Messages: ',
+      tools: isChinese ? '工具：' : 'Tools: ',
+      started: isChinese ? '开始：' : 'Started: ',
+      updated: isChinese ? '更新：' : 'Updated: ',
+      tool: isChinese ? '工具' : 'tool',
+      phase: isChinese ? '阶段' : 'phase',
+      callId: isChinese ? '调用 ID' : 'call id',
+      runId: isChinese ? '运行 ID' : 'run id',
+      path: isChinese ? '路径' : 'path',
+      preview: isChinese ? '预览' : 'preview',
+      args: isChinese ? '参数' : 'args',
+      result: isChinese ? '结果' : 'result',
+      status: isChinese ? '状态' : 'status',
+      session: isChinese ? '会话' : 'session',
+      artifact: isChinese ? '制品' : 'artifact',
+      kind: isChinese ? '类型' : 'kind',
+      error: isChinese ? '错误' : 'error',
+      agent: isChinese ? '代理' : 'agent',
+      action: isChinese ? '动作' : 'action',
+      approvalId: isChinese ? '审批 ID' : 'approval id',
+      context: isChinese ? '上下文' : 'context',
+      type: isChinese ? '类型' : 'type',
+      text: isChinese ? '文本' : 'text',
+      time: isChinese ? '时间' : 'time',
+      raw: isChinese ? '原始' : 'raw',
+      event: isChinese ? '事件' : 'event',
+      sessionTools: isChinese ? '会话工具' : 'Session tools',
+      toolsets: isChinese ? '工具集' : 'Toolsets',
+    },
+    filters: {
+      allActivity: isChinese ? '全部活动' : 'All Activity',
+      allDecisions: isChinese ? '全部决策' : 'All Decisions',
+      agentDecisions: isChinese ? '代理决策' : 'Agent Decisions',
+      userDecisions: isChinese ? '用户决策' : 'User Decisions',
+    },
+    states: {
+      disabled: isChinese ? '已禁用' : 'disabled',
+      unavailable: isChinese
+        ? '当前环境不可用'
+        : 'Unavailable in current environment',
+      notConfigured: isChinese ? '未配置' : 'Not configured',
+      uncategorized: isChinese ? '未分类' : 'Uncategorized',
+      registered: isChinese ? '已注册' : 'registered',
+      started: isChinese ? '已开始' : 'started',
+      requested: isChinese ? '已请求' : 'requested',
+      complete: isChinese ? '已完成' : 'complete',
+      friendly: isChinese ? '友好' : 'Friendly',
+      raw: isChinese ? '原始' : 'Raw',
+    },
+    counts: {
+      artifactsEmitted: (count: number) =>
+        isChinese
+          ? `代理输出的制品 ${count} 项`
+          : `${count} artifacts emitted by the agent`,
+      memorySnapshotsUsed: (count: number) =>
+        isChinese
+          ? `本会话使用了 ${count} 个记忆快照`
+          : `${count} memory snapshot${count === 1 ? '' : 's'} used in this session`,
+      loadedSkills: (count: number) =>
+        isChinese ? `已加载技能（${count}）` : `Loaded Skills (${count})`,
+      plugins: (count: number) =>
+        isChinese ? `插件（${count}）` : `Plugins (${count})`,
+      tools: (sessionTools: number, toolsets: number) =>
+        isChinese
+          ? `工具（${sessionTools > 0 ? `${sessionTools} 个会话内` : `${toolsets} 个工具集`}）`
+          : `Tools (${sessionTools > 0 ? `${sessionTools} in session` : `${toolsets} toolsets`})`,
+      fullMessages: (count: number) =>
+        isChinese ? `完整消息（${count}）` : `Full Messages (${count})`,
     },
   }
 }
@@ -390,7 +392,8 @@ function normalizePersistedArtifacts(
   payload: SessionTrajectoryPayload | null,
 ): Array<PersistedArtifact> {
   const trajectory = payload?.trajectory
-  const sessionId = readString(payload?.session_id) || readString(payload?.sessionKey)
+  const sessionId =
+    readString(payload?.session_id) || readString(payload?.sessionKey)
   const artifacts = Array.isArray(trajectory?.artifacts)
     ? trajectory.artifacts
     : []
@@ -569,7 +572,9 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
       <p className="text-xs" style={{ color: 'var(--theme-muted)' }}>
         {copy.counts.artifactsEmitted(artifacts.length)}
       </p>
-      {error ? <ErrorState text={`${copy.errors.artifacts}: ${error}`} /> : null}
+      {error ? (
+        <ErrorState text={`${copy.errors.artifacts}: ${error}`} />
+      ) : null}
       {artifacts.map((entry, index) => {
         const isPersisted = entry.kind === 'persisted'
         const title = isPersisted
@@ -796,7 +801,10 @@ function ActivityExpandedDetails({ event }: { event: ActivityEvent }) {
     const runId = typeof details.runId === 'string' ? details.runId : null
     return (
       <div className="space-y-2">
-        <DetailRow label={copy.labels.status} value={state || copy.states.complete} />
+        <DetailRow
+          label={copy.labels.status}
+          value={state || copy.states.complete}
+        />
         <DetailRow label={copy.labels.runId} value={runId} />
         <DetailRow label={copy.labels.error} value={errorMessage} />
       </div>
@@ -807,14 +815,18 @@ function ActivityExpandedDetails({ event }: { event: ActivityEvent }) {
     const phase = typeof details.phase === 'string' ? details.phase : null
     const agentName =
       typeof details.agentName === 'string' ? details.agentName : null
-    const action = typeof details.action === 'string' ? details.action : event.text
+    const action =
+      typeof details.action === 'string' ? details.action : event.text
     const approvalId =
       typeof details.approvalId === 'string' ? details.approvalId : null
     const sessionKey =
       typeof details.sessionKey === 'string' ? details.sessionKey : null
     return (
       <div className="space-y-2">
-        <DetailRow label={copy.labels.status} value={phase || copy.states.requested} />
+        <DetailRow
+          label={copy.labels.status}
+          value={phase || copy.states.requested}
+        />
         <DetailRow label={copy.labels.agent} value={agentName} />
         <DetailRow label={copy.labels.action} value={action} />
         <DetailRow label={copy.labels.approvalId} value={approvalId} />
@@ -864,7 +876,10 @@ function ActivityExpandedPanel({ event }: { event: ActivityEvent }) {
         </button>
       </div>
       {showRaw ? (
-        <JsonDetailBlock label={copy.labels.event} value={event.details ?? fallbackPayload} />
+        <JsonDetailBlock
+          label={copy.labels.event}
+          value={event.details ?? fallbackPayload}
+        />
       ) : (
         <ActivityExpandedDetails event={event} />
       )}
@@ -908,7 +923,8 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
       const details = event.details ?? {}
       const detailsEvent =
         typeof details.event === 'string' ? details.event : undefined
-      const phase = typeof details.phase === 'string' ? details.phase : undefined
+      const phase =
+        typeof details.phase === 'string' ? details.phase : undefined
       return (
         (detailsEvent === 'tool' && phase === 'complete') ||
         detailsEvent === 'done' ||
@@ -1105,47 +1121,67 @@ type MemorySnapshot = {
   source?: string
 }
 
+async function loadLiveMemorySnapshot(
+  path: string,
+  fetchImpl: typeof fetch,
+): Promise<MemorySnapshot | null> {
+  const response = await fetchImpl(
+    `/api/semantier-proxy/api/memory/read?path=${encodeURIComponent(path)}`,
+  )
+  if (!response.ok) {
+    if (response.status === 404) return null
+    throw new Error(`HTTP ${response.status}`)
+  }
+  const json = (await response.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >
+  const content = String(json.content || '')
+  if (!content) return null
+  const resolvedPath = String(json.path || path)
+  return {
+    kind: 'live-memory-file',
+    title: `Live ${resolvedPath}`,
+    content,
+    source: `live.memory.${resolvedPath}`,
+  }
+}
+
 export async function loadInspectorMemorySnapshots(
   sessionKey: string | null = null,
   fetchImpl: typeof fetch = fetch,
 ): Promise<Array<MemorySnapshot>> {
+  const snapshots: Array<MemorySnapshot> = []
+
   if (sessionKey) {
     const sessionResponse = await fetchImpl(
       `/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionKey)}/memory-snapshot`,
     )
     if (sessionResponse.ok) {
-      const json = (await sessionResponse.json().catch(() => ({}))) as Record<string, unknown>
+      const json = (await sessionResponse.json().catch(() => ({}))) as Record<
+        string,
+        unknown
+      >
       const list = Array.isArray(json.snapshots) ? json.snapshots : []
-      const snapshots = list.map((entry: Record<string, unknown>) => ({
-        kind: String(entry.kind || ''),
-        title: String(entry.title || entry.kind || 'Memory snapshot'),
-        content: String(entry.content || ''),
-        source: typeof entry.source === 'string' ? entry.source : undefined,
-      }))
-      if (snapshots.length > 0) return snapshots
+      snapshots.push(
+        ...list.map((entry: Record<string, unknown>) => ({
+          kind: String(entry.kind || ''),
+          title: String(entry.title || entry.kind || 'Memory snapshot'),
+          content: String(entry.content || ''),
+          source: typeof entry.source === 'string' ? entry.source : undefined,
+        })),
+      )
     } else if (sessionResponse.status !== 404) {
       throw new Error(`HTTP ${sessionResponse.status}`)
     }
   }
 
-  const response = await fetchImpl(
-    '/api/semantier-proxy/api/memory/read?path=MEMORY.md',
-  )
-  if (!response.ok) {
-    if (response.status === 404) return []
-    throw new Error(`HTTP ${response.status}`)
+  for (const path of ['MEMORY.md', 'USER.md']) {
+    const liveSnapshot = await loadLiveMemorySnapshot(path, fetchImpl)
+    if (liveSnapshot) snapshots.push(liveSnapshot)
   }
-  const json = (await response.json().catch(() => ({}))) as Record<string, unknown>
-  const content = String(json.content || '')
-  if (!content) return []
-  return [
-    {
-      kind: 'memory-file',
-      title: String(json.path || 'MEMORY.md'),
-      content,
-      source: 'live.memory.MEMORY.md',
-    },
-  ]
+
+  return snapshots
 }
 
 function MemoryRawPanel({ snapshot }: { snapshot: MemorySnapshot }) {
@@ -1174,7 +1210,10 @@ function MemoryRawPanel({ snapshot }: { snapshot: MemorySnapshot }) {
         </button>
       </div>
       {showRaw ? (
-        <JsonDetailBlock label={copy.sections.memorySnapshot} value={snapshot} />
+        <JsonDetailBlock
+          label={copy.sections.memorySnapshot}
+          value={snapshot}
+        />
       ) : (
         <pre
           className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded px-2 py-1 text-[11px]"
@@ -1195,42 +1234,102 @@ function MemoryTab({ sessionKey }: { sessionKey: string | null }) {
   const copy = useInspectorCopy()
   const [snapshots, setSnapshots] = useState<Array<MemorySnapshot> | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const latestMemoryWriteKey = useActivityStore((state) => {
+    for (let index = state.events.length - 1; index >= 0; index -= 1) {
+      const event = state.events[index]
+      if (event?.type === 'memory_write') {
+        return `${index}:${event.time}:${event.text}`
+      }
+    }
+    return null
+  })
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    const firstLoad = snapshots === null
+    setLoading(firstLoad)
+    setRefreshing(!firstLoad)
     setError(null)
     loadInspectorMemorySnapshots(sessionKey)
       .then((list) => {
         if (!cancelled) {
           setSnapshots(list)
           setLoading(false)
+          setRefreshing(false)
         }
       })
       .catch((err) => {
         if (!cancelled) {
           setError(err.message || 'Failed to load memory')
           setLoading(false)
+          setRefreshing(false)
         }
       })
     return () => {
       cancelled = true
     }
-  }, [sessionKey])
+  }, [sessionKey, latestMemoryWriteKey])
+
+  function handleRefresh() {
+    setRefreshing(true)
+    setError(null)
+    loadInspectorMemorySnapshots(sessionKey)
+      .then((list) => {
+        setSnapshots(list)
+      })
+      .catch((err) => {
+        setError(err.message || 'Failed to load memory')
+      })
+      .finally(() => {
+        setRefreshing(false)
+        setLoading(false)
+      })
+  }
 
   if (loading) return <LoadingState text={copy.loading.memory} />
   if (error) return <ErrorState text={`${copy.errors.memory}: ${error}`} />
   if (!snapshots || snapshots.length === 0)
     return (
-      <EmptyState text={copy.empty.noMemorySnapshotInjected} />
+      <div className="space-y-3 p-3">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="rounded border px-2 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              borderColor: 'var(--theme-border)',
+              color: 'var(--theme-accent)',
+            }}
+          >
+            {refreshing ? copy.loading.memory : copy.buttons.refresh}
+          </button>
+        </div>
+        <EmptyState text={copy.empty.noMemorySnapshotInjected} />
+      </div>
     )
 
   return (
     <div className="space-y-2 p-3 overflow-auto max-h-[calc(100vh-140px)]">
-      <p className="mb-1 text-xs" style={{ color: 'var(--theme-muted)' }}>
-        {copy.counts.memorySnapshotsUsed(snapshots.length)}
-      </p>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <p className="text-xs" style={{ color: 'var(--theme-muted)' }}>
+          {copy.counts.memorySnapshotsUsed(snapshots.length)}
+        </p>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="rounded border px-2 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+          style={{
+            borderColor: 'var(--theme-border)',
+            color: 'var(--theme-accent)',
+          }}
+        >
+          {refreshing ? copy.loading.memory : copy.buttons.refresh}
+        </button>
+      </div>
       {snapshots.map((snapshot, index) => (
         <div
           key={`${snapshot.kind}-${index}`}
@@ -2082,34 +2181,46 @@ function LogsTab({ sessionKey }: { sessionKey: string | null }) {
                   {copy.sections.session}
                 </p>
                 <div>
-                  <span style={{ color: 'var(--theme-muted)' }}>{copy.labels.key}</span>
+                  <span style={{ color: 'var(--theme-muted)' }}>
+                    {copy.labels.key}
+                  </span>
                   <span className="font-mono break-all">{sessionKeyLabel}</span>
                 </div>
                 {log.model && (
                   <div>
-                    <span style={{ color: 'var(--theme-muted)' }}>{copy.labels.model}</span>
+                    <span style={{ color: 'var(--theme-muted)' }}>
+                      {copy.labels.model}
+                    </span>
                     {log.model}
                   </div>
                 )}
                 <div>
-                  <span style={{ color: 'var(--theme-muted)' }}>{copy.labels.messages}</span>
+                  <span style={{ color: 'var(--theme-muted)' }}>
+                    {copy.labels.messages}
+                  </span>
                   {messages.length}
                 </div>
                 {Array.isArray(log.tools) && log.tools.length > 0 && (
                   <div>
-                    <span style={{ color: 'var(--theme-muted)' }}>{copy.labels.tools}</span>
+                    <span style={{ color: 'var(--theme-muted)' }}>
+                      {copy.labels.tools}
+                    </span>
                     {log.tools.length} {copy.states.registered}
                   </div>
                 )}
                 {log.session_start && (
                   <div>
-                    <span style={{ color: 'var(--theme-muted)' }}>{copy.labels.started}</span>
+                    <span style={{ color: 'var(--theme-muted)' }}>
+                      {copy.labels.started}
+                    </span>
                     {log.session_start}
                   </div>
                 )}
                 {log.last_updated && (
                   <div>
-                    <span style={{ color: 'var(--theme-muted)' }}>{copy.labels.updated}</span>
+                    <span style={{ color: 'var(--theme-muted)' }}>
+                      {copy.labels.updated}
+                    </span>
                     {log.last_updated}
                   </div>
                 )}
@@ -2177,7 +2288,9 @@ function LogsTab({ sessionKey }: { sessionKey: string | null }) {
                   })}
                 </div>
               ) : (
-                <EmptyState text={copy.empty.noMessagesRecordedInThisSessionLog} />
+                <EmptyState
+                  text={copy.empty.noMessagesRecordedInThisSessionLog}
+                />
               )}
             </>
           )}
@@ -2214,9 +2327,7 @@ export function InspectorPanel({
     function openArtifactFromHash() {
       const hash = window.location.hash
       if (!hash.startsWith('#artifact=')) return
-      useInspectorStore
-        .getState()
-        .openArtifact(hash.slice('#artifact='.length))
+      useInspectorStore.getState().openArtifact(hash.slice('#artifact='.length))
     }
     openArtifactFromHash()
     window.addEventListener('hashchange', openArtifactFromHash)

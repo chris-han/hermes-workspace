@@ -17,6 +17,7 @@ export type MemorySearchMatch = {
 function isBrowserMemoryPath(relativePath: string): boolean {
   return (
     relativePath === 'MEMORY.md' ||
+    relativePath === 'USER.md' ||
     relativePath.startsWith('memory/') ||
     relativePath.startsWith('memories/')
   )
@@ -37,7 +38,9 @@ function normalizeWorkspaceRoot(options: MemoryRootOptions = {}): string {
   throw new Error('workspaceRoot or HERMES_HOME is required')
 }
 
-export function getMemoryWorkspaceRoot(options: MemoryRootOptions = {}): string {
+export function getMemoryWorkspaceRoot(
+  options: MemoryRootOptions = {},
+): string {
   return path.resolve(normalizeWorkspaceRoot(options))
 }
 
@@ -175,21 +178,35 @@ export function writeMemoryFile(
   const existingContent = fs.existsSync(fullPath)
     ? fs.readFileSync(fullPath, 'utf-8')
     : ''
-  const nextContent =
-    safeRelativePath === 'MEMORY.md' || safeRelativePath === 'USER.md'
-      ? appendCuratedMemoryContent(existingContent, content)
-      : content
+  const nextContent = isCuratedMemoryPath(safeRelativePath)
+    ? appendCuratedMemoryContent(existingContent, content)
+    : content
   fs.writeFileSync(fullPath, nextContent, 'utf-8')
   return safeRelativePath
 }
 
-function appendCuratedMemoryContent(existingContent: string, nextContent: string): string {
-  const trimmedExisting = existingContent.trim()
-  const trimmedNext = nextContent.trim()
-  if (!trimmedExisting || !trimmedNext) return nextContent
-  if (trimmedNext.includes(trimmedExisting)) return nextContent
-  const separator = existingContent.endsWith('\n') ? '' : '\n'
-  return `${existingContent}${separator}§\n${nextContent}`
+function isCuratedMemoryPath(relativePath: string): boolean {
+  return /^(?:memories\/)?(?:MEMORY|USER)\.md$/.test(relativePath)
+}
+
+function formatCuratedMemoryContent(content: string): string {
+  return content
+    .replace(/\r\n?/g, '\n')
+    .split(/\n\s*§\s*\n/)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .join('\n§\n')
+}
+
+function appendCuratedMemoryContent(
+  existingContent: string,
+  nextContent: string,
+): string {
+  const formattedExisting = formatCuratedMemoryContent(existingContent)
+  const formattedNext = formatCuratedMemoryContent(nextContent)
+  if (!formattedExisting || !formattedNext) return formattedNext
+  if (formattedNext.includes(formattedExisting)) return formattedNext
+  return `${formattedExisting}\n§\n${formattedNext}`
 }
 
 export function searchMemoryFiles(

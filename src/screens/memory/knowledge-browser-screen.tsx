@@ -1369,8 +1369,15 @@ export function KnowledgeBrowserScreen() {
             row.targetWikiPath !== pathValue,
         ),
       )
+      if (selectedPath === pathValue) {
+        setSelectedPath(null)
+        setFocusLine(null)
+        setFocusedResult(null)
+      }
       await queryClient.invalidateQueries({ queryKey: ['knowledge', 'files'] })
       await queryClient.invalidateQueries({ queryKey: ['knowledge', 'list'] })
+      await queryClient.invalidateQueries({ queryKey: ['knowledge', 'read'] })
+      await queryClient.invalidateQueries({ queryKey: ['knowledge', 'graph'] })
       upsertKnowledgeActivity({
         id: `knowledge-delete:${pathValue}`,
         status: 'done',
@@ -2125,6 +2132,12 @@ export function KnowledgeBrowserScreen() {
                         onSelectPath={(pathValue) =>
                           handleSelectPath(pathValue)
                         }
+                        deletingPaths={deletingFilePaths}
+                        onDeletePath={(pathValue) =>
+                          void handleDeleteKnowledgeFile(pathValue)
+                        }
+                        deleteLabel={copy.delete}
+                        deletingLabel={copy.deleting}
                       />
                     )}
                   </section>
@@ -2567,17 +2580,36 @@ export function KnowledgeBrowserScreen() {
                     ) : null}
                   </div>
                   {page ? (
-                    <a
-                      href={askUrl}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-primary-200 px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
-                    >
-                      <HugeiconsIcon
-                        icon={Message01Icon}
-                        size={14}
-                        strokeWidth={1.7}
-                      />
-                      {copy.askAgent}
-                    </a>
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={deletingFilePaths.has(page.path)}
+                        onClick={() =>
+                          void handleDeleteKnowledgeFile(page.path)
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-md border border-primary-200 px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary-300 hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                      >
+                        <HugeiconsIcon
+                          icon={Delete01Icon}
+                          size={14}
+                          strokeWidth={1.7}
+                        />
+                        {deletingFilePaths.has(page.path)
+                          ? copy.deleting
+                          : copy.delete}
+                      </button>
+                      <a
+                        href={askUrl}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-primary-200 px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                      >
+                        <HugeiconsIcon
+                          icon={Message01Icon}
+                          size={14}
+                          strokeWidth={1.7}
+                        />
+                        {copy.askAgent}
+                      </a>
+                    </div>
                   ) : null}
                 </div>
 
@@ -2918,11 +2950,19 @@ function TreeSection({
   node,
   selectedPath,
   onSelectPath,
+  deletingPaths,
+  onDeletePath,
+  deleteLabel,
+  deletingLabel,
   depth = 0,
 }: {
   node: TreeNode
   selectedPath: string | null
   onSelectPath: (path: string) => void
+  deletingPaths: Set<string>
+  onDeletePath: (path: string) => void
+  deleteLabel: string
+  deletingLabel: string
   depth?: number
 }) {
   return (
@@ -2939,13 +2979,12 @@ function TreeSection({
 
       {node.pages.map((page) => {
         const active = selectedPath === page.path
+        const deleting = deletingPaths.has(page.path)
         return (
-          <button
+          <div
             key={page.path}
-            type="button"
-            onClick={() => onSelectPath(page.path)}
             className={cn(
-              'flex min-h-9 w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-sm transition-colors',
+              'flex min-h-9 w-full items-center gap-2 rounded-md border py-1.5 pl-2.5 pr-1.5 text-sm transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)]',
               active
                 ? 'border-[var(--theme-accent-secondary)] bg-[var(--theme-accent)] text-[var(--theme-accent-foreground)] shadow-sm'
@@ -2954,31 +2993,55 @@ function TreeSection({
             style={{ marginLeft: depth > 0 ? depth * 14 : 0 }}
             aria-current={active ? 'page' : undefined}
           >
-            <HugeiconsIcon
-              icon={File01Icon}
-              size={16}
-              strokeWidth={1.8}
+            <button
+              type="button"
+              onClick={() => onSelectPath(page.path)}
+              className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            >
+              <HugeiconsIcon
+                icon={File01Icon}
+                size={16}
+                strokeWidth={1.8}
+                className={cn(
+                  'shrink-0',
+                  active
+                    ? 'text-[var(--theme-accent-foreground)]'
+                    : 'text-primary-500 dark:text-neutral-400',
+                )}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-semibold">{page.title}</div>
+                {(page.type || page.status) && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {page.type ? (
+                      <InlineBadge label={page.type} active={active} />
+                    ) : null}
+                    {page.status ? (
+                      <InlineBadge label={page.status} active={active} />
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => onDeletePath(page.path)}
+              title={deleting ? deletingLabel : deleteLabel}
               className={cn(
-                'shrink-0',
+                'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60',
                 active
-                  ? 'text-[var(--theme-accent-foreground)]'
-                  : 'text-primary-500 dark:text-neutral-400',
+                  ? 'border-[color-mix(in_srgb,var(--theme-accent-foreground)_35%,transparent)] text-[var(--theme-accent-foreground)] hover:bg-[color-mix(in_srgb,var(--theme-accent-foreground)_12%,transparent)]'
+                  : 'border-primary-200 text-primary-500 hover:bg-primary-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900',
               )}
-            />
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-semibold">{page.title}</div>
-              {(page.type || page.status) && (
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {page.type ? (
-                    <InlineBadge label={page.type} active={active} />
-                  ) : null}
-                  {page.status ? (
-                    <InlineBadge label={page.status} active={active} />
-                  ) : null}
-                </div>
-              )}
-            </div>
-          </button>
+            >
+              <HugeiconsIcon
+                icon={Delete01Icon}
+                size={14}
+                strokeWidth={1.7}
+              />
+            </button>
+          </div>
         )
       })}
 
@@ -2988,6 +3051,10 @@ function TreeSection({
           node={child}
           selectedPath={selectedPath}
           onSelectPath={onSelectPath}
+          deletingPaths={deletingPaths}
+          onDeletePath={onDeletePath}
+          deleteLabel={deleteLabel}
+          deletingLabel={deletingLabel}
           depth={depth + 1}
         />
       ))}

@@ -3,6 +3,7 @@ import {
   ArrowDown01Icon,
   ArrowUp01Icon,
   BrainIcon,
+  FloppyDiskIcon,
   PencilEdit02Icon,
   Search01Icon,
 } from '@hugeicons/core-free-icons'
@@ -48,8 +49,7 @@ const MEMORY_COPY = {
     loadingMemoryFiles: 'Loading memory files...',
     noMemoryFiles: 'No memory files found',
     loadingFile: 'Loading file...',
-    discardChanges:
-      'You have unsaved changes. Discard them and switch files?',
+    discardChanges: 'You have unsaved changes. Discard them and switch files?',
     saved: 'Saved',
     saveFailed: 'Failed to save file',
   },
@@ -217,6 +217,20 @@ export function MemoryBrowserScreen() {
     if (!target) return
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [focusLine, lines, selectedPath])
+
+  useEffect(() => {
+    if (!isEditing) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault()
+        void handleSaveEditing()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [draftContent, isEditing, isSaving, selectedPath])
 
   const fileItems = useMemo(() => {
     const items: Array<MemoryFileMeta> = []
@@ -468,8 +482,13 @@ export function MemoryBrowserScreen() {
                         type="button"
                         disabled={isSaving}
                         onClick={handleSaveEditing}
-                        className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-50"
                       >
+                        <HugeiconsIcon
+                          icon={FloppyDiskIcon}
+                          size={14}
+                          strokeWidth={1.7}
+                        />
                         {isSaving ? copy.saving : copy.save}
                       </button>
                       <button
@@ -526,7 +545,7 @@ export function MemoryBrowserScreen() {
                 <StateBox label={contentQuery.error.message} error />
               ) : isEditing ? (
                 <div
-                  className="h-full rounded-xl p-2 theme-border-1"
+                  className="flex h-full flex-col rounded-xl p-2 theme-border-1"
                   style={{
                     backgroundColor: 'var(--theme-card)',
                   }}
@@ -538,13 +557,33 @@ export function MemoryBrowserScreen() {
                       setDraftContent(nextValue)
                       setHasUnsavedChanges(nextValue !== content)
                     }}
-                    className="h-full w-full resize-none rounded-lg theme-border-1 px-3 py-2 font-mono text-[13px] outline-none ring-0"
+                    className="min-h-0 flex-1 resize-none rounded-lg theme-border-1 px-3 py-2 font-mono text-[13px] outline-none ring-0"
                     style={{
                       backgroundColor: 'var(--theme-bg)',
                       color: 'var(--theme-text)',
                     }}
                     spellCheck={false}
                   />
+                  <div className="mt-2 flex items-center justify-end gap-2">
+                    {hasUnsavedChanges ? (
+                      <span className="text-xs text-amber-600 dark:text-amber-300">
+                        {copy.unsavedChanges}
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={handleSaveEditing}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <HugeiconsIcon
+                        icon={FloppyDiskIcon}
+                        size={14}
+                        strokeWidth={1.7}
+                      />
+                      {isSaving ? copy.saving : copy.save}
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div

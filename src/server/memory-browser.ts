@@ -25,6 +25,7 @@ function isBrowserMemoryPath(relativePath: string): boolean {
 
 type MemoryRootOptions = {
   workspaceRoot?: string | null
+  writeMode?: 'append-curated' | 'replace'
 }
 
 function normalizeWorkspaceRoot(options: MemoryRootOptions = {}): string {
@@ -178,9 +179,11 @@ export function writeMemoryFile(
   const existingContent = fs.existsSync(fullPath)
     ? fs.readFileSync(fullPath, 'utf-8')
     : ''
-  const nextContent = isCuratedMemoryPath(safeRelativePath)
-    ? appendCuratedMemoryContent(existingContent, content)
-    : content
+  const nextContent =
+    options.writeMode !== 'replace' && isCuratedMemoryPath(safeRelativePath)
+      ? appendCuratedMemoryContent(existingContent, content)
+      : content
+  if (nextContent === existingContent) return safeRelativePath
   fs.writeFileSync(fullPath, nextContent, 'utf-8')
   return safeRelativePath
 }

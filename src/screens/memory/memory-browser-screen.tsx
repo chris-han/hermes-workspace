@@ -482,7 +482,12 @@ export function MemoryBrowserScreen() {
                         type="button"
                         disabled={isSaving}
                         onClick={handleSaveEditing}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-transform hover:scale-[1.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+                        style={{
+                          backgroundColor: 'var(--theme-accent)',
+                          color: 'var(--theme-accent-foreground)',
+                          border: '1px solid var(--theme-accent)',
+                        }}
                       >
                         <HugeiconsIcon
                           icon={FloppyDiskIcon}
@@ -574,7 +579,12 @@ export function MemoryBrowserScreen() {
                       type="button"
                       disabled={isSaving}
                       onClick={handleSaveEditing}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-transform hover:scale-[1.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+                      style={{
+                        backgroundColor: 'var(--theme-accent)',
+                        color: 'var(--theme-accent-foreground)',
+                        border: '1px solid var(--theme-accent)',
+                      }}
                     >
                       <HugeiconsIcon
                         icon={FloppyDiskIcon}

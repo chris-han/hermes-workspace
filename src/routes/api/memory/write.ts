@@ -25,6 +25,7 @@ export const Route = createFileRoute('/api/memory/write')({
           )
           const savedPath = writeMemoryFile(body.path, content, {
             workspaceRoot: activeWorkspace.path,
+            writeMode: 'replace',
           })
           return json({ success: true, path: savedPath })
         } catch (error) {

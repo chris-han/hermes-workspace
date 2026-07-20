@@ -77,4 +77,43 @@ describe('memory-browser writeMemoryFile', () => {
       fs.readFileSync(path.join(workspaceRoot, 'MEMORY.md'), 'utf-8'),
     ).toBe(nextContent)
   })
+
+  it('replaces curated memory content when replace mode is requested', () => {
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'memory-write-'),
+    )
+    createdRoots.push(workspaceRoot)
+
+    fs.writeFileSync(path.join(workspaceRoot, 'MEMORY.md'), 'old fact', 'utf-8')
+
+    writeMemoryFile('MEMORY.md', 'edited fact', {
+      workspaceRoot,
+      writeMode: 'replace',
+    })
+
+    expect(
+      fs.readFileSync(path.join(workspaceRoot, 'MEMORY.md'), 'utf-8'),
+    ).toBe('edited fact')
+  })
+
+  it('does not duplicate content on repeated replace saves', () => {
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'memory-write-'),
+    )
+    createdRoots.push(workspaceRoot)
+
+    const editedContent = ['edited fact', '§', 'second fact'].join('\n')
+    writeMemoryFile('MEMORY.md', editedContent, {
+      workspaceRoot,
+      writeMode: 'replace',
+    })
+    writeMemoryFile('MEMORY.md', editedContent, {
+      workspaceRoot,
+      writeMode: 'replace',
+    })
+
+    expect(
+      fs.readFileSync(path.join(workspaceRoot, 'MEMORY.md'), 'utf-8'),
+    ).toBe(editedContent)
+  })
 })

@@ -164,6 +164,27 @@ export function getInspectorCopy(locale: string) {
       event: isChinese ? '事件' : 'event',
       sessionTools: isChinese ? '会话工具' : 'Session tools',
       toolsets: isChinese ? '工具集' : 'Toolsets',
+      assessmentId: isChinese ? '评估 ID' : 'assessment id',
+      assessmentHash: isChinese ? '评估哈希' : 'assessment hash',
+      escalationId: isChinese ? '升级 ID' : 'escalation id',
+      assignedRole: isChinese ? '分配角色' : 'assigned role',
+      assignedPrincipal: isChinese ? '分配主体' : 'assigned principal',
+      reasonCodes: isChinese ? '原因码' : 'reason codes',
+      blocked: isChinese ? '阻止' : 'blocked',
+      responseId: isChinese ? '响应 ID' : 'response id',
+      responseHash: isChinese ? '响应哈希' : 'response hash',
+      displayJustification: isChinese ? '展示依据' : 'display justification',
+      displayAdmissibility: isChinese ? '展示准入' : 'display admissibility',
+      ontology: isChinese ? '本体' : 'ontology',
+      authority: isChinese ? '权威' : 'authority',
+      policy: isChinese ? '策略' : 'policy',
+      displayProfile: isChinese ? '展示配置' : 'display profile',
+      classifications: isChinese ? '分类' : 'classifications',
+      actions: isChinese ? '动作' : 'actions',
+      replayPins: isChinese ? '重放 Pin' : 'replay pins',
+      replayStatus: isChinese ? '重放状态' : 'replay status',
+      replayedResponseHash: isChinese ? '重放响应哈希' : 'replayed response hash',
+      replayPolicyOutcomes: isChinese ? '重放策略结果' : 'replay policy outcomes',
     },
     filters: {
       allActivity: isChinese ? '全部活动' : 'All Activity',
@@ -734,6 +755,102 @@ function JsonDetailBlock({ label, value }: { label: string; value: unknown }) {
   )
 }
 
+export function sensitiveGovernanceEscalationInspectorDetails(
+  details: Record<string, unknown>,
+  fallbackEscalationId: string,
+) {
+  return {
+    assessmentId:
+      typeof details.assessmentId === 'string' ? details.assessmentId : null,
+    assessmentHash:
+      typeof details.assessmentHash === 'string' ? details.assessmentHash : null,
+    escalationId:
+      typeof details.escalationId === 'string'
+        ? details.escalationId
+        : fallbackEscalationId,
+    assignedRole:
+      typeof details.assignedRole === 'string' ? details.assignedRole : null,
+    assignedPrincipal:
+      typeof details.assignedPrincipal === 'string'
+        ? details.assignedPrincipal
+        : null,
+    status: typeof details.status === 'string' ? details.status : null,
+    blocked: typeof details.blocked === 'boolean' ? String(details.blocked) : null,
+    reasonCodes: Array.isArray(details.reasonCodes)
+      ? details.reasonCodes.filter(
+          (reason): reason is string => typeof reason === 'string',
+        )
+      : [],
+  }
+}
+
+export function sensitiveGovernanceResponseInspectorDetails(
+  details: Record<string, unknown>,
+) {
+  return {
+    runId: typeof details.runId === 'string' ? details.runId : null,
+    responseId:
+      typeof details.responseId === 'string' ? details.responseId : null,
+    responseHash:
+      typeof details.responseHash === 'string' ? details.responseHash : null,
+    assessmentId:
+      typeof details.assessmentId === 'string' ? details.assessmentId : null,
+    displayJustificationRef:
+      typeof details.displayJustificationRef === 'string'
+        ? details.displayJustificationRef
+        : null,
+    displayAdmissibilityRef:
+      typeof details.displayAdmissibilityRef === 'string'
+        ? details.displayAdmissibilityRef
+        : null,
+    ontologyVersion:
+      typeof details.ontologyVersion === 'string'
+        ? details.ontologyVersion
+        : null,
+    authorityBundleVersion:
+      typeof details.authorityBundleVersion === 'string'
+        ? details.authorityBundleVersion
+        : null,
+    policyBundleVersion:
+      typeof details.policyBundleVersion === 'string'
+        ? details.policyBundleVersion
+        : null,
+    displayProfileVersion:
+      typeof details.displayProfileVersion === 'string'
+        ? details.displayProfileVersion
+        : null,
+    classifications: Array.isArray(details.classifications)
+      ? details.classifications.filter(
+          (classification): classification is string =>
+            typeof classification === 'string',
+        )
+      : [],
+    displayActions: Array.isArray(details.displayActions)
+      ? details.displayActions.filter(
+          (action): action is string => typeof action === 'string',
+        )
+      : [],
+    replayPins:
+      details.replayPins && typeof details.replayPins === 'object'
+        ? details.replayPins
+        : null,
+    replayStatus:
+      typeof details.replayStatus === 'string' ? details.replayStatus : null,
+    replayedResponseHash:
+      typeof details.replayedResponseHash === 'string'
+        ? details.replayedResponseHash
+        : null,
+    replayGovernedResponseHash:
+      typeof details.replayGovernedResponseHash === 'string'
+        ? details.replayGovernedResponseHash
+        : null,
+    replayPolicyOutcomesHash:
+      typeof details.replayPolicyOutcomesHash === 'string'
+        ? details.replayPolicyOutcomesHash
+        : null,
+  }
+}
+
 function ActivityExpandedDetails({ event }: { event: ActivityEvent }) {
   const copy = useInspectorCopy()
   const details = event.details ?? {}
@@ -832,6 +949,107 @@ function ActivityExpandedDetails({ event }: { event: ActivityEvent }) {
         <DetailRow label={copy.labels.approvalId} value={approvalId} />
         <DetailRow label={copy.labels.session} value={sessionKey} />
         <JsonDetailBlock label={copy.labels.context} value={details.context} />
+      </div>
+    )
+  }
+
+  if (eventType === 'sensitive_governance_escalation') {
+    const escalation = sensitiveGovernanceEscalationInspectorDetails(
+      details,
+      event.text,
+    )
+    return (
+      <div className="space-y-2">
+        <DetailRow
+          label={copy.labels.escalationId}
+          value={escalation.escalationId}
+        />
+        <DetailRow label={copy.labels.status} value={escalation.status} />
+        <DetailRow
+          label={copy.labels.assignedRole}
+          value={escalation.assignedRole}
+        />
+        <DetailRow
+          label={copy.labels.assignedPrincipal}
+          value={escalation.assignedPrincipal}
+        />
+        <DetailRow label={copy.labels.blocked} value={escalation.blocked} />
+        <DetailRow
+          label={copy.labels.assessmentId}
+          value={escalation.assessmentId}
+        />
+        <DetailRow
+          label={copy.labels.assessmentHash}
+          value={escalation.assessmentHash}
+        />
+        <DetailRow
+          label={copy.labels.reasonCodes}
+          value={escalation.reasonCodes.join(', ')}
+        />
+      </div>
+    )
+  }
+
+  if (eventType === 'sensitive_governance_response') {
+    const response = sensitiveGovernanceResponseInspectorDetails(details)
+    return (
+      <div className="space-y-2">
+        <DetailRow label={copy.labels.runId} value={response.runId} />
+        <DetailRow label={copy.labels.responseId} value={response.responseId} />
+        <DetailRow
+          label={copy.labels.responseHash}
+          value={response.responseHash}
+        />
+        <DetailRow
+          label={copy.labels.assessmentId}
+          value={response.assessmentId}
+        />
+        <DetailRow
+          label={copy.labels.displayJustification}
+          value={response.displayJustificationRef}
+        />
+        <DetailRow
+          label={copy.labels.displayAdmissibility}
+          value={response.displayAdmissibilityRef}
+        />
+        <DetailRow label={copy.labels.ontology} value={response.ontologyVersion} />
+        <DetailRow
+          label={copy.labels.authority}
+          value={response.authorityBundleVersion}
+        />
+        <DetailRow label={copy.labels.policy} value={response.policyBundleVersion} />
+        <DetailRow
+          label={copy.labels.displayProfile}
+          value={response.displayProfileVersion}
+        />
+        <DetailRow
+          label={copy.labels.classifications}
+          value={response.classifications.join(', ')}
+        />
+        <DetailRow
+          label={copy.labels.actions}
+          value={response.displayActions.join(', ')}
+        />
+        <JsonDetailBlock
+          label={copy.labels.replayPins}
+          value={response.replayPins}
+        />
+        <DetailRow
+          label={copy.labels.replayStatus}
+          value={response.replayStatus}
+        />
+        <DetailRow
+          label={copy.labels.replayedResponseHash}
+          value={response.replayedResponseHash}
+        />
+        <DetailRow
+          label={copy.labels.responseHash}
+          value={response.replayGovernedResponseHash}
+        />
+        <DetailRow
+          label={copy.labels.replayPolicyOutcomes}
+          value={response.replayPolicyOutcomesHash}
+        />
       </div>
     )
   }

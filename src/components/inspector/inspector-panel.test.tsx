@@ -9,7 +9,10 @@ import {
   skillMatchesSessionAttachment,
   useInspectorStore,
   persistedArtifactDisplayTitle,
+  sensitiveGovernanceEscalationInspectorDetails,
+  sensitiveGovernanceResponseInspectorDetails,
 } from './inspector-panel'
+import { useActivityStore } from './activity-store'
 import { defaultStudioSettings, useSettingsStore } from '@/hooks/use-settings'
 
 vi.mock('@/hooks/use-feature-available', () => ({
@@ -72,6 +75,10 @@ describe('InspectorPanel', () => {
     useSettingsStore.setState({
       settings: { ...defaultStudioSettings, locale: 'en' },
     })
+    useActivityStore.setState({
+      events: [],
+      resolvedSessionKey: null,
+    })
     vi.clearAllMocks()
     vi.unstubAllGlobals()
   })
@@ -86,6 +93,78 @@ describe('InspectorPanel', () => {
     expect(copy.tabs.skills).toBe('技能')
     expect(copy.tabs.logs).toBe('日志')
     expect(copy.empty.openSessionToSeeActivity).toBe('打开一个会话以查看活动')
+    expect(copy.labels.assignedRole).toBe('分配角色')
+    expect(copy.labels.reasonCodes).toBe('原因码')
+    expect(copy.labels.replayStatus).toBe('重放状态')
+  })
+
+  it('formats sensitive governance escalation details for the activity inspector', () => {
+    expect(
+      sensitiveGovernanceEscalationInspectorDetails(
+        {
+          assessmentId: 'sg_assessment_1',
+          assessmentHash: 'assessment_hash_1',
+          escalationId: 'sg_escalation_1',
+          assignedRole: 'governance_security_reviewer',
+          assignedPrincipal: 'org_1:governance_security_reviewer',
+          status: 'open',
+          blocked: true,
+          reasonCodes: ['policy_escalation_required'],
+        },
+        'fallback_escalation',
+      ),
+    ).toEqual({
+      assessmentId: 'sg_assessment_1',
+      assessmentHash: 'assessment_hash_1',
+      escalationId: 'sg_escalation_1',
+      assignedRole: 'governance_security_reviewer',
+      assignedPrincipal: 'org_1:governance_security_reviewer',
+      status: 'open',
+      blocked: 'true',
+      reasonCodes: ['policy_escalation_required'],
+    })
+  })
+
+  it('formats sensitive governance response evidence for the activity inspector', () => {
+    expect(
+      sensitiveGovernanceResponseInspectorDetails({
+        runId: 'sg_run_1',
+        responseId: 'sg_response_1',
+        responseHash: 'response_hash_1',
+        assessmentId: 'sg_assessment_1',
+        displayJustificationRef: 'sg_display_justification_1',
+        displayAdmissibilityRef: 'sg_display_admissibility_1',
+        ontologyVersion: 'soe_sensitive_governance_t1_v1',
+        authorityBundleVersion: 'soe_sensitive_governance_t2_t3_v1',
+        policyBundleVersion: 'soe_sensitive_governance_t4_v1',
+        displayProfileVersion: 'soe_sensitive_display_profile_v1',
+        classifications: ['PUBLIC_INFORMATION', 'CREDENTIAL_OR_SECRET'],
+        displayActions: ['SHOW', 'NEVER_RENDER'],
+        replayPins: { execution_terminal_event_id: 'sg_event_terminal_1' },
+        replayStatus: 'matched',
+        replayedResponseHash: 'response_hash_1',
+        replayGovernedResponseHash: 'response_hash_1',
+        replayPolicyOutcomesHash: 'policy_hash_1',
+      }),
+    ).toEqual({
+      runId: 'sg_run_1',
+      responseId: 'sg_response_1',
+      responseHash: 'response_hash_1',
+      assessmentId: 'sg_assessment_1',
+      displayJustificationRef: 'sg_display_justification_1',
+      displayAdmissibilityRef: 'sg_display_admissibility_1',
+      ontologyVersion: 'soe_sensitive_governance_t1_v1',
+      authorityBundleVersion: 'soe_sensitive_governance_t2_t3_v1',
+      policyBundleVersion: 'soe_sensitive_governance_t4_v1',
+      displayProfileVersion: 'soe_sensitive_display_profile_v1',
+      classifications: ['PUBLIC_INFORMATION', 'CREDENTIAL_OR_SECRET'],
+      displayActions: ['SHOW', 'NEVER_RENDER'],
+      replayPins: { execution_terminal_event_id: 'sg_event_terminal_1' },
+      replayStatus: 'matched',
+      replayedResponseHash: 'response_hash_1',
+      replayGovernedResponseHash: 'response_hash_1',
+      replayPolicyOutcomesHash: 'policy_hash_1',
+    })
   })
 
   it('matches session-attached Hermes bundled skills exposed through the Semantier shim', () => {

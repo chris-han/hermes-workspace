@@ -20,6 +20,8 @@ import { Markdown } from '@/components/prompt-kit/markdown'
 import { Message, MessageContent } from '@/components/prompt-kit/message'
 import { Button } from '@/components/ui/button'
 import { A2UiRenderer } from './a2ui-renderer'
+import { GovernedResponseRenderer } from './governed-response-renderer'
+import { SensitiveGovernanceInputPreview } from './input-governance-preview'
 import {
   Collapsible,
   CollapsiblePanel,
@@ -30,6 +32,10 @@ import {
   useResolvedDisplayName,
 } from '@/hooks/use-resolved-avatar'
 import { cn } from '@/lib/utils'
+import type {
+  GovernedResponse,
+  SensitiveGovernanceAssessment,
+} from '@/lib/sensitive-governance'
 
 const WORDS_PER_TICK = 4
 const TICK_INTERVAL_MS = 50
@@ -248,6 +254,70 @@ function extractA2UiSchema(part: unknown): A2UiSchema | null {
     return null
   }
   return candidate as A2UiSchema
+}
+
+function isGovernedResponse(value: unknown): value is GovernedResponse {
+  if (!isRecord(value)) return false
+  return (
+    typeof value.response_id === 'string' &&
+    typeof value.run_id === 'string' &&
+    typeof value.contract_version === 'string' &&
+    Array.isArray(value.segments) &&
+    isRecord(value.pins) &&
+    typeof value.response_hash === 'string'
+  )
+}
+
+function isSensitiveGovernanceAssessment(
+  value: unknown,
+): value is SensitiveGovernanceAssessment {
+  if (!isRecord(value)) return false
+  return (
+    typeof value.assessment_id === 'string' &&
+    typeof value.state === 'string' &&
+    typeof value.assessment_hash === 'string' &&
+    isRecord(value.prepared_payload)
+  )
+}
+
+export function extractSensitiveGovernanceInputPreview(
+  message: ChatMessage,
+): SensitiveGovernanceAssessment | null {
+  const parts = Array.isArray(message.content) ? message.content : []
+  for (const part of parts) {
+    if (
+      part.type !== 'sensitiveGovernanceInputPreview' ||
+      part.featureGate !== 'sensitiveGovernance'
+    ) {
+      continue
+    }
+    const candidate = part.assessment || part.payload || part.data
+    if (isSensitiveGovernanceAssessment(candidate)) return candidate
+  }
+
+  const rawMessage = message as Record<string, unknown>
+  const candidate = rawMessage.sensitiveGovernanceInputPreview
+  return isSensitiveGovernanceAssessment(candidate) ? candidate : null
+}
+
+export function extractSensitiveGovernanceResponse(
+  message: ChatMessage,
+): GovernedResponse | null {
+  const parts = Array.isArray(message.content) ? message.content : []
+  for (const part of parts) {
+    if (
+      part.type !== 'governedResponse' ||
+      part.featureGate !== 'sensitiveGovernance'
+    ) {
+      continue
+    }
+    const candidate = part.response || part.payload || part.data
+    if (isGovernedResponse(candidate)) return candidate
+  }
+
+  const rawMessage = message as Record<string, unknown>
+  const candidate = rawMessage.governedResponse
+  return isGovernedResponse(candidate) ? candidate : null
 }
 
 function fillInputActionsFromMessage(
@@ -2040,6 +2110,15 @@ function MessageItemComponent({
       .filter((img) => img.src.length > 0)
   }, [message.content])
   const hasInlineImages = inlineImages.length > 0
+  const governedResponse = !isUser
+    ? extractSensitiveGovernanceResponse(message)
+    : null
+  const hasGovernedResponse = governedResponse !== null
+  const sensitiveGovernanceInputPreview = !isUser
+    ? extractSensitiveGovernanceInputPreview(message)
+    : null
+  const hasSensitiveGovernanceInputPreview =
+    sensitiveGovernanceInputPreview !== null
 
   const hasText = displayText.length > 0
   const hasRevealedText = effectiveIsStreaming
@@ -2223,6 +2302,8 @@ function MessageItemComponent({
   const hasToolCalls = finalToolSections.length > 0
   const shouldRenderMessageBubble =
     hasText ||
+    hasGovernedResponse ||
+    hasSensitiveGovernanceInputPreview ||
     hasA2UiBlocks ||
     hasAttachments ||
     hasInlineImages ||
@@ -2523,6 +2604,26 @@ function MessageItemComponent({
                 ))}
               </div>
             )}
+            {hasGovernedResponse && (
+              <GovernedResponseRenderer
+                response={governedResponse}
+                sessionKey={
+                  typeof message.sessionKey === 'string'
+                    ? message.sessionKey
+                    : null
+                }
+              />
+            )}
+            {hasSensitiveGovernanceInputPreview && (
+              <SensitiveGovernanceInputPreview
+                assessment={sensitiveGovernanceInputPreview}
+                sessionKey={
+                  typeof message.sessionKey === 'string'
+                    ? message.sessionKey
+                    : null
+                }
+              />
+            )}
             {!isUser && hasA2UiBlocks && (
               <div className="flex flex-col gap-2">
                 {inlineRenderPlan.map((item, index) =>
@@ -2564,7 +2665,10 @@ function MessageItemComponent({
               shouldRenderPrimaryAssistantText({
                 isUser,
                 hasToolCalls,
-                hasA2UiBlocks,
+                hasA2UiBlocks:
+                  hasA2UiBlocks ||
+                  hasGovernedResponse ||
+                  hasSensitiveGovernanceInputPreview,
               }) &&
               (isUser ? (
                 <span className="text-pretty">{displayText}</span>

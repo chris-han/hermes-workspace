@@ -27,6 +27,10 @@ import {
   updateHistoryMessageByClientIdEverywhere,
   updateSessionLastMessage,
 } from './chat-queries'
+import {
+  resolveSensitiveGovernanceDemoContent,
+  runSensitiveGovernanceDemoFlow,
+} from './sensitive-governance-demo-flow'
 import { ChatHeader } from './components/chat-header'
 import { ChatMessageList } from './components/chat-message-list'
 import { ChatEmptyState } from './components/chat-empty-state'
@@ -802,7 +806,15 @@ export function ChatScreen({
             resolvedSessionKey || sessionKeyForHistory || activeCanonicalKey,
           ))) &&
       !isRedirecting,
-    onUserMessage: useCallback(() => {
+    onUserMessage: useCallback((message: ChatMessage) => {
+      if (
+        message.role === 'user' &&
+        resolveSensitiveGovernanceDemoContent(textFromMessage(message))
+      ) {
+        setPendingGeneration(false)
+        setWaitingForResponse(false)
+        return
+      }
       // External message arrived (e.g. from Telegram) — show thinking indicator
       setWaitingForResponse(true)
       setPendingGeneration(true)
@@ -1053,18 +1065,20 @@ export function ChatScreen({
   refreshHistoryRef.current = function refreshHistory() {
     if (historyQuery.isFetching) return
 
-    // Snapshot any unconfirmed optimistic user messages BEFORE refetch.
+    // Snapshot any unconfirmed optimistic/client-side messages BEFORE refetch.
     // The refetch replaces the query cache with server data — if the server
-    // hasn't processed the user's POST yet, the optimistic message vanishes.
+    // hasn't processed or persisted a message yet, the optimistic entry
+    // vanishes unless it is re-injected after the fetch.
     const currentMessages = (historyQuery.data as any)?.messages as
       | Array<ChatMessage>
       | undefined
     const pendingOptimistic = (currentMessages ?? []).filter((msg) => {
       const raw = msg as Record<string, unknown>
       return (
-        msg.role === 'user' &&
-        (normalizeMessageValue(raw.__optimisticId).startsWith('opt-') ||
-          normalizeMessageValue(raw.status) === 'sending')
+        normalizeMessageValue(raw.__optimisticId).startsWith('opt-') ||
+        normalizeMessageValue(raw.status) === 'sending' ||
+        normalizeMessageValue(raw.clientId).length > 0 ||
+        normalizeMessageValue(raw.client_id).length > 0
       )
     })
 
@@ -1416,10 +1430,15 @@ export function ChatScreen({
         if (textFromMessage(msg).trim().length > 0) return true
         const content = Array.isArray(msg.content) ? msg.content : []
         const hasToolCalls = content.some((part) => part.type === 'toolCall')
+        const hasSensitiveGovernanceContent = content.some(
+          (part) =>
+            part.type === 'sensitiveGovernanceInputPreview' ||
+            part.type === 'governedResponse',
+        )
         const hasStreamToolCalls =
           Array.isArray((msg as any).__streamToolCalls) &&
           (msg as any).__streamToolCalls.length > 0
-        return hasToolCalls || hasStreamToolCalls
+        return hasToolCalls || hasSensitiveGovernanceContent || hasStreamToolCalls
       }
       return false
     })
@@ -2112,6 +2131,28 @@ export function ChatScreen({
         )
       }
 
+      const handledSensitiveGovernanceDemo = await runSensitiveGovernanceDemoFlow({
+        input: body,
+        appendAssistantMessage: (message) => {
+          appendHistoryMessage(queryClient, friendlyId, sessionKey, message)
+          useChatStore.getState().processEvent({
+            type: 'message',
+            sessionKey,
+            message,
+          })
+          updateSessionLastMessage(queryClient, sessionKey, friendlyId, message)
+        },
+      })
+      if (handledSensitiveGovernanceDemo) {
+        setPendingGeneration(false)
+        setSending(false)
+        setWaitingForResponse(false)
+        useChatStore.getState().clearStreamingSession(sessionKey)
+        activeSendRef.current = null
+        streamFinish()
+        return
+      }
+
       setPendingGeneration(true)
       setSending(true)
       setError(null)
@@ -2610,7 +2651,7 @@ export function ChatScreen({
             setWaitingForResponse(true)
             onSessionResolved?.({ sessionKey, friendlyId })
 
-            sendMessage(
+            await sendMessage(
               sessionKey,
               friendlyId,
               trimmedBody,
@@ -2855,6 +2896,31 @@ export function ChatScreen({
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runtime safety
     (historyQuery.isLoading && !historyQuery.data) || isRedirecting
   const historyEmpty = !historyLoading && finalDisplayMessages.length === 0
+  const hasVisibleSensitiveGovernanceResult = useMemo(() => {
+    return finalDisplayMessages.some((message) => {
+      if (message.role !== 'assistant') return false
+      const content = Array.isArray(message.content) ? message.content : []
+      return content.some((part) => part.type === 'governedResponse')
+    })
+  }, [finalDisplayMessages])
+  const effectiveWaitingForResponse =
+    waitingForResponse && !hasVisibleSensitiveGovernanceResult
+  const effectiveSending = sending && !hasVisibleSensitiveGovernanceResult
+  useEffect(() => {
+    if (!hasVisibleSensitiveGovernanceResult) return
+    setPendingGeneration(false)
+    if (resolvedSessionKey) {
+      useChatStore.getState().clearStreamingSession(resolvedSessionKey)
+    }
+    if (sending) setSending(false)
+    if (waitingForResponse) setWaitingForResponse(false)
+  }, [
+    hasVisibleSensitiveGovernanceResult,
+    resolvedSessionKey,
+    sending,
+    setWaitingForResponse,
+    waitingForResponse,
+  ])
   const errorNotice = useMemo(() => {
     if (!showErrorNotice) return null
     if (!serverError) return null
@@ -2882,7 +2948,7 @@ export function ChatScreen({
       ? 'tool'
       : derivedStreamingInfo.isStreaming
         ? 'streaming'
-        : sending || waitingForResponse
+        : effectiveSending || effectiveWaitingForResponse
           ? 'sending'
           : 'idle'
   const researchCard = useResearchCard({
@@ -2974,7 +3040,9 @@ export function ChatScreen({
           className={cn(
             'flex h-full flex-1 min-h-0 min-w-0 flex-col overflow-hidden transition-[margin-right,margin-bottom] duration-200',
             'mr-0',
-            (activeIsRealtimeStreaming || hasPendingGeneration()) &&
+            (activeIsRealtimeStreaming ||
+              (!hasVisibleSensitiveGovernanceResult &&
+                hasPendingGeneration())) &&
               'chat-streaming-glow',
           )}
           style={{
@@ -3088,7 +3156,7 @@ export function ChatScreen({
               }
               notice={null}
               noticePosition="end"
-              waitingForResponse={waitingForResponse}
+              waitingForResponse={effectiveWaitingForResponse}
               sessionKey={activeCanonicalKey}
               pinToTop={false}
               pinGroupMinHeight={pinGroupMinHeight}
@@ -3115,15 +3183,15 @@ export function ChatScreen({
               liveToolActivity={liveToolActivity}
               researchCard={researchCard}
               isCompacting={isCompacting}
-              sending={sending}
+              sending={effectiveSending}
             />
           )}
           {showComposer ? (
             <ChatComposer
               onSubmit={send}
               onAbort={handleAbortStreaming}
-              isLoading={sending || waitingForResponse}
-              disabled={sending || hideUi}
+              isLoading={effectiveSending || effectiveWaitingForResponse}
+              disabled={effectiveSending || hideUi}
               sessionKey={
                 isNewChat
                   ? undefined

@@ -49,11 +49,29 @@ export type A2UiContent = {
   data?: A2UiSchema
 }
 
+export type GovernedResponseContent = {
+  type: 'governedResponse'
+  featureGate: 'sensitiveGovernance'
+  response?: import('@/lib/sensitive-governance').GovernedResponse
+  payload?: import('@/lib/sensitive-governance').GovernedResponse
+  data?: import('@/lib/sensitive-governance').GovernedResponse
+}
+
+export type SensitiveGovernanceInputPreviewContent = {
+  type: 'sensitiveGovernanceInputPreview'
+  featureGate: 'sensitiveGovernance'
+  assessment?: import('@/lib/sensitive-governance').SensitiveGovernanceAssessment
+  payload?: import('@/lib/sensitive-governance').SensitiveGovernanceAssessment
+  data?: import('@/lib/sensitive-governance').SensitiveGovernanceAssessment
+}
+
 export type MessageContent =
   | TextContent
   | ToolCallContent
   | ThinkingContent
   | A2UiContent
+  | GovernedResponseContent
+  | SensitiveGovernanceInputPreviewContent
 
 export type ChatAttachment = {
   id?: string

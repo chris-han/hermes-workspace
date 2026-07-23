@@ -3,7 +3,11 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { writeMemoryFile } from './memory-browser'
+import {
+  readMemoryFile,
+  resolveMemoryFilePath,
+  writeMemoryFile,
+} from './memory-browser'
 
 describe('memory-browser writeMemoryFile', () => {
   const createdRoots: Array<string> = []
@@ -14,13 +18,47 @@ describe('memory-browser writeMemoryFile', () => {
     }
   })
 
+  it('resolves curated short paths to the canonical memories directory', () => {
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'memory-write-'),
+    )
+    createdRoots.push(workspaceRoot)
+
+    const resolved = resolveMemoryFilePath('USER.md', { workspaceRoot })
+
+    expect(resolved.relativePath).toBe('USER.md')
+    expect(resolved.fullPath).toBe(
+      path.join(workspaceRoot, 'memories', 'USER.md'),
+    )
+  })
+
+  it('reads curated short paths from the canonical memories directory', () => {
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'memory-write-'),
+    )
+    createdRoots.push(workspaceRoot)
+    fs.mkdirSync(path.join(workspaceRoot, 'memories'), { recursive: true })
+    fs.writeFileSync(
+      path.join(workspaceRoot, 'memories', 'USER.md'),
+      'user fact',
+      'utf-8',
+    )
+
+    expect(readMemoryFile('USER.md', { workspaceRoot })).toBe('user fact')
+  })
+
   it('appends a new curated memory entry instead of overwriting MEMORY.md', () => {
     const workspaceRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), 'memory-write-'),
     )
     createdRoots.push(workspaceRoot)
 
-    fs.writeFileSync(path.join(workspaceRoot, 'MEMORY.md'), 'old fact', 'utf-8')
+    fs.mkdirSync(path.join(workspaceRoot, 'memories'), { recursive: true })
+    fs.writeFileSync(
+      path.join(workspaceRoot, 'memories', 'MEMORY.md'),
+      'old fact',
+      'utf-8',
+    )
 
     const savedPath = writeMemoryFile('MEMORY.md', 'new fact', {
       workspaceRoot,
@@ -28,7 +66,10 @@ describe('memory-browser writeMemoryFile', () => {
 
     expect(savedPath).toBe('MEMORY.md')
     expect(
-      fs.readFileSync(path.join(workspaceRoot, 'MEMORY.md'), 'utf-8'),
+      fs.readFileSync(
+        path.join(workspaceRoot, 'memories', 'MEMORY.md'),
+        'utf-8',
+      ),
     ).toBe(['old fact', '§', 'new fact'].join('\n'))
   })
 
@@ -68,13 +109,21 @@ describe('memory-browser writeMemoryFile', () => {
     )
     createdRoots.push(workspaceRoot)
 
-    fs.writeFileSync(path.join(workspaceRoot, 'MEMORY.md'), 'old fact', 'utf-8')
+    fs.mkdirSync(path.join(workspaceRoot, 'memories'), { recursive: true })
+    fs.writeFileSync(
+      path.join(workspaceRoot, 'memories', 'MEMORY.md'),
+      'old fact',
+      'utf-8',
+    )
 
     const nextContent = ['old fact', '§', 'new fact'].join('\n')
     writeMemoryFile('MEMORY.md', nextContent, { workspaceRoot })
 
     expect(
-      fs.readFileSync(path.join(workspaceRoot, 'MEMORY.md'), 'utf-8'),
+      fs.readFileSync(
+        path.join(workspaceRoot, 'memories', 'MEMORY.md'),
+        'utf-8',
+      ),
     ).toBe(nextContent)
   })
 
@@ -84,7 +133,12 @@ describe('memory-browser writeMemoryFile', () => {
     )
     createdRoots.push(workspaceRoot)
 
-    fs.writeFileSync(path.join(workspaceRoot, 'MEMORY.md'), 'old fact', 'utf-8')
+    fs.mkdirSync(path.join(workspaceRoot, 'memories'), { recursive: true })
+    fs.writeFileSync(
+      path.join(workspaceRoot, 'memories', 'MEMORY.md'),
+      'old fact',
+      'utf-8',
+    )
 
     writeMemoryFile('MEMORY.md', 'edited fact', {
       workspaceRoot,
@@ -92,7 +146,10 @@ describe('memory-browser writeMemoryFile', () => {
     })
 
     expect(
-      fs.readFileSync(path.join(workspaceRoot, 'MEMORY.md'), 'utf-8'),
+      fs.readFileSync(
+        path.join(workspaceRoot, 'memories', 'MEMORY.md'),
+        'utf-8',
+      ),
     ).toBe('edited fact')
   })
 
@@ -113,7 +170,10 @@ describe('memory-browser writeMemoryFile', () => {
     })
 
     expect(
-      fs.readFileSync(path.join(workspaceRoot, 'MEMORY.md'), 'utf-8'),
+      fs.readFileSync(
+        path.join(workspaceRoot, 'memories', 'MEMORY.md'),
+        'utf-8',
+      ),
     ).toBe(editedContent)
   })
 })

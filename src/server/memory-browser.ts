@@ -66,8 +66,17 @@ export function resolveMemoryFilePath(
 } {
   const safeRelativePath = normalizeRelativeMemoryPath(relativePath)
   const workspaceRoot = getMemoryWorkspaceRoot(options)
-  const fullPath = path.resolve(workspaceRoot, safeRelativePath)
-  if (!fullPath.startsWith(workspaceRoot)) {
+  const storageRelativePath =
+    safeRelativePath === 'MEMORY.md' || safeRelativePath === 'USER.md'
+      ? `memories/${safeRelativePath}`
+      : safeRelativePath
+  const fullPath = path.resolve(workspaceRoot, storageRelativePath)
+  const pathFromWorkspace = path.relative(workspaceRoot, fullPath)
+  if (
+    pathFromWorkspace === '..' ||
+    pathFromWorkspace.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(pathFromWorkspace)
+  ) {
     throw new Error('Resolved path is outside workspace')
   }
   return { fullPath, relativePath: safeRelativePath }

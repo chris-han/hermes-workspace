@@ -3,9 +3,17 @@ import { describe, expect, it } from 'vitest'
 import {
   commandForSkillName,
   mergeInstalledSkillCommands,
+  SLASH_COMMANDS,
 } from './slash-command-menu'
 
 describe('slash command menu skill commands', () => {
+  it('registers the sensitive governance demo as a discoverable WebUI command', () => {
+    expect(SLASH_COMMANDS).toContainEqual({
+      command: '/sensitive-governance-demo',
+      description: 'Run the sensitive information governance demo',
+    })
+  })
+
   it('normalizes skill names using the same command shape as the CLI', () => {
     expect(commandForSkillName('llm-wiki')).toBe('/llm-wiki')
     expect(commandForSkillName('My_Skill+Tool')).toBe('/my-skilltool')

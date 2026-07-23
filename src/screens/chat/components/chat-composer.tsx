@@ -1,11 +1,11 @@
 import { createPortal } from 'react-dom'
 import {
   Add01Icon,
+  AiMicIcon,
   ArrowDown01Icon,
   ArrowUp02Icon,
   Cancel01Icon,
   Delete01Icon,
-  Mic01Icon,
   StopIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -39,6 +39,7 @@ import {
   shouldBlockZeroForkModelSwitch,
 } from './chat-composer-model-switch'
 import { fetchCurrentModelFromStatus, readText } from './chat-current-model'
+import { ThinkingActivityIndicator } from './thinking-activity-indicator'
 import type { CSSProperties, Ref } from 'react'
 
 import type { ModelCatalogEntry, ModelSwitchResponse } from '@/lib/model-types'
@@ -63,6 +64,7 @@ import { usePinnedModels } from '@/hooks/use-pinned-models'
 import { cn } from '@/lib/utils'
 import { useVoiceInput } from '@/hooks/use-voice-input'
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder'
+import { useThemeId } from '@/hooks/use-theme-id'
 import { toast } from '@/components/ui/toast'
 
 type ChatComposerAttachment = {
@@ -170,6 +172,26 @@ function SendButtonContent({
       <span className="absolute inset-[3px]">
         <SendIconFill iconSize={iconSize} strokeWidth={strokeWidth} />
       </span>
+    </span>
+  )
+}
+
+function ListeningSubmitButtonContent({
+  themeId,
+  label,
+}: {
+  themeId: ReturnType<typeof useThemeId>
+  label: string
+}) {
+  return (
+    <span className="flex size-full items-center justify-center rounded-full theme-accent-fill">
+      <ThinkingActivityIndicator
+        size={20}
+        themeId={themeId}
+        kind="listening"
+        label={label}
+        orbTheme="light"
+      />
     </span>
   )
 }
@@ -713,6 +735,7 @@ function ChatComposerComponent({
   onAbort,
   contextPercent,
 }: ChatComposerProps) {
+  const themeId = useThemeId()
   const mobileKeyboardInset = useWorkspaceStore((s) => s.mobileKeyboardInset)
   const mobileComposerFocused = useWorkspaceStore(
     (s) => s.mobileComposerFocused,
@@ -1562,6 +1585,20 @@ function ChatComposerComponent({
     ),
   })
 
+  const isAudioInputActive = voiceInput.isListening || voiceRecorder.isRecording
+  const audioInputLabel = voiceRecorder.isRecording
+    ? 'Recording voice note'
+    : 'Listening'
+
+  const handleStopAudioInput = useCallback(() => {
+    if (voiceInput.isListening) {
+      voiceInput.stop()
+    }
+    if (voiceRecorder.isRecording) {
+      voiceRecorder.stop()
+    }
+  }, [voiceInput, voiceRecorder])
+
   // Long-press detection for mic button
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isLongPressRef = useRef(false)
@@ -2021,6 +2058,18 @@ function ChatComposerComponent({
                       className="theme-danger-contrast"
                     />
                   </button>
+                ) : isAudioInputActive ? (
+                  <button
+                    type="button"
+                    onClick={handleStopAudioInput}
+                    aria-label={audioInputLabel}
+                    className="size-10 cursor-pointer rounded-full border-0 p-0 flex items-center justify-center outline-none transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] active:scale-95"
+                  >
+                    <ListeningSubmitButtonContent
+                      themeId={themeId}
+                      label={audioInputLabel}
+                    />
+                  </button>
                 ) : value.trim().length > 0 ||
                   attachments.length > 0 ||
                   attachmentProcessingCount > 0 ? (
@@ -2030,7 +2079,7 @@ function ChatComposerComponent({
                     disabled={submitDisabled}
                     aria-label={sendAriaLabel}
                     data-tour="chat-composer-send"
-                    className="size-10 rounded-full border-0 p-0 flex items-center justify-center outline-none transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                    className="size-10 cursor-pointer rounded-full border-0 p-0 flex items-center justify-center outline-none transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                   >
                     <SendButtonContent
                       contextPercent={contextPercent}
@@ -2062,7 +2111,7 @@ function ChatComposerComponent({
                     }
                     disabled={disabled}
                     className={cn(
-                      'size-9 rounded-full flex items-center justify-center relative transition-all duration-150 select-none',
+                      'size-9 cursor-pointer rounded-full flex items-center justify-center relative transition-all duration-150 select-none disabled:cursor-not-allowed',
                       voiceRecorder.isRecording
                         ? 'text-red-600 bg-red-100 animate-pulse'
                         : voiceInput.isListening
@@ -2071,7 +2120,7 @@ function ChatComposerComponent({
                     )}
                   >
                     <HugeiconsIcon
-                      icon={Mic01Icon}
+                      icon={AiMicIcon}
                       size={20}
                       strokeWidth={1.5}
                     />
@@ -2089,7 +2138,7 @@ function ChatComposerComponent({
                     disabled={submitDisabled}
                     aria-label={sendAriaLabel}
                     data-tour="chat-composer-send"
-                    className="size-10 rounded-full border-0 p-0 flex items-center justify-center outline-none transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="size-10 cursor-pointer rounded-full border-0 p-0 flex items-center justify-center outline-none transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <SendButtonContent
                       contextPercent={contextPercent}
@@ -2707,7 +2756,7 @@ function ChatComposerComponent({
                       size="icon-sm"
                       variant="ghost"
                       className={cn(
-                        'rounded-lg transition-colors select-none',
+                        'cursor-pointer rounded-lg transition-colors select-none disabled:cursor-not-allowed',
                         voiceRecorder.isRecording
                           ? 'text-red-600 bg-red-100 hover:bg-red-200 animate-pulse'
                           : voiceInput.isListening
@@ -2724,7 +2773,7 @@ function ChatComposerComponent({
                       disabled={disabled}
                     >
                       <HugeiconsIcon
-                        icon={Mic01Icon}
+                        icon={AiMicIcon}
                         size={20}
                         strokeWidth={1.5}
                       />
@@ -2756,21 +2805,40 @@ function ChatComposerComponent({
                   </PromptInputAction>
                 ) : (
                   <>
-                    <PromptInputAction tooltip="Send message">
+                    <PromptInputAction
+                      tooltip={
+                        isAudioInputActive ? audioInputLabel : 'Send message'
+                      }
+                    >
                       <Button
                         type="button"
-                        onClick={handleSubmit}
-                        disabled={submitDisabled}
+                        onClick={
+                          isAudioInputActive
+                            ? handleStopAudioInput
+                            : handleSubmit
+                        }
+                        disabled={
+                          isAudioInputActive ? disabled : submitDisabled
+                        }
                         size="icon-sm"
                         data-tour="chat-composer-send"
-                        className="size-10 rounded-full border-0 p-0 outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)]"
-                        aria-label={sendAriaLabel}
+                        className="size-10 cursor-pointer rounded-full border-0 p-0 outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] disabled:cursor-not-allowed"
+                        aria-label={
+                          isAudioInputActive ? audioInputLabel : sendAriaLabel
+                        }
                       >
-                        <SendButtonContent
-                          contextPercent={contextPercent}
-                          iconSize={20}
-                          strokeWidth={1.5}
-                        />
+                        {isAudioInputActive ? (
+                          <ListeningSubmitButtonContent
+                            themeId={themeId}
+                            label={audioInputLabel}
+                          />
+                        ) : (
+                          <SendButtonContent
+                            contextPercent={contextPercent}
+                            iconSize={20}
+                            strokeWidth={1.5}
+                          />
+                        )}
                       </Button>
                     </PromptInputAction>
                   </>

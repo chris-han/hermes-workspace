@@ -2,14 +2,14 @@ import {
   createSensitiveGovernanceAssessment,
   executeSensitiveGovernanceAssessment,
 } from '@/lib/sensitive-governance'
+import { SENSITIVE_GOVERNANCE_DEMO_TRIGGER } from '@/lib/sensitive-governance-commands'
 import type {
   SensitiveGovernanceAssessment,
   SensitiveGovernanceRun,
 } from '@/lib/sensitive-governance'
 import type { ChatMessage } from './types'
 
-export const SENSITIVE_GOVERNANCE_DEMO_TRIGGER =
-  '/sensitive-governance-demo'
+export { SENSITIVE_GOVERNANCE_DEMO_TRIGGER } from '@/lib/sensitive-governance-commands'
 
 export const SENSITIVE_GOVERNANCE_DEMO_CONTENT =
   '评标专家：李四 手机13900139000，身份证11010119900307453X，预算控制价1000万元，API_KEY=sk-demo-secret，普通商密。'

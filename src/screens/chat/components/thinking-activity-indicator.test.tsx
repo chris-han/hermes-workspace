@@ -83,6 +83,22 @@ describe('ThinkingActivityIndicator', () => {
     ).toBe(true)
   })
 
+  it('allows callers to override the orb theme for fixed-contrast surfaces', () => {
+    render(
+      <ThinkingActivityIndicator
+        size={20}
+        themeId="semantier"
+        kind="listening"
+        label="Listening"
+        orbTheme="light"
+      />,
+    )
+
+    expect(screen.getByTestId('thinking-orb').getAttribute('theme')).toBe(
+      'light',
+    )
+  })
+
   it('keeps stable dimensions for reduced-motion static frames and layout rhythm', () => {
     render(
       <ThinkingActivityIndicator

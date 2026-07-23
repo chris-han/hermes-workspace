@@ -20,6 +20,7 @@ export type ThinkingActivityIndicatorProps = {
   label?: string
   className?: string
   fallbackOnly?: boolean
+  orbTheme?: OrbTheme
 }
 
 const ACTIVITY_KIND_TO_ORB_STATE: Record<ThinkingActivityKind, OrbState> = {
@@ -75,10 +76,11 @@ export function ThinkingActivityIndicator({
   label,
   className,
   fallbackOnly = false,
+  orbTheme,
 }: ThinkingActivityIndicatorProps) {
   const ariaLabel = label || (size === 64 ? 'Assistant working' : 'Tool working')
   const orbState = resolveThinkingOrbState(kind)
-  const orbTheme = resolveThinkingOrbTheme(themeId)
+  const resolvedOrbTheme = orbTheme ?? resolveThinkingOrbTheme(themeId)
 
   return (
     <span
@@ -96,7 +98,7 @@ export function ThinkingActivityIndicator({
         <ThinkingOrb
           state={orbState}
           size={size}
-          theme={orbTheme}
+          theme={resolvedOrbTheme}
           aria-label={ariaLabel}
           data-thinking-orb=""
         />

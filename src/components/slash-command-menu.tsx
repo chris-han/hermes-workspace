@@ -11,6 +11,7 @@ import type { Ref } from 'react'
 
 import { useAutocompleteFilter } from '@/components/ui/autocomplete'
 import { Command, CommandItem, CommandList } from '@/components/ui/command'
+import { SENSITIVE_GOVERNANCE_DEMO_TRIGGER } from '@/lib/sensitive-governance-commands'
 import { cn } from '@/lib/utils'
 
 type SlashCommandDefinition = {
@@ -40,13 +41,17 @@ type SlashCommandMenuHandle = {
   selectActive: () => boolean
 }
 
-const SLASH_COMMANDS: Array<SlashCommandDefinition> = [
+export const SLASH_COMMANDS: Array<SlashCommandDefinition> = [
   { command: '/new', description: 'Start new session' },
   { command: '/clear', description: 'Clear screen and start fresh' },
   { command: '/model', description: 'Show or change the current model' },
   { command: '/save', description: 'Save the current conversation' },
   { command: '/skills', description: 'Browse and manage skills' },
   { command: '/skin', description: 'Change the display theme' },
+  {
+    command: SENSITIVE_GOVERNANCE_DEMO_TRIGGER,
+    description: 'Run the sensitive information governance demo',
+  },
   { command: '/help', description: 'Show available commands' },
 ]
 

@@ -1,6 +1,16 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+export type LegalCorpusChatContext = {
+  sourceId: string
+  title: string
+  versionId?: string
+  lifecycleState?: string
+  authorityTier?: string
+  candidateCount?: number
+  anchorCount?: number
+}
+
 type WorkspaceState = {
   sidebarCollapsed: boolean
   sidebarPinned: boolean
@@ -16,6 +26,7 @@ type WorkspaceState = {
   mobileKeyboardOpen: boolean
   mobileKeyboardInset: number
   mobileComposerFocused: boolean
+  legalCorpusChatContext: LegalCorpusChatContext | null
   toggleSidebar: () => void
   setSidebarCollapsed: (collapsed: boolean) => void
   toggleSidebarPinned: () => void
@@ -30,6 +41,7 @@ type WorkspaceState = {
   setMobileKeyboardOpen: (open: boolean) => void
   setMobileKeyboardInset: (inset: number) => void
   setMobileComposerFocused: (focused: boolean) => void
+  setLegalCorpusChatContext: (context: LegalCorpusChatContext | null) => void
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -45,6 +57,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       mobileKeyboardOpen: false,
       mobileKeyboardInset: 0,
       mobileComposerFocused: false,
+      legalCorpusChatContext: null,
       toggleSidebar: () =>
         set((s) => {
           if (s.sidebarPinned) {
@@ -79,6 +92,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setMobileComposerFocused: (focused) =>
         set({ mobileComposerFocused: focused }),
       setChatPanelSessionKey: (key) => set({ chatPanelSessionKey: key }),
+      setLegalCorpusChatContext: (context) =>
+        set({ legalCorpusChatContext: context }),
     }),
     {
       name: 'hermes-workspace-v1',

@@ -34,6 +34,7 @@ import {
 export function ChatPanel() {
   const isOpen = useWorkspaceStore((s) => s.chatPanelOpen)
   const sessionKey = useWorkspaceStore((s) => s.chatPanelSessionKey)
+  const legalContext = useWorkspaceStore((s) => s.legalCorpusChatContext)
   const setChatPanelOpen = useWorkspaceStore((s) => s.setChatPanelOpen)
   const setChatPanelSessionKey = useWorkspaceStore(
     (s) => s.setChatPanelSessionKey,
@@ -261,6 +262,42 @@ export function ChatPanel() {
 
             {/* Chat content */}
             <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
+              {legalContext ? (
+                <div className="border-b border-primary-200 px-3 py-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-semibold text-primary-900">
+                        {legalContext.title}
+                      </div>
+                      <div className="mt-0.5 truncate text-[11px] text-primary-600">
+                        {legalContext.lifecycleState || 'unresolved'} /{' '}
+                        {legalContext.authorityTier || 'authority pending'} /{' '}
+                        {legalContext.versionId || legalContext.sourceId}
+                      </div>
+                    </div>
+                    <span className="shrink-0 rounded border border-primary-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-normal text-primary-700">
+                      Legal
+                    </span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-1.5">
+                    {[
+                      ['build_review_package', 'Build review'],
+                      ['certify_source', 'Certify'],
+                      ['activate_bundle', 'Activate'],
+                      ['refresh_check', 'Refresh'],
+                    ].map(([actionType, label]) => (
+                      <button
+                        key={actionType}
+                        type="button"
+                        data-legal-action-type={actionType}
+                        className="rounded border border-primary-200 px-2 py-1 text-left text-[11px] font-medium text-primary-700 transition-colors hover:border-accent-500 hover:bg-accent-500/10 hover:text-primary-900"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <ChatScreen
                 key={activeFriendlyId}
                 activeFriendlyId={activeFriendlyId}

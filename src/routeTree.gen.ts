@@ -17,6 +17,7 @@ import { Route as SessionEventsRouteImport } from './routes/session-events'
 import { Route as ProfilesRouteImport } from './routes/profiles'
 import { Route as OrchestratorRouteImport } from './routes/orchestrator'
 import { Route as MemoryRouteImport } from './routes/memory'
+import { Route as LegalCorpusRouteImport } from './routes/legal-corpus'
 import { Route as KanbanRouteImport } from './routes/kanban'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as FilesRouteImport } from './routes/files'
@@ -159,6 +160,11 @@ const OrchestratorRoute = OrchestratorRouteImport.update({
 const MemoryRoute = MemoryRouteImport.update({
   id: '/memory',
   path: '/memory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalCorpusRoute = LegalCorpusRouteImport.update({
+  id: '/legal-corpus',
+  path: '/legal-corpus',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KanbanRoute = KanbanRouteImport.update({
@@ -692,6 +698,7 @@ export interface FileRoutesByFullPath {
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
+  '/legal-corpus': typeof LegalCorpusRoute
   '/memory': typeof MemoryRoute
   '/orchestrator': typeof OrchestratorRoute
   '/profiles': typeof ProfilesRoute
@@ -805,6 +812,7 @@ export interface FileRoutesByTo {
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
+  '/legal-corpus': typeof LegalCorpusRoute
   '/memory': typeof MemoryRoute
   '/orchestrator': typeof OrchestratorRoute
   '/profiles': typeof ProfilesRoute
@@ -918,6 +926,7 @@ export interface FileRoutesById {
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
+  '/legal-corpus': typeof LegalCorpusRoute
   '/memory': typeof MemoryRoute
   '/orchestrator': typeof OrchestratorRoute
   '/profiles': typeof ProfilesRoute
@@ -1033,6 +1042,7 @@ export interface FileRouteTypes {
     | '/files'
     | '/jobs'
     | '/kanban'
+    | '/legal-corpus'
     | '/memory'
     | '/orchestrator'
     | '/profiles'
@@ -1146,6 +1156,7 @@ export interface FileRouteTypes {
     | '/files'
     | '/jobs'
     | '/kanban'
+    | '/legal-corpus'
     | '/memory'
     | '/orchestrator'
     | '/profiles'
@@ -1258,6 +1269,7 @@ export interface FileRouteTypes {
     | '/files'
     | '/jobs'
     | '/kanban'
+    | '/legal-corpus'
     | '/memory'
     | '/orchestrator'
     | '/profiles'
@@ -1372,6 +1384,7 @@ export interface RootRouteChildren {
   FilesRoute: typeof FilesRoute
   JobsRoute: typeof JobsRoute
   KanbanRoute: typeof KanbanRoute
+  LegalCorpusRoute: typeof LegalCorpusRoute
   MemoryRoute: typeof MemoryRoute
   OrchestratorRoute: typeof OrchestratorRoute
   ProfilesRoute: typeof ProfilesRoute
@@ -1511,6 +1524,13 @@ declare module '@tanstack/react-router' {
       path: '/memory'
       fullPath: '/memory'
       preLoaderRoute: typeof MemoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal-corpus': {
+      id: '/legal-corpus'
+      path: '/legal-corpus'
+      fullPath: '/legal-corpus'
+      preLoaderRoute: typeof LegalCorpusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kanban': {
@@ -2360,6 +2380,7 @@ const rootRouteChildren: RootRouteChildren = {
   FilesRoute: FilesRoute,
   JobsRoute: JobsRoute,
   KanbanRoute: KanbanRoute,
+  LegalCorpusRoute: LegalCorpusRoute,
   MemoryRoute: MemoryRoute,
   OrchestratorRoute: OrchestratorRoute,
   ProfilesRoute: ProfilesRoute,

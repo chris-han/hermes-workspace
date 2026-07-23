@@ -4,6 +4,7 @@ import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
   BrainIcon,
+  Book01Icon,
   Chat01Icon,
   CheckListIcon,
   Clock01Icon,
@@ -599,11 +600,17 @@ function ChatSidebarComponent({
   const isDataConnectionsActive = pathname === '/settings/data-connections'
   const isJobsActive = pathname === '/jobs'
   const isMemoryActive = pathname === '/memory'
+  const isLegalCorpusActive = pathname === '/legal-corpus'
   const isTasksActive = pathname === '/tasks'
   const isorchestratorActive = pathname === '/orchestrator'
   const isAgentRosterActive = pathname === '/agent-roster'
   const mainRoutes = ['/chat', '/new']
-  const knowledgeRoutes = ['/memory', '/skills', '/settings/data-connections']
+  const knowledgeRoutes = [
+    '/memory',
+    '/legal-corpus',
+    '/skills',
+    '/settings/data-connections',
+  ]
   const systemRoutes = ['/settings', '/logs']
 
   useEffect(() => {
@@ -913,6 +920,13 @@ function ChatSidebarComponent({
       icon: BrainIcon,
       label: t('nav.memory'),
       active: isMemoryActive,
+    },
+    {
+      kind: 'link',
+      to: '/legal-corpus',
+      icon: Book01Icon,
+      label: 'Legal Corpus',
+      active: isLegalCorpusActive,
     },
     {
       kind: 'link',

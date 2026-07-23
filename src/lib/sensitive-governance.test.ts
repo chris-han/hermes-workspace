@@ -15,7 +15,7 @@ import {
 } from './sensitive-governance'
 
 const fixtureUrl = new URL(
-  '../../../tests/fixtures/sensitive_governance_contract_fixture_v1.json',
+  '../../tests/fixtures/sensitive_governance_contract_fixture_v1.json',
   import.meta.url,
 )
 

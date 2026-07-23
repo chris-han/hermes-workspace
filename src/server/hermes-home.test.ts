@@ -1,8 +1,16 @@
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import { resolveHermesHome, resolveHermesHomeForWorkspace } from './hermes-home'
 import { resolveSemantierRuntimeHome } from './hermes-home'
+
+const expectedRuntimeRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+)
 
 describe('resolveHermesHome', () => {
   it('prefers HERMES_HOME when explicitly configured', () => {
@@ -59,7 +67,7 @@ describe('resolveHermesHomeForWorkspace', () => {
 describe('resolveSemantierRuntimeHome', () => {
   it('defaults to the repo .semantier-home runtime root', () => {
     expect(resolveSemantierRuntimeHome({})).toBe(
-      path.resolve('/home/chris/repo/semantier-runtime/.semantier-home'),
+      path.join(expectedRuntimeRoot, '.semantier-home'),
     )
   })
 
@@ -68,7 +76,7 @@ describe('resolveSemantierRuntimeHome', () => {
       resolveSemantierRuntimeHome({
         SEMANTIER_LOCAL_STATE_DIR: '.semantier-test-home',
       }),
-    ).toBe(path.resolve('/home/chris/repo/semantier-runtime/.semantier-test-home'))
+    ).toBe(path.join(expectedRuntimeRoot, '.semantier-test-home'))
   })
 
   it('uses absolute SEMANTIER_LOCAL_STATE_DIR as-is', () => {

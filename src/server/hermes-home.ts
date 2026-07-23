@@ -162,9 +162,14 @@ export function resolveSemantierRuntimeHome(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
   const configured = env[SEMANTIER_RUNTIME_ROOT_ENV]?.trim()
-  const raw = configured || path.join(REPO_ROOT, '.semantier-home')
+  const runtimeRoot = isSemantierRuntimeRepo()
+    ? REPO_ROOT
+    : path.resolve(REPO_ROOT, '..')
+  const raw = configured || path.join(runtimeRoot, '.semantier-home')
   const expanded = expandHome(raw, os.homedir())
-  return path.resolve(path.isAbsolute(expanded) ? expanded : path.join(REPO_ROOT, expanded))
+  return path.resolve(
+    path.isAbsolute(expanded) ? expanded : path.join(runtimeRoot, expanded),
+  )
 }
 
 export async function resolveInferenceHermesHomeFromBackend(

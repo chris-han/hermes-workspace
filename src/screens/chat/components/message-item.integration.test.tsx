@@ -74,7 +74,7 @@ describe('MessageItem integration', () => {
 
   it('renders governed response segments without leaking forbidden browser values', () => {
     const fixtureUrl = new URL(
-      '../../../../../tests/fixtures/sensitive_governance_contract_fixture_v1.json',
+      '../../../../tests/fixtures/sensitive_governance_contract_fixture_v1.json',
       import.meta.url,
     )
     const fixture = JSON.parse(
@@ -149,7 +149,7 @@ describe('MessageItem integration', () => {
 
   it('builds inspector response evidence from governed response AST', () => {
     const fixtureUrl = new URL(
-      '../../../../../tests/fixtures/sensitive_governance_contract_fixture_v1.json',
+      '../../../../tests/fixtures/sensitive_governance_contract_fixture_v1.json',
       import.meta.url,
     )
     const fixture = JSON.parse(

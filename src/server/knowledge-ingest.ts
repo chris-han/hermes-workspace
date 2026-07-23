@@ -263,7 +263,20 @@ function renderDocumentMarkdown(
   }
 }
 
-function findSemantierRuntimeRoot(): string {
+function findSemantierRuntimeRoot(workspaceRoot: string): string {
+  if (
+    existsSync(
+      path.join(
+        path.resolve(workspaceRoot),
+        'plugins',
+        'document_extraction',
+        'tools.py',
+      ),
+    )
+  ) {
+    return path.resolve(workspaceRoot)
+  }
+
   let current = path.resolve(process.cwd())
   for (let index = 0; index < 8; index += 1) {
     if (
@@ -304,7 +317,7 @@ async function extractDocumentContentWithPlugin(
     language_hint?: string | null
   },
 ): Promise<CanonicalDocumentArtifact> {
-  const runtimeRoot = findSemantierRuntimeRoot()
+  const runtimeRoot = findSemantierRuntimeRoot(workspaceRoot)
   const pythonPath = documentExtractionPythonPath(runtimeRoot, workspaceRoot)
   const script = [
     'import json, sys',

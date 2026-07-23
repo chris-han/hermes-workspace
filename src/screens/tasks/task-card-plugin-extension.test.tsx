@@ -1,11 +1,35 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen } from '@testing-library/react'
+import type { ComponentType } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { TaskCard } from './task-card'
+import type { PluginUiComponentProps } from '@/lib/plugin-ui-extensions'
 import type { HermesTask } from '@/lib/tasks-api'
 import type { PluginUiExtensionRegistration } from '@/lib/plugin-ui-extensions'
+
+vi.mock('@/lib/plugin-ui-extensions', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/lib/plugin-ui-extensions')>()
+  const TestNegotiationCard: ComponentType<PluginUiComponentProps> = ({
+    metadata,
+    onAction,
+  }) => (
+    <div>
+      <strong>{String(metadata.meeting_title)}</strong>
+      <span>{String(metadata.status)}</span>
+      <div>Declined attendee: {String(metadata.declined_attendee_name)}</div>
+      <button type="button" onClick={() => onAction('nudge_unblock')}>
+        Nudge
+      </button>
+    </div>
+  )
+  return {
+    ...actual,
+    pluginUiComponent: () => TestNegotiationCard,
+  }
+})
 
 const task: HermesTask = {
   id: 'task_1',

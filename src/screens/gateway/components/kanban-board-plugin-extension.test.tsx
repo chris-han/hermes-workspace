@@ -1,9 +1,34 @@
 import { renderToStaticMarkup } from 'react-dom/server'
+import type { ComponentType } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { KanbanBoard } from './kanban-board'
 import type { HubTask } from './task-board'
-import type { PluginUiExtensionRegistration } from '@/lib/plugin-ui-extensions'
+import type {
+  PluginUiComponentProps,
+  PluginUiExtensionRegistration,
+} from '@/lib/plugin-ui-extensions'
+
+vi.mock('@/lib/plugin-ui-extensions', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/lib/plugin-ui-extensions')>()
+  const TestNegotiationCard: ComponentType<PluginUiComponentProps> = ({
+    metadata,
+  }) => (
+    <div>
+      <strong>{String(metadata.meeting_title)}</strong>
+      <span>{String(metadata.status)}</span>
+      <div>{String(metadata.declined_attendee_name)}</div>
+      <button type="button">Nudge</button>
+      <button type="button">Finalize</button>
+      <button type="button">Cancel</button>
+    </div>
+  )
+  return {
+    ...actual,
+    pluginUiComponent: () => TestNegotiationCard,
+  }
+})
 
 vi.mock('@/stores/task-store', () => ({
   useTaskStore: (

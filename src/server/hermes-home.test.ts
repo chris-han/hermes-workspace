@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -5,12 +6,17 @@ import { describe, expect, it } from 'vitest'
 import { resolveHermesHome, resolveHermesHomeForWorkspace } from './hermes-home'
 import { resolveSemantierRuntimeHome } from './hermes-home'
 
-const expectedRuntimeRoot = path.resolve(
+const workspaceSourceBoundary = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
   '..',
   '..',
 )
+const expectedRuntimeRoot = fs.existsSync(
+  path.join(workspaceSourceBoundary, 'src', 'agents', 'launcher.py'),
+)
+  ? workspaceSourceBoundary
+  : path.resolve(workspaceSourceBoundary, '..')
 
 describe('resolveHermesHome', () => {
   it('prefers HERMES_HOME when explicitly configured', () => {

@@ -6,7 +6,19 @@ import {
   getToolCallsFromMessage,
   textFromMessage,
 } from '../utils'
+import { normalizeKnownToolPhase } from '../lib/activity-state'
+import { projectPreparedToolSection } from '../lib/tool-activity-projection'
 import { MessageActionsBar } from './message-actions-bar'
+import { A2UiRenderer } from './a2ui-renderer'
+import { GovernedResponseRenderer } from './governed-response-renderer'
+import { SensitiveGovernanceInputPreview } from './input-governance-preview'
+import { ThinkingActivityIndicator } from './thinking-activity-indicator'
+import type {
+  AssistantTurnContext,
+  AssistantTurnPhase,
+  NormalizedToolPhase,
+  ToolActivityState,
+} from '../lib/activity-state'
 import type {
   A2UiSchema,
   ChatAttachment,
@@ -14,14 +26,16 @@ import type {
   ToolCallContent,
 } from '../types'
 import type { ToolPart } from '@/components/prompt-kit/tool'
+import type { ThinkingActivityKind } from './thinking-activity-indicator'
+import type {
+  GovernedResponse,
+  SensitiveGovernanceAssessment,
+} from '@/lib/sensitive-governance'
 import { AssistantAvatar, UserAvatar } from '@/components/avatars'
 import { CodeBlock } from '@/components/prompt-kit/code-block'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { Message, MessageContent } from '@/components/prompt-kit/message'
 import { Button } from '@/components/ui/button'
-import { A2UiRenderer } from './a2ui-renderer'
-import { GovernedResponseRenderer } from './governed-response-renderer'
-import { SensitiveGovernanceInputPreview } from './input-governance-preview'
 import {
   Collapsible,
   CollapsiblePanel,
@@ -31,11 +45,8 @@ import {
   useResolvedAvatarUrl,
   useResolvedDisplayName,
 } from '@/hooks/use-resolved-avatar'
+import { useThemeId } from '@/hooks/use-theme-id'
 import { cn } from '@/lib/utils'
-import type {
-  GovernedResponse,
-  SensitiveGovernanceAssessment,
-} from '@/lib/sensitive-governance'
 
 const WORDS_PER_TICK = 4
 const TICK_INTERVAL_MS = 50
@@ -103,14 +114,7 @@ function getWordBoundaryIndex(text: string, wordCount: number): number {
 type StreamToolCall = {
   id: string
   name: string
-  phase:
-    | 'calling'
-    | 'running'
-    | 'done'
-    | 'complete'
-    | 'completed'
-    | 'result'
-    | 'error'
+  phase: NormalizedToolPhase
   args?: unknown
   preview?: string
   result?: string
@@ -162,10 +166,12 @@ type FillInputAction = {
 type InlineToolSection = {
   key: string
   type: string
+  phase: NormalizedToolPhase
   input?: Record<string, unknown>
   preview?: string
   outputText: string
   errorText?: string
+  activity: ToolActivityState
   state:
     | 'input-streaming'
     | 'input-available'
@@ -538,25 +544,6 @@ function thinkingFromMessage(msg: ChatMessage): string | null {
     return String(thinkingPart.thinking ?? '')
   }
   return null
-}
-
-function normalizeStreamToolPhase(
-  phase: unknown,
-): 'calling' | 'running' | 'done' | 'error' {
-  if (phase === 'calling' || phase === 'start' || phase === 'started')
-    return 'calling'
-  if (phase === 'running') return 'running'
-  if (
-    phase === 'done' ||
-    phase === 'result' ||
-    phase === 'complete' ||
-    phase === 'completed'
-  )
-    return 'done'
-  if (phase === 'error' || phase === 'failed' || phase === 'failure') {
-    return 'error'
-  }
-  return 'running'
 }
 
 function readExecNotification(message: ChatMessage): ExecNotification | null {
@@ -1053,11 +1040,8 @@ function useAnimatedDots(): string {
 }
 
 function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
-  const isDone =
-    toolCall.phase === 'done' ||
-    toolCall.phase === 'complete' ||
-    toolCall.phase === 'completed' ||
-    toolCall.phase === 'result'
+  const themeId = useThemeId()
+  const isDone = toolCall.phase === 'done'
   const isError = toolCall.phase === 'error'
   const isRunning = !isDone && !isError
   const [expanded, setExpanded] = useState(false)
@@ -1180,12 +1164,14 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
             ✕
           </span>
         )}
-        {isRunning && (
-          <span
-            className="shrink-0 size-1.5 rounded-full animate-pulse"
-            style={{ background: 'var(--theme-accent)' }}
+        {isRunning ? (
+          <ThinkingActivityIndicator
+            size={20}
+            themeId={themeId}
+            kind={getToolActivityKind(toolCall.name)}
+            label={`${displayName} running`}
           />
-        )}
+        ) : null}
       </button>
       {isRunning && !expanded && (
         <div
@@ -1527,6 +1513,40 @@ const TOOL_ICONS: Record<string, string> = {
   skill_view: '\u26a1',
 }
 
+function getToolActivityKind(toolType: string): ThinkingActivityKind {
+  const normalized = toolType.toLowerCase()
+  if (
+    normalized.includes('search') ||
+    normalized.includes('fetch') ||
+    normalized.includes('browser') ||
+    normalized.includes('grep')
+  ) {
+    return 'searching'
+  }
+  if (
+    normalized.includes('write') ||
+    normalized.includes('edit') ||
+    normalized.includes('canvas')
+  ) {
+    return 'composing'
+  }
+  if (
+    normalized.includes('read') ||
+    normalized.includes('pdf') ||
+    normalized.includes('memory') ||
+    normalized.includes('analy')
+  ) {
+    return 'solving'
+  }
+  if (normalized.includes('voice') || normalized.includes('tts')) {
+    return 'listening'
+  }
+  if (normalized.includes('skill') || normalized.includes('spawn')) {
+    return 'shaping'
+  }
+  return 'working'
+}
+
 function InlineToolSectionItem({
   toolSection,
   index,
@@ -1536,6 +1556,7 @@ function InlineToolSectionItem({
   index: number
   forceOpen?: boolean
 }) {
+  const themeId = useThemeId()
   const [open, setOpen] = useState(false)
   const [showRawJson, setShowRawJson] = useState(false)
   const [showFullOutput, setShowFullOutput] = useState(false)
@@ -1544,11 +1565,9 @@ function InlineToolSectionItem({
   }, [forceOpen])
 
   const icon = TOOL_ICONS[toolSection.type] ?? '🔧'
-  const isError = toolSection.state === 'output-error'
-  const isRunning =
-    toolSection.state === 'input-available' ||
-    toolSection.state === 'input-streaming'
-  const isDone = toolSection.state === 'output-available'
+  const isError = toolSection.activity.terminalKind === 'error'
+  const isRunning = toolSection.activity.renderOrb
+  const isDone = toolSection.activity.terminalKind === 'done'
   const headerArg = toolSection.input
     ? keyArgLabel(toolSection.type, toolSection.input)
     : null
@@ -1672,12 +1691,14 @@ function InlineToolSectionItem({
               ✕
             </span>
           )}
-          {isRunning && (
-            <span
-              className="size-1.5 rounded-full animate-pulse"
-              style={{ background: 'var(--theme-accent)' }}
+          {isRunning ? (
+            <ThinkingActivityIndicator
+              size={20}
+              themeId={themeId}
+              kind={getToolActivityKind(toolSection.type)}
+              label={`${toolDisplayLabel} running`}
             />
-          )}
+          ) : null}
           {hasExpandableContent && (
             <span className="text-[8px] opacity-30 ml-0.5">
               {open ? '▾' : '▸'}
@@ -2136,7 +2157,7 @@ function MessageItemComponent({
       .map((entry: any) => ({
         id: typeof entry?.id === 'string' ? entry.id : '',
         name: typeof entry?.name === 'string' ? entry.name : 'tool',
-        phase: normalizeStreamToolPhase(entry?.phase),
+        phase: normalizeKnownToolPhase(entry?.phase),
         args: entry?.args,
         preview: typeof entry?.preview === 'string' ? entry.preview : undefined,
         result: typeof entry?.result === 'string' ? entry.result : undefined,
@@ -2146,6 +2167,12 @@ function MessageItemComponent({
   const effectiveStreamToolCalls =
     streamToolCalls.length > 0 ? streamToolCalls : embeddedStreamToolCalls
   const hasStreamToolCalls = effectiveStreamToolCalls.length > 0
+  const assistantTurnPhase: AssistantTurnPhase = effectiveIsStreaming
+    ? 'streaming'
+    : 'completed'
+  const assistantTurnContext: AssistantTurnContext = effectiveIsStreaming
+    ? 'active'
+    : 'historical'
   const effectiveLifecycleEvents = lifecycleEvents
   const hasLifecycleEvents = effectiveLifecycleEvents.length > 0
   const activeStreamToolLabels = useMemo(() => {
@@ -2209,21 +2236,31 @@ function MessageItemComponent({
           (typeof toolMessage.toolName === 'string' &&
             toolMessage.toolName.trim()) ||
           parseToolNameFromMessageText(messageText)
-        return {
-          key:
+        const key =
             (typeof (toolMessage as any).id === 'string' &&
               (toolMessage as any).id) ||
             (typeof toolMessage.toolCallId === 'string' &&
               toolMessage.toolCallId) ||
-            `${toolType}-${index}`,
+            `${toolType}-${index}`
+        return projectPreparedToolSection({
+          key,
+          toolCallId:
+            typeof toolMessage.toolCallId === 'string'
+              ? toolMessage.toolCallId
+              : null,
           type: toolType,
+          rawPhase: toolMessage.isError ? 'error' : 'done',
           input: readToolArgs(toolMessage.details),
           outputText,
           errorText,
           state: toolMessage.isError ? 'output-error' : 'output-available',
-        }
+          assistantTurnPhase,
+          assistantTurnContext: 'historical',
+          hasTerminalResult: true,
+          terminalResultKind: toolMessage.isError ? 'error' : 'done',
+        })
       }),
-    [attachedToolMessages],
+    [assistantTurnPhase, attachedToolMessages],
   )
   const streamToolSections = useMemo<Array<InlineToolSection>>(
     () =>
@@ -2233,13 +2270,18 @@ function MessageItemComponent({
         const isError = toolCall.phase === 'error'
         const isComplete =
           toolCall.phase === 'done' ||
-          toolCall.phase === 'complete' ||
-          toolCall.phase === 'completed' ||
-          toolCall.phase === 'result' ||
           outputText.length > 0
-        return {
+        const state = isError
+          ? 'output-error'
+          : isComplete || !effectiveIsStreaming
+            ? 'output-available'
+            : 'input-available'
+        const terminalKind = isError ? 'error' : 'done'
+        return projectPreparedToolSection({
           key: toolCall.id || `${toolCall.name}-${index}`,
+          toolCallId: toolCall.id || null,
           type: toolCall.name,
+          rawPhase: toolCall.phase,
           input:
             toolCall.args && typeof toolCall.args === 'object'
               ? (toolCall.args as Record<string, unknown>)
@@ -2247,14 +2289,19 @@ function MessageItemComponent({
           preview: toolCall.preview,
           outputText,
           errorText: isError ? outputText || 'Tool failed' : undefined,
-          state: isError
-            ? 'output-error'
-            : isComplete || !effectiveIsStreaming
-              ? 'output-available'
-              : 'input-available',
-        }
+          state,
+          assistantTurnPhase,
+          assistantTurnContext,
+          hasTerminalResult: toolCall.phase === 'done' || isError,
+          terminalResultKind: terminalKind,
+        })
       }),
-    [effectiveStreamToolCalls, effectiveIsStreaming],
+    [
+      assistantTurnContext,
+      assistantTurnPhase,
+      effectiveStreamToolCalls,
+      effectiveIsStreaming,
+    ],
   )
   const inlineToolSections = useMemo<Array<InlineToolSection>>(
     () => [
@@ -2269,19 +2316,40 @@ function MessageItemComponent({
             outputText = JSON.stringify(rawOutput, null, 2)
           }
         }
+        const phase: NormalizedToolPhase =
+          toolPart.state === 'output-error'
+            ? 'error'
+            : toolPart.state === 'output-available'
+              ? 'done'
+              : 'unknown'
 
-        return {
+        return projectPreparedToolSection({
           key: toolPart.toolCallId || `${toolPart.type}-${index}`,
+          toolCallId: toolPart.toolCallId || null,
           type: toolPart.type,
+          rawPhase: phase,
           input: toolPart.input,
           outputText,
           errorText: toolPart.errorText,
           state: toolPart.state,
-        }
+          assistantTurnPhase,
+          assistantTurnContext,
+          hasTerminalResult:
+            toolPart.state === 'output-available' ||
+            toolPart.state === 'output-error',
+          terminalResultKind:
+            toolPart.state === 'output-error' ? 'error' : 'done',
+        })
       }),
       ...attachedToolSections,
     ],
-    [attachedToolSections, streamToolSections, toolParts],
+    [
+      assistantTurnContext,
+      assistantTurnPhase,
+      attachedToolSections,
+      streamToolSections,
+      toolParts,
+    ],
   )
   // When streaming is done, force all tool sections to completed state
   // Prevents stuck timers from race conditions where tool.completed SSE
@@ -2290,7 +2358,28 @@ function MessageItemComponent({
     if (effectiveIsStreaming) return inlineToolSections
     return inlineToolSections.map((section) =>
       section.state === 'input-available' || section.state === 'input-streaming'
-        ? { ...section, state: 'output-available' as const }
+        ? (() => {
+            const phase: NormalizedToolPhase =
+              section.phase === 'unknown' ? 'done' : section.phase
+            return {
+              ...projectPreparedToolSection({
+                key: section.key,
+                toolCallId: null,
+                type: section.type,
+                rawPhase: phase,
+                input: section.input,
+                preview: section.preview,
+                outputText: section.outputText,
+                errorText: section.errorText,
+                state: 'output-available',
+                assistantTurnPhase: 'completed',
+                assistantTurnContext: 'historical',
+                hasTerminalResult: true,
+                terminalResultKind: 'done',
+              }),
+              key: section.key,
+            }
+          })()
         : section,
     )
   }, [inlineToolSections, effectiveIsStreaming])
@@ -2704,19 +2793,6 @@ function MessageItemComponent({
           </div>
         </Message>
       )}
-      {/* Fallback working indicator when streaming with no text and no tool calls */}
-      {effectiveIsStreaming && !hasRevealedText && !hasStreamToolCalls ? (
-        <div
-          className="flex items-center gap-2 pl-1 text-xs"
-          style={{ color: 'var(--theme-muted)' }}
-        >
-          <span
-            className="size-1.5 rounded-full animate-pulse"
-            style={{ background: 'var(--theme-accent)' }}
-          />
-          <span>Working&hellip;</span>
-        </div>
-      ) : null}
       {/* Retry information if available */}
       {!isUser && !effectiveIsStreaming
         ? (() => {

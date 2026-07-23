@@ -185,10 +185,11 @@ export async function createKnowledgePromotionRequest(
   }
 
   const requestedAt = new Date().toISOString()
+  const requestStatus: KnowledgePromotionRequest['status'] =
+    blockers.length > 0 ? 'NEEDS_SOURCE_REGISTRATION' : 'PENDING_REVIEW'
   const requestPayload = {
     schema_version: 'knowledge_promotion_request.v1',
-    status:
-      blockers.length > 0 ? 'NEEDS_SOURCE_REGISTRATION' : 'PENDING_REVIEW',
+    status: requestStatus,
     requested_at: requestedAt,
     requested_by: context.userId || 'knowledge-ui',
     workspace_id: context.workspaceId || null,

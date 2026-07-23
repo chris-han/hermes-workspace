@@ -5,11 +5,12 @@ import {
   getKnowledgeBaseEffectiveRoot,
   readKnowledgeBaseConfig,
 } from './knowledge-config'
-import type { KnowledgeBaseSource } from './knowledge-config'
 import { resolveWorkspaceAppStateRoot } from './workspace-root'
+import type { KnowledgeBaseSource } from './knowledge-config'
 
 type KnowledgeBrowserContext = {
   datasetType?: string | null
+  forceWorkspaceWikiRoot?: boolean
 }
 
 export type WikiPageMeta = {

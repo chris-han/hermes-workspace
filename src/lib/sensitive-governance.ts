@@ -20,6 +20,7 @@ export type SensitiveGovernanceSegmentKind =
 
 export type SensitiveGovernanceAuthorityRef = {
   tier?: string
+  authority_ref?: string
   artifact_id?: string
   display_name_zh?: string
   [key: string]: unknown
@@ -212,7 +213,7 @@ async function requestSensitiveGovernanceJson<T>(
     ok?: boolean
     error?: string
   }
-  if (payload && payload.ok === false) {
+  if (payload.ok === false) {
     throw new Error(payload.error || 'Sensitive governance request failed')
   }
   return payload

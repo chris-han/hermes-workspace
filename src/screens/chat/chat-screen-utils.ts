@@ -34,6 +34,23 @@ export function advanceStickyStreamingText(params: {
   }
 }
 
+export function shouldShowComposerStopControl(params: {
+  effectiveSending: boolean
+  effectiveWaitingForResponse: boolean
+  isStreaming: boolean
+  hasVisibleSensitiveGovernanceResult: boolean
+}): boolean {
+  const {
+    effectiveSending,
+    effectiveWaitingForResponse,
+    isStreaming,
+    hasVisibleSensitiveGovernanceResult,
+  } = params
+
+  if (hasVisibleSensitiveGovernanceResult) return false
+  return effectiveSending || effectiveWaitingForResponse || isStreaming
+}
+
 type OptimisticMessagePayload = {
   clientId: string
   optimisticId: string

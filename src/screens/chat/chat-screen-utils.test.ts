@@ -4,6 +4,7 @@ import {
   advanceStickyStreamingText,
   getStreamingPlaceholderMessageId,
   hasAssistantReplyAfterLastUser,
+  shouldShowComposerStopControl,
 } from './chat-screen-utils'
 
 describe('advanceStickyStreamingText', () => {
@@ -52,6 +53,30 @@ describe('advanceStickyStreamingText', () => {
     })
 
     expect(next).toEqual({ runId: null, text: '' })
+  })
+})
+
+describe('shouldShowComposerStopControl', () => {
+  it('keeps the stop control visible after send/wait clears while the response is still streaming', () => {
+    expect(
+      shouldShowComposerStopControl({
+        effectiveSending: false,
+        effectiveWaitingForResponse: false,
+        isStreaming: true,
+        hasVisibleSensitiveGovernanceResult: false,
+      }),
+    ).toBe(true)
+  })
+
+  it('hides the stop control when sensitive-governance demo content has produced its governed result', () => {
+    expect(
+      shouldShowComposerStopControl({
+        effectiveSending: true,
+        effectiveWaitingForResponse: true,
+        isStreaming: true,
+        hasVisibleSensitiveGovernanceResult: true,
+      }),
+    ).toBe(false)
   })
 })
 

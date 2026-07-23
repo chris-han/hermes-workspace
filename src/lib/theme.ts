@@ -80,6 +80,7 @@ export const THEMES: Array<{
 ]
 
 const STORAGE_KEY = 'hermes-theme'
+export const THEME_CHANGE_EVENT = 'hermes:theme-change'
 const DEFAULT_THEME: ThemeId = 'semantier'
 const THEME_SET = new Set<ThemeId>(THEMES.map((theme) => theme.id))
 const LIGHT_THEME_MAP: Record<
@@ -150,4 +151,9 @@ export function setTheme(theme: ThemeId): void {
   root.classList.add(nextMode)
   root.style.setProperty('color-scheme', nextMode)
   localStorage.setItem(STORAGE_KEY, theme)
+  window.dispatchEvent(
+    new CustomEvent(THEME_CHANGE_EVENT, {
+      detail: { theme },
+    }),
+  )
 }

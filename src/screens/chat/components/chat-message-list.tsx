@@ -1,20 +1,34 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  ArrowExpand01Icon,
-  ArrowUp01Icon,
-  Robot01Icon,
-} from '@hugeicons/core-free-icons'
+import { Robot01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   getMessageTimestamp,
   getToolCallsFromMessage,
   textFromMessage,
 } from '../utils'
+import { normalizeKnownToolPhase } from '../lib/activity-state'
+import {
+  buildDisplayEntries,
+  buildPreparedChatRows,
+  getPendingAssistantRowKey,
+  getStableMessageId,
+  normalizeStreamingToolCalls,
+  selectPendingAssistantActivity,
+} from '../lib/prepared-chat-rows'
 import { MessageItem } from './message-item'
 import { ScrollToBottomButton } from './scroll-to-bottom-button'
 import { ResearchCard } from './research-card'
+import { ThinkingActivityIndicator } from './thinking-activity-indicator'
+import type { AssistantActivityState } from '../lib/activity-state'
+import type {
+  DisplayEntry,
+  PreparedChatRow,
+  PreparedStreamingToolCall,
+} from '../lib/prepared-chat-rows'
+import type { ThinkingActivityKind } from './thinking-activity-indicator'
 import type { ChatMessage } from '../types'
 import type { UseResearchCardResult } from '@/hooks/use-research-card'
+import { useThemeId } from '@/hooks/use-theme-id'
 import {
   ChatContainerContent,
   ChatContainerRoot,
@@ -31,38 +45,6 @@ import { CHAT_OPEN_MESSAGE_SEARCH_EVENT } from '@/screens/chat/chat-events'
  *  Keep this short so tool pills appear immediately and the shimmer only
  *  bridges the gap until the first tool/text event arrives. */
 const THINKING_GRACE_PERIOD_MS = 300
-
-/** Map tool names to human-readable status strings */
-const TOOL_STATUS_MAP: Record<string, string> = {
-  memory_search: 'Searching memory…',
-  memory_get: 'Searching memory…',
-  web_search: 'Searching the web…',
-  web_fetch: 'Reading page…',
-  cron: 'Managing schedules…',
-  message: 'Sending message…',
-  gateway: 'Managing gateway…',
-  canvas: 'Rendering canvas…',
-  voice_call: 'Making call…',
-  pdf: 'Reading PDF…',
-  todo: 'Managing tasks…',
-  Read: 'Reading file…',
-  read: 'Reading file…',
-  Write: 'Writing file…',
-  write: 'Writing file…',
-  Edit: 'Writing file…',
-  edit: 'Writing file…',
-  exec: 'Running code…',
-  sessions_spawn: 'Spawning agent…',
-  sessions_history: 'Checking sessions…',
-  sessions_list: 'Checking sessions…',
-  browser: 'Browsing web…',
-  image: 'Analyzing image…',
-  tts: 'Generating audio…',
-}
-
-function getToolStatusLabel(toolName: string): string {
-  return TOOL_STATUS_MAP[toolName] ?? 'Working…'
-}
 
 const TOOL_EMOJIS: Record<string, string> = {
   web_search: '🔍',
@@ -142,10 +124,45 @@ function getToolVerb(name: string): string {
   return 'Working'
 }
 
+function getToolActivityKind(toolType: string): ThinkingActivityKind {
+  const normalized = toolType.toLowerCase()
+  if (
+    normalized.includes('search') ||
+    normalized.includes('fetch') ||
+    normalized.includes('browser') ||
+    normalized.includes('grep')
+  ) {
+    return 'searching'
+  }
+  if (
+    normalized.includes('write') ||
+    normalized.includes('edit') ||
+    normalized.includes('canvas')
+  ) {
+    return 'composing'
+  }
+  if (
+    normalized.includes('read') ||
+    normalized.includes('pdf') ||
+    normalized.includes('memory') ||
+    normalized.includes('analy')
+  ) {
+    return 'solving'
+  }
+  if (normalized.includes('voice') || normalized.includes('tts')) {
+    return 'listening'
+  }
+  if (normalized.includes('skill') || normalized.includes('spawn')) {
+    return 'shaping'
+  }
+  return 'working'
+}
+
 function ToolCallCard({ name, phase }: { name: string; phase: string }) {
-  const isDone =
-    phase === 'done' || phase === 'complete' || phase === 'completed'
-  const isError = phase === 'error' || phase === 'failed'
+  const themeId = useThemeId()
+  const normalizedPhase = normalizeKnownToolPhase(phase)
+  const isDone = normalizedPhase === 'done'
+  const isError = normalizedPhase === 'error'
   const isRunning = !isDone && !isError
 
   const [elapsed, setElapsed] = useState(0)
@@ -195,7 +212,12 @@ function ToolCallCard({ name, phase }: { name: string; phase: string }) {
         {isDone && <span className="text-xs text-green-500">✅</span>}
         {isError && <span className="text-xs text-red-500">❌</span>}
         {isRunning && (
-          <span className="size-1.5 rounded-full animate-pulse bg-indigo-500" />
+          <ThinkingActivityIndicator
+            size={20}
+            themeId={themeId}
+            kind={getToolActivityKind(name)}
+            label={`${displayName} running`}
+          />
         )}
       </div>
       {isRunning && (
@@ -208,189 +230,32 @@ function ToolCallCard({ name, phase }: { name: string; phase: string }) {
   )
 }
 
-type ThinkingBubbleProps = {
-  activeToolCalls?: Array<{ id: string; name: string; phase: string }>
-  liveToolActivity?: Array<{ name: string; timestamp: number }>
-  researchCard?: UseResearchCardResult
-  isCompacting?: boolean
-}
-
-/**
- * Premium shimmer thinking bubble — matches the assistant message position
- * with three bouncing dots, a gradient shimmer sweep, and a dynamic status
- * label that reflects what's actually happening (tool calls, etc.).
- */
-function ThinkingBubble({
-  activeToolCalls = [],
-  liveToolActivity = [],
-  researchCard,
-  isCompacting = false,
-}: ThinkingBubbleProps) {
-  const hasActiveToolWork =
-    liveToolActivity.length > 0 || activeToolCalls.length > 0
-
-  const statusLabel = isCompacting
-    ? 'Compacting context...'
-    : hasActiveToolWork
-      ? 'Working…'
-      : 'Thinking…'
-
-  // Elapsed time counter — resets when the status label changes (new tool)
-  const [elapsed, setElapsed] = useState(0)
-  useEffect(() => {
-    setElapsed(0)
-    const interval = window.setInterval(() => setElapsed((s) => s + 1), 1000)
-    return () => window.clearInterval(interval)
-  }, [statusLabel])
-
-  const elapsedLabel =
-    elapsed >= 60
-      ? `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`
-      : `${elapsed}s`
-
-  const isStale = elapsed >= 30
-  const isVeryStale = elapsed >= 60
-  const canExpandResearch = Boolean(
-    researchCard && researchCard.steps.length > 0,
-  )
-  const expandedResearchCard = canExpandResearch ? researchCard : null
-  const completedResearchSteps = researchCard
-    ? researchCard.steps.filter((step) => step.status === 'done').length
-    : 0
-
-  // Track displayed label with a small delay so we fade between changes
-  const [displayedLabel, setDisplayedLabel] = useState(statusLabel)
-  const [visible, setVisible] = useState(true)
-  const prevLabelRef = useRef(statusLabel)
-
-  useEffect(() => {
-    if (statusLabel === prevLabelRef.current) return
-    // Fade out, swap, fade in
-    setVisible(false)
-    const swapTimer = window.setTimeout(() => {
-      setDisplayedLabel(statusLabel)
-      prevLabelRef.current = statusLabel
-      setVisible(true)
-    }, 150)
-    return () => window.clearTimeout(swapTimer)
-  }, [statusLabel])
-
-  // Keep the thinking bubble visible even when tools are active.
-  // If inline tool cards fail to render for a streaming message, this still
-  // gives the user a live indication of what tool is running.
+function AssistantActivityPlaceholder({
+  activity,
+}: {
+  activity: AssistantActivityState
+}) {
+  const themeId = useThemeId()
+  const label = activity.label || 'Working...'
 
   return (
-    <div className="flex items-end gap-2">
-      {/* Avatar with pulsing glow ring */}
-      <div className="thinking-avatar-glow shrink-0 rounded-lg">
+    <div
+      className="flex items-end gap-3 py-1.5"
+      role={activity.statusRole === 'status' ? 'status' : undefined}
+      aria-live={activity.statusRole === 'status' ? 'polite' : undefined}
+      aria-label={label}
+    >
+      <div className="shrink-0 rounded-lg">
         <AssistantAvatar size={28} />
       </div>
-
-      {/* Chat bubble */}
-      <div className="relative max-w-[36rem] overflow-hidden rounded-card rounded-bl-sm thinking-shimmer-bubble theme-border-1 theme-tool-surface">
-        {/* Shimmer overlay */}
-        <div
-          className="thinking-shimmer-sweep pointer-events-none absolute inset-0"
-          aria-hidden="true"
-        />
-
-        <div className="relative flex flex-col gap-2 px-4 py-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                {isCompacting ? (
-                  <span
-                    className="inline-block size-3 rounded-full border animate-spin theme-spinner-ring"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <>
-                    <span className="thinking-dot thinking-dot-1" />
-                    <span className="thinking-dot thinking-dot-2" />
-                    <span className="thinking-dot thinking-dot-3" />
-                  </>
-                )}
-                <span
-                  className={cn(
-                    'thinking-label ml-1.5 text-xs font-medium transition-opacity duration-300',
-                    isStale
-                      ? 'text-amber-500 dark:text-amber-400'
-                      : 'text-primary-500 dark:text-primary-500',
-                  )}
-                  style={{ opacity: visible ? 1 : 0 }}
-                >
-                  {displayedLabel}{' '}
-                  {elapsed >= 3 ? (
-                    <span className="text-[10px] opacity-60">
-                      {elapsedLabel}
-                    </span>
-                  ) : null}
-                </span>
-              </div>
-              {canExpandResearch ? (
-                <div className="mt-1 flex items-center gap-2 text-[11px] text-primary-500 dark:text-primary-400">
-                  <span>
-                    {completedResearchSteps}/
-                    {expandedResearchCard?.steps.length ?? 0} tools
-                  </span>
-                  <span aria-hidden="true" className="opacity-40">
-                    •
-                  </span>
-                  <span>
-                    {expandedResearchCard?.isActive
-                      ? 'Live timeline'
-                      : 'Timeline ready'}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-            {canExpandResearch ? (
-              <button
-                type="button"
-                onClick={() =>
-                  expandedResearchCard?.setCollapsed(
-                    !expandedResearchCard.collapsed,
-                  )
-                }
-                className="relative z-10 inline-flex size-7 shrink-0 items-center justify-center rounded-full border border-primary-200/80 bg-primary-50/90 text-primary-500 transition-colors hover:bg-primary-100 dark:border-primary-800 dark:bg-primary-900/80 dark:text-primary-300 dark:hover:bg-primary-800"
-                aria-label={
-                  expandedResearchCard?.collapsed
-                    ? 'Expand research timeline'
-                    : 'Collapse research timeline'
-                }
-                title={
-                  expandedResearchCard?.collapsed
-                    ? 'Expand research timeline'
-                    : 'Collapse research timeline'
-                }
-              >
-                <HugeiconsIcon
-                  icon={
-                    expandedResearchCard?.collapsed
-                      ? ArrowExpand01Icon
-                      : ArrowUp01Icon
-                  }
-                  size={14}
-                  strokeWidth={1.8}
-                />
-              </button>
-            ) : null}
-          </div>
-
-          {isStale ? (
-            <span className="text-[11px] text-amber-500 dark:text-amber-400 animate-pulse">
-              {isVeryStale
-                ? 'Still working… this is taking a while'
-                : 'Taking longer than usual…'}
-            </span>
-          ) : null}
-
-          {null}
-        </div>
-
-        {expandedResearchCard && !expandedResearchCard.collapsed ? (
-          <ResearchCard researchCard={expandedResearchCard} />
-        ) : null}
+      <div className="flex min-w-0 items-center gap-3 rounded-card rounded-bl-sm theme-border-1 theme-tool-surface px-4 py-3">
+        <ThinkingActivityIndicator size={64} themeId={themeId} label={label} />
+        <span
+          className="thinking-activity-label-shimmer text-xs font-medium"
+          data-label={label}
+        >
+          {label}
+        </span>
       </div>
     </div>
   )
@@ -507,68 +372,6 @@ function sortMessagesChronologically(
 type MessageSearchMatch = {
   stableId: string
   messageIndex: number
-}
-
-type DisplayEntry = {
-  message: ChatMessage
-  sourceIndex: number
-  attachedToolMessages: Array<ChatMessage>
-}
-
-function isAssistantToolCallOnlyMessage(message: ChatMessage): boolean {
-  if (message.role !== 'assistant') return false
-  const hasToolCalls = getToolCallsFromMessage(message).length > 0
-  const text = textFromMessage(message)
-  return hasToolCalls && text.trim().length === 0
-}
-
-export function buildDisplayEntries(
-  displayMessages: Array<ChatMessage>,
-): Array<DisplayEntry> {
-  const entries: Array<DisplayEntry> = []
-  let pendingAssistantToolMessages: Array<ChatMessage> = []
-
-  displayMessages.forEach((message, index) => {
-    if (isAssistantToolCallOnlyMessage(message)) {
-      pendingAssistantToolMessages.push(message)
-      return
-    }
-
-    if (message.role === 'tool' || message.role === 'toolResult') {
-      const previousEntry = entries[entries.length - 1]
-      if (previousEntry?.message.role === 'assistant') {
-        previousEntry.attachedToolMessages.push(message)
-      } else if (pendingAssistantToolMessages.length > 0) {
-        pendingAssistantToolMessages.push(message)
-      }
-      return
-    }
-
-    const entry: DisplayEntry = {
-      message,
-      sourceIndex: index,
-      attachedToolMessages: [],
-    }
-
-    if (
-      message.role === 'assistant' &&
-      pendingAssistantToolMessages.length > 0
-    ) {
-      entry.attachedToolMessages.push(...pendingAssistantToolMessages)
-      pendingAssistantToolMessages = []
-    }
-
-    entries.push(entry)
-  })
-
-  if (pendingAssistantToolMessages.length > 0) {
-    const previousEntry = entries[entries.length - 1]
-    if (previousEntry?.message.role === 'assistant') {
-      previousEntry.attachedToolMessages.push(...pendingAssistantToolMessages)
-    }
-  }
-
-  return entries
 }
 
 function escapeAttributeSelector(value: string): string {
@@ -1123,7 +926,7 @@ function ChatMessageListComponent({
   // tool calls in flight OR just completed) but the first text chunk hasn't
   // arrived yet. Removing the old `activeToolCalls.length > 0` gate ensures
   // the indicator stays alive even after tool calls finish and before text flows.
-  const showTypingIndicator = (() => {
+  const legacyShowTypingIndicator = (() => {
     // sending covers the instant the HTTP request fires before waitingForResponse
     // is confirmed by the server (they're typically batched but this is belt+suspenders)
     const effectivelyWaiting = waitingForResponse || thinkingGrace || sending
@@ -1165,39 +968,9 @@ function ChatMessageListComponent({
     researchCard && researchCard.steps.length > 0,
   )
 
-  const shouldBottomPin =
-    visibleEntries.length > 0 ||
-    showToolOnlyNotice ||
-    showResearchCard ||
-    showTypingIndicator ||
-    liveToolActivity.length > 0 ||
-    (isStreaming && !streamingText) ||
-    (isStreaming && activeToolCalls.length > 0)
-
   const normalizedStreamingToolCalls = useMemo<
-    Array<{
-      id: string
-      name: string
-      phase: 'calling' | 'running' | 'done' | 'error'
-    }>
-  >(
-    () =>
-      activeToolCalls.map((toolCall) => ({
-        id: toolCall.id,
-        name: toolCall.name,
-        phase:
-          toolCall.phase === 'complete' || toolCall.phase === 'completed'
-            ? 'done'
-            : toolCall.phase === 'start'
-              ? 'calling'
-              : toolCall.phase === 'failed'
-                ? 'error'
-                : toolCall.phase === 'calling' || toolCall.phase === 'running'
-                  ? toolCall.phase
-                  : 'calling',
-      })),
-    [activeToolCalls],
-  )
+    Array<PreparedStreamingToolCall>
+  >(() => normalizeStreamingToolCalls(activeToolCalls), [activeToolCalls])
 
   // Pin the last user+assistant group without adding bottom padding.
   const groupStartIndex = typeof lastUserIndex === 'number' ? lastUserIndex : -1
@@ -1236,101 +1009,190 @@ function ChatMessageListComponent({
     }
   }, [scrollMetrics, shouldVirtualize, visibleEntries.length])
 
-  function isMessageStreaming(message: ChatMessage, _index: number) {
-    if (!isStreaming || !streamingMessageId) return false
-    const messageId = message.__optimisticId || (message as any).id
-    if (typeof messageId === 'string' && messageId.trim().length > 0) {
-      return messageId === streamingMessageId
+  const preparedRows = useMemo<Array<PreparedChatRow>>(
+    () => {
+      const messageSearchStateById = new Map()
+      for (const [stableId, searchMatchIndex] of messageSearchMatchIndexById) {
+        messageSearchStateById.set(stableId, {
+          searchMatchIndex,
+          activeSearchMatchIndex,
+        })
+      }
+      return buildPreparedChatRows({
+        visibleEntries,
+        isStreaming,
+        streamingMessageId,
+        streamingText,
+        streamingThinking,
+        lifecycleEvents,
+        normalizedStreamingToolCalls,
+        activeToolCallCount: activeToolCalls.length,
+        lastAssistantSourceIndex: lastAssistantIndex,
+        waitingForResponse,
+        thinkingGrace,
+        sending,
+        isCompacting,
+        researchStepCount: researchCard?.steps.length ?? 0,
+        signatureById: streamingState.signatureById,
+        streamingTargets: streamingState.streamingTargets,
+        messageSearchStateById,
+        onRetryMessage,
+      }).map((row) => ({
+        ...row,
+        wrapperClassName: cn(
+          getMessageSpacingClass(visibleEntries, row.entryIndex),
+          getToolGroupClass(visibleEntries, row.entryIndex),
+        ),
+      }))
+    },
+    [
+      activeSearchMatchIndex,
+      activeToolCalls.length,
+      isStreaming,
+      lastAssistantIndex,
+      lifecycleEvents.length,
+      messageSearchMatchIndexById,
+      normalizedStreamingToolCalls,
+      onRetryMessage,
+      researchCard,
+      sending,
+      streamingMessageId,
+      streamingState.signatureById,
+      streamingState.streamingTargets,
+      streamingText,
+      streamingThinking,
+      thinkingGrace,
+      visibleEntries,
+      waitingForResponse,
+      isCompacting,
+    ],
+  )
+
+  const preparedAssistantActivity = preparedRows.find(
+    (row) => row.assistantActivity.showPlaceholder,
+  )?.assistantActivity
+  const showPreparedAssistantPlaceholder = Boolean(
+    preparedAssistantActivity?.showPlaceholder,
+  )
+  const pendingAssistantActivity = useMemo<AssistantActivityState | null>(
+    () =>
+      selectPendingAssistantActivity({
+        showPreparedAssistantPlaceholder,
+        legacyShowTypingIndicator,
+        isCompacting,
+        sending,
+        isStreaming,
+        waitingForResponse,
+        thinkingGrace,
+        streamingThinking,
+        lifecycleEventCount: lifecycleEvents.length,
+      }),
+    [
+    isCompacting,
+    isStreaming,
+    legacyShowTypingIndicator,
+    lifecycleEvents.length,
+    sending,
+    showPreparedAssistantPlaceholder,
+    streamingThinking,
+    thinkingGrace,
+    waitingForResponse,
+    ],
+  )
+  const pendingAssistantRowKey = useMemo(() => {
+    const lastUserRow =
+      typeof lastUserIndex === 'number'
+        ? preparedRows.find((row) => row.entryIndex === lastUserIndex)
+        : null
+    return getPendingAssistantRowKey({
+      sessionKey,
+      streamingMessageId,
+      lastUserStableId: lastUserRow?.stableId,
+    })
+  }, [lastUserIndex, preparedRows, sessionKey, streamingMessageId])
+  const showPendingAssistantPlaceholder = Boolean(pendingAssistantActivity)
+
+  const shouldBottomPin =
+    visibleEntries.length > 0 ||
+    showToolOnlyNotice ||
+    showResearchCard ||
+    showPreparedAssistantPlaceholder ||
+    showPendingAssistantPlaceholder
+
+  function renderPreparedMessage(
+    row: PreparedChatRow,
+    overrides: {
+      wrapperRef?: React.RefObject<HTMLDivElement | null>
+      wrapperClassName?: string
+      wrapperScrollMarginTop?: number
+    } = {},
+  ) {
+    const wrapperClassName = overrides.wrapperClassName ?? row.wrapperClassName
+
+    if (row.assistantActivity.showPlaceholder) {
+      return (
+        <div
+          key={row.stableId}
+          ref={overrides.wrapperRef}
+          className={wrapperClassName}
+          data-chat-message-id={row.stableId}
+          style={
+            typeof overrides.wrapperScrollMarginTop === 'number'
+              ? { scrollMarginTop: overrides.wrapperScrollMarginTop }
+              : undefined
+          }
+        >
+          <AssistantActivityPlaceholder activity={row.assistantActivity} />
+        </div>
+      )
     }
-    return false
-  }
-
-  function renderMessage(entry: DisplayEntry, entryIndex: number) {
-    const chatMessage = entry.message
-    const realIndex = entry.sourceIndex
-    const messageIsStreaming = isMessageStreaming(chatMessage, realIndex)
-    const stableId = getStableMessageId(chatMessage, realIndex)
-    const signature = streamingState.signatureById.get(stableId)
-    const simulateStreaming =
-      !messageIsStreaming && streamingState.streamingTargets.has(stableId)
-    const spacingClass = cn(
-      getMessageSpacingClass(visibleEntries, entryIndex),
-      getToolGroupClass(visibleEntries, entryIndex),
-    )
-    const forceActionsVisible =
-      typeof lastAssistantIndex === 'number' && realIndex === lastAssistantIndex
-    const hasToolCalls =
-      chatMessage.role === 'assistant' &&
-      (getToolCallsFromMessage(chatMessage).length > 0 ||
-        entry.attachedToolMessages.length > 0)
-
-    const searchMatchIndex = messageSearchMatchIndexById.get(stableId)
-    const isSearchMatch = typeof searchMatchIndex === 'number'
-    const isActiveMatch =
-      isSearchMatch && searchMatchIndex === activeSearchMatchIndex
-
-    // If this is a user message and an assistant reply exists after it,
-    // the send obviously succeeded — never show Retry.
-    const hasAssistantReply =
-      chatMessage.role === 'user' &&
-      entryIndex + 1 < visibleEntries.length &&
-      visibleEntries[entryIndex + 1]?.message.role === 'assistant'
-    const effectiveOnRetry = hasAssistantReply ? undefined : onRetryMessage
 
     // For the live streaming placeholder: wrap in a stable div whose key never
     // changes for the lifetime of the stream. The div's opacity toggles between
     // 0 (no text yet) and 1 (text flowing) without unmounting the inner
     // MessageItem — preserving its reveal-timer state so text streams word-by-word.
-    // ThinkingBubble stays visible via `streamingButEmpty` in showTypingIndicator
-    // while this wrapper is invisible.
-    if (messageIsStreaming) {
-      const hasStreamingActivity =
-        activeToolCalls.length > 0 ||
-        lifecycleEvents.length > 0 ||
-        Boolean(streamingThinking && streamingThinking.trim().length > 0)
-      const isEmptyPlaceholder =
-        (!streamingText || streamingText.trim().length === 0) &&
-        !hasStreamingActivity
+    // Canonical assistant placeholders own the empty-streaming state while
+    // this wrapper is invisible.
+    if (row.messageIsStreaming) {
       return (
         <div
-          key={stableId}
+          key={row.stableId}
           style={{
-            display: isEmptyPlaceholder ? 'none' : undefined,
-            opacity: isEmptyPlaceholder ? 0 : 1,
-            pointerEvents: isEmptyPlaceholder ? 'none' : undefined,
+            display: row.isEmptyStreamingPlaceholder ? 'none' : undefined,
+            opacity: row.isEmptyStreamingPlaceholder ? 0 : 1,
+            pointerEvents: row.isEmptyStreamingPlaceholder ? 'none' : undefined,
             transition: 'opacity 150ms ease',
           }}
-          aria-hidden={isEmptyPlaceholder ? true : undefined}
+          aria-hidden={row.isEmptyStreamingPlaceholder ? true : undefined}
         >
           <MessageItem
-            message={chatMessage}
-            attachedToolMessages={entry.attachedToolMessages}
-            onRetryMessage={effectiveOnRetry}
+            message={row.message}
+            attachedToolMessages={row.entry.attachedToolMessages}
+            onRetryMessage={row.effectiveOnRetry}
             onA2UiSubmit={onA2UiSubmit}
             onFillInput={onFillInput}
-            toolResultsByCallId={hasToolCalls ? toolResultsByCallId : undefined}
-            forceActionsVisible={forceActionsVisible}
-            wrapperClassName={spacingClass}
-            wrapperDataMessageId={stableId}
-            bubbleClassName={
-              isActiveMatch
-                ? 'ring-2 ring-amber-400 bg-amber-50/50'
-                : isSearchMatch
-                  ? 'bg-amber-50/30'
-                  : undefined
+            toolResultsByCallId={
+              row.hasToolCalls ? toolResultsByCallId : undefined
             }
+            forceActionsVisible={row.forceActionsVisible}
+            wrapperRef={overrides.wrapperRef}
+            wrapperClassName={wrapperClassName}
+            wrapperDataMessageId={row.stableId}
+            wrapperScrollMarginTop={overrides.wrapperScrollMarginTop}
+            bubbleClassName={row.bubbleClassName}
             toolCalls={
-              messageIsStreaming ? normalizedStreamingToolCalls : undefined
+              row.messageIsStreaming ? normalizedStreamingToolCalls : undefined
             }
-            isStreaming={messageIsStreaming}
+            isStreaming={row.messageIsStreaming}
             streamingText={streamingText}
             streamingThinking={
-              messageIsStreaming ? streamingThinking : undefined
+              row.messageIsStreaming ? streamingThinking : undefined
             }
-            lifecycleEvents={messageIsStreaming ? lifecycleEvents : undefined}
-            simulateStreaming={simulateStreaming}
-            streamingKey={signature}
+            lifecycleEvents={row.messageIsStreaming ? lifecycleEvents : undefined}
+            simulateStreaming={row.simulateStreaming}
+            streamingKey={row.signature}
             expandAllToolSections={expandAllToolSections}
+            isLastAssistant={row.forceActionsVisible}
           />
         </div>
       )
@@ -1338,33 +1200,30 @@ function ChatMessageListComponent({
 
     return (
       <MessageItem
-        key={stableId}
-        message={chatMessage}
-        attachedToolMessages={entry.attachedToolMessages}
-        onRetryMessage={effectiveOnRetry}
+        key={row.stableId}
+        message={row.message}
+        attachedToolMessages={row.entry.attachedToolMessages}
+        onRetryMessage={row.effectiveOnRetry}
         onA2UiSubmit={onA2UiSubmit}
         onFillInput={onFillInput}
-        toolResultsByCallId={hasToolCalls ? toolResultsByCallId : undefined}
-        forceActionsVisible={forceActionsVisible}
-        wrapperClassName={spacingClass}
-        wrapperDataMessageId={stableId}
-        bubbleClassName={
-          isActiveMatch
-            ? 'ring-2 ring-amber-400 bg-amber-50/50'
-            : isSearchMatch
-              ? 'bg-amber-50/30'
-              : undefined
-        }
+        toolResultsByCallId={row.hasToolCalls ? toolResultsByCallId : undefined}
+        forceActionsVisible={row.forceActionsVisible}
+        wrapperRef={overrides.wrapperRef}
+        wrapperClassName={wrapperClassName}
+        wrapperDataMessageId={row.stableId}
+        wrapperScrollMarginTop={overrides.wrapperScrollMarginTop}
+        bubbleClassName={row.bubbleClassName}
         toolCalls={
-          messageIsStreaming ? normalizedStreamingToolCalls : undefined
+          row.messageIsStreaming ? normalizedStreamingToolCalls : undefined
         }
-        isStreaming={messageIsStreaming}
-        streamingText={messageIsStreaming ? streamingText : undefined}
-        streamingThinking={messageIsStreaming ? streamingThinking : undefined}
-        lifecycleEvents={messageIsStreaming ? lifecycleEvents : undefined}
-        simulateStreaming={simulateStreaming}
-        streamingKey={signature}
+        isStreaming={row.messageIsStreaming}
+        streamingText={row.messageIsStreaming ? streamingText : undefined}
+        streamingThinking={row.messageIsStreaming ? streamingThinking : undefined}
+        lifecycleEvents={row.messageIsStreaming ? lifecycleEvents : undefined}
+        simulateStreaming={row.simulateStreaming}
+        streamingKey={row.signature}
         expandAllToolSections={expandAllToolSections}
+        isLastAssistant={row.forceActionsVisible}
       />
     )
   }
@@ -1746,7 +1605,9 @@ function ChatMessageListComponent({
               </div>
             ) : hasGroup ? (
               <>
-                {visibleEntries.slice(0, groupStartIndex).map(renderMessage)}
+                {preparedRows
+                  .slice(0, groupStartIndex)
+                  .map((row) => renderPreparedMessage(row))}
                 {/* // Keep the last exchange pinned without extra tail gap. // Account
               for space-y-6 (24px) when pinning. */}
                 <div
@@ -1755,66 +1616,18 @@ function ChatMessageListComponent({
                     minHeight: `${Math.max(0, pinGroupMinHeight - 12)}px`,
                   }}
                 >
-                  {visibleEntries.slice(groupStartIndex).map((entry, index) => {
-                    const chatMessage = entry.message
-                    const realIndex = entry.sourceIndex
-                    const entryIndex = groupStartIndex + index
-                    const messageIsStreaming = isMessageStreaming(
-                      chatMessage,
-                      realIndex,
-                    )
-                    const stableId = getStableMessageId(chatMessage, realIndex)
-                    const signature = streamingState.signatureById.get(stableId)
-                    const simulateStreaming =
-                      !messageIsStreaming &&
-                      streamingState.streamingTargets.has(stableId)
-                    const forceActionsVisible =
-                      typeof lastAssistantIndex === 'number' &&
-                      realIndex === lastAssistantIndex
-                    const wrapperRef =
-                      entryIndex === lastUserIndex ? lastUserRef : undefined
-                    const wrapperClassName = cn(
-                      getMessageSpacingClass(visibleEntries, entryIndex),
-                      getToolGroupClass(visibleEntries, entryIndex),
-                      entryIndex === lastUserIndex ? 'scroll-mt-0' : '',
-                    )
-                    const wrapperScrollMarginTop =
-                      entryIndex === lastUserIndex ? headerHeight : undefined
-                    const hasToolCalls =
-                      chatMessage.role === 'assistant' &&
-                      (getToolCallsFromMessage(chatMessage).length > 0 ||
-                        entry.attachedToolMessages.length > 0)
-                    return (
-                      <MessageItem
-                        key={stableId}
-                        message={chatMessage}
-                        attachedToolMessages={entry.attachedToolMessages}
-                        onRetryMessage={onRetryMessage}
-                        onA2UiSubmit={onA2UiSubmit}
-                        onFillInput={onFillInput}
-                        toolResultsByCallId={
-                          hasToolCalls ? toolResultsByCallId : undefined
-                        }
-                        forceActionsVisible={forceActionsVisible}
-                        wrapperRef={wrapperRef}
-                        wrapperClassName={wrapperClassName}
-                        wrapperScrollMarginTop={wrapperScrollMarginTop}
-                        isStreaming={messageIsStreaming}
-                        streamingText={
-                          messageIsStreaming ? streamingText : undefined
-                        }
-                        streamingThinking={
-                          messageIsStreaming ? streamingThinking : undefined
-                        }
-                        lifecycleEvents={
-                          messageIsStreaming ? lifecycleEvents : undefined
-                        }
-                        simulateStreaming={simulateStreaming}
-                        streamingKey={signature}
-                        expandAllToolSections={expandAllToolSections}
-                        isLastAssistant={forceActionsVisible}
-                      />
-                    )
+                  {preparedRows.slice(groupStartIndex).map((row) => {
+                    const isLastUserRow = row.entryIndex === lastUserIndex
+                    return renderPreparedMessage(row, {
+                      wrapperRef: isLastUserRow ? lastUserRef : undefined,
+                      wrapperClassName: cn(
+                        row.wrapperClassName,
+                        isLastUserRow ? 'scroll-mt-0' : '',
+                      ),
+                      wrapperScrollMarginTop: isLastUserRow
+                        ? headerHeight
+                        : undefined,
+                    })
                   })}
                 </div>
               </>
@@ -1826,11 +1639,9 @@ function ChatMessageListComponent({
                     style={{ height: `${virtualRange.topSpacerHeight}px` }}
                   />
                 ) : null}
-                {visibleEntries
+                {preparedRows
                   .slice(virtualRange.startIndex, virtualRange.endIndex)
-                  .map((entry, index) =>
-                    renderMessage(entry, virtualRange.startIndex + index),
-                  )}
+                  .map((row) => renderPreparedMessage(row))}
                 {shouldVirtualize && virtualRange.bottomSpacerHeight > 0 ? (
                   <div
                     aria-hidden="true"
@@ -1839,23 +1650,22 @@ function ChatMessageListComponent({
                 ) : null}
               </>
             )}
-            {showTypingIndicator ||
-            showResearchCard ||
-            isCompacting ||
-            liveToolActivity.length > 0 ||
-            (isStreaming && !streamingText) ||
-            (isStreaming && activeToolCalls.length > 0) ? (
+            {pendingAssistantActivity ? (
               <div
-                className="flex flex-col gap-1 py-1.5 px-1 animate-in fade-in duration-300 md:gap-1.5 md:py-2"
-                role="status"
-                aria-live="polite"
+                key={pendingAssistantRowKey}
+                className="mt-2 md:mt-2.5"
+                data-chat-message-id={pendingAssistantRowKey}
               >
-                <ThinkingBubble
-                  activeToolCalls={activeToolCalls}
-                  liveToolActivity={liveToolActivity}
-                  researchCard={researchCard}
-                  isCompacting={isCompacting}
+                <AssistantActivityPlaceholder
+                  activity={pendingAssistantActivity}
                 />
+              </div>
+            ) : null}
+            {showResearchCard ? (
+              <div className="flex flex-col gap-1 py-1.5 px-1 animate-in fade-in duration-300 md:gap-1.5 md:py-2">
+                {researchCard ? (
+                  <ResearchCard researchCard={researchCard} />
+                ) : null}
               </div>
             ) : null}
             {notice && noticePosition === 'end' ? notice : null}
@@ -1910,45 +1720,6 @@ function getToolGroupClass(
 
   if (previousUserIndex === -1 || nextUserIndex === -1) return ''
   return 'border-l border-primary-200/70 pl-3'
-}
-
-function getStableMessageId(message: ChatMessage, index: number): string {
-  if (message.__optimisticId) return message.__optimisticId
-
-  const idCandidates = ['id', 'messageId', 'uuid', 'clientId'] as const
-  for (const key of idCandidates) {
-    const value = (message as Record<string, unknown>)[key]
-    if (typeof value === 'string' && value.trim().length > 0) {
-      return value
-    }
-  }
-
-  const timestamp = getRawMessageTimestamp(message)
-  if (timestamp) {
-    return `${message.role ?? 'assistant'}-${timestamp}-${index}`
-  }
-
-  return `${message.role ?? 'assistant'}-${index}`
-}
-
-function getRawMessageTimestamp(message: ChatMessage): number | null {
-  const candidates = [
-    message.createdAt,
-    message.timestamp,
-    (message as Record<string, unknown>).time,
-    (message as Record<string, unknown>).ts,
-  ]
-  for (const candidate of candidates) {
-    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
-      if (candidate < 1_000_000_000_000) return candidate * 1000
-      return candidate
-    }
-    if (typeof candidate === 'string') {
-      const parsed = Date.parse(candidate)
-      if (!Number.isNaN(parsed)) return parsed
-    }
-  }
-  return null
 }
 
 function areChatMessageListEqual(

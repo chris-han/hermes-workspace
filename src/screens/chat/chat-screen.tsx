@@ -17,6 +17,7 @@ import {
   createOptimisticMessage,
   getStreamingPlaceholderMessageId,
   hasAssistantReplyAfterLastUser,
+  shouldShowComposerStopControl,
 } from './chat-screen-utils'
 import {
   appendHistoryMessage,
@@ -1320,7 +1321,7 @@ export function ChatScreen({
       activeSendRef.current = null
       refreshHistoryRef.current()
       setSending(false)
-      // Clear waitingForResponse so ThinkingBubble hides and message renders
+      // Clear waitingForResponse so the assistant activity row yields to content.
       streamFinish()
     }, [queryClient, streamFinish]),
     onError: useCallback(
@@ -2906,6 +2907,12 @@ export function ChatScreen({
   const effectiveWaitingForResponse =
     waitingForResponse && !hasVisibleSensitiveGovernanceResult
   const effectiveSending = sending && !hasVisibleSensitiveGovernanceResult
+  const composerIsLoading = shouldShowComposerStopControl({
+    effectiveSending,
+    effectiveWaitingForResponse,
+    isStreaming: derivedStreamingInfo.isStreaming,
+    hasVisibleSensitiveGovernanceResult,
+  })
   useEffect(() => {
     if (!hasVisibleSensitiveGovernanceResult) return
     setPendingGeneration(false)
@@ -3040,10 +3047,6 @@ export function ChatScreen({
           className={cn(
             'flex h-full flex-1 min-h-0 min-w-0 flex-col overflow-hidden transition-[margin-right,margin-bottom] duration-200',
             'mr-0',
-            (activeIsRealtimeStreaming ||
-              (!hasVisibleSensitiveGovernanceResult &&
-                hasPendingGeneration())) &&
-              'chat-streaming-glow',
           )}
           style={{
             marginBottom:
@@ -3190,7 +3193,7 @@ export function ChatScreen({
             <ChatComposer
               onSubmit={send}
               onAbort={handleAbortStreaming}
-              isLoading={effectiveSending || effectiveWaitingForResponse}
+              isLoading={composerIsLoading}
               disabled={effectiveSending || hideUi}
               sessionKey={
                 isNewChat

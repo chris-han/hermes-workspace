@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
+import { selectToolActivityState } from '../lib/activity-state'
 import {
   buildInlineToolRenderPlan,
   formatGovernedQueryResultForDisplay,
+  shouldRenderPrimaryAssistantText,
 } from './message-item'
-import { shouldRenderPrimaryAssistantText } from './message-item'
 import type { ChatMessage } from '../types'
 
 describe('buildInlineToolRenderPlan', () => {
@@ -28,8 +29,14 @@ describe('buildInlineToolRenderPlan', () => {
       {
         key: 'tc-1',
         type: 'browser_snapshot',
+        phase: 'running',
         preview: '📸 Snapshot',
         outputText: '',
+        activity: selectToolActivityState({
+          normalizedPhase: 'running',
+          assistantTurnPhase: 'streaming',
+          assistantTurnContext: 'active',
+        }),
         state: 'input-available',
       },
     ])
@@ -41,8 +48,14 @@ describe('buildInlineToolRenderPlan', () => {
         section: {
           key: 'tc-1',
           type: 'browser_snapshot',
+          phase: 'running',
           preview: '📸 Snapshot',
           outputText: '',
+          activity: selectToolActivityState({
+            normalizedPhase: 'running',
+            assistantTurnPhase: 'streaming',
+            assistantTurnContext: 'active',
+          }),
           state: 'input-available',
         },
       },

@@ -76,6 +76,17 @@ const LEGAL_COPY = {
     effectivity: 'Effectivity',
     sourceHash: 'Source hash',
     pipelineState: 'Pipeline state',
+    lifecycleStates: {
+      DRAFT: 'Draft',
+      CONSULTATION: 'Consultation',
+      REGISTERED: 'Registered',
+      CHANGE_DETECTED: 'Change detected',
+      CERTIFIED: 'Certified',
+      ACTIVE: 'Active',
+      SUPERSEDED: 'Superseded',
+      REPEALED: 'Repealed',
+      UNRESOLVED: 'Unresolved',
+    },
     current: 'current',
     rawArtifacts: 'Raw artifacts',
     artifact: 'artifact',
@@ -158,6 +169,17 @@ const LEGAL_COPY = {
     effectivity: '生效时间',
     sourceHash: '来源哈希',
     pipelineState: '流水线状态',
+    lifecycleStates: {
+      DRAFT: '草稿',
+      CONSULTATION: '征求意见',
+      REGISTERED: '已登记',
+      CHANGE_DETECTED: '发现变更',
+      CERTIFIED: '已认证',
+      ACTIVE: '生效',
+      SUPERSEDED: '已替代',
+      REPEALED: '已废止',
+      UNRESOLVED: '未解析',
+    },
     current: '当前',
     rawArtifacts: '原始制品',
     artifact: '制品',
@@ -199,7 +221,33 @@ const LEGAL_COPY = {
   },
 } as const
 
-type LegalCopy = typeof LEGAL_COPY.en
+type LegalCopy = (typeof LEGAL_COPY)[keyof typeof LEGAL_COPY]
+
+const LIFECYCLE_STATES = [
+  'DRAFT',
+  'CONSULTATION',
+  'REGISTERED',
+  'CHANGE_DETECTED',
+  'CERTIFIED',
+  'ACTIVE',
+  'SUPERSEDED',
+  'REPEALED',
+  'UNRESOLVED',
+] as const
+
+type LifecycleState = (typeof LIFECYCLE_STATES)[number]
+
+function isLifecycleState(state: string): state is LifecycleState {
+  return LIFECYCLE_STATES.includes(state as LifecycleState)
+}
+
+function lifecycleStateLabel(
+  state: string | null | undefined,
+  copy: LegalCopy,
+): string {
+  if (!state) return copy.unresolved
+  return isLifecycleState(state) ? copy.lifecycleStates[state] : state
+}
 
 const EMPTY_SOURCE_FORM: RegisterLegalSourceInput = {
   canonical_title: '',
@@ -317,7 +365,7 @@ function buildBundle(
   }
 }
 
-export function LegalCorpusScreen() {
+export function KnowledgeBaseScreen() {
   const queryClient = useQueryClient()
   const locale = useSettingsStore((state) => state.settings.locale)
   const copy = locale === 'zh' ? LEGAL_COPY.zh : LEGAL_COPY.en
@@ -491,18 +539,6 @@ export function LegalCorpusScreen() {
   }
 
   const metrics = dashboardQuery.data?.metrics ?? {}
-  const lifecycleStates = [
-    'DRAFT',
-    'CONSULTATION',
-    'REGISTERED',
-    'CHANGE_DETECTED',
-    'CERTIFIED',
-    'ACTIVE',
-    'SUPERSEDED',
-    'REPEALED',
-    'UNRESOLVED',
-  ]
-
   return (
     <div
       lang={locale === 'zh' ? 'zh-CN' : 'en'}
@@ -616,11 +652,19 @@ export function LegalCorpusScreen() {
                     }
                     className={fieldClassName}
                   >
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="DRAFT">DRAFT</option>
-                    <option value="CONSULTATION">CONSULTATION</option>
-                    <option value="SUPERSEDED">SUPERSEDED</option>
-                    <option value="REPEALED">REPEALED</option>
+                    {(
+                      [
+                        'ACTIVE',
+                        'DRAFT',
+                        'CONSULTATION',
+                        'SUPERSEDED',
+                        'REPEALED',
+                      ] as const
+                    ).map((state) => (
+                      <option key={state} value={state}>
+                        {lifecycleStateLabel(state, copy)}
+                      </option>
+                    ))}
                   </select>
                 </FormField>
                 <FormField label={`${copy.documentNumber} (${copy.optional})`}>
@@ -684,7 +728,9 @@ export function LegalCorpusScreen() {
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
                       <Badge>{source.authority_tier || copy.tierPending}</Badge>
-                      <Badge>{current?.lifecycle_state || copy.unresolved}</Badge>
+                      <Badge>
+                        {lifecycleStateLabel(current?.lifecycle_state, copy)}
+                      </Badge>
                       <Badge>{copy.versionCount(versions.length)}</Badge>
                     </div>
                   </button>
@@ -730,7 +776,9 @@ export function LegalCorpusScreen() {
                     {bundle.source?.jurisdiction || copy.jurisdictionPending}
                   </p>
                 </div>
-                <Badge>{bundle.version?.lifecycle_state || copy.unresolved}</Badge>
+                <Badge>
+                  {lifecycleStateLabel(bundle.version?.lifecycle_state, copy)}
+                </Badge>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -763,7 +811,7 @@ export function LegalCorpusScreen() {
                 {copy.pipelineState}
               </div>
               <div className="mt-3 space-y-2">
-                {lifecycleStates.map((state) => (
+                {LIFECYCLE_STATES.map((state) => (
                   <div
                     key={state}
                     className={cn(
@@ -773,7 +821,7 @@ export function LegalCorpusScreen() {
                         : 'border-border text-muted-foreground',
                     )}
                   >
-                    <span>{state}</span>
+                    <span>{lifecycleStateLabel(state, copy)}</span>
                     <span>
                       {bundle.version?.lifecycle_state === state
                         ? copy.current

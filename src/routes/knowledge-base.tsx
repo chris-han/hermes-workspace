@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useSettingsStore } from '@/hooks/use-settings'
 import { t } from '@/lib/i18n'
-import { LegalCorpusScreen } from '@/screens/legal-corpus/legal-corpus-screen'
+import { KnowledgeBaseScreen } from '@/screens/knowledge-base/knowledge-base-screen'
 
 const knowledgeBaseSearchSchema = z.object({
   tab: z.enum(['legal', 'general', 'governance']).optional(),
@@ -85,7 +85,7 @@ function KnowledgeBaseRoute() {
         <TabsPanel value="legal" className="min-h-0 flex-1">
           {tab === 'legal' ? (
             <Suspense fallback={<RouteLoadingState label={copy.loadingLegal} />}>
-              <LegalCorpusScreen />
+              <KnowledgeBaseScreen />
             </Suspense>
           ) : null}
         </TabsPanel>

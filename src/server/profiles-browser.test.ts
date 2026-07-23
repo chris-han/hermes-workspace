@@ -62,4 +62,37 @@ describe('listProfiles', () => {
       true,
     )
   })
+
+  it('lists profile identity and prompt fields used by Agent Roster', () => {
+    const hermesRoot = tempHome
+    const profileRoot = path.join(hermesRoot, 'profiles', 'pc1-coder')
+
+    fs.mkdirSync(profileRoot, { recursive: true })
+    fs.writeFileSync(
+      path.join(profileRoot, 'config.yaml'),
+      [
+        'display_name: PC1 Coder',
+        'avatar_data_url: data:image/png;base64,avatar',
+        'description: Implements focused code changes',
+        'system_prompt: Use the profile-specific prompt',
+        'model: openai/gpt-5-codex',
+        '',
+      ].join('\n'),
+      'utf-8',
+    )
+
+    const profile = listProfiles(hermesRoot).find(
+      (entry) => entry.name === 'pc1-coder',
+    )
+
+    expect(profile).toMatchObject({
+      name: 'pc1-coder',
+      displayName: 'PC1 Coder',
+      avatarDataUrl: 'data:image/png;base64,avatar',
+      description: 'Implements focused code changes',
+      systemPrompt: 'Use the profile-specific prompt',
+      model: 'openai/gpt-5-codex',
+      provider: 'openai',
+    })
+  })
 })

@@ -122,11 +122,50 @@ export type LegalAcceptanceEvidenceExportRef = {
   created_at?: string
 }
 
+export type RegisterLegalSourceInput = {
+  canonical_title: string
+  issuer: string
+  authority_tier: string
+  jurisdiction: string
+  expected_status: string
+  document_number?: string | null
+  governance_state?: string
+}
+
+export type LegalUploadMetadataSuggestions = {
+  canonical_title?: string
+  issuer?: string
+  document_number?: string
+  effective_from?: string
+  extraction_method?: string
+}
+
+export type LegalSourceUploadResult = {
+  artifact: LegalSourceArtifact
+  metadata_suggestions?: LegalUploadMetadataSuggestions
+}
+
 async function readLegalJson<T>(path: string): Promise<T> {
   const response = await fetch(`${LEGAL_CORPUS_PROXY_PREFIX}${path}`)
   if (!response.ok) {
     const text = await response.text().catch(() => '')
-    throw new Error(text || `Legal corpus request failed: ${response.status}`)
+    throw new Error(text || `Knowledge base request failed: ${response.status}`)
+  }
+  return response.json() as Promise<T>
+}
+
+async function writeLegalJson<T>(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<T> {
+  const response = await fetch(`${LEGAL_CORPUS_PROXY_PREFIX}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    throw new Error(text || `Knowledge base request failed: ${response.status}`)
   }
   return response.json() as Promise<T>
 }
@@ -180,4 +219,48 @@ export async function fetchLegalAcceptanceEvidenceExports(): Promise<
     acceptance_evidence_exports?: Array<LegalAcceptanceEvidenceExportRef>
   }>('/acceptance-evidence-exports')
   return payload.acceptance_evidence_exports ?? []
+}
+
+export async function registerLegalSource(
+  input: RegisterLegalSourceInput,
+): Promise<LegalSource> {
+  const payload = await writeLegalJson<{ source?: LegalSource }>('/sources', {
+    ...input,
+    governance_state: input.governance_state || 'LISTED',
+  })
+  if (!payload.source) {
+    throw new Error('Knowledge base source registration did not return a source')
+  }
+  return payload.source
+}
+
+export async function uploadLegalSourceArtifact(
+  versionId: string,
+  file: File,
+): Promise<LegalSourceUploadResult> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('artifact_kind', 'official_artifact_upload')
+  const response = await fetch(
+    `${LEGAL_CORPUS_PROXY_PREFIX}/versions/${encodeURIComponent(versionId)}/source-upload`,
+    {
+      method: 'POST',
+      body: form,
+    },
+  )
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    throw new Error(text || `Knowledge base upload failed: ${response.status}`)
+  }
+  const payload = (await response.json()) as {
+    artifact?: LegalSourceArtifact
+    metadata_suggestions?: LegalUploadMetadataSuggestions
+  }
+  if (!payload.artifact) {
+    throw new Error('Knowledge base upload did not return an artifact')
+  }
+  return {
+    artifact: payload.artifact,
+    metadata_suggestions: payload.metadata_suggestions,
+  }
 }

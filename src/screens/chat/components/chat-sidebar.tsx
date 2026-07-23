@@ -600,13 +600,15 @@ function ChatSidebarComponent({
   const isDataConnectionsActive = pathname === '/settings/data-connections'
   const isJobsActive = pathname === '/jobs'
   const isMemoryActive = pathname === '/memory'
-  const isLegalCorpusActive = pathname === '/legal-corpus'
+  const isKnowledgeBaseActive =
+    pathname === '/knowledge-base' || pathname === '/legal-corpus'
   const isTasksActive = pathname === '/tasks'
   const isorchestratorActive = pathname === '/orchestrator'
   const isAgentRosterActive = pathname === '/agent-roster'
   const mainRoutes = ['/chat', '/new']
   const knowledgeRoutes = [
     '/memory',
+    '/knowledge-base',
     '/legal-corpus',
     '/skills',
     '/settings/data-connections',
@@ -923,10 +925,10 @@ function ChatSidebarComponent({
     },
     {
       kind: 'link',
-      to: '/legal-corpus',
+      to: '/knowledge-base',
       icon: Book01Icon,
-      label: 'Legal Corpus',
-      active: isLegalCorpusActive,
+      label: t('nav.knowledgeBase'),
+      active: isKnowledgeBaseActive,
     },
     {
       kind: 'link',

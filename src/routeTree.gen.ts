@@ -18,6 +18,7 @@ import { Route as ProfilesRouteImport } from './routes/profiles'
 import { Route as OrchestratorRouteImport } from './routes/orchestrator'
 import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as LegalCorpusRouteImport } from './routes/legal-corpus'
+import { Route as KnowledgeBaseRouteImport } from './routes/knowledge-base'
 import { Route as KanbanRouteImport } from './routes/kanban'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as FilesRouteImport } from './routes/files'
@@ -165,6 +166,11 @@ const MemoryRoute = MemoryRouteImport.update({
 const LegalCorpusRoute = LegalCorpusRouteImport.update({
   id: '/legal-corpus',
   path: '/legal-corpus',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KnowledgeBaseRoute = KnowledgeBaseRouteImport.update({
+  id: '/knowledge-base',
+  path: '/knowledge-base',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KanbanRoute = KanbanRouteImport.update({
@@ -698,6 +704,7 @@ export interface FileRoutesByFullPath {
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
+  '/knowledge-base': typeof KnowledgeBaseRoute
   '/legal-corpus': typeof LegalCorpusRoute
   '/memory': typeof MemoryRoute
   '/orchestrator': typeof OrchestratorRoute
@@ -812,6 +819,7 @@ export interface FileRoutesByTo {
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
+  '/knowledge-base': typeof KnowledgeBaseRoute
   '/legal-corpus': typeof LegalCorpusRoute
   '/memory': typeof MemoryRoute
   '/orchestrator': typeof OrchestratorRoute
@@ -926,6 +934,7 @@ export interface FileRoutesById {
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
+  '/knowledge-base': typeof KnowledgeBaseRoute
   '/legal-corpus': typeof LegalCorpusRoute
   '/memory': typeof MemoryRoute
   '/orchestrator': typeof OrchestratorRoute
@@ -1042,6 +1051,7 @@ export interface FileRouteTypes {
     | '/files'
     | '/jobs'
     | '/kanban'
+    | '/knowledge-base'
     | '/legal-corpus'
     | '/memory'
     | '/orchestrator'
@@ -1156,6 +1166,7 @@ export interface FileRouteTypes {
     | '/files'
     | '/jobs'
     | '/kanban'
+    | '/knowledge-base'
     | '/legal-corpus'
     | '/memory'
     | '/orchestrator'
@@ -1269,6 +1280,7 @@ export interface FileRouteTypes {
     | '/files'
     | '/jobs'
     | '/kanban'
+    | '/knowledge-base'
     | '/legal-corpus'
     | '/memory'
     | '/orchestrator'
@@ -1384,6 +1396,7 @@ export interface RootRouteChildren {
   FilesRoute: typeof FilesRoute
   JobsRoute: typeof JobsRoute
   KanbanRoute: typeof KanbanRoute
+  KnowledgeBaseRoute: typeof KnowledgeBaseRoute
   LegalCorpusRoute: typeof LegalCorpusRoute
   MemoryRoute: typeof MemoryRoute
   OrchestratorRoute: typeof OrchestratorRoute
@@ -1531,6 +1544,13 @@ declare module '@tanstack/react-router' {
       path: '/legal-corpus'
       fullPath: '/legal-corpus'
       preLoaderRoute: typeof LegalCorpusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/knowledge-base': {
+      id: '/knowledge-base'
+      path: '/knowledge-base'
+      fullPath: '/knowledge-base'
+      preLoaderRoute: typeof KnowledgeBaseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kanban': {
@@ -2380,6 +2400,7 @@ const rootRouteChildren: RootRouteChildren = {
   FilesRoute: FilesRoute,
   JobsRoute: JobsRoute,
   KanbanRoute: KanbanRoute,
+  KnowledgeBaseRoute: KnowledgeBaseRoute,
   LegalCorpusRoute: LegalCorpusRoute,
   MemoryRoute: MemoryRoute,
   OrchestratorRoute: OrchestratorRoute,

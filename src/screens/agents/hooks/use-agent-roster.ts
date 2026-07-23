@@ -17,6 +17,8 @@ type HermesProfileSummary = {
   name: string
   displayName?: string
   avatarDataUrl?: string
+  description?: string
+  systemPrompt?: string
   path: string
   active: boolean
   exists: boolean
@@ -37,6 +39,8 @@ export type GatewayConfigAgent = {
   provider?: string
   workspace?: string
   agentDir?: string
+  description?: string
+  systemPrompt?: string
 }
 
 export type AgentRosterAgentMeta = {
@@ -215,6 +219,8 @@ function normalizeAgentList(input: unknown): Array<GatewayConfigAgent> {
       provider: readString(row.provider) || undefined,
       workspace: readString(row.workspace) || undefined,
       agentDir: readString(row.agentDir) || undefined,
+      description: readString(row.description) || undefined,
+      systemPrompt: readString(row.systemPrompt) || undefined,
     })
   }
 
@@ -259,6 +265,8 @@ async function fetchAgentRosterConfig(): Promise<ConfigPayload> {
     provider: readString(profile.provider),
     workspace: profile.path,
     agentDir: profile.path,
+    description: readString(profile.description),
+    systemPrompt: readString(profile.systemPrompt),
   }))
   // Default-profile model becomes the agentRoster defaultModel suggestion
   const defaultModel = profiles.find((p) => p.name === 'default')?.model || ''
@@ -330,12 +338,20 @@ async function deleteHermesProfile(name: string) {
   }
 }
 
-function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
+function loadAgentMeta(
+  agentId: string,
+  fallback?: Partial<
+    Pick<AgentRosterAgentMeta, 'description' | 'systemPrompt'>
+  >,
+): AgentRosterAgentMeta {
+  const fallbackDescription = readString(fallback?.description)
+  const fallbackSystemPrompt = readString(fallback?.systemPrompt)
+
   if (typeof window === 'undefined') {
     return {
       emoji: createFallbackEmoji(agentId),
-      description: '',
-      systemPrompt: '',
+      description: fallbackDescription,
+      systemPrompt: fallbackSystemPrompt,
       displayName: undefined,
       color: createFallbackColor(agentId),
       createdAt: new Date().toISOString(),
@@ -347,8 +363,8 @@ function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
     if (!raw) {
       return {
         emoji: createFallbackEmoji(agentId),
-        description: '',
-        systemPrompt: '',
+        description: fallbackDescription,
+        systemPrompt: fallbackSystemPrompt,
         displayName: undefined,
         color: createFallbackColor(agentId),
         createdAt: new Date().toISOString(),
@@ -358,8 +374,8 @@ function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
     const parsed = JSON.parse(raw) as Partial<AgentRosterAgentMeta>
     return {
       emoji: readString(parsed.emoji) || createFallbackEmoji(agentId),
-      description: readString(parsed.description),
-      systemPrompt: readString(parsed.systemPrompt),
+      description: readString(parsed.description) || fallbackDescription,
+      systemPrompt: readString(parsed.systemPrompt) || fallbackSystemPrompt,
       displayName: readString(parsed.displayName),
       color: readString(parsed.color) || createFallbackColor(agentId),
       createdAt: readString(parsed.createdAt) || new Date().toISOString(),
@@ -367,8 +383,8 @@ function loadAgentMeta(agentId: string): AgentRosterAgentMeta {
   } catch {
     return {
       emoji: createFallbackEmoji(agentId),
-      description: '',
-      systemPrompt: '',
+      description: fallbackDescription,
+      systemPrompt: fallbackSystemPrompt,
       displayName: undefined,
       color: createFallbackColor(agentId),
       createdAt: new Date().toISOString(),
@@ -543,7 +559,9 @@ function buildSessionOutput(
 }
 
 export function getAgentRosterSessionKey(agentId: string): string {
-  return `agent:main:ops-${agentId}`
+  const normalized = normalizeAgentId(agentId)
+  if (!normalized || normalized === 'default') return 'agent:main:main'
+  return `agent:${normalized}:main`
 }
 
 export function useAgentRoster() {
@@ -577,20 +595,15 @@ export function useAgentRoster() {
 
   const agents = useMemo(() => {
     const parsed = configQuery.data?.parsed
-    const allAgents = normalizeAgentList(parsed?.agents?.list)
-    // Filter out system/internal agents — only show agentRoster agents
-    const HIDDEN_AGENTS = new Set([
-      'main',
-      'pc1-coder',
-      'pc1-planner',
-      'pc1-critic',
-    ])
-    const configAgents = allAgents.filter((a) => !HIDDEN_AGENTS.has(a.id))
+    const configAgents = normalizeAgentList(parsed?.agents?.list)
     const sessions = sessionsQuery.data ?? []
     const cronJobs = cronJobsQuery.data ?? []
 
     return configAgents.map((agent) => {
-      const meta = loadAgentMeta(agent.id)
+      const meta = loadAgentMeta(agent.id, {
+        description: agent.description,
+        systemPrompt: agent.systemPrompt,
+      })
       const agentSessions = getAgentSessions(agent.id, sessions)
       const latestSession = agentSessions[0] ?? null
       const jobs = getAgentJobs(agent.id, cronJobs)

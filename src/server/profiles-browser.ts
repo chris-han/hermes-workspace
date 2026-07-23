@@ -11,6 +11,8 @@ export type ProfileSummary = {
   exists: boolean
   model?: string
   provider?: string
+  description?: string
+  systemPrompt?: string
   skillCount: number
   sessionCount: number
   hasEnv: boolean
@@ -157,6 +159,27 @@ function extractProfileProvider(
   return inferredModel ? inferProviderFromModel(inferredModel) : undefined
 }
 
+function extractDescription(config: Record<string, unknown>): string {
+  return readOptionalString(config.description) || ''
+}
+
+function extractSystemPrompt(
+  config: Record<string, unknown>,
+  profilePath: string,
+): string {
+  const configured = readOptionalString(config.system_prompt)
+  if (configured) return configured
+
+  const soulPath = path.join(profilePath, PROFILE_SOUL_FILE)
+  if (!fs.existsSync(soulPath)) return ''
+
+  try {
+    return safeReadText(soulPath).trim()
+  } catch {
+    return ''
+  }
+}
+
 function readOptionalText(filePath: string): string | undefined {
   if (!fs.existsSync(filePath)) return undefined
   try {
@@ -267,6 +290,8 @@ export function listProfiles(hermesHome: string): Array<ProfileSummary> {
         exists: true,
         model: normalizedModel,
         provider: normalizedProvider,
+        description: extractDescription(config) || undefined,
+        systemPrompt: extractSystemPrompt(config, profilePath) || undefined,
         skillCount,
         sessionCount,
         hasEnv: fs.existsSync(envPath),
@@ -293,6 +318,8 @@ export function listProfiles(hermesHome: string): Array<ProfileSummary> {
     exists: true,
     model: normalizedModel,
     provider: normalizedProvider,
+    description: extractDescription(config) || undefined,
+    systemPrompt: extractSystemPrompt(config, root) || undefined,
     skillCount: countFilesRecursive(
       path.join(root, 'skills'),
       (full) => path.basename(full) === 'SKILL.md',

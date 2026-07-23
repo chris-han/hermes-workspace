@@ -37,6 +37,7 @@ import {
 import { MobileTabBar } from '@/components/mobile-tab-bar'
 import { MobileHamburgerMenu } from '@/components/mobile-hamburger-menu'
 import { MobilePageHeader } from '@/components/mobile-page-header'
+import { t } from '@/lib/i18n'
 
 import { MobileTerminalInput } from '@/components/terminal/mobile-terminal-input'
 import { HermesReconnectBanner } from '@/components/hermes-reconnect-banner'
@@ -177,7 +178,12 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     if (pathname.startsWith('/files')) return 'Files'
     if (pathname.startsWith('/jobs')) return 'Jobs'
     if (pathname.startsWith('/memory')) return 'Memory'
-    if (pathname.startsWith('/legal-corpus')) return 'Legal Corpus'
+    if (
+      pathname.startsWith('/knowledge-base') ||
+      pathname.startsWith('/legal-corpus')
+    ) {
+      return t('nav.knowledgeBase')
+    }
     if (pathname.startsWith('/skills')) return 'Skills'
     if (pathname.startsWith('/profiles')) return 'Profiles'
     if (pathname.startsWith('/settings')) return 'Settings'

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUp01Icon, RefreshIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useAgentChat } from '../hooks/use-agent-chat'
+import { getAgentRosterSessionKey } from '../hooks/use-agent-roster'
 import { Button } from '@/components/ui/button'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { cn } from '@/lib/utils'
@@ -17,7 +18,7 @@ export function AgentRosterChat({
   const [draft, setDraft] = useState('')
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const { messages, sendMessage, isRefreshing, isSending, error, refresh } =
-    useAgentChat(`agent:main:ops-${agentId}`)
+    useAgentChat(getAgentRosterSessionKey(agentId))
 
   const renderedMessages = useMemo(() => messages.slice(-50), [messages])
 

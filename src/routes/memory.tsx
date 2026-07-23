@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import BackendUnavailableState from '@/components/backend-unavailable-state'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs'
@@ -16,11 +16,6 @@ const memorySearchSchema = z.object({
 const MemoryBrowserScreen = lazy(async () => {
   const module = await import('@/screens/memory/memory-browser-screen')
   return { default: module.MemoryBrowserScreen }
-})
-
-const KnowledgeBrowserScreen = lazy(async () => {
-  const module = await import('@/screens/memory/knowledge-browser-screen')
-  return { default: module.KnowledgeBrowserScreen }
 })
 
 const GovernanceModelExplainer = lazy(async () => {
@@ -94,15 +89,7 @@ export const Route = createFileRoute('/memory')({
           </TabsPanel>
 
           <TabsPanel value="knowledge" className="min-h-0 flex-1">
-            {tab === 'knowledge' ? (
-              <Suspense
-                fallback={
-                  <RouteLoadingState label="Loading knowledge browser..." />
-                }
-              >
-                <KnowledgeBrowserScreen />
-              </Suspense>
-            ) : null}
+            {tab === 'knowledge' ? <KnowledgeBaseHandoff /> : null}
           </TabsPanel>
 
           <TabsPanel value="governance" className="min-h-0 flex-1">
@@ -126,6 +113,32 @@ function RouteLoadingState({ label }: { label: string }) {
   return (
     <div className="flex h-full min-h-[240px] items-center justify-center px-4 text-sm text-primary-500 dark:text-neutral-400">
       {label}
+    </div>
+  )
+}
+
+function KnowledgeBaseHandoff() {
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const isZh = locale === 'zh'
+  return (
+    <div className="flex h-full min-h-[320px] items-center justify-center px-4">
+      <div className="w-full max-w-xl rounded-md border border-border bg-card p-5">
+        <h2 className="text-base font-semibold">
+          {isZh ? '知识已统一到知识库' : 'Knowledge now lives in Knowledge Base'}
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          {isZh
+            ? '通用知识上传、资料浏览和法律权威来源登记现在统一在知识库中管理。Memory 页面保留运行记忆浏览。'
+            : 'General knowledge uploads, source browsing, and governed legal source registration are now managed from Knowledge Base. Memory stays focused on runtime memory browsing.'}
+        </p>
+        <Link
+          to="/knowledge-base"
+          search={{ tab: 'general' }}
+          className="mt-4 inline-flex h-9 items-center rounded-md border border-border px-3 text-sm font-semibold text-foreground transition-colors hover:border-primary hover:bg-primary/10"
+        >
+          {isZh ? '打开知识库' : 'Open Knowledge Base'}
+        </Link>
+      </div>
     </div>
   )
 }

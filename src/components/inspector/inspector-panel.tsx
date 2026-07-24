@@ -156,7 +156,7 @@ export function getInspectorCopy(locale: string) {
       agent: isChinese ? '代理' : 'agent',
       action: isChinese ? '动作' : 'action',
       approvalId: isChinese ? '审批 ID' : 'approval id',
-      context: isChinese ? '上下文' : 'context',
+      context: isChinese ? '背景信息' : 'context',
       type: isChinese ? '类型' : 'type',
       text: isChinese ? '文本' : 'text',
       time: isChinese ? '时间' : 'time',

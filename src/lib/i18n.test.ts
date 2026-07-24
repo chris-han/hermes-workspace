@@ -13,6 +13,7 @@ describe('workspace i18n', () => {
     expect(t('nav.search')).toBe('搜索')
     expect(t('nav.orchestrator')).toBe('指挥中心')
     expect(t('nav.agentRoster')).toBe('组织构建')
+    expect(t('nav.database')).toBe('数据库')
     expect(t('nav.dataConnections')).toBe('数据连接')
   })
 

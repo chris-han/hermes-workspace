@@ -22,6 +22,7 @@ import { Route as KnowledgeBaseRouteImport } from './routes/knowledge-base'
 import { Route as KanbanRouteImport } from './routes/kanban'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as FilesRouteImport } from './routes/files'
+import { Route as DatabaseRouteImport } from './routes/database'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AgentRosterRouteImport } from './routes/agent-roster'
@@ -186,6 +187,11 @@ const JobsRoute = JobsRouteImport.update({
 const FilesRoute = FilesRouteImport.update({
   id: '/files',
   path: '/files',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DatabaseRoute = DatabaseRouteImport.update({
+  id: '/database',
+  path: '/database',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -701,6 +707,7 @@ export interface FileRoutesByFullPath {
   '/agent-roster': typeof AgentRosterRoute
   '/app': typeof AppRoute
   '/dashboard': typeof DashboardRoute
+  '/database': typeof DatabaseRoute
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
@@ -816,6 +823,7 @@ export interface FileRoutesByTo {
   '/agent-roster': typeof AgentRosterRoute
   '/app': typeof AppRoute
   '/dashboard': typeof DashboardRoute
+  '/database': typeof DatabaseRoute
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
@@ -931,6 +939,7 @@ export interface FileRoutesById {
   '/agent-roster': typeof AgentRosterRoute
   '/app': typeof AppRoute
   '/dashboard': typeof DashboardRoute
+  '/database': typeof DatabaseRoute
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
@@ -1048,6 +1057,7 @@ export interface FileRouteTypes {
     | '/agent-roster'
     | '/app'
     | '/dashboard'
+    | '/database'
     | '/files'
     | '/jobs'
     | '/kanban'
@@ -1163,6 +1173,7 @@ export interface FileRouteTypes {
     | '/agent-roster'
     | '/app'
     | '/dashboard'
+    | '/database'
     | '/files'
     | '/jobs'
     | '/kanban'
@@ -1277,6 +1288,7 @@ export interface FileRouteTypes {
     | '/agent-roster'
     | '/app'
     | '/dashboard'
+    | '/database'
     | '/files'
     | '/jobs'
     | '/kanban'
@@ -1393,6 +1405,7 @@ export interface RootRouteChildren {
   AgentRosterRoute: typeof AgentRosterRoute
   AppRoute: typeof AppRoute
   DashboardRoute: typeof DashboardRoute
+  DatabaseRoute: typeof DatabaseRoute
   FilesRoute: typeof FilesRoute
   JobsRoute: typeof JobsRoute
   KanbanRoute: typeof KanbanRoute
@@ -1572,6 +1585,13 @@ declare module '@tanstack/react-router' {
       path: '/files'
       fullPath: '/files'
       preLoaderRoute: typeof FilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/database': {
+      id: '/database'
+      path: '/database'
+      fullPath: '/database'
+      preLoaderRoute: typeof DatabaseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -2397,6 +2417,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgentRosterRoute: AgentRosterRoute,
   AppRoute: AppRoute,
   DashboardRoute: DashboardRoute,
+  DatabaseRoute: DatabaseRoute,
   FilesRoute: FilesRoute,
   JobsRoute: JobsRoute,
   KanbanRoute: KanbanRoute,

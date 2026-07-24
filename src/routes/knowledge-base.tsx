@@ -5,10 +5,7 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useSettingsStore } from '@/hooks/use-settings'
 import { t } from '@/lib/i18n'
-import {
-  DatasetKnowledgeBaseScreen,
-  KnowledgeBaseScreen,
-} from '@/screens/knowledge-base/knowledge-base-screen'
+import { KnowledgeBaseScreen } from '@/screens/knowledge-base/knowledge-base-screen'
 
 const knowledgeBaseSearchSchema = z.object({
   tab: z.enum(['legal', 'general', 'dataset', 'governance']).optional(),
@@ -29,24 +26,28 @@ const KNOWLEDGE_BASE_COPY = {
   en: {
     legal: 'Legal authority',
     general: 'General knowledge',
-    dataset: 'Dataset',
     governance: 'Governance',
     loadingLegal: 'Loading legal knowledge base...',
     loadingGeneral: 'Loading knowledge browser...',
-    loadingDataset: 'Loading dataset governance...',
     loadingGovernance: 'Loading governance model...',
   },
   zh: {
     legal: '法律权威',
     general: '通用知识',
-    dataset: '数据集',
     governance: '治理',
     loadingLegal: '正在加载法律知识库...',
     loadingGeneral: '正在加载知识浏览器...',
-    loadingDataset: '正在加载数据集治理...',
     loadingGovernance: '正在加载治理模型...',
   },
 } as const
+
+type KnowledgeBaseTab = 'legal' | 'general' | 'governance'
+
+function normalizeKnowledgeBaseTab(
+  tab: 'legal' | 'general' | 'dataset' | 'governance' | undefined,
+): KnowledgeBaseTab {
+  return tab === 'general' || tab === 'governance' ? tab : 'legal'
+}
 
 export const Route = createFileRoute('/knowledge-base')({
   ssr: false,
@@ -58,15 +59,13 @@ function KnowledgeBaseRoute() {
   const search = Route.useSearch()
   const locale = useSettingsStore((state) => state.settings.locale)
   const copy = locale === 'zh' ? KNOWLEDGE_BASE_COPY.zh : KNOWLEDGE_BASE_COPY.en
-  const [tab, setTab] = useState<
-    'legal' | 'general' | 'dataset' | 'governance'
-  >(
-    search.tab || 'legal',
+  const [tab, setTab] = useState<KnowledgeBaseTab>(
+    normalizeKnowledgeBaseTab(search.tab),
   )
   usePageTitle(t('nav.knowledgeBase'))
 
   useEffect(() => {
-    if (search.tab) setTab(search.tab)
+    if (search.tab) setTab(normalizeKnowledgeBaseTab(search.tab))
   }, [search.tab])
 
   return (
@@ -76,9 +75,7 @@ function KnowledgeBaseRoute() {
     >
       <Tabs
         value={tab}
-        onValueChange={(value) =>
-          setTab(value as 'legal' | 'general' | 'dataset' | 'governance')
-        }
+        onValueChange={(value) => setTab(value as KnowledgeBaseTab)}
         className="h-full min-h-0 gap-0"
       >
         <div className="border-b border-border">
@@ -86,7 +83,6 @@ function KnowledgeBaseRoute() {
             <TabsList variant="underline" className="w-full justify-start gap-1">
               <TabsTab value="legal">{copy.legal}</TabsTab>
               <TabsTab value="general">{copy.general}</TabsTab>
-              <TabsTab value="dataset">{copy.dataset}</TabsTab>
               <TabsTab value="governance">{copy.governance}</TabsTab>
             </TabsList>
           </div>
@@ -106,16 +102,6 @@ function KnowledgeBaseRoute() {
               fallback={<RouteLoadingState label={copy.loadingGeneral} />}
             >
               <KnowledgeBrowserScreen />
-            </Suspense>
-          ) : null}
-        </TabsPanel>
-
-        <TabsPanel value="dataset" className="min-h-0 flex-1">
-          {tab === 'dataset' ? (
-            <Suspense
-              fallback={<RouteLoadingState label={copy.loadingDataset} />}
-            >
-              <DatasetKnowledgeBaseScreen />
             </Suspense>
           ) : null}
         </TabsPanel>

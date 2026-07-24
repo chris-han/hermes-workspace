@@ -3,6 +3,7 @@ import {
   ArrowDown01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
+  AiSheetsIcon,
   BrainIcon,
   Book01Icon,
   Chat01Icon,
@@ -15,7 +16,6 @@ import {
   PencilEdit02Icon,
   PinIcon,
   PinOffIcon,
-  Plug01Icon,
   PuzzleIcon,
   Rocket01Icon,
   Search01Icon,
@@ -597,7 +597,7 @@ function ChatSidebarComponent({
     pathname === '/new' || pathname.startsWith('/chat/new')
   const _isSettingsActive = pathname === '/settings'
   const isSkillsActive = pathname === '/skills'
-  const isDataConnectionsActive = pathname === '/settings/data-connections'
+  const isDatabaseActive = pathname === '/database'
   const isJobsActive = pathname === '/jobs'
   const isMemoryActive = pathname === '/memory'
   const isKnowledgeBaseActive =
@@ -611,7 +611,7 @@ function ChatSidebarComponent({
     '/knowledge-base',
     '/legal-corpus',
     '/skills',
-    '/settings/data-connections',
+    '/database',
   ]
   const systemRoutes = ['/settings', '/logs']
 
@@ -932,10 +932,10 @@ function ChatSidebarComponent({
     },
     {
       kind: 'link',
-      to: '/settings/data-connections',
-      icon: Plug01Icon,
-      label: t('nav.dataConnections'),
-      active: isDataConnectionsActive,
+      to: '/database',
+      icon: AiSheetsIcon,
+      label: t('nav.database'),
+      active: isDatabaseActive,
     },
     {
       kind: 'link',

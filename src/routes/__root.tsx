@@ -67,10 +67,8 @@ const themeScript = `
 
   try {
     const root = document.documentElement
-    const isPublicLanding = window.location.pathname === '/'
-    const landingTheme = localStorage.getItem('semantier-landing-theme') === 'dark' ? 'semantier' : 'semantier-light'
     const storedTheme = localStorage.getItem('${THEME_STORAGE_KEY}')
-    const theme = isPublicLanding ? landingTheme : (${JSON.stringify(VALID_THEMES)}.includes(storedTheme) ? storedTheme : '${DEFAULT_THEME}')
+    const theme = ${JSON.stringify(VALID_THEMES)}.includes(storedTheme) ? storedTheme : '${DEFAULT_THEME}'
     const lightThemes = ['hermes-nous-light', 'hermes-official-light', 'hermes-classic-light', 'hermes-slate-light', 'semantier-light']
     const isDark = !lightThemes.includes(theme)
     root.classList.remove('light', 'dark', 'system')

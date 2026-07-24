@@ -35,8 +35,9 @@ describe('ScrollToBottomButton', () => {
         name: 'Assistant is thinking. Scroll to bottom',
       }),
     ).toBeTruthy()
+    expect(screen.getByTestId('thinking-orb').getAttribute('size')).toBe('64')
     expect(screen.getByTestId('thinking-orb').getAttribute('state')).toBe(
-      'working',
+      'solving',
     )
   })
 })

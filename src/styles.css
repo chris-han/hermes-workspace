@@ -1489,6 +1489,107 @@ code {
   animation: thinking-activity-label-sweep 2.45s linear infinite;
 }
 
+.thinking-scroll-crystal-orb {
+  --thinking-scroll-shell-bg: #050807;
+  --thinking-scroll-shell-bg-2: #11170f;
+  --thinking-scroll-shell-edge: rgba(204, 255, 122, 0.82);
+  --thinking-scroll-shell-ring: rgba(0, 0, 0, 0.82);
+  --thinking-scroll-shell-highlight: rgba(255, 255, 255, 0.64);
+  --thinking-scroll-shell-glass: rgba(182, 255, 94, 0.18);
+  --thinking-scroll-shell-shadow: rgba(0, 0, 0, 0.64);
+  --thinking-scroll-orb-filter: contrast(1.28) saturate(1.18)
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.82));
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 9999px;
+  background:
+    radial-gradient(
+      circle at 31% 20%,
+      var(--thinking-scroll-shell-highlight),
+      transparent 18%
+    ),
+    radial-gradient(
+      circle at 48% 44%,
+      var(--thinking-scroll-shell-glass),
+      transparent 48%
+    ),
+    radial-gradient(
+      circle at 68% 72%,
+      var(--thinking-scroll-shell-bg-2),
+      transparent 46%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      var(--thinking-scroll-shell-bg) 0%,
+      var(--thinking-scroll-shell-bg-2) 100%
+    );
+  box-shadow:
+    0 0 0 1px var(--thinking-scroll-shell-edge),
+    0 0 0 4px var(--thinking-scroll-shell-ring),
+    0 10px 26px var(--thinking-scroll-shell-shadow),
+    inset 0 2px 8px var(--thinking-scroll-shell-highlight),
+    inset 0 -13px 20px rgba(0, 0, 0, 0.36);
+}
+
+[data-theme$='-light'] .thinking-scroll-crystal-orb {
+  --thinking-scroll-shell-bg: #ffffff;
+  --thinking-scroll-shell-bg-2: #eef3ea;
+  --thinking-scroll-shell-edge: rgba(72, 101, 52, 0.42);
+  --thinking-scroll-shell-ring: rgba(255, 255, 255, 0.96);
+  --thinking-scroll-shell-highlight: rgba(255, 255, 255, 0.88);
+  --thinking-scroll-shell-glass: rgba(163, 232, 112, 0.22);
+  --thinking-scroll-shell-shadow: rgba(39, 54, 35, 0.28);
+  --thinking-scroll-orb-filter: contrast(1.18) saturate(1.12)
+    drop-shadow(0 1px 1px rgba(43, 58, 38, 0.32));
+}
+
+.thinking-scroll-crystal-orb::before {
+  content: '';
+  position: absolute;
+  inset: 5px 8px auto 8px;
+  height: 19px;
+  z-index: 2;
+  border-radius: 9999px 9999px 60% 60%;
+  background: linear-gradient(
+    180deg,
+    var(--thinking-scroll-shell-highlight),
+    rgba(255, 255, 255, 0.08)
+  );
+  filter: blur(0.2px);
+  pointer-events: none;
+}
+
+.thinking-scroll-crystal-orb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background:
+    radial-gradient(
+      circle at 34% 34%,
+      transparent 0 36%,
+      rgba(255, 255, 255, 0.18) 37%,
+      transparent 44%
+    ),
+    radial-gradient(
+      circle at 70% 70%,
+      transparent 0 42%,
+      rgba(0, 0, 0, 0.22) 43%,
+      transparent 58%
+    );
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+.thinking-scroll-crystal-orb [data-thinking-orb] {
+  position: relative;
+  z-index: 0;
+  transform: scale(1.05);
+  filter: var(--thinking-scroll-orb-filter);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .thinking-activity-label-shimmer::after {
     content: none;

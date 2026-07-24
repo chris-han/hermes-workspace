@@ -249,7 +249,12 @@ function AssistantActivityPlaceholder({
         <AssistantAvatar size={28} />
       </div>
       <div className="flex min-w-0 items-center gap-3 rounded-card rounded-bl-sm theme-border-1 theme-tool-surface px-4 py-3">
-        <ThinkingActivityIndicator size={64} themeId={themeId} label={label} />
+        <ThinkingActivityIndicator
+          size={20}
+          themeId={themeId}
+          kind="shaping"
+          label={label}
+        />
         <span
           className="thinking-activity-label-shimmer text-xs font-medium"
           data-label={label}

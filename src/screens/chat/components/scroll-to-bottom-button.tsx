@@ -39,11 +39,16 @@ function ScrollToBottomButton({
           }
           className={cn(
             'theme-accent-button pointer-events-auto relative rounded-full border text-white shadow-lg transition-all hover:brightness-95',
+            isGenerating
+              ? 'size-16 border-transparent bg-transparent p-0 shadow-none hover:bg-transparent hover:brightness-100'
+              : 'size-8',
             className,
           )}
           style={{
-            backgroundColor: 'var(--theme-accent)',
-            borderColor: 'var(--theme-accent)',
+            backgroundColor: isGenerating
+              ? 'transparent'
+              : 'var(--theme-accent)',
+            borderColor: isGenerating ? 'transparent' : 'var(--theme-accent)',
           }}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -53,10 +58,11 @@ function ScrollToBottomButton({
         >
           {isGenerating ? (
             <ThinkingActivityIndicator
-              size={20}
+              size={64}
               themeId={themeId}
+              kind="solving"
               label="Assistant thinking"
-              orbTheme="light"
+              className="thinking-scroll-crystal-orb"
             />
           ) : (
             <HugeiconsIcon icon={ArrowDown01Icon} size={20} strokeWidth={1.5} />

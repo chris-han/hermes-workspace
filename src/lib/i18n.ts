@@ -63,7 +63,7 @@ const EN: Record<string, string> = {
   'chat.newSession': 'New Session',
   'chat.startingSession': 'Starting…',
   'chat.main': 'Main',
-  'chat.knowledge': 'Knowledge',
+  'chat.knowledge': 'Context',
   // Settings
   'settings.title': 'Settings',
   'settings.language': 'Language',
@@ -117,7 +117,7 @@ const ES: typeof EN = {
   'chat.newSession': 'Nueva sesión',
   'chat.startingSession': 'Iniciando…',
   'chat.main': 'Principal',
-  'chat.knowledge': 'Conocimiento',
+  'chat.knowledge': 'Contexto',
   'settings.title': 'Configuración',
   'settings.language': 'Idioma',
   'settings.languageDesc':
@@ -170,7 +170,7 @@ const FR: typeof EN = {
   'chat.newSession': 'Nouvelle session',
   'chat.startingSession': 'Démarrage…',
   'chat.main': 'Principal',
-  'chat.knowledge': 'Connaissance',
+  'chat.knowledge': 'Contexte',
   'settings.title': 'Paramètres',
   'settings.language': 'Langue',
   'settings.languageDesc':
@@ -223,7 +223,7 @@ const ZH: typeof EN = {
   'chat.newSession': '新建会话',
   'chat.startingSession': '正在创建…',
   'chat.main': '主菜单',
-  'chat.knowledge': '知识',
+  'chat.knowledge': '背景信息',
   'settings.title': '设置',
   'settings.language': '语言',
   'settings.languageDesc': '选择工作区界面显示语言。',

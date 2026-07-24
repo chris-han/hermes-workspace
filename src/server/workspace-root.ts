@@ -18,6 +18,8 @@ const WORKSPACE_APP_STATE_DIRNAME = '.hermes-workspace'
 type BackendWorkspacePathsPayload = {
   authenticated?: unknown
   dataset_type?: unknown
+  dataset_key?: unknown
+  active_dataset_version_id?: unknown
   organization_id?: unknown
   workspace?: {
     id?: unknown
@@ -39,6 +41,8 @@ export type ActiveWorkspaceRoot = {
   hermesHome?: string
   organizationId?: string
   datasetType?: string
+  datasetKey?: string
+  activeDatasetVersionId?: string
   source: 'backend' | 'fallback'
 }
 
@@ -127,6 +131,15 @@ async function fetchWorkspaceRootFromBackend(
     typeof payload.dataset_type === 'string' && payload.dataset_type.trim()
       ? payload.dataset_type.trim()
       : undefined
+  const datasetKey =
+    typeof payload.dataset_key === 'string' && payload.dataset_key.trim()
+      ? payload.dataset_key.trim()
+      : undefined
+  const activeDatasetVersionId =
+    typeof payload.active_dataset_version_id === 'string' &&
+    payload.active_dataset_version_id.trim()
+      ? payload.active_dataset_version_id.trim()
+      : undefined
   const workspaceId =
     typeof workspace?.id === 'string' && workspace.id.trim()
       ? workspace.id.trim()
@@ -154,6 +167,8 @@ async function fetchWorkspaceRootFromBackend(
     hermesHome: hermesHome ? normalizeWorkspaceRoot(hermesHome) : undefined,
     organizationId,
     datasetType,
+    datasetKey,
+    activeDatasetVersionId,
     source: 'backend',
   }
 }

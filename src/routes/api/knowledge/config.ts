@@ -1,12 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import {
+  buildKnowledgeDatasetGovernanceConfig,
   normalizeKnowledgeBaseConfigForWorkspace,
   readKnowledgeBaseConfig,
   resolveKnowledgeBaseConfig,
+  writeKnowledgeContextPreference,
   writeKnowledgeBaseConfig,
 } from '../../../server/knowledge-config'
-import type { KnowledgeBaseConfig } from '../../../server/knowledge-config'
+import type {
+  KnowledgeBaseConfig,
+  KnowledgeContextPreferencePatch,
+} from '../../../server/knowledge-config'
 import {
   resolveActiveWorkspaceRoot,
   WorkspaceAuthRequiredError,
@@ -23,9 +28,16 @@ export const Route = createFileRoute('/api/knowledge/config')({
           const resolved = resolveKnowledgeBaseConfig(activeWorkspace.path, {
             datasetType: activeWorkspace.datasetType,
           })
+          const datasetGovernance = buildKnowledgeDatasetGovernanceConfig({
+            organizationId: activeWorkspace.organizationId,
+            datasetType: activeWorkspace.datasetType,
+            datasetKey: activeWorkspace.datasetKey,
+            activeDatasetVersionId: activeWorkspace.activeDatasetVersionId,
+          })
           return json({
             config: resolved.config,
             resolved,
+            datasetGovernance,
           })
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {
@@ -74,6 +86,39 @@ export const Route = createFileRoute('/api/knowledge/config')({
                   : 'Failed to save knowledge base config',
             },
             { status: 500 },
+          )
+        }
+      },
+      PATCH: async ({ request }) => {
+        try {
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
+          const body =
+            (await request.json()) as Partial<KnowledgeContextPreferencePatch>
+          const preference = writeKnowledgeContextPreference(
+            activeWorkspace.path,
+            {
+              organizationId: activeWorkspace.organizationId,
+              datasetType: activeWorkspace.datasetType,
+              datasetKey: activeWorkspace.datasetKey,
+              activeDatasetVersionId: activeWorkspace.activeDatasetVersionId,
+            },
+            body as KnowledgeContextPreferencePatch,
+          )
+          return json({ preference })
+        } catch (error) {
+          if (error instanceof WorkspaceAuthRequiredError) {
+            return json({ error: error.message }, { status: 401 })
+          }
+          return json(
+            {
+              error:
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to update knowledge context preference',
+            },
+            { status: 400 },
           )
         }
       },

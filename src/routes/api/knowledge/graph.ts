@@ -1,6 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { buildKnowledgeGraph } from '../../../server/knowledge-browser'
+import {
+  buildEffectiveContextGraph,
+  buildKnowledgeGraph,
+} from '../../../server/knowledge-browser'
 import {
   resolveActiveWorkspaceRoot,
   WorkspaceAuthRequiredError,
@@ -14,11 +17,18 @@ export const Route = createFileRoute('/api/knowledge/graph')({
           const activeWorkspace = await resolveActiveWorkspaceRoot(
             request.headers,
           )
-          return json(
-            buildKnowledgeGraph(activeWorkspace.path, {
+          const context = {
+            organizationId: activeWorkspace.organizationId,
+            datasetType: activeWorkspace.datasetType,
+            datasetKey: activeWorkspace.datasetKey,
+            activeDatasetVersionId: activeWorkspace.activeDatasetVersionId,
+          }
+          return json({
+            ...buildKnowledgeGraph(activeWorkspace.path, {
               datasetType: activeWorkspace.datasetType,
             }),
-          )
+            effectiveContext: buildEffectiveContextGraph(context),
+          })
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {
             return json({ error: error.message }, { status: 401 })

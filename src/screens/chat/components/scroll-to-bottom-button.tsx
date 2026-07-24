@@ -38,7 +38,8 @@ function ScrollToBottomButton({
               : 'Scroll to bottom'
           }
           className={cn(
-            'theme-accent-button pointer-events-auto relative rounded-full border text-white shadow-lg transition-all hover:brightness-95',
+            'pointer-events-auto relative rounded-full border text-white shadow-lg transition-all hover:brightness-95',
+            !isGenerating && 'theme-accent-button',
             isGenerating
               ? 'size-16 border-transparent bg-transparent p-0 shadow-none hover:bg-transparent hover:brightness-100'
               : 'size-8',

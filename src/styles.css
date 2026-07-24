@@ -1492,8 +1492,6 @@ code {
 .thinking-scroll-crystal-orb {
   --thinking-scroll-shell-bg: #050807;
   --thinking-scroll-shell-bg-2: #11170f;
-  --thinking-scroll-shell-edge: rgba(204, 255, 122, 0.82);
-  --thinking-scroll-shell-ring: rgba(0, 0, 0, 0.82);
   --thinking-scroll-shell-highlight: rgba(255, 255, 255, 0.64);
   --thinking-scroll-shell-glass: rgba(182, 255, 94, 0.18);
   --thinking-scroll-shell-shadow: rgba(0, 0, 0, 0.64);
@@ -1501,7 +1499,7 @@ code {
     drop-shadow(0 1px 1px rgba(0, 0, 0, 0.82));
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 9999px;
   background:
     radial-gradient(
@@ -1525,8 +1523,6 @@ code {
       var(--thinking-scroll-shell-bg-2) 100%
     );
   box-shadow:
-    0 0 0 1px var(--thinking-scroll-shell-edge),
-    0 0 0 4px var(--thinking-scroll-shell-ring),
     0 10px 26px var(--thinking-scroll-shell-shadow),
     inset 0 2px 8px var(--thinking-scroll-shell-highlight),
     inset 0 -13px 20px rgba(0, 0, 0, 0.36);
@@ -1535,8 +1531,6 @@ code {
 [data-theme$='-light'] .thinking-scroll-crystal-orb {
   --thinking-scroll-shell-bg: #ffffff;
   --thinking-scroll-shell-bg-2: #eef3ea;
-  --thinking-scroll-shell-edge: rgba(72, 101, 52, 0.42);
-  --thinking-scroll-shell-ring: rgba(255, 255, 255, 0.96);
   --thinking-scroll-shell-highlight: rgba(255, 255, 255, 0.88);
   --thinking-scroll-shell-glass: rgba(163, 232, 112, 0.22);
   --thinking-scroll-shell-shadow: rgba(39, 54, 35, 0.28);

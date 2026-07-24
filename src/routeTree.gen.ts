@@ -22,6 +22,7 @@ import { Route as KnowledgeBaseRouteImport } from './routes/knowledge-base'
 import { Route as KanbanRouteImport } from './routes/kanban'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as FilesRouteImport } from './routes/files'
+import { Route as EffectiveContextRouteImport } from './routes/effective-context'
 import { Route as DatabaseRouteImport } from './routes/database'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AppRouteImport } from './routes/app'
@@ -187,6 +188,11 @@ const JobsRoute = JobsRouteImport.update({
 const FilesRoute = FilesRouteImport.update({
   id: '/files',
   path: '/files',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EffectiveContextRoute = EffectiveContextRouteImport.update({
+  id: '/effective-context',
+  path: '/effective-context',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DatabaseRoute = DatabaseRouteImport.update({
@@ -708,6 +714,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRoute
   '/dashboard': typeof DashboardRoute
   '/database': typeof DatabaseRoute
+  '/effective-context': typeof EffectiveContextRoute
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
@@ -824,6 +831,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppRoute
   '/dashboard': typeof DashboardRoute
   '/database': typeof DatabaseRoute
+  '/effective-context': typeof EffectiveContextRoute
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
@@ -940,6 +948,7 @@ export interface FileRoutesById {
   '/app': typeof AppRoute
   '/dashboard': typeof DashboardRoute
   '/database': typeof DatabaseRoute
+  '/effective-context': typeof EffectiveContextRoute
   '/files': typeof FilesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
@@ -1058,6 +1067,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/dashboard'
     | '/database'
+    | '/effective-context'
     | '/files'
     | '/jobs'
     | '/kanban'
@@ -1174,6 +1184,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/dashboard'
     | '/database'
+    | '/effective-context'
     | '/files'
     | '/jobs'
     | '/kanban'
@@ -1289,6 +1300,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/dashboard'
     | '/database'
+    | '/effective-context'
     | '/files'
     | '/jobs'
     | '/kanban'
@@ -1406,6 +1418,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRoute
   DashboardRoute: typeof DashboardRoute
   DatabaseRoute: typeof DatabaseRoute
+  EffectiveContextRoute: typeof EffectiveContextRoute
   FilesRoute: typeof FilesRoute
   JobsRoute: typeof JobsRoute
   KanbanRoute: typeof KanbanRoute
@@ -1585,6 +1598,13 @@ declare module '@tanstack/react-router' {
       path: '/files'
       fullPath: '/files'
       preLoaderRoute: typeof FilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/effective-context': {
+      id: '/effective-context'
+      path: '/effective-context'
+      fullPath: '/effective-context'
+      preLoaderRoute: typeof EffectiveContextRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/database': {
@@ -2418,6 +2438,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRoute,
   DashboardRoute: DashboardRoute,
   DatabaseRoute: DatabaseRoute,
+  EffectiveContextRoute: EffectiveContextRoute,
   FilesRoute: FilesRoute,
   JobsRoute: JobsRoute,
   KanbanRoute: KanbanRoute,

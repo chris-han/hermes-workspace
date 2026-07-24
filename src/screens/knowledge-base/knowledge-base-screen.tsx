@@ -300,9 +300,6 @@ const DATASET_COPY = {
     prompt: 'Prompt',
     query: 'Query',
     details: 'Audit details',
-    effectiveContext: 'Effective Context',
-    graphLegend: 'Effective, optional, excluded, and execution-gate sources',
-    noGraph: 'No effective context graph is available.',
     policyVersion: 'Resolver policy',
     activationHash: 'Activation set hash',
     unavailable: 'Dataset governance API unavailable',
@@ -328,9 +325,6 @@ const DATASET_COPY = {
     prompt: '提示词',
     query: '查询',
     details: '审计详情',
-    effectiveContext: '有效背景信息',
-    graphLegend: '生效、可选、排除和执行门控来源',
-    noGraph: '暂无有效背景信息图。',
     policyVersion: '解析策略',
     activationHash: '激活集哈希',
     unavailable: '数据集治理 API 不可用',
@@ -338,6 +332,29 @@ const DATASET_COPY = {
 } as const
 
 type DatasetCopy = (typeof DATASET_COPY)[keyof typeof DATASET_COPY]
+
+const EFFECTIVE_CONTEXT_COPY = {
+  en: {
+    title: 'Effective Context',
+    subtitle:
+      'Unified observability for the knowledge, memory, and database sources resolved into this workspace.',
+    loading: 'Loading effective context...',
+    unavailable: 'Effective context API unavailable',
+    noGraph: 'No effective context graph is available.',
+    graphLegend:
+      'Effective, optional, excluded, and execution-gate sources across Knowledge Base, Memory, and Database',
+    activationHash: 'Activation set hash',
+  },
+  zh: {
+    title: '有效背景信息',
+    subtitle: '统一查看当前工作区解析进来的知识库、记忆和数据库来源。',
+    loading: '正在加载有效背景信息...',
+    unavailable: '有效背景信息 API 不可用',
+    noGraph: '暂无有效背景信息图。',
+    graphLegend: '跨知识库、记忆和数据库的生效、可选、排除和执行门控来源',
+    activationHash: '激活集哈希',
+  },
+} as const
 
 type DatasetGovernanceRow = {
   activationId: string
@@ -1581,14 +1598,8 @@ export function DatasetKnowledgeBaseScreen() {
     queryFn: fetchDatasetGovernance,
     staleTime: 10_000,
   })
-  const graphQuery = useQuery({
-    queryKey: ['knowledge-base', 'effective-context-graph'],
-    queryFn: fetchEffectiveContextGraph,
-    staleTime: 10_000,
-  })
   const payload = datasetQuery.data
   const rows = payload?.rows ?? []
-  const effectiveGraph = graphQuery.data
   const preferenceMutation = useMutation({
     mutationFn: updateDatasetPreference,
     onSuccess: () => {
@@ -1661,24 +1672,62 @@ export function DatasetKnowledgeBaseScreen() {
             </div>
           </div>
         )}
-        <section className="mt-4 rounded-md border border-border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="text-sm font-semibold">
-                {copy.effectiveContext}
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {copy.graphLegend}
-              </p>
-            </div>
-            {effectiveGraph?.resolvedActivationSetHash ? (
-              <code className="rounded border border-border px-2 py-1 text-xs text-muted-foreground">
+      </main>
+    </div>
+  )
+}
+
+export function EffectiveContextScreen() {
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const copy =
+    locale === 'zh' ? EFFECTIVE_CONTEXT_COPY.zh : EFFECTIVE_CONTEXT_COPY.en
+  const graphQuery = useQuery({
+    queryKey: ['knowledge-base', 'effective-context-graph'],
+    queryFn: fetchEffectiveContextGraph,
+    staleTime: 10_000,
+  })
+  const effectiveGraph = graphQuery.data
+
+  return (
+    <div
+      lang={locale === 'zh' ? 'zh-CN' : 'en'}
+      className="flex h-full min-h-0 flex-col bg-background text-foreground"
+    >
+      <header className="border-b border-border px-4 py-3 sm:px-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-semibold">{copy.title}</h1>
+            <p className="mt-0.5 max-w-3xl text-sm text-muted-foreground">
+              {copy.subtitle}
+            </p>
+          </div>
+          {effectiveGraph?.resolvedActivationSetHash ? (
+            <div className="rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">
+              <div className="font-semibold text-foreground">
+                {copy.activationHash}
+              </div>
+              <code className="mt-1 block">
                 {shortRef(effectiveGraph.resolvedActivationSetHash)}
               </code>
-            ) : null}
+            </div>
+          ) : null}
+        </div>
+      </header>
+
+      <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        <section className="rounded-md border border-border bg-card p-4">
+          <div>
+            <h2 className="text-sm font-semibold">{copy.title}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {copy.graphLegend}
+            </p>
           </div>
-          {effectiveGraph?.nodes.length ? (
-            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,0.6fr)]">
+          {graphQuery.isLoading ? (
+            <EmptyState label={copy.loading} />
+          ) : graphQuery.isError ? (
+            <EmptyState label={copy.unavailable} />
+          ) : effectiveGraph?.nodes.length ? (
+            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.55fr)]">
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {effectiveGraph.nodes.map((node) => (
                   <div
@@ -1693,7 +1742,7 @@ export function DatasetKnowledgeBaseScreen() {
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
                       {Object.entries(node.metadata)
-                        .slice(0, 3)
+                        .slice(0, 4)
                         .map(([key, value]) => (
                           <div key={key} className="truncate">
                             {key}: {String(value ?? '-')}

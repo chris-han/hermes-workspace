@@ -24,6 +24,7 @@ import {
   Tick02Icon,
   UserGroupIcon,
   UserMultipleIcon,
+  WorkflowCircle01Icon,
 } from '@hugeicons/core-free-icons'
 import { AnimatePresence, motion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -598,6 +599,7 @@ function ChatSidebarComponent({
   const _isSettingsActive = pathname === '/settings'
   const isSkillsActive = pathname === '/skills'
   const isDatabaseActive = pathname === '/database'
+  const isEffectiveContextActive = pathname === '/effective-context'
   const isJobsActive = pathname === '/jobs'
   const isMemoryActive = pathname === '/memory'
   const isKnowledgeBaseActive =
@@ -605,13 +607,13 @@ function ChatSidebarComponent({
   const isTasksActive = pathname === '/tasks'
   const isorchestratorActive = pathname === '/orchestrator'
   const isAgentRosterActive = pathname === '/agent-roster'
-  const mainRoutes = ['/chat', '/new']
+  const mainRoutes = ['/chat', '/new', '/skills', '/profiles']
   const knowledgeRoutes = [
     '/memory',
     '/knowledge-base',
     '/legal-corpus',
-    '/skills',
     '/database',
+    '/effective-context',
   ]
   const systemRoutes = ['/settings', '/logs']
 
@@ -913,6 +915,21 @@ function ChatSidebarComponent({
       label: t('nav.agentRoster'),
       active: isAgentRosterActive,
     },
+    {
+      kind: 'link',
+      to: '/skills',
+      icon: PuzzleIcon,
+      label: t('nav.skills'),
+      active: isSkillsActive,
+      dataTour: 'skills',
+    },
+    {
+      kind: 'link',
+      to: '/profiles',
+      icon: UserMultipleIcon,
+      label: t('nav.profiles'),
+      active: pathname === '/profiles',
+    },
   ]
 
   const knowledgeItems: Array<NavItemDef> = [
@@ -939,18 +956,10 @@ function ChatSidebarComponent({
     },
     {
       kind: 'link',
-      to: '/skills',
-      icon: PuzzleIcon,
-      label: t('nav.skills'),
-      active: isSkillsActive,
-      dataTour: 'skills',
-    },
-    {
-      kind: 'link',
-      to: '/profiles',
-      icon: UserMultipleIcon,
-      label: t('nav.profiles'),
-      active: pathname === '/profiles',
+      to: '/effective-context',
+      icon: WorkflowCircle01Icon,
+      label: t('nav.effectiveContext'),
+      active: isEffectiveContextActive,
     },
   ]
 

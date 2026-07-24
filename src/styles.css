@@ -1500,6 +1500,8 @@ code {
   position: relative;
   isolation: isolate;
   overflow: visible;
+  width: 56px !important;
+  height: 56px !important;
   border-radius: 9999px;
   background:
     radial-gradient(

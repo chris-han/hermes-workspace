@@ -13,13 +13,18 @@ import {
 import {
   fetchLegalAcceptanceEvidence,
   fetchLegalAcceptanceEvidenceExports,
+  fetchLegalCandidateImpact,
+  fetchLegalChangeCandidates,
   fetchLegalCorpusDashboard,
   fetchLegalCorpusInventory,
   fetchLegalEvidenceContract,
+  fetchLegalScanRuns,
+  fetchLegalSourceStatus,
   registerLegalSource,
   uploadLegalSourceArtifact,
   type LegalAcceptanceEvidenceExportRef,
   type LegalCorpusInventory,
+  type LegalCandidateImpact,
   type RegisterLegalSourceInput,
   type LegalSemanticCandidate,
   type LegalSource,
@@ -92,6 +97,30 @@ const LEGAL_COPY = {
     artifact: 'artifact',
     mimePending: 'mime pending',
     noRawArtifact: 'No raw artifact recorded',
+    runtimeMonitor: 'Runtime monitor',
+    sourceHealth: 'Source health',
+    knowledgeReview: 'Knowledge review',
+    runtimePosture: 'Runtime posture',
+    latestComparison: 'Latest comparison',
+    lastCheck: 'Last check',
+    nextDueCheck: 'Next due',
+    reviewRequired: 'Review required',
+    changedAnchors: 'Changed anchors',
+    activeVersions: 'Active versions',
+    pendingVersions: 'Pending versions',
+    scanHistory: 'Scan history',
+    noScanRuns: 'No scan runs recorded',
+    changeCandidates: 'Change candidates',
+    noChangeCandidates: 'No open change candidates',
+    impactReport: 'Impact report',
+    impactPosture: 'Impact posture',
+    dependencies: 'Dependencies',
+    authorityEdges: 'Authority edges',
+    safeMonitorActions: 'Monitor actions',
+    sourceStatusAction: 'Inspect source status',
+    scanHistoryAction: 'Review scan history',
+    candidateImpactAction: 'Inspect candidate impact',
+    acknowledgementAction: 'Prepare acknowledgement',
     articleAnchors: 'Article anchors',
     headingPending: 'heading pending',
     noArticleAnchors: 'No article anchors recorded',
@@ -185,6 +214,30 @@ const LEGAL_COPY = {
     artifact: '制品',
     mimePending: 'MIME 待定',
     noRawArtifact: '暂无原始制品记录',
+    runtimeMonitor: '运行时监控',
+    sourceHealth: '来源健康',
+    knowledgeReview: '知识评审',
+    runtimePosture: '运行时姿态',
+    latestComparison: '最新比对',
+    lastCheck: '上次检查',
+    nextDueCheck: '下次到期',
+    reviewRequired: '需要评审',
+    changedAnchors: '变更锚点',
+    activeVersions: '生效版本',
+    pendingVersions: '待处理版本',
+    scanHistory: '扫描历史',
+    noScanRuns: '暂无扫描运行记录',
+    changeCandidates: '变更候选项',
+    noChangeCandidates: '暂无待处理变更候选项',
+    impactReport: '影响报告',
+    impactPosture: '影响姿态',
+    dependencies: '依赖项',
+    authorityEdges: '权威边',
+    safeMonitorActions: '监控操作',
+    sourceStatusAction: '查看来源状态',
+    scanHistoryAction: '查看扫描历史',
+    candidateImpactAction: '查看候选影响',
+    acknowledgementAction: '准备确认',
     articleAnchors: '条文锚点',
     headingPending: '标题待定',
     noArticleAnchors: '暂无条文锚点记录',
@@ -284,7 +337,10 @@ function metricValue(value?: number | null, fallback = 'n/a'): string {
 function parseSpan(candidate: LegalSemanticCandidate, copy: LegalCopy): string {
   if (!candidate.source_span_json) return copy.spanNotRecorded
   try {
-    const span = JSON.parse(candidate.source_span_json) as Record<string, unknown>
+    const span = JSON.parse(candidate.source_span_json) as Record<
+      string,
+      unknown
+    >
     const locator = String(span.stable_locator ?? copy.locatorPending)
     const start = span.char_start
     const end = span.char_end
@@ -294,7 +350,10 @@ function parseSpan(candidate: LegalSemanticCandidate, copy: LegalCopy): string {
   }
 }
 
-function parseSectionSpan(section: LegalSourceSection, copy: LegalCopy): string {
+function parseSectionSpan(
+  section: LegalSourceSection,
+  copy: LegalCopy,
+): string {
   if (!section.anchor_json) return copy.spanPending
   try {
     const anchor = JSON.parse(section.anchor_json) as Record<string, unknown>
@@ -406,6 +465,22 @@ export function KnowledgeBaseScreen() {
     queryFn: fetchLegalAcceptanceEvidenceExports,
     staleTime: 10_000,
   })
+  const scanRunsQuery = useQuery({
+    queryKey: ['legal-corpus', 'scan-runs'],
+    queryFn: () => fetchLegalScanRuns(10),
+    staleTime: 10_000,
+  })
+  const sourceStatusQuery = useQuery({
+    queryKey: ['legal-corpus', 'source-status', selectedSourceId],
+    queryFn: () => fetchLegalSourceStatus(selectedSourceId || ''),
+    enabled: Boolean(selectedSourceId),
+    staleTime: 10_000,
+  })
+  const changeCandidatesQuery = useQuery({
+    queryKey: ['legal-corpus', 'change-candidates', 'UNRESOLVED'],
+    queryFn: () => fetchLegalChangeCandidates('UNRESOLVED', 25),
+    staleTime: 10_000,
+  })
 
   const inventory = inventoryQuery.data
   useEffect(() => {
@@ -422,6 +497,18 @@ export function KnowledgeBaseScreen() {
     bundle.candidates.find(
       (candidate) => candidate.candidate_id === selectedCandidateId,
     ) ?? bundle.candidates[0]
+  const selectedChangeCandidate =
+    changeCandidatesQuery.data?.find(
+      (candidate) => candidate.candidate_id === selectedCandidateId,
+    ) ?? changeCandidatesQuery.data?.[0]
+  const activeCandidateId =
+    selectedChangeCandidate?.candidate_id ?? selectedCandidate?.candidate_id
+  const candidateImpactQuery = useQuery({
+    queryKey: ['legal-corpus', 'candidate-impact', activeCandidateId],
+    queryFn: () => fetchLegalCandidateImpact(activeCandidateId || ''),
+    enabled: Boolean(activeCandidateId),
+    staleTime: 10_000,
+  })
 
   const exportMutation = useMutation({
     mutationFn: () =>
@@ -467,7 +554,10 @@ export function KnowledgeBaseScreen() {
       if (!queuedSourceFile) {
         throw new Error(copy.choosePdf)
       }
-      return uploadLegalSourceArtifact(bundle.version.version_id, queuedSourceFile)
+      return uploadLegalSourceArtifact(
+        bundle.version.version_id,
+        queuedSourceFile,
+      )
     },
     onSuccess: async (result) => {
       setQueuedSourceFile(null)
@@ -524,13 +614,43 @@ export function KnowledgeBaseScreen() {
   }
 
   function bindChatContext(actionType: string) {
-    if (!bundle.source) return
+    const sourceId =
+      bundle.source?.source_id || selectedChangeCandidate?.source_id
+    if (!sourceId) return
+    const contextType =
+      actionType === 'scan_history'
+        ? 'scan_run'
+        : actionType === 'candidate_impact'
+          ? 'impact_report'
+          : actionType === 'build_review_package'
+            ? 'review_package'
+            : actionType === 'acknowledge_alert'
+              ? 'review_package'
+              : actionType === 'source_status'
+                ? 'source'
+                : 'candidate'
     setLegalContext({
-      sourceId: bundle.source.source_id,
-      title: bundle.source.canonical_title || bundle.source.source_id,
+      sourceId,
+      title:
+        bundle.source?.canonical_title ||
+        selectedChangeCandidate?.canonical_title ||
+        sourceId,
+      contextType,
       versionId: bundle.version?.version_id,
+      scanRunId: scanRunsQuery.data?.[0]?.scan_run_id,
+      candidateId: activeCandidateId,
+      impactReportRef: candidateImpactQuery.data?.impact_report_ref,
+      bundleId:
+        sourceStatusQuery.data?.runtime_status
+          ?.active_authority_bundle_version_id || undefined,
+      posture:
+        candidateImpactQuery.data?.posture ||
+        sourceStatusQuery.data?.runtime_status?.posture,
+      comparisonClass:
+        sourceStatusQuery.data?.source_status?.latest_comparison_class ||
+        undefined,
       lifecycleState: bundle.version?.lifecycle_state,
-      authorityTier: bundle.source.authority_tier,
+      authorityTier: bundle.source?.authority_tier,
       candidateCount: bundle.candidates.length,
       anchorCount: bundle.sections.length,
     })
@@ -539,6 +659,8 @@ export function KnowledgeBaseScreen() {
   }
 
   const metrics = dashboardQuery.data?.metrics ?? {}
+  const sourceStatus = sourceStatusQuery.data
+  const impact = candidateImpactQuery.data
   return (
     <div
       lang={locale === 'zh' ? 'zh-CN' : 'en'}
@@ -799,7 +921,10 @@ export function KnowledgeBaseScreen() {
                 />
                 <Fact
                   label={copy.sourceHash}
-                  value={shortRef(bundle.version?.source_hash, copy.notRecorded)}
+                  value={shortRef(
+                    bundle.version?.source_hash,
+                    copy.notRecorded,
+                  )}
                   fallback={copy.notRecorded}
                 />
               </div>
@@ -833,6 +958,107 @@ export function KnowledgeBaseScreen() {
             </div>
           </div>
 
+          <div className="mt-4 grid gap-4 xl:grid-cols-3">
+            <InspectorPanel title={copy.sourceHealth}>
+              <Fact
+                label={copy.runtimeMonitor}
+                value={sourceStatus?.source_status?.availability_state}
+                fallback={copy.notRecorded}
+              />
+              <Fact
+                label={copy.latestComparison}
+                value={sourceStatus?.source_status?.latest_comparison_class}
+                fallback={copy.notRecorded}
+              />
+              <Fact
+                label={copy.lastCheck}
+                value={sourceStatus?.source_status?.last_check?.checked_at}
+                fallback={copy.notRecorded}
+              />
+              <Fact
+                label={copy.nextDueCheck}
+                value={sourceStatus?.source_status?.next_due_check}
+                fallback={copy.notRecorded}
+              />
+            </InspectorPanel>
+
+            <InspectorPanel title={copy.knowledgeReview}>
+              <Fact
+                label={copy.reviewRequired}
+                value={
+                  sourceStatus?.knowledge_status
+                    ? String(
+                        Boolean(sourceStatus.knowledge_status.review_required),
+                      )
+                    : undefined
+                }
+                fallback={copy.notRecorded}
+              />
+              <Fact
+                label={copy.changedAnchors}
+                value={
+                  sourceStatus?.knowledge_status?.changed_anchors
+                    ? String(
+                        sourceStatus.knowledge_status.changed_anchors.length,
+                      )
+                    : undefined
+                }
+                fallback={copy.notRecorded}
+              />
+              <Fact
+                label={copy.activeVersions}
+                value={
+                  sourceStatus?.knowledge_status?.active_version_ids
+                    ? String(
+                        sourceStatus.knowledge_status.active_version_ids.length,
+                      )
+                    : undefined
+                }
+                fallback={copy.notRecorded}
+              />
+              <Fact
+                label={copy.pendingVersions}
+                value={
+                  sourceStatus?.knowledge_status?.pending_version_ids
+                    ? String(
+                        sourceStatus.knowledge_status.pending_version_ids
+                          .length,
+                      )
+                    : undefined
+                }
+                fallback={copy.notRecorded}
+              />
+            </InspectorPanel>
+
+            <InspectorPanel title={copy.runtimePosture}>
+              <Fact
+                label={copy.runtimePosture}
+                value={sourceStatus?.runtime_status?.posture}
+                fallback={copy.notRecorded}
+              />
+              <Fact
+                label={copy.authorityBundle}
+                value={shortRef(
+                  sourceStatus?.runtime_status
+                    ?.active_authority_bundle_version_id,
+                  copy.notRecorded,
+                )}
+                fallback={copy.notRecorded}
+              />
+              <Fact
+                label={copy.activation}
+                value={
+                  sourceStatus?.runtime_status
+                    ? `activation_ready=${Boolean(
+                        sourceStatus.runtime_status.activation_ready,
+                      )}`
+                    : undefined
+                }
+                fallback={copy.notRecorded}
+              />
+            </InspectorPanel>
+          </div>
+
           {legalViewMode === 'source' ? (
             <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
               <InspectorPanel title={copy.rawArtifacts}>
@@ -848,7 +1074,9 @@ export function KnowledgeBaseScreen() {
                           {shortRef(artifact.uri, copy.notRecorded)}
                         </div>
                       </div>
-                      <code>{shortRef(artifact.content_hash, copy.notRecorded)}</code>
+                      <code>
+                        {shortRef(artifact.content_hash, copy.notRecorded)}
+                      </code>
                     </Row>
                   ))
                 ) : (
@@ -858,12 +1086,20 @@ export function KnowledgeBaseScreen() {
 
               <div className="rounded-md border border-border bg-card p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold">
-                  <HugeiconsIcon icon={Upload01Icon} size={15} strokeWidth={1.6} />
+                  <HugeiconsIcon
+                    icon={Upload01Icon}
+                    size={15}
+                    strokeWidth={1.6}
+                  />
                   {copy.uploadSourceFile}
                 </div>
                 <div className="mt-3 grid gap-3">
                   <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:bg-primary/10">
-                    <HugeiconsIcon icon={Upload01Icon} size={15} strokeWidth={1.6} />
+                    <HugeiconsIcon
+                      icon={Upload01Icon}
+                      size={15}
+                      strokeWidth={1.6}
+                    />
                     {queuedSourceFile?.name || copy.choosePdf}
                     <input
                       type="file"
@@ -888,7 +1124,11 @@ export function KnowledgeBaseScreen() {
                     onClick={() => uploadSourceMutation.mutate()}
                     className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-semibold transition-colors hover:border-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <HugeiconsIcon icon={Upload01Icon} size={15} strokeWidth={1.6} />
+                    <HugeiconsIcon
+                      icon={Upload01Icon}
+                      size={15}
+                      strokeWidth={1.6}
+                    />
                     {uploadSourceMutation.isPending
                       ? copy.uploadingFile
                       : copy.uploadFile}
@@ -917,11 +1157,15 @@ export function KnowledgeBaseScreen() {
                             {section.stable_locator || section.section_id}
                           </div>
                           <div className="text-muted-foreground">
-                            {section.title || section.ordinal || copy.headingPending}{' '}
+                            {section.title ||
+                              section.ordinal ||
+                              copy.headingPending}{' '}
                             / {parseSectionSpan(section, copy)}
                           </div>
                         </div>
-                        <code>{shortRef(section.local_hash, copy.notRecorded)}</code>
+                        <code>
+                          {shortRef(section.local_hash, copy.notRecorded)}
+                        </code>
                       </Row>
                     ))
                   ) : (
@@ -961,7 +1205,9 @@ export function KnowledgeBaseScreen() {
                       <button
                         key={candidate.candidate_id}
                         type="button"
-                        onClick={() => setSelectedCandidateId(candidate.candidate_id)}
+                        onClick={() =>
+                          setSelectedCandidateId(candidate.candidate_id)
+                        }
                         className={cn(
                           'grid w-full gap-2 px-4 py-3 text-left text-sm transition-colors md:grid-cols-[140px_minmax(0,1fr)_180px]',
                           selectedCandidate?.candidate_id ===
@@ -1039,16 +1285,14 @@ export function KnowledgeBaseScreen() {
           <div className="mt-4 rounded-md border border-border bg-card p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <HugeiconsIcon icon={CheckListIcon} size={15} strokeWidth={1.6} />
-              {copy.aiWorkflowActions}
+              {copy.safeMonitorActions}
             </div>
             <div className="mt-3 grid gap-2">
               {[
-                ['build_review_package', copy.buildReviewPackage],
-                ['curate_source', copy.curateSource],
-                ['promote_candidate', copy.promoteCandidate],
-                ['certify_source', copy.certifySource],
-                ['activate_bundle', copy.activateBundle],
-                ['refresh_check', copy.runRefreshCheck],
+                ['source_status', copy.sourceStatusAction],
+                ['scan_history', copy.scanHistoryAction],
+                ['candidate_impact', copy.candidateImpactAction],
+                ['acknowledge_alert', copy.acknowledgementAction],
               ].map(([actionType, label]) => (
                 <button
                   key={actionType}
@@ -1062,6 +1306,61 @@ export function KnowledgeBaseScreen() {
               ))}
             </div>
           </div>
+
+          <InspectorPanelWithMargin title={copy.scanHistory}>
+            {scanRunsQuery.data?.length ? (
+              scanRunsQuery.data.slice(0, 4).map((run) => (
+                <Row key={run.scan_run_id}>
+                  <div className="min-w-0">
+                    <div className="font-medium">
+                      {run.status || copy.unresolved}
+                    </div>
+                    <div className="truncate text-muted-foreground">
+                      {run.trigger || copy.notRecorded} /{' '}
+                      {run.scheduled_window ||
+                        run.started_at ||
+                        copy.notRecorded}
+                    </div>
+                  </div>
+                  <code>{shortRef(run.scan_run_id, copy.notRecorded)}</code>
+                </Row>
+              ))
+            ) : (
+              <EmptyState label={copy.noScanRuns} />
+            )}
+          </InspectorPanelWithMargin>
+
+          <InspectorPanelWithMargin title={copy.changeCandidates}>
+            {changeCandidatesQuery.data?.length ? (
+              changeCandidatesQuery.data.slice(0, 5).map((candidate) => (
+                <button
+                  key={candidate.candidate_id}
+                  type="button"
+                  onClick={() => setSelectedCandidateId(candidate.candidate_id)}
+                  className={cn(
+                    'w-full rounded border border-border px-3 py-2 text-left text-xs transition-colors hover:border-primary hover:bg-primary/10',
+                    activeCandidateId === candidate.candidate_id
+                      ? 'border-primary bg-primary/10'
+                      : '',
+                  )}
+                >
+                  <div className="truncate font-semibold">
+                    {candidate.canonical_title || candidate.source_id}
+                  </div>
+                  <div className="mt-1 truncate text-muted-foreground">
+                    {candidate.candidate_type || copy.candidate} /{' '}
+                    {candidate.stable_locator || copy.locatorPending}
+                  </div>
+                </button>
+              ))
+            ) : (
+              <EmptyState label={copy.noChangeCandidates} />
+            )}
+          </InspectorPanelWithMargin>
+
+          <InspectorPanelWithMargin title={copy.impactReport}>
+            <ImpactSummary impact={impact} copy={copy} />
+          </InspectorPanelWithMargin>
 
           <div className="mt-4 rounded-md border border-border bg-card p-4">
             <div className="text-sm font-semibold">{copy.dashboardMetrics}</div>
@@ -1086,7 +1385,9 @@ export function KnowledgeBaseScreen() {
           </div>
 
           <div className="mt-4 rounded-md border border-border bg-card p-4">
-            <div className="text-sm font-semibold">{copy.acceptanceEvidence}</div>
+            <div className="text-sm font-semibold">
+              {copy.acceptanceEvidence}
+            </div>
             <div className="mt-3 space-y-2">
               {persistedExportsQuery.data?.length ? (
                 persistedExportsQuery.data
@@ -1121,7 +1422,9 @@ function Metric({
   return (
     <div className="rounded border border-border bg-card px-2 py-1.5">
       <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className="text-sm font-semibold">{metricValue(value, fallback)}</div>
+      <div className="text-sm font-semibold">
+        {metricValue(value, fallback)}
+      </div>
     </div>
   )
 }
@@ -1183,6 +1486,56 @@ function InspectorPanel({
   )
 }
 
+function InspectorPanelWithMargin({
+  title,
+  children,
+}: {
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <div className="mt-4">
+      <InspectorPanel title={title}>{children}</InspectorPanel>
+    </div>
+  )
+}
+
+function ImpactSummary({
+  impact,
+  copy,
+}: {
+  impact?: LegalCandidateImpact
+  copy: LegalCopy
+}) {
+  if (!impact?.candidate && !impact?.impact_report_ref) {
+    return <EmptyState label={copy.noChangeCandidates} />
+  }
+  return (
+    <>
+      <Fact
+        label={copy.impactPosture}
+        value={impact.posture}
+        fallback={copy.notRecorded}
+      />
+      <Fact
+        label={copy.impactReport}
+        value={shortRef(impact.impact_report_ref, copy.notRecorded)}
+        fallback={copy.notRecorded}
+      />
+      <Fact
+        label={copy.dependencies}
+        value={String(impact.dependencies?.length ?? 0)}
+        fallback={copy.notRecorded}
+      />
+      <Fact
+        label={copy.authorityEdges}
+        value={String(impact.authority_edges?.length ?? 0)}
+        fallback={copy.notRecorded}
+      />
+    </>
+  )
+}
+
 function Row({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-w-0 items-start justify-between gap-3 rounded border border-border px-3 py-2 text-xs">
@@ -1208,7 +1561,8 @@ function PersistedExportRow({
         {shortRef(evidenceExport.acceptance_export_id, copy.notRecorded)}
       </div>
       <div className="mt-1 text-muted-foreground">
-        {copy.recordLabel} {shortRef(evidenceExport.record_hash, copy.notRecorded)}
+        {copy.recordLabel}{' '}
+        {shortRef(evidenceExport.record_hash, copy.notRecorded)}
       </div>
     </div>
   )

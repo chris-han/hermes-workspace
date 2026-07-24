@@ -4,7 +4,25 @@ import { persist } from 'zustand/middleware'
 export type LegalCorpusChatContext = {
   sourceId: string
   title: string
+  contextType?:
+    | 'source'
+    | 'version'
+    | 'anchor'
+    | 'refresh_check'
+    | 'scan_run'
+    | 'candidate'
+    | 'impact_report'
+    | 'review_package'
+    | 'bundle'
   versionId?: string
+  anchorId?: string
+  refreshCheckId?: string
+  scanRunId?: string
+  candidateId?: string
+  impactReportRef?: string
+  bundleId?: string
+  posture?: string
+  comparisonClass?: string
   lifecycleState?: string
   authorityTier?: string
   candidateCount?: number

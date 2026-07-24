@@ -1416,8 +1416,12 @@ function ChatMessageListComponent({
     [isMobileViewport, scrollToBottom],
   )
 
+  const isGenerating =
+    sending || waitingForResponse || thinkingGrace || isStreaming || isCompacting
+
   const scrollToBottomOverlay = useMemo(() => {
-    const isVisible = !isNearBottom && displayEntries.length > 0
+    const isVisible =
+      (isGenerating || !isNearBottom) && displayEntries.length > 0
     const hasVisibleEntries = visibleEntries.length > 0
     const overlayGap = isMobileViewport ? 8 : 24
     const overlayBottom =
@@ -1431,6 +1435,7 @@ function ChatMessageListComponent({
       >
         <ScrollToBottomButton
           isVisible={isVisible && hasVisibleEntries}
+          isGenerating={isGenerating}
           unreadCount={unreadCount}
           onClick={handleScrollToBottom}
         />
@@ -1441,9 +1446,15 @@ function ChatMessageListComponent({
     displayEntries.length,
     handleScrollToBottom,
     visibleEntries.length,
+    isCompacting,
+    isGenerating,
     isMobileViewport,
     isNearBottom,
+    isStreaming,
+    sending,
+    thinkingGrace,
     unreadCount,
+    waitingForResponse,
   ])
 
   return (

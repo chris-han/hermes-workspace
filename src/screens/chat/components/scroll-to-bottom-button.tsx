@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowDown01Icon } from '@hugeicons/core-free-icons'
+import { ThinkingActivityIndicator } from './thinking-activity-indicator'
 import { Button } from '@/components/ui/button'
+import { useThemeId } from '@/hooks/use-theme-id'
 import { cn } from '@/lib/utils'
 
 const MotionButton = motion.create(Button)
@@ -9,6 +11,7 @@ const MotionButton = motion.create(Button)
 type ScrollToBottomButtonProps = {
   className?: string
   isVisible: boolean
+  isGenerating?: boolean
   unreadCount: number
   onClick: () => void
 }
@@ -16,9 +19,12 @@ type ScrollToBottomButtonProps = {
 function ScrollToBottomButton({
   className,
   isVisible,
+  isGenerating = false,
   unreadCount,
   onClick,
 }: ScrollToBottomButtonProps) {
+  const themeId = useThemeId()
+
   return (
     <AnimatePresence>
       {isVisible ? (
@@ -26,7 +32,11 @@ function ScrollToBottomButton({
           type="button"
           variant="default"
           size="icon-sm"
-          aria-label="Scroll to bottom"
+          aria-label={
+            isGenerating
+              ? 'Assistant is thinking. Scroll to bottom'
+              : 'Scroll to bottom'
+          }
           className={cn(
             'theme-accent-button pointer-events-auto relative rounded-full border text-white shadow-lg transition-all hover:brightness-95',
             className,
@@ -41,7 +51,16 @@ function ScrollToBottomButton({
           transition={{ duration: 0.2, ease: 'easeOut' }}
           onClick={onClick}
         >
-          <HugeiconsIcon icon={ArrowDown01Icon} size={20} strokeWidth={1.5} />
+          {isGenerating ? (
+            <ThinkingActivityIndicator
+              size={20}
+              themeId={themeId}
+              label="Assistant thinking"
+              orbTheme="light"
+            />
+          ) : (
+            <HugeiconsIcon icon={ArrowDown01Icon} size={20} strokeWidth={1.5} />
+          )}
           {unreadCount > 0 ? (
             <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-primary-900 px-1.5 text-xs font-medium tabular-nums text-primary-50">
               {unreadCount > 99 ? '99+' : unreadCount}

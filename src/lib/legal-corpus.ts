@@ -64,6 +64,82 @@ export type LegalRefreshCheck = {
   observed_content_hash?: string
 }
 
+export type LegalScanRun = {
+  scan_run_id: string
+  organization_id?: string
+  workspace_id?: string | null
+  monitor_policy_version?: string
+  scheduled_window?: string
+  trigger?: string
+  status?: string
+  started_at?: string
+  completed_at?: string | null
+  aggregate_counts_json?: string
+}
+
+export type LegalScanItem = {
+  scan_item_id: string
+  scan_run_id: string
+  organization_id?: string
+  source_id: string
+  monitor_policy_version?: string
+  scheduled_window?: string
+  idempotency_key?: string
+  status?: string
+  result_class?: string | null
+  error_code?: string | null
+  error_detail?: string | null
+  observed_version_id?: string | null
+  refresh_check_id?: string | null
+  attempt_count?: number
+}
+
+export type LegalSourceStatusProjection = {
+  source_id: string
+  source_status?: {
+    canonical_title?: string
+    identity_state?: string
+    availability_state?: string
+    last_check?: LegalRefreshCheck | null
+    next_due_check?: string | null
+    raw_hash?: string | null
+    normalized_hash?: string | null
+    latest_comparison_class?: string | null
+  }
+  knowledge_status?: {
+    active_version_ids?: Array<string>
+    pending_version_ids?: Array<string>
+    review_required?: boolean
+    changed_anchors?: Array<unknown>
+  }
+  runtime_status?: {
+    active_authority_bundle_version_id?: string | null
+    posture?: string
+    activation_ready?: boolean
+  }
+}
+
+export type LegalChangeCandidate = LegalSemanticCandidate & {
+  source_id?: string
+  canonical_title?: string
+  version_identity?: string
+  version_lifecycle_state?: string
+  stable_locator?: string | null
+  section_type?: string | null
+  candidate?: Record<string, unknown>
+  source_span?: Record<string, unknown>
+}
+
+export type LegalCandidateImpact = {
+  impact_report_ref?: string
+  candidate?: LegalChangeCandidate
+  legal_anchors?: Array<Record<string, unknown>>
+  authority_edges?: Array<Record<string, unknown>>
+  dependencies?: Array<Record<string, unknown>>
+  posture?: string
+  activation_performed?: boolean
+}
+
 export type LegalVersionEdge = {
   edge_id: string
   from_version_id: string
@@ -221,6 +297,50 @@ export async function fetchLegalAcceptanceEvidenceExports(): Promise<
   return payload.acceptance_evidence_exports ?? []
 }
 
+export async function fetchLegalScanRuns(
+  limit = 20,
+): Promise<Array<LegalScanRun>> {
+  const params = new URLSearchParams({ limit: String(limit) })
+  const payload = await readLegalJson<{ scan_runs?: Array<LegalScanRun> }>(
+    `/scan-runs?${params.toString()}`,
+  )
+  return payload.scan_runs ?? []
+}
+
+export async function fetchLegalSourceStatus(
+  sourceId: string,
+  asOf?: string,
+): Promise<LegalSourceStatusProjection> {
+  const params = new URLSearchParams()
+  if (asOf) params.set('as_of', asOf)
+  const query = params.toString()
+  const payload = await readLegalJson<{ status?: LegalSourceStatusProjection }>(
+    `/sources/${encodeURIComponent(sourceId)}/status${query ? `?${query}` : ''}`,
+  )
+  return payload.status ?? { source_id: sourceId }
+}
+
+export async function fetchLegalChangeCandidates(
+  reviewState?: string,
+  limit = 25,
+): Promise<Array<LegalChangeCandidate>> {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (reviewState) params.set('review_state', reviewState)
+  const payload = await readLegalJson<{
+    change_candidates?: Array<LegalChangeCandidate>
+  }>(`/change-candidates?${params.toString()}`)
+  return payload.change_candidates ?? []
+}
+
+export async function fetchLegalCandidateImpact(
+  candidateId: string,
+): Promise<LegalCandidateImpact> {
+  const payload = await readLegalJson<{ impact?: LegalCandidateImpact }>(
+    `/change-candidates/${encodeURIComponent(candidateId)}/impact`,
+  )
+  return payload.impact ?? {}
+}
+
 export async function registerLegalSource(
   input: RegisterLegalSourceInput,
 ): Promise<LegalSource> {
@@ -229,7 +349,9 @@ export async function registerLegalSource(
     governance_state: input.governance_state || 'LISTED',
   })
   if (!payload.source) {
-    throw new Error('Knowledge base source registration did not return a source')
+    throw new Error(
+      'Knowledge base source registration did not return a source',
+    )
   }
   return payload.source
 }

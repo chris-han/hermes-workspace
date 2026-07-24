@@ -270,9 +270,11 @@ export function ChatPanel() {
                         {legalContext.title}
                       </div>
                       <div className="mt-0.5 truncate text-[11px] text-primary-600">
-                        {legalContext.lifecycleState || 'unresolved'} /{' '}
-                        {legalContext.authorityTier || 'authority pending'} /{' '}
-                        {legalContext.versionId || legalContext.sourceId}
+                        {legalContext.contextType || 'source'} /{' '}
+                        {legalContext.posture ||
+                          legalContext.lifecycleState ||
+                          'unresolved'}{' '}
+                        / {legalContext.comparisonClass || 'comparison pending'}
                       </div>
                     </div>
                     <span className="shrink-0 rounded border border-primary-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-normal text-primary-700">
@@ -281,10 +283,10 @@ export function ChatPanel() {
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-1.5">
                     {[
-                      ['build_review_package', 'Build review'],
-                      ['certify_source', 'Certify'],
-                      ['activate_bundle', 'Activate'],
-                      ['refresh_check', 'Refresh'],
+                      ['source_status', 'Source status'],
+                      ['scan_history', 'Scan history'],
+                      ['candidate_impact', 'Impact'],
+                      ['acknowledge_alert', 'Acknowledge'],
                     ].map(([actionType, label]) => (
                       <button
                         key={actionType}

@@ -45,6 +45,7 @@ import { CHAT_OPEN_MESSAGE_SEARCH_EVENT } from '@/screens/chat/chat-events'
  *  Keep this short so tool pills appear immediately and the shimmer only
  *  bridges the gap until the first tool/text event arrives. */
 const THINKING_GRACE_PERIOD_MS = 300
+const ASSISTANT_ACTIVITY_AVATAR_SIZE = 28
 
 const TOOL_EMOJIS: Record<string, string> = {
   web_search: '🔍',
@@ -240,15 +241,18 @@ function AssistantActivityPlaceholder({
 
   return (
     <div
-      className="flex items-end gap-3 py-1.5"
+      className="flex items-center gap-3 py-1.5"
       role={activity.statusRole === 'status' ? 'status' : undefined}
       aria-live={activity.statusRole === 'status' ? 'polite' : undefined}
       aria-label={label}
     >
       <div className="shrink-0 rounded-lg">
-        <AssistantAvatar size={28} />
+        <AssistantAvatar size={ASSISTANT_ACTIVITY_AVATAR_SIZE} />
       </div>
-      <div className="flex min-w-0 items-center gap-3 rounded-card rounded-bl-sm theme-border-1 theme-tool-surface px-4 py-3">
+      <div
+        className="flex min-w-0 items-center gap-2.5 rounded-card rounded-bl-sm theme-border-1 theme-tool-surface px-3"
+        style={{ height: ASSISTANT_ACTIVITY_AVATAR_SIZE }}
+      >
         <ThinkingActivityIndicator
           size={20}
           themeId={themeId}

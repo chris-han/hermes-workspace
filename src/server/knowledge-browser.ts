@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import YAML from 'yaml'
 import {
+  buildKnowledgeDatasetGovernanceConfig,
   getKnowledgeBaseEffectiveRoot,
   readKnowledgeBaseConfig,
 } from './knowledge-config'
@@ -10,6 +11,9 @@ import type { KnowledgeBaseSource } from './knowledge-config'
 
 type KnowledgeBrowserContext = {
   datasetType?: string | null
+  datasetKey?: string | null
+  activeDatasetVersionId?: string | null
+  organizationId?: string | null
   forceWorkspaceWikiRoot?: boolean
 }
 
@@ -42,6 +46,33 @@ export type KnowledgeGraph = {
     tags: Array<string>
   }>
   edges: Array<{ source: string; target: string }>
+}
+
+export type EffectiveContextGraph = {
+  nodes: Array<{
+    id: string
+    label: string
+    nodeType:
+      | 'authority_source'
+      | 'optional_context'
+      | 'dataset_asset'
+      | 'execution_gate'
+      | 'excluded_source'
+    metadata: Record<string, string | boolean | null>
+  }>
+  edges: Array<{
+    source: string
+    target: string
+    edgeType:
+      | 'governs'
+      | 'feeds_context'
+      | 'excluded_by_policy'
+      | 'blocked_by_resolver'
+      | 'pins'
+  }>
+  activationResolverPolicyVersion: string | null
+  resolvedActivationSetHash: string | null
+  evidenceRef: string
 }
 
 export type KnowledgeChatContext = {
@@ -791,5 +822,117 @@ export function buildKnowledgeGraph(
       tags: page.meta.tags,
     })),
     edges: Array.from(edges.values()),
+  }
+}
+
+export function buildEffectiveContextGraph(
+  context?: KnowledgeBrowserContext,
+  options?: { auditEntitled?: boolean },
+): EffectiveContextGraph {
+  const governance = buildKnowledgeDatasetGovernanceConfig(context)
+  const auditEntitled = options?.auditEntitled === true
+  const nodes: EffectiveContextGraph['nodes'] = [
+    {
+      id: 'gate_policy_bundle',
+      label: 'Policy bundle',
+      nodeType: 'execution_gate',
+      metadata: {
+        gate: 'policy_bundle',
+        effectiveState: 'execution_gate',
+      },
+    },
+    {
+      id: 'gate_validation_contract',
+      label: 'Validation contract',
+      nodeType: 'execution_gate',
+      metadata: {
+        gate: 'validation_contract',
+        effectiveState: 'execution_gate',
+      },
+    },
+    {
+      id: 'gate_projection_bundle',
+      label: 'Projection bundle',
+      nodeType: 'execution_gate',
+      metadata: {
+        gate: 'projection_bundle',
+        effectiveState: 'execution_gate',
+      },
+    },
+  ]
+  const edges: EffectiveContextGraph['edges'] = []
+
+  for (const row of governance.rows) {
+    const nodeId = `dataset_${row.activationId}`
+    nodes.push({
+      id: nodeId,
+      label: row.datasetKey || row.datasetVersionId || row.datasetUsageRole,
+      nodeType:
+        row.effectiveAuthorityStatus === 'binding_effective'
+          ? 'dataset_asset'
+          : 'optional_context',
+      metadata: {
+        sourceTier: row.semanticTier,
+        effectiveAuthorityStatus: row.effectiveAuthorityStatus,
+        usageRole: row.datasetUsageRole,
+        contextControl: row.userContextControlLevel,
+        retrievalContextEnabled: row.retrievalEnabled,
+        promptContextEnabled: row.promptContextEnabled,
+        queryContextEnabled: row.queryContextEnabled,
+        evidenceRef: auditEntitled ? row.auditHash : 'opaque_context_evidence',
+        datasetType: auditEntitled ? row.datasetType : null,
+      },
+    })
+    edges.push({
+      source: nodeId,
+      target: 'gate_policy_bundle',
+      edgeType: 'governs',
+    })
+    edges.push({
+      source: nodeId,
+      target: 'gate_validation_contract',
+      edgeType: 'governs',
+    })
+    edges.push({
+      source: 'gate_projection_bundle',
+      target: nodeId,
+      edgeType: 'pins',
+    })
+  }
+
+  if (governance.rows.length === 0) {
+    nodes.push({
+      id: 'excluded_dataset_context',
+      label: 'Dataset context unavailable',
+      nodeType: 'excluded_source',
+      metadata: {
+        sourceTier: null,
+        usageRole: null,
+        permittedContextState: 'excluded',
+        reason: auditEntitled
+          ? 'no_active_dataset_activation'
+          : 'context_not_available',
+        datasetType: auditEntitled ? context?.datasetType ?? null : null,
+      },
+    })
+    edges.push({
+      source: 'excluded_dataset_context',
+      target: 'gate_projection_bundle',
+      edgeType: 'blocked_by_resolver',
+    })
+  }
+
+  return {
+    nodes,
+    edges,
+    activationResolverPolicyVersion: auditEntitled
+      ? governance.activationResolverPolicyVersion
+      : null,
+    resolvedActivationSetHash: auditEntitled
+      ? governance.resolvedActivationSetHash
+      : null,
+    evidenceRef: auditEntitled
+      ? governance.resolvedActivationSetHash
+      : 'opaque_activation_evidence',
   }
 }

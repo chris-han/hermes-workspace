@@ -5,11 +5,13 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import {
   CheckListIcon,
   Clock01Icon,
+  Database01Icon,
   Search01Icon,
   Add01Icon,
   Tick02Icon,
   Upload01Icon,
 } from '@hugeicons/core-free-icons'
+import { Switch } from '@/components/ui/switch'
 import {
   fetchLegalAcceptanceEvidence,
   fetchLegalAcceptanceEvidenceExports,
@@ -275,6 +277,183 @@ const LEGAL_COPY = {
 } as const
 
 type LegalCopy = (typeof LEGAL_COPY)[keyof typeof LEGAL_COPY]
+
+const DATASET_COPY = {
+  en: {
+    title: 'Database',
+    subtitle: 'Governed dataset context and effective query authority',
+    loading: 'Loading dataset governance...',
+    empty: 'No governed dataset activation is available for this workspace.',
+    source: 'Source',
+    authority: 'Governed authority',
+    aiContext: 'Use in AI context',
+    analysis: 'Use for analysis',
+    evidence: 'Context evidence',
+    lifecycle: 'Lifecycle',
+    role: 'Role',
+    type: 'Type',
+    version: 'Version',
+    actor: 'Last actor',
+    locked: 'Locked',
+    optional: 'Optional',
+    retrieval: 'Retrieval',
+    prompt: 'Prompt',
+    query: 'Query',
+    details: 'Audit details',
+    policyVersion: 'Resolver policy',
+    activationHash: 'Activation set hash',
+    unavailable: 'Dataset governance API unavailable',
+  },
+  zh: {
+    title: '数据库',
+    subtitle: '受治理的数据集上下文与有效查询权威',
+    loading: '正在加载数据集治理...',
+    empty: '当前工作区没有可用的治理数据集激活记录。',
+    source: '来源',
+    authority: '治理权威',
+    aiContext: '用于 AI 背景信息',
+    analysis: '用于分析',
+    evidence: '背景信息证据',
+    lifecycle: '生命周期',
+    role: '角色',
+    type: '类型',
+    version: '版本',
+    actor: '最近操作者',
+    locked: '锁定',
+    optional: '可选',
+    retrieval: '检索',
+    prompt: '提示词',
+    query: '查询',
+    details: '审计详情',
+    policyVersion: '解析策略',
+    activationHash: '激活集哈希',
+    unavailable: '数据集治理 API 不可用',
+  },
+} as const
+
+type DatasetCopy = (typeof DATASET_COPY)[keyof typeof DATASET_COPY]
+
+const EFFECTIVE_CONTEXT_COPY = {
+  en: {
+    title: 'Effective Context',
+    subtitle:
+      'Unified observability for the knowledge, memory, and database sources resolved into this workspace.',
+    loading: 'Loading effective context...',
+    unavailable: 'Effective context API unavailable',
+    noGraph: 'No effective context graph is available.',
+    graphLegend:
+      'Effective, optional, excluded, and execution-gate sources across Knowledge Base, Memory, and Database',
+    activationHash: 'Activation set hash',
+  },
+  zh: {
+    title: '有效背景信息',
+    subtitle: '统一查看当前工作区解析进来的知识库、记忆和数据库来源。',
+    loading: '正在加载有效背景信息...',
+    unavailable: '有效背景信息 API 不可用',
+    noGraph: '暂无有效背景信息图。',
+    graphLegend: '跨知识库、记忆和数据库的生效、可选、排除和执行门控来源',
+    activationHash: '激活集哈希',
+  },
+} as const
+
+type DatasetGovernanceRow = {
+  activationId: string
+  sourceKind: string
+  semanticTier: string
+  lifecycleStatus: string
+  effectiveAuthorityStatus: string
+  userContextControlLevel: string
+  retrievalToggleVisible: boolean
+  promptContextToggleVisible: boolean
+  queryContextToggleVisible: boolean
+  retrievalEnabled: boolean
+  promptContextEnabled: boolean
+  queryContextEnabled: boolean
+  datasetUsageRole: string
+  datasetType: string | null
+  datasetKey: string | null
+  datasetVersionId: string | null
+  sourceVersionId: string
+  lastActivationActor: string
+  auditHash: string
+  locked: boolean
+}
+
+type DatasetGovernancePayload = {
+  activationResolverPolicyVersion: string
+  resolvedActivationSetHash: string
+  rows: Array<DatasetGovernanceRow>
+}
+
+type DatasetPreferenceDimension =
+  | 'retrievalEnabled'
+  | 'promptContextEnabled'
+  | 'queryContextEnabled'
+
+type EffectiveContextGraphPayload = {
+  effectiveContext?: {
+    nodes: Array<{
+      id: string
+      label: string
+      nodeType: string
+      metadata: Record<string, string | boolean | null>
+    }>
+    edges: Array<{
+      source: string
+      target: string
+      edgeType: string
+    }>
+    activationResolverPolicyVersion: string | null
+    resolvedActivationSetHash: string | null
+    evidenceRef: string
+  }
+}
+
+async function fetchDatasetGovernance(): Promise<DatasetGovernancePayload> {
+  const response = await fetch('/api/knowledge/config')
+  if (!response.ok) {
+    throw new Error(`knowledge-config-${response.status}`)
+  }
+  const payload = (await response.json()) as {
+    datasetGovernance?: DatasetGovernancePayload
+  }
+  return (
+    payload.datasetGovernance ?? {
+      activationResolverPolicyVersion: 'knowledge_activation_resolver.v1',
+      resolvedActivationSetHash: '',
+      rows: [],
+    }
+  )
+}
+
+async function updateDatasetPreference(input: {
+  activationId: string
+  dimension: DatasetPreferenceDimension
+  enabled: boolean
+}) {
+  const response = await fetch('/api/knowledge/config', {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      activationId: input.activationId,
+      preferenceScope: 'principal',
+      [input.dimension]: input.enabled,
+    }),
+  })
+  if (!response.ok) {
+    throw new Error(`knowledge-preference-${response.status}`)
+  }
+  return response.json()
+}
+
+async function fetchEffectiveContextGraph() {
+  const response = await fetch('/api/knowledge/graph')
+  if (!response.ok) {
+    throw new Error(`knowledge-graph-${response.status}`)
+  }
+  const payload = (await response.json()) as EffectiveContextGraphPayload
+  return payload.effectiveContext
+}
 
 const LIFECYCLE_STATES = [
   'DRAFT',
@@ -1406,6 +1585,310 @@ export function KnowledgeBaseScreen() {
           </div>
         </aside>
       </main>
+    </div>
+  )
+}
+
+export function DatasetKnowledgeBaseScreen() {
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const copy = locale === 'zh' ? DATASET_COPY.zh : DATASET_COPY.en
+  const queryClient = useQueryClient()
+  const datasetQuery = useQuery({
+    queryKey: ['knowledge-base', 'dataset-governance'],
+    queryFn: fetchDatasetGovernance,
+    staleTime: 10_000,
+  })
+  const payload = datasetQuery.data
+  const rows = payload?.rows ?? []
+  const preferenceMutation = useMutation({
+    mutationFn: updateDatasetPreference,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['knowledge-base', 'dataset-governance'],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ['knowledge-base', 'effective-context-graph'],
+      })
+    },
+  })
+
+  return (
+    <div
+      lang={locale === 'zh' ? 'zh-CN' : 'en'}
+      className="flex h-full min-h-0 flex-col bg-background text-foreground"
+    >
+      <header className="border-b border-border px-4 py-3 sm:px-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-semibold">{copy.title}</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {copy.subtitle}
+            </p>
+          </div>
+          {payload?.resolvedActivationSetHash ? (
+            <div className="rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">
+              <div className="font-semibold text-foreground">
+                {copy.evidence}
+              </div>
+              <div className="mt-1">
+                {copy.activationHash}:{' '}
+                <code>{shortRef(payload.resolvedActivationSetHash)}</code>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </header>
+
+      <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        {datasetQuery.isLoading ? (
+          <EmptyState label={copy.loading} />
+        ) : datasetQuery.isError ? (
+          <EmptyState label={copy.unavailable} />
+        ) : rows.length === 0 ? (
+          <EmptyState label={copy.empty} />
+        ) : (
+          <div className="overflow-hidden rounded-md border border-border bg-card">
+            <div className="hidden grid-cols-[minmax(180px,1.4fr)_minmax(120px,0.8fr)_minmax(220px,1fr)_minmax(180px,0.8fr)] border-b border-border px-4 py-2 text-xs font-semibold text-muted-foreground md:grid">
+              <div>{copy.source}</div>
+              <div>{copy.authority}</div>
+              <div>{copy.aiContext}</div>
+              <div>{copy.evidence}</div>
+            </div>
+            <div className="divide-y divide-border">
+              {rows.map((row) => (
+                <DatasetGovernanceRowView
+                  key={row.activationId}
+                  row={row}
+                  copy={copy}
+                  onPreferenceChange={(dimension, enabled) => {
+                    preferenceMutation.mutate({
+                      activationId: row.activationId,
+                      dimension,
+                      enabled,
+                    })
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
+
+export function EffectiveContextScreen() {
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const copy =
+    locale === 'zh' ? EFFECTIVE_CONTEXT_COPY.zh : EFFECTIVE_CONTEXT_COPY.en
+  const graphQuery = useQuery({
+    queryKey: ['knowledge-base', 'effective-context-graph'],
+    queryFn: fetchEffectiveContextGraph,
+    staleTime: 10_000,
+  })
+  const effectiveGraph = graphQuery.data
+
+  return (
+    <div
+      lang={locale === 'zh' ? 'zh-CN' : 'en'}
+      className="flex h-full min-h-0 flex-col bg-background text-foreground"
+    >
+      <header className="border-b border-border px-4 py-3 sm:px-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-semibold">{copy.title}</h1>
+            <p className="mt-0.5 max-w-3xl text-sm text-muted-foreground">
+              {copy.subtitle}
+            </p>
+          </div>
+          {effectiveGraph?.resolvedActivationSetHash ? (
+            <div className="rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">
+              <div className="font-semibold text-foreground">
+                {copy.activationHash}
+              </div>
+              <code className="mt-1 block">
+                {shortRef(effectiveGraph.resolvedActivationSetHash)}
+              </code>
+            </div>
+          ) : null}
+        </div>
+      </header>
+
+      <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        <section className="rounded-md border border-border bg-card p-4">
+          <div>
+            <h2 className="text-sm font-semibold">{copy.title}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {copy.graphLegend}
+            </p>
+          </div>
+          {graphQuery.isLoading ? (
+            <EmptyState label={copy.loading} />
+          ) : graphQuery.isError ? (
+            <EmptyState label={copy.unavailable} />
+          ) : effectiveGraph?.nodes.length ? (
+            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.55fr)]">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {effectiveGraph.nodes.map((node) => (
+                  <div
+                    key={node.id}
+                    className="rounded-md border border-border bg-background px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-semibold">
+                        {node.label}
+                      </span>
+                      <Badge>{node.nodeType}</Badge>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {Object.entries(node.metadata)
+                        .slice(0, 4)
+                        .map(([key, value]) => (
+                          <div key={key} className="truncate">
+                            {key}: {String(value ?? '-')}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-md border border-border bg-background p-3 text-xs text-muted-foreground">
+                {effectiveGraph.edges.map((edge) => (
+                  <div key={`${edge.source}-${edge.target}-${edge.edgeType}`}>
+                    <code>{edge.source}</code> {edge.edgeType}{' '}
+                    <code>{edge.target}</code>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <EmptyState label={copy.noGraph} />
+          )}
+        </section>
+      </main>
+    </div>
+  )
+}
+
+function DatasetGovernanceRowView({
+  row,
+  copy,
+  onPreferenceChange,
+}: {
+  row: DatasetGovernanceRow
+  copy: DatasetCopy
+  onPreferenceChange: (
+    dimension: DatasetPreferenceDimension,
+    enabled: boolean,
+  ) => void
+}) {
+  const authorityLabel =
+    row.effectiveAuthorityStatus === 'binding_effective'
+      ? copy.locked
+      : copy.optional
+  return (
+    <div className="grid gap-3 px-4 py-4 md:grid-cols-[minmax(180px,1.4fr)_minmax(120px,0.8fr)_minmax(220px,1fr)_minmax(180px,0.8fr)] md:items-center">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <HugeiconsIcon icon={Database01Icon} size={15} strokeWidth={1.6} />
+          <span className="truncate">
+            {row.datasetKey || row.datasetVersionId || row.activationId}
+          </span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
+          <Badge>{row.sourceKind}</Badge>
+          <Badge>{row.semanticTier}</Badge>
+          <Badge>{row.lifecycleStatus}</Badge>
+        </div>
+        <dl className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4 md:hidden">
+          <DatasetMeta label={copy.role} value={row.datasetUsageRole} />
+          <DatasetMeta label={copy.type} value={row.datasetType} />
+          <DatasetMeta label={copy.version} value={row.sourceVersionId} />
+          <DatasetMeta label={copy.actor} value={row.lastActivationActor} />
+        </dl>
+      </div>
+      <div>
+        <Badge>{authorityLabel}</Badge>
+        <div className="mt-1 text-xs text-muted-foreground">
+          {row.effectiveAuthorityStatus}
+        </div>
+      </div>
+      <div className="grid gap-2 text-sm">
+        <DatasetSwitch
+          label={copy.retrieval}
+          checked={row.retrievalEnabled}
+          disabled={!row.retrievalToggleVisible || row.locked}
+          onCheckedChange={(enabled) => {
+            onPreferenceChange('retrievalEnabled', enabled)
+          }}
+        />
+        <DatasetSwitch
+          label={copy.prompt}
+          checked={row.promptContextEnabled}
+          disabled={!row.promptContextToggleVisible || row.locked}
+          onCheckedChange={(enabled) => {
+            onPreferenceChange('promptContextEnabled', enabled)
+          }}
+        />
+        <DatasetSwitch
+          label={copy.query}
+          checked={row.queryContextEnabled}
+          disabled={!row.queryContextToggleVisible || row.locked}
+          onCheckedChange={(enabled) => {
+            onPreferenceChange('queryContextEnabled', enabled)
+          }}
+        />
+      </div>
+      <div className="min-w-0 text-xs text-muted-foreground">
+        <div>
+          {copy.policyVersion}: <code>{row.userContextControlLevel}</code>
+        </div>
+        <div className="mt-1 truncate">
+          {copy.activationHash}: <code>{shortRef(row.auditHash)}</code>
+        </div>
+        <div className="mt-1 hidden md:block">
+          {copy.role}: {row.datasetUsageRole}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DatasetSwitch({
+  label,
+  checked,
+  disabled,
+  onCheckedChange,
+}: {
+  label: string
+  checked: boolean
+  disabled: boolean
+  onCheckedChange: (enabled: boolean) => void
+}) {
+  return (
+    <label className="flex min-h-7 items-center justify-between gap-3 rounded-md border border-border px-2 py-1 text-xs">
+      <span className="truncate">{label}</span>
+      <Switch
+        checked={checked}
+        disabled={disabled}
+        aria-label={label}
+        onCheckedChange={onCheckedChange}
+      />
+    </label>
+  )
+}
+
+function DatasetMeta({
+  label,
+  value,
+}: {
+  label: string
+  value?: string | null
+}) {
+  return (
+    <div>
+      <dt className="font-semibold text-foreground">{label}</dt>
+      <dd className="truncate">{value || '-'}</dd>
     </div>
   )
 }

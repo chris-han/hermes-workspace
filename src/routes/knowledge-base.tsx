@@ -8,7 +8,7 @@ import { t } from '@/lib/i18n'
 import { KnowledgeBaseScreen } from '@/screens/knowledge-base/knowledge-base-screen'
 
 const knowledgeBaseSearchSchema = z.object({
-  tab: z.enum(['legal', 'general', 'governance']).optional(),
+  tab: z.enum(['legal', 'general', 'dataset', 'governance']).optional(),
 })
 
 const KnowledgeBrowserScreen = lazy(async () => {
@@ -41,6 +41,14 @@ const KNOWLEDGE_BASE_COPY = {
   },
 } as const
 
+type KnowledgeBaseTab = 'legal' | 'general' | 'governance'
+
+function normalizeKnowledgeBaseTab(
+  tab: 'legal' | 'general' | 'dataset' | 'governance' | undefined,
+): KnowledgeBaseTab {
+  return tab === 'general' || tab === 'governance' ? tab : 'legal'
+}
+
 export const Route = createFileRoute('/knowledge-base')({
   ssr: false,
   validateSearch: knowledgeBaseSearchSchema,
@@ -51,13 +59,13 @@ function KnowledgeBaseRoute() {
   const search = Route.useSearch()
   const locale = useSettingsStore((state) => state.settings.locale)
   const copy = locale === 'zh' ? KNOWLEDGE_BASE_COPY.zh : KNOWLEDGE_BASE_COPY.en
-  const [tab, setTab] = useState<'legal' | 'general' | 'governance'>(
-    search.tab || 'legal',
+  const [tab, setTab] = useState<KnowledgeBaseTab>(
+    normalizeKnowledgeBaseTab(search.tab),
   )
   usePageTitle(t('nav.knowledgeBase'))
 
   useEffect(() => {
-    if (search.tab) setTab(search.tab)
+    if (search.tab) setTab(normalizeKnowledgeBaseTab(search.tab))
   }, [search.tab])
 
   return (
@@ -67,9 +75,7 @@ function KnowledgeBaseRoute() {
     >
       <Tabs
         value={tab}
-        onValueChange={(value) =>
-          setTab(value as 'legal' | 'general' | 'governance')
-        }
+        onValueChange={(value) => setTab(value as KnowledgeBaseTab)}
         className="h-full min-h-0 gap-0"
       >
         <div className="border-b border-border">

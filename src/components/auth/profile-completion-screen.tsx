@@ -56,7 +56,7 @@ const PROFILE_COMPLETION_COPY: Record<AuthLocale, ProfileCompletionCopy> = {
     loadingOrganizations: '正在加载演示组织...',
     noOrganizations: '暂无可用的预置演示组织',
     industryHint:
-      '注册后会进入 /chat/new，并按所选组织上下文加载演示提示词。',
+      '注册后会进入 /chat/new，并按所选组织背景信息加载演示提示词。',
     saveButton: '保存并继续',
     savingButton: '正在保存...',
     continueWithoutPasswordButton: '跳过密码并继续',

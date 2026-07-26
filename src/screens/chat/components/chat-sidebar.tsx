@@ -3,6 +3,7 @@ import {
   ArrowDown01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
+  AiSheetsIcon,
   BrainIcon,
   Book01Icon,
   Chat01Icon,
@@ -15,7 +16,6 @@ import {
   PencilEdit02Icon,
   PinIcon,
   PinOffIcon,
-  Plug01Icon,
   PuzzleIcon,
   Rocket01Icon,
   Search01Icon,
@@ -24,6 +24,7 @@ import {
   Tick02Icon,
   UserGroupIcon,
   UserMultipleIcon,
+  WorkflowCircle01Icon,
 } from '@hugeicons/core-free-icons'
 import { AnimatePresence, motion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -597,7 +598,8 @@ function ChatSidebarComponent({
     pathname === '/new' || pathname.startsWith('/chat/new')
   const _isSettingsActive = pathname === '/settings'
   const isSkillsActive = pathname === '/skills'
-  const isDataConnectionsActive = pathname === '/settings/data-connections'
+  const isDatabaseActive = pathname === '/database'
+  const isEffectiveContextActive = pathname === '/effective-context'
   const isJobsActive = pathname === '/jobs'
   const isMemoryActive = pathname === '/memory'
   const isKnowledgeBaseActive =
@@ -605,13 +607,13 @@ function ChatSidebarComponent({
   const isTasksActive = pathname === '/tasks'
   const isorchestratorActive = pathname === '/orchestrator'
   const isAgentRosterActive = pathname === '/agent-roster'
-  const mainRoutes = ['/chat', '/new']
+  const mainRoutes = ['/chat', '/new', '/skills', '/profiles']
   const knowledgeRoutes = [
     '/memory',
     '/knowledge-base',
     '/legal-corpus',
-    '/skills',
-    '/settings/data-connections',
+    '/database',
+    '/effective-context',
   ]
   const systemRoutes = ['/settings', '/logs']
 
@@ -913,6 +915,21 @@ function ChatSidebarComponent({
       label: t('nav.agentRoster'),
       active: isAgentRosterActive,
     },
+    {
+      kind: 'link',
+      to: '/skills',
+      icon: PuzzleIcon,
+      label: t('nav.skills'),
+      active: isSkillsActive,
+      dataTour: 'skills',
+    },
+    {
+      kind: 'link',
+      to: '/profiles',
+      icon: UserMultipleIcon,
+      label: t('nav.profiles'),
+      active: pathname === '/profiles',
+    },
   ]
 
   const knowledgeItems: Array<NavItemDef> = [
@@ -932,25 +949,17 @@ function ChatSidebarComponent({
     },
     {
       kind: 'link',
-      to: '/settings/data-connections',
-      icon: Plug01Icon,
-      label: t('nav.dataConnections'),
-      active: isDataConnectionsActive,
+      to: '/database',
+      icon: AiSheetsIcon,
+      label: t('nav.database'),
+      active: isDatabaseActive,
     },
     {
       kind: 'link',
-      to: '/skills',
-      icon: PuzzleIcon,
-      label: t('nav.skills'),
-      active: isSkillsActive,
-      dataTour: 'skills',
-    },
-    {
-      kind: 'link',
-      to: '/profiles',
-      icon: UserMultipleIcon,
-      label: t('nav.profiles'),
-      active: pathname === '/profiles',
+      to: '/effective-context',
+      icon: WorkflowCircle01Icon,
+      label: t('nav.effectiveContext'),
+      active: isEffectiveContextActive,
     },
   ]
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ORGANIZATION_SETTINGS_COPY,
+  buildDatasetCompatibilityBadges,
   buildOrganizationSearchOptions,
   filterOrganizationSearchOptions,
 } from './organization-settings-screen'
@@ -16,6 +17,27 @@ describe('organization settings copy', () => {
 
   it('keeps organization context messaging focused on governed defaults', () => {
     expect(ORGANIZATION_SETTINGS_COPY.subtitle).toContain('governed')
+  })
+
+  it('projects dataset state as read-only Knowledge Base compatibility badges', () => {
+    const badges = buildDatasetCompatibilityBadges({
+      organization_id: 'org_real',
+      dataset_type: 'REAL',
+      authority_state: 'REAL_READY',
+      active_dataset_version_id: 'dsv_1',
+      dataset_context_deprecated: true,
+      dataset_context_source: 'knowledge_base_activation',
+    })
+
+    expect(badges).toEqual(
+      expect.arrayContaining([
+        { label: 'REAL', tone: 'neutral' },
+        { label: 'REAL_READY', tone: 'neutral' },
+        { label: 'dsv_1', tone: 'success' },
+        { label: 'Knowledge Base activation', tone: 'warning' },
+        { label: 'source: knowledge_base_activation', tone: 'neutral' },
+      ]),
+    )
   })
 })
 

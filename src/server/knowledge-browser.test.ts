@@ -4,6 +4,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
+  buildEffectiveContextGraph,
   buildKnowledgeChatContext,
   listKnowledgePages,
   readKnowledgePage,
@@ -160,5 +161,61 @@ describe('knowledge-browser workspace isolation', () => {
       'authority use is unavailable until governed promotion',
     )
     expect(context.systemMessage).not.toContain('Human curation justification')
+  })
+
+  it('builds effective context graph with dataset and execution gate nodes', () => {
+    const graph = buildEffectiveContextGraph(
+      {
+        organizationId: 'org_demo',
+        datasetType: 'DEMO',
+        datasetKey: 'seeded_demo',
+      },
+      { auditEntitled: true },
+    )
+
+    expect(graph.activationResolverPolicyVersion).toBe(
+      'knowledge_activation_resolver.v1',
+    )
+    expect(graph.resolvedActivationSetHash).toMatch(/^ui-/)
+    expect(graph.nodes.some((node) => node.nodeType === 'dataset_asset')).toBe(
+      true,
+    )
+    expect(
+      graph.edges.some((edge) => edge.edgeType === 'governs'),
+    ).toBe(true)
+    expect(graph.edges.some((edge) => edge.edgeType === 'pins')).toBe(true)
+  })
+
+  it('redacts resolver hashes and restricted dataset details for ordinary graph viewers', () => {
+    const graph = buildEffectiveContextGraph({
+      organizationId: 'org_demo',
+      datasetType: 'DEMO',
+      datasetKey: 'seeded_demo',
+    })
+
+    expect(graph.activationResolverPolicyVersion).toBeNull()
+    expect(graph.resolvedActivationSetHash).toBeNull()
+    expect(graph.evidenceRef).toBe('opaque_activation_evidence')
+    const datasetNode = graph.nodes.find((node) => {
+      return node.nodeType === 'dataset_asset'
+    })
+    expect(datasetNode?.metadata).toMatchObject({
+      sourceTier: 'T4',
+      effectiveAuthorityStatus: 'binding_effective',
+      usageRole: 'primary_analytics',
+      evidenceRef: 'opaque_context_evidence',
+      datasetType: null,
+    })
+  })
+
+  it('builds excluded effective context node when no dataset is active', () => {
+    const graph = buildEffectiveContextGraph({})
+
+    expect(
+      graph.nodes.some((node) => node.nodeType === 'excluded_source'),
+    ).toBe(true)
+    expect(
+      graph.edges.some((edge) => edge.edgeType === 'blocked_by_resolver'),
+    ).toBe(true)
   })
 })

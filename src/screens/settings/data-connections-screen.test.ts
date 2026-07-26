@@ -107,9 +107,9 @@ describe('data connections page copy', () => {
     ).toBe(false)
   })
 
-  it('labels promoted real sources as setup blockers until admission is complete', () => {
+  it('labels staged real sources as setup blockers until admission is complete', () => {
     expect(getRealSetupStatusLabel('REAL_IMPORTED')).toBe(
-      'Source promoted, setup not started',
+      'Governed candidate staged, setup not started',
     )
     expect(getRealSetupStatusLabel('REAL_REA_ADMISSION_REQUIRED')).toBe(
       'REA admission required',

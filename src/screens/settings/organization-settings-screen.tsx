@@ -13,6 +13,7 @@ import type {
   DemoOrganizationProfile,
   EntitlementDecision,
   KnowledgeTier,
+  OrganizationContext,
   OrganizationMembership,
   T6MaterializationMode,
 } from '@/lib/organization-membership'
@@ -45,7 +46,7 @@ import { toast } from '@/components/ui/toast'
 export const ORGANIZATION_SETTINGS_COPY = {
   title: 'Organization Context',
   subtitle:
-    'Start from the governed bootstrap demo organization, then switch to a real company when you are ready to stage company data.',
+    'Start from the governed bootstrap demo organization, then switch to a real company when you are ready to stage company data candidates.',
 }
 
 const KNOWLEDGE_TIERS: Array<KnowledgeTier> = [
@@ -169,6 +170,43 @@ function organizationOptionTags(
     option.industry_code,
     option.seeded ? 'seeded' : null,
   ].filter(Boolean) as Array<string>
+}
+
+export function buildDatasetCompatibilityBadges(
+  organization: OrganizationContext | null,
+): Array<{ label: string; tone: 'neutral' | 'warning' | 'success' }> {
+  if (!organization) {
+    return [{ label: 'NO_DATASET', tone: 'warning' }]
+  }
+  const badges: Array<{ label: string; tone: 'neutral' | 'warning' | 'success' }> = [
+    {
+      label: organization.dataset_type || 'NO_DATASET',
+      tone: organization.dataset_type ? 'neutral' : 'warning',
+    },
+    {
+      label: organization.authority_state || organization.setup_status || 'REAL_EMPTY',
+      tone: 'neutral',
+    },
+  ]
+  if (organization.active_dataset_version_id) {
+    badges.push({
+      label: organization.active_dataset_version_id,
+      tone: 'success',
+    })
+  }
+  if (organization.dataset_context_deprecated) {
+    badges.push({
+      label: 'Knowledge Base activation',
+      tone: 'warning',
+    })
+  }
+  if (organization.dataset_context_source) {
+    badges.push({
+      label: `source: ${organization.dataset_context_source}`,
+      tone: 'neutral',
+    })
+  }
+  return badges
 }
 
 function OrganizationMembershipCard({
@@ -500,6 +538,8 @@ export function OrganizationSettingsScreen() {
   const activeOrganization = authQuery.data?.organization_id
   const memberships = organizationQuery.data?.memberships ?? []
   const activeOrganizationContext = organizationQuery.data?.organization ?? null
+  const datasetCompatibilityBadges =
+    buildDatasetCompatibilityBadges(activeOrganizationContext)
   const realCompanyMembership = findRealCompanyMembership(
     memberships,
     activeOrganizationContext?.organization_id || activeOrganization,
@@ -570,24 +610,25 @@ export function OrganizationSettingsScreen() {
                     authQuery.data?.organization_id ||
                     'unassigned'}
                 </span>
-                <span className="rounded-full border border-primary-200 px-2 py-1 font-semibold dark:border-neutral-700">
-                  {organizationQuery.data?.organization?.dataset_type ||
-                    'NO_DATASET'}
-                </span>
-                <span className="rounded-full border border-primary-200 px-2 py-1 font-semibold dark:border-neutral-700">
-                  {organizationQuery.data?.organization?.authority_state ||
-                    'REAL_EMPTY'}
-                </span>
-                {organizationQuery.data?.organization
-                  ?.active_dataset_version_id ? (
-                  <span className="rounded-full border border-emerald-200 px-2 py-1 font-mono text-emerald-700 dark:border-emerald-900 dark:text-emerald-300">
-                    {
-                      organizationQuery.data.organization
-                        .active_dataset_version_id
+                {datasetCompatibilityBadges.map((badge) => (
+                  <span
+                    key={badge.label}
+                    className={
+                      badge.tone === 'success'
+                        ? 'rounded-full border border-emerald-200 px-2 py-1 font-mono text-emerald-700 dark:border-emerald-900 dark:text-emerald-300'
+                        : badge.tone === 'warning'
+                          ? 'rounded-full border border-amber-200 px-2 py-1 font-semibold text-amber-700 dark:border-amber-900 dark:text-amber-300'
+                          : 'rounded-full border border-primary-200 px-2 py-1 font-semibold dark:border-neutral-700'
                     }
+                  >
+                    {badge.label}
                   </span>
-                ) : null}
+                ))}
               </div>
+              <p className="mt-2 max-w-2xl text-xs text-primary-600 dark:text-neutral-400">
+                Dataset state here is read-only compatibility context. Active
+                dataset binding is governed in Database.
+              </p>
             </div>
             {isRealOrganizationContext(activeOrganizationContext) ? (
               <div className="flex flex-wrap gap-2">
@@ -600,11 +641,17 @@ export function OrganizationSettingsScreen() {
                   Switch to demo company
                 </Button>
                 <Link
+                  to="/database"
+                  className="rounded-xl border border-primary-300 px-3 py-2 text-sm font-semibold text-primary-700 dark:border-neutral-700 dark:text-neutral-200"
+                >
+                  Open Database
+                </Link>
+                <Link
                   to="/settings/data-connections"
                   search={{ import: 'company-dataset' }}
                   className="rounded-xl border border-primary-300 px-3 py-2 text-sm font-semibold text-primary-700 dark:border-neutral-700 dark:text-neutral-200"
                 >
-                  Open dataset import
+                  Stage dataset candidate
                 </Link>
               </div>
             ) : realCompanyMembership ? (
@@ -738,7 +785,7 @@ export function OrganizationSettingsScreen() {
                   onChange={(event) =>
                     setOrganizationSearch(event.target.value)
                   }
-                  placeholder="Search by organization name, ID, or dataset"
+                  placeholder="Search by organization name, ID, or dataset metadata"
                   className="pl-10"
                 />
               </div>
@@ -873,8 +920,14 @@ export function OrganizationSettingsScreen() {
                   onClick={handleUseSmbDefault}
                   disabled={savePending || defaultPending}
                 >
-                  Use SMB Dataset Default
+                  Use SMB Demo Organization
                 </Button>
+                <Link
+                  to="/database"
+                  className="text-sm text-primary-600 underline-offset-4 hover:underline dark:text-neutral-300"
+                >
+                  Review Database
+                </Link>
                 <Link
                   to="/settings/data-connections"
                   className="text-sm text-primary-600 underline-offset-4 hover:underline dark:text-neutral-300"
@@ -1267,7 +1320,7 @@ export function OrganizationSettingsScreen() {
             </div>
           ) : (
             <div className="rounded-2xl border border-primary-200 bg-white/80 px-4 py-6 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400">
-              No organization memberships exist yet. Use the SMB dataset default
+              No organization memberships exist yet. Use the SMB demo organization
               to create `{DEFAULT_SMB_ORGANIZATION_ID}` locally and attach it to
               this user.
             </div>

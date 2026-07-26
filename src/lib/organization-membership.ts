@@ -28,6 +28,11 @@ export interface OrganizationContext {
   authority_state_deprecated?: boolean
   authority_state_remove_after?: string | null
   active_dataset_version_id?: string | null
+  dataset_context_source?: string | null
+  dataset_context_deprecated?: boolean
+  dataset_context_handoff?: string | null
+  knowledge_source_activation_id?: string | null
+  dataset_migration_status?: string | null
   fiscal_year_start_month?: number | null
   local_currency?: string | null
   membership_status?: string | null

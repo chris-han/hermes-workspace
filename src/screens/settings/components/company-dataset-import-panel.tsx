@@ -42,7 +42,7 @@ export function getOrganizationSetupStatus(
 
 export const REAL_SETUP_STATUS_DISPLAY_LABELS: Record<string, string> = {
   REAL_EMPTY: 'No promoted source dataset',
-  REAL_IMPORTED: 'Source promoted, setup not started',
+  REAL_IMPORTED: 'Governed candidate staged, setup not started',
   REAL_REA_ADMISSION_REQUIRED: 'REA admission required',
   LEGACY_REAL_CLAIMS_UNVERSIONED: 'Legacy claims migration required',
   REAL_COA_REQUIRED: 'Chart of accounts required',
@@ -366,9 +366,9 @@ export function CompanyDatasetImportPanel({
                 {setupStatusLabel}
               </div>
               <p className="mt-1 text-primary-600 dark:text-neutral-400">
-                Promoted source files become analytics-ready only after REA
-                admission, COA/projection, lifecycle materialization, and
-                lakehouse refresh complete.
+                Staged source files become analytics-ready only after Knowledge
+                Base activation, REA admission, COA/projection, lifecycle
+                materialization, and lakehouse refresh complete.
               </p>
             </div>
             {organization.authority_state_deprecated ? (
@@ -481,7 +481,7 @@ export function CompanyDatasetImportPanel({
               onClick={() => promoteMutation.mutate()}
               className="rounded-xl border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-800 dark:text-emerald-300"
             >
-              Promote to governed dataset
+              Stage governed dataset candidate
             </button>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -683,7 +683,7 @@ export function CompanyDatasetImportPanel({
         <div className="mt-4 min-w-0 rounded-xl border border-primary-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
           <div className="flex flex-col gap-1 border-b border-primary-200 px-4 py-3 text-xs dark:border-neutral-800 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <span className="font-semibold">Promoted dataset</span>{' '}
+              <span className="font-semibold">Staged governed dataset</span>{' '}
               <span className="break-all font-mono">
                 {datasetQuery.data.dataset_version_id}
               </span>

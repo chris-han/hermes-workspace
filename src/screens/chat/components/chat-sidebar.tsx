@@ -3,7 +3,6 @@ import {
   ArrowDown01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
-  AiSheetsIcon,
   BrainIcon,
   Book01Icon,
   Chat01Icon,
@@ -24,7 +23,6 @@ import {
   Tick02Icon,
   UserGroupIcon,
   UserMultipleIcon,
-  WorkflowCircle01Icon,
 } from '@hugeicons/core-free-icons'
 import { AnimatePresence, motion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -598,23 +596,18 @@ function ChatSidebarComponent({
     pathname === '/new' || pathname.startsWith('/chat/new')
   const _isSettingsActive = pathname === '/settings'
   const isSkillsActive = pathname === '/skills'
-  const isDatabaseActive = pathname === '/database'
-  const isEffectiveContextActive = pathname === '/effective-context'
   const isJobsActive = pathname === '/jobs'
   const isMemoryActive = pathname === '/memory'
   const isKnowledgeBaseActive =
-    pathname === '/knowledge-base' || pathname === '/legal-corpus'
+    pathname === '/knowledge-base' ||
+    pathname === '/legal-corpus' ||
+    pathname === '/database' ||
+    pathname === '/effective-context'
   const isTasksActive = pathname === '/tasks'
   const isorchestratorActive = pathname === '/orchestrator'
   const isAgentRosterActive = pathname === '/agent-roster'
   const mainRoutes = ['/chat', '/new', '/skills', '/profiles']
-  const knowledgeRoutes = [
-    '/memory',
-    '/knowledge-base',
-    '/legal-corpus',
-    '/database',
-    '/effective-context',
-  ]
+  const knowledgeRoutes = ['/memory', '/knowledge-base', '/legal-corpus']
   const systemRoutes = ['/settings', '/logs']
 
   useEffect(() => {
@@ -946,20 +939,6 @@ function ChatSidebarComponent({
       icon: Book01Icon,
       label: t('nav.knowledgeBase'),
       active: isKnowledgeBaseActive,
-    },
-    {
-      kind: 'link',
-      to: '/database',
-      icon: AiSheetsIcon,
-      label: t('nav.database'),
-      active: isDatabaseActive,
-    },
-    {
-      kind: 'link',
-      to: '/effective-context',
-      icon: WorkflowCircle01Icon,
-      label: t('nav.effectiveContext'),
-      active: isEffectiveContextActive,
     },
   ]
 

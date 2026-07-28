@@ -4,11 +4,11 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
-  buildKnowledgeDatasetGovernanceConfig,
   getKnowledgeBaseEffectiveRoot,
+  governedPreferenceRouteForScope,
+  readGovernedKnowledgeDatasetGovernance,
   readKnowledgeBaseConfig,
   resolveKnowledgeBaseConfig,
-  writeKnowledgeContextPreference,
   writeKnowledgeBaseConfig,
 } from './knowledge-config'
 
@@ -19,6 +19,7 @@ function makeWorkspaceRoot(prefix: string): string {
 describe('knowledge-config workspace scoping', () => {
   const createdRoots: Array<string> = []
   const originalKnowledgeDir = process.env.KNOWLEDGE_DIR
+  const originalFetch = globalThis.fetch
 
   afterEach(() => {
     for (const root of createdRoots.splice(0)) {
@@ -29,6 +30,7 @@ describe('knowledge-config workspace scoping', () => {
     } else {
       process.env.KNOWLEDGE_DIR = originalKnowledgeDir
     }
+    globalThis.fetch = originalFetch
   })
 
   it('defaults to workspace wiki when no workspace config exists', () => {
@@ -190,19 +192,45 @@ describe('knowledge-config workspace scoping', () => {
     expect(resolved.usesWorkspaceDefault).toBe(true)
   })
 
-  it('projects primary dataset governance rows from active workspace context', () => {
-    const governance = buildKnowledgeDatasetGovernanceConfig({
-      organizationId: 'org_real',
-      datasetType: 'REAL',
-      activeDatasetVersionId: 'dsv_real',
-    })
+  it('projects dataset governance rows from governed activation resolver output', async () => {
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          activation_set_snapshot_id: 'kass_1',
+          activation_resolver_policy_version: 'knowledge_activation_resolver.v1',
+          resolved_activation_set_hash: 'resolver_hash_1',
+          sources: [
+            {
+              activation_id: 'ksa_real_primary',
+              source_kind: 'dataset',
+              semantic_tier: 'T4',
+              effective_authority_status: 'binding_effective',
+              user_context_control_level: 'none',
+              retrieval_included: true,
+              prompt_context_included: true,
+              query_context_included: true,
+              dataset_usage_role: 'primary_analytics',
+              dataset_type: 'REAL',
+              dataset_key: 'resolver_dataset_key',
+              dataset_version_id: 'dsv_real',
+              dataset_asset_version_id: 'dav_real',
+            },
+          ],
+        }),
+        { status: 200 },
+      )
+
+    const governance = await readGovernedKnowledgeDatasetGovernance(
+      new Headers(),
+    )
 
     expect(governance.activationResolverPolicyVersion).toBe(
       'knowledge_activation_resolver.v1',
     )
-    expect(governance.resolvedActivationSetHash).toMatch(/^ui-/)
+    expect(governance.resolvedActivationSetHash).toBe('resolver_hash_1')
     expect(governance.rows).toHaveLength(1)
     expect(governance.rows[0]).toMatchObject({
+      activationId: 'ksa_real_primary',
       sourceKind: 'dataset',
       semanticTier: 'T4',
       effectiveAuthorityStatus: 'binding_effective',
@@ -210,69 +238,47 @@ describe('knowledge-config workspace scoping', () => {
       queryContextToggleVisible: false,
       datasetUsageRole: 'primary_analytics',
       datasetType: 'REAL',
+      datasetKey: 'resolver_dataset_key',
       datasetVersionId: 'dsv_real',
       locked: true,
     })
   })
 
-  it('writes optional dataset preferences without mutating shared activation state', () => {
-    const workspaceRoot = makeWorkspaceRoot('knowledge-preference-')
-    createdRoots.push(workspaceRoot)
-    const context = {
-      organizationId: 'org_demo',
-      datasetType: 'REFERENCE',
-      datasetKey: 'reference_notes',
-    }
+  it('does not synthesize governed dataset rows when resolver output is empty', async () => {
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          ok: true,
+          activation_set_snapshot_id: null,
+          activation_resolver_policy_version: null,
+          resolved_activation_set_hash: null,
+          sources: [],
+        }),
+        { status: 200 },
+      )
 
-    const preference = writeKnowledgeContextPreference(workspaceRoot, context, {
-      activationId: 'compat_org_demo_reference',
-      preferenceScope: 'principal',
-      retrievalEnabled: false,
-      promptContextEnabled: false,
-    })
-
-    expect(preference).toMatchObject({
-      activationId: 'compat_org_demo_reference',
-      preferenceScope: 'principal',
-      retrievalEnabled: false,
-      promptContextEnabled: false,
-      queryContextEnabled: true,
-    })
-    const preferencePath = path.join(
-      workspaceRoot,
-      '.hermes-workspace',
-      'knowledge-context-preferences.json',
+    const governance = await readGovernedKnowledgeDatasetGovernance(
+      new Headers(),
     )
-    expect(JSON.parse(fs.readFileSync(preferencePath, 'utf-8'))).toHaveLength(1)
-    expect(
-      buildKnowledgeDatasetGovernanceConfig(context).rows[0],
-    ).toMatchObject({
-      effectiveAuthorityStatus: 'optional_context',
-      locked: false,
-      retrievalEnabled: true,
-    })
+
+    expect(governance.rows).toEqual([])
+    expect(governance.resolvedActivationSetHash).toBe(
+      'governed_activation_snapshot_unavailable',
+    )
   })
 
-  it('rejects preference updates that try to mutate locked activation authority', () => {
-    const workspaceRoot = makeWorkspaceRoot('knowledge-preference-locked-')
-    createdRoots.push(workspaceRoot)
-
-    expect(() => {
-      writeKnowledgeContextPreference(
-        workspaceRoot,
-        {
-          organizationId: 'org_real',
-          datasetType: 'REAL',
-          activeDatasetVersionId: 'dsv_real',
-        },
-        {
-          activationId: 'compat_org_real_primary_analytics',
-          preferenceScope: 'principal',
-          queryContextEnabled: false,
-          // @ts-expect-error runtime validation rejects shared activation fields.
-          activationStatus: 'inactive',
-        },
-      )
-    }).toThrow(/shared activation|binding authority/)
+  it('routes context preference writes to governed Semantier endpoints', () => {
+    expect(governedPreferenceRouteForScope('principal')).toBe(
+      '/api/knowledge/preferences/principal',
+    )
+    expect(governedPreferenceRouteForScope('role')).toBe(
+      '/api/knowledge/preferences/role',
+    )
+    expect(governedPreferenceRouteForScope('workspace_default')).toBe(
+      '/api/knowledge/preferences/workspace-default',
+    )
+    expect(governedPreferenceRouteForScope(undefined)).toBe(
+      '/api/knowledge/preferences/principal',
+    )
   })
 })

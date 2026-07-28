@@ -4,6 +4,7 @@ import {
   buildEffectiveContextGraph,
   buildKnowledgeGraph,
 } from '../../../server/knowledge-browser'
+import { readGovernedKnowledgeDatasetGovernance } from '../../../server/knowledge-config'
 import {
   resolveActiveWorkspaceRoot,
   WorkspaceAuthRequiredError,
@@ -27,7 +28,10 @@ export const Route = createFileRoute('/api/knowledge/graph')({
             ...buildKnowledgeGraph(activeWorkspace.path, {
               datasetType: activeWorkspace.datasetType,
             }),
-            effectiveContext: buildEffectiveContextGraph(context),
+            effectiveContext: buildEffectiveContextGraph(context, {
+              datasetGovernance:
+                await readGovernedKnowledgeDatasetGovernance(request.headers),
+            }),
           })
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {

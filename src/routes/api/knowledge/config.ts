@@ -1,17 +1,21 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import {
-  buildKnowledgeDatasetGovernanceConfig,
+  governedPreferenceRouteForScope,
   normalizeKnowledgeBaseConfigForWorkspace,
   readKnowledgeBaseConfig,
+  readGovernedKnowledgeDatasetGovernance,
   resolveKnowledgeBaseConfig,
-  writeKnowledgeContextPreference,
   writeKnowledgeBaseConfig,
 } from '../../../server/knowledge-config'
 import type {
   KnowledgeBaseConfig,
   KnowledgeContextPreferencePatch,
 } from '../../../server/knowledge-config'
+import {
+  buildSemantierAgentProxyHeaders,
+  withSemantierAgentBase,
+} from '../../../server/semantier-agent-api'
 import {
   resolveActiveWorkspaceRoot,
   WorkspaceAuthRequiredError,
@@ -28,12 +32,8 @@ export const Route = createFileRoute('/api/knowledge/config')({
           const resolved = resolveKnowledgeBaseConfig(activeWorkspace.path, {
             datasetType: activeWorkspace.datasetType,
           })
-          const datasetGovernance = buildKnowledgeDatasetGovernanceConfig({
-            organizationId: activeWorkspace.organizationId,
-            datasetType: activeWorkspace.datasetType,
-            datasetKey: activeWorkspace.datasetKey,
-            activeDatasetVersionId: activeWorkspace.activeDatasetVersionId,
-          })
+          const datasetGovernance =
+            await readGovernedKnowledgeDatasetGovernance(request.headers)
           return json({
             config: resolved.config,
             resolved,
@@ -91,22 +91,33 @@ export const Route = createFileRoute('/api/knowledge/config')({
       },
       PATCH: async ({ request }) => {
         try {
-          const activeWorkspace = await resolveActiveWorkspaceRoot(
-            request.headers,
-          )
           const body =
             (await request.json()) as Partial<KnowledgeContextPreferencePatch>
-          const preference = writeKnowledgeContextPreference(
-            activeWorkspace.path,
-            {
-              organizationId: activeWorkspace.organizationId,
-              datasetType: activeWorkspace.datasetType,
-              datasetKey: activeWorkspace.datasetKey,
-              activeDatasetVersionId: activeWorkspace.activeDatasetVersionId,
-            },
-            body as KnowledgeContextPreferencePatch,
-          )
-          return json({ preference })
+          const route = governedPreferenceRouteForScope(body.preferenceScope)
+          const headers = buildSemantierAgentProxyHeaders(request.headers, {
+            forwardBrowserCookies: true,
+          })
+          headers.set('Content-Type', 'application/json')
+          const response = await fetch(withSemantierAgentBase(route), {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(body),
+          })
+          const payload = (await response.json().catch(() => ({}))) as {
+            preference?: unknown
+            detail?: unknown
+            error?: unknown
+          }
+          if (!response.ok) {
+            throw new Error(
+              String(
+                payload.detail ||
+                  payload.error ||
+                  `Governed preference write failed (${response.status})`,
+              ),
+            )
+          }
+          return json({ preference: payload.preference })
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {
             return json({ error: error.message }, { status: 401 })

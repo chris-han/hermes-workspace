@@ -165,18 +165,44 @@ describe('knowledge-browser workspace isolation', () => {
 
   it('builds effective context graph with dataset and execution gate nodes', () => {
     const graph = buildEffectiveContextGraph(
+      {},
       {
-        organizationId: 'org_demo',
-        datasetType: 'DEMO',
-        datasetKey: 'seeded_demo',
+        auditEntitled: true,
+        datasetGovernance: {
+          activationResolverPolicyVersion: 'knowledge_activation_resolver.v1',
+          resolvedActivationSetHash: 'resolver_hash_1',
+          rows: [
+            {
+              activationId: 'ksa_demo_primary',
+              sourceKind: 'dataset',
+              semanticTier: 'T4',
+              lifecycleStatus: 'approved',
+              effectiveAuthorityStatus: 'binding_effective',
+              userContextControlLevel: 'none',
+              retrievalToggleVisible: false,
+              promptContextToggleVisible: false,
+              queryContextToggleVisible: false,
+              retrievalEnabled: true,
+              promptContextEnabled: true,
+              queryContextEnabled: true,
+              datasetUsageRole: 'primary_analytics',
+              datasetType: 'DEMO',
+              datasetKey: 'seeded_demo',
+              datasetVersionId: null,
+              sourceVersionId: 'seeded_demo',
+              lastActivationActor: 'Governed activation resolver',
+              auditHash: 'resolver_hash_1',
+              locked: true,
+            },
+          ],
+        },
       },
-      { auditEntitled: true },
     )
 
     expect(graph.activationResolverPolicyVersion).toBe(
       'knowledge_activation_resolver.v1',
     )
-    expect(graph.resolvedActivationSetHash).toMatch(/^ui-/)
+    expect(graph.resolvedActivationSetHash).toBe('resolver_hash_1')
     expect(graph.nodes.some((node) => node.nodeType === 'dataset_asset')).toBe(
       true,
     )
@@ -187,10 +213,35 @@ describe('knowledge-browser workspace isolation', () => {
   })
 
   it('redacts resolver hashes and restricted dataset details for ordinary graph viewers', () => {
-    const graph = buildEffectiveContextGraph({
-      organizationId: 'org_demo',
-      datasetType: 'DEMO',
-      datasetKey: 'seeded_demo',
+    const graph = buildEffectiveContextGraph({}, {
+      datasetGovernance: {
+        activationResolverPolicyVersion: 'knowledge_activation_resolver.v1',
+        resolvedActivationSetHash: 'resolver_hash_1',
+        rows: [
+          {
+            activationId: 'ksa_demo_primary',
+            sourceKind: 'dataset',
+            semanticTier: 'T4',
+            lifecycleStatus: 'approved',
+            effectiveAuthorityStatus: 'binding_effective',
+            userContextControlLevel: 'none',
+            retrievalToggleVisible: false,
+            promptContextToggleVisible: false,
+            queryContextToggleVisible: false,
+            retrievalEnabled: true,
+            promptContextEnabled: true,
+            queryContextEnabled: true,
+            datasetUsageRole: 'primary_analytics',
+            datasetType: 'DEMO',
+            datasetKey: 'seeded_demo',
+            datasetVersionId: null,
+            sourceVersionId: 'seeded_demo',
+            lastActivationActor: 'Governed activation resolver',
+            auditHash: 'resolver_hash_1',
+            locked: true,
+          },
+        ],
+      },
     })
 
     expect(graph.activationResolverPolicyVersion).toBeNull()
@@ -199,10 +250,14 @@ describe('knowledge-browser workspace isolation', () => {
     const datasetNode = graph.nodes.find((node) => {
       return node.nodeType === 'dataset_asset'
     })
+    expect(datasetNode?.id).toBe('dataset_context_1')
+    expect(datasetNode?.label).toBe('Governed dataset context active')
+    expect(datasetNode?.label).not.toContain('seeded_demo')
     expect(datasetNode?.metadata).toMatchObject({
-      sourceTier: 'T4',
+      sourceTier: null,
       effectiveAuthorityStatus: 'binding_effective',
-      usageRole: 'primary_analytics',
+      usageRole: null,
+      contextControl: null,
       evidenceRef: 'opaque_context_evidence',
       datasetType: null,
     })

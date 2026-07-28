@@ -627,7 +627,7 @@ export function OrganizationSettingsScreen() {
               </div>
               <p className="mt-2 max-w-2xl text-xs text-primary-600 dark:text-neutral-400">
                 Dataset state here is read-only compatibility context. Active
-                dataset binding is governed in Database.
+                dataset binding is governed in Knowledge Base Dataset.
               </p>
             </div>
             {isRealOrganizationContext(activeOrganizationContext) ? (
@@ -641,10 +641,11 @@ export function OrganizationSettingsScreen() {
                   Switch to demo company
                 </Button>
                 <Link
-                  to="/database"
+                  to="/knowledge-base"
+                  search={{ tab: 'dataset' }}
                   className="rounded-xl border border-primary-300 px-3 py-2 text-sm font-semibold text-primary-700 dark:border-neutral-700 dark:text-neutral-200"
                 >
-                  Open Database
+                  Open Knowledge Base Dataset
                 </Link>
                 <Link
                   to="/settings/data-connections"
@@ -923,10 +924,11 @@ export function OrganizationSettingsScreen() {
                   Use SMB Demo Organization
                 </Button>
                 <Link
-                  to="/database"
+                  to="/knowledge-base"
+                  search={{ tab: 'dataset' }}
                   className="text-sm text-primary-600 underline-offset-4 hover:underline dark:text-neutral-300"
                 >
-                  Review Database
+                  Review Knowledge Base Dataset
                 </Link>
                 <Link
                   to="/settings/data-connections"

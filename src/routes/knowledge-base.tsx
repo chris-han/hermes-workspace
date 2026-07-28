@@ -5,10 +5,16 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useSettingsStore } from '@/hooks/use-settings'
 import { t } from '@/lib/i18n'
-import { KnowledgeBaseScreen } from '@/screens/knowledge-base/knowledge-base-screen'
+import {
+  DatasetKnowledgeBaseScreen,
+  EffectiveContextScreen,
+  KnowledgeBaseScreen,
+} from '@/screens/knowledge-base/knowledge-base-screen'
 
 const knowledgeBaseSearchSchema = z.object({
-  tab: z.enum(['legal', 'general', 'dataset', 'governance']).optional(),
+  tab: z
+    .enum(['legal', 'general', 'dataset', 'effective', 'governance'])
+    .optional(),
 })
 
 const KnowledgeBrowserScreen = lazy(async () => {
@@ -26,27 +32,51 @@ const KNOWLEDGE_BASE_COPY = {
   en: {
     legal: 'Legal authority',
     general: 'General knowledge',
+    dataset: 'Dataset',
+    effective: 'Effective Context',
     governance: 'Governance',
     loadingLegal: 'Loading legal knowledge base...',
     loadingGeneral: 'Loading knowledge browser...',
+    loadingDataset: 'Loading governed datasets...',
+    loadingEffective: 'Loading effective context...',
     loadingGovernance: 'Loading governance model...',
   },
   zh: {
     legal: '法律权威',
     general: '通用知识',
+    dataset: '数据集',
+    effective: '有效上下文',
     governance: '治理',
     loadingLegal: '正在加载法律知识库...',
     loadingGeneral: '正在加载知识浏览器...',
+    loadingDataset: '正在加载治理数据集...',
+    loadingEffective: '正在加载有效上下文...',
     loadingGovernance: '正在加载治理模型...',
   },
 } as const
 
-type KnowledgeBaseTab = 'legal' | 'general' | 'governance'
+type KnowledgeBaseTab =
+  | 'legal'
+  | 'general'
+  | 'dataset'
+  | 'effective'
+  | 'governance'
 
 function normalizeKnowledgeBaseTab(
-  tab: 'legal' | 'general' | 'dataset' | 'governance' | undefined,
+  tab:
+    | 'legal'
+    | 'general'
+    | 'dataset'
+    | 'effective'
+    | 'governance'
+    | undefined,
 ): KnowledgeBaseTab {
-  return tab === 'general' || tab === 'governance' ? tab : 'legal'
+  return tab === 'general' ||
+    tab === 'dataset' ||
+    tab === 'effective' ||
+    tab === 'governance'
+    ? tab
+    : 'legal'
 }
 
 export const Route = createFileRoute('/knowledge-base')({
@@ -83,6 +113,8 @@ function KnowledgeBaseRoute() {
             <TabsList variant="underline" className="w-full justify-start gap-1">
               <TabsTab value="legal">{copy.legal}</TabsTab>
               <TabsTab value="general">{copy.general}</TabsTab>
+              <TabsTab value="dataset">{copy.dataset}</TabsTab>
+              <TabsTab value="effective">{copy.effective}</TabsTab>
               <TabsTab value="governance">{copy.governance}</TabsTab>
             </TabsList>
           </div>
@@ -102,6 +134,26 @@ function KnowledgeBaseRoute() {
               fallback={<RouteLoadingState label={copy.loadingGeneral} />}
             >
               <KnowledgeBrowserScreen />
+            </Suspense>
+          ) : null}
+        </TabsPanel>
+
+        <TabsPanel value="dataset" className="min-h-0 flex-1">
+          {tab === 'dataset' ? (
+            <Suspense
+              fallback={<RouteLoadingState label={copy.loadingDataset} />}
+            >
+              <DatasetKnowledgeBaseScreen />
+            </Suspense>
+          ) : null}
+        </TabsPanel>
+
+        <TabsPanel value="effective" className="min-h-0 flex-1">
+          {tab === 'effective' ? (
+            <Suspense
+              fallback={<RouteLoadingState label={copy.loadingEffective} />}
+            >
+              <EffectiveContextScreen />
             </Suspense>
           ) : null}
         </TabsPanel>

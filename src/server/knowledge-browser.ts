@@ -2,12 +2,14 @@ import fs from 'node:fs'
 import path from 'node:path'
 import YAML from 'yaml'
 import {
-  buildKnowledgeDatasetGovernanceConfig,
   getKnowledgeBaseEffectiveRoot,
   readKnowledgeBaseConfig,
 } from './knowledge-config'
 import { resolveWorkspaceAppStateRoot } from './workspace-root'
-import type { KnowledgeBaseSource } from './knowledge-config'
+import type {
+  KnowledgeBaseSource,
+  KnowledgeDatasetGovernanceConfig,
+} from './knowledge-config'
 
 type KnowledgeBrowserContext = {
   datasetType?: string | null
@@ -827,9 +829,16 @@ export function buildKnowledgeGraph(
 
 export function buildEffectiveContextGraph(
   context?: KnowledgeBrowserContext,
-  options?: { auditEntitled?: boolean },
+  options?: {
+    auditEntitled?: boolean
+    datasetGovernance?: KnowledgeDatasetGovernanceConfig
+  },
 ): EffectiveContextGraph {
-  const governance = buildKnowledgeDatasetGovernanceConfig(context)
+  const governance = options?.datasetGovernance ?? {
+    activationResolverPolicyVersion: 'knowledge_activation_resolver.unavailable',
+    resolvedActivationSetHash: 'governed_activation_snapshot_unavailable',
+    rows: [],
+  }
   const auditEntitled = options?.auditEntitled === true
   const nodes: EffectiveContextGraph['nodes'] = [
     {
@@ -862,20 +871,25 @@ export function buildEffectiveContextGraph(
   ]
   const edges: EffectiveContextGraph['edges'] = []
 
-  for (const row of governance.rows) {
-    const nodeId = `dataset_${row.activationId}`
+  for (const [index, row] of governance.rows.entries()) {
+    const nodeId = `dataset_context_${index + 1}`
+    const label = auditEntitled
+      ? row.datasetKey || row.datasetVersionId || row.datasetUsageRole
+      : row.effectiveAuthorityStatus === 'binding_effective'
+        ? 'Governed dataset context active'
+        : 'Optional governed context available'
     nodes.push({
       id: nodeId,
-      label: row.datasetKey || row.datasetVersionId || row.datasetUsageRole,
+      label,
       nodeType:
         row.effectiveAuthorityStatus === 'binding_effective'
           ? 'dataset_asset'
           : 'optional_context',
       metadata: {
-        sourceTier: row.semanticTier,
+        sourceTier: auditEntitled ? row.semanticTier : null,
         effectiveAuthorityStatus: row.effectiveAuthorityStatus,
-        usageRole: row.datasetUsageRole,
-        contextControl: row.userContextControlLevel,
+        usageRole: auditEntitled ? row.datasetUsageRole : null,
+        contextControl: auditEntitled ? row.userContextControlLevel : null,
         retrievalContextEnabled: row.retrievalEnabled,
         promptContextEnabled: row.promptContextEnabled,
         queryContextEnabled: row.queryContextEnabled,

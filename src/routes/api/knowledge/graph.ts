@@ -3,6 +3,7 @@ import { json } from '@tanstack/react-start'
 import {
   buildEffectiveContextGraph,
   buildKnowledgeGraph,
+  buildNativeMetadataSummary,
 } from '../../../server/knowledge-browser'
 import { readGovernedKnowledgeDatasetGovernance } from '../../../server/knowledge-config'
 import {
@@ -24,13 +25,17 @@ export const Route = createFileRoute('/api/knowledge/graph')({
             datasetKey: activeWorkspace.datasetKey,
             activeDatasetVersionId: activeWorkspace.activeDatasetVersionId,
           }
+          const datasetGovernance =
+            await readGovernedKnowledgeDatasetGovernance(request.headers)
           return json({
             ...buildKnowledgeGraph(activeWorkspace.path, {
               datasetType: activeWorkspace.datasetType,
             }),
             effectiveContext: buildEffectiveContextGraph(context, {
-              datasetGovernance:
-                await readGovernedKnowledgeDatasetGovernance(request.headers),
+              datasetGovernance,
+            }),
+            nativeMetadata: buildNativeMetadataSummary(activeWorkspace.path, context, {
+              datasetGovernance,
             }),
           })
         } catch (error) {

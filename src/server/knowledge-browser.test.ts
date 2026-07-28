@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   buildEffectiveContextGraph,
   buildKnowledgeChatContext,
+  buildNativeMetadataSummary,
   listKnowledgePages,
   readKnowledgePage,
 } from './knowledge-browser'
@@ -272,5 +273,199 @@ describe('knowledge-browser workspace isolation', () => {
     expect(
       graph.edges.some((edge) => edge.edgeType === 'blocked_by_resolver'),
     ).toBe(true)
+  })
+
+  it('builds native metadata asset rows, lineage edges, and source anchors', () => {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'metadata-ui-'))
+    createdRoots.push(workspace)
+    const knowledgeRoot = path.join(workspace, 'wiki')
+    fs.mkdirSync(knowledgeRoot, { recursive: true })
+    fs.writeFileSync(
+      path.join(knowledgeRoot, 'policy.md'),
+      [
+        '---',
+        'title: Policy Asset',
+        'type: policy',
+        'domain: tender',
+        'status: curated',
+        '---',
+        '',
+        'Policy page references [[dataset]].',
+      ].join('\n'),
+      'utf-8',
+    )
+    fs.writeFileSync(
+      path.join(knowledgeRoot, 'dataset.md'),
+      [
+        '---',
+        'title: Dataset Note',
+        'type: dataset',
+        '---',
+        '',
+        'Dataset note.',
+      ].join('\n'),
+      'utf-8',
+    )
+
+    const metadata = buildNativeMetadataSummary(
+      workspace,
+      {},
+      {
+        auditEntitled: true,
+        datasetGovernance: {
+          activationResolverPolicyVersion: 'knowledge_activation_resolver.v1',
+          resolvedActivationSetHash: 'resolver_hash_1',
+          rows: [
+            {
+              activationId: 'ksa_real_primary',
+              sourceKind: 'dataset',
+              semanticTier: 'T4',
+              lifecycleStatus: 'approved',
+              effectiveAuthorityStatus: 'binding_effective',
+              userContextControlLevel: 'none',
+              retrievalToggleVisible: false,
+              promptContextToggleVisible: false,
+              queryContextToggleVisible: false,
+              retrievalEnabled: true,
+              promptContextEnabled: true,
+              queryContextEnabled: true,
+              datasetUsageRole: 'primary_analytics',
+              datasetType: 'REAL',
+              datasetKey: 'finance_ledger',
+              datasetVersionId: 'dsv_real',
+              sourceVersionId: 'dsv_real',
+              lastActivationActor: 'Governed activation resolver',
+              auditHash: 'resolver_hash_1',
+              locked: true,
+            },
+          ],
+        },
+      },
+    )
+
+    expect(metadata.resolverSnapshotHash).toBe('resolver_hash_1')
+    expect(metadata.assetRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assetId: 'dataset:ksa_real_primary',
+          assetKind: 'dataset',
+          metadataReadinessState: 'READY_METADATA_ONLY',
+          runtimeAuthorityState: 'ACTIVE_AUTHORITY',
+          locked: true,
+        }),
+        expect.objectContaining({
+          assetId: 'wiki:policy.md',
+          assetKind: 'wiki_document',
+          runtimeAuthorityState: 'NOT_ACTIVE_AUTHORITY',
+          sourceAnchors: expect.arrayContaining(['wiki/policy.md']),
+        }),
+      ]),
+    )
+    expect(metadata.lineageEdges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'dataset:ksa_real_primary',
+          target: 'effective-context:resolver',
+          relationType: 'governs',
+        }),
+        expect.objectContaining({
+          source: 'wiki:policy.md',
+          target: 'wiki:dataset.md',
+          relationType: 'references',
+        }),
+      ]),
+    )
+    expect(metadata.sourceAnchors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          anchorId: 'wiki/policy.md',
+          assetId: 'wiki:policy.md',
+        }),
+      ]),
+    )
+  })
+
+  it('redacts evidence drawer hashes while preserving resolver graph parity', () => {
+    const metadata = buildNativeMetadataSummary(
+      undefined,
+      {},
+      {
+        datasetGovernance: {
+          activationResolverPolicyVersion: 'knowledge_activation_resolver.v1',
+          resolvedActivationSetHash: 'resolver_hash_1',
+          rows: [
+            {
+              activationId: 'ksa_demo_primary',
+              sourceKind: 'dataset',
+              semanticTier: 'T4',
+              lifecycleStatus: 'approved',
+              effectiveAuthorityStatus: 'binding_effective',
+              userContextControlLevel: 'none',
+              retrievalToggleVisible: false,
+              promptContextToggleVisible: false,
+              queryContextToggleVisible: false,
+              retrievalEnabled: true,
+              promptContextEnabled: true,
+              queryContextEnabled: true,
+              datasetUsageRole: 'primary_analytics',
+              datasetType: 'DEMO',
+              datasetKey: 'seeded_demo',
+              datasetVersionId: null,
+              sourceVersionId: 'seeded_demo',
+              lastActivationActor: 'Governed activation resolver',
+              auditHash: 'resolver_hash_1',
+              locked: true,
+            },
+          ],
+        },
+      },
+    )
+    const graph = buildEffectiveContextGraph({}, {
+      datasetGovernance: {
+        activationResolverPolicyVersion: 'knowledge_activation_resolver.v1',
+        resolvedActivationSetHash: 'resolver_hash_1',
+        rows: [
+          {
+            activationId: 'ksa_demo_primary',
+            sourceKind: 'dataset',
+            semanticTier: 'T4',
+            lifecycleStatus: 'approved',
+            effectiveAuthorityStatus: 'binding_effective',
+            userContextControlLevel: 'none',
+            retrievalToggleVisible: false,
+            promptContextToggleVisible: false,
+            queryContextToggleVisible: false,
+            retrievalEnabled: true,
+            promptContextEnabled: true,
+            queryContextEnabled: true,
+            datasetUsageRole: 'primary_analytics',
+            datasetType: 'DEMO',
+            datasetKey: 'seeded_demo',
+            datasetVersionId: null,
+            sourceVersionId: 'seeded_demo',
+            lastActivationActor: 'Governed activation resolver',
+            auditHash: 'resolver_hash_1',
+            locked: true,
+          },
+        ],
+      },
+    })
+
+    expect(metadata.evidenceDrawer.redaction).toBe('redacted')
+    expect(metadata.evidenceDrawer.rows[0]).toMatchObject({
+      sourceHash: 'redacted_source_hash',
+      snapshotHash: 'redacted_snapshot_hash',
+      replayAuditRefs: [],
+    })
+    expect(metadata.resolverSnapshotHash).toBe('resolver_hash_1')
+    expect(graph.evidenceRef).toBe('opaque_activation_evidence')
+    expect(metadata.lineageEdges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target: 'effective-context:resolver',
+          relationType: 'governs',
+        }),
+      ]),
+    )
   })
 })

@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import crypto from 'node:crypto'
 import path from 'node:path'
 import YAML from 'yaml'
 import {
@@ -75,6 +76,59 @@ export type EffectiveContextGraph = {
   activationResolverPolicyVersion: string | null
   resolvedActivationSetHash: string | null
   evidenceRef: string
+}
+
+export type NativeMetadataAssetRow = {
+  assetId: string
+  assetKind: 'dataset' | 'wiki_document'
+  displayName: string
+  owner: string
+  domain: string
+  version: string
+  lifecycleState: string
+  qualityState: string
+  contractState: string
+  lineageState: string
+  sourceAnchors: Array<string>
+  sourceHash: string
+  semanticTier: string | null
+  authorityRole: string
+  governanceDecision: string
+  activationState: string
+  userControlCeiling: string
+  resolverStatus: string
+  snapshotHash: string
+  replayAuditRefs: Array<string>
+  metadataReadinessState: string
+  runtimeAuthorityState: string
+  locked: boolean
+}
+
+export type NativeMetadataSummary = {
+  resolverSnapshotHash: string
+  assetRows: Array<NativeMetadataAssetRow>
+  lineageEdges: Array<{
+    source: string
+    target: string
+    relationType: string
+    sourceAnchorRefs: Array<string>
+  }>
+  sourceAnchors: Array<{
+    anchorId: string
+    assetId: string
+    locator: string
+    sourceHash: string
+  }>
+  evidenceDrawer: {
+    redaction: 'full' | 'redacted'
+    rows: Array<{
+      assetId: string
+      evidenceKind: string
+      sourceHash: string
+      snapshotHash: string
+      replayAuditRefs: Array<string>
+    }>
+  }
 }
 
 export type KnowledgeChatContext = {
@@ -948,5 +1002,157 @@ export function buildEffectiveContextGraph(
     evidenceRef: auditEntitled
       ? governance.resolvedActivationSetHash
       : 'opaque_activation_evidence',
+  }
+}
+
+function contentHash(input: string): string {
+  return crypto.createHash('sha256').update(input).digest('hex')
+}
+
+export function buildNativeMetadataSummary(
+  workspaceRoot?: string,
+  context?: KnowledgeBrowserContext,
+  options?: {
+    auditEntitled?: boolean
+    datasetGovernance?: KnowledgeDatasetGovernanceConfig
+  },
+): NativeMetadataSummary {
+  const governance = options?.datasetGovernance ?? {
+    activationResolverPolicyVersion: 'knowledge_activation_resolver.unavailable',
+    resolvedActivationSetHash: 'governed_activation_snapshot_unavailable',
+    rows: [],
+  }
+  const auditEntitled = options?.auditEntitled === true
+  const resolverSnapshotHash = governance.resolvedActivationSetHash
+  const assetRows: Array<NativeMetadataAssetRow> = []
+  const lineageEdges: NativeMetadataSummary['lineageEdges'] = []
+  const sourceAnchors: NativeMetadataSummary['sourceAnchors'] = []
+
+  for (const row of governance.rows) {
+    const assetId = `dataset:${row.activationId}`
+    const displayName =
+      row.datasetKey || row.datasetVersionId || row.datasetUsageRole
+    const isBinding = row.effectiveAuthorityStatus === 'binding_effective'
+    assetRows.push({
+      assetId,
+      assetKind: 'dataset',
+      displayName,
+      owner: 'Semantier governed activation',
+      domain: row.datasetType || 'dataset',
+      version: row.datasetVersionId || row.sourceVersionId,
+      lifecycleState: row.lifecycleStatus,
+      qualityState: 'metadata_qualified',
+      contractState: 'governed_contract_recorded',
+      lineageState: 'resolver_pinned',
+      sourceAnchors: [row.sourceVersionId],
+      sourceHash: row.auditHash,
+      semanticTier: row.semanticTier,
+      authorityRole: row.datasetUsageRole,
+      governanceDecision: row.effectiveAuthorityStatus,
+      activationState: isBinding ? 'ACTIVE_AUTHORITY' : 'OPTIONAL_CONTEXT',
+      userControlCeiling: row.userContextControlLevel,
+      resolverStatus: isBinding ? 'included_by_resolver' : 'optional_by_resolver',
+      snapshotHash: resolverSnapshotHash,
+      replayAuditRefs: [row.auditHash].filter(Boolean),
+      metadataReadinessState: 'READY_METADATA_ONLY',
+      runtimeAuthorityState: isBinding ? 'ACTIVE_AUTHORITY' : 'NOT_ACTIVE_AUTHORITY',
+      locked: row.locked,
+    })
+    lineageEdges.push({
+      source: assetId,
+      target: 'effective-context:resolver',
+      relationType: isBinding ? 'governs' : 'feeds_context',
+      sourceAnchorRefs: [row.sourceVersionId],
+    })
+    sourceAnchors.push({
+      anchorId: row.sourceVersionId,
+      assetId,
+      locator: row.datasetUsageRole,
+      sourceHash: row.auditHash,
+    })
+  }
+
+  let pages: Array<ParsedKnowledgePage> = []
+  try {
+    pages = getParsedKnowledgePages(workspaceRoot, context)
+  } catch {
+    pages = []
+  }
+  const pagePathSet = new Set(pages.map((page) => page.meta.path))
+
+  for (const page of pages.slice(0, 50)) {
+    const assetId = `wiki:${page.meta.path}`
+    const hash = contentHash(page.raw)
+    const anchors = [
+      `wiki/${page.meta.path}`,
+      ...page.meta.wikilinks.map((link) => `wikilink:${cleanWikilinkTarget(link)}`),
+    ]
+    assetRows.push({
+      assetId,
+      assetKind: 'wiki_document',
+      displayName: page.meta.title,
+      owner: 'Workspace knowledge steward',
+      domain: page.meta.domain || page.meta.type || 'wiki',
+      version: page.meta.updated || page.meta.modified,
+      lifecycleState: page.meta.status || 'curation',
+      qualityState: 'metadata_present',
+      contractState: 'workspace_document_contract',
+      lineageState: page.meta.wikilinks.length ? 'wikilink_lineage_present' : 'lineage_absent',
+      sourceAnchors: anchors,
+      sourceHash: hash,
+      semanticTier: null,
+      authorityRole: 'curation_evidence',
+      governanceDecision: 'not_runtime_authority',
+      activationState: 'NOT_ACTIVE',
+      userControlCeiling: 'n/a',
+      resolverStatus: 'excluded_until_governed_activation',
+      snapshotHash: resolverSnapshotHash,
+      replayAuditRefs: [],
+      metadataReadinessState: 'READY_METADATA_ONLY',
+      runtimeAuthorityState: 'NOT_ACTIVE_AUTHORITY',
+      locked: false,
+    })
+    sourceAnchors.push({
+      anchorId: `wiki/${page.meta.path}`,
+      assetId,
+      locator: page.meta.path,
+      sourceHash: hash,
+    })
+    for (const link of page.meta.wikilinks) {
+      const target = cleanWikilinkTarget(link)
+      const targetPath = target.endsWith('.md') ? target : `${target}.md`
+      const resolvedTarget = pagePathSet.has(targetPath)
+        ? targetPath
+        : pages.find((candidate) => {
+            return path.basename(candidate.meta.path, '.md') === target
+          })?.meta.path
+      if (!resolvedTarget) continue
+      lineageEdges.push({
+        source: assetId,
+        target: `wiki:${resolvedTarget}`,
+        relationType: 'references',
+        sourceAnchorRefs: [`wiki/${page.meta.path}`],
+      })
+    }
+  }
+
+  return {
+    resolverSnapshotHash,
+    assetRows,
+    lineageEdges,
+    sourceAnchors,
+    evidenceDrawer: {
+      redaction: auditEntitled ? 'full' : 'redacted',
+      rows: assetRows.map((asset) => ({
+        assetId: asset.assetId,
+        evidenceKind:
+          asset.runtimeAuthorityState === 'ACTIVE_AUTHORITY'
+            ? 'resolver_activation_evidence'
+            : 'metadata_readiness_evidence',
+        sourceHash: auditEntitled ? asset.sourceHash : 'redacted_source_hash',
+        snapshotHash: auditEntitled ? asset.snapshotHash : 'redacted_snapshot_hash',
+        replayAuditRefs: auditEntitled ? asset.replayAuditRefs : [],
+      })),
+    },
   }
 }

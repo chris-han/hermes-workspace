@@ -302,6 +302,17 @@ const DATASET_COPY = {
     details: 'Audit details',
     policyVersion: 'Resolver policy',
     activationHash: 'Activation set hash',
+    sourceHash: 'Source hash',
+    assets: 'Assets',
+    metadataReadiness: 'Metadata readiness',
+    runtimeAuthority: 'Runtime authority',
+    lineage: 'Lineage',
+    sourceAnchors: 'Source anchors',
+    evidenceDrawer: 'Evidence / Audit Drawer',
+    redaction: 'Redaction',
+    notRecorded: 'not recorded',
+    metadataOnlyNotice:
+      'Metadata readiness is evidence only. Runtime authority is granted only by governed activation and resolver inclusion.',
     unavailable: 'Dataset governance API unavailable',
   },
   zh: {
@@ -327,6 +338,17 @@ const DATASET_COPY = {
     details: '审计详情',
     policyVersion: '解析策略',
     activationHash: '激活集哈希',
+    sourceHash: '来源哈希',
+    assets: '资产',
+    metadataReadiness: '元数据就绪',
+    runtimeAuthority: '运行时权威',
+    lineage: '沿革',
+    sourceAnchors: '来源锚点',
+    evidenceDrawer: '证据 / 审计抽屉',
+    redaction: '脱敏',
+    notRecorded: '未记录',
+    metadataOnlyNotice:
+      '元数据就绪只是证据。运行时权威只能来自治理激活和解析器纳入。',
     unavailable: '数据集治理 API 不可用',
   },
 } as const
@@ -344,6 +366,7 @@ const EFFECTIVE_CONTEXT_COPY = {
     graphLegend:
       'Effective, optional, excluded, and execution-gate sources across Knowledge Base, Memory, and Database',
     activationHash: 'Activation set hash',
+    nativeMetadataParity: 'Native metadata parity / resolver snapshot',
   },
   zh: {
     title: '有效背景信息',
@@ -353,6 +376,7 @@ const EFFECTIVE_CONTEXT_COPY = {
     noGraph: '暂无有效背景信息图。',
     graphLegend: '跨知识库、记忆和数据库的生效、可选、排除和执行门控来源',
     activationHash: '激活集哈希',
+    nativeMetadataParity: '原生元数据一致性 / 解析器快照',
   },
 } as const
 
@@ -385,6 +409,57 @@ type DatasetGovernancePayload = {
   rows: Array<DatasetGovernanceRow>
 }
 
+type NativeMetadataSummaryPayload = {
+  resolverSnapshotHash: string
+  assetRows: Array<{
+    assetId: string
+    assetKind: string
+    displayName: string
+    owner: string
+    domain: string
+    version: string
+    lifecycleState: string
+    qualityState: string
+    contractState: string
+    lineageState: string
+    sourceAnchors: Array<string>
+    sourceHash: string
+    semanticTier: string | null
+    authorityRole: string
+    governanceDecision: string
+    activationState: string
+    userControlCeiling: string
+    resolverStatus: string
+    snapshotHash: string
+    replayAuditRefs: Array<string>
+    metadataReadinessState: string
+    runtimeAuthorityState: string
+    locked: boolean
+  }>
+  lineageEdges: Array<{
+    source: string
+    target: string
+    relationType: string
+    sourceAnchorRefs: Array<string>
+  }>
+  sourceAnchors: Array<{
+    anchorId: string
+    assetId: string
+    locator: string
+    sourceHash: string
+  }>
+  evidenceDrawer: {
+    redaction: string
+    rows: Array<{
+      assetId: string
+      evidenceKind: string
+      sourceHash: string
+      snapshotHash: string
+      replayAuditRefs: Array<string>
+    }>
+  }
+}
+
 type DatasetPreferenceDimension =
   | 'retrievalEnabled'
   | 'promptContextEnabled'
@@ -407,7 +482,356 @@ type EffectiveContextGraphPayload = {
     resolvedActivationSetHash: string | null
     evidenceRef: string
   }
+  nativeMetadata?: NativeMetadataSummaryPayload
 }
+
+type PolicyRuleCandidate = {
+  ruleCandidateId: string
+  ruleFamily: string
+  candidateState: string
+  sourceAnchorRefs: Array<string>
+  applicabilityScope: Record<string, unknown>
+  extractedRationale: string
+  draftRuleText: string
+  severity?: string | null
+  confidence?: number | null
+  uncertaintyNotes?: string | null
+  humanEdits: Array<Record<string, unknown>>
+  approvalEvidence: Record<string, unknown>
+  testEvidence: Record<string, unknown>
+  activationRefs: Array<string>
+  createdByActorType: string
+  isRuntimeAuthority: boolean
+  nonAuthorityReason?: string | null
+}
+
+const POLICY_RULE_COPY = {
+  en: {
+    title: 'Policy-to-Rule Studio',
+    subtitle:
+      'Source-linked rule candidates for review, approval, activation, and audit.',
+    loading: 'Loading rule candidates...',
+    unavailable: 'Policy-to-rule API unavailable',
+    empty: 'No rule candidates yet.',
+    candidate: 'Candidate',
+    state: 'State',
+    evidence: 'Evidence',
+    review: 'Review',
+    aiText: 'AI-generated draft',
+    humanEdits: 'Human edits',
+    sourceAnchors: 'Source anchors',
+    applicability: 'Applicability',
+    confidence: 'Confidence',
+    uncertainty: 'Uncertainty',
+    nonAuthority: 'Not runtime authority',
+    runtimeAuthority: 'Runtime authority after governed activation',
+    approvalEvidence: 'Approval evidence',
+    testEvidence: 'Test evidence',
+  },
+  zh: {
+    title: '政策转规则工作台',
+    subtitle: '带来源锚点的规则候选项，用于评审、批准、激活和审计。',
+    loading: '正在加载规则候选项...',
+    unavailable: '政策转规则 API 不可用',
+    empty: '暂无规则候选项。',
+    candidate: '候选项',
+    state: '状态',
+    evidence: '证据',
+    review: '评审',
+    aiText: 'AI 生成草稿',
+    humanEdits: '人工编辑',
+    sourceAnchors: '来源锚点',
+    applicability: '适用范围',
+    confidence: '置信度',
+    uncertainty: '不确定性',
+    nonAuthority: '不是运行时权威',
+    runtimeAuthority: '治理激活后的运行时权威',
+    approvalEvidence: '批准证据',
+    testEvidence: '测试证据',
+  },
+} as const
+
+type PolicyRuleCopy = (typeof POLICY_RULE_COPY)[keyof typeof POLICY_RULE_COPY]
+
+type TenderDetectionFinding = {
+  finding_id: string
+  issue_type: string
+  matched_text: string
+  judgment_basis: string
+  severity: string
+  confidence: number
+  suggested_replacement?: string | null
+  escalation_flag: boolean
+}
+
+type TenderDetectionRun = {
+  run_id: string
+  tender_document_id: string
+  source_document_hash: string
+  parent_run_id?: string | null
+  root_run_id?: string | null
+  findings: Array<TenderDetectionFinding>
+  dispositions: Array<Record<string, unknown>>
+}
+
+type RuntimeFeedbackPayload = {
+  feedbackEvent?: { feedback_event_id?: string }
+  candidateDelta?: {
+    candidate_delta_id?: string
+    delta_kind?: string
+    governance_state?: string
+    discovery_run_id?: string
+  }
+  discoveryRun?: { discovery_run_id?: string }
+}
+
+const TENDER_REVIEW_COPY = {
+  en: {
+    title: 'Tender Review',
+    subtitle:
+      'Runtime screening against activated governed rules with report and replay evidence.',
+    documentText: 'Tender document text',
+    placeholder: 'Paste tender clauses for pre-release screening...',
+    runReview: 'Run governed review',
+    running: 'Running review...',
+    findings: 'Findings',
+    noFindings: 'No activated governed rule findings.',
+    aiSuggestion: 'AI-assisted recommendation',
+    persistReport: 'Persist final report',
+    reportPersisted: 'Final report persisted with replay binding',
+    accept: 'Accept',
+    reject: 'Reject',
+    edit: 'Record edit',
+    falsePositive: 'False positive',
+    falseNegative: 'False negative',
+    ambiguous: 'Ambiguous',
+    escalate: 'Escalate to reviewer',
+    feedbackSent: 'Feedback sent to Knowledge Builder',
+    unavailable: 'Tender review API unavailable',
+  },
+  zh: {
+    title: '招标文件审查',
+    subtitle: '基于已激活治理规则进行运行时筛查，并保留报告与回放证据。',
+    documentText: '招标文件文本',
+    placeholder: '粘贴招标条款进行发布前筛查...',
+    runReview: '运行治理审查',
+    running: '审查中...',
+    findings: '发现项',
+    noFindings: '没有命中已激活治理规则。',
+    aiSuggestion: 'AI 辅助建议',
+    persistReport: '持久化最终报告',
+    reportPersisted: '最终报告已持久化并绑定回放证据',
+    accept: '接受',
+    reject: '拒绝',
+    edit: '记录编辑',
+    falsePositive: '误报',
+    falseNegative: '漏报',
+    ambiguous: '歧义',
+    escalate: '升级评审',
+    feedbackSent: '反馈已发送到知识构建',
+    unavailable: '招标审查 API 不可用',
+  },
+} as const
+
+type TenderReviewCopy = (typeof TENDER_REVIEW_COPY)[keyof typeof TENDER_REVIEW_COPY]
+
+type KnowledgeBuilderGraph = {
+  run: { discovery_run_id: string; run_status: string; governance_state: string }
+  source: { source_id: string; source_ref: string; source_hash: string }
+  nodes: Array<{
+    node_id: string
+    label: string
+    node_type: string
+    evidence_summary: string
+    governance_state: string
+  }>
+  relations: Array<{
+    relation_id: string
+    relation_type: string
+    from_node_id: string
+    to_node_id: string
+    evidence_summary?: string
+    source_anchor_refs?: Array<string>
+    governance_state: string
+  }>
+  notes: Array<{ note_id: string; note_text: string; governance_state: string }>
+  clusters: Array<{ cluster_id: string; cluster_label: string; governance_state: string }>
+  anchors: Array<Record<string, unknown>>
+  authority_notice: string
+}
+
+type KnowledgeBuilderEvaluationDataset = {
+  evaluation_dataset_id: string
+  examples: Array<{
+    evaluation_example_id: string
+    case_type: string
+    input_text: string
+    expected_outcome: string
+  }>
+}
+
+type KnowledgeBuilderEvaluationRun = {
+  evaluation_run_id: string
+  metrics: Record<string, number>
+  authority_notice: string
+  results: Array<{
+    evaluation_result_id: string
+    expected_outcome: string
+    actual_outcome: string
+    ai_assisted_rating: string
+    human_rating?: string | null
+    explanation_acceptance: string
+    error_labels: Array<string>
+  }>
+}
+
+type KnowledgeBuilderFeedbackDelta = {
+  candidate_delta_id: string
+  feedback_event_id: string
+  discovery_run_id: string
+  delta_kind: string
+  feedback_type?: string
+  governance_state: string
+  evaluation_routing?: Record<string, unknown>
+}
+
+type KnowledgeBuilderAuthorityVersion = {
+  authority_version_id: string
+  authority_state: string
+  canonical_label: string
+  evaluation_run_id: string
+  approved_by: string
+  activated_by: string
+}
+
+type KnowledgeBuilderReadModelRebuild = {
+  rebuild_id: string
+  rebuild_status: string
+  non_authoritative_notice: string
+}
+
+const KNOWLEDGE_BUILDER_COPY = {
+  en: {
+    title: 'Knowledge Builder Studio',
+    subtitle:
+      'Discover non-authoritative candidate graphs from tender evidence before curation and promotion.',
+    sourceText: 'Tender source text',
+    sourceRef: 'Source reference',
+    sourceRefPlaceholder: 'uat-tender-sample',
+    placeholder: 'Paste tender samples or extracted folder/file text...',
+    runDiscovery: 'Run discovery',
+    running: 'Discovering...',
+    graphPreview: 'Candidate graph preview',
+    nodes: 'Nodes',
+    relations: 'Relations',
+    notes: 'Notes',
+    clusters: 'Clusters',
+    evidence: 'Evidence',
+    explanation: 'Explanation',
+    relationReview: 'Relation review',
+    relationType: 'Curated relation type',
+    acceptRelation: 'Accept relation',
+    rejectRelation: 'Reject relation',
+    changeRelation: 'Change relation',
+    falseFriend: 'Mark false friend',
+    splitCluster: 'Split cluster',
+    mergeCluster: 'Merge cluster',
+    canonicalTerm: 'Canonical term candidate',
+    canonicalLabel: 'Canonical label',
+    definition: 'Definition',
+    aliases: 'Aliases',
+    promoteTerm: 'Propose canonical term',
+    curationSaved: 'Curation event saved',
+    evaluationLab: 'Evaluation lab',
+    addEvaluationExamples: 'Add UAT examples',
+    runEvaluation: 'Run evaluation',
+    activationGate: 'Activation-gate summary',
+    expectedActual: 'Expected vs actual',
+    ratePass: 'Rate pass',
+    rateFail: 'Rate fail',
+    rateReview: 'Needs review',
+    evaluationSaved: 'Evaluation rating saved',
+    governanceQueue: 'Governance queue',
+    promoteRuntimeAuthority: 'Approve and activate',
+    rebuildReadModel: 'Rebuild read models',
+    activationStatus: 'Activation status',
+    readModelStatus: 'Read-model rebuild',
+    lineage: 'Lineage',
+    feedbackDeltas: 'Feedback-derived deltas',
+    runtimeFeedbackMetrics: 'Runtime feedback metrics',
+    feedbackCaptureRate: 'Capture rate',
+    typeOneError: 'Type I error',
+    typeTwoError: 'Type II error',
+    totalFeedback: 'Total feedback',
+    queuedForEvaluation: 'Queued for evaluation',
+    loadFeedbackDeltas: 'Load feedback deltas',
+    noFeedbackDeltas: 'No runtime feedback deltas queued.',
+    nonAuthority: 'Non-authoritative until governed promotion and activation',
+    empty: 'Run discovery to preview candidate graph evidence.',
+    unavailable: 'Knowledge Builder API unavailable',
+  },
+  zh: {
+    title: '知识构建工作台',
+    subtitle: '从招标证据中发现非权威候选图谱，供后续整理、评估和治理提升。',
+    sourceText: '招标来源文本',
+    sourceRef: '来源引用',
+    sourceRefPlaceholder: 'uat-tender-sample',
+    placeholder: '粘贴招标样本或已抽取的文件/文件夹文本...',
+    runDiscovery: '运行发现',
+    running: '发现中...',
+    graphPreview: '候选图谱预览',
+    nodes: '节点',
+    relations: '关系',
+    notes: '笔记',
+    clusters: '聚类',
+    evidence: '证据',
+    explanation: '解释',
+    relationReview: '关系评审',
+    relationType: '治理关系类型',
+    acceptRelation: '接受关系',
+    rejectRelation: '拒绝关系',
+    changeRelation: '变更关系',
+    falseFriend: '标记伪同义',
+    splitCluster: '拆分聚类',
+    mergeCluster: '合并聚类',
+    canonicalTerm: '规范术语候选',
+    canonicalLabel: '规范标签',
+    definition: '定义',
+    aliases: '别名',
+    promoteTerm: '提出规范术语',
+    curationSaved: '治理事件已保存',
+    evaluationLab: '评估实验室',
+    addEvaluationExamples: '添加 UAT 示例',
+    runEvaluation: '运行评估',
+    activationGate: '激活门控摘要',
+    expectedActual: '预期与实际',
+    ratePass: '标记通过',
+    rateFail: '标记失败',
+    rateReview: '需要复核',
+    evaluationSaved: '评估评分已保存',
+    governanceQueue: '治理队列',
+    promoteRuntimeAuthority: '批准并激活',
+    rebuildReadModel: '重建读取模型',
+    activationStatus: '激活状态',
+    readModelStatus: '读取模型重建',
+    lineage: '沿革',
+    feedbackDeltas: '反馈生成的候选增量',
+    runtimeFeedbackMetrics: '运行时反馈指标',
+    feedbackCaptureRate: '捕获率',
+    typeOneError: '一类错误',
+    typeTwoError: '二类错误',
+    totalFeedback: '反馈总数',
+    queuedForEvaluation: '待评估',
+    loadFeedbackDeltas: '加载反馈增量',
+    noFeedbackDeltas: '暂无运行时反馈增量。',
+    nonAuthority: '治理提升并激活前不是运行时权威',
+    empty: '运行发现后预览候选图谱证据。',
+    unavailable: '知识构建 API 不可用',
+  },
+} as const
+
+type KnowledgeBuilderCopy =
+  (typeof KNOWLEDGE_BUILDER_COPY)[keyof typeof KNOWLEDGE_BUILDER_COPY]
 
 async function fetchDatasetGovernance(): Promise<DatasetGovernancePayload> {
   const response = await fetch('/api/knowledge/config')
@@ -422,6 +846,25 @@ async function fetchDatasetGovernance(): Promise<DatasetGovernancePayload> {
       activationResolverPolicyVersion: 'knowledge_activation_resolver.v1',
       resolvedActivationSetHash: '',
       rows: [],
+    }
+  )
+}
+
+async function fetchNativeMetadataSummary(): Promise<NativeMetadataSummaryPayload> {
+  const response = await fetch('/api/knowledge/config')
+  if (!response.ok) {
+    throw new Error(`knowledge-config-${response.status}`)
+  }
+  const payload = (await response.json()) as {
+    nativeMetadata?: NativeMetadataSummaryPayload
+  }
+  return (
+    payload.nativeMetadata ?? {
+      resolverSnapshotHash: 'governed_activation_snapshot_unavailable',
+      assetRows: [],
+      lineageEdges: [],
+      sourceAnchors: [],
+      evidenceDrawer: { redaction: 'redacted', rows: [] },
     }
   )
 }
@@ -452,7 +895,156 @@ async function fetchEffectiveContextGraph() {
     throw new Error(`knowledge-graph-${response.status}`)
   }
   const payload = (await response.json()) as EffectiveContextGraphPayload
-  return payload.effectiveContext
+  return payload
+}
+
+async function fetchPolicyRuleCandidates(): Promise<Array<PolicyRuleCandidate>> {
+  const response = await fetch('/api/knowledge/policy-rules')
+  if (!response.ok) {
+    throw new Error(`policy-rules-${response.status}`)
+  }
+  const payload = (await response.json()) as {
+    candidates?: Array<PolicyRuleCandidate>
+  }
+  return payload.candidates ?? []
+}
+
+async function createTenderDetectionRun(
+  documentText: string,
+): Promise<TenderDetectionRun> {
+  const response = await fetch('/api/tender-document-review', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      documentText,
+      requestedRuleFamilies: ['tender_compliance'],
+    }),
+  })
+  if (!response.ok) {
+    throw new Error(`tender-review-${response.status}`)
+  }
+  const payload = (await response.json()) as { run?: TenderDetectionRun }
+  if (!payload.run) throw new Error('tender-review-empty-run')
+  return payload.run
+}
+
+async function recordTenderDisposition(input: {
+  runId: string
+  findingId: string
+  disposition: 'accepted' | 'rejected' | 'edited'
+  editedReplacement?: string
+}) {
+  const response = await fetch('/api/tender-document-review', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      action: 'disposition',
+      runId: input.runId,
+      findingId: input.findingId,
+      disposition: input.disposition,
+      editedReplacement: input.editedReplacement,
+    }),
+  })
+  if (!response.ok) throw new Error(`tender-disposition-${response.status}`)
+  return response.json()
+}
+
+async function recordTenderFeedback(input: {
+  runId: string
+  findingId: string
+  feedbackType: 'false_positive' | 'false_negative' | 'ambiguity' | 'weak_explanation'
+  userDisposition: Record<string, unknown>
+  escalationOutcome?: 'not_escalated' | 'escalated'
+  reviewerNotes?: string
+  editedRemediation?: string
+}): Promise<{ feedback?: RuntimeFeedbackPayload }> {
+  const response = await fetch('/api/tender-document-review', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      action: 'feedback',
+      ...input,
+    }),
+  })
+  if (!response.ok) throw new Error(`tender-feedback-${response.status}`)
+  return response.json()
+}
+
+async function createTenderReport(runId: string) {
+  const response = await fetch('/api/tender-document-review', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      action: 'report',
+      runId,
+    }),
+  })
+  if (!response.ok) throw new Error(`tender-report-${response.status}`)
+  return response.json()
+}
+
+async function createKnowledgeBuilderRun(input: {
+  sourceRef: string
+  sourceText: string
+}): Promise<{ discovery_run_id: string }> {
+  const response = await fetch('/api/knowledge/builder', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      sourceKind: 'text',
+      sourceRef: input.sourceRef || 'uat-tender-sample',
+      sourceText: input.sourceText,
+    }),
+  })
+  if (!response.ok) throw new Error(`knowledge-builder-${response.status}`)
+  const payload = (await response.json()) as { run?: { discovery_run_id: string } }
+  if (!payload.run) throw new Error('knowledge-builder-empty-run')
+  return payload.run
+}
+
+async function fetchKnowledgeBuilderGraph(runId: string): Promise<KnowledgeBuilderGraph> {
+  const response = await fetch(`/api/knowledge/builder?runId=${encodeURIComponent(runId)}`)
+  if (!response.ok) throw new Error(`knowledge-builder-graph-${response.status}`)
+  const payload = (await response.json()) as { graph?: KnowledgeBuilderGraph }
+  if (!payload.graph) throw new Error('knowledge-builder-empty-graph')
+  return payload.graph
+}
+
+async function fetchKnowledgeBuilderFeedbackDeltas(
+  runId?: string,
+): Promise<Array<KnowledgeBuilderFeedbackDelta>> {
+  const params = new URLSearchParams({ feedbackDeltas: '1' })
+  if (runId) params.set('runId', runId)
+  const response = await fetch(`/api/knowledge/builder?${params.toString()}`)
+  if (!response.ok) throw new Error(`knowledge-builder-feedback-${response.status}`)
+  const payload = (await response.json()) as {
+    feedbackDeltas?: Array<KnowledgeBuilderFeedbackDelta>
+  }
+  return payload.feedbackDeltas ?? []
+}
+
+const KNOWLEDGE_BUILDER_RELATION_TYPES = [
+  'synonym_of',
+  'variant_of',
+  'projects_to',
+  'not_same_as',
+  'allowed_context_for',
+  'prohibited_context_for',
+  'exception_to',
+  'conflicts_with',
+] as const
+
+type KnowledgeBuilderRelationType =
+  (typeof KNOWLEDGE_BUILDER_RELATION_TYPES)[number]
+
+async function postKnowledgeBuilderAction<T>(body: Record<string, unknown>): Promise<T> {
+  const response = await fetch('/api/knowledge/builder', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) throw new Error(`knowledge-builder-action-${response.status}`)
+  return (await response.json()) as T
 }
 
 const LIFECYCLE_STATES = [
@@ -1598,8 +2190,14 @@ export function DatasetKnowledgeBaseScreen() {
     queryFn: fetchDatasetGovernance,
     staleTime: 10_000,
   })
+  const nativeMetadataQuery = useQuery({
+    queryKey: ['knowledge-base', 'native-metadata-summary'],
+    queryFn: fetchNativeMetadataSummary,
+    staleTime: 10_000,
+  })
   const payload = datasetQuery.data
   const rows = payload?.rows ?? []
+  const nativeMetadata = nativeMetadataQuery.data
   const preferenceMutation = useMutation({
     mutationFn: updateDatasetPreference,
     onSuccess: () => {
@@ -1640,6 +2238,89 @@ export function DatasetKnowledgeBaseScreen() {
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        <section className="mb-4 rounded-md border border-border bg-card p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">{copy.assets}</h2>
+              <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
+                {copy.metadataOnlyNotice}
+              </p>
+            </div>
+            <Badge>{copy.redaction}: {nativeMetadata?.evidenceDrawer.redaction ?? 'redacted'}</Badge>
+          </div>
+          <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="grid gap-2">
+              {(nativeMetadata?.assetRows ?? []).slice(0, 8).map((asset) => (
+                <div
+                  key={asset.assetId}
+                  className="rounded-md border border-border bg-background p-3"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">
+                        {asset.displayName}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {asset.assetKind} / {asset.owner} / {asset.domain}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge>{asset.metadataReadinessState}</Badge>
+                      <Badge>{asset.runtimeAuthorityState}</Badge>
+                      {asset.locked ? <Badge>{copy.locked}</Badge> : null}
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 xl:grid-cols-4">
+                    <Fact label={copy.version} value={shortRef(asset.version, copy.notRecorded)} />
+                    <Fact label={copy.lifecycle} value={asset.lifecycleState} />
+                    <Fact label={copy.metadataReadiness} value={`${asset.qualityState} / ${asset.contractState}`} />
+                    <Fact label={copy.runtimeAuthority} value={`${asset.governanceDecision} / ${asset.resolverStatus}`} />
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    {copy.sourceAnchors}: {asset.sourceAnchors.slice(0, 3).join(', ') || copy.notRecorded}
+                  </div>
+                </div>
+              ))}
+              {nativeMetadataQuery.isLoading ? (
+                <EmptyState label={copy.loading} />
+              ) : nativeMetadataQuery.isError ? (
+                <EmptyState label={copy.unavailable} />
+              ) : (nativeMetadata?.assetRows.length ?? 0) === 0 ? (
+                <EmptyState label={copy.empty} />
+              ) : null}
+            </div>
+            <div className="rounded-md border border-border bg-background p-3">
+              <div className="text-sm font-semibold">{copy.evidenceDrawer}</div>
+              <div className="mt-3 grid gap-2">
+                {(nativeMetadata?.evidenceDrawer.rows ?? []).slice(0, 6).map((row) => (
+                  <div
+                    key={`${row.assetId}-${row.evidenceKind}`}
+                    className="rounded border border-border bg-card p-2 text-xs"
+                  >
+                    <div className="font-medium">{row.evidenceKind}</div>
+                    <div className="mt-1 truncate text-muted-foreground">
+                      {row.assetId}
+                    </div>
+                    <div className="mt-1 truncate text-muted-foreground">
+                      {copy.sourceHash}: {shortRef(row.sourceHash, copy.notRecorded)}
+                    </div>
+                    <div className="truncate text-muted-foreground">
+                      {copy.activationHash}: {shortRef(row.snapshotHash, copy.notRecorded)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 text-sm font-semibold">{copy.lineage}</div>
+              <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                {(nativeMetadata?.lineageEdges ?? []).slice(0, 6).map((edge) => (
+                  <div key={`${edge.source}-${edge.target}-${edge.relationType}`} className="truncate">
+                    <code>{edge.source}</code> {edge.relationType} <code>{edge.target}</code>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
         {datasetQuery.isLoading ? (
           <EmptyState label={copy.loading} />
         ) : datasetQuery.isError ? (
@@ -1686,7 +2367,8 @@ export function EffectiveContextScreen() {
     queryFn: fetchEffectiveContextGraph,
     staleTime: 10_000,
   })
-  const effectiveGraph = graphQuery.data
+  const effectiveGraph = graphQuery.data?.effectiveContext
+  const nativeMetadata = graphQuery.data?.nativeMetadata
 
   return (
     <div
@@ -1760,6 +2442,25 @@ export function EffectiveContextScreen() {
                   </div>
                 ))}
               </div>
+              {nativeMetadata ? (
+                <div className="rounded-md border border-border bg-background p-3 text-xs text-muted-foreground lg:col-span-2">
+                  <div className="mb-2 font-semibold text-foreground">
+                    {copy.nativeMetadataParity}:{' '}
+                    <code>{shortRef(nativeMetadata.resolverSnapshotHash)}</code>
+                  </div>
+                  <div className="grid gap-1 sm:grid-cols-2">
+                    {nativeMetadata.lineageEdges.slice(0, 8).map((edge) => (
+                      <div
+                        key={`${edge.source}-${edge.target}-${edge.relationType}`}
+                        className="truncate"
+                      >
+                        <code>{edge.source}</code> {edge.relationType}{' '}
+                        <code>{edge.target}</code>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : (
             <EmptyState label={copy.noGraph} />
@@ -1767,6 +2468,1135 @@ export function EffectiveContextScreen() {
         </section>
       </main>
     </div>
+  )
+}
+
+export function PolicyRuleStudioScreen() {
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const copy = locale === 'zh' ? POLICY_RULE_COPY.zh : POLICY_RULE_COPY.en
+  const policyRuleQuery = useQuery({
+    queryKey: ['knowledge-base', 'policy-rule-candidates'],
+    queryFn: fetchPolicyRuleCandidates,
+    staleTime: 10_000,
+  })
+  const candidates = policyRuleQuery.data ?? []
+
+  return (
+    <div
+      lang={locale === 'zh' ? 'zh-CN' : 'en'}
+      className="flex h-full min-h-0 flex-col bg-background text-foreground"
+    >
+      <header className="border-b border-border px-4 py-3 sm:px-6">
+        <div>
+          <h1 className="text-lg font-semibold">{copy.title}</h1>
+          <p className="mt-0.5 max-w-3xl text-sm text-muted-foreground">
+            {copy.subtitle}
+          </p>
+        </div>
+      </header>
+      <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        {policyRuleQuery.isLoading ? (
+          <EmptyState label={copy.loading} />
+        ) : policyRuleQuery.isError ? (
+          <EmptyState label={copy.unavailable} />
+        ) : candidates.length === 0 ? (
+          <EmptyState label={copy.empty} />
+        ) : (
+          <div className="grid gap-3">
+            {candidates.map((candidate) => (
+              <PolicyRuleCandidateCard
+                key={candidate.ruleCandidateId}
+                candidate={candidate}
+                copy={copy}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
+
+export function TenderDocumentReviewScreen() {
+  const queryClient = useQueryClient()
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const copy = locale === 'zh' ? TENDER_REVIEW_COPY.zh : TENDER_REVIEW_COPY.en
+  const [documentText, setDocumentText] = useState('')
+  const [run, setRun] = useState<TenderDetectionRun | null>(null)
+  const [reportPersisted, setReportPersisted] = useState(false)
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
+
+  const reviewMutation = useMutation({
+    mutationFn: createTenderDetectionRun,
+    onSuccess: (nextRun) => {
+      setRun(nextRun)
+      setReportPersisted(false)
+    },
+  })
+  const dispositionMutation = useMutation({
+    mutationFn: recordTenderDisposition,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tender-document-review'] })
+    },
+  })
+  const reportMutation = useMutation({
+    mutationFn: createTenderReport,
+    onSuccess: () => setReportPersisted(true),
+  })
+  const feedbackMutation = useMutation({
+    mutationFn: recordTenderFeedback,
+    onSuccess: () => setFeedbackMessage(copy.feedbackSent),
+  })
+
+  return (
+    <div
+      lang={locale === 'zh' ? 'zh-CN' : 'en'}
+      className="flex h-full min-h-0 flex-col bg-background text-foreground"
+    >
+      <header className="border-b border-border px-4 py-3 sm:px-6">
+        <h1 className="text-lg font-semibold">{copy.title}</h1>
+        <p className="mt-0.5 max-w-3xl text-sm text-muted-foreground">
+          {copy.subtitle}
+        </p>
+      </header>
+      <main className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 sm:p-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <section className="rounded-md border border-border bg-card p-4">
+          <label className="text-sm font-medium" htmlFor="tender-document-text">
+            {copy.documentText}
+          </label>
+          <textarea
+            id="tender-document-text"
+            className="mt-3 min-h-72 w-full rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-primary"
+            placeholder={copy.placeholder}
+            value={documentText}
+            onChange={(event) => setDocumentText(event.target.value)}
+          />
+          <button
+            type="button"
+            className="mt-3 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            disabled={!documentText.trim() || reviewMutation.isPending}
+            onClick={() => reviewMutation.mutate(documentText)}
+          >
+            {reviewMutation.isPending ? copy.running : copy.runReview}
+          </button>
+          {reviewMutation.isError ? (
+            <p className="mt-3 text-sm text-destructive">{copy.unavailable}</p>
+          ) : null}
+        </section>
+        <section className="rounded-md border border-border bg-card p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">{copy.findings}</h2>
+              {run ? (
+                <p className="text-xs text-muted-foreground">
+                  {run.run_id} · {run.source_document_hash}
+                </p>
+              ) : null}
+            </div>
+            {run ? (
+              <button
+                type="button"
+                className="rounded-md border border-border px-3 py-1.5 text-xs font-medium"
+                disabled={reportMutation.isPending}
+                onClick={() => reportMutation.mutate(run.run_id)}
+              >
+                {copy.persistReport}
+              </button>
+            ) : null}
+          </div>
+          {reportPersisted ? (
+            <p className="mt-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2 text-xs text-emerald-700">
+              {copy.reportPersisted}
+            </p>
+          ) : null}
+          {feedbackMessage ? (
+            <p className="mt-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2 text-xs text-emerald-700">
+              {feedbackMessage}
+            </p>
+          ) : null}
+          {!run || run.findings.length === 0 ? (
+            <EmptyState label={copy.noFindings} />
+          ) : (
+            <div className="mt-4 grid gap-3">
+              {run.findings.map((finding) => (
+                <TenderFindingCard
+                  key={finding.finding_id}
+                  finding={finding}
+                  runId={run.run_id}
+                  copy={copy}
+                  onDisposition={(disposition) =>
+                    dispositionMutation.mutate({
+                      runId: run.run_id,
+                      findingId: finding.finding_id,
+                      disposition,
+                      editedReplacement:
+                        disposition === 'edited'
+                          ? finding.suggested_replacement || undefined
+                      : undefined,
+                    })
+                  }
+                  onFeedback={(feedbackType, escalationOutcome) =>
+                    feedbackMutation.mutate({
+                      runId: run.run_id,
+                      findingId: finding.finding_id,
+                      feedbackType,
+                      userDisposition: {
+                        finding_id: finding.finding_id,
+                        matched_text: finding.matched_text,
+                      },
+                      escalationOutcome,
+                      reviewerNotes:
+                        feedbackType === 'false_positive'
+                          ? 'Runtime reviewer marked this finding as a false positive.'
+                          : 'Runtime reviewer sent this exception back to Knowledge Builder.',
+                      editedRemediation:
+                        feedbackType === 'weak_explanation'
+                          ? finding.suggested_replacement || undefined
+                          : undefined,
+                    })
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
+  )
+}
+
+export function KnowledgeBuilderStudioScreen() {
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const copy =
+    locale === 'zh' ? KNOWLEDGE_BUILDER_COPY.zh : KNOWLEDGE_BUILDER_COPY.en
+  const [sourceRef, setSourceRef] = useState('uat-tender-sample')
+  const [sourceText, setSourceText] = useState('')
+  const [runId, setRunId] = useState<string | null>(null)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null)
+  const [relationType, setRelationType] =
+    useState<KnowledgeBuilderRelationType>('not_same_as')
+  const [canonicalLabel, setCanonicalLabel] = useState('exclusive supplier restriction')
+  const [definition, setDefinition] = useState(
+    'Tender wording that restricts competition to one supplier, brand, or authorization path.',
+  )
+  const [aliases, setAliases] = useState('唯一供应商, 独家授权, 指定品牌')
+  const [curationMessage, setCurationMessage] = useState<string | null>(null)
+  const [relationCandidateId, setRelationCandidateId] = useState<string | null>(null)
+  const [termCandidateId, setTermCandidateId] = useState<string | null>(null)
+  const [evaluationDataset, setEvaluationDataset] =
+    useState<KnowledgeBuilderEvaluationDataset | null>(null)
+  const [evaluationRun, setEvaluationRun] =
+    useState<KnowledgeBuilderEvaluationRun | null>(null)
+  const [authorityVersion, setAuthorityVersion] =
+    useState<KnowledgeBuilderAuthorityVersion | null>(null)
+  const [readModelRebuild, setReadModelRebuild] =
+    useState<KnowledgeBuilderReadModelRebuild | null>(null)
+  const queryClient = useQueryClient()
+  const graphQuery = useQuery({
+    queryKey: ['knowledge-builder-graph', runId],
+    queryFn: () => fetchKnowledgeBuilderGraph(runId as string),
+    enabled: Boolean(runId),
+  })
+  const feedbackDeltasQuery = useQuery({
+    queryKey: ['knowledge-builder-feedback-deltas', runId],
+    queryFn: () => fetchKnowledgeBuilderFeedbackDeltas(runId || undefined),
+    enabled: false,
+  })
+  const runtimeFeedbackMetrics = useMemo(() => {
+    const deltas = feedbackDeltasQuery.data ?? []
+    const total = deltas.length
+    const falsePositiveCount = deltas.filter(
+      (delta) => delta.feedback_type === 'false_positive',
+    ).length
+    const falseNegativeCount = deltas.filter(
+      (delta) => delta.feedback_type === 'false_negative',
+    ).length
+    return {
+      total,
+      queued: deltas.filter(
+        (delta) =>
+          String(delta.evaluation_routing?.route_to || '') ===
+          'knowledge_builder_evaluation_lab',
+      ).length,
+      captureRate: total ? 1 - falseNegativeCount / total : 0,
+      typeOneErrorRate: total ? falsePositiveCount / total : 0,
+      typeTwoErrorRate: total ? falseNegativeCount / total : 0,
+    }
+  }, [feedbackDeltasQuery.data])
+  const discoveryMutation = useMutation({
+    mutationFn: createKnowledgeBuilderRun,
+    onSuccess: (run) => {
+      setRunId(run.discovery_run_id)
+      setSelectedNodeId(null)
+      setSelectedRelationId(null)
+      setCurationMessage(null)
+      setRelationCandidateId(null)
+      setTermCandidateId(null)
+      setEvaluationDataset(null)
+      setEvaluationRun(null)
+      setAuthorityVersion(null)
+      setReadModelRebuild(null)
+    },
+  })
+  const graph = graphQuery.data
+  const selectedNode = graph?.nodes.find((node) => node.node_id === selectedNodeId)
+  const selectedRelation =
+    graph?.relations.find((relation) => relation.relation_id === selectedRelationId) ??
+    graph?.relations[0]
+  const selectedCluster = graph?.clusters[0]
+  const selectedRelationAnchors = selectedRelation?.source_anchor_refs ?? []
+  const refreshGraph = () => {
+    if (runId) void queryClient.invalidateQueries({ queryKey: ['knowledge-builder-graph', runId] })
+  }
+  const relationMutation = useMutation({
+    mutationFn: (input: {
+      decision: 'accept' | 'reject' | 'change'
+      relationType: KnowledgeBuilderRelationType
+    }) =>
+      postKnowledgeBuilderAction({
+        action: 'curateRelation',
+        relationId: selectedRelation?.relation_id,
+        decision: input.decision,
+        relationType: input.relationType,
+        reviewerNotes:
+          input.relationType === 'not_same_as'
+            ? 'Reviewer marked this semantic neighborhood as a false friend.'
+            : 'Reviewer curated semantic relation.',
+      }),
+    onSuccess: (payload) => {
+      const relationCandidate = (
+        payload as {
+          relationCandidate?: { semantic_relation_candidate_id?: string }
+        }
+      ).relationCandidate
+      if (relationCandidate?.semantic_relation_candidate_id) {
+        setRelationCandidateId(relationCandidate.semantic_relation_candidate_id)
+      }
+      setCurationMessage(copy.curationSaved)
+      refreshGraph()
+    },
+  })
+  const splitMutation = useMutation({
+    mutationFn: () =>
+      postKnowledgeBuilderAction({
+        action: 'splitCluster',
+        clusterId: selectedCluster?.cluster_id,
+        nodeIds: graph?.nodes.slice(0, 2).map((node) => node.node_id) ?? [],
+        reviewerNotes: 'Reviewer split semantic neighborhood false friends.',
+      }),
+    onSuccess: () => {
+      setCurationMessage(copy.curationSaved)
+      refreshGraph()
+    },
+  })
+  const mergeMutation = useMutation({
+    mutationFn: () =>
+      postKnowledgeBuilderAction({
+        action: 'mergeClusters',
+        clusterIds: selectedCluster ? [selectedCluster.cluster_id] : [],
+        reviewerNotes: 'Reviewer merged related semantic neighborhoods.',
+      }),
+    onSuccess: () => {
+      setCurationMessage(copy.curationSaved)
+      refreshGraph()
+    },
+  })
+  const termMutation = useMutation({
+    mutationFn: () =>
+      postKnowledgeBuilderAction({
+        action: 'canonicalTerm',
+        discoveryRunId: runId,
+        domain: 'tender_compliance',
+        canonicalLabel,
+        definition,
+        aliases: aliases
+          .split(',')
+          .map((alias) => alias.trim())
+          .filter(Boolean),
+        allowedContexts: ['supplier qualification evidence'],
+        prohibitedContexts: ['unique serial number', 'identifier-only wording'],
+        sourceAnchorRefs: selectedRelationAnchors,
+        evidenceSummary:
+          selectedRelation?.evidence_summary ||
+          'Reviewer promoted curated tender semantic neighborhood evidence.',
+        proposedRuntimeEffect: {
+          control_family: 'tender_compliance',
+          suggested_rule_family: 'competition_restriction',
+          authority_state: 'candidate_only',
+        },
+        governanceState: 'PROPOSED',
+      }),
+    onSuccess: (payload) => {
+      const termCandidate = (payload as { termCandidate?: { term_candidate_id?: string } })
+        .termCandidate
+      if (termCandidate?.term_candidate_id) {
+        setTermCandidateId(termCandidate.term_candidate_id)
+      }
+      setCurationMessage(copy.curationSaved)
+    },
+  })
+  const evaluationDatasetMutation = useMutation({
+    mutationFn: () =>
+      postKnowledgeBuilderAction<{
+        evaluationDataset: KnowledgeBuilderEvaluationDataset
+      }>({
+        action: 'createEvaluationDataset',
+        discoveryRunId: runId,
+        useTenderUatFixture: true,
+      }),
+    onSuccess: (payload) => {
+      setEvaluationDataset(payload.evaluationDataset)
+      setEvaluationRun(null)
+      setCurationMessage(copy.curationSaved)
+    },
+  })
+  const evaluationRunMutation = useMutation({
+    mutationFn: () =>
+      postKnowledgeBuilderAction<{ evaluationRun: KnowledgeBuilderEvaluationRun }>({
+        action: 'runEvaluation',
+        evaluationDatasetId: evaluationDataset?.evaluation_dataset_id,
+        discoveryRunId: runId,
+      }),
+    onSuccess: (payload) => {
+      setEvaluationRun(payload.evaluationRun)
+      setCurationMessage(copy.curationSaved)
+    },
+  })
+  const ratingMutation = useMutation({
+    mutationFn: (input: {
+      resultId: string
+      humanRating: 'pass' | 'fail' | 'needs_review'
+      explanationAcceptance: 'accepted' | 'rejected' | 'needs_review'
+    }) =>
+      postKnowledgeBuilderAction({
+        action: 'rateEvaluationResult',
+        resultId: input.resultId,
+        humanRating: input.humanRating,
+        explanationAcceptance: input.explanationAcceptance,
+        errorLabels: [],
+        reviewerNotes: 'Hermes Evaluation Lab reviewer rating.',
+      }),
+    onSuccess: () => setCurationMessage(copy.evaluationSaved),
+  })
+  const promotionMutation = useMutation({
+    mutationFn: () =>
+      postKnowledgeBuilderAction<{
+        authorityVersion: KnowledgeBuilderAuthorityVersion
+      }>({
+        action: 'promoteRuntimeSemantics',
+        termCandidateId,
+        semanticRelationCandidateIds: relationCandidateId ? [relationCandidateId] : [],
+        evaluationRunId: evaluationRun?.evaluation_run_id,
+      }),
+    onSuccess: (payload) => {
+      setAuthorityVersion(payload.authorityVersion)
+      setCurationMessage(copy.curationSaved)
+    },
+  })
+  const rebuildMutation = useMutation({
+    mutationFn: () =>
+      postKnowledgeBuilderAction<{
+        readModelRebuild: KnowledgeBuilderReadModelRebuild
+      }>({
+        action: 'rebuildReadModels',
+        authorityVersionId: authorityVersion?.authority_version_id,
+      }),
+    onSuccess: (payload) => {
+      setReadModelRebuild(payload.readModelRebuild)
+      setCurationMessage(copy.curationSaved)
+    },
+  })
+
+  return (
+    <div
+      lang={locale === 'zh' ? 'zh-CN' : 'en'}
+      className="flex h-full min-h-0 flex-col bg-background text-foreground"
+    >
+      <header className="border-b border-border px-4 py-3 sm:px-6">
+        <h1 className="text-lg font-semibold">{copy.title}</h1>
+        <p className="mt-0.5 max-w-3xl text-sm text-muted-foreground">
+          {copy.subtitle}
+        </p>
+      </header>
+      <main className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 sm:p-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+        <section className="rounded-md border border-border bg-card p-4">
+          <label className="text-sm font-medium" htmlFor="kb-source-ref">
+            {copy.sourceRef}
+          </label>
+          <input
+            id="kb-source-ref"
+            className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+            placeholder={copy.sourceRefPlaceholder}
+            value={sourceRef}
+            onChange={(event) => setSourceRef(event.target.value)}
+          />
+          <label
+            className="mt-4 block text-sm font-medium"
+            htmlFor="kb-source-text"
+          >
+            {copy.sourceText}
+          </label>
+          <textarea
+            id="kb-source-text"
+            className="mt-2 min-h-72 w-full rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-primary"
+            placeholder={copy.placeholder}
+            value={sourceText}
+            onChange={(event) => setSourceText(event.target.value)}
+          />
+          <button
+            type="button"
+            className="mt-3 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            disabled={!sourceText.trim() || discoveryMutation.isPending}
+            onClick={() => discoveryMutation.mutate({ sourceRef, sourceText })}
+          >
+            {discoveryMutation.isPending ? copy.running : copy.runDiscovery}
+          </button>
+          {discoveryMutation.isError || graphQuery.isError ? (
+            <p className="mt-3 text-sm text-destructive">{copy.unavailable}</p>
+          ) : null}
+        </section>
+        <section className="rounded-md border border-border bg-card p-4">
+          <h2 className="text-sm font-semibold">{copy.graphPreview}</h2>
+          {graph ? (
+            <div className="mt-3 grid gap-4">
+              <p className="rounded-md border border-dashed border-border p-2 text-xs text-muted-foreground">
+                {graph.authority_notice || copy.nonAuthority}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <KnowledgeBuilderMetric label={copy.nodes} value={graph.nodes.length} />
+                <KnowledgeBuilderMetric
+                  label={copy.relations}
+                  value={graph.relations.length}
+                />
+                <KnowledgeBuilderMetric label={copy.notes} value={graph.notes.length} />
+                <KnowledgeBuilderMetric
+                  label={copy.clusters}
+                  value={graph.clusters.length}
+                />
+              </div>
+              <div className="grid gap-2">
+                {graph.nodes.map((node) => (
+                  <button
+                    key={node.node_id}
+                    type="button"
+                    className="rounded-md border border-border bg-background p-3 text-left"
+                    onClick={() => setSelectedNodeId(node.node_id)}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-sm font-semibold">{node.label}</span>
+                      <span className="rounded-full bg-muted px-2 py-1 text-xs">
+                        {node.governance_state}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {node.evidence_summary}
+                    </p>
+                  </button>
+                ))}
+              </div>
+              <div className="rounded-md border border-border bg-background p-3">
+                <h3 className="text-sm font-semibold">{copy.relationReview}</h3>
+                <div className="mt-3 grid gap-2">
+                  {graph.relations.map((relation) => (
+                    <button
+                      key={relation.relation_id}
+                      type="button"
+                      className={cn(
+                        'rounded-md border border-border p-3 text-left text-xs',
+                        selectedRelation?.relation_id === relation.relation_id
+                          ? 'bg-muted'
+                          : 'bg-card',
+                      )}
+                      onClick={() => {
+                        setSelectedRelationId(relation.relation_id)
+                        setRelationType(
+                          KNOWLEDGE_BUILDER_RELATION_TYPES.includes(
+                            relation.relation_type as KnowledgeBuilderRelationType,
+                          )
+                            ? (relation.relation_type as KnowledgeBuilderRelationType)
+                            : 'not_same_as',
+                        )
+                      }}
+                    >
+                      <span className="font-medium">{relation.relation_type}</span>
+                      <span className="ml-2 text-muted-foreground">
+                        {relation.governance_state}
+                      </span>
+                      <p className="mt-1 text-muted-foreground">
+                        {relation.evidence_summary || copy.evidence}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+                <label className="mt-3 block text-xs font-medium" htmlFor="kb-relation-type">
+                  {copy.relationType}
+                </label>
+                <select
+                  id="kb-relation-type"
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
+                  value={relationType}
+                  onChange={(event) =>
+                    setRelationType(event.target.value as KnowledgeBuilderRelationType)
+                  }
+                >
+                  {KNOWLEDGE_BUILDER_RELATION_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    disabled={!selectedRelation || relationMutation.isPending}
+                    onClick={() =>
+                      relationMutation.mutate({ decision: 'accept', relationType })
+                    }
+                  >
+                    {copy.acceptRelation}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    disabled={!selectedRelation || relationMutation.isPending}
+                    onClick={() =>
+                      relationMutation.mutate({ decision: 'change', relationType })
+                    }
+                  >
+                    {copy.changeRelation}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    disabled={!selectedRelation || relationMutation.isPending}
+                    onClick={() =>
+                      relationMutation.mutate({
+                        decision: 'change',
+                        relationType: 'not_same_as',
+                      })
+                    }
+                  >
+                    {copy.falseFriend}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    disabled={!selectedRelation || relationMutation.isPending}
+                    onClick={() =>
+                      relationMutation.mutate({ decision: 'reject', relationType })
+                    }
+                  >
+                    {copy.rejectRelation}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    disabled={!selectedCluster || splitMutation.isPending}
+                    onClick={() => splitMutation.mutate()}
+                  >
+                    {copy.splitCluster}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    disabled={!selectedCluster || mergeMutation.isPending}
+                    onClick={() => mergeMutation.mutate()}
+                  >
+                    {copy.mergeCluster}
+                  </button>
+                </div>
+              </div>
+              <div className="rounded-md border border-border bg-background p-3">
+                <h3 className="text-sm font-semibold">{copy.canonicalTerm}</h3>
+                <label className="mt-3 block text-xs font-medium" htmlFor="kb-canonical-label">
+                  {copy.canonicalLabel}
+                </label>
+                <input
+                  id="kb-canonical-label"
+                  className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-xs outline-none focus:border-primary"
+                  value={canonicalLabel}
+                  onChange={(event) => setCanonicalLabel(event.target.value)}
+                />
+                <label className="mt-3 block text-xs font-medium" htmlFor="kb-definition">
+                  {copy.definition}
+                </label>
+                <textarea
+                  id="kb-definition"
+                  className="mt-1 min-h-20 w-full rounded-md border border-border bg-card p-3 text-xs outline-none focus:border-primary"
+                  value={definition}
+                  onChange={(event) => setDefinition(event.target.value)}
+                />
+                <label className="mt-3 block text-xs font-medium" htmlFor="kb-aliases">
+                  {copy.aliases}
+                </label>
+                <input
+                  id="kb-aliases"
+                  className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-xs outline-none focus:border-primary"
+                  value={aliases}
+                  onChange={(event) => setAliases(event.target.value)}
+                />
+                <button
+                  type="button"
+                  className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                  disabled={!runId || !canonicalLabel.trim() || termMutation.isPending}
+                  onClick={() => termMutation.mutate()}
+                >
+                  {copy.promoteTerm}
+                </button>
+                <p className="mt-2 text-xs text-muted-foreground">{copy.nonAuthority}</p>
+                {curationMessage ? (
+                  <p className="mt-2 text-xs text-muted-foreground">{curationMessage}</p>
+                ) : null}
+              </div>
+              <div className="rounded-md border border-border bg-background p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold">{copy.evaluationLab}</h3>
+                  <span className="rounded-full bg-muted px-2 py-1 text-xs">
+                    {copy.nonAuthority}
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    disabled={!runId || evaluationDatasetMutation.isPending}
+                    onClick={() => evaluationDatasetMutation.mutate()}
+                  >
+                    {copy.addEvaluationExamples}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                    disabled={
+                      !evaluationDataset ||
+                      !runId ||
+                      evaluationRunMutation.isPending
+                    }
+                    onClick={() => evaluationRunMutation.mutate()}
+                  >
+                    {copy.runEvaluation}
+                  </button>
+                </div>
+                {evaluationDataset ? (
+                  <div className="mt-3 grid gap-2">
+                    {evaluationDataset.examples.map((example) => (
+                      <div
+                        key={example.evaluation_example_id}
+                        className="rounded-md border border-border bg-card p-2 text-xs"
+                      >
+                        <span className="font-medium">{example.case_type}</span>
+                        <span className="ml-2 text-muted-foreground">
+                          {example.expected_outcome}
+                        </span>
+                        <p className="mt-1 text-muted-foreground">{example.input_text}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {evaluationRun ? (
+                  <div className="mt-4 grid gap-3">
+                    <div>
+                      <h4 className="text-xs font-semibold">{copy.activationGate}</h4>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                        {Object.entries(evaluationRun.metrics).map(([key, value]) => (
+                          <KnowledgeBuilderMetric
+                            key={key}
+                            label={key}
+                            value={Number(value)}
+                          />
+                        ))}
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {evaluationRun.authority_notice}
+                      </p>
+                    </div>
+                    <div className="grid gap-2">
+                      <h4 className="text-xs font-semibold">{copy.expectedActual}</h4>
+                      {evaluationRun.results.map((result) => (
+                        <div
+                          key={result.evaluation_result_id}
+                          className="rounded-md border border-border bg-card p-2 text-xs"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span>
+                              {result.expected_outcome} / {result.actual_outcome}
+                            </span>
+                            <span className="text-muted-foreground">
+                              AI: {result.ai_assisted_rating}
+                              {result.human_rating ? ` · human: ${result.human_rating}` : ''}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className="rounded-md border border-border px-2 py-1"
+                              disabled={ratingMutation.isPending}
+                              onClick={() =>
+                                ratingMutation.mutate({
+                                  resultId: result.evaluation_result_id,
+                                  humanRating: 'pass',
+                                  explanationAcceptance: 'accepted',
+                                })
+                              }
+                            >
+                              {copy.ratePass}
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-md border border-border px-2 py-1"
+                              disabled={ratingMutation.isPending}
+                              onClick={() =>
+                                ratingMutation.mutate({
+                                  resultId: result.evaluation_result_id,
+                                  humanRating: 'fail',
+                                  explanationAcceptance: 'rejected',
+                                })
+                              }
+                            >
+                              {copy.rateFail}
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-md border border-border px-2 py-1"
+                              disabled={ratingMutation.isPending}
+                              onClick={() =>
+                                ratingMutation.mutate({
+                                  resultId: result.evaluation_result_id,
+                                  humanRating: 'needs_review',
+                                  explanationAcceptance: 'needs_review',
+                                })
+                              }
+                            >
+                              {copy.rateReview}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <div className="rounded-md border border-border bg-background p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold">{copy.feedbackDeltas}</h3>
+                  <button
+                    type="button"
+                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    disabled={feedbackDeltasQuery.isFetching}
+                    onClick={() => void feedbackDeltasQuery.refetch()}
+                  >
+                    {copy.loadFeedbackDeltas}
+                  </button>
+                </div>
+                {feedbackDeltasQuery.data?.length ? (
+                  <div className="mt-3 grid gap-3">
+                    <div className="rounded-md border border-dashed border-border bg-card p-3">
+                      <h4 className="text-xs font-semibold">
+                        {copy.runtimeFeedbackMetrics}
+                      </h4>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-5">
+                        <KnowledgeBuilderMetric
+                          label={copy.totalFeedback}
+                          value={runtimeFeedbackMetrics.total}
+                        />
+                        <KnowledgeBuilderMetric
+                          label={copy.queuedForEvaluation}
+                          value={runtimeFeedbackMetrics.queued}
+                        />
+                        <KnowledgeBuilderMetric
+                          label={copy.feedbackCaptureRate}
+                          value={runtimeFeedbackMetrics.captureRate}
+                        />
+                        <KnowledgeBuilderMetric
+                          label={copy.typeOneError}
+                          value={runtimeFeedbackMetrics.typeOneErrorRate}
+                        />
+                        <KnowledgeBuilderMetric
+                          label={copy.typeTwoError}
+                          value={runtimeFeedbackMetrics.typeTwoErrorRate}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      {feedbackDeltasQuery.data.map((delta) => (
+                        <div
+                          key={delta.candidate_delta_id}
+                          className="rounded-md border border-border bg-card p-2 text-xs"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-medium">
+                              {delta.feedback_type || delta.delta_kind}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {delta.governance_state}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-muted-foreground">
+                            {delta.discovery_run_id} · {delta.delta_kind} ·{' '}
+                            {String(delta.evaluation_routing?.route_to || 'evaluation')}
+                          </p>
+                          <button
+                            type="button"
+                            className="mt-2 rounded-md border border-border px-2 py-1"
+                            onClick={() => setRunId(delta.discovery_run_id)}
+                          >
+                            {copy.runEvaluation}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {copy.noFeedbackDeltas}
+                  </p>
+                )}
+              </div>
+              <div className="rounded-md border border-border bg-background p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold">{copy.governanceQueue}</h3>
+                  <span className="rounded-full bg-muted px-2 py-1 text-xs">
+                    {authorityVersion?.authority_state || copy.nonAuthority}
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
+                  <p>
+                    {copy.lineage}: {termCandidateId || 'term pending'} ·{' '}
+                    {relationCandidateId || 'relation pending'} ·{' '}
+                    {evaluationRun?.evaluation_run_id || 'evaluation pending'}
+                  </p>
+                  {authorityVersion ? (
+                    <p>
+                      {copy.activationStatus}: {authorityVersion.authority_version_id} ·{' '}
+                      {authorityVersion.approved_by} · {authorityVersion.activated_by}
+                    </p>
+                  ) : null}
+                  {readModelRebuild ? (
+                    <p>
+                      {copy.readModelStatus}: {readModelRebuild.rebuild_status} ·{' '}
+                      {readModelRebuild.rebuild_id}
+                    </p>
+                  ) : null}
+                  {readModelRebuild?.non_authoritative_notice ? (
+                    <p>{readModelRebuild.non_authoritative_notice}</p>
+                  ) : null}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                    disabled={
+                      !termCandidateId ||
+                      !relationCandidateId ||
+                      !evaluationRun ||
+                      promotionMutation.isPending
+                    }
+                    onClick={() => promotionMutation.mutate()}
+                  >
+                    {copy.promoteRuntimeAuthority}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    disabled={!authorityVersion || rebuildMutation.isPending}
+                    onClick={() => rebuildMutation.mutate()}
+                  >
+                    {copy.rebuildReadModel}
+                  </button>
+                </div>
+              </div>
+              <aside className="rounded-md border border-border bg-background p-3">
+                <h3 className="text-sm font-semibold">{copy.explanation}</h3>
+                {selectedNode ? (
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    <p>{selectedNode.evidence_summary}</p>
+                    <p className="mt-2">{copy.nonAuthority}</p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {copy.evidence}
+                  </p>
+                )}
+              </aside>
+            </div>
+          ) : (
+            <EmptyState label={copy.empty} />
+          )}
+        </section>
+      </main>
+    </div>
+  )
+}
+
+function KnowledgeBuilderMetric({
+  label,
+  value,
+}: {
+  label: string
+  value: number
+}) {
+  return (
+    <div className="rounded-md border border-border bg-background p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-lg font-semibold">{value}</div>
+    </div>
+  )
+}
+
+function TenderFindingCard({
+  finding,
+  runId,
+  copy,
+  onDisposition,
+  onFeedback,
+}: {
+  finding: TenderDetectionFinding
+  runId: string
+  copy: TenderReviewCopy
+  onDisposition: (disposition: 'accepted' | 'rejected' | 'edited') => void
+  onFeedback: (
+    feedbackType: 'false_positive' | 'false_negative' | 'ambiguity' | 'weak_explanation',
+    escalationOutcome: 'not_escalated' | 'escalated',
+  ) => void
+}) {
+  return (
+    <article className="rounded-md border border-border bg-background p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold">{finding.issue_type}</h3>
+          <p className="text-xs text-muted-foreground">
+            {runId} · {finding.severity} · {Math.round(finding.confidence * 100)}%
+          </p>
+        </div>
+        {finding.escalation_flag ? (
+          <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-700">
+            escalation
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-3 rounded bg-muted p-2 text-sm">{finding.matched_text}</p>
+      <p className="mt-2 text-xs text-muted-foreground">{finding.judgment_basis}</p>
+      {finding.suggested_replacement ? (
+        <div className="mt-3 rounded-md border border-dashed border-border p-2 text-xs">
+          <div className="font-medium">{copy.aiSuggestion}</div>
+          <p className="mt-1 text-muted-foreground">{finding.suggested_replacement}</p>
+        </div>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="rounded-md border border-border px-2 py-1 text-xs"
+          onClick={() => onDisposition('accepted')}
+        >
+          {copy.accept}
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-border px-2 py-1 text-xs"
+          onClick={() => onDisposition('rejected')}
+        >
+          {copy.reject}
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-border px-2 py-1 text-xs"
+          onClick={() => onDisposition('edited')}
+        >
+          {copy.edit}
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-border px-2 py-1 text-xs"
+          onClick={() => onFeedback('false_positive', 'not_escalated')}
+        >
+          {copy.falsePositive}
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-border px-2 py-1 text-xs"
+          onClick={() => onFeedback('false_negative', 'not_escalated')}
+        >
+          {copy.falseNegative}
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-border px-2 py-1 text-xs"
+          onClick={() => onFeedback('ambiguity', 'not_escalated')}
+        >
+          {copy.ambiguous}
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-border px-2 py-1 text-xs"
+          onClick={() => onFeedback('weak_explanation', 'escalated')}
+        >
+          {copy.escalate}
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function PolicyRuleCandidateCard({
+  candidate,
+  copy,
+}: {
+  candidate: PolicyRuleCandidate
+  copy: PolicyRuleCopy
+}) {
+  const nonAuthority =
+    candidate.candidateState === 'DRAFT' ||
+    candidate.candidateState === 'PROPOSED' ||
+    !candidate.isRuntimeAuthority
+  return (
+    <article className="rounded-md border border-border bg-card p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="truncate text-sm font-semibold">
+              {candidate.ruleCandidateId}
+            </h2>
+            <Badge>{candidate.ruleFamily}</Badge>
+            <Badge>{candidate.candidateState}</Badge>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {nonAuthority
+              ? candidate.nonAuthorityReason || copy.nonAuthority
+              : copy.runtimeAuthority}
+          </p>
+        </div>
+        <Badge>{nonAuthority ? copy.nonAuthority : copy.runtimeAuthority}</Badge>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <InspectorPanel title={copy.aiText}>
+          <p className="text-sm text-foreground">{candidate.draftRuleText}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {candidate.extractedRationale}
+          </p>
+        </InspectorPanel>
+        <InspectorPanel title={copy.review}>
+          <Fact label={copy.humanEdits} value={String(candidate.humanEdits.length)} />
+          <Fact label={copy.approvalEvidence} value={JSON.stringify(candidate.approvalEvidence)} />
+          <Fact label={copy.testEvidence} value={JSON.stringify(candidate.testEvidence)} />
+        </InspectorPanel>
+        <InspectorPanel title={copy.evidence}>
+          <Fact
+            label={copy.sourceAnchors}
+            value={candidate.sourceAnchorRefs.join(', ') || '-'}
+          />
+          <Fact
+            label={copy.applicability}
+            value={JSON.stringify(candidate.applicabilityScope)}
+          />
+        </InspectorPanel>
+        <InspectorPanel title={copy.uncertainty}>
+          <Fact label={copy.confidence} value={percent(candidate.confidence)} />
+          <Fact label={copy.uncertainty} value={candidate.uncertaintyNotes || '-'} />
+        </InspectorPanel>
+      </div>
+    </article>
   )
 }
 

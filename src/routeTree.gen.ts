@@ -49,6 +49,7 @@ import { Route as ApiTerminalStreamRouteImport } from './routes/api/terminal-str
 import { Route as ApiTerminalResizeRouteImport } from './routes/api/terminal-resize'
 import { Route as ApiTerminalInputRouteImport } from './routes/api/terminal-input'
 import { Route as ApiTerminalCloseRouteImport } from './routes/api/terminal-close'
+import { Route as ApiTenderDocumentReviewRouteImport } from './routes/api/tender-document-review'
 import { Route as ApiStartHermesRouteImport } from './routes/api/start-hermes'
 import { Route as ApiStartAgentRouteImport } from './routes/api/start-agent'
 import { Route as ApiSkillsRouteImport } from './routes/api/skills'
@@ -112,12 +113,14 @@ import { Route as ApiKnowledgeSyncRouteImport } from './routes/api/knowledge/syn
 import { Route as ApiKnowledgeSearchRouteImport } from './routes/api/knowledge/search'
 import { Route as ApiKnowledgeReadRouteImport } from './routes/api/knowledge/read'
 import { Route as ApiKnowledgePromotionRequestsRouteImport } from './routes/api/knowledge/promotion-requests'
+import { Route as ApiKnowledgePolicyRulesRouteImport } from './routes/api/knowledge/policy-rules'
 import { Route as ApiKnowledgeListRouteImport } from './routes/api/knowledge/list'
 import { Route as ApiKnowledgeIngestRouteImport } from './routes/api/knowledge/ingest'
 import { Route as ApiKnowledgeGraphRouteImport } from './routes/api/knowledge/graph'
 import { Route as ApiKnowledgeFilesRouteImport } from './routes/api/knowledge/files'
 import { Route as ApiKnowledgeEventsRouteImport } from './routes/api/knowledge/events'
 import { Route as ApiKnowledgeConfigRouteImport } from './routes/api/knowledge/config'
+import { Route as ApiKnowledgeBuilderRouteImport } from './routes/api/knowledge/builder'
 import { Route as ApiHermesTasksTaskIdRouteImport } from './routes/api/hermes-tasks.$taskId'
 import { Route as ApiHermesProxySplatRouteImport } from './routes/api/hermes-proxy/$'
 import { Route as ApiHermesJobsJobIdRouteImport } from './routes/api/hermes-jobs.$jobId'
@@ -325,6 +328,11 @@ const ApiTerminalInputRoute = ApiTerminalInputRouteImport.update({
 const ApiTerminalCloseRoute = ApiTerminalCloseRouteImport.update({
   id: '/api/terminal-close',
   path: '/api/terminal-close',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTenderDocumentReviewRoute = ApiTenderDocumentReviewRouteImport.update({
+  id: '/api/tender-document-review',
+  path: '/api/tender-document-review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiStartHermesRoute = ApiStartHermesRouteImport.update({
@@ -643,6 +651,11 @@ const ApiKnowledgePromotionRequestsRoute =
     path: '/api/knowledge/promotion-requests',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiKnowledgePolicyRulesRoute = ApiKnowledgePolicyRulesRouteImport.update({
+  id: '/api/knowledge/policy-rules',
+  path: '/api/knowledge/policy-rules',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiKnowledgeListRoute = ApiKnowledgeListRouteImport.update({
   id: '/api/knowledge/list',
   path: '/api/knowledge/list',
@@ -671,6 +684,11 @@ const ApiKnowledgeEventsRoute = ApiKnowledgeEventsRouteImport.update({
 const ApiKnowledgeConfigRoute = ApiKnowledgeConfigRouteImport.update({
   id: '/api/knowledge/config',
   path: '/api/knowledge/config',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiKnowledgeBuilderRoute = ApiKnowledgeBuilderRouteImport.update({
+  id: '/api/knowledge/builder',
+  path: '/api/knowledge/builder',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHermesTasksTaskIdRoute = ApiHermesTasksTaskIdRouteImport.update({
@@ -762,6 +780,7 @@ export interface FileRoutesByFullPath {
   '/api/skills': typeof ApiSkillsRouteWithChildren
   '/api/start-agent': typeof ApiStartAgentRoute
   '/api/start-hermes': typeof ApiStartHermesRoute
+  '/api/tender-document-review': typeof ApiTenderDocumentReviewRoute
   '/api/terminal-close': typeof ApiTerminalCloseRoute
   '/api/terminal-input': typeof ApiTerminalInputRoute
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
@@ -786,12 +805,14 @@ export interface FileRoutesByFullPath {
   '/api/hermes-jobs/$jobId': typeof ApiHermesJobsJobIdRoute
   '/api/hermes-proxy/$': typeof ApiHermesProxySplatRoute
   '/api/hermes-tasks/$taskId': typeof ApiHermesTasksTaskIdRoute
+  '/api/knowledge/builder': typeof ApiKnowledgeBuilderRoute
   '/api/knowledge/config': typeof ApiKnowledgeConfigRoute
   '/api/knowledge/events': typeof ApiKnowledgeEventsRoute
   '/api/knowledge/files': typeof ApiKnowledgeFilesRoute
   '/api/knowledge/graph': typeof ApiKnowledgeGraphRoute
   '/api/knowledge/ingest': typeof ApiKnowledgeIngestRoute
   '/api/knowledge/list': typeof ApiKnowledgeListRoute
+  '/api/knowledge/policy-rules': typeof ApiKnowledgePolicyRulesRoute
   '/api/knowledge/promotion-requests': typeof ApiKnowledgePromotionRequestsRoute
   '/api/knowledge/read': typeof ApiKnowledgeReadRoute
   '/api/knowledge/search': typeof ApiKnowledgeSearchRoute
@@ -878,6 +899,7 @@ export interface FileRoutesByTo {
   '/api/skills': typeof ApiSkillsRouteWithChildren
   '/api/start-agent': typeof ApiStartAgentRoute
   '/api/start-hermes': typeof ApiStartHermesRoute
+  '/api/tender-document-review': typeof ApiTenderDocumentReviewRoute
   '/api/terminal-close': typeof ApiTerminalCloseRoute
   '/api/terminal-input': typeof ApiTerminalInputRoute
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
@@ -902,12 +924,14 @@ export interface FileRoutesByTo {
   '/api/hermes-jobs/$jobId': typeof ApiHermesJobsJobIdRoute
   '/api/hermes-proxy/$': typeof ApiHermesProxySplatRoute
   '/api/hermes-tasks/$taskId': typeof ApiHermesTasksTaskIdRoute
+  '/api/knowledge/builder': typeof ApiKnowledgeBuilderRoute
   '/api/knowledge/config': typeof ApiKnowledgeConfigRoute
   '/api/knowledge/events': typeof ApiKnowledgeEventsRoute
   '/api/knowledge/files': typeof ApiKnowledgeFilesRoute
   '/api/knowledge/graph': typeof ApiKnowledgeGraphRoute
   '/api/knowledge/ingest': typeof ApiKnowledgeIngestRoute
   '/api/knowledge/list': typeof ApiKnowledgeListRoute
+  '/api/knowledge/policy-rules': typeof ApiKnowledgePolicyRulesRoute
   '/api/knowledge/promotion-requests': typeof ApiKnowledgePromotionRequestsRoute
   '/api/knowledge/read': typeof ApiKnowledgeReadRoute
   '/api/knowledge/search': typeof ApiKnowledgeSearchRoute
@@ -996,6 +1020,7 @@ export interface FileRoutesById {
   '/api/skills': typeof ApiSkillsRouteWithChildren
   '/api/start-agent': typeof ApiStartAgentRoute
   '/api/start-hermes': typeof ApiStartHermesRoute
+  '/api/tender-document-review': typeof ApiTenderDocumentReviewRoute
   '/api/terminal-close': typeof ApiTerminalCloseRoute
   '/api/terminal-input': typeof ApiTerminalInputRoute
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
@@ -1020,12 +1045,14 @@ export interface FileRoutesById {
   '/api/hermes-jobs/$jobId': typeof ApiHermesJobsJobIdRoute
   '/api/hermes-proxy/$': typeof ApiHermesProxySplatRoute
   '/api/hermes-tasks/$taskId': typeof ApiHermesTasksTaskIdRoute
+  '/api/knowledge/builder': typeof ApiKnowledgeBuilderRoute
   '/api/knowledge/config': typeof ApiKnowledgeConfigRoute
   '/api/knowledge/events': typeof ApiKnowledgeEventsRoute
   '/api/knowledge/files': typeof ApiKnowledgeFilesRoute
   '/api/knowledge/graph': typeof ApiKnowledgeGraphRoute
   '/api/knowledge/ingest': typeof ApiKnowledgeIngestRoute
   '/api/knowledge/list': typeof ApiKnowledgeListRoute
+  '/api/knowledge/policy-rules': typeof ApiKnowledgePolicyRulesRoute
   '/api/knowledge/promotion-requests': typeof ApiKnowledgePromotionRequestsRoute
   '/api/knowledge/read': typeof ApiKnowledgeReadRoute
   '/api/knowledge/search': typeof ApiKnowledgeSearchRoute
@@ -1115,6 +1142,7 @@ export interface FileRouteTypes {
     | '/api/skills'
     | '/api/start-agent'
     | '/api/start-hermes'
+    | '/api/tender-document-review'
     | '/api/terminal-close'
     | '/api/terminal-input'
     | '/api/terminal-resize'
@@ -1139,12 +1167,14 @@ export interface FileRouteTypes {
     | '/api/hermes-jobs/$jobId'
     | '/api/hermes-proxy/$'
     | '/api/hermes-tasks/$taskId'
+    | '/api/knowledge/builder'
     | '/api/knowledge/config'
     | '/api/knowledge/events'
     | '/api/knowledge/files'
     | '/api/knowledge/graph'
     | '/api/knowledge/ingest'
     | '/api/knowledge/list'
+    | '/api/knowledge/policy-rules'
     | '/api/knowledge/promotion-requests'
     | '/api/knowledge/read'
     | '/api/knowledge/search'
@@ -1231,6 +1261,7 @@ export interface FileRouteTypes {
     | '/api/skills'
     | '/api/start-agent'
     | '/api/start-hermes'
+    | '/api/tender-document-review'
     | '/api/terminal-close'
     | '/api/terminal-input'
     | '/api/terminal-resize'
@@ -1255,12 +1286,14 @@ export interface FileRouteTypes {
     | '/api/hermes-jobs/$jobId'
     | '/api/hermes-proxy/$'
     | '/api/hermes-tasks/$taskId'
+    | '/api/knowledge/builder'
     | '/api/knowledge/config'
     | '/api/knowledge/events'
     | '/api/knowledge/files'
     | '/api/knowledge/graph'
     | '/api/knowledge/ingest'
     | '/api/knowledge/list'
+    | '/api/knowledge/policy-rules'
     | '/api/knowledge/promotion-requests'
     | '/api/knowledge/read'
     | '/api/knowledge/search'
@@ -1348,6 +1381,7 @@ export interface FileRouteTypes {
     | '/api/skills'
     | '/api/start-agent'
     | '/api/start-hermes'
+    | '/api/tender-document-review'
     | '/api/terminal-close'
     | '/api/terminal-input'
     | '/api/terminal-resize'
@@ -1372,12 +1406,14 @@ export interface FileRouteTypes {
     | '/api/hermes-jobs/$jobId'
     | '/api/hermes-proxy/$'
     | '/api/hermes-tasks/$taskId'
+    | '/api/knowledge/builder'
     | '/api/knowledge/config'
     | '/api/knowledge/events'
     | '/api/knowledge/files'
     | '/api/knowledge/graph'
     | '/api/knowledge/ingest'
     | '/api/knowledge/list'
+    | '/api/knowledge/policy-rules'
     | '/api/knowledge/promotion-requests'
     | '/api/knowledge/read'
     | '/api/knowledge/search'
@@ -1466,6 +1502,7 @@ export interface RootRouteChildren {
   ApiSkillsRoute: typeof ApiSkillsRouteWithChildren
   ApiStartAgentRoute: typeof ApiStartAgentRoute
   ApiStartHermesRoute: typeof ApiStartHermesRoute
+  ApiTenderDocumentReviewRoute: typeof ApiTenderDocumentReviewRoute
   ApiTerminalCloseRoute: typeof ApiTerminalCloseRoute
   ApiTerminalInputRoute: typeof ApiTerminalInputRoute
   ApiTerminalResizeRoute: typeof ApiTerminalResizeRoute
@@ -1480,12 +1517,14 @@ export interface RootRouteChildren {
   ChatIndexRoute: typeof ChatIndexRoute
   ApiDataConnectionsSummaryRoute: typeof ApiDataConnectionsSummaryRoute
   ApiHermesProxySplatRoute: typeof ApiHermesProxySplatRoute
+  ApiKnowledgeBuilderRoute: typeof ApiKnowledgeBuilderRoute
   ApiKnowledgeConfigRoute: typeof ApiKnowledgeConfigRoute
   ApiKnowledgeEventsRoute: typeof ApiKnowledgeEventsRoute
   ApiKnowledgeFilesRoute: typeof ApiKnowledgeFilesRoute
   ApiKnowledgeGraphRoute: typeof ApiKnowledgeGraphRoute
   ApiKnowledgeIngestRoute: typeof ApiKnowledgeIngestRoute
   ApiKnowledgeListRoute: typeof ApiKnowledgeListRoute
+  ApiKnowledgePolicyRulesRoute: typeof ApiKnowledgePolicyRulesRoute
   ApiKnowledgePromotionRequestsRoute: typeof ApiKnowledgePromotionRequestsRoute
   ApiKnowledgeReadRoute: typeof ApiKnowledgeReadRoute
   ApiKnowledgeSearchRoute: typeof ApiKnowledgeSearchRoute
@@ -1787,6 +1826,13 @@ declare module '@tanstack/react-router' {
       path: '/api/terminal-close'
       fullPath: '/api/terminal-close'
       preLoaderRoute: typeof ApiTerminalCloseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tender-document-review': {
+      id: '/api/tender-document-review'
+      path: '/api/tender-document-review'
+      fullPath: '/api/tender-document-review'
+      preLoaderRoute: typeof ApiTenderDocumentReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/start-hermes': {
@@ -2230,6 +2276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiKnowledgePromotionRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/knowledge/policy-rules': {
+      id: '/api/knowledge/policy-rules'
+      path: '/api/knowledge/policy-rules'
+      fullPath: '/api/knowledge/policy-rules'
+      preLoaderRoute: typeof ApiKnowledgePolicyRulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/knowledge/list': {
       id: '/api/knowledge/list'
       path: '/api/knowledge/list'
@@ -2270,6 +2323,13 @@ declare module '@tanstack/react-router' {
       path: '/api/knowledge/config'
       fullPath: '/api/knowledge/config'
       preLoaderRoute: typeof ApiKnowledgeConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/knowledge/builder': {
+      id: '/api/knowledge/builder'
+      path: '/api/knowledge/builder'
+      fullPath: '/api/knowledge/builder'
+      preLoaderRoute: typeof ApiKnowledgeBuilderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/hermes-tasks/$taskId': {
@@ -2486,6 +2546,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSkillsRoute: ApiSkillsRouteWithChildren,
   ApiStartAgentRoute: ApiStartAgentRoute,
   ApiStartHermesRoute: ApiStartHermesRoute,
+  ApiTenderDocumentReviewRoute: ApiTenderDocumentReviewRoute,
   ApiTerminalCloseRoute: ApiTerminalCloseRoute,
   ApiTerminalInputRoute: ApiTerminalInputRoute,
   ApiTerminalResizeRoute: ApiTerminalResizeRoute,
@@ -2500,12 +2561,14 @@ const rootRouteChildren: RootRouteChildren = {
   ChatIndexRoute: ChatIndexRoute,
   ApiDataConnectionsSummaryRoute: ApiDataConnectionsSummaryRoute,
   ApiHermesProxySplatRoute: ApiHermesProxySplatRoute,
+  ApiKnowledgeBuilderRoute: ApiKnowledgeBuilderRoute,
   ApiKnowledgeConfigRoute: ApiKnowledgeConfigRoute,
   ApiKnowledgeEventsRoute: ApiKnowledgeEventsRoute,
   ApiKnowledgeFilesRoute: ApiKnowledgeFilesRoute,
   ApiKnowledgeGraphRoute: ApiKnowledgeGraphRoute,
   ApiKnowledgeIngestRoute: ApiKnowledgeIngestRoute,
   ApiKnowledgeListRoute: ApiKnowledgeListRoute,
+  ApiKnowledgePolicyRulesRoute: ApiKnowledgePolicyRulesRoute,
   ApiKnowledgePromotionRequestsRoute: ApiKnowledgePromotionRequestsRoute,
   ApiKnowledgeReadRoute: ApiKnowledgeReadRoute,
   ApiKnowledgeSearchRoute: ApiKnowledgeSearchRoute,

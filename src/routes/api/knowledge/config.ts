@@ -8,6 +8,7 @@ import {
   resolveKnowledgeBaseConfig,
   writeKnowledgeBaseConfig,
 } from '../../../server/knowledge-config'
+import { buildNativeMetadataSummary } from '../../../server/knowledge-browser'
 import type {
   KnowledgeBaseConfig,
   KnowledgeContextPreferencePatch,
@@ -34,10 +35,21 @@ export const Route = createFileRoute('/api/knowledge/config')({
           })
           const datasetGovernance =
             await readGovernedKnowledgeDatasetGovernance(request.headers)
+          const nativeMetadata = buildNativeMetadataSummary(
+            activeWorkspace.path,
+            {
+              organizationId: activeWorkspace.organizationId,
+              datasetType: activeWorkspace.datasetType,
+              datasetKey: activeWorkspace.datasetKey,
+              activeDatasetVersionId: activeWorkspace.activeDatasetVersionId,
+            },
+            { datasetGovernance },
+          )
           return json({
             config: resolved.config,
             resolved,
             datasetGovernance,
+            nativeMetadata,
           })
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {

@@ -3,6 +3,12 @@ import {
   withSemantierAgentBase,
 } from './semantier-agent-api'
 
+export const TENDER_SENSITIVE_LABELING_DASHBOARD_CONTRACT =
+  'tender_sensitive_labeling.dashboard.v1'
+
+export const TENDER_DOCUMENT_REVIEW_COMPATIBILITY_ROUTE =
+  '/api/tender-document-review'
+
 export type TenderDetectionFinding = {
   finding_id: string
   issue_type: string
@@ -63,7 +69,7 @@ export async function createTenderDetection(
 ): Promise<TenderDetectionRun> {
   const payload = await requestTenderReview<{ run: TenderDetectionRun }>(
     requestHeaders,
-    '/api/tender-document-review/detections',
+    `${TENDER_DOCUMENT_REVIEW_COMPATIBILITY_ROUTE}/detections`,
     {
       method: 'POST',
       body: JSON.stringify(input),
@@ -84,7 +90,7 @@ export async function recordTenderFindingDisposition(
 ): Promise<Record<string, unknown>> {
   const payload = await requestTenderReview<{ disposition: Record<string, unknown> }>(
     requestHeaders,
-    `/api/tender-document-review/runs/${encodeURIComponent(input.runId)}/findings/${encodeURIComponent(input.findingId)}/disposition`,
+    `${TENDER_DOCUMENT_REVIEW_COMPATIBILITY_ROUTE}/runs/${encodeURIComponent(input.runId)}/findings/${encodeURIComponent(input.findingId)}/disposition`,
     {
       method: 'POST',
       body: JSON.stringify({
@@ -119,7 +125,7 @@ export async function recordTenderFindingFeedback(
 ): Promise<Record<string, unknown>> {
   const payload = await requestTenderReview<{ feedback: Record<string, unknown> }>(
     requestHeaders,
-    `/api/tender-document-review/runs/${encodeURIComponent(input.runId)}/findings/${encodeURIComponent(input.findingId)}/feedback`,
+    `${TENDER_DOCUMENT_REVIEW_COMPATIBILITY_ROUTE}/runs/${encodeURIComponent(input.runId)}/findings/${encodeURIComponent(input.findingId)}/feedback`,
     {
       method: 'POST',
       body: JSON.stringify({
@@ -140,7 +146,7 @@ export async function createTenderReport(
 ): Promise<Record<string, unknown>> {
   const payload = await requestTenderReview<{ report: Record<string, unknown> }>(
     requestHeaders,
-    `/api/tender-document-review/runs/${encodeURIComponent(runId)}/report`,
+    `${TENDER_DOCUMENT_REVIEW_COMPATIBILITY_ROUTE}/runs/${encodeURIComponent(runId)}/report`,
     {
       method: 'POST',
     },

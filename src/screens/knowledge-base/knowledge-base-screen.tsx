@@ -764,6 +764,10 @@ const KNOWLEDGE_BUILDER_COPY = {
     typeTwoError: 'Type II error',
     totalFeedback: 'Total feedback',
     queuedForEvaluation: 'Queued for evaluation',
+    importedLexiconCandidates: 'Imported lexicon candidates',
+    importedLexiconEmpty: 'No imported DOCX lexicon candidates yet.',
+    sourceAnchors: 'Source anchors',
+    compilerProfile: 'Compiler profile',
     loadFeedbackDeltas: 'Load feedback deltas',
     noFeedbackDeltas: 'No runtime feedback deltas queued.',
     nonAuthority: 'Non-authoritative until governed promotion and activation',
@@ -822,6 +826,10 @@ const KNOWLEDGE_BUILDER_COPY = {
     typeTwoError: '二类错误',
     totalFeedback: '反馈总数',
     queuedForEvaluation: '待评估',
+    importedLexiconCandidates: '已导入词表候选项',
+    importedLexiconEmpty: '暂无已导入 DOCX 词表候选项。',
+    sourceAnchors: '来源锚点',
+    compilerProfile: '编译器配置',
     loadFeedbackDeltas: '加载反馈增量',
     noFeedbackDeltas: '暂无运行时反馈增量。',
     nonAuthority: '治理提升并激活前不是运行时权威',
@@ -2703,6 +2711,19 @@ export function KnowledgeBuilderStudioScreen() {
     queryFn: () => fetchKnowledgeBuilderFeedbackDeltas(runId || undefined),
     enabled: false,
   })
+  const importedLexiconCandidatesQuery = useQuery({
+    queryKey: ['knowledge-builder-imported-lexicon-candidates'],
+    queryFn: fetchPolicyRuleCandidates,
+  })
+  const importedLexiconCandidates = useMemo(
+    () =>
+      (importedLexiconCandidatesQuery.data ?? []).filter((candidate) =>
+        String(candidate.applicabilityScope?.compiler_profile_version || '').startsWith(
+          'sensitive_lexicon_docx.',
+        ),
+      ),
+    [importedLexiconCandidatesQuery.data],
+  )
   const runtimeFeedbackMetrics = useMemo(() => {
     const deltas = feedbackDeltasQuery.data ?? []
     const total = deltas.length
@@ -3149,6 +3170,61 @@ export function KnowledgeBuilderStudioScreen() {
                 {curationMessage ? (
                   <p className="mt-2 text-xs text-muted-foreground">{curationMessage}</p>
                 ) : null}
+              </div>
+              <div className="rounded-md border border-border bg-background p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold">
+                    {copy.importedLexiconCandidates}
+                  </h3>
+                  <span className="rounded-full bg-muted px-2 py-1 text-xs">
+                    {copy.nonAuthority}
+                  </span>
+                </div>
+                {importedLexiconCandidates.length ? (
+                  <div className="mt-3 grid gap-2">
+                    {importedLexiconCandidates.slice(0, 8).map((candidate) => (
+                      <div
+                        key={candidate.ruleCandidateId}
+                        className="rounded-md border border-border bg-card p-3 text-xs"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-medium">
+                            {String(
+                              candidate.applicabilityScope?.normalized_term ||
+                                candidate.draftRuleText ||
+                                candidate.ruleCandidateId,
+                            )}
+                          </span>
+                          <span className="rounded-full bg-muted px-2 py-1">
+                            {candidate.candidateState}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-muted-foreground">
+                          {candidate.extractedRationale}
+                        </p>
+                        <div className="mt-2 grid gap-1 text-muted-foreground">
+                          <span>
+                            {copy.compilerProfile}:{' '}
+                            {String(
+                              candidate.applicabilityScope?.compiler_profile_version ||
+                                'n/a',
+                            )}
+                          </span>
+                          <span className="break-all">
+                            {copy.sourceAnchors}:{' '}
+                            {candidate.sourceAnchorRefs.length
+                              ? candidate.sourceAnchorRefs.join(', ')
+                              : 'n/a'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {copy.importedLexiconEmpty}
+                  </p>
+                )}
               </div>
               <div className="rounded-md border border-border bg-background p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">

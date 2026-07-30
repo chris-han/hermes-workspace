@@ -146,7 +146,7 @@ export function shouldPollWeixinLoginStatus(status: string): boolean {
 }
 
 export function shouldAutoRefreshWeixinLoginQr(status: string): boolean {
-  return status === 'expired'
+  return false
 }
 
 export const WEIXIN_LOGIN_POLL_INTERVAL_MS = 1500
@@ -277,13 +277,20 @@ export function LoginScreen({
             data.message?.includes('already been consumed') ||
             data.detail?.includes('already been consumed'))
         ) {
-          setWeixinMessage(copy.preparingQrMessage)
-          await startWeixinLogin()
+          setError('')
+          setWeixinStatus('replay_blocked')
+          setWeixinMessage(data.message || copy.signInSessionExpiredMessage)
           return
         }
         throw new Error(data.detail || `HTTP ${res.status}`)
       }
       setError('')
+      if (data.authenticated) {
+        setWeixinState('')
+        setWeixinStatus('confirmed')
+        window.location.reload()
+        return
+      }
       setWeixinStatus(data.status)
       if (data.redirect_base_url) {
         setWeixinMessage(copy.qrScannedMessage)
@@ -301,11 +308,6 @@ export function LoginScreen({
         data.status === 'failed'
       ) {
         setWeixinMessage(data.message || copy.signInSessionExpiredMessage)
-      }
-      if (data.authenticated) {
-        setWeixinState('')
-        setWeixinStatus('confirmed')
-        window.location.reload()
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : copy.checkWeixinFailed)
@@ -379,7 +381,7 @@ export function LoginScreen({
               <img
                 src="/logo.svg"
                 alt="semantier logo"
-                className="size-8 rounded-button object-contain shrink-0 bg-transparent"
+                className="size-8 object-contain shrink-0"
               />
               <h1 className="brand-wordmark text-xl font-bold tracking-tight text-foreground">
                 semantier

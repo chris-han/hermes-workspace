@@ -23,8 +23,9 @@ describe('shouldPollWeixinLoginStatus', () => {
     expect(shouldPollWeixinLoginStatus('failed')).toBe(false)
   })
 
-  it('marks expired QR sessions for automatic refresh', () => {
-    expect(shouldAutoRefreshWeixinLoginQr('expired')).toBe(true)
+  it('does not silently replace terminal QR sessions', () => {
+    expect(shouldAutoRefreshWeixinLoginQr('expired')).toBe(false)
+    expect(shouldAutoRefreshWeixinLoginQr('replay_blocked')).toBe(false)
     expect(shouldAutoRefreshWeixinLoginQr('wait')).toBe(false)
     expect(shouldAutoRefreshWeixinLoginQr('confirmed')).toBe(false)
   })

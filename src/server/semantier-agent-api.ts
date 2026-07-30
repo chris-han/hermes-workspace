@@ -153,14 +153,10 @@ export function buildSemantierAgentProxyResponse(
   body: BodyInit | null | undefined,
   upstream: Response,
 ): Response {
-  const response = new Response(body, {
+  return new Response(body, {
     status: upstream.status,
     headers: buildSemantierAgentProxyResponseHeaders(upstream.headers),
   })
-  for (const setCookie of getSetCookieValues(upstream.headers)) {
-    response.headers.append('set-cookie', setCookie)
-  }
-  return response
 }
 
 export function withSemantierAgentBase(path: string): string {

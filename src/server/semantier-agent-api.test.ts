@@ -4,6 +4,7 @@ import {
   allowedSemantierAuthCookieNamesForPath,
   buildSemantierAgentProbeHeaders,
   buildSemantierAgentProxyHeaders,
+  buildSemantierAgentProxyResponse,
   buildSemantierAgentProxyResponseHeaders,
 } from './semantier-agent-api'
 
@@ -151,5 +152,23 @@ describe('buildSemantierAgentProxyResponseHeaders', () => {
 
     expect(serialized).toContain('vt_session=""')
     expect(serialized).toContain('vt_browser_session=""')
+  })
+})
+
+describe('buildSemantierAgentProxyResponse', () => {
+  it('does not duplicate proxied set-cookie headers', async () => {
+    const upstream = new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+        'set-cookie': 'vt_session=session123; Path=/; HttpOnly',
+      },
+    })
+
+    const response = buildSemantierAgentProxyResponse('{"ok":true}', upstream)
+    const serialized = response.headers.get('set-cookie') || ''
+
+    expect(serialized.match(/vt_session=session123/g) ?? []).toHaveLength(1)
+    expect(await response.text()).toBe('{"ok":true}')
   })
 })

@@ -10,11 +10,31 @@ import {
   EffectiveContextScreen,
   KnowledgeBaseScreen,
 } from '@/screens/knowledge-base/knowledge-base-screen'
+import { GovernedGraphWorkSurface } from '@/screens/knowledge-base/graph/work-surface'
 
 const knowledgeBaseSearchSchema = z.object({
   tab: z
     .enum(['legal', 'general', 'dataset', 'effective', 'governance'])
     .optional(),
+  view: z.enum(['graph']).optional(),
+  lens: z
+    .enum([
+      'overview',
+      'evidence',
+      'sensitivity',
+      'authority',
+      'conflict',
+      'lineage',
+      'replay',
+      'impact',
+      'governance',
+    ])
+    .optional(),
+  node_id: z.string().optional(),
+  assertion_id: z.string().optional(),
+  source_ref: z.string().optional(),
+  graph_snapshot_ref: z.string().optional(),
+  as_of: z.string().optional(),
 })
 
 const KnowledgeBrowserScreen = lazy(async () => {
@@ -92,6 +112,8 @@ function KnowledgeBaseRoute() {
   const [tab, setTab] = useState<KnowledgeBaseTab>(
     normalizeKnowledgeBaseTab(search.tab),
   )
+  const showGraphSurface =
+    search.view === 'graph' && (tab === 'legal' || tab === 'governance')
   usePageTitle(t('nav.knowledgeBase'))
 
   useEffect(() => {
@@ -123,7 +145,21 @@ function KnowledgeBaseRoute() {
         <TabsPanel value="legal" className="min-h-0 flex-1">
           {tab === 'legal' ? (
             <Suspense fallback={<RouteLoadingState label={copy.loadingLegal} />}>
-              <KnowledgeBaseScreen />
+              {showGraphSurface ? (
+                <GovernedGraphWorkSurface
+                  entryTab="legal"
+                  deepLink={{
+                    lens: search.lens,
+                    nodeId: search.node_id,
+                    assertionId: search.assertion_id,
+                    sourceRef: search.source_ref,
+                    graphSnapshotRef: search.graph_snapshot_ref,
+                    asOf: search.as_of,
+                  }}
+                />
+              ) : (
+                <KnowledgeBaseScreen />
+              )}
             </Suspense>
           ) : null}
         </TabsPanel>
@@ -163,7 +199,21 @@ function KnowledgeBaseRoute() {
             <Suspense
               fallback={<RouteLoadingState label={copy.loadingGovernance} />}
             >
-              <GovernanceModelExplainer />
+              {showGraphSurface ? (
+                <GovernedGraphWorkSurface
+                  entryTab="governance"
+                  deepLink={{
+                    lens: search.lens,
+                    nodeId: search.node_id,
+                    assertionId: search.assertion_id,
+                    sourceRef: search.source_ref,
+                    graphSnapshotRef: search.graph_snapshot_ref,
+                    asOf: search.as_of,
+                  }}
+                />
+              ) : (
+                <GovernanceModelExplainer />
+              )}
             </Suspense>
           ) : null}
         </TabsPanel>

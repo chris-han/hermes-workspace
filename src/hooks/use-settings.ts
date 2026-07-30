@@ -188,7 +188,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => {
   }
 })
 
-export function useSettings() {
+type UseSettingsOptions = {
+  enabled?: boolean
+}
+
+export function useSettings(options: UseSettingsOptions = {}) {
+  const enabled = options.enabled ?? true
   const settings = useSettingsStore(function selectSettings(state) {
     return state.settings
   })
@@ -200,8 +205,9 @@ export function useSettings() {
   })
 
   useEffect(() => {
+    if (!enabled) return
     void loadSettings()
-  }, [loadSettings])
+  }, [enabled, loadSettings])
 
   return {
     settings,

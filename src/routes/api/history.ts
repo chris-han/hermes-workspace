@@ -5,11 +5,12 @@ import { resolveSessionKey } from '../../server/session-utils'
 import {
   getSemantierSessionKey,
   getSemantierSessionMessages,
+  isSemantierAuthError,
   isSemantierSessionNotFoundError,
   listSemantierSessions,
+  SemantierSessionApiError,
   toSemantierChatMessage,
 } from '../../server/semantier-session-api'
-import {  } from '@/server/auth-middleware'
 
 export const Route = createFileRoute('/api/history')({
   server: {
@@ -34,7 +35,15 @@ export const Route = createFileRoute('/api/history')({
           }
 
           if (sessionKey === 'main') {
-            const sessions = await listSemantierSessions(request.headers, 1)
+            let sessions: Awaited<ReturnType<typeof listSemantierSessions>>
+            try {
+              sessions = await listSemantierSessions(request.headers, 1)
+            } catch (error) {
+              if (isSemantierAuthError(error)) {
+                return json({ sessionKey: 'new', sessionId: 'new', messages: [] })
+              }
+              throw error
+            }
             if (sessions.length === 0) {
               return json({ sessionKey: 'new', sessionId: 'new', messages: [] })
             }
@@ -49,7 +58,10 @@ export const Route = createFileRoute('/api/history')({
               limit,
             )
           } catch (error) {
-            if (isSemantierSessionNotFoundError(error)) {
+            if (
+              isSemantierSessionNotFoundError(error) ||
+              isSemantierAuthError(error)
+            ) {
               return json({ sessionKey: 'new', sessionId: 'new', messages: [] })
             }
             throw error
@@ -72,11 +84,16 @@ export const Route = createFileRoute('/api/history')({
             ),
           })
         } catch (err) {
+          const status =
+            err instanceof SemantierSessionApiError &&
+            (err.status === 401 || err.status === 403)
+              ? err.status
+              : 500
           return json(
             {
               error: err instanceof Error ? err.message : String(err),
             },
-            { status: 500 },
+            { status },
           )
         }
       },

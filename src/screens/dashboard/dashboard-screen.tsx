@@ -35,6 +35,7 @@ import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { cn } from '@/lib/utils'
 import { openHamburgerMenu } from '@/components/mobile-hamburger-menu'
 import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
+import { useSemantierAuthStatus } from '@/lib/semantier-auth'
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -1124,6 +1125,7 @@ export function DashboardScreen() {
   const navigate = useNavigate()
   const sessionsAvailable = useFeatureAvailable('sessions')
   const skillsAvailable = useFeatureAvailable('skills')
+  const semantierAuthQuery = useSemantierAuthStatus()
   const accessControlQuery = useQuery({
     queryKey: ['dashboard', 'access-control'],
     queryFn: async () => {
@@ -1203,7 +1205,10 @@ export function DashboardScreen() {
     },
     staleTime: 5_000,
     refetchInterval: 30_000,
-    enabled: isAdministrator && recentSessionIds.length > 0,
+    enabled:
+      semantierAuthQuery.data?.authenticated === true &&
+      isAdministrator &&
+      recentSessionIds.length > 0,
   })
 
   const decisions = useMemo(

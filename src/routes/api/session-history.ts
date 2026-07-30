@@ -5,11 +5,11 @@ import { resolveSessionKey } from '../../server/session-utils'
 import {
   getSemantierSessionKey,
   getSemantierSessionMessages,
+  isSemantierAuthError,
   isSemantierSessionNotFoundError,
   listSemantierSessions,
   toSemantierChatMessage,
 } from '../../server/semantier-session-api'
-import {  } from '@/server/auth-middleware'
 
 export const Route = createFileRoute('/api/session-history')({
   server: {
@@ -52,7 +52,10 @@ export const Route = createFileRoute('/api/session-history')({
               limit,
             )
           } catch (error) {
-            if (isSemantierSessionNotFoundError(error)) {
+            if (
+              isSemantierSessionNotFoundError(error) ||
+              isSemantierAuthError(error)
+            ) {
               return json({
                 ok: true,
                 messages: [],

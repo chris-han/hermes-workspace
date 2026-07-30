@@ -157,6 +157,13 @@ export function isSemantierSessionNotFoundError(error: unknown): boolean {
   return /\bnot found\b/i.test(error.message)
 }
 
+export function isSemantierAuthError(error: unknown): boolean {
+  return (
+    error instanceof SemantierSessionApiError &&
+    (error.status === 401 || error.status === 403)
+  )
+}
+
 function toMillis(value: string | number | undefined): number | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) return value
   if (typeof value !== 'string' || !value) return undefined

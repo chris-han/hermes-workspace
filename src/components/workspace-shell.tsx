@@ -56,6 +56,7 @@ const TerminalWorkspace = lazy(() =>
 import {
   DESKTOP_SIDEBAR_BACKDROP_CLASS,
   shouldAutoRedirectToFeishuLogin,
+  shouldEnableWorkspaceData,
   shouldShowSemantierLogin,
 } from './workspace-shell-utils'
 
@@ -88,7 +89,6 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     [],
   )
 
-  const { settings } = useSettings()
   const sidebarCollapsed = useWorkspaceStore((s) => s.sidebarCollapsed)
   const chatFocusMode = useWorkspaceStore((s) => s.chatFocusMode)
   const toggleSidebar = useWorkspaceStore((s) => s.toggleSidebar)
@@ -171,6 +171,11 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     semantierAuthQuery.data?.authenticated,
     semantierAuthQuery.data?.profile_completed,
   )
+  const semantierWorkspaceReady = shouldEnableWorkspaceData(
+    semantierAuthQuery.data?.authenticated,
+    semantierProfileIncomplete,
+  )
+  const { settings } = useSettings({ enabled: semantierWorkspaceReady })
 
   // Derive active session from URL
   const mobilePageTitle = (() => {
@@ -204,8 +209,10 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const sessionsQuery = useQuery({
     queryKey: chatQueryKeys.sessions,
     queryFn: fetchSessions,
+    enabled: semantierWorkspaceReady,
     refetchInterval: 15_000,
     staleTime: 10_000,
+    retry: false,
   })
 
   const sessions = sessionsQuery.data ?? []

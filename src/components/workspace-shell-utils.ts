@@ -19,3 +19,10 @@ export function shouldAutoRedirectToFeishuLogin(
       !autoLoginSuppressed,
   )
 }
+
+export function shouldEnableWorkspaceData(
+  semantierAuthenticated: boolean | undefined,
+  semantierProfileIncomplete: boolean,
+): boolean {
+  return semantierAuthenticated === true && !semantierProfileIncomplete
+}

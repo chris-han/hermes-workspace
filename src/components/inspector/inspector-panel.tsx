@@ -6,6 +6,7 @@ import type { ActivityEvent } from './activity-store'
 import { getUnavailableReason } from '@/lib/feature-gates'
 import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { useSettingsStore } from '@/hooks/use-settings'
+import { useSemantierAuthStatus } from '@/lib/semantier-auth'
 import { cn } from '@/lib/utils'
 
 // ── Tab types ─────────────────────────────────────────────────────────────────
@@ -1109,6 +1110,7 @@ function ActivityExpandedPanel({ event }: { event: ActivityEvent }) {
 
 function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
   const copy = useInspectorCopy()
+  const semantierAuthQuery = useSemantierAuthStatus()
   const events = useActivityStore((s) => s.events)
   const [persistedEvents, setPersistedEvents] = useState<Array<ActivityEvent>>(
     [],
@@ -1182,6 +1184,12 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
         cancelled = true
       }
     }
+    if (semantierAuthQuery.data?.authenticated !== true) {
+      setLoading(false)
+      return () => {
+        cancelled = true
+      }
+    }
     setLoading(true)
     fetch(
       `/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionKey)}/activity`,
@@ -1203,7 +1211,7 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
     return () => {
       cancelled = true
     }
-  }, [sessionKey])
+  }, [semantierAuthQuery.data?.authenticated, sessionKey])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DESKTOP_SIDEBAR_BACKDROP_CLASS,
   shouldAutoRedirectToFeishuLogin,
+  shouldEnableWorkspaceData,
   shouldShowSemantierLogin,
 } from './workspace-shell-utils'
 import { connectedReachabilityStatus } from './connection-startup-screen'
@@ -36,6 +37,15 @@ describe('shouldAutoRedirectToFeishuLogin', () => {
 
   it('does not auto-redirect immediately after explicit logout', () => {
     expect(shouldAutoRedirectToFeishuLogin(true, false, true)).toBe(false)
+  })
+})
+
+describe('shouldEnableWorkspaceData', () => {
+  it('waits for Semantier authentication before protected workspace queries run', () => {
+    expect(shouldEnableWorkspaceData(undefined, false)).toBe(false)
+    expect(shouldEnableWorkspaceData(false, false)).toBe(false)
+    expect(shouldEnableWorkspaceData(true, true)).toBe(false)
+    expect(shouldEnableWorkspaceData(true, false)).toBe(true)
   })
 })
 

@@ -5,10 +5,10 @@ import { isSyntheticSessionKey } from '../../server/session-utils'
 import {
   getSemantierSessionKey,
   getSemantierSession,
+  isSemantierAuthError,
   isSemantierSessionNotFoundError,
   listSemantierSessions,
 } from '../../server/semantier-session-api'
-import {  } from '@/server/auth-middleware'
 
 function buildIdlePayload() {
   return {
@@ -58,7 +58,10 @@ export const Route = createFileRoute('/api/session-status')({
           try {
             session = await getSemantierSession(request.headers, sessionKey)
           } catch (error) {
-            if (isSemantierSessionNotFoundError(error)) {
+            if (
+              isSemantierSessionNotFoundError(error) ||
+              isSemantierAuthError(error)
+            ) {
               return json({
                 ok: true,
                 payload: buildIdlePayload(),

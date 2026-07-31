@@ -77,19 +77,28 @@ export function linkifyRunDirectoryFooter(markdown: string): string {
       },
     )
     .replace(
-    /^(\s*(?:Run directory:|Report directory:|Artifact saved to:?|File saved to:?|Report saved to:?|报告已保存至[:：]?|报告全文已保存至[:：]?)\s*)(`?)(\/[^\n`]+?)\2\s*$/gim,
-    (_fullMatch, prefix: string, _quote: string, rawPath: string) => {
-      if (!rawPath || rawPath.includes('](')) return `${prefix}${rawPath}`
-      const artifactLink = artifactDeepLinkFromPath(rawPath)
-      if (artifactLink) {
+      /^(\s*)(`?)(\/(?:[^\n`]*\/)?sessions\/[^\n`]+?\/artifacts\/[^\n`]+?)\2\s*$/gim,
+      (_fullMatch, prefix: string, _quote: string, rawPath: string) => {
+        if (!rawPath || rawPath.includes('](')) return `${prefix}${rawPath}`
+        const artifactLink = artifactDeepLinkFromPath(rawPath)
+        if (!artifactLink) return `${prefix}${rawPath}`
         return `${prefix}[${artifactLink.displayPath}](${artifactLink.href})`
-      }
-      const targetPath = normalizeFilesTargetPath(rawPath)
-      if (!targetPath) return `${prefix}${rawPath}`
-      const href = `/files?path=${encodeURIComponent(targetPath)}`
-      return `${prefix}[${rawPath}](${href})`
-    },
-  )
+      },
+    )
+    .replace(
+      /^(\s*(?:Run directory:|Report directory:|Artifact saved to:?|File saved to:?|Report saved to:?|报告已保存至[:：]?|报告全文已保存至[:：]?)\s*)(`?)(\/[^\n`]+?)\2\s*$/gim,
+      (_fullMatch, prefix: string, _quote: string, rawPath: string) => {
+        if (!rawPath || rawPath.includes('](')) return `${prefix}${rawPath}`
+        const artifactLink = artifactDeepLinkFromPath(rawPath)
+        if (artifactLink) {
+          return `${prefix}[${artifactLink.displayPath}](${artifactLink.href})`
+        }
+        const targetPath = normalizeFilesTargetPath(rawPath)
+        if (!targetPath) return `${prefix}${rawPath}`
+        const href = `/files?path=${encodeURIComponent(targetPath)}`
+        return `${prefix}[${rawPath}](${href})`
+      },
+    )
 }
 
 function parseMarkdownIntoBlocks(markdown: string): Array<string> {

@@ -55,6 +55,18 @@ describe('linkifyRunDirectoryFooter', () => {
     )
   })
 
+  it('rewrites generated report artifact paths into inspector artifact links', () => {
+    const markdown = [
+      '营业分析报告已生成并保存至：',
+      '',
+      '/sessions/session_3f2490c1911c/artifacts/business_analysis_report-c27b5c3da8cf.md',
+    ].join('\n')
+
+    expect(linkifyRunDirectoryFooter(markdown)).toContain(
+      '[/sessions/session_3f2490c1911c/artifacts/business_analysis_report-c27b5c3da8cf.md](#artifact=business_analysis_report-c27b5c3da8cf.md)',
+    )
+  })
+
   it('rewrites file-path lines into inspector artifact selector links', () => {
     const line =
       '- **文件路径**: `/sessions/session_2633894eda13/artifacts/reimbursement/REIM-20260717-001.md`'

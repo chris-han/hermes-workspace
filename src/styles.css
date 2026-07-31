@@ -153,13 +153,18 @@
 }
 
 .role-config-select option {
-  background-color: var(--theme-card);
-  color: var(--theme-text);
+  background-color: var(--theme-card) !important;
+  color: var(--theme-text) !important;
 }
 
 .role-config-select option:checked {
-  background-color: var(--theme-accent);
-  color: var(--theme-accent-foreground);
+  background: linear-gradient(
+    var(--theme-accent),
+    var(--theme-accent)
+  ) !important;
+  background-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 9999px var(--theme-accent) inset;
+  color: var(--theme-accent-foreground) !important;
 }
 
 .role-config-select:focus {

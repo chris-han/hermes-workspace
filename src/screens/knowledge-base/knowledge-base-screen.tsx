@@ -1095,6 +1095,7 @@ type LegalViewMode = 'source' | 'compiled'
 
 const fieldClassName =
   'h-8 w-full min-w-0 rounded-md border border-border bg-background px-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary'
+const selectFieldClassName = `role-config-select ${fieldClassName}`
 
 function shortRef(value?: string | null, fallback = 'not recorded'): string {
   if (!value) return fallback
@@ -1524,7 +1525,7 @@ export function KnowledgeBaseScreen() {
                     onChange={(event) =>
                       updateSourceForm('authority_tier', event.target.value)
                     }
-                    className={fieldClassName}
+                    className={selectFieldClassName}
                   >
                     <option value="NATIONAL_LAW">NATIONAL_LAW</option>
                     <option value="ADMIN_REGULATION">ADMIN_REGULATION</option>
@@ -1551,7 +1552,7 @@ export function KnowledgeBaseScreen() {
                     onChange={(event) =>
                       updateSourceForm('expected_status', event.target.value)
                     }
-                    className={fieldClassName}
+                    className={selectFieldClassName}
                   >
                     {(
                       [

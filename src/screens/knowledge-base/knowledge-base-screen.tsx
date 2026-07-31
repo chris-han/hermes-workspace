@@ -838,6 +838,38 @@ const KNOWLEDGE_BUILDER_COPY = {
   },
 } as const
 
+export const KNOWLEDGE_BUILDER_UAT_LABELS = {
+  en: {
+    title: KNOWLEDGE_BUILDER_COPY.en.title,
+    sourceText: KNOWLEDGE_BUILDER_COPY.en.sourceText,
+    sourceRef: KNOWLEDGE_BUILDER_COPY.en.sourceRef,
+    runDiscovery: KNOWLEDGE_BUILDER_COPY.en.runDiscovery,
+    addEvaluationExamples: KNOWLEDGE_BUILDER_COPY.en.addEvaluationExamples,
+    runEvaluation: KNOWLEDGE_BUILDER_COPY.en.runEvaluation,
+    loadFeedbackDeltas: KNOWLEDGE_BUILDER_COPY.en.loadFeedbackDeltas,
+    runtimeFeedbackMetrics: KNOWLEDGE_BUILDER_COPY.en.runtimeFeedbackMetrics,
+    promoteRuntimeAuthority: KNOWLEDGE_BUILDER_COPY.en.promoteRuntimeAuthority,
+    rebuildReadModel: KNOWLEDGE_BUILDER_COPY.en.rebuildReadModel,
+  },
+} as const
+
+export const TENDER_REVIEW_UAT_LABELS = {
+  en: {
+    title: TENDER_REVIEW_COPY.en.title,
+    documentText: TENDER_REVIEW_COPY.en.documentText,
+    runReview: TENDER_REVIEW_COPY.en.runReview,
+    falsePositive: TENDER_REVIEW_COPY.en.falsePositive,
+    falseNegative: TENDER_REVIEW_COPY.en.falseNegative,
+    persistReport: TENDER_REVIEW_COPY.en.persistReport,
+  },
+} as const
+
+export const POLICY_RULE_UAT_LABELS = {
+  en: {
+    title: POLICY_RULE_COPY.en.title,
+  },
+} as const
+
 type KnowledgeBuilderCopy =
   (typeof KNOWLEDGE_BUILDER_COPY)[keyof typeof KNOWLEDGE_BUILDER_COPY]
 
@@ -2406,7 +2438,7 @@ export function EffectiveContextScreen() {
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-        <section className="rounded-md border border-border bg-card p-4">
+        <section className="rounded-card border border-border bg-card p-4">
           <div>
             <h2 className="text-sm font-semibold">{copy.title}</h2>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -2582,7 +2614,7 @@ export function TenderDocumentReviewScreen() {
           />
           <button
             type="button"
-            className="mt-3 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            className="mt-3 rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!documentText.trim() || reviewMutation.isPending}
             onClick={() => reviewMutation.mutate(documentText)}
           >
@@ -2592,7 +2624,7 @@ export function TenderDocumentReviewScreen() {
             <p className="mt-3 text-sm text-destructive">{copy.unavailable}</p>
           ) : null}
         </section>
-        <section className="rounded-md border border-border bg-card p-4">
+        <section className="rounded-card border border-border bg-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">{copy.findings}</h2>
@@ -2605,7 +2637,7 @@ export function TenderDocumentReviewScreen() {
             {run ? (
               <button
                 type="button"
-                className="rounded-md border border-border px-3 py-1.5 text-xs font-medium"
+                className="rounded-button border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                 disabled={reportMutation.isPending}
                 onClick={() => reportMutation.mutate(run.run_id)}
               >
@@ -2614,12 +2646,12 @@ export function TenderDocumentReviewScreen() {
             ) : null}
           </div>
           {reportPersisted ? (
-            <p className="mt-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2 text-xs text-emerald-700">
+            <p className="mt-3 rounded-md border border-[var(--theme-success)]/40 bg-[var(--theme-success)]/10 p-2 text-xs text-[var(--theme-success)]">
               {copy.reportPersisted}
             </p>
           ) : null}
           {feedbackMessage ? (
-            <p className="mt-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2 text-xs text-emerald-700">
+            <p className="mt-3 rounded-md border border-[var(--theme-success)]/40 bg-[var(--theme-success)]/10 p-2 text-xs text-[var(--theme-success)]">
               {feedbackMessage}
             </p>
           ) : null}
@@ -2942,7 +2974,7 @@ export function KnowledgeBuilderStudioScreen() {
         </p>
       </header>
       <main className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 sm:p-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-        <section className="rounded-md border border-border bg-card p-4">
+        <section className="rounded-card border border-border bg-card p-4">
           <label className="text-sm font-medium" htmlFor="kb-source-ref">
             {copy.sourceRef}
           </label>
@@ -2968,7 +3000,7 @@ export function KnowledgeBuilderStudioScreen() {
           />
           <button
             type="button"
-            className="mt-3 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            className="mt-3 rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!sourceText.trim() || discoveryMutation.isPending}
             onClick={() => discoveryMutation.mutate({ sourceRef, sourceText })}
           >
@@ -2978,7 +3010,7 @@ export function KnowledgeBuilderStudioScreen() {
             <p className="mt-3 text-sm text-destructive">{copy.unavailable}</p>
           ) : null}
         </section>
-        <section className="rounded-md border border-border bg-card p-4">
+        <section className="rounded-card border border-border bg-card p-4">
           <h2 className="text-sm font-semibold">{copy.graphPreview}</h2>
           {graph ? (
             <div className="mt-3 grid gap-4">
@@ -3071,7 +3103,7 @@ export function KnowledgeBuilderStudioScreen() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    className="rounded-button border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!selectedRelation || relationMutation.isPending}
                     onClick={() =>
                       relationMutation.mutate({ decision: 'accept', relationType })
@@ -3081,7 +3113,7 @@ export function KnowledgeBuilderStudioScreen() {
                   </button>
                   <button
                     type="button"
-                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    className="rounded-button border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!selectedRelation || relationMutation.isPending}
                     onClick={() =>
                       relationMutation.mutate({ decision: 'change', relationType })
@@ -3091,7 +3123,7 @@ export function KnowledgeBuilderStudioScreen() {
                   </button>
                   <button
                     type="button"
-                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    className="rounded-button border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!selectedRelation || relationMutation.isPending}
                     onClick={() =>
                       relationMutation.mutate({
@@ -3104,7 +3136,7 @@ export function KnowledgeBuilderStudioScreen() {
                   </button>
                   <button
                     type="button"
-                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    className="rounded-button border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!selectedRelation || relationMutation.isPending}
                     onClick={() =>
                       relationMutation.mutate({ decision: 'reject', relationType })
@@ -3114,7 +3146,7 @@ export function KnowledgeBuilderStudioScreen() {
                   </button>
                   <button
                     type="button"
-                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    className="rounded-button border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!selectedCluster || splitMutation.isPending}
                     onClick={() => splitMutation.mutate()}
                   >
@@ -3122,7 +3154,7 @@ export function KnowledgeBuilderStudioScreen() {
                   </button>
                   <button
                     type="button"
-                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    className="rounded-button border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!selectedCluster || mergeMutation.isPending}
                     onClick={() => mergeMutation.mutate()}
                   >
@@ -3161,7 +3193,7 @@ export function KnowledgeBuilderStudioScreen() {
                 />
                 <button
                   type="button"
-                  className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                  className="mt-3 rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={!runId || !canonicalLabel.trim() || termMutation.isPending}
                   onClick={() => termMutation.mutate()}
                 >
@@ -3237,7 +3269,7 @@ export function KnowledgeBuilderStudioScreen() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    className="rounded-button border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!runId || evaluationDatasetMutation.isPending}
                     onClick={() => evaluationDatasetMutation.mutate()}
                   >
@@ -3245,7 +3277,7 @@ export function KnowledgeBuilderStudioScreen() {
                   </button>
                   <button
                     type="button"
-                    className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                    className="rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={
                       !evaluationDataset ||
                       !runId ||
@@ -3308,7 +3340,7 @@ export function KnowledgeBuilderStudioScreen() {
                           <div className="mt-2 flex flex-wrap gap-2">
                             <button
                               type="button"
-                              className="rounded-md border border-border px-2 py-1"
+                              className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                               disabled={ratingMutation.isPending}
                               onClick={() =>
                                 ratingMutation.mutate({
@@ -3322,7 +3354,7 @@ export function KnowledgeBuilderStudioScreen() {
                             </button>
                             <button
                               type="button"
-                              className="rounded-md border border-border px-2 py-1"
+                              className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                               disabled={ratingMutation.isPending}
                               onClick={() =>
                                 ratingMutation.mutate({
@@ -3336,7 +3368,7 @@ export function KnowledgeBuilderStudioScreen() {
                             </button>
                             <button
                               type="button"
-                              className="rounded-md border border-border px-2 py-1"
+                              className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                               disabled={ratingMutation.isPending}
                               onClick={() =>
                                 ratingMutation.mutate({
@@ -3360,7 +3392,7 @@ export function KnowledgeBuilderStudioScreen() {
                   <h3 className="text-sm font-semibold">{copy.feedbackDeltas}</h3>
                   <button
                     type="button"
-                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    className="rounded-button border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={feedbackDeltasQuery.isFetching}
                     onClick={() => void feedbackDeltasQuery.refetch()}
                   >
@@ -3416,7 +3448,7 @@ export function KnowledgeBuilderStudioScreen() {
                           </p>
                           <button
                             type="button"
-                            className="mt-2 rounded-md border border-border px-2 py-1"
+                            className="mt-2 rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
                             onClick={() => setRunId(delta.discovery_run_id)}
                           >
                             {copy.runEvaluation}
@@ -3463,7 +3495,7 @@ export function KnowledgeBuilderStudioScreen() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                    className="rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={
                       !termCandidateId ||
                       !relationCandidateId ||
@@ -3476,7 +3508,7 @@ export function KnowledgeBuilderStudioScreen() {
                   </button>
                   <button
                     type="button"
-                    className="rounded-md border border-border px-3 py-2 text-xs"
+                    className="rounded-button border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!authorityVersion || rebuildMutation.isPending}
                     onClick={() => rebuildMutation.mutate()}
                   >
@@ -3564,49 +3596,49 @@ function TenderFindingCard({
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
-          className="rounded-md border border-border px-2 py-1 text-xs"
+          className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onDisposition('accepted')}
         >
           {copy.accept}
         </button>
         <button
           type="button"
-          className="rounded-md border border-border px-2 py-1 text-xs"
+          className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onDisposition('rejected')}
         >
           {copy.reject}
         </button>
         <button
           type="button"
-          className="rounded-md border border-border px-2 py-1 text-xs"
+          className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onDisposition('edited')}
         >
           {copy.edit}
         </button>
         <button
           type="button"
-          className="rounded-md border border-border px-2 py-1 text-xs"
+          className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onFeedback('false_positive', 'not_escalated')}
         >
           {copy.falsePositive}
         </button>
         <button
           type="button"
-          className="rounded-md border border-border px-2 py-1 text-xs"
+          className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onFeedback('false_negative', 'not_escalated')}
         >
           {copy.falseNegative}
         </button>
         <button
           type="button"
-          className="rounded-md border border-border px-2 py-1 text-xs"
+          className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onFeedback('ambiguity', 'not_escalated')}
         >
           {copy.ambiguous}
         </button>
         <button
           type="button"
-          className="rounded-md border border-border px-2 py-1 text-xs"
+          className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onFeedback('weak_explanation', 'escalated')}
         >
           {copy.escalate}

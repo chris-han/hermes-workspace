@@ -1,7 +1,17 @@
+import { execFile } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import path from 'node:path'
+import { promisify } from 'node:util'
+
+import { decodeStagedUploadRef } from './knowledge-files'
+import { ingestKnowledgeUpload } from './knowledge-ingest'
 import {
   buildSemantierAgentProxyHeaders,
   withSemantierAgentBase,
 } from './semantier-agent-api'
+import type { ActiveWorkspaceRoot } from './workspace-root'
+
+const execFileAsync = promisify(execFile)
 
 export type KnowledgeBuilderState =
   | 'DISCOVERED'
@@ -11,15 +21,10 @@ export type KnowledgeBuilderState =
   | 'ACTIVATED'
   | 'REJECTED'
 
-export type KnowledgeBuilderGraph = {
-  run: Record<string, unknown>
-  source: Record<string, unknown>
-  nodes: Array<Record<string, unknown> & { node_id: string; label: string; governance_state: KnowledgeBuilderState }>
-  relations: Array<Record<string, unknown> & { relation_id: string; relation_type: string; governance_state: KnowledgeBuilderState }>
-  notes: Array<Record<string, unknown> & { note_id: string; note_text: string; governance_state: KnowledgeBuilderState }>
-  clusters: Array<Record<string, unknown> & { cluster_id: string; cluster_label: string; governance_state: KnowledgeBuilderState }>
-  anchors: Array<Record<string, unknown>>
-  authority_notice: string
+export type KnowledgeBuilderDiscoveryRun = Record<string, unknown> & {
+  discovery_run_id: string
+  run_status: string
+  governance_state: KnowledgeBuilderState
 }
 
 export const KNOWLEDGE_BUILDER_RELATION_TYPES = [
@@ -35,6 +40,108 @@ export const KNOWLEDGE_BUILDER_RELATION_TYPES = [
 
 export type KnowledgeBuilderRelationType =
   (typeof KNOWLEDGE_BUILDER_RELATION_TYPES)[number]
+
+export type KnowledgeBuilderSensitiveLexiconResult = {
+  discoveryRun: Record<string, unknown>
+  ingest: Record<string, unknown>
+  importResult: {
+    status: string
+    knowledge_source?: Record<string, unknown>
+    compilation_run?: Record<string, unknown>
+    candidates?: Array<Record<string, unknown>>
+    knowledge_builder_evidence?: Array<Record<string, unknown>>
+    compiler_profile_version?: string
+    normalization_policy_version?: string
+  }
+}
+
+function findRuntimeRoot(workspaceRoot: string): string {
+  let current = path.resolve(process.cwd())
+  for (let index = 0; index < 8; index += 1) {
+    if (
+      existsSync(
+        path.join(current, 'src', 'plugins', 'document_extraction', 'tools.py'),
+      )
+    ) {
+      return current
+    }
+    const parent = path.dirname(current)
+    if (parent === current) break
+    current = parent
+  }
+  if (
+    existsSync(
+      path.join(
+        path.resolve(workspaceRoot),
+        'src',
+        'plugins',
+        'document_extraction',
+        'tools.py',
+      ),
+    )
+  ) {
+    return path.resolve(workspaceRoot)
+  }
+  throw new Error('semantier runtime root is not available')
+}
+
+function pythonPath(runtimeRoot: string, workspaceRoot: string): string {
+  return [
+    path.join(runtimeRoot, 'src', 'plugins'),
+    path.join(runtimeRoot, 'src'),
+    path.join(path.resolve(workspaceRoot), 'plugins'),
+  ]
+    .filter((candidate) => existsSync(candidate))
+    .join(path.delimiter)
+}
+
+async function importSensitiveLexiconDocx(input: {
+  activeWorkspace: ActiveWorkspaceRoot
+  sessionId: string
+  normalizedDocumentArtifactRef: string
+  knowledgeSourceId: string
+  sourceRef: string
+}): Promise<KnowledgeBuilderSensitiveLexiconResult['importResult']> {
+  if (!input.activeWorkspace.organizationId) {
+    throw new Error('organization context required')
+  }
+  const runtimeRoot = findRuntimeRoot(input.activeWorkspace.path)
+  const script = [
+    'import json, sys',
+    'from agents.sensitive_lexicon_docx_importer import import_sensitive_lexicon_docx',
+    'payload = json.loads(sys.argv[1])',
+    'result = import_sensitive_lexicon_docx(**payload)',
+    'print(json.dumps(result, ensure_ascii=False))',
+  ].join('\n')
+  const payload = {
+    normalized_document_artifact_ref: input.normalizedDocumentArtifactRef,
+    organization_id: input.activeWorkspace.organizationId,
+    workspace_id: input.activeWorkspace.workspaceId,
+    knowledge_source_id: input.knowledgeSourceId,
+    source_ref: input.sourceRef,
+    created_by: 'knowledge_builder_compiler',
+    proposed_workspace_id: input.activeWorkspace.workspaceId,
+  }
+  const { stdout } = await execFileAsync(
+    process.env.PYTHON || 'python3',
+    ['-c', script, JSON.stringify(payload)],
+    {
+      cwd: runtimeRoot,
+      env: {
+        ...process.env,
+        HERMES_HOME: path.resolve(input.activeWorkspace.path),
+        SESSION_HERMES_HOME: path.resolve(input.activeWorkspace.path),
+        HERMES_SESSION_ID: input.sessionId,
+        SESSION_ID: input.sessionId,
+        PYTHONPATH: process.env.PYTHONPATH
+          ? `${pythonPath(runtimeRoot, input.activeWorkspace.path)}${path.delimiter}${process.env.PYTHONPATH}`
+          : pythonPath(runtimeRoot, input.activeWorkspace.path),
+      },
+      maxBuffer: 50 * 1024 * 1024,
+    },
+  )
+  return JSON.parse(stdout)
+}
 
 async function requestKnowledgeBuilder<T>(
   requestHeaders: HeadersInit | Headers,
@@ -66,7 +173,7 @@ export async function createKnowledgeBuilderDiscoveryRun(
   input: {
     sourceKind?: 'folder' | 'file' | 'text'
     sourceRef?: string
-    sourceText: string
+    sourceText?: string
     sourceMetadata?: Record<string, unknown>
   },
 ): Promise<Record<string, unknown>> {
@@ -81,15 +188,73 @@ export async function createKnowledgeBuilderDiscoveryRun(
   return payload.run
 }
 
-export async function getKnowledgeBuilderGraph(
+export async function compileKnowledgeBuilderSensitiveLexicon(
+  requestHeaders: HeadersInit | Headers,
+  activeWorkspace: ActiveWorkspaceRoot,
+  input: {
+    uploadRef: string
+    sourceRef?: string
+  },
+): Promise<KnowledgeBuilderSensitiveLexiconResult> {
+  const staged = decodeStagedUploadRef(input.uploadRef)
+  if (staged.ingestKind !== 'document_extraction') {
+    throw new Error('governed DOCX upload is required')
+  }
+  const ingest = await ingestKnowledgeUpload(activeWorkspace.path, {
+    uploadRef: input.uploadRef,
+    confirmed: true,
+    targetDir: 'uploads',
+    workspaceId: activeWorkspace.workspaceId,
+    sessionId: staged.sessionId,
+    forceWorkspaceWikiRoot: true,
+  })
+  if (!('ok' in ingest) || !ingest.ok) {
+    const message =
+      'message' in ingest && ingest.message
+        ? String(ingest.message)
+        : 'knowledge source document extraction failed'
+    const code = 'code' in ingest && ingest.code ? ` (${ingest.code})` : ''
+    throw new Error(`${message}${code}`)
+  }
+  const sourceRef = input.sourceRef?.trim() || ingest.sourceUploadRef
+  const discoveryRun = await createKnowledgeBuilderDiscoveryRun(requestHeaders, {
+    sourceKind: 'file',
+    sourceRef,
+    sourceMetadata: {
+      governed_upload_ref: input.uploadRef,
+      normalized_document_artifact_ref: ingest.normalizedDocumentArtifactRef,
+      source_hash: ingest.sourceHash,
+      semantic_purpose: 'sensitive_lexicon',
+      compiler_profile_version: 'sensitive_lexicon_docx.v1',
+    },
+  })
+  const sourceHashPart = String(ingest.sourceHash || ingest.normalizedDocumentArtifactRef)
+    .replace(/^sha256:/, '')
+    .replace(/[^A-Za-z0-9_]/g, '')
+    .slice(0, 40)
+  const importResult = await importSensitiveLexiconDocx({
+    activeWorkspace,
+    sessionId: staged.sessionId,
+    normalizedDocumentArtifactRef: ingest.normalizedDocumentArtifactRef,
+    knowledgeSourceId: `ks_${sourceHashPart || 'sensitive_lexicon_docx'}`,
+    sourceRef,
+  })
+  return {
+    discoveryRun,
+    ingest,
+    importResult,
+  }
+}
+
+export async function getKnowledgeBuilderDiscoveryRun(
   requestHeaders: HeadersInit | Headers,
   runId: string,
-): Promise<KnowledgeBuilderGraph> {
-  const payload = await requestKnowledgeBuilder<{ graph: KnowledgeBuilderGraph }>(
+): Promise<KnowledgeBuilderDiscoveryRun> {
+  const payload = await requestKnowledgeBuilder<{ run: KnowledgeBuilderDiscoveryRun }>(
     requestHeaders,
-    `/api/knowledge/builder/discovery-runs/${encodeURIComponent(runId)}/graph`,
+    `/api/knowledge/builder/discovery-runs/${encodeURIComponent(runId)}`,
   )
-  return payload.graph
+  return payload.run
 }
 
 export async function getKnowledgeBuilderCandidateExplanation(

@@ -72,8 +72,14 @@ describe('knowledge-base route UAT labels', () => {
   it('keeps UAT action labels exact for Knowledge Builder and Tender Review', () => {
     expect(KNOWLEDGE_BUILDER_UAT_LABELS.en).toEqual({
       title: 'Knowledge Builder Studio',
-      sourceText: 'Tender source text',
       sourceRef: 'Source reference',
+      governedDocumentUpload: 'Governed document upload',
+      chooseGovernedDocument: 'Choose DOCX',
+      uploadGovernedDocument: 'Upload governed document',
+      sourceKind: 'Source kind',
+      semanticPurpose: 'Semantic purpose',
+      compilerProfile: 'Compiler profile',
+      governedUploadRef: 'Governed upload ref',
       runDiscovery: 'Run discovery',
       addEvaluationExamples: 'Add UAT examples',
       runEvaluation: 'Run evaluation',

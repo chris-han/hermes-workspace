@@ -225,6 +225,67 @@ describe('knowledge-ingest governed import', () => {
     ).toBe(false)
   })
 
+  it('renders DOCX v2 table row objects into markdown tables', async () => {
+    const workspaceRoot = makeWorkspaceRoot('knowledge-ingest-docx-v2-table-')
+    createdRoots.push(workspaceRoot)
+    const upload = await writeKnowledgeUpload(
+      workspaceRoot,
+      file('sensitive.docx', 'docx'),
+      'uploads',
+      { forceWorkspaceWikiRoot: true },
+    )
+    if (!upload.ok || upload.kind !== 'staged_for_ingest')
+      throw new Error('stage failed')
+
+    const result = await ingestKnowledgeUpload(
+      workspaceRoot,
+      {
+        uploadRef: upload.stagedUploadRef,
+        confirmed: true,
+        targetDir: 'uploads',
+        forceWorkspaceWikiRoot: true,
+      },
+      {
+        extractDocumentContent: async () => ({
+          normalized_document_artifact_ref: 'canonical_document:v2:docx-table',
+          parser: { method: 'docx_ooxml' },
+          tables: [
+            {
+              rows: [
+                {
+                  row: 1,
+                  cells: [
+                    { column: 1, text: '敏感词' },
+                    { column: 2, text: '分类' },
+                  ],
+                },
+                {
+                  row: 2,
+                  cells: [
+                    { column: 1, text: '唯一' },
+                    { column: 2, text: '限制竞争' },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      storedMarkdownPath: 'uploads/sensitive.md',
+      parserMethod: 'docx_ooxml',
+    })
+    const markdown = fsSync.readFileSync(
+      path.join(workspaceRoot, 'wiki', 'uploads', 'sensitive.md'),
+      'utf-8',
+    )
+    expect(markdown).toContain('| 敏感词 | 分类 |')
+    expect(markdown).toContain('| 唯一 | 限制竞争 |')
+  })
+
   it('builds a wiki page with extracted Chinese text from a PDF artifact', async () => {
     const workspaceRoot = makeWorkspaceRoot('knowledge-ingest-chinese-pdf-')
     createdRoots.push(workspaceRoot)

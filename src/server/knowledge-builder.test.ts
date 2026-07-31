@@ -1,11 +1,15 @@
+import fsSync from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
   createKnowledgeBuilderDiscoveryRun,
   createCanonicalTermCandidate,
+  compileKnowledgeBuilderSensitiveLexicon,
   curateKnowledgeBuilderRelation,
   getKnowledgeBuilderCandidateExplanation,
-  getKnowledgeBuilderGraph,
+  getKnowledgeBuilderDiscoveryRun,
   getKnowledgeBuilderRuntimeSemanticIndex,
   isKnowledgeBuilderRuntimeAuthority,
   listKnowledgeBuilderFeedbackDeltas,
@@ -14,18 +18,26 @@ import {
   rebuildKnowledgeBuilderReadModels,
   splitKnowledgeBuilderCluster,
 } from './knowledge-builder'
+import { decodeStagedUploadRef, writeKnowledgeUpload } from './knowledge-files'
 
 describe('knowledge-builder server adapter', () => {
   const originalFetch = globalThis.fetch
+  const createdRoots: Array<string> = []
 
   afterEach(() => {
     globalThis.fetch = originalFetch
+    for (const root of createdRoots.splice(0)) {
+      fsSync.rmSync(root, { recursive: true, force: true })
+    }
   })
 
   it('creates discovery runs through governed backend routes', async () => {
     globalThis.fetch = async (input, init) => {
       expect(String(input)).toContain('/api/knowledge/builder/discovery-runs')
       expect(init?.method).toBe('POST')
+      const body = JSON.parse(String(init?.body))
+      expect(body.sourceRef).toBe('uploads/knowledge-builder/source.docx')
+      expect(body.sourceText).toBeUndefined()
       return new Response(
         JSON.stringify({
           run: {
@@ -38,41 +50,69 @@ describe('knowledge-builder server adapter', () => {
     }
 
     const run = await createKnowledgeBuilderDiscoveryRun(new Headers(), {
-      sourceText: 'unique supplier',
+      sourceKind: 'file',
+      sourceRef: 'uploads/knowledge-builder/source.docx',
     })
     expect(run.discovery_run_id).toBe('kbd_1')
   })
 
-  it('loads graph previews and keeps discovered candidates non-authoritative', async () => {
+  it('preserves governed upload ingest failure details', async () => {
+    const workspaceRoot = fsSync.mkdtempSync(
+      path.join(os.tmpdir(), 'knowledge-builder-ingest-failure-'),
+    )
+    createdRoots.push(workspaceRoot)
+    const upload = await writeKnowledgeUpload(
+      workspaceRoot,
+      new File(['docx'], 'source.docx'),
+      'uploads',
+      {
+        forceWorkspaceWikiRoot: true,
+        sessionId: 'knowledge-builder',
+        workspaceId: 'ws-1',
+      },
+    )
+    if (!upload.ok || upload.kind !== 'staged_for_ingest') {
+      throw new Error('stage failed')
+    }
+    const staged = decodeStagedUploadRef(upload.stagedUploadRef)
+    fsSync.rmSync(path.join(workspaceRoot, staged.relativePath))
+
+    await expect(
+      compileKnowledgeBuilderSensitiveLexicon(new Headers(), {
+        authenticated: true,
+        path: workspaceRoot,
+        workspaceId: 'ws-1',
+        workspaceSlug: 'ws-1',
+        organizationId: 'org-1',
+        source: 'backend',
+      }, {
+        uploadRef: upload.stagedUploadRef,
+      }),
+    ).rejects.toThrow(
+      'Governed upload ref is not available (invalid_upload_ref)',
+    )
+  })
+
+  it('loads discovery-run previews without legacy graph routes', async () => {
     globalThis.fetch = async (input, init) => {
-      expect(String(input)).toContain('/api/knowledge/builder/discovery-runs/kbd_1/graph')
+      expect(String(input)).toContain('/api/knowledge/builder/discovery-runs/kbd_1')
+      expect(String(input)).not.toContain('/graph')
       expect(init?.method ?? 'GET').toBe('GET')
       return new Response(
         JSON.stringify({
-          graph: {
-            run: { discovery_run_id: 'kbd_1' },
-            source: { source_id: 'kbs_1' },
-            nodes: [
-              {
-                node_id: 'kbn_1',
-                label: 'unique',
-                governance_state: 'DISCOVERED',
-              },
-            ],
-            relations: [],
-            notes: [],
-            clusters: [],
-            anchors: [],
-            authority_notice: 'candidate graph is non-authoritative',
+          run: {
+            discovery_run_id: 'kbd_1',
+            governance_state: 'DISCOVERED',
           },
         }),
         { status: 200 },
       )
     }
 
-    const graph = await getKnowledgeBuilderGraph(new Headers(), 'kbd_1')
-    expect(graph.nodes[0].label).toBe('unique')
-    expect(isKnowledgeBuilderRuntimeAuthority(graph.nodes[0].governance_state)).toBe(false)
+    const run = await getKnowledgeBuilderDiscoveryRun(new Headers(), 'kbd_1')
+    expect(run.discovery_run_id).toBe('kbd_1')
+    expect(run.governance_state).toBe('DISCOVERED')
+    expect(isKnowledgeBuilderRuntimeAuthority('DISCOVERED')).toBe(false)
   })
 
   it('loads candidate explanations', async () => {

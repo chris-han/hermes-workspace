@@ -19,7 +19,7 @@ import type { KnowledgeLimitFailure } from './knowledge-files'
 type CanonicalDocumentBlock = {
   type?: string
   text?: string
-  rows?: Array<Array<unknown>>
+  rows?: unknown
 }
 
 type CanonicalDocumentArtifact = {
@@ -29,7 +29,7 @@ type CanonicalDocumentArtifact = {
   parser?: { method?: string }
   blocks?: Array<CanonicalDocumentBlock>
   text_blocks?: Array<{ text?: string }>
-  tables?: Array<{ rows?: Array<Array<unknown>> }>
+  tables?: Array<{ rows?: unknown }>
   warnings?: Array<string>
 }
 
@@ -192,12 +192,31 @@ async function writeMarkdownWithCollision(
   throw new Error('Upload name collision limit reached')
 }
 
-function markdownTable(rows: Array<Array<unknown>>): string {
-  if (rows.length === 0) return ''
-  if (rows.length > 40 || Math.max(...rows.map((row) => row.length)) > 8) {
+function normalizeTableRows(rows: unknown): Array<Array<string>> {
+  if (!Array.isArray(rows)) return []
+  return rows.map((row) => {
+    if (Array.isArray(row)) return row.map((cell) => String(cell ?? ''))
+    if (row && typeof row === 'object' && Array.isArray((row as { cells?: unknown }).cells)) {
+      return (row as { cells: Array<unknown> }).cells.map((cell) => {
+        if (cell && typeof cell === 'object' && 'text' in cell) {
+          return String((cell as { text?: unknown }).text ?? '')
+        }
+        return String(cell ?? '')
+      })
+    }
+    return [String(row ?? '')]
+  })
+}
+
+function markdownTable(rows: unknown): string {
+  const normalized = normalizeTableRows(rows)
+  if (normalized.length === 0) return ''
+  if (
+    normalized.length > 40 ||
+    Math.max(...normalized.map((row) => row.length)) > 8
+  ) {
     return '_Table omitted; see canonical artifact reference._'
   }
-  const normalized = rows.map((row) => row.map((cell) => String(cell ?? '')))
   const header = normalized[0] ?? []
   const body = normalized.slice(1)
   return [

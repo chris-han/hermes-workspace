@@ -3,8 +3,8 @@ import {
   withSemantierAgentBase,
 } from './semantier-agent-api'
 
-export const TENDER_SENSITIVE_LABELING_DASHBOARD_CONTRACT =
-  'tender_sensitive_labeling.dashboard.v1'
+export const TENDER_SENSITIVE_TERM_DETECTION_MODELING_DASHBOARD_CONTRACT =
+  'tender_sensitive_term_detection_modeling.dashboard.v1'
 
 export const TENDER_DOCUMENT_REVIEW_COMPATIBILITY_ROUTE =
   '/api/tender-document-review'

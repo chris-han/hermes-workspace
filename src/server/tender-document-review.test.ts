@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import {
   TENDER_DOCUMENT_REVIEW_COMPATIBILITY_ROUTE,
-  TENDER_SENSITIVE_LABELING_DASHBOARD_CONTRACT,
+  TENDER_SENSITIVE_TERM_DETECTION_MODELING_DASHBOARD_CONTRACT,
   createTenderDetection,
   createTenderReport,
   findingHasAiAssistedSuggestion,
@@ -18,8 +18,8 @@ describe('tender-document-review server adapter', () => {
   })
 
   it('consumes the versioned plugin contract through the compatibility facade only', () => {
-    expect(TENDER_SENSITIVE_LABELING_DASHBOARD_CONTRACT).toBe(
-      'tender_sensitive_labeling.dashboard.v1',
+    expect(TENDER_SENSITIVE_TERM_DETECTION_MODELING_DASHBOARD_CONTRACT).toBe(
+      'tender_sensitive_term_detection_modeling.dashboard.v1',
     )
     expect(TENDER_DOCUMENT_REVIEW_COMPATIBILITY_ROUTE).toBe(
       '/api/tender-document-review',

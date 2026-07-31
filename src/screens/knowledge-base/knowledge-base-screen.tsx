@@ -633,31 +633,39 @@ const TENDER_REVIEW_COPY = {
   },
 } as const
 
-type TenderReviewCopy = (typeof TENDER_REVIEW_COPY)[keyof typeof TENDER_REVIEW_COPY]
+type TenderReviewCopy =
+  (typeof TENDER_REVIEW_COPY)[keyof typeof TENDER_REVIEW_COPY]
 
-type KnowledgeBuilderGraph = {
-  run: { discovery_run_id: string; run_status: string; governance_state: string }
-  source: { source_id: string; source_ref: string; source_hash: string }
-  nodes: Array<{
-    node_id: string
-    label: string
-    node_type: string
-    evidence_summary: string
-    governance_state: string
-  }>
-  relations: Array<{
-    relation_id: string
-    relation_type: string
-    from_node_id: string
-    to_node_id: string
-    evidence_summary?: string
-    source_anchor_refs?: Array<string>
-    governance_state: string
-  }>
-  notes: Array<{ note_id: string; note_text: string; governance_state: string }>
-  clusters: Array<{ cluster_id: string; cluster_label: string; governance_state: string }>
-  anchors: Array<Record<string, unknown>>
-  authority_notice: string
+type KnowledgeBuilderDiscoveryRun = {
+  discovery_run_id: string
+  source_id: string
+  run_status: string
+  governance_state: string
+  content_hash?: string
+}
+
+type KnowledgeBuilderCandidateNode = {
+  node_id: string
+  label: string
+  node_type: string
+  evidence_summary: string
+  governance_state: string
+}
+
+type KnowledgeBuilderCandidateRelation = {
+  relation_id: string
+  relation_type: string
+  from_node_id: string
+  to_node_id: string
+  evidence_summary?: string
+  source_anchor_refs?: Array<string>
+  governance_state: string
+}
+
+type KnowledgeBuilderCandidateCluster = {
+  cluster_id: string
+  cluster_label: string
+  governance_state: string
 }
 
 type KnowledgeBuilderEvaluationDataset = {
@@ -710,18 +718,97 @@ type KnowledgeBuilderReadModelRebuild = {
   non_authoritative_notice: string
 }
 
+type KnowledgeBuilderSourceUpload = {
+  ok: boolean
+  kind?: string
+  originalName?: string
+  storedName?: string
+  stagedUploadRef?: string
+  retryUploadRef?: string
+  requiresIngest?: boolean
+  ingestKind?: string
+  canonicalArtifactKind?: string
+  targetWikiPath?: string
+  message?: string
+}
+
+type KnowledgeBuilderCompiledCandidate = {
+  rule_candidate_id?: string
+  candidate_state?: string
+  draft_rule_text?: string
+  severity?: string
+  source_anchor_refs?: Array<string>
+  applicability_scope?: {
+    match_terms?: Array<string>
+    normalized_term?: string
+    term_category?: string | null
+    compiler_profile_version?: string
+    knowledge_source_compilation_run_id?: string
+    canonical_anchor_ref?: string
+  }
+}
+
+type KnowledgeBuilderDiscoveryResult = {
+  discoveryRun: KnowledgeBuilderDiscoveryRun
+  ingest?: {
+    originalName?: string
+    normalizedDocumentArtifactRef?: string
+    sourceHash?: string
+    parserMethod?: string
+    storedMarkdownPath?: string
+  }
+  importResult?: {
+    status: string
+    knowledge_source?: Record<string, unknown>
+    compilation_run?: {
+      knowledge_source_compilation_run_id?: string
+      compiler_profile_version?: string
+      mapped_source_anchor_refs?: Array<string>
+      source_hash?: string
+    }
+    candidates?: Array<KnowledgeBuilderCompiledCandidate>
+    knowledge_builder_evidence?: Array<Record<string, unknown>>
+    compiler_profile_version?: string
+  }
+}
+
 const KNOWLEDGE_BUILDER_COPY = {
   en: {
     title: 'Knowledge Builder Studio',
     subtitle:
       'Discover non-authoritative candidate graphs from tender evidence before curation and promotion.',
-    sourceText: 'Tender source text',
     sourceRef: 'Source reference',
     sourceRefPlaceholder: 'uat-tender-sample',
-    placeholder: 'Paste tender samples or extracted folder/file text...',
+    governedDocumentUpload: 'Governed document upload',
+    chooseGovernedDocument: 'Choose DOCX',
+    uploadGovernedDocument: 'Upload governed document',
+    uploadingGovernedDocument: 'Uploading governed document...',
+    uploadGovernedDocumentHelp:
+      'Upload a DOCX through the workspace upload boundary and use the returned governed upload ref as Source reference.',
+    sourceKind: 'Source kind',
+    semanticPurpose: 'Semantic purpose',
+    compilerProfile: 'Compiler profile',
+    governedUploadRef: 'Governed upload ref',
+    governedSourceRef: 'Governed source ref',
+    knowledgeSourceContentHash: 'Knowledge source content hash',
+    uploadAndRegisterSource: 'Upload and register source',
+    uploadReadyForSourceReference:
+      'Source reference set from governed upload ref',
     runDiscovery: 'Run discovery',
     running: 'Discovering...',
     graphPreview: 'Candidate graph preview',
+    uploadedDocumentPreview: 'Uploaded document preview',
+    lexiconPreview: 'Sensitive lexicon compilation preview',
+    viewLexicon: 'Lexicon',
+    viewGraph: 'Graph',
+    parsedRows: 'Parsed rows',
+    candidateTerms: 'Candidate terms',
+    compilationRun: 'Compilation run',
+    normalizedArtifact: 'Normalized artifact',
+    term: 'Term',
+    category: 'Category',
+    example: 'Example',
+    state: 'State',
     nodes: 'Nodes',
     relations: 'Relations',
     notes: 'Notes',
@@ -767,7 +854,6 @@ const KNOWLEDGE_BUILDER_COPY = {
     importedLexiconCandidates: 'Imported lexicon candidates',
     importedLexiconEmpty: 'No imported DOCX lexicon candidates yet.',
     sourceAnchors: 'Source anchors',
-    compilerProfile: 'Compiler profile',
     loadFeedbackDeltas: 'Load feedback deltas',
     noFeedbackDeltas: 'No runtime feedback deltas queued.',
     nonAuthority: 'Non-authoritative until governed promotion and activation',
@@ -777,13 +863,37 @@ const KNOWLEDGE_BUILDER_COPY = {
   zh: {
     title: '知识构建工作台',
     subtitle: '从招标证据中发现非权威候选图谱，供后续整理、评估和治理提升。',
-    sourceText: '招标来源文本',
     sourceRef: '来源引用',
     sourceRefPlaceholder: 'uat-tender-sample',
-    placeholder: '粘贴招标样本或已抽取的文件/文件夹文本...',
+    governedDocumentUpload: '治理文档上传',
+    chooseGovernedDocument: '选择 DOCX',
+    uploadGovernedDocument: '上传治理文档',
+    uploadingGovernedDocument: '正在上传治理文档...',
+    uploadGovernedDocumentHelp:
+      '通过工作区上传边界上传 DOCX，并将返回的治理上传引用作为来源引用。',
+    sourceKind: '来源类型',
+    semanticPurpose: '语义目的',
+    compilerProfile: '编译器配置',
+    governedUploadRef: '治理上传引用',
+    governedSourceRef: '治理来源引用',
+    knowledgeSourceContentHash: '知识来源内容哈希',
+    uploadAndRegisterSource: '上传并注册来源',
+    uploadReadyForSourceReference: '已从治理上传引用设置来源引用',
     runDiscovery: '运行发现',
     running: '发现中...',
     graphPreview: '候选图谱预览',
+    uploadedDocumentPreview: '上传文档预览',
+    lexiconPreview: '敏感词库编译预览',
+    viewLexicon: '敏感词库',
+    viewGraph: '图谱',
+    parsedRows: '解析行数',
+    candidateTerms: '候选词条',
+    compilationRun: '编译运行',
+    normalizedArtifact: '规范化文档',
+    term: '词条',
+    category: '分类',
+    example: '示例',
+    state: '状态',
     nodes: '节点',
     relations: '关系',
     notes: '笔记',
@@ -829,7 +939,6 @@ const KNOWLEDGE_BUILDER_COPY = {
     importedLexiconCandidates: '已导入词表候选项',
     importedLexiconEmpty: '暂无已导入 DOCX 词表候选项。',
     sourceAnchors: '来源锚点',
-    compilerProfile: '编译器配置',
     loadFeedbackDeltas: '加载反馈增量',
     noFeedbackDeltas: '暂无运行时反馈增量。',
     nonAuthority: '治理提升并激活前不是运行时权威',
@@ -841,8 +950,14 @@ const KNOWLEDGE_BUILDER_COPY = {
 export const KNOWLEDGE_BUILDER_UAT_LABELS = {
   en: {
     title: KNOWLEDGE_BUILDER_COPY.en.title,
-    sourceText: KNOWLEDGE_BUILDER_COPY.en.sourceText,
     sourceRef: KNOWLEDGE_BUILDER_COPY.en.sourceRef,
+    governedDocumentUpload: KNOWLEDGE_BUILDER_COPY.en.governedDocumentUpload,
+    chooseGovernedDocument: KNOWLEDGE_BUILDER_COPY.en.chooseGovernedDocument,
+    uploadGovernedDocument: KNOWLEDGE_BUILDER_COPY.en.uploadGovernedDocument,
+    sourceKind: KNOWLEDGE_BUILDER_COPY.en.sourceKind,
+    semanticPurpose: KNOWLEDGE_BUILDER_COPY.en.semanticPurpose,
+    compilerProfile: KNOWLEDGE_BUILDER_COPY.en.compilerProfile,
+    governedUploadRef: KNOWLEDGE_BUILDER_COPY.en.governedUploadRef,
     runDiscovery: KNOWLEDGE_BUILDER_COPY.en.runDiscovery,
     addEvaluationExamples: KNOWLEDGE_BUILDER_COPY.en.addEvaluationExamples,
     runEvaluation: KNOWLEDGE_BUILDER_COPY.en.runEvaluation,
@@ -938,7 +1053,9 @@ async function fetchEffectiveContextGraph() {
   return payload
 }
 
-async function fetchPolicyRuleCandidates(): Promise<Array<PolicyRuleCandidate>> {
+async function fetchPolicyRuleCandidates(): Promise<
+  Array<PolicyRuleCandidate>
+> {
   const response = await fetch('/api/knowledge/policy-rules')
   if (!response.ok) {
     throw new Error(`policy-rules-${response.status}`)
@@ -947,6 +1064,43 @@ async function fetchPolicyRuleCandidates(): Promise<Array<PolicyRuleCandidate>> 
     candidates?: Array<PolicyRuleCandidate>
   }
   return payload.candidates ?? []
+}
+
+async function uploadKnowledgeBuilderSourceDocument(
+  file: File,
+): Promise<KnowledgeBuilderSourceUpload> {
+  const form = new FormData()
+  form.append('files', file)
+  form.append('path', 'uploads')
+  form.append('ingestMode', 'extract')
+  form.append('session_id', 'knowledge-builder')
+  const response = await fetch('/api/knowledge/upload', {
+    method: 'POST',
+    body: form,
+  })
+  if (!response.ok) {
+    throw new Error(`knowledge-source-upload-${response.status}`)
+  }
+  const payload = (await response.json()) as KnowledgeBuilderSourceUpload[]
+  const result = payload.at(0)
+  if (!result) {
+    throw new Error('knowledge-source-upload-empty')
+  }
+  if (!result.ok) {
+    throw new Error(result.message || 'knowledge-source-upload-failed')
+  }
+  return result
+}
+
+async function readApiError(response: Response, fallback: string): Promise<Error> {
+  const payload = (await response.json().catch(() => ({}))) as {
+    detail?: unknown
+    error?: unknown
+    message?: unknown
+  }
+  return new Error(
+    String(payload.detail || payload.error || payload.message || fallback),
+  )
 }
 
 async function createTenderDetectionRun(
@@ -992,7 +1146,11 @@ async function recordTenderDisposition(input: {
 async function recordTenderFeedback(input: {
   runId: string
   findingId: string
-  feedbackType: 'false_positive' | 'false_negative' | 'ambiguity' | 'weak_explanation'
+  feedbackType:
+    | 'false_positive'
+    | 'false_negative'
+    | 'ambiguity'
+    | 'weak_explanation'
   userDisposition: Record<string, unknown>
   escalationOutcome?: 'not_escalated' | 'escalated'
   reviewerNotes?: string
@@ -1025,29 +1183,66 @@ async function createTenderReport(runId: string) {
 
 async function createKnowledgeBuilderRun(input: {
   sourceRef: string
-  sourceText: string
-}): Promise<{ discovery_run_id: string }> {
+  uploadRef: string
+}): Promise<KnowledgeBuilderDiscoveryResult> {
+  const sourceRef = input.sourceRef.trim() || 'uat-tender-sample'
+  const uploadRef = input.uploadRef.trim()
+  if (!uploadRef) {
+    const response = await fetch('/api/knowledge/builder', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        sourceKind: 'file',
+        sourceRef,
+        sourceMetadata: {
+          semantic_purpose: 'knowledge_builder_discovery',
+        },
+      }),
+    })
+    if (!response.ok)
+      throw await readApiError(response, `knowledge-builder-${response.status}`)
+    const payload = (await response.json()) as {
+      run?: KnowledgeBuilderDiscoveryRun
+    }
+    if (!payload.run) throw new Error('knowledge-builder-empty-discovery-run')
+    return { discoveryRun: payload.run }
+  }
+
   const response = await fetch('/api/knowledge/builder', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      sourceKind: 'text',
-      sourceRef: input.sourceRef || 'uat-tender-sample',
-      sourceText: input.sourceText,
+      action: 'compileSensitiveLexicon',
+      sourceRef,
+      uploadRef,
     }),
   })
-  if (!response.ok) throw new Error(`knowledge-builder-${response.status}`)
-  const payload = (await response.json()) as { run?: { discovery_run_id: string } }
-  if (!payload.run) throw new Error('knowledge-builder-empty-run')
-  return payload.run
+  if (!response.ok)
+    throw await readApiError(response, `knowledge-builder-${response.status}`)
+  const payload = (await response.json()) as {
+    discoveryResult?: KnowledgeBuilderDiscoveryResult
+  }
+  if (!payload.discoveryResult)
+    throw new Error('knowledge-builder-empty-discovery-result')
+  return payload.discoveryResult
 }
 
-async function fetchKnowledgeBuilderGraph(runId: string): Promise<KnowledgeBuilderGraph> {
-  const response = await fetch(`/api/knowledge/builder?runId=${encodeURIComponent(runId)}`)
-  if (!response.ok) throw new Error(`knowledge-builder-graph-${response.status}`)
-  const payload = (await response.json()) as { graph?: KnowledgeBuilderGraph }
-  if (!payload.graph) throw new Error('knowledge-builder-empty-graph')
-  return payload.graph
+async function fetchKnowledgeBuilderDiscoveryRun(
+  runId: string,
+): Promise<KnowledgeBuilderDiscoveryRun> {
+  const response = await fetch(
+    `/api/knowledge/builder?runId=${encodeURIComponent(runId)}`,
+  )
+  if (!response.ok)
+    throw await readApiError(
+      response,
+      `knowledge-builder-discovery-run-${response.status}`,
+    )
+  const payload = (await response.json()) as {
+    run?: KnowledgeBuilderDiscoveryRun
+  }
+  if (!payload.run) throw new Error('knowledge-builder-empty-discovery-run')
+  return payload.run
 }
 
 async function fetchKnowledgeBuilderFeedbackDeltas(
@@ -1056,7 +1251,11 @@ async function fetchKnowledgeBuilderFeedbackDeltas(
   const params = new URLSearchParams({ feedbackDeltas: '1' })
   if (runId) params.set('runId', runId)
   const response = await fetch(`/api/knowledge/builder?${params.toString()}`)
-  if (!response.ok) throw new Error(`knowledge-builder-feedback-${response.status}`)
+  if (!response.ok)
+    throw await readApiError(
+      response,
+      `knowledge-builder-feedback-${response.status}`,
+    )
   const payload = (await response.json()) as {
     feedbackDeltas?: Array<KnowledgeBuilderFeedbackDelta>
   }
@@ -1077,13 +1276,19 @@ const KNOWLEDGE_BUILDER_RELATION_TYPES = [
 type KnowledgeBuilderRelationType =
   (typeof KNOWLEDGE_BUILDER_RELATION_TYPES)[number]
 
-async function postKnowledgeBuilderAction<T>(body: Record<string, unknown>): Promise<T> {
+async function postKnowledgeBuilderAction<T>(
+  body: Record<string, unknown>,
+): Promise<T> {
   const response = await fetch('/api/knowledge/builder', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!response.ok) throw new Error(`knowledge-builder-action-${response.status}`)
+  if (!response.ok)
+    throw await readApiError(
+      response,
+      `knowledge-builder-action-${response.status}`,
+    )
   return (await response.json()) as T
 }
 
@@ -1399,9 +1604,9 @@ export function KnowledgeBaseScreen() {
     },
   })
 
-  function updateSourceForm<K extends keyof RegisterLegalSourceInput>(
-    field: K,
-    value: RegisterLegalSourceInput[K],
+  function updateSourceForm<TKey extends keyof RegisterLegalSourceInput>(
+    field: TKey,
+    value: RegisterLegalSourceInput[TKey],
   ) {
     setRegistrationMessage(null)
     setSourceForm((current) => ({ ...current, [field]: value }))
@@ -2287,7 +2492,10 @@ export function DatasetKnowledgeBaseScreen() {
                 {copy.metadataOnlyNotice}
               </p>
             </div>
-            <Badge>{copy.redaction}: {nativeMetadata?.evidenceDrawer.redaction ?? 'redacted'}</Badge>
+            <Badge>
+              {copy.redaction}:{' '}
+              {nativeMetadata?.evidenceDrawer.redaction ?? 'redacted'}
+            </Badge>
           </div>
           <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="grid gap-2">
@@ -2312,13 +2520,24 @@ export function DatasetKnowledgeBaseScreen() {
                     </div>
                   </div>
                   <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 xl:grid-cols-4">
-                    <Fact label={copy.version} value={shortRef(asset.version, copy.notRecorded)} />
+                    <Fact
+                      label={copy.version}
+                      value={shortRef(asset.version, copy.notRecorded)}
+                    />
                     <Fact label={copy.lifecycle} value={asset.lifecycleState} />
-                    <Fact label={copy.metadataReadiness} value={`${asset.qualityState} / ${asset.contractState}`} />
-                    <Fact label={copy.runtimeAuthority} value={`${asset.governanceDecision} / ${asset.resolverStatus}`} />
+                    <Fact
+                      label={copy.metadataReadiness}
+                      value={`${asset.qualityState} / ${asset.contractState}`}
+                    />
+                    <Fact
+                      label={copy.runtimeAuthority}
+                      value={`${asset.governanceDecision} / ${asset.resolverStatus}`}
+                    />
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
-                    {copy.sourceAnchors}: {asset.sourceAnchors.slice(0, 3).join(', ') || copy.notRecorded}
+                    {copy.sourceAnchors}:{' '}
+                    {asset.sourceAnchors.slice(0, 3).join(', ') ||
+                      copy.notRecorded}
                   </div>
                 </div>
               ))}
@@ -2333,31 +2552,41 @@ export function DatasetKnowledgeBaseScreen() {
             <div className="rounded-md border border-border bg-background p-3">
               <div className="text-sm font-semibold">{copy.evidenceDrawer}</div>
               <div className="mt-3 grid gap-2">
-                {(nativeMetadata?.evidenceDrawer.rows ?? []).slice(0, 6).map((row) => (
-                  <div
-                    key={`${row.assetId}-${row.evidenceKind}`}
-                    className="rounded border border-border bg-card p-2 text-xs"
-                  >
-                    <div className="font-medium">{row.evidenceKind}</div>
-                    <div className="mt-1 truncate text-muted-foreground">
-                      {row.assetId}
+                {(nativeMetadata?.evidenceDrawer.rows ?? [])
+                  .slice(0, 6)
+                  .map((row) => (
+                    <div
+                      key={`${row.assetId}-${row.evidenceKind}`}
+                      className="rounded border border-border bg-card p-2 text-xs"
+                    >
+                      <div className="font-medium">{row.evidenceKind}</div>
+                      <div className="mt-1 truncate text-muted-foreground">
+                        {row.assetId}
+                      </div>
+                      <div className="mt-1 truncate text-muted-foreground">
+                        {copy.sourceHash}:{' '}
+                        {shortRef(row.sourceHash, copy.notRecorded)}
+                      </div>
+                      <div className="truncate text-muted-foreground">
+                        {copy.activationHash}:{' '}
+                        {shortRef(row.snapshotHash, copy.notRecorded)}
+                      </div>
                     </div>
-                    <div className="mt-1 truncate text-muted-foreground">
-                      {copy.sourceHash}: {shortRef(row.sourceHash, copy.notRecorded)}
-                    </div>
-                    <div className="truncate text-muted-foreground">
-                      {copy.activationHash}: {shortRef(row.snapshotHash, copy.notRecorded)}
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
               <div className="mt-4 text-sm font-semibold">{copy.lineage}</div>
               <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
-                {(nativeMetadata?.lineageEdges ?? []).slice(0, 6).map((edge) => (
-                  <div key={`${edge.source}-${edge.target}-${edge.relationType}`} className="truncate">
-                    <code>{edge.source}</code> {edge.relationType} <code>{edge.target}</code>
-                  </div>
-                ))}
+                {(nativeMetadata?.lineageEdges ?? [])
+                  .slice(0, 6)
+                  .map((edge) => (
+                    <div
+                      key={`${edge.source}-${edge.target}-${edge.relationType}`}
+                      className="truncate"
+                    >
+                      <code>{edge.source}</code> {edge.relationType}{' '}
+                      <code>{edge.target}</code>
+                    </div>
+                  ))}
               </div>
             </div>
           </div>
@@ -2673,7 +2902,7 @@ export function TenderDocumentReviewScreen() {
                       editedReplacement:
                         disposition === 'edited'
                           ? finding.suggested_replacement || undefined
-                      : undefined,
+                          : undefined,
                     })
                   }
                   onFeedback={(feedbackType, escalationOutcome) =>
@@ -2711,19 +2940,24 @@ export function KnowledgeBuilderStudioScreen() {
   const copy =
     locale === 'zh' ? KNOWLEDGE_BUILDER_COPY.zh : KNOWLEDGE_BUILDER_COPY.en
   const [sourceRef, setSourceRef] = useState('uat-tender-sample')
-  const [sourceText, setSourceText] = useState('')
   const [runId, setRunId] = useState<string | null>(null)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null)
+  const [selectedRelationId, setSelectedRelationId] = useState<string | null>(
+    null,
+  )
   const [relationType, setRelationType] =
     useState<KnowledgeBuilderRelationType>('not_same_as')
-  const [canonicalLabel, setCanonicalLabel] = useState('exclusive supplier restriction')
+  const [canonicalLabel, setCanonicalLabel] = useState(
+    'exclusive supplier restriction',
+  )
   const [definition, setDefinition] = useState(
     'Tender wording that restricts competition to one supplier, brand, or authorization path.',
   )
   const [aliases, setAliases] = useState('唯一供应商, 独家授权, 指定品牌')
   const [curationMessage, setCurationMessage] = useState<string | null>(null)
-  const [relationCandidateId, setRelationCandidateId] = useState<string | null>(null)
+  const [relationCandidateId, setRelationCandidateId] = useState<string | null>(
+    null,
+  )
   const [termCandidateId, setTermCandidateId] = useState<string | null>(null)
   const [evaluationDataset, setEvaluationDataset] =
     useState<KnowledgeBuilderEvaluationDataset | null>(null)
@@ -2733,10 +2967,19 @@ export function KnowledgeBuilderStudioScreen() {
     useState<KnowledgeBuilderAuthorityVersion | null>(null)
   const [readModelRebuild, setReadModelRebuild] =
     useState<KnowledgeBuilderReadModelRebuild | null>(null)
+  const [sourceUpload, setSourceUpload] =
+    useState<KnowledgeBuilderSourceUpload | null>(null)
+  const [selectedSourceDocument, setSelectedSourceDocument] =
+    useState<File | null>(null)
+  const [discoveryResult, setDiscoveryResult] =
+    useState<KnowledgeBuilderDiscoveryResult | null>(null)
+  const [discoveryView, setDiscoveryView] = useState<'lexicon' | 'graph'>(
+    'lexicon',
+  )
   const queryClient = useQueryClient()
-  const graphQuery = useQuery({
-    queryKey: ['knowledge-builder-graph', runId],
-    queryFn: () => fetchKnowledgeBuilderGraph(runId as string),
+  const discoveryRunQuery = useQuery({
+    queryKey: ['knowledge-builder-discovery-run', runId],
+    queryFn: () => fetchKnowledgeBuilderDiscoveryRun(runId as string),
     enabled: Boolean(runId),
   })
   const feedbackDeltasQuery = useQuery({
@@ -2751,9 +2994,9 @@ export function KnowledgeBuilderStudioScreen() {
   const importedLexiconCandidates = useMemo(
     () =>
       (importedLexiconCandidatesQuery.data ?? []).filter((candidate) =>
-        String(candidate.applicabilityScope?.compiler_profile_version || '').startsWith(
-          'sensitive_lexicon_docx.',
-        ),
+        String(
+          candidate.applicabilityScope?.compiler_profile_version || '',
+        ).startsWith('sensitive_lexicon_docx.'),
       ),
     [importedLexiconCandidatesQuery.data],
   )
@@ -2780,8 +3023,9 @@ export function KnowledgeBuilderStudioScreen() {
   }, [feedbackDeltasQuery.data])
   const discoveryMutation = useMutation({
     mutationFn: createKnowledgeBuilderRun,
-    onSuccess: (run) => {
-      setRunId(run.discovery_run_id)
+    onSuccess: (result) => {
+      setDiscoveryResult(result)
+      setRunId(result.discoveryRun.discovery_run_id)
       setSelectedNodeId(null)
       setSelectedRelationId(null)
       setCurationMessage(null)
@@ -2793,15 +3037,49 @@ export function KnowledgeBuilderStudioScreen() {
       setReadModelRebuild(null)
     },
   })
-  const graph = graphQuery.data
-  const selectedNode = graph?.nodes.find((node) => node.node_id === selectedNodeId)
+  const sourceUploadMutation = useMutation({
+    mutationFn: uploadKnowledgeBuilderSourceDocument,
+    onSuccess: (upload) => {
+      setSourceUpload(upload)
+      setSelectedSourceDocument(null)
+      const uploadRef = upload.stagedUploadRef || upload.retryUploadRef
+      if (uploadRef) {
+        setSourceRef(uploadRef)
+      }
+      setCurationMessage(copy.uploadReadyForSourceReference)
+    },
+  })
+  const discoveryRun = discoveryRunQuery.data
+  const compiledCandidates = discoveryResult?.importResult?.candidates ?? []
+  const compiledCategories = Array.from(
+    new Set(
+      compiledCandidates
+        .map((candidate) => candidate.applicability_scope?.term_category)
+        .filter((category): category is string => Boolean(category)),
+    ),
+  )
+  const compiledAnchorCount =
+    discoveryResult?.importResult?.compilation_run?.mapped_source_anchor_refs
+      ?.length ?? 0
+  const governedUploadRef =
+    sourceUpload?.stagedUploadRef || sourceUpload?.retryUploadRef || ''
+  const candidateNodes: Array<KnowledgeBuilderCandidateNode> = []
+  const candidateRelations: Array<KnowledgeBuilderCandidateRelation> = []
+  const candidateClusters: Array<KnowledgeBuilderCandidateCluster> = []
+  const selectedNode = candidateNodes.find(
+    (node) => node.node_id === selectedNodeId,
+  )
   const selectedRelation =
-    graph?.relations.find((relation) => relation.relation_id === selectedRelationId) ??
-    graph?.relations[0]
-  const selectedCluster = graph?.clusters[0]
+    candidateRelations.find(
+      (relation) => relation.relation_id === selectedRelationId,
+    ) ?? candidateRelations[0]
+  const selectedCluster = candidateClusters[0]
   const selectedRelationAnchors = selectedRelation?.source_anchor_refs ?? []
-  const refreshGraph = () => {
-    if (runId) void queryClient.invalidateQueries({ queryKey: ['knowledge-builder-graph', runId] })
+  const refreshDiscoveryRun = () => {
+    if (runId)
+      void queryClient.invalidateQueries({
+        queryKey: ['knowledge-builder-discovery-run', runId],
+      })
   }
   const relationMutation = useMutation({
     mutationFn: (input: {
@@ -2828,7 +3106,7 @@ export function KnowledgeBuilderStudioScreen() {
         setRelationCandidateId(relationCandidate.semantic_relation_candidate_id)
       }
       setCurationMessage(copy.curationSaved)
-      refreshGraph()
+      refreshDiscoveryRun()
     },
   })
   const splitMutation = useMutation({
@@ -2836,12 +3114,12 @@ export function KnowledgeBuilderStudioScreen() {
       postKnowledgeBuilderAction({
         action: 'splitCluster',
         clusterId: selectedCluster?.cluster_id,
-        nodeIds: graph?.nodes.slice(0, 2).map((node) => node.node_id) ?? [],
+        nodeIds: candidateNodes.slice(0, 2).map((node) => node.node_id),
         reviewerNotes: 'Reviewer split semantic neighborhood false friends.',
       }),
     onSuccess: () => {
       setCurationMessage(copy.curationSaved)
-      refreshGraph()
+      refreshDiscoveryRun()
     },
   })
   const mergeMutation = useMutation({
@@ -2853,7 +3131,7 @@ export function KnowledgeBuilderStudioScreen() {
       }),
     onSuccess: () => {
       setCurationMessage(copy.curationSaved)
-      refreshGraph()
+      refreshDiscoveryRun()
     },
   })
   const termMutation = useMutation({
@@ -2882,8 +3160,9 @@ export function KnowledgeBuilderStudioScreen() {
         governanceState: 'PROPOSED',
       }),
     onSuccess: (payload) => {
-      const termCandidate = (payload as { termCandidate?: { term_candidate_id?: string } })
-        .termCandidate
+      const termCandidate = (
+        payload as { termCandidate?: { term_candidate_id?: string } }
+      ).termCandidate
       if (termCandidate?.term_candidate_id) {
         setTermCandidateId(termCandidate.term_candidate_id)
       }
@@ -2907,7 +3186,9 @@ export function KnowledgeBuilderStudioScreen() {
   })
   const evaluationRunMutation = useMutation({
     mutationFn: () =>
-      postKnowledgeBuilderAction<{ evaluationRun: KnowledgeBuilderEvaluationRun }>({
+      postKnowledgeBuilderAction<{
+        evaluationRun: KnowledgeBuilderEvaluationRun
+      }>({
         action: 'runEvaluation',
         evaluationDatasetId: evaluationDataset?.evaluation_dataset_id,
         discoveryRunId: runId,
@@ -2940,7 +3221,9 @@ export function KnowledgeBuilderStudioScreen() {
       }>({
         action: 'promoteRuntimeSemantics',
         termCandidateId,
-        semanticRelationCandidateIds: relationCandidateId ? [relationCandidateId] : [],
+        semanticRelationCandidateIds: relationCandidateId
+          ? [relationCandidateId]
+          : [],
         evaluationRunId: evaluationRun?.evaluation_run_id,
       }),
     onSuccess: (payload) => {
@@ -2975,6 +3258,96 @@ export function KnowledgeBuilderStudioScreen() {
       </header>
       <main className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 sm:p-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <section className="rounded-card border border-border bg-card p-4">
+          <div className="mb-4 rounded-md border border-border bg-background p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold">
+                  {copy.governedDocumentUpload}
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {copy.uploadGovernedDocumentHelp}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="rounded-button border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted">
+                  <input
+                    type="file"
+                    accept=".docx"
+                    className="sr-only"
+                    onChange={(event) => {
+                      setSelectedSourceDocument(event.target.files?.[0] ?? null)
+                    }}
+                  />
+                  {copy.chooseGovernedDocument}
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 rounded-button bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={
+                    !selectedSourceDocument || sourceUploadMutation.isPending
+                  }
+                  onClick={() => {
+                    if (selectedSourceDocument) {
+                      sourceUploadMutation.mutate(selectedSourceDocument)
+                    }
+                  }}
+                >
+                  <HugeiconsIcon
+                    icon={Upload01Icon}
+                    size={14}
+                    strokeWidth={1.7}
+                  />
+                  {sourceUploadMutation.isPending
+                    ? copy.uploadingGovernedDocument
+                    : copy.uploadGovernedDocument}
+                </button>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
+              {selectedSourceDocument ? (
+                <div className="break-all">
+                  {copy.uploadGovernedDocument}:{' '}
+                  <code>{selectedSourceDocument.name}</code>
+                </div>
+              ) : null}
+              <div>
+                {copy.sourceKind}: <code>controlled_document</code>
+              </div>
+              <div>
+                {copy.semanticPurpose}: <code>sensitive_lexicon</code>
+              </div>
+              <div>
+                {copy.compilerProfile}: <code>sensitive_lexicon_docx.v1</code>
+              </div>
+              {sourceUpload?.stagedUploadRef || sourceUpload?.retryUploadRef ? (
+                <div className="break-all">
+                  {copy.governedUploadRef}:{' '}
+                  <code>
+                    {sourceUpload.stagedUploadRef ||
+                      sourceUpload.retryUploadRef}
+                  </code>
+                </div>
+              ) : null}
+              {sourceUpload ? (
+                <div className="break-all">
+                  {copy.governedSourceRef}:{' '}
+                  <code>pending governed source registration</code>
+                </div>
+              ) : null}
+              {sourceUpload ? (
+                <div>
+                  {copy.knowledgeSourceContentHash}: <code>pending</code>
+                </div>
+              ) : null}
+            </div>
+            {sourceUploadMutation.isError ? (
+              <p className="mt-3 text-xs text-destructive">
+                {sourceUploadMutation.error instanceof Error
+                  ? sourceUploadMutation.error.message
+                  : copy.unavailable}
+              </p>
+            ) : null}
+          </div>
           <label className="text-sm font-medium" htmlFor="kb-source-ref">
             {copy.sourceRef}
           </label>
@@ -2985,186 +3358,263 @@ export function KnowledgeBuilderStudioScreen() {
             value={sourceRef}
             onChange={(event) => setSourceRef(event.target.value)}
           />
-          <label
-            className="mt-4 block text-sm font-medium"
-            htmlFor="kb-source-text"
-          >
-            {copy.sourceText}
-          </label>
-          <textarea
-            id="kb-source-text"
-            className="mt-2 min-h-72 w-full rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-primary"
-            placeholder={copy.placeholder}
-            value={sourceText}
-            onChange={(event) => setSourceText(event.target.value)}
-          />
           <button
             type="button"
             className="mt-3 rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!sourceText.trim() || discoveryMutation.isPending}
-            onClick={() => discoveryMutation.mutate({ sourceRef, sourceText })}
+            disabled={
+              !sourceRef.trim() ||
+              discoveryMutation.isPending
+            }
+            onClick={() =>
+              discoveryMutation.mutate({
+                sourceRef,
+                uploadRef: governedUploadRef,
+              })
+            }
           >
             {discoveryMutation.isPending ? copy.running : copy.runDiscovery}
           </button>
-          {discoveryMutation.isError || graphQuery.isError ? (
-            <p className="mt-3 text-sm text-destructive">{copy.unavailable}</p>
+          {discoveryMutation.isError || discoveryRunQuery.isError ? (
+            <p className="mt-3 text-sm text-destructive">
+              {discoveryMutation.error instanceof Error
+                ? discoveryMutation.error.message
+                : discoveryRunQuery.error instanceof Error
+                  ? discoveryRunQuery.error.message
+                  : copy.unavailable}
+            </p>
+          ) : null}
+          {discoveryResult ? (
+            <div className="mt-4 rounded-md border border-border bg-background p-3">
+              <h2 className="text-sm font-semibold">
+                {copy.uploadedDocumentPreview}
+              </h2>
+              <dl className="mt-3 grid gap-2 text-xs">
+                <div className="flex flex-wrap justify-between gap-2">
+                  <dt className="text-muted-foreground">
+                    {copy.uploadGovernedDocument}
+                  </dt>
+                  <dd className="font-mono">
+                    {discoveryResult.ingest?.originalName ||
+                      selectedSourceDocument?.name ||
+                      '-'}
+                  </dd>
+                </div>
+                <div className="flex flex-wrap justify-between gap-2">
+                  <dt className="text-muted-foreground">
+                    {copy.normalizedArtifact}
+                  </dt>
+                  <dd className="break-all font-mono">
+                    {discoveryResult.ingest?.normalizedDocumentArtifactRef ||
+                      '-'}
+                  </dd>
+                </div>
+                <div className="flex flex-wrap justify-between gap-2">
+                  <dt className="text-muted-foreground">
+                    {copy.knowledgeSourceContentHash}
+                  </dt>
+                  <dd className="break-all font-mono">
+                    {discoveryResult.ingest?.sourceHash || '-'}
+                  </dd>
+                </div>
+              </dl>
+              <div className="mt-3 grid gap-2">
+                {compiledCandidates.slice(0, 8).map((candidate) => (
+                  <div
+                    key={candidate.rule_candidate_id}
+                    className="rounded border border-border bg-card p-2 text-xs"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">
+                        {candidate.applicability_scope?.match_terms?.[0] ||
+                          candidate.applicability_scope?.normalized_term ||
+                          '-'}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {candidate.applicability_scope?.term_category || '-'}
+                      </span>
+                    </div>
+                    <div className="mt-1 truncate font-mono text-muted-foreground">
+                      {candidate.source_anchor_refs?.[0] || '-'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : null}
         </section>
         <section className="rounded-card border border-border bg-card p-4">
-          <h2 className="text-sm font-semibold">{copy.graphPreview}</h2>
-          {graph ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">
+              {discoveryView === 'lexicon'
+                ? copy.lexiconPreview
+                : copy.graphPreview}
+            </h2>
+            <div className="inline-flex rounded-md border border-border bg-background p-1">
+              {(['lexicon', 'graph'] as const).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  className={cn(
+                    'rounded px-3 py-1 text-xs font-medium',
+                    discoveryView === view
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted',
+                  )}
+                  onClick={() => setDiscoveryView(view)}
+                >
+                  {view === 'lexicon' ? copy.viewLexicon : copy.viewGraph}
+                </button>
+              ))}
+            </div>
+          </div>
+          {discoveryResult ? (
             <div className="mt-3 grid gap-4">
               <p className="rounded-md border border-dashed border-border p-2 text-xs text-muted-foreground">
-                {graph.authority_notice || copy.nonAuthority}
+                {copy.nonAuthority}
               </p>
+              <dl className="grid gap-2 rounded-md border border-border bg-background p-3 text-xs">
+                <div className="flex flex-wrap justify-between gap-2">
+                  <dt className="text-muted-foreground">discovery_run_id</dt>
+                  <dd className="font-mono">
+                    {discoveryResult.discoveryRun.discovery_run_id}
+                  </dd>
+                </div>
+                <div className="flex flex-wrap justify-between gap-2">
+                  <dt className="text-muted-foreground">
+                    {copy.compilationRun}
+                  </dt>
+                  <dd className="font-mono">
+                    {discoveryResult.importResult?.compilation_run
+                      ?.knowledge_source_compilation_run_id || 'pending'}
+                  </dd>
+                </div>
+                <div className="flex flex-wrap justify-between gap-2">
+                  <dt className="text-muted-foreground">
+                    {copy.normalizedArtifact}
+                  </dt>
+                  <dd className="break-all font-mono">
+                    {discoveryResult.ingest?.normalizedDocumentArtifactRef ||
+                      '-'}
+                  </dd>
+                </div>
+                <div className="flex flex-wrap justify-between gap-2">
+                  <dt className="text-muted-foreground">
+                    {copy.compilerProfile}
+                  </dt>
+                  <dd>
+                    {discoveryResult.importResult?.compiler_profile_version ||
+                      discoveryResult.importResult?.compilation_run
+                        ?.compiler_profile_version ||
+                      'knowledge_builder_discovery.v1'}
+                  </dd>
+                </div>
+              </dl>
               <div className="grid gap-3 sm:grid-cols-2">
-                <KnowledgeBuilderMetric label={copy.nodes} value={graph.nodes.length} />
                 <KnowledgeBuilderMetric
-                  label={copy.relations}
-                  value={graph.relations.length}
+                  label={copy.candidateTerms}
+                  value={compiledCandidates.length}
                 />
-                <KnowledgeBuilderMetric label={copy.notes} value={graph.notes.length} />
                 <KnowledgeBuilderMetric
-                  label={copy.clusters}
-                  value={graph.clusters.length}
+                  label={copy.sourceAnchors}
+                  value={compiledAnchorCount}
+                />
+                <KnowledgeBuilderMetric
+                  label={copy.category}
+                  value={compiledCategories.length}
+                />
+                <KnowledgeBuilderMetric
+                  label={copy.parsedRows}
+                  value={compiledAnchorCount}
                 />
               </div>
-              <div className="grid gap-2">
-                {graph.nodes.map((node) => (
-                  <button
-                    key={node.node_id}
-                    type="button"
-                    className="rounded-md border border-border bg-background p-3 text-left"
-                    onClick={() => setSelectedNodeId(node.node_id)}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-sm font-semibold">{node.label}</span>
-                      <span className="rounded-full bg-muted px-2 py-1 text-xs">
-                        {node.governance_state}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {node.evidence_summary}
-                    </p>
-                  </button>
-                ))}
-              </div>
-              <div className="rounded-md border border-border bg-background p-3">
-                <h3 className="text-sm font-semibold">{copy.relationReview}</h3>
-                <div className="mt-3 grid gap-2">
-                  {graph.relations.map((relation) => (
-                    <button
-                      key={relation.relation_id}
-                      type="button"
-                      className={cn(
-                        'rounded-md border border-border p-3 text-left text-xs',
-                        selectedRelation?.relation_id === relation.relation_id
-                          ? 'bg-muted'
-                          : 'bg-card',
-                      )}
-                      onClick={() => {
-                        setSelectedRelationId(relation.relation_id)
-                        setRelationType(
-                          KNOWLEDGE_BUILDER_RELATION_TYPES.includes(
-                            relation.relation_type as KnowledgeBuilderRelationType,
-                          )
-                            ? (relation.relation_type as KnowledgeBuilderRelationType)
-                            : 'not_same_as',
-                        )
-                      }}
-                    >
-                      <span className="font-medium">{relation.relation_type}</span>
-                      <span className="ml-2 text-muted-foreground">
-                        {relation.governance_state}
-                      </span>
-                      <p className="mt-1 text-muted-foreground">
-                        {relation.evidence_summary || copy.evidence}
-                      </p>
-                    </button>
-                  ))}
+              {discoveryView === 'lexicon' ? (
+                <div className="max-h-[520px] overflow-auto rounded-md border border-border bg-background">
+                  <table className="w-full min-w-[720px] text-left text-xs">
+                    <thead className="sticky top-0 bg-muted text-muted-foreground">
+                      <tr>
+                        <th className="px-3 py-2 font-medium">{copy.term}</th>
+                        <th className="px-3 py-2 font-medium">
+                          {copy.category}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {copy.state}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {copy.sourceAnchors}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {compiledCandidates.slice(0, 200).map((candidate) => (
+                        <tr
+                          key={candidate.rule_candidate_id}
+                          className="border-t border-border"
+                        >
+                          <td className="px-3 py-2 font-medium">
+                            {candidate.applicability_scope?.match_terms?.[0] ||
+                              candidate.applicability_scope?.normalized_term ||
+                              '-'}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {candidate.applicability_scope?.term_category ||
+                              '-'}
+                          </td>
+                          <td className="px-3 py-2">
+                            {candidate.candidate_state || 'PROPOSED'}
+                          </td>
+                          <td className="max-w-[260px] truncate px-3 py-2 font-mono text-muted-foreground">
+                            {candidate.source_anchor_refs?.[0] || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <label className="mt-3 block text-xs font-medium" htmlFor="kb-relation-type">
-                  {copy.relationType}
-                </label>
-                <select
-                  id="kb-relation-type"
-                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
-                  value={relationType}
-                  onChange={(event) =>
-                    setRelationType(event.target.value as KnowledgeBuilderRelationType)
-                  }
-                >
-                  {KNOWLEDGE_BUILDER_RELATION_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="rounded-button border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={!selectedRelation || relationMutation.isPending}
-                    onClick={() =>
-                      relationMutation.mutate({ decision: 'accept', relationType })
-                    }
-                  >
-                    {copy.acceptRelation}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-button border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={!selectedRelation || relationMutation.isPending}
-                    onClick={() =>
-                      relationMutation.mutate({ decision: 'change', relationType })
-                    }
-                  >
-                    {copy.changeRelation}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-button border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={!selectedRelation || relationMutation.isPending}
-                    onClick={() =>
-                      relationMutation.mutate({
-                        decision: 'change',
-                        relationType: 'not_same_as',
-                      })
-                    }
-                  >
-                    {copy.falseFriend}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-button border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={!selectedRelation || relationMutation.isPending}
-                    onClick={() =>
-                      relationMutation.mutate({ decision: 'reject', relationType })
-                    }
-                  >
-                    {copy.rejectRelation}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-button border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={!selectedCluster || splitMutation.isPending}
-                    onClick={() => splitMutation.mutate()}
-                  >
-                    {copy.splitCluster}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-button border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={!selectedCluster || mergeMutation.isPending}
-                    onClick={() => mergeMutation.mutate()}
-                  >
-                    {copy.mergeCluster}
-                  </button>
+              ) : (
+                <div className="grid gap-3">
+                  {compiledCategories.slice(0, 12).map((category) => {
+                    const terms = compiledCandidates.filter(
+                      (candidate) =>
+                        candidate.applicability_scope?.term_category ===
+                        category,
+                    )
+                    return (
+                      <div
+                        key={category}
+                        className="rounded-md border border-border bg-background p-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-sm font-semibold">
+                            {category}
+                          </span>
+                          <span className="rounded-full bg-muted px-2 py-1 text-xs">
+                            {terms.length}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {terms.slice(0, 24).map((candidate) => (
+                            <span
+                              key={candidate.rule_candidate_id}
+                              className="rounded border border-border bg-card px-2 py-1 text-xs"
+                            >
+                              {candidate.applicability_scope?.match_terms?.[0] ||
+                                candidate.applicability_scope
+                                  ?.normalized_term ||
+                                '-'}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              </div>
+              )}
               <div className="rounded-md border border-border bg-background p-3">
                 <h3 className="text-sm font-semibold">{copy.canonicalTerm}</h3>
-                <label className="mt-3 block text-xs font-medium" htmlFor="kb-canonical-label">
+                <label
+                  className="mt-3 block text-xs font-medium"
+                  htmlFor="kb-canonical-label"
+                >
                   {copy.canonicalLabel}
                 </label>
                 <input
@@ -3173,7 +3623,10 @@ export function KnowledgeBuilderStudioScreen() {
                   value={canonicalLabel}
                   onChange={(event) => setCanonicalLabel(event.target.value)}
                 />
-                <label className="mt-3 block text-xs font-medium" htmlFor="kb-definition">
+                <label
+                  className="mt-3 block text-xs font-medium"
+                  htmlFor="kb-definition"
+                >
                   {copy.definition}
                 </label>
                 <textarea
@@ -3182,7 +3635,10 @@ export function KnowledgeBuilderStudioScreen() {
                   value={definition}
                   onChange={(event) => setDefinition(event.target.value)}
                 />
-                <label className="mt-3 block text-xs font-medium" htmlFor="kb-aliases">
+                <label
+                  className="mt-3 block text-xs font-medium"
+                  htmlFor="kb-aliases"
+                >
                   {copy.aliases}
                 </label>
                 <input
@@ -3194,14 +3650,20 @@ export function KnowledgeBuilderStudioScreen() {
                 <button
                   type="button"
                   className="mt-3 rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={!runId || !canonicalLabel.trim() || termMutation.isPending}
+                  disabled={
+                    !runId || !canonicalLabel.trim() || termMutation.isPending
+                  }
                   onClick={() => termMutation.mutate()}
                 >
                   {copy.promoteTerm}
                 </button>
-                <p className="mt-2 text-xs text-muted-foreground">{copy.nonAuthority}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {copy.nonAuthority}
+                </p>
                 {curationMessage ? (
-                  <p className="mt-2 text-xs text-muted-foreground">{curationMessage}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {curationMessage}
+                  </p>
                 ) : null}
               </div>
               <div className="rounded-md border border-border bg-background p-3">
@@ -3239,8 +3701,8 @@ export function KnowledgeBuilderStudioScreen() {
                           <span>
                             {copy.compilerProfile}:{' '}
                             {String(
-                              candidate.applicabilityScope?.compiler_profile_version ||
-                                'n/a',
+                              candidate.applicabilityScope
+                                ?.compiler_profile_version || 'n/a',
                             )}
                           </span>
                           <span className="break-all">
@@ -3261,7 +3723,9 @@ export function KnowledgeBuilderStudioScreen() {
               </div>
               <div className="rounded-md border border-border bg-background p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold">{copy.evaluationLab}</h3>
+                  <h3 className="text-sm font-semibold">
+                    {copy.evaluationLab}
+                  </h3>
                   <span className="rounded-full bg-muted px-2 py-1 text-xs">
                     {copy.nonAuthority}
                   </span>
@@ -3299,7 +3763,9 @@ export function KnowledgeBuilderStudioScreen() {
                         <span className="ml-2 text-muted-foreground">
                           {example.expected_outcome}
                         </span>
-                        <p className="mt-1 text-muted-foreground">{example.input_text}</p>
+                        <p className="mt-1 text-muted-foreground">
+                          {example.input_text}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -3307,22 +3773,28 @@ export function KnowledgeBuilderStudioScreen() {
                 {evaluationRun ? (
                   <div className="mt-4 grid gap-3">
                     <div>
-                      <h4 className="text-xs font-semibold">{copy.activationGate}</h4>
+                      <h4 className="text-xs font-semibold">
+                        {copy.activationGate}
+                      </h4>
                       <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                        {Object.entries(evaluationRun.metrics).map(([key, value]) => (
-                          <KnowledgeBuilderMetric
-                            key={key}
-                            label={key}
-                            value={Number(value)}
-                          />
-                        ))}
+                        {Object.entries(evaluationRun.metrics).map(
+                          ([key, value]) => (
+                            <KnowledgeBuilderMetric
+                              key={key}
+                              label={key}
+                              value={Number(value)}
+                            />
+                          ),
+                        )}
                       </div>
                       <p className="mt-2 text-xs text-muted-foreground">
                         {evaluationRun.authority_notice}
                       </p>
                     </div>
                     <div className="grid gap-2">
-                      <h4 className="text-xs font-semibold">{copy.expectedActual}</h4>
+                      <h4 className="text-xs font-semibold">
+                        {copy.expectedActual}
+                      </h4>
                       {evaluationRun.results.map((result) => (
                         <div
                           key={result.evaluation_result_id}
@@ -3330,11 +3802,14 @@ export function KnowledgeBuilderStudioScreen() {
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span>
-                              {result.expected_outcome} / {result.actual_outcome}
+                              {result.expected_outcome} /{' '}
+                              {result.actual_outcome}
                             </span>
                             <span className="text-muted-foreground">
                               AI: {result.ai_assisted_rating}
-                              {result.human_rating ? ` · human: ${result.human_rating}` : ''}
+                              {result.human_rating
+                                ? ` · human: ${result.human_rating}`
+                                : ''}
                             </span>
                           </div>
                           <div className="mt-2 flex flex-wrap gap-2">
@@ -3389,7 +3864,9 @@ export function KnowledgeBuilderStudioScreen() {
               </div>
               <div className="rounded-md border border-border bg-background p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold">{copy.feedbackDeltas}</h3>
+                  <h3 className="text-sm font-semibold">
+                    {copy.feedbackDeltas}
+                  </h3>
                   <button
                     type="button"
                     className="rounded-button border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
@@ -3444,7 +3921,10 @@ export function KnowledgeBuilderStudioScreen() {
                           </div>
                           <p className="mt-1 text-muted-foreground">
                             {delta.discovery_run_id} · {delta.delta_kind} ·{' '}
-                            {String(delta.evaluation_routing?.route_to || 'evaluation')}
+                            {String(
+                              delta.evaluation_routing?.route_to ||
+                                'evaluation',
+                            )}
                           </p>
                           <button
                             type="button"
@@ -3465,7 +3945,9 @@ export function KnowledgeBuilderStudioScreen() {
               </div>
               <div className="rounded-md border border-border bg-background p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold">{copy.governanceQueue}</h3>
+                  <h3 className="text-sm font-semibold">
+                    {copy.governanceQueue}
+                  </h3>
                   <span className="rounded-full bg-muted px-2 py-1 text-xs">
                     {authorityVersion?.authority_state || copy.nonAuthority}
                   </span>
@@ -3478,14 +3960,16 @@ export function KnowledgeBuilderStudioScreen() {
                   </p>
                   {authorityVersion ? (
                     <p>
-                      {copy.activationStatus}: {authorityVersion.authority_version_id} ·{' '}
-                      {authorityVersion.approved_by} · {authorityVersion.activated_by}
+                      {copy.activationStatus}:{' '}
+                      {authorityVersion.authority_version_id} ·{' '}
+                      {authorityVersion.approved_by} ·{' '}
+                      {authorityVersion.activated_by}
                     </p>
                   ) : null}
                   {readModelRebuild ? (
                     <p>
-                      {copy.readModelStatus}: {readModelRebuild.rebuild_status} ·{' '}
-                      {readModelRebuild.rebuild_id}
+                      {copy.readModelStatus}: {readModelRebuild.rebuild_status}{' '}
+                      · {readModelRebuild.rebuild_id}
                     </p>
                   ) : null}
                   {readModelRebuild?.non_authoritative_notice ? (
@@ -3566,7 +4050,11 @@ function TenderFindingCard({
   copy: TenderReviewCopy
   onDisposition: (disposition: 'accepted' | 'rejected' | 'edited') => void
   onFeedback: (
-    feedbackType: 'false_positive' | 'false_negative' | 'ambiguity' | 'weak_explanation',
+    feedbackType:
+      | 'false_positive'
+      | 'false_negative'
+      | 'ambiguity'
+      | 'weak_explanation',
     escalationOutcome: 'not_escalated' | 'escalated',
   ) => void
 }) {
@@ -3576,7 +4064,8 @@ function TenderFindingCard({
         <div>
           <h3 className="text-sm font-semibold">{finding.issue_type}</h3>
           <p className="text-xs text-muted-foreground">
-            {runId} · {finding.severity} · {Math.round(finding.confidence * 100)}%
+            {runId} · {finding.severity} ·{' '}
+            {Math.round(finding.confidence * 100)}%
           </p>
         </div>
         {finding.escalation_flag ? (
@@ -3585,12 +4074,18 @@ function TenderFindingCard({
           </span>
         ) : null}
       </div>
-      <p className="mt-3 rounded bg-muted p-2 text-sm">{finding.matched_text}</p>
-      <p className="mt-2 text-xs text-muted-foreground">{finding.judgment_basis}</p>
+      <p className="mt-3 rounded bg-muted p-2 text-sm">
+        {finding.matched_text}
+      </p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {finding.judgment_basis}
+      </p>
       {finding.suggested_replacement ? (
         <div className="mt-3 rounded-md border border-dashed border-border p-2 text-xs">
           <div className="font-medium">{copy.aiSuggestion}</div>
-          <p className="mt-1 text-muted-foreground">{finding.suggested_replacement}</p>
+          <p className="mt-1 text-muted-foreground">
+            {finding.suggested_replacement}
+          </p>
         </div>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
@@ -3676,7 +4171,9 @@ function PolicyRuleCandidateCard({
               : copy.runtimeAuthority}
           </p>
         </div>
-        <Badge>{nonAuthority ? copy.nonAuthority : copy.runtimeAuthority}</Badge>
+        <Badge>
+          {nonAuthority ? copy.nonAuthority : copy.runtimeAuthority}
+        </Badge>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <InspectorPanel title={copy.aiText}>
@@ -3686,9 +4183,18 @@ function PolicyRuleCandidateCard({
           </p>
         </InspectorPanel>
         <InspectorPanel title={copy.review}>
-          <Fact label={copy.humanEdits} value={String(candidate.humanEdits.length)} />
-          <Fact label={copy.approvalEvidence} value={JSON.stringify(candidate.approvalEvidence)} />
-          <Fact label={copy.testEvidence} value={JSON.stringify(candidate.testEvidence)} />
+          <Fact
+            label={copy.humanEdits}
+            value={String(candidate.humanEdits.length)}
+          />
+          <Fact
+            label={copy.approvalEvidence}
+            value={JSON.stringify(candidate.approvalEvidence)}
+          />
+          <Fact
+            label={copy.testEvidence}
+            value={JSON.stringify(candidate.testEvidence)}
+          />
         </InspectorPanel>
         <InspectorPanel title={copy.evidence}>
           <Fact
@@ -3702,7 +4208,10 @@ function PolicyRuleCandidateCard({
         </InspectorPanel>
         <InspectorPanel title={copy.uncertainty}>
           <Fact label={copy.confidence} value={percent(candidate.confidence)} />
-          <Fact label={copy.uncertainty} value={candidate.uncertaintyNotes || '-'} />
+          <Fact
+            label={copy.uncertainty}
+            value={candidate.uncertaintyNotes || '-'}
+          />
         </InspectorPanel>
       </div>
     </article>

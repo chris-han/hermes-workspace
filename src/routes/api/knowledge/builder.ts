@@ -3,9 +3,10 @@ import { json } from '@tanstack/react-start'
 import {
   createKnowledgeBuilderDiscoveryRun,
   createCanonicalTermCandidate,
+  compileKnowledgeBuilderSensitiveLexicon,
   curateKnowledgeBuilderRelation,
   getKnowledgeBuilderCandidateExplanation,
-  getKnowledgeBuilderGraph,
+  getKnowledgeBuilderDiscoveryRun,
   getKnowledgeBuilderRuntimeSemanticIndex,
   listKnowledgeBuilderFeedbackDeltas,
   mergeKnowledgeBuilderClusters,
@@ -61,8 +62,8 @@ export const Route = createUntypedFileRoute('/api/knowledge/builder')({
           if (!runId) {
             return json({ error: 'runId is required' }, { status: 400 })
           }
-          const graph = await getKnowledgeBuilderGraph(request.headers, runId)
-          return json({ graph })
+          const run = await getKnowledgeBuilderDiscoveryRun(request.headers, runId)
+          return json({ run })
         } catch (error) {
           if (error instanceof WorkspaceAuthRequiredError) {
             return json({ error: error.message }, { status: 401 })
@@ -72,7 +73,7 @@ export const Route = createUntypedFileRoute('/api/knowledge/builder')({
               error:
                 error instanceof Error
                   ? error.message
-                  : 'Failed to load Knowledge Builder graph',
+                  : 'Failed to load Knowledge Builder discovery run',
             },
             { status: 400 },
           )
@@ -80,8 +81,21 @@ export const Route = createUntypedFileRoute('/api/knowledge/builder')({
       },
       POST: async ({ request }: { request: Request }) => {
         try {
-          await resolveActiveWorkspaceRoot(request.headers)
+          const activeWorkspace = await resolveActiveWorkspaceRoot(
+            request.headers,
+          )
           const body = await request.json()
+          if (body.action === 'compileSensitiveLexicon') {
+            const discoveryResult = await compileKnowledgeBuilderSensitiveLexicon(
+              request.headers,
+              activeWorkspace,
+              {
+                uploadRef: String(body.uploadRef || body.upload_ref || ''),
+                sourceRef: body.sourceRef || body.source_ref,
+              },
+            )
+            return json({ discoveryResult })
+          }
           if (body.action === 'curateRelation') {
             const relationCandidate = await curateKnowledgeBuilderRelation(
               request.headers,

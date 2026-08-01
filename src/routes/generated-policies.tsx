@@ -1041,7 +1041,7 @@ async function fetchPluginJson<T>(
   init?: RequestInit,
 ): Promise<T> {
   const response = await fetch(
-    `/api/semantier-proxy/api/plugins/tender-sensitive-labeling/v1${path}`,
+    `/api/semantier-proxy/api/plugins/tender-sensitive-term-detection-modeling/v1${path}`,
     {
       ...init,
       headers: {

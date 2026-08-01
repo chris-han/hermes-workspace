@@ -600,6 +600,7 @@ function ChatSidebarComponent({
   const isMemoryActive = pathname === '/memory'
   const isKnowledgeBaseActive =
     pathname === '/knowledge-base' ||
+    pathname === '/generated-policies' ||
     pathname === '/legal-corpus' ||
     pathname === '/database' ||
     pathname === '/effective-context'
@@ -607,7 +608,12 @@ function ChatSidebarComponent({
   const isorchestratorActive = pathname === '/orchestrator'
   const isAgentRosterActive = pathname === '/agent-roster'
   const mainRoutes = ['/chat', '/new', '/skills', '/profiles']
-  const knowledgeRoutes = ['/memory', '/knowledge-base', '/legal-corpus']
+  const knowledgeRoutes = [
+    '/memory',
+    '/knowledge-base',
+    '/generated-policies',
+    '/legal-corpus',
+  ]
   const systemRoutes = ['/settings', '/logs']
 
   useEffect(() => {
@@ -939,6 +945,13 @@ function ChatSidebarComponent({
       icon: Book01Icon,
       label: t('nav.knowledgeBase'),
       active: isKnowledgeBaseActive,
+    },
+    {
+      kind: 'link',
+      to: '/generated-policies',
+      icon: CheckListIcon,
+      label: t('nav.generatedPolicies'),
+      active: pathname === '/generated-policies',
     },
   ]
 

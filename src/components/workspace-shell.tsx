@@ -119,6 +119,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     if (path.startsWith('/skills')) return 6
     if (path.startsWith('/profiles')) return 7
     if (path.startsWith('/settings')) return 8
+    if (path.startsWith('/generated-policies')) return 5
     return -1
   }, [])
 
@@ -185,9 +186,12 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     if (pathname.startsWith('/memory')) return 'Memory'
     if (
       pathname.startsWith('/knowledge-base') ||
+      pathname.startsWith('/generated-policies') ||
       pathname.startsWith('/legal-corpus')
     ) {
-      return t('nav.knowledgeBase')
+      return pathname.startsWith('/generated-policies')
+        ? t('nav.generatedPolicies')
+        : t('nav.knowledgeBase')
     }
     if (pathname.startsWith('/skills')) return 'Skills'
     if (pathname.startsWith('/profiles')) return 'Profiles'

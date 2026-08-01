@@ -21,6 +21,7 @@ import { Route as LegalCorpusRouteImport } from './routes/legal-corpus'
 import { Route as KnowledgeBaseRouteImport } from './routes/knowledge-base'
 import { Route as KanbanRouteImport } from './routes/kanban'
 import { Route as JobsRouteImport } from './routes/jobs'
+import { Route as GeneratedPoliciesRouteImport } from './routes/generated-policies'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as EffectiveContextRouteImport } from './routes/effective-context'
 import { Route as DatabaseRouteImport } from './routes/database'
@@ -186,6 +187,11 @@ const KanbanRoute = KanbanRouteImport.update({
 const JobsRoute = JobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GeneratedPoliciesRoute = GeneratedPoliciesRouteImport.update({
+  id: '/generated-policies',
+  path: '/generated-policies',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FilesRoute = FilesRouteImport.update({
@@ -734,6 +740,7 @@ export interface FileRoutesByFullPath {
   '/database': typeof DatabaseRoute
   '/effective-context': typeof EffectiveContextRoute
   '/files': typeof FilesRoute
+  '/generated-policies': typeof GeneratedPoliciesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
@@ -854,6 +861,7 @@ export interface FileRoutesByTo {
   '/database': typeof DatabaseRoute
   '/effective-context': typeof EffectiveContextRoute
   '/files': typeof FilesRoute
+  '/generated-policies': typeof GeneratedPoliciesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
@@ -974,6 +982,7 @@ export interface FileRoutesById {
   '/database': typeof DatabaseRoute
   '/effective-context': typeof EffectiveContextRoute
   '/files': typeof FilesRoute
+  '/generated-policies': typeof GeneratedPoliciesRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
@@ -1096,6 +1105,7 @@ export interface FileRouteTypes {
     | '/database'
     | '/effective-context'
     | '/files'
+    | '/generated-policies'
     | '/jobs'
     | '/kanban'
     | '/knowledge-base'
@@ -1216,6 +1226,7 @@ export interface FileRouteTypes {
     | '/database'
     | '/effective-context'
     | '/files'
+    | '/generated-policies'
     | '/jobs'
     | '/kanban'
     | '/knowledge-base'
@@ -1335,6 +1346,7 @@ export interface FileRouteTypes {
     | '/database'
     | '/effective-context'
     | '/files'
+    | '/generated-policies'
     | '/jobs'
     | '/kanban'
     | '/knowledge-base'
@@ -1456,6 +1468,7 @@ export interface RootRouteChildren {
   DatabaseRoute: typeof DatabaseRoute
   EffectiveContextRoute: typeof EffectiveContextRoute
   FilesRoute: typeof FilesRoute
+  GeneratedPoliciesRoute: typeof GeneratedPoliciesRoute
   JobsRoute: typeof JobsRoute
   KanbanRoute: typeof KanbanRoute
   KnowledgeBaseRoute: typeof KnowledgeBaseRoute
@@ -1630,6 +1643,13 @@ declare module '@tanstack/react-router' {
       path: '/jobs'
       fullPath: '/jobs'
       preLoaderRoute: typeof JobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/generated-policies': {
+      id: '/generated-policies'
+      path: '/generated-policies'
+      fullPath: '/generated-policies'
+      preLoaderRoute: typeof GeneratedPoliciesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/files': {
@@ -2500,6 +2520,7 @@ const rootRouteChildren: RootRouteChildren = {
   DatabaseRoute: DatabaseRoute,
   EffectiveContextRoute: EffectiveContextRoute,
   FilesRoute: FilesRoute,
+  GeneratedPoliciesRoute: GeneratedPoliciesRoute,
   JobsRoute: JobsRoute,
   KanbanRoute: KanbanRoute,
   KnowledgeBaseRoute: KnowledgeBaseRoute,

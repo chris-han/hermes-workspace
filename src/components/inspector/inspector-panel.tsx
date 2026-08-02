@@ -11,7 +11,9 @@ import { cn } from '@/lib/utils'
 
 // ── Tab types ─────────────────────────────────────────────────────────────────
 
-type TabId = 'activity' | 'artifacts' | 'memory' | 'skills' | 'logs'
+import { ContextTab } from './effective-context-observatory'
+
+type TabId = 'context' | 'activity' | 'artifacts' | 'memory' | 'skills' | 'logs'
 
 type InspectorStore = {
   isOpen: boolean
@@ -44,6 +46,7 @@ const TABS: Array<{
   id: TabId
   feature?: 'memory' | 'skills'
 }> = [
+  { id: 'context' },
   { id: 'activity' },
   { id: 'artifacts' },
   { id: 'memory', feature: 'memory' },
@@ -66,6 +69,7 @@ export function getInspectorCopy(locale: string) {
     close: isChinese ? '关闭检查器' : 'Close inspector',
     gate: isChinese ? '门禁' : 'Gate',
     tabs: {
+      context: isChinese ? '上下文' : 'Context',
       activity: isChinese ? '活动' : 'Activity',
       artifacts: isChinese ? '制品' : 'Artifacts',
       memory: isChinese ? '记忆' : 'Memory',
@@ -273,14 +277,18 @@ function activityEventKey(event: ActivityEvent): string {
   ].join('|')
 }
 
-function normalizeSessionActivityPayload(
+export function normalizeSessionActivityPayload(
   payload: SessionActivityPayload | null,
 ): Array<ActivityEvent> {
   const events = Array.isArray(payload?.events) ? payload.events : []
   return events
     .map((entry) => {
       const record = readRecord(entry)
-      const details = readRecord(record.details)
+      const details = {
+        ...readRecord(record.details),
+        input_refs: record.input_refs,
+        output_refs: record.output_refs,
+      }
       return {
         type: readString(record.type) || 'event',
         time: readString(record.time),
@@ -1111,32 +1119,27 @@ function ActivityExpandedPanel({ event }: { event: ActivityEvent }) {
 function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
   const copy = useInspectorCopy()
   const semantierAuthQuery = useSemantierAuthStatus()
-  const events = useActivityStore((s) => s.events)
   const [persistedEvents, setPersistedEvents] = useState<Array<ActivityEvent>>(
     [],
   )
   const [activityFilter, setActivityFilter] = useState<
     'all_activity' | 'all_decisions' | 'agent_decisions' | 'user_decisions'
   >('all_activity')
+  const [semanticFilters, setSemanticFilters] = useState({
+    stateEffect: '',
+    sourceType: '',
+    actor: '',
+    sequenceFrom: '',
+    sequenceTo: '',
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const filteredEvents = useMemo(() => {
     if (!sessionKey) return []
-    const merged: Array<ActivityEvent> = []
-    const seen = new Set<string>()
-    for (const event of [
-      ...persistedEvents,
-      ...events.filter(
-        (item) => getActivityEventSessionKey(item) === sessionKey,
-      ),
-    ]) {
-      const key = activityEventKey(event)
-      if (seen.has(key)) continue
-      seen.add(key)
-      merged.push(event)
-    }
-    return merged
-  }, [events, persistedEvents, sessionKey])
+    return persistedEvents.filter(
+      (event) => getActivityEventSessionKey(event) === sessionKey,
+    )
+  }, [persistedEvents, sessionKey])
 
   const visibleEvents = useMemo(() => {
     function isAgentDecision(event: ActivityEvent): boolean {
@@ -1171,6 +1174,28 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
     )
   }, [activityFilter, filteredEvents])
 
+  const semanticVisibleEvents = useMemo(() => {
+    const readDetails = (event: ActivityEvent) => event.details ?? {}
+    const refs = (value: unknown) =>
+      Array.isArray(value) ? value : []
+    return visibleEvents.filter((event) => {
+      const details = readDetails(event)
+      const sequence = Number(details.sequence)
+      const actor = typeof details.actor_ref === 'string' ? details.actor_ref : ''
+      const stateEffect = typeof details.state_effect === 'string' ? details.state_effect : ''
+      const sourceTypes = [...refs(details.input_refs), ...refs(details.output_refs)]
+        .map((ref) => readRecord(ref).ref_type)
+        .filter((value): value is string => typeof value === 'string')
+      return (
+        (!semanticFilters.stateEffect || stateEffect === semanticFilters.stateEffect) &&
+        (!semanticFilters.sourceType || sourceTypes.includes(semanticFilters.sourceType)) &&
+        (!semanticFilters.actor || actor.includes(semanticFilters.actor)) &&
+        (!semanticFilters.sequenceFrom || sequence >= Number(semanticFilters.sequenceFrom)) &&
+        (!semanticFilters.sequenceTo || sequence <= Number(semanticFilters.sequenceTo))
+      )
+    })
+  }, [semanticFilters, visibleEvents])
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({})
 
@@ -1192,7 +1217,7 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
     }
     setLoading(true)
     fetch(
-      `/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionKey)}/activity`,
+      `/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionKey)}/effective-context`,
     )
       .then((res) => {
         if (!res.ok) throw new Error(`activity: HTTP ${res.status}`)
@@ -1215,7 +1240,7 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
-  }, [visibleEvents.length])
+  }, [semanticVisibleEvents.length])
 
   if (!sessionKey) {
     return <EmptyState text={copy.empty.openSessionToSeeActivity} />
@@ -1277,6 +1302,18 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
           </button>
         ))}
       </div>
+      <div className="mb-2 grid grid-cols-2 gap-1">
+        <select aria-label="State effect filter" value={semanticFilters.stateEffect} onChange={(event) => setSemanticFilters((current) => ({ ...current, stateEffect: event.target.value }))} className="rounded border px-1 py-1 text-[10px]" style={{ background: 'var(--theme-card2)', borderColor: 'var(--theme-border)', color: 'var(--theme-muted)' }}>
+          <option value="">All effects</option>
+          {['disclose', 'admit', 'activate', 'supersede', 'revoke', 'materialize', 'observe_only'].map((value) => <option key={value} value={value}>{value}</option>)}
+        </select>
+        <select aria-label="Source type filter" value={semanticFilters.sourceType} onChange={(event) => setSemanticFilters((current) => ({ ...current, sourceType: event.target.value }))} className="rounded border px-1 py-1 text-[10px]" style={{ background: 'var(--theme-card2)', borderColor: 'var(--theme-border)', color: 'var(--theme-muted)' }}>
+          <option value="">All sources</option>
+          {['document_span', 'knowledge_item', 'database_result', 'artifact', 'memory_snapshot', 'skill'].map((value) => <option key={value} value={value}>{value}</option>)}
+        </select>
+        <input aria-label="Actor filter" value={semanticFilters.actor} onChange={(event) => setSemanticFilters((current) => ({ ...current, actor: event.target.value }))} placeholder="Actor" className="rounded border px-1 py-1 text-[10px]" style={{ background: 'var(--theme-card2)', borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }} />
+        <div className="grid grid-cols-2 gap-1"><input aria-label="Sequence from" value={semanticFilters.sequenceFrom} onChange={(event) => setSemanticFilters((current) => ({ ...current, sequenceFrom: event.target.value }))} placeholder="From" inputMode="numeric" className="rounded border px-1 py-1 text-[10px]" style={{ background: 'var(--theme-card2)', borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }} /><input aria-label="Sequence to" value={semanticFilters.sequenceTo} onChange={(event) => setSemanticFilters((current) => ({ ...current, sequenceTo: event.target.value }))} placeholder="To" inputMode="numeric" className="rounded border px-1 py-1 text-[10px]" style={{ background: 'var(--theme-card2)', borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }} /></div>
+      </div>
       {error ? (
         <div
           className="rounded-md px-2 py-1.5 text-xs"
@@ -1288,14 +1325,25 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
           {error}
         </div>
       ) : null}
-      {visibleEvents.length === 0 ? (
+      {semanticVisibleEvents.length === 0 ? (
         <EmptyState text={copy.empty.noEventsMatchFilter} />
       ) : null}
-      {visibleEvents.map((event: ActivityEvent, i: number) => (
+      {semanticVisibleEvents.map((event: ActivityEvent, i: number) => (
         <div
           key={i}
           className="rounded-md text-xs"
-          style={{ background: 'var(--theme-card2)' }}
+          style={{
+            background: 'var(--theme-card2)',
+            borderLeft: `3px solid ${
+              event.type.includes('COMPACTION')
+                ? 'var(--theme-danger)'
+                : event.type.includes('CHECKPOINT') || event.type.includes('BRANCH')
+                  ? 'var(--theme-accent)'
+                  : event.type.includes('REVOKED') || event.type.includes('SUPERSEDED')
+                    ? 'var(--theme-muted)'
+                    : 'var(--theme-border)'
+            }`,
+          }}
         >
           <button
             type="button"
@@ -2653,6 +2701,7 @@ export function InspectorPanel({
 
           {/* Content */}
           <div className="flex-1 overflow-auto">
+            {activeTab === 'context' && <ContextTab sessionKey={sessionKey} />}
             {activeTab === 'activity' && (
               <ActivityTab sessionKey={sessionKey} />
             )}

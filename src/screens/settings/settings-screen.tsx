@@ -23,6 +23,7 @@ import type { LocaleId } from '@/lib/i18n'
 import type { CSSProperties } from 'react'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { Button } from '@/components/ui/button'
+import { DropdownSelect } from '@/components/ui/dropdown-select'
 import { Switch } from '@/components/ui/switch'
 import { useSettings } from '@/hooks/use-settings'
 import { LOCALE_LABELS } from '@/lib/i18n'
@@ -668,7 +669,7 @@ export function SettingsScreen() {
                 label="Interface Language"
                 description="Translates navigation, labels, and buttons. Content from the agent remains in the agent's language."
               >
-                <select
+                <DropdownSelect
                   value={settings.locale}
                   onChange={(e) => {
                     updateSettings({ locale: e.target.value as LocaleId })
@@ -683,7 +684,7 @@ export function SettingsScreen() {
                       {label}
                     </option>
                   ))}
-                </select>
+                </DropdownSelect>
               </SettingsRow>
             </SettingsSection>
           )}
@@ -757,7 +758,7 @@ export function SettingsScreen() {
                   label="Preferred budget model"
                   description="Default model for cheaper suggestions (leave empty for auto-detect)."
                 >
-                  <select
+                  <DropdownSelect
                     value={settings.preferredBudgetModel}
                     onChange={(e) =>
                       updateSettings({ preferredBudgetModel: e.target.value })
@@ -774,13 +775,13 @@ export function SettingsScreen() {
                         {model.label}
                       </option>
                     ))}
-                  </select>
+                  </DropdownSelect>
                 </SettingsRow>
                 <SettingsRow
                   label="Preferred premium model"
                   description="Default model for upgrade suggestions (leave empty for auto-detect)."
                 >
-                  <select
+                  <DropdownSelect
                     value={settings.preferredPremiumModel}
                     onChange={(e) =>
                       updateSettings({ preferredPremiumModel: e.target.value })
@@ -797,7 +798,7 @@ export function SettingsScreen() {
                         {model.label}
                       </option>
                     ))}
-                  </select>
+                  </DropdownSelect>
                 </SettingsRow>
                 <SettingsRow
                   label="Only suggest cheaper models"
@@ -1317,7 +1318,7 @@ function HermesConfigSection({
         >
           <div className="flex w-full max-w-sm gap-2">
             {availableProviders.length > 0 ? (
-              <select
+              <DropdownSelect
                 value={providerInput}
                 onChange={(e) => {
                   const newProvider = e.target.value
@@ -1333,7 +1334,7 @@ function HermesConfigSection({
                     {p.authenticated ? ' ✓' : ''}
                   </option>
                 ))}
-              </select>
+              </DropdownSelect>
             ) : (
               <Input
                 value={providerInput}
@@ -1352,7 +1353,7 @@ function HermesConfigSection({
         >
           <div className="flex w-full max-w-sm gap-2">
             {availableModels.length > 0 ? (
-              <select
+              <DropdownSelect
                 value={modelInput}
                 onChange={(e) => setModelInput(e.target.value)}
                 className={`${selectClassName} font-mono`}
@@ -1367,7 +1368,7 @@ function HermesConfigSection({
                     {m.description ? ` — ${m.description}` : ''}
                   </option>
                 ))}
-              </select>
+              </DropdownSelect>
             ) : (
               <Input
                 value={modelInput}
@@ -1688,7 +1689,7 @@ function HermesConfigSection({
         label="Tool use enforcement"
         description="Whether the agent must use tools when available."
       >
-        <select
+        <DropdownSelect
           value={(agentConfig.tool_use_enforcement as string) || 'auto'}
           onChange={(e) =>
             void saveConfig({
@@ -1700,7 +1701,7 @@ function HermesConfigSection({
           <option value="auto">auto</option>
           <option value="required">required</option>
           <option value="none">none</option>
-        </select>
+        </DropdownSelect>
       </SettingsRow>
     </SettingsSection>
   )
@@ -1728,7 +1729,7 @@ function HermesConfigSection({
         label="Cheap model"
         description="Model to use for simple queries."
       >
-        <select
+        <DropdownSelect
           value={(smartRouting.cheap_model as string) || ''}
           onChange={(e) =>
             void saveConfig({
@@ -1743,7 +1744,7 @@ function HermesConfigSection({
               {model.id}
             </option>
           ))}
-        </select>
+        </DropdownSelect>
       </SettingsRow>
       <SettingsRow
         label="Max simple chars"
@@ -1797,7 +1798,7 @@ function HermesConfigSection({
           label="TTS provider"
           description="Which TTS engine to use."
         >
-          <select
+          <DropdownSelect
             value={ttsProvider}
             onChange={(e) =>
               void saveConfig({ config: { tts: { provider: e.target.value } } })
@@ -1808,7 +1809,7 @@ function HermesConfigSection({
             <option value="elevenlabs">ElevenLabs</option>
             <option value="openai">OpenAI TTS</option>
             <option value="neutts">NeuTTS</option>
-          </select>
+          </DropdownSelect>
         </SettingsRow>
 
         {ttsProvider === 'edge' && (
@@ -1861,7 +1862,7 @@ function HermesConfigSection({
               label="Voice"
               description="alloy, echo, fable, onyx, nova, shimmer"
             >
-              <select
+              <DropdownSelect
                 value={(ttsOpenAi.voice as string) || 'alloy'}
                 onChange={(e) =>
                   void saveConfig({
@@ -1877,7 +1878,7 @@ function HermesConfigSection({
                     </option>
                   ),
                 )}
-              </select>
+              </DropdownSelect>
             </SettingsRow>
             <SettingsRow label="Model" description="OpenAI TTS model.">
               <Input
@@ -1912,7 +1913,7 @@ function HermesConfigSection({
           label="STT provider"
           description="Which speech engine to use."
         >
-          <select
+          <DropdownSelect
             value={sttProvider}
             onChange={(e) =>
               void saveConfig({ config: { stt: { provider: e.target.value } } })
@@ -1921,14 +1922,14 @@ function HermesConfigSection({
           >
             <option value="local">Local (Whisper)</option>
             <option value="openai">OpenAI Whisper API</option>
-          </select>
+          </DropdownSelect>
         </SettingsRow>
         {sttProvider === 'local' && (
           <SettingsRow
             label="Model size"
             description="tiny, base, small, medium, large"
           >
-            <select
+            <DropdownSelect
               value={(sttLocal.model_size as string) || 'base'}
               onChange={(e) =>
                 void saveConfig({
@@ -1942,7 +1943,7 @@ function HermesConfigSection({
                   {size}
                 </option>
               ))}
-            </select>
+            </DropdownSelect>
           </SettingsRow>
         )}
       </SettingsSection>
@@ -1956,7 +1957,7 @@ function HermesConfigSection({
       icon={PaintBoardIcon}
     >
       <SettingsRow label="Personality" description="Agent response style.">
-        <select
+        <DropdownSelect
           value={(displayConfig.personality as string) || 'default'}
           onChange={(e) =>
             void saveConfig({
@@ -1970,7 +1971,7 @@ function HermesConfigSection({
               {value}
             </option>
           ))}
-        </select>
+        </DropdownSelect>
       </SettingsRow>
       <SettingsRow
         label="Streaming"

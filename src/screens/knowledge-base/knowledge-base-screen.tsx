@@ -12,6 +12,7 @@ import {
   Upload01Icon,
 } from '@hugeicons/core-free-icons'
 import { Switch } from '@/components/ui/switch'
+import { DropdownSelect } from '@/components/ui/dropdown-select'
 import {
   fetchLegalAcceptanceEvidence,
   fetchLegalAcceptanceEvidenceExports,
@@ -1092,7 +1093,10 @@ async function uploadKnowledgeBuilderSourceDocument(
   return result
 }
 
-async function readApiError(response: Response, fallback: string): Promise<Error> {
+async function readApiError(
+  response: Response,
+  fallback: string,
+): Promise<Error> {
   const payload = (await response.json().catch(() => ({}))) as {
     detail?: unknown
     error?: unknown
@@ -1757,7 +1761,7 @@ export function KnowledgeBaseScreen() {
               </FormField>
               <div className="grid grid-cols-2 gap-2">
                 <FormField label={copy.authorityTier}>
-                  <select
+                  <DropdownSelect
                     value={sourceForm.authority_tier}
                     onChange={(event) =>
                       updateSourceForm('authority_tier', event.target.value)
@@ -1769,7 +1773,7 @@ export function KnowledgeBaseScreen() {
                     <option value="DEPARTMENT_RULE">DEPARTMENT_RULE</option>
                     <option value="LOCAL_RULE">LOCAL_RULE</option>
                     <option value="POLICY">POLICY</option>
-                  </select>
+                  </DropdownSelect>
                 </FormField>
                 <FormField label={copy.jurisdiction}>
                   <input
@@ -1784,7 +1788,7 @@ export function KnowledgeBaseScreen() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <FormField label={copy.expectedStatus}>
-                  <select
+                  <DropdownSelect
                     value={sourceForm.expected_status}
                     onChange={(event) =>
                       updateSourceForm('expected_status', event.target.value)
@@ -1804,7 +1808,7 @@ export function KnowledgeBaseScreen() {
                         {lifecycleStateLabel(state, copy)}
                       </option>
                     ))}
-                  </select>
+                  </DropdownSelect>
                 </FormField>
                 <FormField label={`${copy.documentNumber} (${copy.optional})`}>
                   <input
@@ -3361,10 +3365,7 @@ export function KnowledgeBuilderStudioScreen() {
           <button
             type="button"
             className="mt-3 rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={
-              !sourceRef.trim() ||
-              discoveryMutation.isPending
-            }
+            disabled={!sourceRef.trim() || discoveryMutation.isPending}
             onClick={() =>
               discoveryMutation.mutate({
                 sourceRef,
@@ -3536,9 +3537,7 @@ export function KnowledgeBuilderStudioScreen() {
                         <th className="px-3 py-2 font-medium">
                           {copy.category}
                         </th>
-                        <th className="px-3 py-2 font-medium">
-                          {copy.state}
-                        </th>
+                        <th className="px-3 py-2 font-medium">{copy.state}</th>
                         <th className="px-3 py-2 font-medium">
                           {copy.sourceAnchors}
                         </th>
@@ -3597,7 +3596,8 @@ export function KnowledgeBuilderStudioScreen() {
                               key={candidate.rule_candidate_id}
                               className="rounded border border-border bg-card px-2 py-1 text-xs"
                             >
-                              {candidate.applicability_scope?.match_terms?.[0] ||
+                              {candidate.applicability_scope
+                                ?.match_terms?.[0] ||
                                 candidate.applicability_scope
                                   ?.normalized_term ||
                                 '-'}

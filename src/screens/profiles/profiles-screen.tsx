@@ -22,6 +22,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import { Button } from '@/components/ui/button'
 import { DialogContent, DialogRoot, DialogTitle } from '@/components/ui/dialog'
+import { DropdownSelect } from '@/components/ui/dropdown-select'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
@@ -783,7 +784,7 @@ export function ProfilesScreen() {
                       Clone from existing
                     </span>
                   </label>
-                  <select
+                  <DropdownSelect
                     value={cloneFrom}
                     onChange={(e) => setCloneFrom(e.target.value)}
                     className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
@@ -795,7 +796,7 @@ export function ProfilesScreen() {
                         {p.active ? '• active' : ''}
                       </option>
                     ))}
-                  </select>
+                  </DropdownSelect>
                   <p className="text-xs text-muted-foreground">
                     Copies config, skills path, and env from the selected
                     profile
@@ -831,7 +832,7 @@ export function ProfilesScreen() {
                       has models configured.
                     </div>
                   ) : (
-                    <select
+                    <DropdownSelect
                       value={wizardModel}
                       onChange={(e) => {
                         const modelId = e.target.value
@@ -848,7 +849,7 @@ export function ProfilesScreen() {
                           {m.provider ? ` (${m.provider})` : ''}
                         </option>
                       ))}
-                    </select>
+                    </DropdownSelect>
                   )}
                   {wizardModel && (
                     <p className="text-xs text-success">
@@ -1124,7 +1125,7 @@ export function ProfilesScreen() {
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Provider
                     </span>
-                    <select
+                    <DropdownSelect
                       value={detailProvider}
                       onChange={(event) => {
                         setDetailProvider(event.target.value)
@@ -1138,13 +1139,13 @@ export function ProfilesScreen() {
                           {provider}
                         </option>
                       ))}
-                    </select>
+                    </DropdownSelect>
                   </label>
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Model
                     </span>
-                    <select
+                    <DropdownSelect
                       value={detailModel}
                       onChange={(event) => setDetailModel(event.target.value)}
                       disabled={!detailProvider}
@@ -1164,7 +1165,7 @@ export function ProfilesScreen() {
                           ))}
                         </>
                       )}
-                    </select>
+                    </DropdownSelect>
                   </label>
                 </div>
                 <div className="rounded-lg border border-border bg-muted/50 p-3">

@@ -89,7 +89,7 @@ export default [
     },
   },
   {
-    files: ['src/screens/investment/**/*.tsx'],
+    files: ['src/screens/**/*.tsx'],
     rules: {
       'no-restricted-syntax': [
         'error',

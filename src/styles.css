@@ -146,18 +146,21 @@
   background-color: var(--theme-card2) !important;
 }
 
-.role-config-select {
+.role-config-select,
+.theme-native-select {
   background-color: var(--theme-input, var(--theme-card));
   border-color: var(--theme-border);
   color: var(--theme-text);
 }
 
-.role-config-select option {
+.role-config-select option,
+.theme-native-select option {
   background-color: var(--theme-card) !important;
   color: var(--theme-text) !important;
 }
 
-.role-config-select option:checked {
+.role-config-select option:checked,
+.theme-native-select option:checked {
   background: linear-gradient(
     var(--theme-accent),
     var(--theme-accent)
@@ -167,7 +170,8 @@
   color: var(--theme-accent-foreground) !important;
 }
 
-.role-config-select:focus {
+.role-config-select:focus,
+.theme-native-select:focus {
   border-color: var(--theme-focus);
 }
 

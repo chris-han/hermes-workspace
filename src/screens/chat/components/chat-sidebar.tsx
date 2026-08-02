@@ -25,7 +25,7 @@ import {
   UserMultipleIcon,
 } from '@hugeicons/core-free-icons'
 import { AnimatePresence, motion } from 'motion/react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { CHAT_OPEN_SETTINGS_EVENT } from '../chat-events'
@@ -561,6 +561,23 @@ function ChatSidebarComponent({
       authenticated: false,
       feishu_oauth_enabled: false,
     }
+  const radarPluginQuery = useQuery({
+    queryKey: ['semantier-plugins', 'vc_github_opportunity_radar'],
+    enabled: semantierAuth.authenticated === true,
+    queryFn: async () => {
+      const response = await fetch('/api/plugins')
+      if (!response.ok) throw new Error(`Plugin inventory unavailable (${response.status})`)
+      return (await response.json()) as {
+        plugins?: Array<{ id?: string; enabled?: boolean }>
+      }
+    },
+  })
+  const radarPluginAvailable = Boolean(
+    radarPluginQuery.data?.plugins?.some(
+      (plugin) =>
+        plugin.id === 'vc_github_opportunity_radar' && plugin.enabled !== false,
+    ),
+  )
 
   useEffect(() => {
     function handleOpenSettingsEvent(event: Event) {
@@ -607,6 +624,7 @@ function ChatSidebarComponent({
   const isTasksActive = pathname === '/tasks'
   const isorchestratorActive = pathname === '/orchestrator'
   const isAgentRosterActive = pathname === '/agent-roster'
+  const isInvestmentActive = pathname.startsWith('/investment/github-radar')
   const mainRoutes = ['/chat', '/new', '/skills', '/profiles']
   const knowledgeRoutes = [
     '/memory',
@@ -614,16 +632,21 @@ function ChatSidebarComponent({
     '/generated-policies',
     '/legal-corpus',
   ]
+  const investmentRoutes = ['/investment/github-radar']
   const systemRoutes = ['/settings', '/logs']
 
   useEffect(() => {
     if (mainRoutes.includes(pathname)) setLastRoute('main', pathname)
     if (knowledgeRoutes.includes(pathname)) setLastRoute('knowledge', pathname)
+    if (investmentRoutes.some((route) => pathname.startsWith(route))) {
+      setLastRoute('investment', pathname)
+    }
     if (systemRoutes.includes(pathname)) setLastRoute('system', pathname)
   }, [pathname])
 
   const mainNav = getLastRoute('main') || '/chat'
   const knowledgeNav = getLastRoute('knowledge') || '/memory'
+  const investmentNav = getLastRoute('investment') || '/investment/github-radar'
   const _systemNav = getLastRoute('system') || '/settings'
 
   const transition = {
@@ -638,6 +661,10 @@ function ChatSidebarComponent({
   )
   const [knowledgeExpanded, toggleKnowledge] = usePersistedBool(
     'hermes-sidebar-knowledge-expanded',
+    true,
+  )
+  const [investmentExpanded, toggleInvestment] = usePersistedBool(
+    'hermes-sidebar-investment-expanded',
     true,
   )
   const [_systemExpanded, _toggleSystem] = usePersistedBool(
@@ -955,6 +982,16 @@ function ChatSidebarComponent({
     },
   ]
 
+  const investmentItems: Array<NavItemDef> = [
+    {
+      kind: 'link',
+      to: '/investment/github-radar',
+      icon: Rocket01Icon,
+      label: 'GitHub Radar',
+      active: isInvestmentActive,
+    },
+  ]
+
   const systemItems: Array<NavItemDef> = []
 
   return (
@@ -1185,6 +1222,27 @@ function ChatSidebarComponent({
             transition={transition}
             onSelectSession={onSelectSession}
           />
+
+          {radarPluginAvailable ? (
+            <>
+              <SectionLabel
+                label="Investment"
+                isCollapsed={isVisuallyCollapsed}
+                transition={transition}
+                collapsible
+                expanded={investmentExpanded}
+                onToggle={toggleInvestment}
+                navigateTo={investmentNav}
+              />
+              <CollapsibleSection
+                expanded={investmentExpanded || isCollapsed}
+                items={investmentItems}
+                isCollapsed={isVisuallyCollapsed}
+                transition={transition}
+                onSelectSession={onSelectSession}
+              />
+            </>
+          ) : null}
 
           {/* System */}
           <CollapsibleSection

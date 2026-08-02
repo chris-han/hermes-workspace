@@ -41,6 +41,7 @@ import { Route as SettingsMcpRouteImport } from './routes/settings/mcp'
 import { Route as SettingsDataConnectionsRouteImport } from './routes/settings/data-connections'
 import { Route as RunsRunIdRouteImport } from './routes/runs/$runId'
 import { Route as OrganizationsSplatRouteImport } from './routes/organizations/$'
+import { Route as InvestmentGithubRadarRouteImport } from './routes/investment/github-radar'
 import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
 import { Route as AuthSplatRouteImport } from './routes/auth/$'
 import { Route as ApiWorkspaceRouteImport } from './routes/api/workspace'
@@ -290,6 +291,11 @@ const RunsRunIdRoute = RunsRunIdRouteImport.update({
 const OrganizationsSplatRoute = OrganizationsSplatRouteImport.update({
   id: '/organizations/$',
   path: '/organizations/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvestmentGithubRadarRoute = InvestmentGithubRadarRouteImport.update({
+  id: '/investment/github-radar',
+  path: '/investment/github-radar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatSessionKeyRoute = ChatSessionKeyRouteImport.update({
@@ -804,6 +810,7 @@ export interface FileRoutesByFullPath {
   '/api/workspace': typeof ApiWorkspaceRoute
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/investment/github-radar': typeof InvestmentGithubRadarRoute
   '/organizations/$': typeof OrganizationsSplatRoute
   '/runs/$runId': typeof RunsRunIdRoute
   '/settings/data-connections': typeof SettingsDataConnectionsRoute
@@ -925,6 +932,7 @@ export interface FileRoutesByTo {
   '/api/workspace': typeof ApiWorkspaceRoute
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/investment/github-radar': typeof InvestmentGithubRadarRoute
   '/organizations/$': typeof OrganizationsSplatRoute
   '/runs/$runId': typeof RunsRunIdRoute
   '/settings/data-connections': typeof SettingsDataConnectionsRoute
@@ -1048,6 +1056,7 @@ export interface FileRoutesById {
   '/api/workspace': typeof ApiWorkspaceRoute
   '/auth/$': typeof AuthSplatRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/investment/github-radar': typeof InvestmentGithubRadarRoute
   '/organizations/$': typeof OrganizationsSplatRoute
   '/runs/$runId': typeof RunsRunIdRoute
   '/settings/data-connections': typeof SettingsDataConnectionsRoute
@@ -1172,6 +1181,7 @@ export interface FileRouteTypes {
     | '/api/workspace'
     | '/auth/$'
     | '/chat/$sessionKey'
+    | '/investment/github-radar'
     | '/organizations/$'
     | '/runs/$runId'
     | '/settings/data-connections'
@@ -1293,6 +1303,7 @@ export interface FileRouteTypes {
     | '/api/workspace'
     | '/auth/$'
     | '/chat/$sessionKey'
+    | '/investment/github-radar'
     | '/organizations/$'
     | '/runs/$runId'
     | '/settings/data-connections'
@@ -1415,6 +1426,7 @@ export interface FileRouteTypes {
     | '/api/workspace'
     | '/auth/$'
     | '/chat/$sessionKey'
+    | '/investment/github-radar'
     | '/organizations/$'
     | '/runs/$runId'
     | '/settings/data-connections'
@@ -1538,6 +1550,7 @@ export interface RootRouteChildren {
   ApiWorkspaceRoute: typeof ApiWorkspaceRoute
   AuthSplatRoute: typeof AuthSplatRoute
   ChatSessionKeyRoute: typeof ChatSessionKeyRoute
+  InvestmentGithubRadarRoute: typeof InvestmentGithubRadarRoute
   OrganizationsSplatRoute: typeof OrganizationsSplatRoute
   RunsRunIdRoute: typeof RunsRunIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
@@ -1796,6 +1809,13 @@ declare module '@tanstack/react-router' {
       path: '/organizations/$'
       fullPath: '/organizations/$'
       preLoaderRoute: typeof OrganizationsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/investment/github-radar': {
+      id: '/investment/github-radar'
+      path: '/investment/github-radar'
+      fullPath: '/investment/github-radar'
+      preLoaderRoute: typeof InvestmentGithubRadarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat/$sessionKey': {
@@ -2599,6 +2619,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWorkspaceRoute: ApiWorkspaceRoute,
   AuthSplatRoute: AuthSplatRoute,
   ChatSessionKeyRoute: ChatSessionKeyRoute,
+  InvestmentGithubRadarRoute: InvestmentGithubRadarRoute,
   OrganizationsSplatRoute: OrganizationsSplatRoute,
   RunsRunIdRoute: RunsRunIdRoute,
   ChatIndexRoute: ChatIndexRoute,

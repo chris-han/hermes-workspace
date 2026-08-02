@@ -394,6 +394,8 @@ function escapeAttributeSelector(value: string): string {
 type ChatMessageListProps = {
   messages: Array<ChatMessage>
   onRetryMessage?: (message: ChatMessage) => void
+  onBranchMessage?: (message: ChatMessage) => void
+  branchingMessageId?: string | null
   onA2UiSubmit?: (payload: string) => void
   onFillInput?: (value: string) => void
   onRefresh?: () => void | Promise<unknown>
@@ -434,6 +436,8 @@ type ChatMessageListProps = {
 function ChatMessageListComponent({
   messages,
   onRetryMessage,
+  onBranchMessage,
+  branchingMessageId,
   onA2UiSubmit,
   onFillInput,
   onRefresh: _onRefresh,
@@ -1178,6 +1182,8 @@ function ChatMessageListComponent({
             message={row.message}
             attachedToolMessages={row.entry.attachedToolMessages}
             onRetryMessage={row.effectiveOnRetry}
+            onBranchMessage={onBranchMessage}
+            isBranching={branchingMessageId === row.message.messageId}
             onA2UiSubmit={onA2UiSubmit}
             onFillInput={onFillInput}
             toolResultsByCallId={
@@ -1213,6 +1219,8 @@ function ChatMessageListComponent({
         message={row.message}
         attachedToolMessages={row.entry.attachedToolMessages}
         onRetryMessage={row.effectiveOnRetry}
+        onBranchMessage={onBranchMessage}
+        isBranching={branchingMessageId === row.message.messageId}
         onA2UiSubmit={onA2UiSubmit}
         onFillInput={onFillInput}
         toolResultsByCallId={row.hasToolCalls ? toolResultsByCallId : undefined}

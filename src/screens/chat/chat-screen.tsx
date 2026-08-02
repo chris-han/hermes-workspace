@@ -56,6 +56,7 @@ import { useChatMobile } from './hooks/use-chat-mobile'
 import { useChatSessions } from './hooks/use-chat-sessions'
 import { useAutoSessionTitle } from './hooks/use-auto-session-title'
 import { useRenameSession } from './hooks/use-rename-session'
+import { useBranchSession } from './hooks/use-branch-session'
 import { useContextAlert } from './hooks/use-context-alert'
 import { shouldRecoverMissingSessionRoute } from './chat-route-recovery'
 import {
@@ -758,6 +759,14 @@ export function ChatScreen({
       activeCanonicalKey ||
       activeSessionKey ||
       null
+
+  const {
+    branchMessage,
+    branchingMessageId,
+  } = useBranchSession(
+    resolvedSessionKey || activeSessionKey,
+    activeTitle,
+  )
 
   const inspectorSessionKeyRef = useRef<string | null>(null)
   useEffect(() => {
@@ -3143,6 +3152,8 @@ export function ChatScreen({
             <ChatMessageList
               messages={finalDisplayMessages}
               onRetryMessage={handleRetryMessage}
+              onBranchMessage={branchMessage}
+              branchingMessageId={branchingMessageId}
               onA2UiSubmit={handleA2UiSubmit}
               onFillInput={handleFillComposerInput}
               onRefresh={handleRefreshHistory}

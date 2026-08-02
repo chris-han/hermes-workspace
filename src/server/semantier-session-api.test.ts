@@ -34,13 +34,35 @@ describe('toSemantierSessionSummary', () => {
     })
     expect(summary.updatedAt).toBe(Date.parse('2026-04-21T10:05:00Z'))
   })
+
+  it('preserves branch lineage metadata', () => {
+    expect(
+      toSemantierSessionSummary({
+        key: 'child',
+        friendlyId: 'child',
+        title: '⎇ Source',
+        parentSessionId: 'source',
+        lineageRootId: 'root',
+        branchPointMessageId: 'msg-2',
+        branchPointSequence: 2,
+        isBranch: true,
+      }),
+    ).toMatchObject({
+      parentSessionId: 'source',
+      lineageRootId: 'root',
+      branchPointMessageId: 'msg-2',
+      branchPointSequence: 2,
+      isBranch: true,
+    })
+  })
 })
 
 describe('toSemantierChatMessage', () => {
   it('maps backend messages into chat history items', () => {
     const message = toSemantierChatMessage(
       {
-        messageId: 'msg-1',
+      messageId: 'msg-1',
+        messageSequence: 2,
         sessionKey: 'sess-123',
         role: 'assistant',
         content: 'Hello',
@@ -55,6 +77,8 @@ describe('toSemantierChatMessage', () => {
       text: 'Hello',
       sessionKey: 'sess-123',
       __historyIndex: 3,
+      messageId: 'msg-1',
+      messageSequence: 2,
     })
     expect(message.content).toEqual([{ type: 'text', text: 'Hello' }])
   })

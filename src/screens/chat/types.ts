@@ -96,6 +96,7 @@ export type ChatMessageAction = {
 export type ChatMessage = {
   id?: string
   messageId?: string
+  messageSequence?: number
   createdAt?: string | number
   sessionKey?: string
   linkedAttemptId?: string
@@ -154,6 +155,11 @@ export type SessionMeta = {
   titleStatus?: SessionTitleStatus
   titleSource?: SessionTitleSource
   titleError?: string | null
+  parentSessionId?: string
+  lineageRootId?: string
+  branchPointMessageId?: string
+  branchPointSequence?: number
+  isBranch?: boolean
 }
 
 export type PathsPayload = {

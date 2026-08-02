@@ -16,6 +16,8 @@ type ActivityState = {
   resolvedSessionKey: string | null
   push: (event: ActivityEvent) => void
   setResolvedSessionKey: (key: string) => void
+  hydrateSessionActivity: (key: string, events: Array<ActivityEvent>) => void
+  clearSessionActivity: (key: string) => void
   clear: () => void
 }
 
@@ -77,9 +79,28 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   setResolvedSessionKey: (key) =>
     set((state) => {
       const nextState = {
-        events: state.events,
+        events:
+          state.resolvedSessionKey && state.resolvedSessionKey !== key
+            ? []
+            : state.events,
         resolvedSessionKey: key,
       }
+      persistActivityState(nextState)
+      return nextState
+    }),
+  hydrateSessionActivity: (key, events) =>
+    set(() => {
+      const nextState = {
+        events: events.slice(-500),
+        resolvedSessionKey: key,
+      }
+      persistActivityState(nextState)
+      return nextState
+    }),
+  clearSessionActivity: (key) =>
+    set((state) => {
+      if (state.resolvedSessionKey !== key) return state
+      const nextState = { events: [], resolvedSessionKey: key }
       persistActivityState(nextState)
       return nextState
     }),
@@ -98,4 +119,12 @@ export function setActivitySessionKey(key: string) {
   if (key && key !== 'main' && key !== 'new') {
     useActivityStore.getState().setResolvedSessionKey(key)
   }
+}
+
+export function hydrateSessionActivity(
+  key: string,
+  events: Array<ActivityEvent>,
+) {
+  if (!key || key === 'main' || key === 'new') return
+  useActivityStore.getState().hydrateSessionActivity(key, events)
 }

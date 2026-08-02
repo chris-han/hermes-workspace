@@ -132,6 +132,11 @@ function SessionItemComponent({
     <Link
       to="/chat/$sessionKey"
       params={{ sessionKey: session.friendlyId }}
+      title={
+        session.isBranch && session.parentSessionId
+          ? `Branch of ${session.parentSessionId}`
+          : undefined
+      }
       onClick={() => {
         try {
           localStorage.setItem('hermes-last-session', session.friendlyId)

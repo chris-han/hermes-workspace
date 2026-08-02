@@ -33,6 +33,11 @@ export type SemantierSession = {
   createdAt?: number
   updatedAt?: number
   lastAttemptId?: string
+  parentSessionId?: string
+  lineageRootId?: string
+  branchPointMessageId?: string
+  branchPointSequence?: number
+  isBranch?: boolean
 }
 
 export type SemantierMessage = {
@@ -45,6 +50,7 @@ export type SemantierMessage = {
   timestamp?: number
   linkedAttemptId?: string
   metadata?: Record<string, unknown>
+  messageSequence?: number
 }
 
 export type SemantierSendMessageResponse = {
@@ -66,6 +72,33 @@ type SemantierUpdateSessionResponse = {
   entry: SemantierSession
 }
 
+export type SemantierBranchResponse = {
+  ok: boolean
+  session: SemantierSession
+  copied: {
+    messageCount: number
+    trajectoryCount?: number
+    artifactCount?: number
+    branchView?: {
+      checkpointId: string
+      checkpointHash: string
+      sourceSessionId: string
+      branchPointMessageId: string
+      branchPointSequence: number
+      knowledgeStateRef: string
+      activeContractRef: string
+      authorityPinsRef: string
+      transcriptSnapshotRef: string
+      trajectoryRange: { fromSequence: number; toSequence: number }
+      parentCheckpointId: string | null
+      lineageRootCheckpointId: string
+    }
+    contextSnapshotHash: string
+    checkpointId: string
+    idempotentReplay?: boolean
+  }
+}
+
 type RawSemantierSessionDetail = {
   id?: string
   session_id?: string
@@ -85,6 +118,7 @@ type RawSemantierMessage = {
   timestamp?: number
   linked_attempt_id?: string
   metadata?: Record<string, unknown>
+  message_sequence?: number
 }
 
 type RawSemantierMessagesResponse =
@@ -204,6 +238,11 @@ export function toSemantierSessionSummary(
       updatedAt ??
       Date.now(),
     platform: session.platform,
+    parentSessionId: session.parentSessionId,
+    lineageRootId: session.lineageRootId,
+    branchPointMessageId: session.branchPointMessageId,
+    branchPointSequence: session.branchPointSequence,
+    isBranch: session.isBranch,
   }
 }
 
@@ -233,6 +272,8 @@ export function toSemantierChatMessage(
 
   return {
     id: `msg-${message.messageId || message.id || historyIndex || 'unknown'}`,
+    messageId: message.messageId,
+    messageSequence: message.messageSequence,
     role: message.role,
     content,
     text: message.content || '',
@@ -316,6 +357,27 @@ export async function createSemantierSession(
   return payload.entry
 }
 
+export async function branchSemantierSession(
+  requestHeaders: HeadersInit | Headers | undefined,
+  sessionId: string,
+  branchPoint: { messageId: string; sequence: number },
+  title: string,
+  idempotencyKey: string,
+): Promise<SemantierBranchResponse> {
+  return semantierJson<SemantierBranchResponse>(
+    `/sessions/${encodeURIComponent(sessionId)}/branches`,
+    {
+      method: 'POST',
+      headers: new Headers({
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
+      }),
+      body: JSON.stringify({ branchPoint, title, idempotencyKey }),
+    },
+    requestHeaders,
+  )
+}
+
 export async function updateSemantierSession(
   requestHeaders: HeadersInit | Headers | undefined,
   sessionId: string,
@@ -382,6 +444,7 @@ export async function getSemantierSessionMessages(
     timestamp: message.timestamp,
     linkedAttemptId: message.linked_attempt_id,
     metadata: message.metadata,
+    messageSequence: message.message_sequence,
   }))
 }
 

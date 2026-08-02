@@ -144,6 +144,22 @@ export function textFromMessage(msg: ChatMessage): string {
   return stripChannelPrefix(cleaned)
 }
 
+export function isBranchableAssistantMessage(
+  message: ChatMessage,
+  isStreaming = false,
+): boolean {
+  return (
+    message.role === 'assistant' &&
+    !isStreaming &&
+    message.status !== 'error' &&
+    message.status !== 'queued' &&
+    typeof message.messageId === 'string' &&
+    message.messageId.length > 0 &&
+    typeof message.messageSequence === 'number' &&
+    message.messageSequence > 0
+  )
+}
+
 export function getToolCallsFromMessage(
   msg: ChatMessage,
 ): Array<ToolCallContent> {
@@ -270,6 +286,26 @@ export function normalizeSessions(
       titleStatus,
       titleSource,
       titleError: session.titleError ?? null,
+      parentSessionId:
+        typeof (session as Record<string, unknown>).parentSessionId === 'string'
+          ? (session as Record<string, unknown>).parentSessionId as string
+          : undefined,
+      lineageRootId:
+        typeof (session as Record<string, unknown>).lineageRootId === 'string'
+          ? (session as Record<string, unknown>).lineageRootId as string
+          : undefined,
+      branchPointMessageId:
+        typeof (session as Record<string, unknown>).branchPointMessageId === 'string'
+          ? (session as Record<string, unknown>).branchPointMessageId as string
+          : undefined,
+      branchPointSequence:
+        typeof (session as Record<string, unknown>).branchPointSequence === 'number'
+          ? (session as Record<string, unknown>).branchPointSequence as number
+          : undefined,
+      isBranch:
+        typeof (session as Record<string, unknown>).isBranch === 'boolean'
+          ? (session as Record<string, unknown>).isBranch as boolean
+          : undefined,
     }
   })
 }

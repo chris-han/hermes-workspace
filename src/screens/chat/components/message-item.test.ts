@@ -1,12 +1,34 @@
 import { describe, expect, it } from 'vitest'
 
 import { selectToolActivityState } from '../lib/activity-state'
+import { isBranchableAssistantMessage } from '../utils'
 import {
   buildInlineToolRenderPlan,
   formatGovernedQueryResultForDisplay,
   shouldRenderPrimaryAssistantText,
 } from './message-item'
 import type { ChatMessage } from '../types'
+
+describe('isBranchableAssistantMessage', () => {
+  const complete: ChatMessage = {
+    role: 'assistant',
+    messageId: 'msg-2',
+    messageSequence: 2,
+    status: 'complete',
+    content: [{ type: 'text', text: 'answer' }],
+    timestamp: Date.now(),
+  }
+
+  it('requires a persisted completed assistant cursor', () => {
+    expect(isBranchableAssistantMessage(complete)).toBe(true)
+    expect(isBranchableAssistantMessage({ ...complete, role: 'user' })).toBe(false)
+    expect(isBranchableAssistantMessage({ ...complete, messageId: undefined })).toBe(false)
+    expect(isBranchableAssistantMessage({ ...complete, messageSequence: undefined })).toBe(false)
+    expect(isBranchableAssistantMessage({ ...complete, status: 'error' })).toBe(false)
+    expect(isBranchableAssistantMessage({ ...complete, status: 'queued' })).toBe(false)
+    expect(isBranchableAssistantMessage(complete, true)).toBe(false)
+  })
+})
 
 describe('buildInlineToolRenderPlan', () => {
   it('preserves tool-call position from assistant content order', () => {

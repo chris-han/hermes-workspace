@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { Copy01Icon, RefreshIcon, Tick02Icon } from '@hugeicons/core-free-icons'
+import {
+  Copy01Icon,
+  RefreshIcon,
+  SplitIcon,
+  Tick02Icon,
+} from '@hugeicons/core-free-icons'
 import { MessageTimestamp } from './message-timestamp'
 import {
   TooltipContent,
@@ -19,6 +24,8 @@ type MessageActionsBarProps = {
   isQueued?: boolean
   isFailed?: boolean
   onRetry?: () => void
+  onBranch?: () => void
+  isBranching?: boolean
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -54,6 +61,8 @@ export function MessageActionsBar({
   isQueued = false,
   isFailed = false,
   onRetry,
+  onBranch,
+  isBranching = false,
 }: MessageActionsBarProps) {
   const [copied, setCopied] = useState(false)
 
@@ -110,6 +119,22 @@ export function MessageActionsBar({
           <TooltipContent side="top">Copy</TooltipContent>
         </TooltipRoot>
       </TooltipProvider>
+      {onBranch ? (
+        <TooltipProvider>
+          <TooltipRoot>
+            <TooltipTrigger
+              type="button"
+              onClick={onBranch}
+              disabled={isBranching}
+              aria-label="Branch conversation from this response"
+              className="inline-flex items-center justify-center rounded border border-transparent bg-transparent p-1 text-primary-700 hover:text-primary-900 hover:bg-primary-100 disabled:cursor-wait disabled:opacity-50 dark:hover:bg-primary-800"
+            >
+              <HugeiconsIcon icon={SplitIcon} size={16} strokeWidth={1.6} />
+            </TooltipTrigger>
+            <TooltipContent side="top">Branch from here</TooltipContent>
+          </TooltipRoot>
+        </TooltipProvider>
+      ) : null}
       <MessageTimestamp timestamp={timestamp} />
     </div>
   )

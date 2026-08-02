@@ -6,6 +6,7 @@ import type {
   SessionListResponse,
   SessionMeta,
 } from './types'
+import type { SemantierBranchResponse } from '@/server/semantier-session-api'
 
 type StatusResponse = {
   ok: boolean
@@ -78,6 +79,35 @@ export async function fetchSessions(): Promise<Array<SessionMeta>> {
   if (!res.ok) throw new Error(await readError(res))
   const data = (await res.json()) as SessionListResponse
   return normalizeSessions(data.sessions)
+}
+
+export async function branchSessionAtMessage(payload: {
+  sessionKey: string
+  messageId: string
+  sequence: number
+  title: string
+  idempotencyKey: string
+}): Promise<SemantierBranchResponse> {
+  const res = await fetch(
+    `/api/sessions/${encodeURIComponent(payload.sessionKey)}/branches`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': payload.idempotencyKey,
+      },
+      body: JSON.stringify({
+        branchPoint: {
+          messageId: payload.messageId,
+          sequence: payload.sequence,
+        },
+        title: payload.title,
+        idempotencyKey: payload.idempotencyKey,
+      }),
+    },
+  )
+  if (!res.ok) throw new Error(await readError(res))
+  return (await res.json()) as SemantierBranchResponse
 }
 
 export async function fetchHistory(payload: {

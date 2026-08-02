@@ -4,6 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import {
   getMessageTimestamp,
   getToolCallsFromMessage,
+  isBranchableAssistantMessage,
   textFromMessage,
 } from '../utils'
 import { normalizeKnownToolPhase } from '../lib/activity-state'
@@ -140,6 +141,8 @@ type MessageItemProps = {
   toolCalls?: Array<StreamToolCall>
   lifecycleEvents?: Array<LifecycleEvent>
   onRetryMessage?: (message: ChatMessage) => void
+  onBranchMessage?: (message: ChatMessage) => void
+  isBranching?: boolean
   forceActionsVisible?: boolean
   wrapperRef?: React.RefObject<HTMLDivElement | null>
   wrapperClassName?: string
@@ -1870,6 +1873,8 @@ function MessageItemComponent({
   toolCalls: streamToolCalls = [],
   lifecycleEvents = [],
   onRetryMessage,
+  onBranchMessage,
+  isBranching = false,
   forceActionsVisible = false,
   wrapperRef,
   wrapperClassName,
@@ -2850,6 +2855,12 @@ function MessageItemComponent({
               ? () => onRetryMessage(message)
               : undefined
           }
+          onBranch={
+            isBranchableAssistantMessage(message, isStreaming)
+              ? () => onBranchMessage?.(message)
+              : undefined
+          }
+          isBranching={isBranching}
         />
       )}
     </div>
@@ -2865,6 +2876,8 @@ function areMessagesEqual(
   }
   if (prevProps.wrapperClassName !== nextProps.wrapperClassName) return false
   if (prevProps.onRetryMessage !== nextProps.onRetryMessage) return false
+  if (prevProps.onBranchMessage !== nextProps.onBranchMessage) return false
+  if (prevProps.isBranching !== nextProps.isBranching) return false
   if (prevProps.toolCalls !== nextProps.toolCalls) return false
   if (prevProps.lifecycleEvents !== nextProps.lifecycleEvents) return false
   if (prevProps.wrapperDataMessageId !== nextProps.wrapperDataMessageId) {

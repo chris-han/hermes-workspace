@@ -127,6 +127,7 @@ import { Route as ApiHermesProxySplatRouteImport } from './routes/api/hermes-pro
 import { Route as ApiHermesJobsJobIdRouteImport } from './routes/api/hermes-jobs.$jobId'
 import { Route as ApiDataConnectionsSummaryRouteImport } from './routes/api/data-connections/summary'
 import { Route as ApiSessionsSessionKeyStatusRouteImport } from './routes/api/sessions/$sessionKey.status'
+import { Route as ApiSessionsSessionKeyBranchesRouteImport } from './routes/api/sessions/$sessionKey.branches'
 import { Route as ApiSessionsSessionKeyActiveRunRouteImport } from './routes/api/sessions/$sessionKey.active-run'
 
 const TerminalRoute = TerminalRouteImport.update({
@@ -724,6 +725,12 @@ const ApiSessionsSessionKeyStatusRoute =
     path: '/$sessionKey/status',
     getParentRoute: () => ApiSessionsRoute,
   } as any)
+const ApiSessionsSessionKeyBranchesRoute =
+  ApiSessionsSessionKeyBranchesRouteImport.update({
+    id: '/$sessionKey/branches',
+    path: '/$sessionKey/branches',
+    getParentRoute: () => ApiSessionsRoute,
+  } as any)
 const ApiSessionsSessionKeyActiveRunRoute =
   ApiSessionsSessionKeyActiveRunRouteImport.update({
     id: '/$sessionKey/active-run',
@@ -850,6 +857,7 @@ export interface FileRoutesByFullPath {
   '/api/tools/toolsets': typeof ApiToolsToolsetsRoute
   '/api/upload/batch': typeof ApiUploadBatchRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
+  '/api/sessions/$sessionKey/branches': typeof ApiSessionsSessionKeyBranchesRoute
   '/api/sessions/$sessionKey/status': typeof ApiSessionsSessionKeyStatusRoute
 }
 export interface FileRoutesByTo {
@@ -970,6 +978,7 @@ export interface FileRoutesByTo {
   '/api/tools/toolsets': typeof ApiToolsToolsetsRoute
   '/api/upload/batch': typeof ApiUploadBatchRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
+  '/api/sessions/$sessionKey/branches': typeof ApiSessionsSessionKeyBranchesRoute
   '/api/sessions/$sessionKey/status': typeof ApiSessionsSessionKeyStatusRoute
 }
 export interface FileRoutesById {
@@ -1092,6 +1101,7 @@ export interface FileRoutesById {
   '/api/tools/toolsets': typeof ApiToolsToolsetsRoute
   '/api/upload/batch': typeof ApiUploadBatchRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
+  '/api/sessions/$sessionKey/branches': typeof ApiSessionsSessionKeyBranchesRoute
   '/api/sessions/$sessionKey/status': typeof ApiSessionsSessionKeyStatusRoute
 }
 export interface FileRouteTypes {
@@ -1215,6 +1225,7 @@ export interface FileRouteTypes {
     | '/api/tools/toolsets'
     | '/api/upload/batch'
     | '/api/sessions/$sessionKey/active-run'
+    | '/api/sessions/$sessionKey/branches'
     | '/api/sessions/$sessionKey/status'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -1335,6 +1346,7 @@ export interface FileRouteTypes {
     | '/api/tools/toolsets'
     | '/api/upload/batch'
     | '/api/sessions/$sessionKey/active-run'
+    | '/api/sessions/$sessionKey/branches'
     | '/api/sessions/$sessionKey/status'
   id:
     | '__root__'
@@ -1456,6 +1468,7 @@ export interface FileRouteTypes {
     | '/api/tools/toolsets'
     | '/api/upload/batch'
     | '/api/sessions/$sessionKey/active-run'
+    | '/api/sessions/$sessionKey/branches'
     | '/api/sessions/$sessionKey/status'
   fileRoutesById: FileRoutesById
 }
@@ -2387,6 +2400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSessionsSessionKeyStatusRouteImport
       parentRoute: typeof ApiSessionsRoute
     }
+    '/api/sessions/$sessionKey/branches': {
+      id: '/api/sessions/$sessionKey/branches'
+      path: '/$sessionKey/branches'
+      fullPath: '/api/sessions/$sessionKey/branches'
+      preLoaderRoute: typeof ApiSessionsSessionKeyBranchesRouteImport
+      parentRoute: typeof ApiSessionsRoute
+    }
     '/api/sessions/$sessionKey/active-run': {
       id: '/api/sessions/$sessionKey/active-run'
       path: '/$sessionKey/active-run'
@@ -2468,12 +2488,14 @@ const ApiMemoryRouteWithChildren = ApiMemoryRoute._addFileChildren(
 interface ApiSessionsRouteChildren {
   ApiSessionsSendRoute: typeof ApiSessionsSendRoute
   ApiSessionsSessionKeyActiveRunRoute: typeof ApiSessionsSessionKeyActiveRunRoute
+  ApiSessionsSessionKeyBranchesRoute: typeof ApiSessionsSessionKeyBranchesRoute
   ApiSessionsSessionKeyStatusRoute: typeof ApiSessionsSessionKeyStatusRoute
 }
 
 const ApiSessionsRouteChildren: ApiSessionsRouteChildren = {
   ApiSessionsSendRoute: ApiSessionsSendRoute,
   ApiSessionsSessionKeyActiveRunRoute: ApiSessionsSessionKeyActiveRunRoute,
+  ApiSessionsSessionKeyBranchesRoute: ApiSessionsSessionKeyBranchesRoute,
   ApiSessionsSessionKeyStatusRoute: ApiSessionsSessionKeyStatusRoute,
 }
 

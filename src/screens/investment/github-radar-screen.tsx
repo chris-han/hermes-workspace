@@ -1,6 +1,7 @@
+import { ExternalLink, Play, Plus, Radar, Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Search, Radar, Plus, Play, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { DropdownSelect } from '@/components/ui/dropdown-select'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useSemantierAuthStatus } from '@/lib/semantier-auth'
 
@@ -81,8 +82,8 @@ export function GithubRadarScreen() {
       <section className="mb-6 grid gap-6 lg:grid-cols-[1fr_1.35fr]">
         <div className="rounded-lg border border-primary-200 bg-white p-5 dark:border-primary-800 dark:bg-primary-900" data-testid="vc-radar-universe-form">
           <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Radar universe</h2><Button size="sm" variant="outline" onClick={() => void createUniverse()} data-testid="vc-radar-create-universe"><Plus className="size-4" /> Create</Button></div>
-          <label className="mb-3 block text-sm">Active universe<select className="theme-native-select mt-1 w-full rounded-md border border-primary-300 bg-transparent p-2" data-testid="vc-radar-universe-selector"><option>One-time exploratory scan</option></select></label>
-          <label className="mb-3 block text-sm">Scope<select className="theme-native-select mt-1 w-full rounded-md border border-primary-300 bg-transparent p-2" data-testid="vc-radar-universe-scope"><option>team</option><option>user</option><option>organization</option></select></label>
+          <label className="mb-3 block text-sm">Active universe<DropdownSelect className="mt-1 w-full" data-testid="vc-radar-universe-selector"><option>One-time exploratory scan</option></DropdownSelect></label>
+          <label className="mb-3 block text-sm">Scope<DropdownSelect className="mt-1 w-full" data-testid="vc-radar-universe-scope"><option>team</option><option>user</option><option>organization</option></DropdownSelect></label>
           <label className="mb-3 block text-sm">Universe name<input value={universeName} onChange={event => setUniverseName(event.target.value)} className="mt-1 w-full rounded-md border border-primary-300 bg-transparent p-2" data-testid="vc-radar-universe-name" /></label>
           <label className="mb-3 block text-sm">Topics<input value={topic} onChange={event => setTopic(event.target.value)} className="mt-1 w-full rounded-md border border-primary-300 bg-transparent p-2" data-testid="vc-radar-universe-topics" /></label>
           <label className="mb-3 block text-sm">Languages<input value={language} onChange={event => setLanguage(event.target.value)} className="mt-1 w-full rounded-md border border-primary-300 bg-transparent p-2" data-testid="vc-radar-universe-languages" /></label>

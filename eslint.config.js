@@ -74,5 +74,32 @@ export default [
       'vite.config.ts',
     ],
   },
+  {
+    files: ['src/**/*.tsx'],
+    ignores: ['src/components/ui/dropdown-select.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: 'JSXOpeningElement[name.name="select"]',
+          message:
+            'Use DropdownSelect from @/components/ui/dropdown-select instead of raw <select>.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/screens/investment/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'JSXOpeningElement[name.name="select"]',
+          message:
+            'Use DropdownSelect from @/components/ui/dropdown-select instead of raw <select>.',
+        },
+      ],
+    },
+  },
   ...hermesConfig,
 ]

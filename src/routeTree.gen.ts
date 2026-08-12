@@ -23,6 +23,7 @@ import { Route as KanbanRouteImport } from './routes/kanban'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as GeneratedPoliciesRouteImport } from './routes/generated-policies'
 import { Route as FilesRouteImport } from './routes/files'
+import { Route as EvaluationRouteImport } from './routes/evaluation'
 import { Route as EffectiveContextRouteImport } from './routes/effective-context'
 import { Route as DatabaseRouteImport } from './routes/database'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -199,6 +200,11 @@ const GeneratedPoliciesRoute = GeneratedPoliciesRouteImport.update({
 const FilesRoute = FilesRouteImport.update({
   id: '/files',
   path: '/files',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EvaluationRoute = EvaluationRouteImport.update({
+  id: '/evaluation',
+  path: '/evaluation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EffectiveContextRoute = EffectiveContextRouteImport.update({
@@ -752,6 +758,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/database': typeof DatabaseRoute
   '/effective-context': typeof EffectiveContextRoute
+  '/evaluation': typeof EvaluationRoute
   '/files': typeof FilesRoute
   '/generated-policies': typeof GeneratedPoliciesRoute
   '/jobs': typeof JobsRoute
@@ -875,6 +882,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/database': typeof DatabaseRoute
   '/effective-context': typeof EffectiveContextRoute
+  '/evaluation': typeof EvaluationRoute
   '/files': typeof FilesRoute
   '/generated-policies': typeof GeneratedPoliciesRoute
   '/jobs': typeof JobsRoute
@@ -998,6 +1006,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/database': typeof DatabaseRoute
   '/effective-context': typeof EffectiveContextRoute
+  '/evaluation': typeof EvaluationRoute
   '/files': typeof FilesRoute
   '/generated-policies': typeof GeneratedPoliciesRoute
   '/jobs': typeof JobsRoute
@@ -1123,6 +1132,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/database'
     | '/effective-context'
+    | '/evaluation'
     | '/files'
     | '/generated-policies'
     | '/jobs'
@@ -1246,6 +1256,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/database'
     | '/effective-context'
+    | '/evaluation'
     | '/files'
     | '/generated-policies'
     | '/jobs'
@@ -1368,6 +1379,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/database'
     | '/effective-context'
+    | '/evaluation'
     | '/files'
     | '/generated-policies'
     | '/jobs'
@@ -1492,6 +1504,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DatabaseRoute: typeof DatabaseRoute
   EffectiveContextRoute: typeof EffectiveContextRoute
+  EvaluationRoute: typeof EvaluationRoute
   FilesRoute: typeof FilesRoute
   GeneratedPoliciesRoute: typeof GeneratedPoliciesRoute
   JobsRoute: typeof JobsRoute
@@ -1683,6 +1696,13 @@ declare module '@tanstack/react-router' {
       path: '/files'
       fullPath: '/files'
       preLoaderRoute: typeof FilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/evaluation': {
+      id: '/evaluation'
+      path: '/evaluation'
+      fullPath: '/evaluation'
+      preLoaderRoute: typeof EvaluationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/effective-context': {
@@ -2561,6 +2581,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DatabaseRoute: DatabaseRoute,
   EffectiveContextRoute: EffectiveContextRoute,
+  EvaluationRoute: EvaluationRoute,
   FilesRoute: FilesRoute,
   GeneratedPoliciesRoute: GeneratedPoliciesRoute,
   JobsRoute: JobsRoute,

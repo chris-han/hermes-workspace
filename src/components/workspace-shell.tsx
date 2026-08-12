@@ -184,6 +184,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     if (pathname.startsWith('/files')) return 'Files'
     if (pathname.startsWith('/jobs')) return 'Jobs'
     if (pathname.startsWith('/memory')) return 'Memory'
+    if (pathname.startsWith('/evaluation')) return t('nav.evaluation')
     if (
       pathname.startsWith('/knowledge-base') ||
       pathname.startsWith('/generated-policies') ||

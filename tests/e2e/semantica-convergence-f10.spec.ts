@@ -63,7 +63,8 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   const compilePayload = JSON.parse(compileBody).discoveryResult
   const discoveryPayload = { run: compilePayload.discoveryRun }
   const sourceText = 'Qualification: bidder must hold a valid certificate for graphene oxide procurement.'
-  const packageResponse = await page.request.post('/api/semantier-proxy/api/knowledge/builder/tender-packages', {
+  const packageResponse = await page.request.post('http://127.0.0.1:8899/api/knowledge/builder/tender-packages', {
+    timeout: 30_000,
     data: {
       schemaVersion: 'knowledge_builder_tender_package_request.v1',
       discoveryRunId: discoveryPayload.run.discovery_run_id,

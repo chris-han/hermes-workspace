@@ -48,10 +48,23 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   })
   expect(discovery.ok(), await discovery.text()).toBeTruthy()
   const discoveryPayload = await discovery.json()
+  const packageResponse = await page.request.post('/api/semantier-proxy/api/knowledge/builder/tender-packages', {
+    data: {
+      discoveryRunId: discoveryPayload.run.discovery_run_id,
+      documents: [{
+        discoveryRunId: discoveryPayload.run.discovery_run_id,
+        documentId: 'f10-browser-document', role: 'tender_source',
+      }],
+    },
+  })
+  const packageBody = await packageResponse.text()
+  expect(packageResponse.ok(), packageBody).toBeTruthy()
+  const packagePayload = JSON.parse(packageBody)
   const extraction = await page.request.post('/api/semantier-proxy/api/knowledge/builder/extraction-runs', {
     data: {
       schemaVersion: 'knowledge_builder_extraction_run_request.v1',
       discoveryRunId: discoveryPayload.run.discovery_run_id,
+      tenderPackageId: packagePayload.tenderPackage.package_id,
       sourceKind: 'text', sourceRef: 'f10-browser-source', sourceText,
       documentId: 'f10-browser-document', provider: 'semantica', profile: 'tender_sensitive_v1',
     },
@@ -70,7 +83,7 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
     assertion_candidates?: Array<{ assertion_id: string }>
   }
   const candidateId = (candidatesPayload.assertionCandidates ?? candidatesPayload.assertion_candidates ?? [])[0]?.assertion_id as string
-  expect(candidateId).toBeTruthy()
+  expect(candidateId, candidatesBody).toBeTruthy()
 
   await page.goto(`/knowledge-base?mode=browse&tab=legal&view=graph&lens=evidence&candidate_id=${encodeURIComponent(candidateId)}`)
   await expect(page.getByTestId('semantica-review-actions')).toBeVisible()

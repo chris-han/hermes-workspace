@@ -25,10 +25,11 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
     password: string
   }
 
+  await page.goto('/knowledge-base?mode=browse&tab=legal&view=graph&lens=evidence')
   const login = await page.request.post('/auth/password/login', {
     data: { login: credentials.login, password: credentials.password },
   })
-  expect(login.ok()).toBeTruthy()
+  expect(login.ok(), await login.text()).toBeTruthy()
   const localLogin = await page.request.post('/api/auth', {
     data: { password: credentials.password },
   })
@@ -36,7 +37,6 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   // session cookie in addition to the authenticated gateway session.
   expect(localLogin.ok() || localLogin.status() === 400).toBeTruthy()
 
-  await page.goto('/knowledge-base?mode=browse&tab=legal&view=graph&lens=evidence')
   const loginName = page.getByPlaceholder(/login name|登录名/i)
   if (await loginName.isVisible().catch(() => false)) {
     await loginName.fill(credentials.login)

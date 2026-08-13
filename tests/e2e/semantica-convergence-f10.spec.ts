@@ -63,9 +63,13 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   const candidatesResponse = await page.request.get(
     `/api/semantier-proxy/api/knowledge/builder/assertion-candidates?extractionRunId=${encodeURIComponent(runId)}`,
   )
-  expect(candidatesResponse.ok()).toBeTruthy()
-  const candidatesPayload = await candidatesResponse.json()
-  const candidateId = candidatesPayload.assertionCandidates[0].assertion_id as string
+  const candidatesBody = await candidatesResponse.text()
+  expect(candidatesResponse.ok(), candidatesBody).toBeTruthy()
+  const candidatesPayload = JSON.parse(candidatesBody) as {
+    assertionCandidates?: Array<{ assertion_id: string }>
+    assertion_candidates?: Array<{ assertion_id: string }>
+  }
+  const candidateId = (candidatesPayload.assertionCandidates ?? candidatesPayload.assertion_candidates ?? [])[0]?.assertion_id as string
   expect(candidateId).toBeTruthy()
 
   await page.goto(`/knowledge-base?mode=browse&tab=legal&view=graph&lens=evidence&candidate_id=${encodeURIComponent(candidateId)}`)

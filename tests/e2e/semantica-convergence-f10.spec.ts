@@ -29,6 +29,12 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
     data: { login: credentials.login, password: credentials.password },
   })
   expect(login.ok()).toBeTruthy()
+  const localLogin = await page.request.post('/api/auth', {
+    data: { password: credentials.password },
+  })
+  // The upload boundary is hosted by the workspace app and uses its local
+  // session cookie in addition to the authenticated gateway session.
+  expect(localLogin.ok() || localLogin.status() === 400).toBeTruthy()
 
   await page.goto('/knowledge-base?mode=browse&tab=legal&view=graph&lens=evidence')
   const loginName = page.getByPlaceholder(/login name|登录名/i)

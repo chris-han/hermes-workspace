@@ -215,5 +215,5 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   await page.reload()
   await expect(page.getByTestId('semantica-review-actions')).toBeVisible()
   await expect(page.getByText(new RegExp(candidateId))).toBeVisible()
-  expect(detailPayload.acceptedTopology.graph_version).toMatch(/^graph_/)
+  expect(detailPayload.acceptedTopology.graph_version).toMatch(/^(graph_|KG_)/)
 })

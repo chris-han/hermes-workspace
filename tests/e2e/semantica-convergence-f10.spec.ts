@@ -111,7 +111,7 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
     assertion_candidates?: Array<{ assertion_id: string }>
   }
   const candidateId = (candidatesPayload.assertionCandidates ?? candidatesPayload.assertion_candidates ?? [])[0]?.assertion_id as string
-  expect(candidateId, candidatesBody).toBeTruthy()
+  expect(candidateId, `Semantica produced no reviewable candidate; provider fallback is forbidden. ${candidatesBody}`).toBeTruthy()
 
   const candidateDetailResponse = await page.request.get(
     `/api/semantier-proxy/api/knowledge/builder/assertion-candidates/${encodeURIComponent(candidateId)}`,

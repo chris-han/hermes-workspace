@@ -39,21 +39,30 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
     await page.waitForLoadState('networkidle')
   }
 
-  const sourceText = 'Qualification: bidder must hold a valid certificate for graphene oxide procurement.'
-  const discovery = await page.request.post('/api/semantier-proxy/api/knowledge/builder/discovery-runs', {
-    data: {
-      schemaVersion: 'knowledge_builder_discovery_run_request.v1',
-      sourceKind: 'text', sourceRef: 'f10-browser-source', sourceText,
+  const sourcePath = join(process.cwd(), '..', 'docs', 'derived', '中国进出口银行北河沿办公楼更换屋面防水项目.docx')
+  const upload = await page.request.post('/api/knowledge/upload', {
+    multipart: {
+      files: { name: 'f10-source.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: readFileSync(sourcePath) },
+      path: 'uploads', ingestMode: 'extract', session_id: 'knowledge-builder',
     },
   })
-  expect(discovery.ok(), await discovery.text()).toBeTruthy()
-  const discoveryPayload = await discovery.json()
+  const uploadBody = await upload.text()
+  expect(upload.ok(), uploadBody).toBeTruthy()
+  const uploadPayload = JSON.parse(uploadBody)
+  const compile = await page.request.post('/api/knowledge/builder', {
+    data: { action: 'compileSensitiveLexicon', sourceRef: 'f10-browser-source', uploadRef: uploadPayload[0].stagedUploadRef },
+  })
+  const compileBody = await compile.text()
+  expect(compile.ok(), compileBody).toBeTruthy()
+  const compilePayload = JSON.parse(compileBody).discoveryResult
+  const discoveryPayload = { run: compilePayload.discoveryRun }
+  const sourceText = 'Qualification: bidder must hold a valid certificate for graphene oxide procurement.'
   const packageResponse = await page.request.post('/api/semantier-proxy/api/knowledge/builder/tender-packages', {
     data: {
       schemaVersion: 'knowledge_builder_tender_package_request.v1',
       discoveryRunId: discoveryPayload.run.discovery_run_id,
       documents: [{
-        discoveryRunId: discoveryPayload.run.discovery_run_id,
+        canonicalDocumentId: compilePayload.importResult.compilation_run.knowledge_source_compilation_run_id,
         documentId: 'f10-browser-document', role: 'main_tender',
       }],
     },

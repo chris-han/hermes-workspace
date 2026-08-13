@@ -1,6 +1,16 @@
-import { test, expect } from '@playwright/test'
+import { chromium, expect, test as base } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
+const test = base.extend({
+  browser: async ({}, use) => {
+    const endpoint = process.env.F10_REMOTE_CHROME_URL ?? 'http://127.0.0.1:9222'
+    const browser = await chromium.connectOverCDP(endpoint)
+    await use(browser)
+    // The browser is owned by the caller that exposed the CDP endpoint.
+    await browser.close()
+  },
+})
 
 /**
  * Real authenticated T3 proof.  This intentionally has no page.route stubs:

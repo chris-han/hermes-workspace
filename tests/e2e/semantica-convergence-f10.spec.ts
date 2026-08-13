@@ -54,7 +54,7 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
       discoveryRunId: discoveryPayload.run.discovery_run_id,
       documents: [{
         discoveryRunId: discoveryPayload.run.discovery_run_id,
-        documentId: 'f10-browser-document', role: 'tender_source',
+        documentId: 'f10-browser-document', role: 'main_tender',
       }],
     },
   })

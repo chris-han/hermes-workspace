@@ -97,6 +97,7 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   const extractionBody = await extraction.text()
   expect(extraction.ok(), extractionBody).toBeTruthy()
   const extractionPayload = JSON.parse(extractionBody)
+  expect(extractionPayload.extractionRun.run_status, extractionBody).toBe('completed')
   const runId = extractionPayload.extractionRun.extraction_run_id as string
   const candidatesResponse = await page.request.get(
     `/api/semantier-proxy/api/knowledge/builder/assertion-candidates?extractionRunId=${encodeURIComponent(runId)}&limit=500`,

@@ -40,15 +40,25 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   }
 
   const sourceText = 'Qualification: bidder must hold a valid certificate for graphene oxide procurement.'
+  const discovery = await page.request.post('/api/semantier-proxy/api/knowledge/builder/discovery-runs', {
+    data: {
+      schemaVersion: 'knowledge_builder_discovery_run_request.v1',
+      sourceKind: 'text', sourceRef: 'f10-browser-source', sourceText,
+    },
+  })
+  expect(discovery.ok(), await discovery.text()).toBeTruthy()
+  const discoveryPayload = await discovery.json()
   const extraction = await page.request.post('/api/semantier-proxy/api/knowledge/builder/extraction-runs', {
     data: {
       schemaVersion: 'knowledge_builder_extraction_run_request.v1',
+      discoveryRunId: discoveryPayload.run.discovery_run_id,
       sourceKind: 'text', sourceRef: 'f10-browser-source', sourceText,
       documentId: 'f10-browser-document', provider: 'semantica', profile: 'tender_sensitive_v1',
     },
   })
-  expect(extraction.ok()).toBeTruthy()
-  const extractionPayload = await extraction.json()
+  const extractionBody = await extraction.text()
+  expect(extraction.ok(), extractionBody).toBeTruthy()
+  const extractionPayload = JSON.parse(extractionBody)
   const runId = extractionPayload.extractionRun.extraction_run_id as string
   const candidatesResponse = await page.request.get(
     `/api/semantier-proxy/api/knowledge/builder/assertion-candidates?extractionRunId=${encodeURIComponent(runId)}`,

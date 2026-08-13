@@ -61,15 +61,23 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   const compileBody = await compile.text()
   expect(compile.ok(), compileBody).toBeTruthy()
   const compilePayload = JSON.parse(compileBody).discoveryResult
-  const discoveryPayload = { run: compilePayload.discoveryRun }
   const sourceText = 'Qualification: bidder must hold a valid certificate for graphene oxide procurement.'
+  const semanticaDiscovery = await page.request.post('/api/semantier-proxy/api/knowledge/builder/discovery-runs', {
+    data: {
+      schemaVersion: 'knowledge_builder_discovery_run_request.v1',
+      sourceKind: 'text', sourceRef: 'f10-semantica-source', sourceText,
+    },
+  })
+  const semanticaDiscoveryBody = await semanticaDiscovery.text()
+  expect(semanticaDiscovery.ok(), semanticaDiscoveryBody).toBeTruthy()
+  const discoveryPayload = { run: JSON.parse(semanticaDiscoveryBody).run }
   const packageResponse = await page.request.post('http://127.0.0.1:8899/api/knowledge/builder/tender-packages', {
     timeout: 30_000,
     data: {
       schemaVersion: 'knowledge_builder_tender_package_request.v1',
       discoveryRunId: discoveryPayload.run.discovery_run_id,
       documents: [{
-        sourceId: compilePayload.discoveryRun.source_id,
+        sourceId: discoveryPayload.run.source_id,
         documentId: 'f10-browser-document', role: 'main_tender',
       }],
     },

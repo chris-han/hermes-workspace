@@ -50,6 +50,7 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   const discoveryPayload = await discovery.json()
   const packageResponse = await page.request.post('/api/semantier-proxy/api/knowledge/builder/tender-packages', {
     data: {
+      schemaVersion: 'knowledge_builder_tender_package_request.v1',
       discoveryRunId: discoveryPayload.run.discovery_run_id,
       documents: [{
         discoveryRunId: discoveryPayload.run.discovery_run_id,

@@ -25,6 +25,11 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
     password: string
   }
 
+  const login = await page.request.post('/auth/password/login', {
+    data: { login: credentials.login, password: credentials.password },
+  })
+  expect(login.ok()).toBeTruthy()
+
   await page.goto('/knowledge-base?mode=browse&tab=legal&view=graph&lens=evidence')
   const loginName = page.getByPlaceholder(/login name|登录名/i)
   if (await loginName.isVisible().catch(() => false)) {

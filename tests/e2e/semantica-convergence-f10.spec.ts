@@ -68,7 +68,7 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
       schemaVersion: 'knowledge_builder_tender_package_request.v1',
       discoveryRunId: discoveryPayload.run.discovery_run_id,
       documents: [{
-        sourceId: compilePayload.importResult.knowledge_source.source_id,
+        sourceId: compilePayload.discoveryRun.source_id,
         documentId: 'f10-browser-document', role: 'main_tender',
       }],
     },

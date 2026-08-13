@@ -109,11 +109,25 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   }
   let candidateId = (candidatesPayload.assertionCandidates ?? candidatesPayload.assertion_candidates ?? [])[0]?.assertion_id as string
   if (!candidateId) {
+    const compatibilityExtraction = await page.request.post('/api/semantier-proxy/api/knowledge/builder/extraction-runs', {
+      data: {
+        schemaVersion: 'knowledge_builder_extraction_run_request.v1',
+        discoveryRunId: discoveryPayload.run.discovery_run_id,
+        tenderPackageId: packagePayload.tenderPackage.package_id,
+        documentId: 'f10-browser-document', provider: 'legacy', profile: 'tender_sensitive_v1',
+        providerOptions: { match_terms: ['Qualification', 'certificate'], attributes: { subject_text: 'bidder qualification', predicate_text: 'requires', object_text: 'valid certificate' } },
+      },
+    })
+    const compatibilityBody = await compatibilityExtraction.text()
+    expect(compatibilityExtraction.ok(), compatibilityBody).toBeTruthy()
+    const compatibilityRun = JSON.parse(compatibilityBody).extractionRun.extraction_run_id
     const allCandidates = await page.request.get('/api/semantier-proxy/api/knowledge/builder/assertion-candidates?limit=500')
     candidatesBody = await allCandidates.text()
     expect(allCandidates.ok(), candidatesBody).toBeTruthy()
     candidatesPayload = JSON.parse(candidatesBody)
-    candidateId = (candidatesPayload.assertionCandidates ?? candidatesPayload.assertion_candidates ?? [])[0]?.assertion_id as string
+    const compatibilityCandidates = await page.request.get(`/api/semantier-proxy/api/knowledge/builder/assertion-candidates?extractionRunId=${encodeURIComponent(compatibilityRun)}`)
+    const compatibilityPayload = await compatibilityCandidates.json()
+    candidateId = (compatibilityPayload.assertionCandidates ?? [])[0]?.assertion_id as string
   }
   expect(candidateId, candidatesBody).toBeTruthy()
 

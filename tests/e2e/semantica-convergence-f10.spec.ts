@@ -102,6 +102,31 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   const candidateId = (candidatesPayload.assertionCandidates ?? candidatesPayload.assertion_candidates ?? [])[0]?.assertion_id as string
   expect(candidateId, candidatesBody).toBeTruthy()
 
+  const candidateDetailResponse = await page.request.get(
+    `/api/semantier-proxy/api/knowledge/builder/assertion-candidates/${encodeURIComponent(candidateId)}`,
+  )
+  const candidateDetail = await candidateDetailResponse.json()
+  expect(candidateDetailResponse.ok()).toBeTruthy()
+  const sourceAnchor = candidateDetail.assertionCandidate.source_anchors?.[0]?.anchor_id
+  expect(sourceAnchor).toBeTruthy()
+
+  const editResponse = await page.request.post(
+    `/api/semantier-proxy/api/knowledge/builder/assertion-candidates/${encodeURIComponent(candidateId)}/grounding-events`,
+    {
+      data: {
+        schemaVersion: 'learning_event_grounding_request.v1', decision: 'edit',
+        certainty: 'high', reasonCode: 'reviewer_normalization',
+        justification: 'Reviewer normalized the candidate label while preserving its source anchor.',
+        evidenceAnchorRefs: [sourceAnchor],
+        editedAssertion: { subject_text: 'bidder qualification', predicate_text: 'requires', object_text: 'valid certificate' },
+      },
+    },
+  )
+  const editBody = await editResponse.text()
+  expect(editResponse.ok(), editBody).toBeTruthy()
+  const editPayload = JSON.parse(editBody)
+  expect(editPayload.graphDelta.operations.some((operation: { action: string }) => operation.action === 'node_edit')).toBeTruthy()
+
   await page.goto(`/knowledge-base?mode=browse&tab=legal&view=graph&lens=evidence&candidate_id=${encodeURIComponent(candidateId)}`)
   await expect(page.getByTestId('semantica-review-actions')).toBeVisible()
   await page.getByTestId('semantica-accept-candidate').click()
@@ -115,8 +140,39 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   expect(detail.ok()).toBeTruthy()
   const detailPayload = await detail.json()
   expect(detailPayload.learningEvents.at(-1).human_label.decision).toBe('accept')
+  expect(detailPayload.acceptedTopology?.graph_version).toBeTruthy()
+
+  const sessionResponse = await page.request.post('/api/sessions', { data: { label: 'F10 convergence chat' } })
+  const sessionBody = await sessionResponse.text()
+  expect(sessionResponse.ok(), sessionBody).toBeTruthy()
+  const sessionId = JSON.parse(sessionBody).sessionKey as string
+  async function askChat(message: string) {
+    const response = await page.request.post(`/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionId)}/chat/stream`, {
+      timeout: 30_000,
+      data: {
+        message,
+        knowledge_workbench_context: {
+          candidateGraphId: candidateId,
+          acceptedReleaseId: detailPayload.acceptedTopology.graph_version,
+          selectedEdgeIds: [candidateId],
+          sourceAnchors: [{ anchorId: sourceAnchor }],
+        },
+      },
+      headers: { accept: 'text/event-stream' },
+    })
+    const body = await response.text()
+    expect(response.ok(), body).toBeTruthy()
+    return body
+  }
+  const whyAnswer = await askChat('Why does this edge exist?')
+  expect(whyAnswer).toMatch(/source|anchor|qualification/i)
+  const duplicateAnswer = await askChat('Find suspicious duplicates or false merges in this candidate graph.')
+  expect(duplicateAnswer).toMatch(/duplicate|merge|candidate/i)
+  const changedAnswer = await askChat('What changed between the proposal and accepted release?')
+  expect(changedAnswer).toMatch(/change|release|candidate|accepted/i)
 
   await page.reload()
   await expect(page.getByTestId('semantica-review-actions')).toBeVisible()
   await expect(page.getByText(new RegExp(candidateId))).toBeVisible()
+  expect(detailPayload.acceptedTopology.graph_version).toMatch(/^graph_/)
 })

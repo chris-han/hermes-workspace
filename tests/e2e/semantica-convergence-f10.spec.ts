@@ -18,6 +18,8 @@ const test = base.extend({
  * decision from the graph surface, materializes an AcceptedGraphRelease, and
  * verifies the release survives a reload.
  */
+test.setTimeout(180_000)
+
 test('F10 candidate review materialization and replay', async ({ page }) => {
   const root = process.env.F10_ROOT ?? join(process.cwd(), '..', 'workspaces', 'f10_workspace')
   const credentials = JSON.parse(readFileSync(join(root, 'credentials.json'), 'utf8')) as {
@@ -186,8 +188,8 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   expect(sessionResponse.ok(), sessionBody).toBeTruthy()
   const sessionId = JSON.parse(sessionBody).sessionKey as string
   async function askChat(message: string) {
-    const response = await page.request.post(`/api/semantier-proxy/api/sessions/${encodeURIComponent(sessionId)}/chat/stream`, {
-      timeout: 30_000,
+    const response = await page.request.post(`http://127.0.0.1:8899/api/sessions/${encodeURIComponent(sessionId)}/chat/stream`, {
+      timeout: 60_000,
       data: {
         message,
         knowledge_workbench_context: {

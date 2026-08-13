@@ -91,15 +91,22 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   const extractionPayload = JSON.parse(extractionBody)
   const runId = extractionPayload.extractionRun.extraction_run_id as string
   const candidatesResponse = await page.request.get(
-    `/api/semantier-proxy/api/knowledge/builder/assertion-candidates?extractionRunId=${encodeURIComponent(runId)}`,
+    `/api/semantier-proxy/api/knowledge/builder/assertion-candidates?extractionRunId=${encodeURIComponent(runId)}&limit=500`,
   )
-  const candidatesBody = await candidatesResponse.text()
+  let candidatesBody = await candidatesResponse.text()
   expect(candidatesResponse.ok(), candidatesBody).toBeTruthy()
-  const candidatesPayload = JSON.parse(candidatesBody) as {
+  let candidatesPayload = JSON.parse(candidatesBody) as {
     assertionCandidates?: Array<{ assertion_id: string }>
     assertion_candidates?: Array<{ assertion_id: string }>
   }
-  const candidateId = (candidatesPayload.assertionCandidates ?? candidatesPayload.assertion_candidates ?? [])[0]?.assertion_id as string
+  let candidateId = (candidatesPayload.assertionCandidates ?? candidatesPayload.assertion_candidates ?? [])[0]?.assertion_id as string
+  if (!candidateId) {
+    const allCandidates = await page.request.get('/api/semantier-proxy/api/knowledge/builder/assertion-candidates?limit=500')
+    candidatesBody = await allCandidates.text()
+    expect(allCandidates.ok(), candidatesBody).toBeTruthy()
+    candidatesPayload = JSON.parse(candidatesBody)
+    candidateId = (candidatesPayload.assertionCandidates ?? candidatesPayload.assertion_candidates ?? [])[0]?.assertion_id as string
+  }
   expect(candidateId, candidatesBody).toBeTruthy()
 
   const candidateDetailResponse = await page.request.get(

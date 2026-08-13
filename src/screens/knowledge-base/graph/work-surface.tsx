@@ -13,9 +13,14 @@ import { GraphReplayPanel } from './graph-replay-panel'
 import { resolveGovernedGraphProjection } from './graph-api-client'
 import { defaultLensForEntry, useGraphSearch } from './use-graph-search'
 import type { GraphFilters } from './use-graph-search'
-import type { GovernedGraphDeepLink, GraphLens, GraphSelection } from './graph-types'
+import type {
+  GovernedGraphDeepLink,
+  GraphLens,
+  GraphSelection,
+} from './graph-types'
 import { useSettingsStore } from '@/hooks/use-settings'
 import { Button } from '@/components/ui/button'
+import { useKnowledgeWorkbenchStore } from '@/stores/knowledge-workbench-store'
 
 export function GovernedGraphWorkSurface({
   entryTab,
@@ -39,18 +44,52 @@ export function GovernedGraphWorkSurface({
     authorityRole: 'all',
     governanceState: 'all',
   })
+  const setWorkbenchContext = useKnowledgeWorkbenchStore(
+    (state) => state.setContext,
+  )
+  const workbenchPresentation = useKnowledgeWorkbenchStore(
+    (state) => state.presentation,
+  )
 
   const projectionQuery = useQuery({
     queryKey: ['governed-graph-projection', entryLens, deepLink],
     queryFn: () => resolveGovernedGraphProjection(deepLink, entryLens),
   })
   const projection = projectionQuery.data
-  const matches = useGraphSearch(
-    projection ?? emptyProjection,
-    filters,
-  )
+  const matches = useGraphSearch(projection ?? emptyProjection, filters)
   const highlightedNodeId =
     matches.length === 1 && filters.query.trim() ? matches[0].id : undefined
+
+  useEffect(() => {
+    if (!projection) return
+    const selectedNodeIds = selection.type === 'node' ? [selection.id] : []
+    const selectedEdgeIds = selection.type === 'edge' ? [selection.id] : []
+    setWorkbenchContext({
+      candidateGraphId: projection.projectionId || null,
+      acceptedReleaseId: null,
+      acceptedReleaseVersion: null,
+      selectedNodeIds,
+      selectedEdgeIds,
+      selectedRuleIds: [],
+      sourceAnchors: projection.nodes.flatMap((node) =>
+        node.sourceLocator && node.sourceHash
+          ? [
+              {
+                sourceRef: node.sourceTitle || node.detailRef,
+                sourceHash: node.sourceHash,
+                locator: node.sourceLocator,
+                quote: null,
+              },
+            ]
+          : [],
+      ),
+      governanceState: 'candidate',
+      hasAcceptedRelease: false,
+      extractionRunId: null,
+      providerRef: null,
+      providerCommit: null,
+    })
+  }, [projection, selection, setWorkbenchContext])
 
   useEffect(() => {
     if (deepLink.lens) setLens(deepLink.lens)
@@ -66,7 +105,9 @@ export function GovernedGraphWorkSurface({
   if (!projection) {
     return (
       <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-muted-foreground">
-        {projectionQuery.isError ? 'graph_projection_unavailable' : 'Loading governed graph...'}
+        {projectionQuery.isError
+          ? 'graph_projection_unavailable'
+          : 'Loading governed graph...'}
       </div>
     )
   }
@@ -90,11 +131,22 @@ export function GovernedGraphWorkSurface({
               <AlertCircle className="size-3" aria-hidden="true" />
               {freshnessLabel}
             </span>
-            <Button size="sm" variant="outline" onClick={() => void projectionQuery.refetch()}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void projectionQuery.refetch()}
+            >
               <RefreshCw className="size-4" aria-hidden="true" />
               refresh
             </Button>
-            <Button size="sm" disabled={!projection.nodes.some((node) => node.capabilities.includes('export_evidence'))}>
+            <Button
+              size="sm"
+              disabled={
+                !projection.nodes.some((node) =>
+                  node.capabilities.includes('export_evidence'),
+                )
+              }
+            >
               <Download className="size-4" aria-hidden="true" />
               {copy.exportEvidence}
             </Button>
@@ -105,8 +157,9 @@ export function GovernedGraphWorkSurface({
         </div>
         {projection.omission.hiddenNodeCount > 0 ? (
           <p className="mt-3 text-xs text-muted-foreground">
-            {copy.hiddenOmission}: {projection.omission.hiddenNodeCount} {copy.nodesOmitted};{' '}
-            {projection.omission.minimizedLabelCount} {copy.labelsMinimized}.
+            {copy.hiddenOmission}: {projection.omission.hiddenNodeCount}{' '}
+            {copy.nodesOmitted}; {projection.omission.minimizedLabelCount}{' '}
+            {copy.labelsMinimized}.
           </p>
         ) : null}
       </header>
@@ -125,9 +178,16 @@ export function GovernedGraphWorkSurface({
           lens={lens}
           selection={selection}
           highlightedNodeId={highlightedNodeId}
+          highlightedNodeIds={workbenchPresentation.highlightedNodeIds}
+          highlightedEdgeIds={workbenchPresentation.highlightedEdgeIds}
+          dimOthers={workbenchPresentation.dimOthers}
           onSelect={setSelection}
         />
-        <GraphInspector projection={projection} selection={selection} copy={copy} />
+        <GraphInspector
+          projection={projection}
+          selection={selection}
+          copy={copy}
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">

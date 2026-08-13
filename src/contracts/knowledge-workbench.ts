@@ -4,7 +4,12 @@ import { GraphInteractionCommandSchema } from './graph-interaction'
 import { SourceAnchorSchema } from './source-anchor'
 
 export const GovernanceStateSchema = z.enum([
-  'candidate', 'validated', 'approved', 'active', 'deprecated', 'rejected',
+  'candidate',
+  'validated',
+  'approved',
+  'active',
+  'deprecated',
+  'rejected',
 ])
 
 export const KnowledgeWorkbenchContextSchema = z.object({
@@ -32,10 +37,20 @@ export const KnowledgeWorkbenchResultSchema = z.object({
   }),
   candidateGraphId: z.string().nullable(),
   acceptedReleaseId: z.string().nullable(),
-  proposedAction: z.enum(['none', 'inspect', 'review_merge', 'review_relation', 'compare_release']),
+  proposedAction: z.enum([
+    'none',
+    'inspect',
+    'review_merge',
+    'review_relation',
+    'compare_release',
+  ]),
   interaction: GraphInteractionCommandSchema.nullable(),
 })
 
 export type GovernanceState = z.infer<typeof GovernanceStateSchema>
-export type KnowledgeWorkbenchContext = z.infer<typeof KnowledgeWorkbenchContextSchema>
-export type KnowledgeWorkbenchResult = z.infer<typeof KnowledgeWorkbenchResultSchema>
+export type KnowledgeWorkbenchContext = z.infer<
+  typeof KnowledgeWorkbenchContextSchema
+>
+export type KnowledgeWorkbenchResult = z.infer<
+  typeof KnowledgeWorkbenchResultSchema
+>

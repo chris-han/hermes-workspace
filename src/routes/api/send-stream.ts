@@ -220,6 +220,14 @@ export const Route = createFileRoute('/api/send-stream')({
                   {
                     model: requestedModel || undefined,
                     systemMessage: resolvedSystemMessage,
+                    knowledgeWorkbenchContext:
+                      body.knowledgeWorkbenchContext &&
+                      typeof body.knowledgeWorkbenchContext === 'object'
+                        ? (body.knowledgeWorkbenchContext as Record<
+                            string,
+                            unknown
+                          >)
+                        : undefined,
                     signal: abortController.signal,
                   },
                 )

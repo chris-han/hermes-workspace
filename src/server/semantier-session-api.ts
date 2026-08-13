@@ -221,9 +221,7 @@ export function toSemantierSessionSummary(
   const key = getSemantierSessionKey(session)
   const label = session.label || session.title || session.derivedTitle || key
   const updatedAt =
-    toMillis(session.updatedAt) ??
-    toMillis(session.createdAt) ??
-    Date.now()
+    toMillis(session.updatedAt) ?? toMillis(session.createdAt) ?? Date.now()
   return {
     key,
     friendlyId: key,
@@ -233,10 +231,7 @@ export function toSemantierSessionSummary(
     title: session.title || label,
     derivedTitle: session.derivedTitle || session.title || label,
     updatedAt,
-    createdAt:
-      toMillis(session.createdAt) ??
-      updatedAt ??
-      Date.now(),
+    createdAt: toMillis(session.createdAt) ?? updatedAt ?? Date.now(),
     platform: session.platform,
     parentSessionId: session.parentSessionId,
     lineageRootId: session.lineageRootId,
@@ -477,6 +472,7 @@ export async function openSemantierSessionChatStream(
   options?: {
     model?: string
     systemMessage?: string
+    knowledgeWorkbenchContext?: Record<string, unknown>
     signal?: AbortSignal
   },
 ): Promise<Response> {
@@ -491,6 +487,7 @@ export async function openSemantierSessionChatStream(
       message,
       model: options?.model,
       system_message: options?.systemMessage,
+      knowledge_workbench_context: options?.knowledgeWorkbenchContext,
     }),
     signal: options?.signal,
   })

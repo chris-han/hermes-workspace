@@ -13,4 +13,6 @@ export const GraphInteractionCommandSchema = z.object({
   reason: z.string().nullable(),
 })
 
-export type GraphInteractionCommand = z.infer<typeof GraphInteractionCommandSchema>
+export type GraphInteractionCommand = z.infer<
+  typeof GraphInteractionCommandSchema
+>

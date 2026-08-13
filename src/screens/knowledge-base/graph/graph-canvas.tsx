@@ -1,4 +1,10 @@
-import { ArrowRight, CircleAlert, FileText, GitBranch, Scale } from 'lucide-react'
+import {
+  ArrowRight,
+  CircleAlert,
+  FileText,
+  GitBranch,
+  Scale,
+} from 'lucide-react'
 import { useMemo } from 'react'
 
 import { buildDeterministicGraphLayout } from './graph-layout'
@@ -14,19 +20,26 @@ export function GraphCanvas({
   lens,
   selection,
   highlightedNodeId,
+  highlightedNodeIds = [],
+  highlightedEdgeIds = [],
+  dimOthers = false,
   onSelect,
 }: {
   projection: GovernedGraphProjection
   lens: GraphLens
   selection: GraphSelection
   highlightedNodeId?: string
+  highlightedNodeIds?: string[]
+  highlightedEdgeIds?: string[]
+  dimOthers?: boolean
   onSelect: (selection: GraphSelection) => void
 }) {
   const scene =
     projection.scenes.find((candidate) => candidate.lens === lens) ??
     projection.scenes[0]
   const layout = useMemo(
-    () => buildDeterministicGraphLayout(projection.nodes, projection.edges, scene),
+    () =>
+      buildDeterministicGraphLayout(projection.nodes, projection.edges, scene),
     [projection.edges, projection.nodes, scene],
   )
 
@@ -64,7 +77,15 @@ export function GraphCanvas({
                 x2={edge.targetPoint.x + 62}
                 y2={edge.targetPoint.y + 32}
                 stroke="var(--theme-border)"
-                strokeWidth={selection.type === 'edge' && selection.id === edge.id ? 3 : 1.5}
+                strokeWidth={
+                  (selection.type === 'edge' && selection.id === edge.id) ||
+                  highlightedEdgeIds.includes(edge.id)
+                    ? 3
+                    : 1.5
+                }
+                opacity={
+                  dimOthers && !highlightedEdgeIds.includes(edge.id) ? 0.25 : 1
+                }
                 markerEnd="url(#graph-arrow)"
               />
               <foreignObject
@@ -97,12 +118,22 @@ export function GraphCanvas({
           </defs>
         </svg>
         {scene.nodeIds.map((nodeId) => {
-          const node = projection.nodes.find((candidate) => candidate.id === nodeId)
+          const node = projection.nodes.find(
+            (candidate) => candidate.id === nodeId,
+          )
           const point = layout.nodes[nodeId]
           if (!node || !point) return null
           const selected = selection.type === 'node' && selection.id === node.id
           const highlighted = highlightedNodeId === node.id
-          const Icon = node.kind === 'authority' ? Scale : node.kind === 'conflict' ? CircleAlert : node.kind === 'source_span' ? FileText : GitBranch
+          const workbenchHighlighted = highlightedNodeIds.includes(node.id)
+          const Icon =
+            node.kind === 'authority'
+              ? Scale
+              : node.kind === 'conflict'
+                ? CircleAlert
+                : node.kind === 'source_span'
+                  ? FileText
+                  : GitBranch
           return (
             <button
               key={node.id}
@@ -111,7 +142,9 @@ export function GraphCanvas({
               className={cn(
                 'absolute flex w-[126px] flex-col gap-2 rounded-md border bg-card p-3 text-left text-xs shadow-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--focus-blue)]',
                 selected ? 'border-[var(--theme-accent)]' : 'border-border',
-                highlighted && 'ring-2 ring-[var(--focus-blue)]',
+                (highlighted || workbenchHighlighted) &&
+                  'ring-2 ring-[var(--focus-blue)]',
+                dimOthers && !workbenchHighlighted && 'opacity-30',
               )}
               style={{ left: point.x, top: point.y }}
               onClick={() => onSelect({ type: 'node', id: node.id })}
@@ -132,4 +165,3 @@ export function GraphCanvas({
     </section>
   )
 }
-

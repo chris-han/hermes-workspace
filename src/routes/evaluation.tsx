@@ -23,7 +23,28 @@ import {
 
 export const Route = createFileRoute('/evaluation')({ ssr: false, component: EvaluationRoute })
 
-const copy = {
+const copy: Record<'en' | 'zh', {
+  title: string
+  subtitle: string
+  launch: string
+  empty: string
+  unavailable: string
+  unofficial: string
+  evidence: string
+  loading: string
+  casesHeading: string
+  challengeHeading: string
+  baseline: string
+  challenger: string
+  compatibility: string
+  recorded: string
+  inMemory: string
+  real: string
+  stale: string
+  invalid: string
+  notEvaluable: string
+  pending: string
+}> = {
   en: {
     title: 'Knowledge Evaluation',
     subtitle: 'Pinned, reproducible evidence across extraction, graph, and reasoning.',
@@ -68,9 +89,11 @@ const copy = {
     notEvaluable: '不可评估',
     pending: '待定',
   },
-} as const
+}
 
 const tabs = ['overview', 'extraction', 'graph', 'reasoning', 'cases'] as const
+
+type CopyShape = (typeof copy)['en']
 
 function EvaluationRoute() {
   const locale = useSettingsStore((state) => state.settings.locale)
@@ -109,13 +132,13 @@ function EvaluationRoute() {
 
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-2 break-words text-sm font-semibold">{value}</p></div> }
 
-function modeBadgeLabel(mode: ExecutionMode, c: (typeof copy)['en']): string {
+function modeBadgeLabel(mode: ExecutionMode, c: CopyShape): string {
   if (mode === 'real') return c.real
   if (mode === 'recorded') return c.recorded
   return c.inMemory
 }
 
-function RoleBadge({ providerId, c }: { providerId: ProviderId | null | undefined; c: (typeof copy)['en'] }) {
+function RoleBadge({ providerId, c }: { providerId: ProviderId | null | undefined; c: CopyShape }) {
   if (!providerId) return null
   const label = providerRoleLabel(providerId)
   const tone =
@@ -129,7 +152,7 @@ function RoleBadge({ providerId, c }: { providerId: ProviderId | null | undefine
   return <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${tone}`}>{label}</span>
 }
 
-function ModeBadge({ mode, c }: { mode: ExecutionMode; c: (typeof copy)['en'] }) {
+function ModeBadge({ mode, c }: { mode: ExecutionMode; c: CopyShape }) {
   const tone =
     mode === 'real'
       ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
@@ -139,7 +162,7 @@ function ModeBadge({ mode, c }: { mode: ExecutionMode; c: (typeof copy)['en'] })
   return <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${tone}`}>{modeBadgeLabel(mode, c)}</span>
 }
 
-function StateBadge({ state, c }: { state: UiState; c: (typeof copy)['en'] }) {
+function StateBadge({ state, c }: { state: UiState; c: CopyShape }) {
   const label =
     state === 'loading' ? c.loading
     : state === 'running' ? 'running'

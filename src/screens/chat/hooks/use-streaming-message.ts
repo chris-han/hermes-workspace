@@ -788,6 +788,7 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
       attachments?: Array<ChatAttachment>
       idempotencyKey?: string
       model?: string
+      knowledgeWorkbenchContext?: Record<string, unknown>
     }) => {
       if (eventSourceRef.current) {
         // Preserve in-progress response as a partial message before aborting
@@ -847,6 +848,7 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
             attachments: params.attachments,
             idempotencyKey: params.idempotencyKey ?? crypto.randomUUID(),
             model: params.model || undefined,
+            knowledgeWorkbenchContext: params.knowledgeWorkbenchContext,
             locale:
               typeof window !== 'undefined'
                 ? localStorage.getItem('hermes-workspace-locale') || 'en'

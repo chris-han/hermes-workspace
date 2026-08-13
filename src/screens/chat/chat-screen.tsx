@@ -107,6 +107,7 @@ import { ContextAlertModal } from '@/components/usage-meter/context-alert-modal'
 import { ErrorToastContainer, showErrorToast } from '@/components/error-toast'
 // Context usage indicator is rendered as the composer send-button ring.
 import { useChatStore } from '@/stores/chat-store'
+import { useKnowledgeWorkbenchStore } from '@/stores/knowledge-workbench-store'
 import { useResearchCard } from '@/hooks/use-research-card'
 // MOBILE_TAB_BAR_OFFSET removed — tab bar always hidden in chat
 import { useTapDebug } from '@/hooks/use-tap-debug'
@@ -601,6 +602,9 @@ export function ChatScreen({
   const chatFocusMode = useWorkspaceStore((s) => s.chatFocusMode)
   const setChatFocusMode = useWorkspaceStore((s) => s.setChatFocusMode)
   const queryClient = useQueryClient()
+  const knowledgeWorkbenchContext = useKnowledgeWorkbenchStore(
+    (state) => state.context,
+  )
   const [sending, setSending] = useState(false)
   const [sessionsOpen, setSessionsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -760,10 +764,7 @@ export function ChatScreen({
       activeSessionKey ||
       null
 
-  const {
-    branchMessage,
-    branchingMessageId,
-  } = useBranchSession(
+  const { branchMessage, branchingMessageId } = useBranchSession(
     resolvedSessionKey || activeSessionKey,
     activeTitle,
   )
@@ -1448,7 +1449,9 @@ export function ChatScreen({
         const hasStreamToolCalls =
           Array.isArray((msg as any).__streamToolCalls) &&
           (msg as any).__streamToolCalls.length > 0
-        return hasToolCalls || hasSensitiveGovernanceContent || hasStreamToolCalls
+        return (
+          hasToolCalls || hasSensitiveGovernanceContent || hasStreamToolCalls
+        )
       }
       return false
     })
@@ -2141,18 +2144,24 @@ export function ChatScreen({
         )
       }
 
-      const handledSensitiveGovernanceDemo = await runSensitiveGovernanceDemoFlow({
-        input: body,
-        appendAssistantMessage: (message) => {
-          appendHistoryMessage(queryClient, friendlyId, sessionKey, message)
-          useChatStore.getState().processEvent({
-            type: 'message',
-            sessionKey,
-            message,
-          })
-          updateSessionLastMessage(queryClient, sessionKey, friendlyId, message)
-        },
-      })
+      const handledSensitiveGovernanceDemo =
+        await runSensitiveGovernanceDemoFlow({
+          input: body,
+          appendAssistantMessage: (message) => {
+            appendHistoryMessage(queryClient, friendlyId, sessionKey, message)
+            useChatStore.getState().processEvent({
+              type: 'message',
+              sessionKey,
+              message,
+            })
+            updateSessionLastMessage(
+              queryClient,
+              sessionKey,
+              friendlyId,
+              message,
+            )
+          },
+        })
       if (handledSensitiveGovernanceDemo) {
         setPendingGeneration(false)
         setSending(false)
@@ -2264,6 +2273,7 @@ export function ChatScreen({
         fastMode,
         model: currentModel || undefined,
         idempotencyKey: optimisticClientId || crypto.randomUUID(),
+        knowledgeWorkbenchContext,
       }).catch((err: unknown) => {
         const messageText = err instanceof Error ? err.message : String(err)
         if (import.meta.env.DEV) {
@@ -2280,6 +2290,7 @@ export function ChatScreen({
       streamFinish,
       streamStart,
       currentModel,
+      knowledgeWorkbenchContext,
     ],
   )
 
@@ -2736,16 +2747,11 @@ export function ChatScreen({
       '',
       `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}`,
     )
-    send(
-      message,
-      [],
-      false,
-      {
-        reset: () => {},
-        setValue: () => {},
-        setAttachments: () => {},
-      },
-    )
+    send(message, [], false, {
+      reset: () => {},
+      setValue: () => {},
+      setAttachments: () => {},
+    })
   }, [embedded, isNewChat, send])
 
   const handleAbortStreaming = useCallback(() => {

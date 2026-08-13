@@ -145,6 +145,7 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   const deltaPreviewBody = await deltaPreview.text()
   expect(deltaPreview.ok(), deltaPreviewBody).toBeTruthy()
   const graphDelta = JSON.parse(deltaPreviewBody).graphDelta
+  const graphDeltaPreviewHash = JSON.parse(deltaPreviewBody).previewHash
 
   const editResponse = await page.request.post(
     `/api/semantier-proxy/api/knowledge/builder/assertion-candidates/${encodeURIComponent(candidateId)}/grounding-events`,
@@ -153,8 +154,9 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
         schemaVersion: 'learning_event_grounding_request.v1', decision: 'edit',
         certainty: 'high', reasonCode: 'reviewer_normalization',
         justification: 'Reviewer normalized the candidate label while preserving its source anchor.',
-        evidenceAnchorRefs: [sourceAnchor],
+        evidenceAnchorRefs: Array.from(new Set([sourceAnchor, ...graphDelta.operations.flatMap((operation: { source_anchor_refs?: string[] }) => operation.source_anchor_refs ?? [])])),
         graphDelta,
+        graphDeltaPreviewHash,
         editedAssertion: { subject_text: 'bidder qualification', predicate_text: 'requires', object_text: 'valid certificate' },
       },
     },

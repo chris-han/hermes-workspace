@@ -45,7 +45,7 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
     await page.waitForLoadState('networkidle')
   }
 
-  const sourcePath = join(process.cwd(), '..', 'docs', 'derived', '中国进出口银行北河沿办公楼更换屋面防水项目.docx')
+  const sourcePath = join(process.cwd(), '..', 'docs', '招投标法规', 'POC测试敏感词汇总.docx')
   const upload = await page.request.post('/api/knowledge/upload', {
     multipart: {
       files: { name: 'f10-source.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: readFileSync(sourcePath) },

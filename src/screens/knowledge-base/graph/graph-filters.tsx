@@ -3,6 +3,7 @@ import { Search } from 'lucide-react'
 import type { GovernedGraphProjection, GraphSelection } from './graph-types'
 import type { GraphCopy } from './graph-lenses'
 import type { GraphFilters } from './use-graph-search'
+import { DropdownSelect } from '@/components/ui/dropdown-select'
 import { Input } from '@/components/ui/input'
 
 export function GraphFiltersRail({
@@ -127,7 +128,7 @@ function FilterSelect({
   return (
     <label className="grid gap-2 text-xs font-medium text-muted-foreground">
       {label}
-      <select
+      <DropdownSelect
         className="h-8 rounded-md border border-border bg-card px-2 text-xs text-foreground"
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
@@ -137,7 +138,7 @@ function FilterSelect({
             {option === 'all' ? copy.all : option}
           </option>
         ))}
-      </select>
+      </DropdownSelect>
     </label>
   )
 }
@@ -145,4 +146,3 @@ function FilterSelect({
 function unique(values: string[]) {
   return Array.from(new Set(values))
 }
-

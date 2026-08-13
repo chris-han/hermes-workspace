@@ -8,6 +8,7 @@ import {
 import { useMemo } from 'react'
 
 import { buildDeterministicGraphLayout } from './graph-layout'
+import { SigmaGraph } from './sigma-graph'
 import type {
   GovernedGraphProjection,
   GraphLens,
@@ -58,11 +59,16 @@ export function GraphCanvas({
           <span>{projection.edges.length} edges</span>
         </div>
       </div>
-      <div
-        className="relative h-[520px] overflow-auto"
-        role="application"
-        aria-label="Keyboard reachable governed graph"
-      >
+      <div className="relative h-[520px] overflow-auto">
+        <SigmaGraph
+          projection={projection}
+          lens={lens}
+          selection={selection}
+          highlightedNodeIds={highlightedNodeIds}
+          highlightedEdgeIds={highlightedEdgeIds}
+          onSelect={onSelect}
+        />
+        <div className="hidden">
         <svg
           aria-hidden="true"
           className="absolute left-0 top-0"
@@ -161,7 +167,33 @@ export function GraphCanvas({
             </button>
           )
         })}
+        </div>
       </div>
+      <details className="border-t border-border px-3 py-2 text-xs">
+        <summary className="cursor-pointer font-medium">Keyboard graph objects</summary>
+        <div className="mt-2 flex max-h-32 flex-wrap gap-1 overflow-auto">
+          {projection.nodes.map((node) => (
+            <button
+              key={node.id}
+              type="button"
+              className="rounded border border-border px-2 py-1 text-left hover:bg-muted"
+              onClick={() => onSelect({ type: 'node', id: node.id })}
+            >
+              {node.label}
+            </button>
+          ))}
+          {projection.edges.map((edge) => (
+            <button
+              key={edge.id}
+              type="button"
+              className="rounded border border-border px-2 py-1 text-left hover:bg-muted"
+              onClick={() => onSelect({ type: 'edge', id: edge.id })}
+            >
+              {edge.predicateLabel}: {edge.source} → {edge.target}
+            </button>
+          ))}
+        </div>
+      </details>
     </section>
   )
 }

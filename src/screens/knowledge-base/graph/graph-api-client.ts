@@ -73,6 +73,50 @@ export async function submitGovernanceCommand(input: {
   return response.json()
 }
 
+const KNOWLEDGE_BUILDER_PREFIX = '/api/semantier-proxy/api/knowledge/builder'
+
+export async function submitSemanticaGrounding(input: {
+  assertionId: string
+  decision: 'accept' | 'reject' | 'edit'
+  justification: string
+}) {
+  const response = await fetch(
+    `${KNOWLEDGE_BUILDER_PREFIX}/assertion-candidates/${encodeURIComponent(input.assertionId)}/grounding-events`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        schemaVersion: 'learning_event_grounding_request.v1',
+        decision: input.decision,
+        certainty: 'high',
+        reasonCode: input.decision === 'accept' ? 'confirmed' : 'reviewer_decision',
+        justification: input.justification,
+      }),
+    },
+  )
+  if (!response.ok) throw new Error('semantica_grounding_failed')
+  return response.json() as Promise<{ learningEvent: { event_id: string } }>
+}
+
+export async function materializeSemanticaRelease(input: {
+  assertionId: string
+  humanEventId: string
+}) {
+  const response = await fetch(
+    `${KNOWLEDGE_BUILDER_PREFIX}/assertion-candidates/${encodeURIComponent(input.assertionId)}/release`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        schemaVersion: 'accepted_graph_release_request.v1',
+        humanEventId: input.humanEventId,
+      }),
+    },
+  )
+  if (!response.ok) throw new Error('semantica_release_failed')
+  return response.json()
+}
+
 type RawRecord = Record<string, unknown>
 
 export function normalizeGovernedGraphProjection(

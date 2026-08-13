@@ -159,5 +159,5 @@ export type GovernedGraphDeepLink = {
   sourceRef?: string
   graphSnapshotRef?: string
   asOf?: string
+  candidateId?: string
 }
-

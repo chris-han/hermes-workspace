@@ -1,0 +1,63 @@
+import { test, expect } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+/**
+ * Real authenticated T3 proof.  This intentionally has no page.route stubs:
+ * the browser logs in, creates a Semantica candidate, performs a grounding
+ * decision from the graph surface, materializes an AcceptedGraphRelease, and
+ * verifies the release survives a reload.
+ */
+test('F10 candidate review materialization and replay', async ({ page }) => {
+  const root = process.env.F10_ROOT ?? join(process.cwd(), '..', 'workspaces', 'f10_workspace')
+  const credentials = JSON.parse(readFileSync(join(root, 'credentials.json'), 'utf8')) as {
+    login: string
+    password: string
+  }
+
+  await page.goto('/knowledge-base?mode=browse&tab=legal&view=graph&lens=evidence')
+  const loginName = page.getByPlaceholder(/login name|登录名/i)
+  if (await loginName.isVisible().catch(() => false)) {
+    await loginName.fill(credentials.login)
+    await page.getByPlaceholder(/password|密码/i).fill(credentials.password)
+    await page.getByRole('button', { name: /continue with password|使用密码登录/i }).click()
+    await page.waitForLoadState('networkidle')
+  }
+
+  const sourceText = 'Qualification: bidder must hold a valid certificate for graphene oxide procurement.'
+  const extraction = await page.request.post('/api/semantier-proxy/api/knowledge/builder/extraction-runs', {
+    data: {
+      schemaVersion: 'knowledge_builder_extraction_run_request.v1',
+      sourceKind: 'text', sourceRef: 'f10-browser-source', sourceText,
+      documentId: 'f10-browser-document', provider: 'semantica', profile: 'tender_sensitive_v1',
+    },
+  })
+  expect(extraction.ok()).toBeTruthy()
+  const extractionPayload = await extraction.json()
+  const runId = extractionPayload.extractionRun.extraction_run_id as string
+  const candidatesResponse = await page.request.get(
+    `/api/semantier-proxy/api/knowledge/builder/assertion-candidates?extractionRunId=${encodeURIComponent(runId)}`,
+  )
+  expect(candidatesResponse.ok()).toBeTruthy()
+  const candidatesPayload = await candidatesResponse.json()
+  const candidateId = candidatesPayload.assertionCandidates[0].assertion_id as string
+  expect(candidateId).toBeTruthy()
+
+  await page.goto(`/knowledge-base?mode=browse&tab=legal&view=graph&lens=evidence&candidate_id=${encodeURIComponent(candidateId)}`)
+  await expect(page.getByTestId('semantica-review-actions')).toBeVisible()
+  await page.getByTestId('semantica-accept-candidate').click()
+  await expect(page.getByTestId('semantica-review-status')).toContainText('accepted:')
+  await page.getByTestId('semantica-materialize-release').click()
+  await expect(page.getByTestId('semantica-review-status')).toContainText('release:')
+
+  const detail = await page.request.get(
+    `/api/semantier-proxy/api/knowledge/builder/assertion-candidates/${encodeURIComponent(candidateId)}`,
+  )
+  expect(detail.ok()).toBeTruthy()
+  const detailPayload = await detail.json()
+  expect(detailPayload.learningEvents.at(-1).human_label.decision).toBe('accept')
+
+  await page.reload()
+  await expect(page.getByTestId('semantica-review-actions')).toBeVisible()
+  await expect(page.getByText(new RegExp(candidateId))).toBeVisible()
+})

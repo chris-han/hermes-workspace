@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 const BASE_URL = process.env.HERMES_EVAL_BASE_URL ?? 'http://127.0.0.1:4300'
 const CHROMIUM_EX_PATH = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
-  ?? '/home/chris/.cache/ms-playwright/chromium-1208/chrome-linux64/chrome'
+  ?? '/usr/bin/google-chrome'
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -29,7 +29,10 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        launchOptions: { executablePath: CHROMIUM_EX_PATH },
+        launchOptions: {
+          executablePath: CHROMIUM_EX_PATH,
+          args: ['--disable-crash-reporter', '--disable-gpu'],
+        },
         locale: 'en-US',
       },
     },

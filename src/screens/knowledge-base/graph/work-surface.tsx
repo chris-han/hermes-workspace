@@ -10,7 +10,11 @@ import { GraphImpactPanel } from './graph-impact-panel'
 import { GraphInspector } from './graph-inspector'
 import { GRAPH_COPY, GraphLensTabs } from './graph-lenses'
 import { GraphReplayPanel } from './graph-replay-panel'
-import { resolveGovernedGraphProjection } from './graph-api-client'
+import {
+  materializeSemanticaRelease,
+  resolveGovernedGraphProjection,
+  submitSemanticaGrounding,
+} from './graph-api-client'
 import { defaultLensForEntry, useGraphSearch } from './use-graph-search'
 import type { GraphFilters } from './use-graph-search'
 import type {
@@ -50,6 +54,8 @@ export function GovernedGraphWorkSurface({
   const workbenchPresentation = useKnowledgeWorkbenchStore(
     (state) => state.presentation,
   )
+  const [semanticaEventId, setSemanticaEventId] = useState<string | null>(null)
+  const [semanticaMessage, setSemanticaMessage] = useState('')
 
   const projectionQuery = useQuery({
     queryKey: ['governed-graph-projection', entryLens, deepLink],
@@ -201,6 +207,69 @@ export function GovernedGraphWorkSurface({
         copy={copy}
         onCompleted={() => void projectionQuery.refetch()}
       />
+      {deepLink.candidateId ? (
+        <section className="rounded-card border border-border bg-card p-4" data-testid="semantica-review-actions">
+          <h2 className="text-sm font-semibold">Semantica candidate grounding</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Candidate: {deepLink.candidateId}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              data-testid="semantica-accept-candidate"
+              onClick={() => void (async () => {
+                try {
+                  const result = await submitSemanticaGrounding({
+                    assertionId: deepLink.candidateId!,
+                    decision: 'accept',
+                    justification: 'Browser reviewer confirmed the source-grounded candidate.',
+                  })
+                  setSemanticaEventId(result.learningEvent.event_id)
+                  setSemanticaMessage(`accepted:${result.learningEvent.event_id}`)
+                } catch { setSemanticaMessage('grounding_failed') }
+              })()}
+            >Accept candidate</Button>
+            <Button
+              size="sm"
+              variant="outline"
+              data-testid="semantica-reject-candidate"
+              onClick={() => void (async () => {
+                try {
+                  const result = await submitSemanticaGrounding({
+                    assertionId: deepLink.candidateId!,
+                    decision: 'reject',
+                    justification: 'Browser reviewer rejected the candidate.',
+                  })
+                  setSemanticaEventId(result.learningEvent.event_id)
+                  setSemanticaMessage(`rejected:${result.learningEvent.event_id}`)
+                } catch { setSemanticaMessage('grounding_failed') }
+              })()}
+            >Reject candidate</Button>
+            <Button
+              size="sm"
+              disabled={!semanticaEventId}
+              data-testid="semantica-materialize-release"
+              onClick={() => void (async () => {
+                try {
+                  const result = await materializeSemanticaRelease({
+                    assertionId: deepLink.candidateId!,
+                    humanEventId: semanticaEventId!,
+                  })
+                  setSemanticaMessage(`release:${result.graphRelease?.graph_version ?? 'created'}`)
+                  setWorkbenchContext({
+                    candidateGraphId: deepLink.candidateId!,
+                    acceptedReleaseId: result.graphRelease?.release_id ?? result.graphRelease?.graph_version ?? null,
+                    acceptedReleaseVersion: result.graphRelease?.graph_version ?? null,
+                    selectedNodeIds: selection.type === 'node' ? [selection.id] : [],
+                    selectedEdgeIds: selection.type === 'edge' ? [selection.id] : [],
+                    selectedRuleIds: [], sourceAnchors: [], governanceState: 'active',
+                    hasAcceptedRelease: true, extractionRunId: null, providerRef: null, providerCommit: null,
+                  })
+                } catch { setSemanticaMessage('materialization_failed') }
+              })()}
+            >Materialize accepted release</Button>
+          </div>
+          {semanticaMessage ? <p className="mt-2 text-xs text-muted-foreground" data-testid="semantica-review-status">{semanticaMessage}</p> : null}
+        </section>
+      ) : null}
     </main>
   )
 }

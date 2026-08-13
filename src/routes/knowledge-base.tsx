@@ -58,6 +58,7 @@ const knowledgeBaseSearchSchema = z.object({
   source_ref: z.string().optional(),
   graph_snapshot_ref: z.string().optional(),
   as_of: z.string().optional(),
+  candidate_id: z.string().optional(),
 })
 
 const KnowledgeBrowserScreen = lazy(async () => {
@@ -284,6 +285,7 @@ function KnowledgeBaseRoute() {
                     sourceRef: search.source_ref,
                     graphSnapshotRef: search.graph_snapshot_ref,
                     asOf: search.as_of,
+                    candidateId: search.candidate_id,
                   }}
                 />
               ) : (
@@ -338,6 +340,7 @@ function KnowledgeBaseRoute() {
                     sourceRef: search.source_ref,
                     graphSnapshotRef: search.graph_snapshot_ref,
                     asOf: search.as_of,
+                    candidateId: search.candidate_id,
                   }}
                 />
               ) : (

@@ -13,6 +13,11 @@ export const GovernanceStateSchema = z.enum([
 ])
 
 export const KnowledgeWorkbenchContextSchema = z.object({
+  graphRef: z.string().nullable().optional(),
+  graphVersion: z.string().nullable().optional(),
+  graphHash: z.string().nullable().optional(),
+  authorityState: z.enum(['candidate', 'authoritative']).nullable().optional(),
+  runMode: z.enum(['evaluation_baseline', 'authoritative']).nullable().optional(),
   candidateGraphId: z.string().nullable(),
   acceptedReleaseId: z.string().nullable(),
   acceptedReleaseVersion: z.string().nullable(),

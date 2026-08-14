@@ -21,6 +21,7 @@ import { Route as LegalCorpusRouteImport } from './routes/legal-corpus'
 import { Route as KnowledgeBaseRouteImport } from './routes/knowledge-base'
 import { Route as KanbanRouteImport } from './routes/kanban'
 import { Route as JobsRouteImport } from './routes/jobs'
+import { Route as GraphExplorerRouteImport } from './routes/graph-explorer'
 import { Route as GeneratedPoliciesRouteImport } from './routes/generated-policies'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as EvaluationRouteImport } from './routes/evaluation'
@@ -190,6 +191,11 @@ const KanbanRoute = KanbanRouteImport.update({
 const JobsRoute = JobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GraphExplorerRoute = GraphExplorerRouteImport.update({
+  id: '/graph-explorer',
+  path: '/graph-explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GeneratedPoliciesRoute = GeneratedPoliciesRouteImport.update({
@@ -761,6 +767,7 @@ export interface FileRoutesByFullPath {
   '/evaluation': typeof EvaluationRoute
   '/files': typeof FilesRoute
   '/generated-policies': typeof GeneratedPoliciesRoute
+  '/graph-explorer': typeof GraphExplorerRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
@@ -885,6 +892,7 @@ export interface FileRoutesByTo {
   '/evaluation': typeof EvaluationRoute
   '/files': typeof FilesRoute
   '/generated-policies': typeof GeneratedPoliciesRoute
+  '/graph-explorer': typeof GraphExplorerRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
@@ -1009,6 +1017,7 @@ export interface FileRoutesById {
   '/evaluation': typeof EvaluationRoute
   '/files': typeof FilesRoute
   '/generated-policies': typeof GeneratedPoliciesRoute
+  '/graph-explorer': typeof GraphExplorerRoute
   '/jobs': typeof JobsRoute
   '/kanban': typeof KanbanRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
@@ -1135,6 +1144,7 @@ export interface FileRouteTypes {
     | '/evaluation'
     | '/files'
     | '/generated-policies'
+    | '/graph-explorer'
     | '/jobs'
     | '/kanban'
     | '/knowledge-base'
@@ -1259,6 +1269,7 @@ export interface FileRouteTypes {
     | '/evaluation'
     | '/files'
     | '/generated-policies'
+    | '/graph-explorer'
     | '/jobs'
     | '/kanban'
     | '/knowledge-base'
@@ -1382,6 +1393,7 @@ export interface FileRouteTypes {
     | '/evaluation'
     | '/files'
     | '/generated-policies'
+    | '/graph-explorer'
     | '/jobs'
     | '/kanban'
     | '/knowledge-base'
@@ -1507,6 +1519,7 @@ export interface RootRouteChildren {
   EvaluationRoute: typeof EvaluationRoute
   FilesRoute: typeof FilesRoute
   GeneratedPoliciesRoute: typeof GeneratedPoliciesRoute
+  GraphExplorerRoute: typeof GraphExplorerRoute
   JobsRoute: typeof JobsRoute
   KanbanRoute: typeof KanbanRoute
   KnowledgeBaseRoute: typeof KnowledgeBaseRoute
@@ -1682,6 +1695,13 @@ declare module '@tanstack/react-router' {
       path: '/jobs'
       fullPath: '/jobs'
       preLoaderRoute: typeof JobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/graph-explorer': {
+      id: '/graph-explorer'
+      path: '/graph-explorer'
+      fullPath: '/graph-explorer'
+      preLoaderRoute: typeof GraphExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/generated-policies': {
@@ -2584,6 +2604,7 @@ const rootRouteChildren: RootRouteChildren = {
   EvaluationRoute: EvaluationRoute,
   FilesRoute: FilesRoute,
   GeneratedPoliciesRoute: GeneratedPoliciesRoute,
+  GraphExplorerRoute: GraphExplorerRoute,
   JobsRoute: JobsRoute,
   KanbanRoute: KanbanRoute,
   KnowledgeBaseRoute: KnowledgeBaseRoute,

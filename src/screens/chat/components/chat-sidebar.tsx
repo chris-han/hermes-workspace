@@ -621,6 +621,7 @@ function ChatSidebarComponent({
     pathname === '/legal-corpus' ||
     pathname === '/database' ||
     pathname === '/effective-context'
+  const isGraphExplorerActive = pathname === '/graph-explorer'
   const isEvaluationActive = pathname.startsWith('/evaluation')
   const isTasksActive = pathname === '/tasks'
   const isorchestratorActive = pathname === '/orchestrator'
@@ -974,6 +975,13 @@ function ChatSidebarComponent({
       icon: Book01Icon,
       label: t('nav.knowledgeBase'),
       active: isKnowledgeBaseActive,
+    },
+    {
+      kind: 'link',
+      to: '/graph-explorer',
+      icon: Book01Icon,
+      label: 'Graph Explorer',
+      active: isGraphExplorerActive,
     },
     {
       kind: 'link',

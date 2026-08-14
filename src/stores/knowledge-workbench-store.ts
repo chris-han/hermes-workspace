@@ -31,6 +31,11 @@ type WorkbenchState = {
 }
 
 const EMPTY_CONTEXT: KnowledgeWorkbenchContext = {
+  graphRef: null,
+  graphVersion: null,
+  graphHash: null,
+  authorityState: 'candidate',
+  runMode: null,
   candidateGraphId: null,
   acceptedReleaseId: null,
   acceptedReleaseVersion: null,
@@ -61,6 +66,8 @@ export const useKnowledgeWorkbenchStore = create<WorkbenchState>(
     setContext: (context) => {
       const previous = get().context
       const identityChanged =
+        previous.graphRef !== context.graphRef ||
+        previous.graphVersion !== context.graphVersion ||
         previous.candidateGraphId !== context.candidateGraphId ||
         previous.acceptedReleaseId !== context.acceptedReleaseId
       set({

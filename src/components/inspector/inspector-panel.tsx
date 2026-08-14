@@ -8,12 +8,21 @@ import { useFeatureAvailable } from '@/hooks/use-feature-available'
 import { useSettingsStore } from '@/hooks/use-settings'
 import { useSemantierAuthStatus } from '@/lib/semantier-auth'
 import { cn } from '@/lib/utils'
+import { guidanceForWorkflow } from '@/contracts/mvl-workflow'
+import { useMvlWorkflowStore } from '@/stores/mvl-workflow-store'
 
 // ── Tab types ─────────────────────────────────────────────────────────────────
 
 import { ContextTab } from './effective-context-observatory'
 
-type TabId = 'context' | 'activity' | 'artifacts' | 'memory' | 'skills' | 'logs'
+type TabId =
+  | 'context'
+  | 'activity'
+  | 'artifacts'
+  | 'memory'
+  | 'skills'
+  | 'logs'
+  | 'guidance'
 
 type InspectorStore = {
   isOpen: boolean
@@ -52,6 +61,7 @@ const TABS: Array<{
   { id: 'memory', feature: 'memory' },
   { id: 'skills', feature: 'skills' },
   { id: 'logs' },
+  { id: 'guidance' },
 ]
 
 function useInspectorCopy() {
@@ -75,6 +85,7 @@ export function getInspectorCopy(locale: string) {
       memory: isChinese ? '记忆' : 'Memory',
       skills: isChinese ? '技能' : 'Skills',
       logs: isChinese ? '日志' : 'Logs',
+      guidance: isChinese ? '指引' : 'Guidance',
     },
     loading: {
       artifacts: isChinese ? '正在加载制品…' : 'Loading artifacts…',
@@ -188,8 +199,12 @@ export function getInspectorCopy(locale: string) {
       actions: isChinese ? '动作' : 'actions',
       replayPins: isChinese ? '重放 Pin' : 'replay pins',
       replayStatus: isChinese ? '重放状态' : 'replay status',
-      replayedResponseHash: isChinese ? '重放响应哈希' : 'replayed response hash',
-      replayPolicyOutcomes: isChinese ? '重放策略结果' : 'replay policy outcomes',
+      replayedResponseHash: isChinese
+        ? '重放响应哈希'
+        : 'replayed response hash',
+      replayPolicyOutcomes: isChinese
+        ? '重放策略结果'
+        : 'replay policy outcomes',
     },
     filters: {
       allActivity: isChinese ? '全部活动' : 'All Activity',
@@ -772,7 +787,9 @@ export function sensitiveGovernanceEscalationInspectorDetails(
     assessmentId:
       typeof details.assessmentId === 'string' ? details.assessmentId : null,
     assessmentHash:
-      typeof details.assessmentHash === 'string' ? details.assessmentHash : null,
+      typeof details.assessmentHash === 'string'
+        ? details.assessmentHash
+        : null,
     escalationId:
       typeof details.escalationId === 'string'
         ? details.escalationId
@@ -784,7 +801,8 @@ export function sensitiveGovernanceEscalationInspectorDetails(
         ? details.assignedPrincipal
         : null,
     status: typeof details.status === 'string' ? details.status : null,
-    blocked: typeof details.blocked === 'boolean' ? String(details.blocked) : null,
+    blocked:
+      typeof details.blocked === 'boolean' ? String(details.blocked) : null,
     reasonCodes: Array.isArray(details.reasonCodes)
       ? details.reasonCodes.filter(
           (reason): reason is string => typeof reason === 'string',
@@ -1021,12 +1039,18 @@ function ActivityExpandedDetails({ event }: { event: ActivityEvent }) {
           label={copy.labels.displayAdmissibility}
           value={response.displayAdmissibilityRef}
         />
-        <DetailRow label={copy.labels.ontology} value={response.ontologyVersion} />
+        <DetailRow
+          label={copy.labels.ontology}
+          value={response.ontologyVersion}
+        />
         <DetailRow
           label={copy.labels.authority}
           value={response.authorityBundleVersion}
         />
-        <DetailRow label={copy.labels.policy} value={response.policyBundleVersion} />
+        <DetailRow
+          label={copy.labels.policy}
+          value={response.policyBundleVersion}
+        />
         <DetailRow
           label={copy.labels.displayProfile}
           value={response.displayProfileVersion}
@@ -1176,22 +1200,30 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
 
   const semanticVisibleEvents = useMemo(() => {
     const readDetails = (event: ActivityEvent) => event.details ?? {}
-    const refs = (value: unknown) =>
-      Array.isArray(value) ? value : []
+    const refs = (value: unknown) => (Array.isArray(value) ? value : [])
     return visibleEvents.filter((event) => {
       const details = readDetails(event)
       const sequence = Number(details.sequence)
-      const actor = typeof details.actor_ref === 'string' ? details.actor_ref : ''
-      const stateEffect = typeof details.state_effect === 'string' ? details.state_effect : ''
-      const sourceTypes = [...refs(details.input_refs), ...refs(details.output_refs)]
+      const actor =
+        typeof details.actor_ref === 'string' ? details.actor_ref : ''
+      const stateEffect =
+        typeof details.state_effect === 'string' ? details.state_effect : ''
+      const sourceTypes = [
+        ...refs(details.input_refs),
+        ...refs(details.output_refs),
+      ]
         .map((ref) => readRecord(ref).ref_type)
         .filter((value): value is string => typeof value === 'string')
       return (
-        (!semanticFilters.stateEffect || stateEffect === semanticFilters.stateEffect) &&
-        (!semanticFilters.sourceType || sourceTypes.includes(semanticFilters.sourceType)) &&
+        (!semanticFilters.stateEffect ||
+          stateEffect === semanticFilters.stateEffect) &&
+        (!semanticFilters.sourceType ||
+          sourceTypes.includes(semanticFilters.sourceType)) &&
         (!semanticFilters.actor || actor.includes(semanticFilters.actor)) &&
-        (!semanticFilters.sequenceFrom || sequence >= Number(semanticFilters.sequenceFrom)) &&
-        (!semanticFilters.sequenceTo || sequence <= Number(semanticFilters.sequenceTo))
+        (!semanticFilters.sequenceFrom ||
+          sequence >= Number(semanticFilters.sequenceFrom)) &&
+        (!semanticFilters.sequenceTo ||
+          sequence <= Number(semanticFilters.sequenceTo))
       )
     })
   }, [semanticFilters, visibleEvents])
@@ -1303,16 +1335,122 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
         ))}
       </div>
       <div className="mb-2 grid grid-cols-2 gap-1">
-        <select aria-label="State effect filter" value={semanticFilters.stateEffect} onChange={(event) => setSemanticFilters((current) => ({ ...current, stateEffect: event.target.value }))} className="rounded border px-1 py-1 text-[10px]" style={{ background: 'var(--theme-card2)', borderColor: 'var(--theme-border)', color: 'var(--theme-muted)' }}>
+        <select
+          aria-label="State effect filter"
+          value={semanticFilters.stateEffect}
+          onChange={(event) =>
+            setSemanticFilters((current) => ({
+              ...current,
+              stateEffect: event.target.value,
+            }))
+          }
+          className="rounded border px-1 py-1 text-[10px]"
+          style={{
+            background: 'var(--theme-card2)',
+            borderColor: 'var(--theme-border)',
+            color: 'var(--theme-muted)',
+          }}
+        >
           <option value="">All effects</option>
-          {['disclose', 'admit', 'activate', 'supersede', 'revoke', 'materialize', 'observe_only'].map((value) => <option key={value} value={value}>{value}</option>)}
+          {[
+            'disclose',
+            'admit',
+            'activate',
+            'supersede',
+            'revoke',
+            'materialize',
+            'observe_only',
+          ].map((value) => (
+            <option key={value} value={value}>
+              {value}
+            </option>
+          ))}
         </select>
-        <select aria-label="Source type filter" value={semanticFilters.sourceType} onChange={(event) => setSemanticFilters((current) => ({ ...current, sourceType: event.target.value }))} className="rounded border px-1 py-1 text-[10px]" style={{ background: 'var(--theme-card2)', borderColor: 'var(--theme-border)', color: 'var(--theme-muted)' }}>
+        <select
+          aria-label="Source type filter"
+          value={semanticFilters.sourceType}
+          onChange={(event) =>
+            setSemanticFilters((current) => ({
+              ...current,
+              sourceType: event.target.value,
+            }))
+          }
+          className="rounded border px-1 py-1 text-[10px]"
+          style={{
+            background: 'var(--theme-card2)',
+            borderColor: 'var(--theme-border)',
+            color: 'var(--theme-muted)',
+          }}
+        >
           <option value="">All sources</option>
-          {['document_span', 'knowledge_item', 'database_result', 'artifact', 'memory_snapshot', 'skill'].map((value) => <option key={value} value={value}>{value}</option>)}
+          {[
+            'document_span',
+            'knowledge_item',
+            'database_result',
+            'artifact',
+            'memory_snapshot',
+            'skill',
+          ].map((value) => (
+            <option key={value} value={value}>
+              {value}
+            </option>
+          ))}
         </select>
-        <input aria-label="Actor filter" value={semanticFilters.actor} onChange={(event) => setSemanticFilters((current) => ({ ...current, actor: event.target.value }))} placeholder="Actor" className="rounded border px-1 py-1 text-[10px]" style={{ background: 'var(--theme-card2)', borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }} />
-        <div className="grid grid-cols-2 gap-1"><input aria-label="Sequence from" value={semanticFilters.sequenceFrom} onChange={(event) => setSemanticFilters((current) => ({ ...current, sequenceFrom: event.target.value }))} placeholder="From" inputMode="numeric" className="rounded border px-1 py-1 text-[10px]" style={{ background: 'var(--theme-card2)', borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }} /><input aria-label="Sequence to" value={semanticFilters.sequenceTo} onChange={(event) => setSemanticFilters((current) => ({ ...current, sequenceTo: event.target.value }))} placeholder="To" inputMode="numeric" className="rounded border px-1 py-1 text-[10px]" style={{ background: 'var(--theme-card2)', borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }} /></div>
+        <input
+          aria-label="Actor filter"
+          value={semanticFilters.actor}
+          onChange={(event) =>
+            setSemanticFilters((current) => ({
+              ...current,
+              actor: event.target.value,
+            }))
+          }
+          placeholder="Actor"
+          className="rounded border px-1 py-1 text-[10px]"
+          style={{
+            background: 'var(--theme-card2)',
+            borderColor: 'var(--theme-border)',
+            color: 'var(--theme-text)',
+          }}
+        />
+        <div className="grid grid-cols-2 gap-1">
+          <input
+            aria-label="Sequence from"
+            value={semanticFilters.sequenceFrom}
+            onChange={(event) =>
+              setSemanticFilters((current) => ({
+                ...current,
+                sequenceFrom: event.target.value,
+              }))
+            }
+            placeholder="From"
+            inputMode="numeric"
+            className="rounded border px-1 py-1 text-[10px]"
+            style={{
+              background: 'var(--theme-card2)',
+              borderColor: 'var(--theme-border)',
+              color: 'var(--theme-text)',
+            }}
+          />
+          <input
+            aria-label="Sequence to"
+            value={semanticFilters.sequenceTo}
+            onChange={(event) =>
+              setSemanticFilters((current) => ({
+                ...current,
+                sequenceTo: event.target.value,
+              }))
+            }
+            placeholder="To"
+            inputMode="numeric"
+            className="rounded border px-1 py-1 text-[10px]"
+            style={{
+              background: 'var(--theme-card2)',
+              borderColor: 'var(--theme-border)',
+              color: 'var(--theme-text)',
+            }}
+          />
+        </div>
       </div>
       {error ? (
         <div
@@ -1337,9 +1475,11 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
             borderLeft: `3px solid ${
               event.type.includes('COMPACTION')
                 ? 'var(--theme-danger)'
-                : event.type.includes('CHECKPOINT') || event.type.includes('BRANCH')
+                : event.type.includes('CHECKPOINT') ||
+                    event.type.includes('BRANCH')
                   ? 'var(--theme-accent)'
-                  : event.type.includes('REVOKED') || event.type.includes('SUPERSEDED')
+                  : event.type.includes('REVOKED') ||
+                      event.type.includes('SUPERSEDED')
                     ? 'var(--theme-muted)'
                     : 'var(--theme-border)'
             }`,
@@ -2574,6 +2714,72 @@ function LogsTab({ sessionKey }: { sessionKey: string | null }) {
   )
 }
 
+function GuidanceTab() {
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const workflow = useMvlWorkflowStore((state) => state.context)
+  const dismissedCode = useMvlWorkflowStore((state) => state.dismissedCode)
+  const dismiss = useMvlWorkflowStore((state) => state.dismissGuidance)
+  if (!workflow) {
+    return (
+      <div className="p-4 text-xs" style={{ color: 'var(--theme-muted)' }}>
+        {locale === 'zh'
+          ? '暂无服务端工作流证据。'
+          : 'No server-derived workflow evidence is available.'}
+      </div>
+    )
+  }
+  const item = guidanceForWorkflow(workflow, locale === 'zh' ? 'zh' : 'en')
+  const dismissed = dismissedCode === item.code
+  return (
+    <div className="space-y-3 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className="text-xs font-semibold"
+          style={{ color: 'var(--theme-text)' }}
+        >
+          {item.title}
+        </span>
+        <span
+          className="rounded-full border px-2 py-0.5 text-[10px]"
+          style={{
+            color: 'var(--theme-muted)',
+            borderColor: 'var(--theme-border)',
+          }}
+        >
+          {item.code}
+        </span>
+      </div>
+      {dismissed ? (
+        <button
+          type="button"
+          onClick={() => useMvlWorkflowStore.setState({ dismissedCode: null })}
+          className="text-xs underline"
+          style={{ color: 'var(--theme-muted)' }}
+        >
+          {locale === 'zh' ? '重新显示' : 'Show guidance'}
+        </button>
+      ) : (
+        <>
+          <p
+            className="text-xs leading-5"
+            style={{ color: 'var(--theme-text)' }}
+          >
+            {item.body}
+          </p>
+          <button
+            type="button"
+            onClick={() => dismiss(item.code)}
+            className="text-[11px] underline"
+            style={{ color: 'var(--theme-muted)' }}
+          >
+            {locale === 'zh' ? '收起提示' : 'Dismiss guidance'}
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
 export function InspectorPanel({
@@ -2711,6 +2917,7 @@ export function InspectorPanel({
             {activeTab === 'memory' && <MemoryTab sessionKey={sessionKey} />}
             {activeTab === 'skills' && <SkillsTab sessionKey={sessionKey} />}
             {activeTab === 'logs' && <LogsTab sessionKey={sessionKey} />}
+            {activeTab === 'guidance' && <GuidanceTab />}
           </div>
         </>
       )}

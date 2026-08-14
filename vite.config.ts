@@ -293,6 +293,9 @@ const config = defineConfig(({ mode, command }) => {
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
+        '@semantica-explorer': fileURLToPath(
+          new URL('../third_party/semantica/explorer/src', import.meta.url),
+        ),
       },
     },
     ssr: {
@@ -333,6 +336,25 @@ const config = defineConfig(({ mode, command }) => {
           target: proxyTarget,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/hermes-proxy/, ''),
+        },
+        // Phase1-001 ContextGraph browser projection and read-only graph
+        // adapters. Keep these explicit so the workspace never proxies an
+        // arbitrary browser-selected upstream path.
+        '/api/contextgraph': {
+          target: proxyTarget,
+          changeOrigin: true,
+        },
+        '/api/graph': {
+          target: proxyTarget,
+          changeOrigin: true,
+        },
+        '/api/temporal': {
+          target: proxyTarget,
+          changeOrigin: true,
+        },
+        '/api/provenance': {
+          target: proxyTarget,
+          changeOrigin: true,
         },
         '/hermes-ui': {
           target: proxyTarget,

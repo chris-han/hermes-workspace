@@ -29,7 +29,8 @@
     "noUncheckedSideEffectImports": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@semantica-explorer/*": ["../third_party/semantica/explorer/src/*"]
     }
   }
 }

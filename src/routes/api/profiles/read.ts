@@ -3,6 +3,7 @@ import { json } from '@tanstack/react-start'
 import { readProfile } from '../../../server/profiles-browser'
 import {
   requireWorkspaceHermesHome,
+  resolveManagedHermesHome,
   resolveActiveWorkspaceRoot,
 } from '../../../server/workspace-root'
 
@@ -15,7 +16,11 @@ export const Route = createFileRoute('/api/profiles/read')({
           const name = (url.searchParams.get('name') || '').trim() || 'default'
           const workspace = await resolveActiveWorkspaceRoot(request.headers)
           const hermesHome = requireWorkspaceHermesHome(workspace)
-          return json({ profile: readProfile(name, hermesHome) })
+          return json({
+            profile: readProfile(name, hermesHome, {
+              managedHomes: [resolveManagedHermesHome()],
+            }),
+          })
         } catch (error) {
           return json(
             {

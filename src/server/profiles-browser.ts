@@ -16,6 +16,8 @@ export type ProfileSummary = {
   skillCount: number
   sessionCount: number
   hasEnv: boolean
+  managed?: boolean
+  readOnly?: boolean
   updatedAt?: string
 }
 
@@ -30,6 +32,8 @@ export type ProfileDetail = {
   config: Record<string, unknown>
   envPath?: string
   hasEnv: boolean
+  managed?: boolean
+  readOnly?: boolean
   sessionsDir?: string
   skillsDir?: string
 }
@@ -246,7 +250,10 @@ export function getActiveProfileName(hermesHome: string): string {
   }
 }
 
-export function listProfiles(hermesHome: string): Array<ProfileSummary> {
+export function listProfiles(
+  hermesHome: string,
+  options: { managedHomes?: string[] } = {},
+): Array<ProfileSummary> {
   const root = resolveHermesHome(hermesHome)
   const profilesRoot = getProfilesRoot(root)
   const activeProfile = getActiveProfileName(root)
@@ -295,6 +302,8 @@ export function listProfiles(hermesHome: string): Array<ProfileSummary> {
         skillCount,
         sessionCount,
         hasEnv: fs.existsSync(envPath),
+        managed: false,
+        readOnly: false,
         updatedAt: latestMtime([
           profilePath,
           configPath,
@@ -328,8 +337,30 @@ export function listProfiles(hermesHome: string): Array<ProfileSummary> {
       /\.(jsonl|json|sqlite|db)$/i.test(full),
     ),
     hasEnv: fs.existsSync(path.join(root, '.env')),
+    managed: false,
+    readOnly: false,
     updatedAt: latestMtime([root, path.join(root, 'config.yaml')]),
   })
+
+  const localNames = new Set(results.map((profile) => profile.name))
+  for (const managedHome of options.managedHomes ?? []) {
+    const normalizedHome = managedHome.trim()
+    if (!normalizedHome || path.resolve(normalizedHome) === root) continue
+    for (const profile of listProfiles(normalizedHome).filter(
+      (candidate) => candidate.name !== 'default' && !localNames.has(candidate.name),
+    )) {
+      results.push({
+        ...profile,
+        path: `managed://${profile.name}`,
+        active: false,
+        sessionCount: 0,
+        hasEnv: false,
+        managed: true,
+        readOnly: true,
+      })
+      localNames.add(profile.name)
+    }
+  }
 
   results.sort((a, b) => {
     if (a.active && !b.active) return -1
@@ -339,14 +370,32 @@ export function listProfiles(hermesHome: string): Array<ProfileSummary> {
   return results
 }
 
-export function readProfile(name: string, hermesHome: string): ProfileDetail {
+export function readProfile(
+  name: string,
+  hermesHome: string,
+  options: { managedHomes?: string[] } = {},
+): ProfileDetail {
   const root = resolveHermesHome(hermesHome)
   const active = getActiveProfileName(root)
   const normalized = name.trim() || 'default'
-  const profilePath =
+  let profilePath =
     normalized === 'default'
       ? root
       : path.join(getProfilesRoot(root), validateProfileName(normalized))
+  let managed = false
+  if (!fs.existsSync(profilePath) && normalized !== 'default') {
+    for (const managedHome of options.managedHomes ?? []) {
+      const candidate = path.join(
+        getProfilesRoot(managedHome),
+        validateProfileName(normalized),
+      )
+      if (fs.existsSync(candidate)) {
+        profilePath = candidate
+        managed = true
+        break
+      }
+    }
+  }
   if (!fs.existsSync(profilePath)) throw new Error('Profile not found')
   const configPath = path.join(profilePath, 'config.yaml')
   const envPath = path.join(profilePath, '.env')
@@ -360,20 +409,38 @@ export function readProfile(name: string, hermesHome: string): ProfileDetail {
     name: normalized,
     displayName: resolveProfileDisplayName(normalized, config.display_name),
     avatarDataUrl: readOptionalString(config.avatar_data_url),
-    soulPath: fs.existsSync(soulPath) ? soulPath : undefined,
+    soulPath: managed
+      ? fs.existsSync(soulPath)
+        ? `managed://${normalized}/SOUL.md`
+        : undefined
+      : fs.existsSync(soulPath)
+        ? soulPath
+        : undefined,
     soul: readOptionalText(soulPath),
-    path: profilePath,
-    active: normalized === active,
+    path: managed ? `managed://${normalized}` : profilePath,
+    active: managed ? false : normalized === active,
     config: {
       ...config,
       model: normalizedModel,
       provider: normalizedProvider,
     },
-    envPath: fs.existsSync(envPath) ? envPath : undefined,
-    hasEnv: fs.existsSync(envPath),
-    sessionsDir: fs.existsSync(sessionsDir) ? sessionsDir : undefined,
-    skillsDir: fs.existsSync(skillsDir) ? skillsDir : undefined,
+    envPath: managed ? undefined : fs.existsSync(envPath) ? envPath : undefined,
+    hasEnv: managed ? false : fs.existsSync(envPath),
+    sessionsDir: managed ? undefined : fs.existsSync(sessionsDir) ? sessionsDir : undefined,
+    skillsDir: managed ? undefined : fs.existsSync(skillsDir) ? skillsDir : undefined,
+    managed,
+    readOnly: managed,
   }
+}
+
+export function isManagedProfile(name: string, managedHome?: string): boolean {
+  const normalized = name.trim()
+  if (!normalized || normalized === 'default') return false
+  const validated = validateProfileName(normalized)
+  if (!managedHome?.trim()) return false
+  return fs.existsSync(
+    path.join(getProfilesRoot(managedHome), validated),
+  )
 }
 
 export function setActiveProfile(name: string, hermesHome: string): void {

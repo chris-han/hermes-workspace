@@ -12,6 +12,7 @@ import {
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(SERVER_DIR, '..', '..', '..')
 const DEFAULT_PUBLIC_WORKSPACE = path.join(REPO_ROOT, 'workspaces', 'public')
+const DEFAULT_MANAGED_HERMES_HOME = path.join(REPO_ROOT, '.semantier-home')
 const BACKEND_PATHS_TTL_MS = 5_000
 const WORKSPACE_APP_STATE_DIRNAME = '.hermes-workspace'
 
@@ -283,6 +284,19 @@ export function requireWorkspaceHermesHome(
   workspace: ActiveWorkspaceRoot,
 ): string {
   return path.resolve(workspace.path)
+}
+
+/**
+ * Resolve the launcher-managed platform Hermes home.
+ *
+ * This is deliberately separate from the authenticated workspace home:
+ * workspace homes own mutable sessions/configuration, while managed profiles
+ * are authored once by the Semantier launcher and exposed read-only.
+ */
+export function resolveManagedHermesHome(): string {
+  const configured = process.env.SEMANTIER_LOCAL_STATE_DIR?.trim()
+  if (!configured) return DEFAULT_MANAGED_HERMES_HOME
+  return path.resolve(REPO_ROOT, configured)
 }
 
 export function workspaceRootExists(targetPath: string): boolean {

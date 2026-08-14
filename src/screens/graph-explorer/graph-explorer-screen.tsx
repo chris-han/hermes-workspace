@@ -8,8 +8,8 @@ import { GraphWorkspace } from '@semantica-explorer/workspaces/GraphWorkspace/Gr
 
 type ContextGraphNode = {
   id: string
-  label: string
-  nodeType: string
+  content: string
+  type: string
   sourceAnchors: Array<Record<string, unknown>>
 }
 
@@ -98,27 +98,17 @@ export function GraphExplorerScreen() {
       {graphQuery.isLoading ? <p className="p-5 text-sm text-muted-foreground">{zh ? '正在加载固定图制品…' : 'Loading pinned graph artifact…'}</p> : null}
       {graphQuery.isError ? <div role="alert" className="m-5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">{zh ? 'ContextGraph 当前不可用。' : 'ContextGraph is unavailable.'}</div> : null}
       {graphQuery.data ? (
-        <div className="grid min-h-0 flex-1 gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <section aria-label="GraphWorkspace" className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card p-2">
-            <div className="mb-3 flex shrink-0 items-center justify-between text-xs text-muted-foreground">
-              <span>{graphQuery.data.nodes.length} nodes · {graphQuery.data.edges.length} edges</span>
-              <span>{graphQuery.data.authorityState} · {graphQuery.data.runMode ?? 'candidate'}</span>
-            </div>
-            <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border">
-              <GraphWorkspace
-                externalFocusNodeId={selectedNodeId ?? undefined}
-                externalFocusToken={selectedNodeId ? 1 : undefined}
-                onSelectionChange={({ nodeId, edgeId }) => {
-                  setSelectedNodeId(nodeId || null)
-                  setSelectedEdgeId(edgeId || null)
-                }}
-              />
-            </div>
+        <div className="min-h-0 flex-1 p-5">
+          <section aria-label="GraphWorkspace" className="h-full min-h-0 overflow-hidden rounded-xl border border-border bg-card">
+            <GraphWorkspace
+              externalFocusNodeId={selectedNodeId ?? undefined}
+              externalFocusToken={selectedNodeId ? 1 : undefined}
+              onSelectionChange={({ nodeId, edgeId }) => {
+                setSelectedNodeId(nodeId || null)
+                setSelectedEdgeId(edgeId || null)
+              }}
+            />
           </section>
-          <aside className="rounded-xl border border-border bg-card p-4 text-sm">
-            <h2 className="font-semibold">{zh ? '证据检查器' : 'Evidence inspector'}</h2>
-            {selected ? <><p className="mt-3 font-medium">{selected.label}</p><p className="mt-1 break-all font-mono text-[10px] text-muted-foreground">{selected.id}</p><p className="mt-3 text-xs text-muted-foreground">{selected.sourceAnchors.length} source anchors</p></> : <p className="mt-3 text-xs text-muted-foreground">{zh ? '选择节点以查看证据。' : 'Select a node to inspect its evidence.'}</p>}
-          </aside>
         </div>
       ) : null}
     </main>

@@ -3,7 +3,12 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { getProfilesRoot, listProfiles } from './profiles-browser'
+import {
+  getProfilesRoot,
+  isManagedProfile,
+  listProfiles,
+  readProfile,
+} from './profiles-browser'
 
 describe('listProfiles', () => {
   let tempHome: string
@@ -94,5 +99,50 @@ describe('listProfiles', () => {
       model: 'openai/gpt-5-codex',
       provider: 'openai',
     })
+  })
+
+  it('exposes managed profiles as read-only virtual entries', () => {
+    const workspaceHome = path.join(tempHome, 'workspace')
+    const managedHome = path.join(tempHome, 'managed')
+    const profileRoot = path.join(
+      managedHome,
+      'profiles',
+      'tender-runtime-expert',
+    )
+    fs.mkdirSync(profileRoot, { recursive: true })
+    fs.writeFileSync(
+      path.join(profileRoot, 'config.yaml'),
+      'display_name: Graph Explorer Runtime Expert\nmodel: openai/test\n',
+      'utf-8',
+    )
+    fs.writeFileSync(
+      path.join(profileRoot, 'SOUL.md'),
+      'Read-only managed runtime expert.\n',
+      'utf-8',
+    )
+
+    const summary = listProfiles(workspaceHome, {
+      managedHomes: [managedHome],
+    }).find((entry) => entry.name === 'tender-runtime-expert')
+    expect(summary).toMatchObject({
+      path: 'managed://tender-runtime-expert',
+      managed: true,
+      readOnly: true,
+      sessionCount: 0,
+      hasEnv: false,
+    })
+
+    const detail = readProfile('tender-runtime-expert', workspaceHome, {
+      managedHomes: [managedHome],
+    })
+    expect(detail).toMatchObject({
+      path: 'managed://tender-runtime-expert',
+      managed: true,
+      readOnly: true,
+      hasEnv: false,
+      soul: 'Read-only managed runtime expert.\n',
+    })
+    expect(isManagedProfile('tender-runtime-expert', managedHome)).toBe(true)
+    expect(isManagedProfile('default', managedHome)).toBe(false)
   })
 })

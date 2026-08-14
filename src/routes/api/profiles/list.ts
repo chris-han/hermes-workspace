@@ -6,6 +6,7 @@ import {
 } from '../../../server/profiles-browser'
 import {
   requireWorkspaceHermesHome,
+  resolveManagedHermesHome,
   resolveActiveWorkspaceRoot,
 } from '../../../server/workspace-root'
 
@@ -17,7 +18,9 @@ export const Route = createFileRoute('/api/profiles/list')({
           const workspace = await resolveActiveWorkspaceRoot(request.headers)
           const hermesHome = requireWorkspaceHermesHome(workspace)
           return json({
-            profiles: listProfiles(hermesHome),
+            profiles: listProfiles(hermesHome, {
+              managedHomes: [resolveManagedHermesHome()],
+            }),
             activeProfile: getActiveProfileName(hermesHome),
           })
         } catch (error) {

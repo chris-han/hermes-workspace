@@ -39,6 +39,8 @@ type ProfileSummary = {
   skillCount: number
   sessionCount: number
   hasEnv: boolean
+  managed?: boolean
+  readOnly?: boolean
   updatedAt?: string
 }
 
@@ -55,6 +57,8 @@ type ProfileDetail = {
   skillsDir?: string
   soulPath?: string
   soul?: string
+  managed?: boolean
+  readOnly?: boolean
 }
 
 type ModelOption = {
@@ -264,6 +268,10 @@ export function ProfilesScreen() {
   async function handleSaveProfileDetails() {
     const targetProfileName =
       detailsName || detailQuery.data?.profile?.name || 'default'
+    if (detailQuery.data?.profile?.readOnly) {
+      setDetailErrorMessage('Managed profiles are read-only.')
+      return
+    }
     setDetailSaving(true)
     setDetailErrorMessage(null)
     try {
@@ -578,6 +586,11 @@ export function ProfilesScreen() {
                     Active
                   </div>
                 ) : null}
+                {profile.readOnly ? (
+                  <div className="mt-2 inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                    Managed · Read-only
+                  </div>
+                ) : null}
               </div>
 
               {/* Stats ring */}
@@ -606,7 +619,7 @@ export function ProfilesScreen() {
                 <button
                   type="button"
                   onClick={() => void handleActivate(profile.name)}
-                  disabled={profile.active || busy}
+                  disabled={profile.readOnly || profile.active || busy}
                   className={cn(
                     'flex flex-1 items-center justify-center gap-1.5 border-r border-border py-2.5 text-xs font-semibold transition-colors',
                     profile.active
@@ -636,10 +649,12 @@ export function ProfilesScreen() {
                 <button
                   type="button"
                   onClick={() => {
+                    if (profile.readOnly) return
                     setRenameTarget(profile)
                     setRenameValue(profile.name)
                   }}
-                  className="flex flex-1 items-center justify-center gap-1.5 border-r border-border py-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  disabled={profile.readOnly || busy}
+                  className="flex flex-1 items-center justify-center gap-1.5 border-r border-border py-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <HugeiconsIcon
                     icon={Edit02Icon}
@@ -651,10 +666,10 @@ export function ProfilesScreen() {
                 <button
                   type="button"
                   onClick={() => void handleDelete(profile.name)}
-                  disabled={profile.active || busy}
+                  disabled={profile.readOnly || profile.active || busy}
                   className={cn(
                     'flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-colors',
-                    profile.active
+                    profile.readOnly || profile.active
                       ? 'cursor-default text-muted-foreground/50'
                       : 'text-destructive hover:bg-destructive/10',
                   )}
@@ -1080,6 +1095,13 @@ export function ProfilesScreen() {
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
             {detailQuery.data?.profile ? (
               <div className="space-y-4 text-sm">
+                {detailQuery.data.profile.readOnly ? (
+                  <div className="rounded-lg border border-border bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                    This is a globally managed profile. It is available to this
+                    workspace for use, but its identity and configuration are
+                    read-only here.
+                  </div>
+                ) : null}
                 <div className="grid gap-3 rounded-lg border border-border bg-muted/50 p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <label className="space-y-2">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1090,6 +1112,7 @@ export function ProfilesScreen() {
                       onChange={(event) =>
                         setDetailDisplayName(event.target.value)
                       }
+                      readOnly={detailQuery.data.profile.readOnly}
                       placeholder={detailQuery.data.profile.name}
                       className="h-10"
                     />
@@ -1104,7 +1127,7 @@ export function ProfilesScreen() {
                           type="file"
                           accept="image/*"
                           onChange={handleProfileAvatarUpload}
-                          disabled={detailSaving}
+                          disabled={detailQuery.data.profile.readOnly || detailSaving}
                           aria-label="Upload profile avatar"
                           className="block w-full cursor-pointer text-xs text-foreground md:max-w-xs file:mr-2 file:cursor-pointer file:rounded-md file:border file:border-border file:bg-muted file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-foreground file:transition-colors hover:file:bg-muted/80 disabled:cursor-not-allowed disabled:opacity-50"
                         />
@@ -1113,7 +1136,7 @@ export function ProfilesScreen() {
                         variant="outline"
                         size="sm"
                         onClick={() => setDetailAvatarDataUrl(null)}
-                        disabled={detailSaving || !detailAvatarDataUrl}
+                        disabled={detailQuery.data.profile.readOnly || detailSaving || !detailAvatarDataUrl}
                       >
                         Remove
                       </Button>
@@ -1131,6 +1154,7 @@ export function ProfilesScreen() {
                         setDetailProvider(event.target.value)
                         setDetailModel('')
                       }}
+                      disabled={detailQuery.data.profile.readOnly}
                       className="role-config-select h-10 w-full rounded-md border px-3 text-sm outline-none transition-colors"
                     >
                       <option value="">Select provider</option>
@@ -1148,7 +1172,7 @@ export function ProfilesScreen() {
                     <DropdownSelect
                       value={detailModel}
                       onChange={(event) => setDetailModel(event.target.value)}
-                      disabled={!detailProvider}
+                      disabled={detailQuery.data.profile.readOnly || !detailProvider}
                       className="role-config-select h-10 w-full rounded-md border px-3 text-sm outline-none transition-colors disabled:opacity-60"
                     >
                       {!detailProvider ? (
@@ -1178,6 +1202,7 @@ export function ProfilesScreen() {
                   <textarea
                     value={detailSoul}
                     onChange={(event) => setDetailSoul(event.target.value)}
+                    readOnly={detailQuery.data.profile.readOnly}
                     placeholder="Paste or write SOUL.md content here..."
                     className="h-36 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-0"
                   />
@@ -1187,7 +1212,7 @@ export function ProfilesScreen() {
                       variant="outline"
                       size="sm"
                       onClick={() => setDetailSoul('')}
-                      disabled={detailSaving || !detailSoul}
+                      disabled={detailQuery.data.profile.readOnly || detailSaving || !detailSoul}
                     >
                       Clear
                     </Button>
@@ -1274,7 +1299,7 @@ export function ProfilesScreen() {
                 size="sm"
                 type="button"
                 onClick={() => void handleSaveProfileDetails()}
-                disabled={detailSaving}
+                disabled={detailQuery.data?.profile.readOnly || detailSaving}
               >
                 {detailSaving ? 'Saving…' : 'Save identity'}
               </Button>

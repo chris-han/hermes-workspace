@@ -1,9 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { renameProfile } from '../../../server/profiles-browser'
+import {
+  isManagedProfile,
+  renameProfile,
+} from '../../../server/profiles-browser'
 import { requireJsonContentType } from '../../../server/rate-limit'
 import {
   requireWorkspaceHermesHome,
+  resolveManagedHermesHome,
   resolveActiveWorkspaceRoot,
 } from '../../../server/workspace-root'
 
@@ -20,6 +24,9 @@ export const Route = createFileRoute('/api/profiles/rename')({
           }
           const workspace = await resolveActiveWorkspaceRoot(request.headers)
           const hermesHome = requireWorkspaceHermesHome(workspace)
+          if (isManagedProfile(body.oldName || '', resolveManagedHermesHome())) {
+            return json({ error: 'Managed profiles are read-only' }, { status: 403 })
+          }
           return json({
             ok: true,
             profile: renameProfile(body.oldName || '', body.newName || '', hermesHome),

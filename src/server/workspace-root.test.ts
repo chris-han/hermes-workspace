@@ -6,6 +6,7 @@ import {
   ensureWorkspacePathWithinRoot,
   formatWorkspaceCwdLabel,
   resolveActiveWorkspaceRoot,
+  resolveManagedHermesHome,
   resolveWorkspaceAppStateRoot,
   resolveWorkspaceCwd,
   toWorkspaceRelativePath,
@@ -56,6 +57,18 @@ describe('workspace app state helpers', () => {
         '/repo/workspaces/public/projects/demo',
       ),
     ).toBe('~/projects/demo')
+  })
+})
+
+describe('managed Hermes home', () => {
+  it('uses the launcher-managed repo runtime root by default', () => {
+    const previous = process.env.SEMANTIER_LOCAL_STATE_DIR
+    delete process.env.SEMANTIER_LOCAL_STATE_DIR
+    expect(resolveManagedHermesHome()).toBe(
+      path.resolve('/home/chris/repo/semantier-runtime/.semantier-home'),
+    )
+    if (previous === undefined) delete process.env.SEMANTIER_LOCAL_STATE_DIR
+    else process.env.SEMANTIER_LOCAL_STATE_DIR = previous
   })
 })
 

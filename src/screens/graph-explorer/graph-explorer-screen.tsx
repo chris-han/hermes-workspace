@@ -99,12 +99,12 @@ export function GraphExplorerScreen() {
       {graphQuery.isError ? <div role="alert" className="m-5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">{zh ? 'ContextGraph 当前不可用。' : 'ContextGraph is unavailable.'}</div> : null}
       {graphQuery.data ? (
         <div className="grid min-h-0 flex-1 gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <section aria-label="GraphWorkspace" className="min-h-0 overflow-hidden rounded-xl border border-border bg-card p-2">
-            <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
+          <section aria-label="GraphWorkspace" className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card p-2">
+            <div className="mb-3 flex shrink-0 items-center justify-between text-xs text-muted-foreground">
               <span>{graphQuery.data.nodes.length} nodes · {graphQuery.data.edges.length} edges</span>
               <span>{graphQuery.data.authorityState} · {graphQuery.data.runMode ?? 'candidate'}</span>
             </div>
-            <div className="h-[min(70vh,720px)] min-h-[420px] overflow-hidden rounded-lg border border-border">
+            <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border">
               <GraphWorkspace
                 externalFocusNodeId={selectedNodeId ?? undefined}
                 externalFocusToken={selectedNodeId ? 1 : undefined}

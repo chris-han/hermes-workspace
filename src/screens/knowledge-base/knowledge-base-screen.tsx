@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -608,6 +608,9 @@ const TENDER_REVIEW_COPY = {
     ambiguous: 'Ambiguous',
     escalate: 'Escalate to reviewer',
     feedbackSent: 'Feedback sent to Knowledge Builder',
+    missedFinding: 'Report missed finding from selection',
+    reviewerNote: 'Reviewer note (optional)',
+    missedFindingSent: 'Missed finding sent with exact source span',
     unavailable: 'Tender review API unavailable',
   },
   zh: {
@@ -630,6 +633,9 @@ const TENDER_REVIEW_COPY = {
     ambiguous: '歧义',
     escalate: '升级评审',
     feedbackSent: '反馈已发送到知识构建',
+    missedFinding: '从选中文本报告漏报',
+    reviewerNote: '评审备注（可选）',
+    missedFindingSent: '漏报已通过精确文本范围发送',
     unavailable: '招标审查 API 不可用',
   },
 } as const
@@ -1169,6 +1175,25 @@ async function recordTenderFeedback(input: {
     }),
   })
   if (!response.ok) throw new Error(`tender-feedback-${response.status}`)
+  return response.json()
+}
+
+async function recordTenderMissedFinding(input: {
+  runId: string
+  sourceSpan: { text: string; startOffset: number; endOffset: number }
+  reviewerNotes?: string
+}) {
+  const response = await fetch('/api/tender-document-review', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      action: 'missed_finding_feedback',
+      runId: input.runId,
+      sourceSpan: input.sourceSpan,
+      reviewerNotes: input.reviewerNotes,
+    }),
+  })
+  if (!response.ok) throw new Error(`tender-missed-finding-${response.status}`)
   return response.json()
 }
 
@@ -2799,6 +2824,8 @@ export function TenderDocumentReviewScreen() {
   const [run, setRun] = useState<TenderDetectionRun | null>(null)
   const [reportPersisted, setReportPersisted] = useState(false)
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
+  const [reviewerNote, setReviewerNote] = useState('')
+  const documentRef = useRef<HTMLTextAreaElement | null>(null)
 
   const reviewMutation = useMutation({
     mutationFn: createTenderDetectionRun,
@@ -2821,6 +2848,13 @@ export function TenderDocumentReviewScreen() {
     mutationFn: recordTenderFeedback,
     onSuccess: () => setFeedbackMessage(copy.feedbackSent),
   })
+  const missedFindingMutation = useMutation({
+    mutationFn: recordTenderMissedFinding,
+    onSuccess: () => {
+      setFeedbackMessage(copy.missedFindingSent)
+      setReviewerNote('')
+    },
+  })
 
   return (
     <div
@@ -2840,11 +2874,43 @@ export function TenderDocumentReviewScreen() {
           </label>
           <textarea
             id="tender-document-text"
+            ref={documentRef}
             className="mt-3 min-h-72 w-full rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-primary"
             placeholder={copy.placeholder}
             value={documentText}
             onChange={(event) => setDocumentText(event.target.value)}
           />
+          <input
+            aria-label={copy.reviewerNote}
+            className="mt-3 w-full rounded-md border border-border bg-background p-2 text-sm"
+            placeholder={copy.reviewerNote}
+            value={reviewerNote}
+            onChange={(event) => setReviewerNote(event.target.value)}
+          />
+          {run ? (
+            <button
+              type="button"
+              className="mt-3 rounded-button border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={missedFindingMutation.isPending}
+              onClick={() => {
+                const element = documentRef.current
+                const startOffset = element?.selectionStart ?? 0
+                const endOffset = element?.selectionEnd ?? 0
+                const text = documentText.slice(startOffset, endOffset)
+                if (!text || startOffset >= endOffset) {
+                  setFeedbackMessage(copy.unavailable)
+                  return
+                }
+                missedFindingMutation.mutate({
+                  runId: run.run_id,
+                  sourceSpan: { text, startOffset, endOffset },
+                  reviewerNotes: reviewerNote,
+                })
+              }}
+            >
+              {copy.missedFinding}
+            </button>
+          ) : null}
           <button
             type="button"
             className="mt-3 rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"

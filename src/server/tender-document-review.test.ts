@@ -8,6 +8,7 @@ import {
   findingHasAiAssistedSuggestion,
   recordTenderFindingDisposition,
   recordTenderFindingFeedback,
+  recordTenderRunMissedFindingFeedback,
 } from './tender-document-review'
 
 describe('tender-document-review server adapter', () => {
@@ -133,5 +134,21 @@ describe('tender-document-review server adapter', () => {
       reviewerNotes: 'false friend',
     })
     expect((feedback.candidateDelta as Record<string, unknown>).delta_kind).toBe('not_same_as')
+  })
+
+  it('records a run-level missed finding with an exact source span', async () => {
+    globalThis.fetch = async (input, init) => {
+      expect(String(input)).toContain('/runs/tdr_1/feedback')
+      const body = JSON.parse(String(init?.body))
+      expect(body.feedbackType).toBe('false_negative')
+      expect(body.sourceSpan).toEqual({ text: 'unique', startOffset: 0, endOffset: 6 })
+      return new Response(JSON.stringify({ feedback: { candidateDelta: { candidate_delta_id: 'rfcd_2' } } }), { status: 200 })
+    }
+    const feedback = await recordTenderRunMissedFindingFeedback(new Headers(), {
+      runId: 'tdr_1',
+      sourceSpan: { text: 'unique', startOffset: 0, endOffset: 6 },
+      reviewerNotes: 'Missed restriction.',
+    })
+    expect((feedback.candidateDelta as Record<string, unknown>).candidate_delta_id).toBe('rfcd_2')
   })
 })

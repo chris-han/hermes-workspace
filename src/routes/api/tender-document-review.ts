@@ -5,6 +5,7 @@ import {
   createTenderReport,
   recordTenderFindingDisposition,
   recordTenderFindingFeedback,
+  recordTenderRunMissedFindingFeedback,
 } from '../../server/tender-document-review'
 import {
   WorkspaceAuthRequiredError,
@@ -41,6 +42,13 @@ export const Route = createUntypedFileRoute('/api/tender-document-review')({
             const feedback = await recordTenderFindingFeedback(
               request.headers,
               body as Parameters<typeof recordTenderFindingFeedback>[1],
+            )
+            return json({ feedback })
+          }
+          if (action === 'missed_finding_feedback') {
+            const feedback = await recordTenderRunMissedFindingFeedback(
+              request.headers,
+              body as Parameters<typeof recordTenderRunMissedFindingFeedback>[1],
             )
             return json({ feedback })
           }

@@ -140,6 +140,30 @@ export async function recordTenderFindingFeedback(
   return payload.feedback
 }
 
+export async function recordTenderRunMissedFindingFeedback(
+  requestHeaders: HeadersInit | Headers,
+  input: {
+    runId: string
+    sourceSpan: { text: string; startOffset: number; endOffset: number }
+    reviewerNotes?: string
+  },
+): Promise<Record<string, unknown>> {
+  const payload = await requestTenderReview<{ feedback: Record<string, unknown> }>(
+    requestHeaders,
+    `${TENDER_DOCUMENT_REVIEW_COMPATIBILITY_ROUTE}/runs/${encodeURIComponent(input.runId)}/feedback`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'missed_finding_feedback',
+        feedbackType: 'false_negative',
+        sourceSpan: input.sourceSpan,
+        reviewerNotes: input.reviewerNotes,
+      }),
+    },
+  )
+  return payload.feedback
+}
+
 export async function createTenderReport(
   requestHeaders: HeadersInit | Headers,
   runId: string,

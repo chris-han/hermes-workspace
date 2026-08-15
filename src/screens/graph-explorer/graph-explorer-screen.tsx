@@ -4,7 +4,12 @@ import { useQuery } from '@tanstack/react-query'
 import { useSettingsStore } from '@/hooks/use-settings'
 import { useKnowledgeWorkbenchStore } from '@/stores/knowledge-workbench-store'
 import { useMvlWorkflowStore } from '@/stores/mvl-workflow-store'
-import { GraphWorkspace } from '@semantica-explorer/workspaces/GraphWorkspace/GraphWorkspace'
+import { useWorkspaceStore } from '@/stores/workspace-store'
+import type { GraphViewModel } from '@/contracts/graph-view-model'
+import { GraphWorkbench } from './graph/graph-workbench'
+import { ContextGraphWorkbenchLayout } from './contextgraph-workbench-layout'
+import { SourcePane } from './source-viewer/source-pane'
+import { parseKnowledgeWorkbenchResult } from '@/lib/knowledge-workbench-result'
 const ExtractionReviewPanel = lazy(() => import('./components/extraction-review-panel').then((m) => ({ default: m.ExtractionReviewPanel })))
 const GraphBuilderPanel = lazy(() => import('./components/graph-builder-panel').then((m) => ({ default: m.GraphBuilderPanel })))
 const InspectorPanel = lazy(() => import('./components/inspector-panel').then((m) => ({ default: m.InspectorPanel })))
@@ -25,7 +30,7 @@ type ContextGraphProjection = {
   runMode: string | null
   semanticaCommit: string
   nodes: ContextGraphNode[]
-  edges: Array<{ id: string; source?: string; target?: string }>
+  edges: Array<{ id: string; source?: string; target?: string; relationshipType?: string; evidenceRefs?: string[] }>
   workflow: Record<string, unknown>
 }
 
@@ -43,11 +48,14 @@ export function GraphExplorerScreen() {
     retry: false,
   })
   const setContext = useKnowledgeWorkbenchStore((state) => state.setContext)
+  const applyWorkbenchResult = useKnowledgeWorkbenchStore((state) => state.applyWorkbenchResult)
   const setServerWorkflowContext = useMvlWorkflowStore((state) => state.setServerContext)
+  const chatPanelOpen = useWorkspaceStore((state) => state.chatPanelOpen)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [rawFilter, setRawFilter] = useState('')
   const [rawType, setRawType] = useState<'all' | 'concept' | 'rule'>('all')
+  const [sourceOpen, setSourceOpen] = useState(true)
   const selected = useMemo(
     () => graphQuery.data?.nodes.find((node) => node.id === selectedNodeId) ?? null,
     [graphQuery.data?.nodes, selectedNodeId],
@@ -59,6 +67,17 @@ export function GraphExplorerScreen() {
       return !query || `${node.content} ${node.id}`.toLocaleLowerCase().includes(query)
     })
   }, [graphQuery.data?.nodes, rawFilter, rawType])
+  const graphModel = useMemo<GraphViewModel | null>(() => {
+    const graph = graphQuery.data
+    if (!graph) return null
+    return {
+      schemaVersion: 'semantier.graph_view_model.v2', graphRef: graph.graphRef, graphVersion: graph.graphVersion, graphHash: graph.graphHash,
+      authorityState: graph.authorityState, candidateGraphId: graph.graphRef, acceptedReleaseId: null,
+      nodes: graph.nodes.map((node) => ({ id: node.id, semanticType: node.type, label: node.content || node.id, properties: {}, evidenceRefs: [], groundingState: 'pending' as const })),
+      edges: graph.edges.flatMap((edge) => edge.source && edge.target ? [{ id: edge.id, sourceId: edge.source, targetId: edge.target, relationshipType: edge.relationshipType ?? 'related_to', weight: 1, properties: {}, evidenceRefs: edge.evidenceRefs ?? [], groundingState: 'pending' as const }] : []),
+      sourceAnchors: [], sourceEvidenceRefs: [],
+    }
+  }, [graphQuery.data])
 
   useEffect(() => {
     const graph = graphQuery.data
@@ -92,6 +111,21 @@ export function GraphExplorerScreen() {
     })
   }, [graphQuery.data, selected, selectedEdgeId, selectedNodeId, setContext, setServerWorkflowContext])
 
+  useEffect(() => {
+    if (!graphModel) return
+    const handleResult = (event: Event) => {
+      const raw = (event as CustomEvent<unknown>).detail
+      const result = parseKnowledgeWorkbenchResult(raw)
+      if (!result) return
+      if (applyWorkbenchResult(result, graphModel)) {
+        setSelectedNodeId(result.focus.nodeIds[0] ?? null)
+        setSelectedEdgeId(result.focus.edgeIds[0] ?? null)
+      }
+    }
+    window.addEventListener('semantier:knowledge-workbench-result', handleResult)
+    return () => window.removeEventListener('semantier:knowledge-workbench-result', handleResult)
+  }, [applyWorkbenchResult, graphModel])
+
   const zh = locale === 'zh'
   return (
     <main className="flex h-full min-h-0 flex-col bg-background text-foreground" lang={zh ? 'zh-CN' : 'en'}>
@@ -109,10 +143,10 @@ export function GraphExplorerScreen() {
       </header>
       {graphQuery.isLoading ? <p className="p-5 text-sm text-muted-foreground">{zh ? '正在加载固定图制品…' : 'Loading pinned graph artifact…'}</p> : null}
       {graphQuery.isError ? <div role="alert" className="m-5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">{zh ? 'ContextGraph 当前不可用。' : 'ContextGraph is unavailable.'}</div> : null}
-      {graphQuery.data ? (
+      {graphQuery.data && graphModel ? (
         <Suspense fallback={<p className="p-5 text-sm text-muted-foreground">Loading review tools…</p>}><div className="grid gap-3 p-5 lg:grid-cols-[minmax(0,1fr)_280px]"><div className="space-y-3"><ExtractionReviewPanel items={graphQuery.data.nodes.map((node) => ({ id: node.id, text: node.content, mapping: node.type, confidence: 0.8, evidence: node.sourceAnchors[0] ? String(node.sourceAnchors[0].quote ?? node.sourceAnchors[0].locator ?? 'Pinned source anchor') : 'Pinned source anchor' }))} /><GraphBuilderPanel extractionReady={!graphQuery.isLoading} building={false} counts={{ nodes: graphQuery.data.nodes.length, edges: graphQuery.data.edges.length, constraints: 0 }} onBuild={() => undefined} onRollback={() => setSelectedNodeId(null)} /></div><InspectorPanel graphState={graphQuery.data.edges.length ? 'connected-graph' : 'extraction-only'} /></div></Suspense>
       ) : null}
-      {graphQuery.data ? (
+      {graphQuery.data && graphModel ? (
         graphQuery.data.edges.length === 0 ? (
           <RawExtractionList
             nodes={rawNodes}
@@ -124,18 +158,13 @@ export function GraphExplorerScreen() {
             onSelect={setSelectedNodeId}
           />
         ) : (
-          <div className="min-h-0 flex-1 p-5">
-            <section aria-label="GraphWorkspace" className="h-full min-h-0 overflow-hidden rounded-xl border border-border bg-card">
-              <GraphWorkspace
-                externalFocusNodeId={selectedNodeId ?? undefined}
-                externalFocusToken={selectedNodeId ? 1 : undefined}
-                onSelectionChange={({ nodeId, edgeId }) => {
-                  setSelectedNodeId(nodeId || null)
-                  setSelectedEdgeId(edgeId || null)
-                }}
-              />
-            </section>
-          </div>
+          <ContextGraphWorkbenchLayout
+            source={<SourcePane open={sourceOpen} onToggle={() => setSourceOpen(false)} mediaType="application/pdf" pages={[]} primary={null} />}
+            chatOpen={chatPanelOpen}
+            sourceOpen={sourceOpen}
+            onSourceToggle={() => setSourceOpen(true)}
+            graph={<GraphWorkbench model={graphModel} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId} onSelectionChange={({ nodeId, edgeId }) => { setSelectedNodeId(nodeId); setSelectedEdgeId(edgeId) }} />}
+          />
         )
       ) : null}
     </main>

@@ -613,6 +613,9 @@ export function useStreamingMessage(options: UseStreamingMessageOptions = {}) {
             transport: 'send-stream',
           })
           onTool?.(payload)
+          if (typeof window !== 'undefined' && payload.result !== undefined) {
+            window.dispatchEvent(new CustomEvent('semantier:knowledge-workbench-result', { detail: payload.result }))
+          }
           break
         }
         case 'artifact': {

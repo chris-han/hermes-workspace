@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { GraphInteractionCommandSchema } from './graph-interaction'
 import { SourceAnchorSchema } from './source-anchor'
+import { EvidenceRefSchema } from './evidence-location'
 
 export const GovernanceStateSchema = z.enum([
   'candidate',
@@ -13,6 +14,7 @@ export const GovernanceStateSchema = z.enum([
 ])
 
 export const KnowledgeWorkbenchContextSchema = z.object({
+  schemaVersion: z.literal('knowledge_workbench_context.v2').default('knowledge_workbench_context.v2'),
   graphRef: z.string().nullable().optional(),
   graphVersion: z.string().nullable().optional(),
   graphHash: z.string().nullable().optional(),
@@ -24,6 +26,9 @@ export const KnowledgeWorkbenchContextSchema = z.object({
   selectedNodeIds: z.array(z.string()),
   selectedEdgeIds: z.array(z.string()),
   selectedRuleIds: z.array(z.string()),
+  selectedCandidateId: z.string().nullable().default(null),
+  selectedEvidenceRefs: z.array(EvidenceRefSchema.shape.evidenceRef).default([]),
+  activeSourceIdentityRef: z.string().nullable().default(null),
   sourceAnchors: z.array(SourceAnchorSchema),
   governanceState: GovernanceStateSchema,
   hasAcceptedRelease: z.boolean(),
@@ -33,11 +38,13 @@ export const KnowledgeWorkbenchContextSchema = z.object({
 })
 
 export const KnowledgeWorkbenchResultSchema = z.object({
+  schemaVersion: z.literal('knowledge_workbench_result.v2').default('knowledge_workbench_result.v2'),
   message: z.string(),
   focus: z.object({
     nodeIds: z.array(z.string()),
     edgeIds: z.array(z.string()),
     ruleIds: z.array(z.string()),
+    evidenceRefs: z.array(EvidenceRefSchema.shape.evidenceRef).default([]),
     sourceAnchors: z.array(SourceAnchorSchema),
   }),
   candidateGraphId: z.string().nullable(),
@@ -53,9 +60,7 @@ export const KnowledgeWorkbenchResultSchema = z.object({
 })
 
 export type GovernanceState = z.infer<typeof GovernanceStateSchema>
-export type KnowledgeWorkbenchContext = z.infer<
-  typeof KnowledgeWorkbenchContextSchema
->
+export type KnowledgeWorkbenchContext = z.input<typeof KnowledgeWorkbenchContextSchema>
 export type KnowledgeWorkbenchResult = z.infer<
   typeof KnowledgeWorkbenchResultSchema
 >

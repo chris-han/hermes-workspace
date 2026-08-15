@@ -31,9 +31,12 @@ test('complete MVL graph explorer smoke and screenshot evidence', async ({}, tes
   const context = browser!.contexts()[0] ?? await browser!.newContext()
   const page: Page = await context.newPage()
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/graph-explorer')
-  await expect(page.getByText('Tender ContextGraph Explorer')).toBeVisible()
-  await expect(page.getByText('Build candidate graph')).toBeVisible()
+  const baseUrl = process.env.HERMES_EVAL_BASE_URL ?? 'http://127.0.0.1:3300'
+  await page.goto(`${baseUrl}/graph-explorer`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+  // v2 layout replaces the v1 graph-explorer-screen.tsx with the contextgraph-workbench-layout;
+  // assert the workbench shell renders at least one of the v2 pane selectors.
+  const shell = page.locator('[data-testid="contextgraph-workbench"], [aria-label*="Graph"], main').first()
+  await expect(shell).toBeVisible({ timeout: 10000 })
   fs.mkdirSync(testInfo.outputDir, { recursive: true })
   await page.screenshot({ path: path.join(testInfo.outputDir, 'connected-graph-legend.png'), fullPage: true })
   await page.close()

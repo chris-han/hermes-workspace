@@ -28,6 +28,7 @@ import { Route as EvaluationRouteImport } from './routes/evaluation'
 import { Route as EffectiveContextRouteImport } from './routes/effective-context'
 import { Route as DatabaseRouteImport } from './routes/database'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ContextgraphStudioRouteImport } from './routes/contextgraph-studio'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AgentRosterRouteImport } from './routes/agent-roster'
 import { Route as SplatRouteImport } from './routes/$'
@@ -226,6 +227,11 @@ const DatabaseRoute = DatabaseRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContextgraphStudioRoute = ContextgraphStudioRouteImport.update({
+  id: '/contextgraph-studio',
+  path: '/contextgraph-studio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -761,6 +767,7 @@ export interface FileRoutesByFullPath {
   '/$': typeof SplatRoute
   '/agent-roster': typeof AgentRosterRoute
   '/app': typeof AppRoute
+  '/contextgraph-studio': typeof ContextgraphStudioRoute
   '/dashboard': typeof DashboardRoute
   '/database': typeof DatabaseRoute
   '/effective-context': typeof EffectiveContextRoute
@@ -886,6 +893,7 @@ export interface FileRoutesByTo {
   '/$': typeof SplatRoute
   '/agent-roster': typeof AgentRosterRoute
   '/app': typeof AppRoute
+  '/contextgraph-studio': typeof ContextgraphStudioRoute
   '/dashboard': typeof DashboardRoute
   '/database': typeof DatabaseRoute
   '/effective-context': typeof EffectiveContextRoute
@@ -1011,6 +1019,7 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/agent-roster': typeof AgentRosterRoute
   '/app': typeof AppRoute
+  '/contextgraph-studio': typeof ContextgraphStudioRoute
   '/dashboard': typeof DashboardRoute
   '/database': typeof DatabaseRoute
   '/effective-context': typeof EffectiveContextRoute
@@ -1138,6 +1147,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/agent-roster'
     | '/app'
+    | '/contextgraph-studio'
     | '/dashboard'
     | '/database'
     | '/effective-context'
@@ -1263,6 +1273,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/agent-roster'
     | '/app'
+    | '/contextgraph-studio'
     | '/dashboard'
     | '/database'
     | '/effective-context'
@@ -1387,6 +1398,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/agent-roster'
     | '/app'
+    | '/contextgraph-studio'
     | '/dashboard'
     | '/database'
     | '/effective-context'
@@ -1513,6 +1525,7 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   AgentRosterRoute: typeof AgentRosterRoute
   AppRoute: typeof AppRoute
+  ContextgraphStudioRoute: typeof ContextgraphStudioRoute
   DashboardRoute: typeof DashboardRoute
   DatabaseRoute: typeof DatabaseRoute
   EffectiveContextRoute: typeof EffectiveContextRoute
@@ -1744,6 +1757,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contextgraph-studio': {
+      id: '/contextgraph-studio'
+      path: '/contextgraph-studio'
+      fullPath: '/contextgraph-studio'
+      preLoaderRoute: typeof ContextgraphStudioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -2598,6 +2618,7 @@ const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
   AgentRosterRoute: AgentRosterRoute,
   AppRoute: AppRoute,
+  ContextgraphStudioRoute: ContextgraphStudioRoute,
   DashboardRoute: DashboardRoute,
   DatabaseRoute: DatabaseRoute,
   EffectiveContextRoute: EffectiveContextRoute,

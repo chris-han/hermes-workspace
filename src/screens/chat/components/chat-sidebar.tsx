@@ -622,6 +622,7 @@ function ChatSidebarComponent({
     pathname === '/database' ||
     pathname === '/effective-context'
   const isGraphExplorerActive = pathname === '/graph-explorer'
+  const isContextGraphStudioActive = pathname === '/contextgraph-studio'
   const isEvaluationActive = pathname.startsWith('/evaluation')
   const isTasksActive = pathname === '/tasks'
   const isorchestratorActive = pathname === '/orchestrator'
@@ -631,6 +632,8 @@ function ChatSidebarComponent({
   const knowledgeRoutes = [
     '/memory',
     '/knowledge-base',
+    '/graph-explorer',
+    '/contextgraph-studio',
     '/evaluation',
     '/generated-policies',
     '/legal-corpus',
@@ -982,6 +985,13 @@ function ChatSidebarComponent({
       icon: Book01Icon,
       label: 'Graph Explorer',
       active: isGraphExplorerActive,
+    },
+    {
+      kind: 'link',
+      to: '/contextgraph-studio',
+      icon: DashboardSquare01Icon,
+      label: 'ContextGraph Studio',
+      active: isContextGraphStudioActive,
     },
     {
       kind: 'link',

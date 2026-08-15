@@ -157,7 +157,7 @@ export function ChatPanel() {
             }}
           >
             {/* Panel header */}
-            <div className="flex items-center justify-between h-10 px-3 border-b border-primary-200 shrink-0">
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-3">
               <div className="flex items-center gap-1.5 min-w-0">
                 <button
                   type="button"

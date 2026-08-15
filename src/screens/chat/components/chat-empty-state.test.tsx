@@ -1,9 +1,11 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
+import type { KnowledgeWorkbenchContext } from '@/contracts/knowledge-workbench'
 import {
   ChatEmptyState,
   capabilityChipsForPromptProfile,
   categoriesForPromptProfile,
+  contextAwareCategoriesForWorkbench,
   resolveChatEmptyStatePromptProfile,
 } from './chat-empty-state'
 
@@ -20,6 +22,30 @@ vi.mock('@/lib/semantier-auth', () => ({
 vi.mock('@/lib/organization-membership', () => ({
   ensureDefaultSmbOrganization: vi.fn(),
 }))
+
+const WORKBENCH_CONTEXT: KnowledgeWorkbenchContext = {
+  schemaVersion: 'knowledge_workbench_context.v2',
+  graphRef: 'graph_demo',
+  graphVersion: 'v12',
+  graphHash: 'hash_demo',
+  authorityState: 'candidate',
+  runMode: null,
+  candidateGraphId: 'graph_demo',
+  acceptedReleaseId: null,
+  acceptedReleaseVersion: null,
+  selectedNodeIds: ['node_1'],
+  selectedEdgeIds: [],
+  selectedRuleIds: ['node_1'],
+  selectedCandidateId: null,
+  selectedEvidenceRefs: ['ev_1'],
+  activeSourceIdentityRef: 'source_1',
+  sourceAnchors: [],
+  governanceState: 'candidate',
+  hasAcceptedRelease: false,
+  extractionRunId: null,
+  providerRef: 'semantica',
+  providerCommit: null,
+}
 
 describe('chat empty state prompt profiles', () => {
   it('uses the apparel trade walkthrough for the apparel demo organization', () => {
@@ -71,17 +97,37 @@ describe('chat empty state prompt profiles', () => {
     ).toContain('试用 索阳 示例公司 — 60 秒获得洞察')
   })
 
-  it('falls back to the generic profile for non-demo organizations', () => {
+  it('falls back to the demo walkthrough for non-demo organizations', () => {
     const profile = resolveChatEmptyStatePromptProfile({
       organizationId: 'org_real_customer',
       datasetType: 'REAL',
       industryCode: 'manufacturing',
     })
 
-    expect(profile).toBe('generic')
-    expect(capabilityChipsForPromptProfile(profile)).toContain(
-      '56 Finance Skills',
+    expect(profile).toBe('smb_default')
+    expect(categoriesForPromptProfile(profile)[0]?.examples.map((item) => item.title)).toContain(
+      '试用 索阳 示例公司 — 60 秒获得洞察',
     )
+  })
+
+  it('derives graph and evidence prompts from unified workbench context', () => {
+    const categories = contextAwareCategoriesForWorkbench(WORKBENCH_CONTEXT, true)
+    const titles = categories?.[0]?.examples.map((item) => item.title)
+
+    expect(titles).toContain('解释当前图选择')
+    expect(titles).toContain('查看相关概念与关系')
+    expect(titles).toContain('追溯支持证据')
+  })
+
+  it('derives evaluation prompts only when evaluation runMode is active', () => {
+    const categories = contextAwareCategoriesForWorkbench(
+      { ...WORKBENCH_CONTEXT, runMode: 'evaluation_baseline' },
+      false,
+    )
+    const titles = categories?.[0]?.examples.map((item) => item.title)
+
+    expect(titles).toContain('Explain current evaluation')
+    expect(titles).toContain('Diagnose failed gates')
   })
 
   it('renders the demo walkthrough actions inside the walkthrough cards', () => {

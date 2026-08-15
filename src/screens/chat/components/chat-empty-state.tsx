@@ -9,8 +9,11 @@ import {
 } from '@hugeicons/core-free-icons'
 import { motion } from 'motion/react'
 
+import type { KnowledgeWorkbenchContext } from '@/contracts/knowledge-workbench'
+import { useSettingsStore } from '@/hooks/use-settings'
 import { useSemantierAuthStatus } from '@/lib/semantier-auth'
 import { ensureDefaultSmbOrganization } from '@/lib/organization-membership'
+import { useKnowledgeWorkbenchStore } from '@/stores/knowledge-workbench-store'
 
 type Example = {
   title: string
@@ -27,6 +30,130 @@ type Category = {
 }
 
 type PromptProfile = 'generic' | 'smb_default' | 'apparel_trade'
+
+function hasWorkbenchContext(context: KnowledgeWorkbenchContext): boolean {
+  return Boolean(
+    context.graphRef ||
+      context.candidateGraphId ||
+      context.acceptedReleaseId ||
+      context.activeSourceIdentityRef ||
+      context.selectedCandidateId ||
+      context.extractionRunId ||
+      context.selectedNodeIds.length > 0 ||
+      context.selectedEdgeIds.length > 0 ||
+      context.selectedRuleIds.length > 0 ||
+      (context.selectedEvidenceRefs?.length ?? 0) > 0 ||
+      context.sourceAnchors.length > 0,
+  )
+}
+
+export function contextAwareCategoriesForWorkbench(
+  context: KnowledgeWorkbenchContext,
+  zh: boolean,
+): Array<Category> | null {
+  if (!hasWorkbenchContext(context)) return null
+
+  const examples: Array<Example> = []
+  const hasSelection =
+    context.selectedNodeIds.length > 0 ||
+    context.selectedEdgeIds.length > 0 ||
+    context.selectedRuleIds.length > 0
+  const hasEvidence =
+    (context.selectedEvidenceRefs?.length ?? 0) > 0 || context.sourceAnchors.length > 0
+
+  if (context.runMode === 'evaluation_baseline') {
+    examples.push(
+      {
+        title: zh ? '解释当前评估结果' : 'Explain current evaluation',
+        desc: zh
+          ? '结合当前图版本、失败 gate 和证据状态，说明结果意味着什么。'
+          : 'Explain what the current graph version, failed gates, and evidence state mean.',
+        prompt: zh
+          ? '基于当前统一 KnowledgeWorkbenchContext，解释当前评估结果、关键通过项、失败或需复核的 gate，以及下一步最值得修正的地方。'
+          : 'Using the current unified KnowledgeWorkbenchContext, explain the evaluation result, important passes, failed or review-required gates, and the highest-value next correction.',
+      },
+      {
+        title: zh ? '诊断失败 Gate' : 'Diagnose failed gates',
+        desc: zh
+          ? '定位失败项对应的图、证据或 grounding 问题。'
+          : 'Trace failures back to graph, evidence, or grounding issues.',
+        prompt: zh
+          ? '检查当前评估上下文中的失败或需复核 gate，按严重度排序，并把每个问题映射到相关图断言、EvidenceRef 或 grounding 动作。'
+          : 'Inspect failed or review-required gates in the current evaluation context, rank them by severity, and map each issue to the relevant graph assertion, EvidenceRef, or grounding action.',
+      },
+    )
+  }
+
+  if (context.selectedCandidateId) {
+    examples.push({
+      title: zh ? '审查当前候选' : 'Review current candidate',
+      desc: zh
+        ? '解释候选语义、证据充分性和是否需要 edit / reject / reground。'
+        : 'Review candidate semantics, evidence sufficiency, and whether it needs edit, reject, or reground.',
+      prompt: zh
+        ? '审查当前统一上下文中选中的 candidate。说明它表达了什么、证据是否充分、有哪些歧义，以及建议 Accept、Edit、Reject 还是 Reground。'
+        : 'Review the candidate selected in the current unified context. Explain what it means, whether the evidence is sufficient, any ambiguity, and whether you recommend Accept, Edit, Reject, or Reground.',
+    })
+  }
+
+  if (hasSelection) {
+    examples.push(
+      {
+        title: zh ? '解释当前图选择' : 'Explain graph selection',
+        desc: zh
+          ? '解释选中的节点、边或规则及其在 ContextGraph 中的作用。'
+          : 'Explain the selected nodes, edges, or rules and their role in the ContextGraph.',
+        prompt: zh
+          ? '基于当前统一上下文，解释我选中的图节点、边或规则：它们分别表示什么、彼此是什么关系、为什么重要。'
+          : 'Using the current unified context, explain the selected graph nodes, edges, or rules: what they mean, how they relate, and why they matter.',
+      },
+      {
+        title: zh ? '查看相关概念与关系' : 'Show related concepts',
+        desc: zh
+          ? '从当前选择向外展开最相关的邻居、关系和路径。'
+          : 'Expand the most relevant neighbors, relationships, and paths from the current selection.',
+        prompt: zh
+          ? '从当前选中的图断言出发，找出最相关的概念、关系和路径，并聚焦这些节点/边，不要脱离当前图版本。'
+          : 'Starting from the currently selected graph assertions, find the most relevant concepts, relationships, and paths, and focus those nodes/edges without leaving the current graph version.',
+      },
+    )
+  }
+
+  if (hasEvidence) {
+    examples.push({
+      title: zh ? '追溯支持证据' : 'Trace supporting evidence',
+      desc: zh
+        ? '回到当前 EvidenceRef / source anchor，解释证据如何支持图断言。'
+        : 'Trace the current EvidenceRef/source anchor and explain how it supports the graph assertion.',
+      prompt: zh
+        ? '追溯当前选中断言对应的 EvidenceRef 和 source anchor，说明原文证据是什么、它支持了哪一部分语义，以及是否存在证据不足或错配。'
+        : 'Trace the EvidenceRef and source anchors for the current selection. Explain the original evidence, which part of the semantics it supports, and whether there is any evidence gap or mismatch.',
+    })
+  }
+
+  if (context.activeSourceIdentityRef && examples.length < 4) {
+    examples.push({
+      title: zh ? '总结当前来源' : 'Summarize current source',
+      desc: zh
+        ? '只基于当前打开的来源，提炼关键概念、关系和风险点。'
+        : 'Summarize key concepts, relationships, and risks from the active source only.',
+      prompt: zh
+        ? '只基于当前 KnowledgeWorkbenchContext 中 activeSourceIdentityRef 对应的来源，总结关键概念、关系、约束和需要人工核验的风险点。'
+        : 'Using only the source identified by activeSourceIdentityRef in the current KnowledgeWorkbenchContext, summarize the key concepts, relationships, constraints, and points requiring human verification.',
+    })
+  }
+
+  if (examples.length === 0) return null
+
+  return [
+    {
+      label: zh ? '当前上下文' : 'Current Context',
+      icon: BrainIcon,
+      accent: 'var(--theme-accent)',
+      examples: examples.slice(0, 5),
+    },
+  ]
+}
 
 const GENERIC_CATEGORIES: Array<Category> = [
   {
@@ -242,7 +369,7 @@ export function resolveChatEmptyStatePromptProfile(params: {
   if (!organizationId && !datasetType && !industryCode) {
     return 'smb_default'
   }
-  return 'generic'
+  return 'smb_default'
 }
 
 export function categoriesForPromptProfile(
@@ -272,6 +399,9 @@ export function ChatEmptyState({
   onStartDemoWalkthrough,
 }: ChatEmptyStateProps) {
   const authQuery = useSemantierAuthStatus()
+  const locale = useSettingsStore((state) => state.settings.locale)
+  const workbenchContext = useKnowledgeWorkbenchStore((state) => state.context)
+  const zh = locale === 'zh'
   const [isShortViewport, setIsShortViewport] = useState(false)
   const [showAllCategories, setShowAllCategories] = useState(false)
 
@@ -298,10 +428,37 @@ export function ChatEmptyState({
   })
   const [seedingDemo, setSeedingDemo] = useState(false)
   const [seedError, setSeedError] = useState('')
-  const categories = categoriesForPromptProfile(promptProfile)
-  const capabilityChips = capabilityChipsForPromptProfile(promptProfile)
+  const contextualCategories = compact
+    ? contextAwareCategoriesForWorkbench(workbenchContext, zh)
+    : null
+  const categories = contextualCategories ?? categoriesForPromptProfile(promptProfile)
+  const capabilityChips = contextualCategories
+    ? []
+    : capabilityChipsForPromptProfile(promptProfile)
   const visibleCategories =
     isShortViewport && !showAllCategories ? categories.slice(0, 2) : categories
+  const contextSummary = contextualCategories
+    ? [
+        workbenchContext.activeSourceIdentityRef ? (zh ? '来源' : 'source') : null,
+        workbenchContext.selectedCandidateId ? (zh ? '候选' : 'candidate') : null,
+        workbenchContext.selectedNodeIds.length > 0
+          ? `${workbenchContext.selectedNodeIds.length} ${zh ? '节点' : 'node'}`
+          : null,
+        workbenchContext.selectedEdgeIds.length > 0
+          ? `${workbenchContext.selectedEdgeIds.length} ${zh ? '边' : 'edge'}`
+          : null,
+        (workbenchContext.selectedEvidenceRefs?.length ?? 0) > 0
+          ? `${workbenchContext.selectedEvidenceRefs?.length ?? 0} EvidenceRef`
+          : null,
+        workbenchContext.runMode === 'evaluation_baseline'
+          ? zh
+            ? '评估'
+            : 'evaluation'
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : ''
 
   async function handleTrySuoYang() {
     setSeedingDemo(true)
@@ -342,33 +499,41 @@ export function ChatEmptyState({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="flex h-full flex-col items-center justify-center px-4 py-8"
+      className={`flex h-full flex-col items-center px-4 ${contextualCategories ? 'justify-start py-4' : 'justify-center py-8'}`}
     >
-      <div className="flex w-full max-w-5xl flex-col items-center text-center">
-        <div className="relative mb-6">
-          <img
-            src="/logo.svg"
-            alt="semantier logo"
-            className="relative size-20 rounded-xl theme-card-surface"
-            style={{
-              padding: '4px',
-            }}
-          />
-        </div>
-
-        <p
-          className="brand-wordmark mb-2 text-[16px]"
-          style={{ color: 'var(--theme-muted)' }}
-        >
-          semantier
-        </p>
-
-        <h2
-          className="font-ui text-3xl font-bold tracking-tight"
-          style={{ color: 'var(--theme-text)' }}
-        >
-          Begin a session
-        </h2>
+      <div className={`flex w-full max-w-5xl flex-col ${contextualCategories ? 'items-stretch text-left' : 'items-center text-center'}`}>
+        {contextualCategories ? (
+          <div className="w-full">
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em]" style={{ color: 'var(--theme-muted)' }}>
+              {zh ? '当前上下文' : 'Current context'}
+            </p>
+            <h2 className="font-ui mt-1 text-lg font-semibold tracking-tight" style={{ color: 'var(--theme-text)' }}>
+              {zh ? '基于正在查看的内容提问' : 'Ask about what you are viewing'}
+            </h2>
+            {contextSummary ? (
+              <p className="mt-1 text-[11px]" style={{ color: 'var(--theme-muted)' }}>
+                {contextSummary}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <div className="relative mb-6">
+              <img
+                src="/logo.svg"
+                alt="semantier logo"
+                className="relative size-20 rounded-xl theme-card-surface"
+                style={{ padding: '4px' }}
+              />
+            </div>
+            <p className="brand-wordmark mb-2 text-[16px]" style={{ color: 'var(--theme-muted)' }}>
+              semantier
+            </p>
+            <h2 className="font-ui text-3xl font-bold tracking-tight" style={{ color: 'var(--theme-text)' }}>
+              Begin a session
+            </h2>
+          </>
+        )}
         {seedError ? (
           <p className="mt-4 text-xs text-red-400">{seedError}</p>
         ) : null}
@@ -402,17 +567,19 @@ export function ChatEmptyState({
           </>
         )}
 
-        <div className="mt-6 w-full max-w-4xl text-left">
+        <div className={`${contextualCategories ? 'mt-4' : 'mt-6'} w-full max-w-4xl text-left`}>
           <p
             className="mb-3 px-1 text-xs"
             style={{ color: 'var(--theme-muted)' }}
           >
-            {promptProfile === 'generic'
-              ? 'Preset starting points'
+            {contextualCategories
+              ? zh
+                ? '基于统一上下文的建议'
+                : 'Suggestions from unified context'
               : 'Demo dataset prompts'}
           </p>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className={`grid grid-cols-1 gap-3 ${contextualCategories || categories.length === 1 ? '' : 'sm:grid-cols-2'}`}>
             {visibleCategories.map((category) => (
               <div key={category.label} className="space-y-2">
                 <div

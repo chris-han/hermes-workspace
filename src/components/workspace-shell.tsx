@@ -195,6 +195,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         : t('nav.knowledgeBase')
     }
     if (pathname.startsWith('/graph-explorer')) return 'Graph Explorer'
+    if (pathname.startsWith('/contextgraph-studio')) return 'ContextGraph Studio'
     if (pathname.startsWith('/skills')) return 'Skills'
     if (pathname.startsWith('/profiles')) return 'Profiles'
     if (pathname.startsWith('/settings')) return 'Settings'

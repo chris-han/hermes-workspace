@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { useSettingsStore } from '@/hooks/use-settings'
 import { useKnowledgeWorkbenchStore } from '@/stores/knowledge-workbench-store'
 import { useMvlWorkflowStore } from '@/stores/mvl-workflow-store'
 import { GraphWorkspace } from '@semantica-explorer/workspaces/GraphWorkspace/GraphWorkspace'
+const ExtractionReviewPanel = lazy(() => import('./components/extraction-review-panel').then((m) => ({ default: m.ExtractionReviewPanel })))
+const GraphBuilderPanel = lazy(() => import('./components/graph-builder-panel').then((m) => ({ default: m.GraphBuilderPanel })))
+const InspectorPanel = lazy(() => import('./components/inspector-panel').then((m) => ({ default: m.InspectorPanel })))
 
 type ContextGraphNode = {
   id: string
@@ -43,10 +46,19 @@ export function GraphExplorerScreen() {
   const setServerWorkflowContext = useMvlWorkflowStore((state) => state.setServerContext)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  const [rawFilter, setRawFilter] = useState('')
+  const [rawType, setRawType] = useState<'all' | 'concept' | 'rule'>('all')
   const selected = useMemo(
     () => graphQuery.data?.nodes.find((node) => node.id === selectedNodeId) ?? null,
     [graphQuery.data?.nodes, selectedNodeId],
   )
+  const rawNodes = useMemo(() => {
+    const query = rawFilter.trim().toLocaleLowerCase()
+    return (graphQuery.data?.nodes ?? []).filter((node) => {
+      if (rawType !== 'all' && node.type !== rawType) return false
+      return !query || `${node.content} ${node.id}`.toLocaleLowerCase().includes(query)
+    })
+  }, [graphQuery.data?.nodes, rawFilter, rawType])
 
   useEffect(() => {
     const graph = graphQuery.data
@@ -98,19 +110,120 @@ export function GraphExplorerScreen() {
       {graphQuery.isLoading ? <p className="p-5 text-sm text-muted-foreground">{zh ? '正在加载固定图制品…' : 'Loading pinned graph artifact…'}</p> : null}
       {graphQuery.isError ? <div role="alert" className="m-5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">{zh ? 'ContextGraph 当前不可用。' : 'ContextGraph is unavailable.'}</div> : null}
       {graphQuery.data ? (
-        <div className="min-h-0 flex-1 p-5">
-          <section aria-label="GraphWorkspace" className="h-full min-h-0 overflow-hidden rounded-xl border border-border bg-card">
-            <GraphWorkspace
-              externalFocusNodeId={selectedNodeId ?? undefined}
-              externalFocusToken={selectedNodeId ? 1 : undefined}
-              onSelectionChange={({ nodeId, edgeId }) => {
-                setSelectedNodeId(nodeId || null)
-                setSelectedEdgeId(edgeId || null)
-              }}
-            />
-          </section>
-        </div>
+        <Suspense fallback={<p className="p-5 text-sm text-muted-foreground">Loading review tools…</p>}><div className="grid gap-3 p-5 lg:grid-cols-[minmax(0,1fr)_280px]"><div className="space-y-3"><ExtractionReviewPanel items={graphQuery.data.nodes.map((node) => ({ id: node.id, text: node.content, mapping: node.type, confidence: 0.8, evidence: node.sourceAnchors[0] ? String(node.sourceAnchors[0].quote ?? node.sourceAnchors[0].locator ?? 'Pinned source anchor') : 'Pinned source anchor' }))} /><GraphBuilderPanel extractionReady={!graphQuery.isLoading} building={false} counts={{ nodes: graphQuery.data.nodes.length, edges: graphQuery.data.edges.length, constraints: 0 }} onBuild={() => undefined} onRollback={() => setSelectedNodeId(null)} /></div><InspectorPanel graphState={graphQuery.data.edges.length ? 'connected-graph' : 'extraction-only'} /></div></Suspense>
+      ) : null}
+      {graphQuery.data ? (
+        graphQuery.data.edges.length === 0 ? (
+          <RawExtractionList
+            nodes={rawNodes}
+            filter={rawFilter}
+            type={rawType}
+            onFilterChange={setRawFilter}
+            onTypeChange={setRawType}
+            selectedNodeId={selectedNodeId}
+            onSelect={setSelectedNodeId}
+          />
+        ) : (
+          <div className="min-h-0 flex-1 p-5">
+            <section aria-label="GraphWorkspace" className="h-full min-h-0 overflow-hidden rounded-xl border border-border bg-card">
+              <GraphWorkspace
+                externalFocusNodeId={selectedNodeId ?? undefined}
+                externalFocusToken={selectedNodeId ? 1 : undefined}
+                onSelectionChange={({ nodeId, edgeId }) => {
+                  setSelectedNodeId(nodeId || null)
+                  setSelectedEdgeId(edgeId || null)
+                }}
+              />
+            </section>
+          </div>
+        )
       ) : null}
     </main>
+  )
+}
+
+function RawExtractionList({
+  nodes,
+  filter,
+  type,
+  onFilterChange,
+  onTypeChange,
+  selectedNodeId,
+  onSelect,
+}: {
+  nodes: ContextGraphNode[]
+  filter: string
+  type: 'all' | 'concept' | 'rule'
+  onFilterChange: (value: string) => void
+  onTypeChange: (value: 'all' | 'concept' | 'rule') => void
+  selectedNodeId: string | null
+  onSelect: (value: string) => void
+}) {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto p-5">
+      <section aria-label="Raw extraction list" className="rounded-xl border border-border bg-card">
+        <div className="border-b border-border p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Raw extraction items</h2>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+                This artifact contains lexical candidates, not a connected ontology graph. A graph view will appear after typed relations are available.
+              </p>
+            </div>
+            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+              0 relations
+            </span>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <input
+              value={filter}
+              onChange={(event) => onFilterChange(event.target.value)}
+              placeholder="Search text or node ID"
+              aria-label="Search raw extraction items"
+              className="h-9 min-w-[240px] flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+            />
+            {(['all', 'concept', 'rule'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onTypeChange(value)}
+                className={`rounded-md border px-3 py-2 text-xs font-medium transition-colors ${
+                  type === value
+                    ? 'border-primary/40 bg-primary/10 text-foreground'
+                    : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {value === 'all' ? 'All' : value === 'concept' ? 'Concept candidates' : 'Rule candidates'}
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-muted-foreground">
+            <span><i className="mr-1.5 inline-block size-2 rounded-full bg-sky-400" />Concept candidate</span>
+            <span><i className="mr-1.5 inline-block size-2 rounded-full bg-amber-400" />Rule candidate</span>
+            <span>{nodes.length} shown</span>
+          </div>
+        </div>
+        <div className="divide-y divide-border">
+          {nodes.map((node) => (
+            <button
+              key={node.id}
+              type="button"
+              onClick={() => onSelect(node.id)}
+              className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60 ${selectedNodeId === node.id ? 'bg-primary/10' : ''}`}
+            >
+              <span className={`mt-1.5 size-2 shrink-0 rounded-full ${node.type === 'rule' ? 'bg-amber-400' : 'bg-sky-400'}`} />
+              <span className="min-w-0 flex-1">
+                <span className="block break-words text-sm text-foreground">{node.content || node.id}</span>
+                <span className="mt-1 block break-all font-mono text-[10px] text-muted-foreground">{node.id}</span>
+              </span>
+              <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">{node.type}</span>
+            </button>
+          ))}
+          {nodes.length === 0 ? (
+            <p className="p-8 text-center text-sm text-muted-foreground">No extraction items match the current filter.</p>
+          ) : null}
+        </div>
+      </section>
+    </div>
   )
 }

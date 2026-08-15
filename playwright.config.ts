@@ -31,7 +31,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         launchOptions: {
           executablePath: CHROMIUM_EX_PATH,
-          args: ['--disable-crash-reporter', '--disable-gpu'],
+          args: ['--disable-crash-reporter', '--disable-crashpad', '--disable-gpu'],
         },
         locale: 'en-US',
       },

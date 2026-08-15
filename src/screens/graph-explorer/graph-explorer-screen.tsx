@@ -13,6 +13,7 @@ import { parseKnowledgeWorkbenchResult } from '@/lib/knowledge-workbench-result'
 const ExtractionReviewPanel = lazy(() => import('./components/extraction-review-panel').then((m) => ({ default: m.ExtractionReviewPanel })))
 const GraphBuilderPanel = lazy(() => import('./components/graph-builder-panel').then((m) => ({ default: m.GraphBuilderPanel })))
 const InspectorPanel = lazy(() => import('./components/inspector-panel').then((m) => ({ default: m.InspectorPanel })))
+const IngestPanel = lazy(() => import('./components/ingest-panel').then((m) => ({ default: m.IngestPanel })))
 
 type ContextGraphNode = {
   id: string
@@ -56,6 +57,7 @@ export function GraphExplorerScreen() {
   const [rawFilter, setRawFilter] = useState('')
   const [rawType, setRawType] = useState<'all' | 'concept' | 'rule'>('all')
   const [sourceOpen, setSourceOpen] = useState(true)
+  const [ingestedSource, setIngestedSource] = useState<{ relativePath: string; sourceHash: string } | null>(null)
   const selected = useMemo(
     () => graphQuery.data?.nodes.find((node) => node.id === selectedNodeId) ?? null,
     [graphQuery.data?.nodes, selectedNodeId],
@@ -128,7 +130,7 @@ export function GraphExplorerScreen() {
 
   const zh = locale === 'zh'
   return (
-    <main className="flex h-full min-h-0 flex-col bg-background text-foreground" lang={zh ? 'zh-CN' : 'en'}>
+    <main className="flex h-full min-h-0 flex-col overflow-y-auto bg-background text-foreground" lang={zh ? 'zh-CN' : 'en'}>
       <header className="border-b border-border px-5 py-4">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Phase1-001 MVL</p>
         <div className="mt-1 flex flex-wrap items-baseline justify-between gap-3">
@@ -143,9 +145,20 @@ export function GraphExplorerScreen() {
       </header>
       {graphQuery.isLoading ? <p className="p-5 text-sm text-muted-foreground">{zh ? '正在加载固定图制品…' : 'Loading pinned graph artifact…'}</p> : null}
       {graphQuery.isError ? <div role="alert" className="m-5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">{zh ? 'ContextGraph 当前不可用。' : 'ContextGraph is unavailable.'}</div> : null}
-      {graphQuery.data && graphModel ? (
-        <Suspense fallback={<p className="p-5 text-sm text-muted-foreground">Loading review tools…</p>}><div className="grid gap-3 p-5 lg:grid-cols-[minmax(0,1fr)_280px]"><div className="space-y-3"><ExtractionReviewPanel items={graphQuery.data.nodes.map((node) => ({ id: node.id, text: node.content, mapping: node.type, confidence: 0.8, evidence: node.sourceAnchors[0] ? String(node.sourceAnchors[0].quote ?? node.sourceAnchors[0].locator ?? 'Pinned source anchor') : 'Pinned source anchor' }))} /><GraphBuilderPanel extractionReady={!graphQuery.isLoading} building={false} counts={{ nodes: graphQuery.data.nodes.length, edges: graphQuery.data.edges.length, constraints: 0 }} onBuild={() => undefined} onRollback={() => setSelectedNodeId(null)} /></div><InspectorPanel graphState={graphQuery.data.edges.length ? 'connected-graph' : 'extraction-only'} /></div></Suspense>
-      ) : null}
+      <div className="grid gap-3 p-5 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="space-y-3">
+          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading ingest…</p>}>
+            <IngestPanel sessionId={ingestedSource?.relativePath ?? 'uat-session'} onIngested={(payload) => setIngestedSource({ relativePath: payload.relativePath, sourceHash: payload.sourceHash })} onGraphRefresh={() => graphQuery.refetch()} />
+          </Suspense>
+          {graphQuery.data && graphModel ? (
+            <Suspense fallback={<p className="text-sm text-muted-foreground">Loading review tools…</p>}>
+                <ExtractionReviewPanel items={graphQuery.data.nodes.map((node) => ({ id: node.id, text: node.content, mapping: node.type, confidence: 0.8, evidence: node.sourceAnchors[0] ? String(node.sourceAnchors[0].quote ?? node.sourceAnchors[0].locator ?? 'Pinned source anchor') : 'Pinned source anchor' }))} />
+                <GraphBuilderPanel extractionReady={!graphQuery.isLoading} building={false} counts={{ nodes: graphQuery.data.nodes.length, edges: graphQuery.data.edges.length, constraints: 0 }} onBuild={() => undefined} onRollback={() => setSelectedNodeId(null)} />
+            </Suspense>
+          ) : null}
+        </div>
+        {graphQuery.data && graphModel ? <InspectorPanel graphState={graphQuery.data.edges.length ? 'connected-graph' : 'extraction-only'} /> : null}
+      </div>
       {graphQuery.data && graphModel ? (
         graphQuery.data.edges.length === 0 ? (
           <RawExtractionList
@@ -158,13 +171,15 @@ export function GraphExplorerScreen() {
             onSelect={setSelectedNodeId}
           />
         ) : (
-          <ContextGraphWorkbenchLayout
-            source={<SourcePane open={sourceOpen} onToggle={() => setSourceOpen(false)} mediaType="application/pdf" pages={[]} primary={null} />}
-            chatOpen={chatPanelOpen}
-            sourceOpen={sourceOpen}
-            onSourceToggle={() => setSourceOpen(true)}
-            graph={<GraphWorkbench model={graphModel} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId} onSelectionChange={({ nodeId, edgeId }) => { setSelectedNodeId(nodeId); setSelectedEdgeId(edgeId) }} />}
-          />
+          <div className="min-h-[480px] flex-1">
+            <ContextGraphWorkbenchLayout
+              source={<SourcePane open={sourceOpen} onToggle={() => setSourceOpen(false)} mediaType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" pages={[]} primary={null} />}
+              chatOpen={chatPanelOpen}
+              sourceOpen={sourceOpen}
+              onSourceToggle={() => setSourceOpen(true)}
+              graph={<GraphWorkbench model={graphModel} selectedNodeId={selectedNodeId} selectedEdgeId={selectedEdgeId} onSelectionChange={({ nodeId, edgeId }) => { setSelectedNodeId(nodeId); setSelectedEdgeId(edgeId) }} />}
+            />
+          </div>
         )
       ) : null}
     </main>

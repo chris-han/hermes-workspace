@@ -343,6 +343,7 @@ type ChatEmptyStateProps = {
   onSuggestionClick?: (prompt: string) => void
   compact?: boolean
   onStartDemoWalkthrough?: () => void
+  emptyChatPrompts?: readonly string[]
 }
 
 export function resolveChatEmptyStatePromptProfile(params: {
@@ -397,6 +398,7 @@ export function ChatEmptyState({
   onSuggestionClick,
   compact = false,
   onStartDemoWalkthrough,
+  emptyChatPrompts,
 }: ChatEmptyStateProps) {
   const authQuery = useSemantierAuthStatus()
   const locale = useSettingsStore((state) => state.settings.locale)
@@ -431,13 +433,26 @@ export function ChatEmptyState({
   const contextualCategories = compact
     ? contextAwareCategoriesForWorkbench(workbenchContext, zh)
     : null
-  const categories = contextualCategories ?? categoriesForPromptProfile(promptProfile)
-  const capabilityChips = contextualCategories
+  const studioPromptCategories = emptyChatPrompts?.length
+    ? [{
+        label: zh ? '工作台建议' : 'Workbench suggestions',
+        icon: BrainIcon,
+        accent: 'var(--theme-accent)',
+        examples: emptyChatPrompts.map((prompt) => ({
+          title: prompt,
+          desc: zh ? '点击以填入对话框' : 'Click to add this prompt to chat',
+          prompt,
+        })) as Array<Example>,
+      }]
+    : null
+  const categories = studioPromptCategories ?? contextualCategories ?? categoriesForPromptProfile(promptProfile)
+  const hasStudioContext = Boolean(studioPromptCategories || contextualCategories)
+  const capabilityChips = hasStudioContext
     ? []
     : capabilityChipsForPromptProfile(promptProfile)
   const visibleCategories =
     isShortViewport && !showAllCategories ? categories.slice(0, 2) : categories
-  const contextSummary = contextualCategories
+  const contextSummary = hasStudioContext && contextualCategories
     ? [
         workbenchContext.activeSourceIdentityRef ? (zh ? '来源' : 'source') : null,
         workbenchContext.selectedCandidateId ? (zh ? '候选' : 'candidate') : null,
@@ -499,10 +514,10 @@ export function ChatEmptyState({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className={`flex h-full flex-col items-center px-4 ${contextualCategories ? 'justify-start py-4' : 'justify-center py-8'}`}
+      className={`flex h-full flex-col items-center px-4 ${hasStudioContext ? 'justify-start py-4' : 'justify-center py-8'}`}
     >
-      <div className={`flex w-full max-w-5xl flex-col ${contextualCategories ? 'items-stretch text-left' : 'items-center text-center'}`}>
-        {contextualCategories ? (
+      <div className={`flex w-full max-w-5xl flex-col ${hasStudioContext ? 'items-stretch text-left' : 'items-center text-center'}`}>
+        {hasStudioContext ? (
           <div className="w-full">
             <p className="text-[11px] font-medium uppercase tracking-[0.12em]" style={{ color: 'var(--theme-muted)' }}>
               {zh ? '当前上下文' : 'Current context'}
@@ -567,19 +582,19 @@ export function ChatEmptyState({
           </>
         )}
 
-        <div className={`${contextualCategories ? 'mt-4' : 'mt-6'} w-full max-w-4xl text-left`}>
+        <div className={`${hasStudioContext ? 'mt-4' : 'mt-6'} w-full max-w-4xl text-left`}>
           <p
             className="mb-3 px-1 text-xs"
             style={{ color: 'var(--theme-muted)' }}
           >
-            {contextualCategories
+            {hasStudioContext
               ? zh
                 ? '基于统一上下文的建议'
                 : 'Suggestions from unified context'
               : 'Demo dataset prompts'}
           </p>
 
-          <div className={`grid grid-cols-1 gap-3 ${contextualCategories || categories.length === 1 ? '' : 'sm:grid-cols-2'}`}>
+          <div className={`grid grid-cols-1 gap-3 ${hasStudioContext || categories.length === 1 ? '' : 'sm:grid-cols-2'}`}>
             {visibleCategories.map((category) => (
               <div key={category.label} className="space-y-2">
                 <div

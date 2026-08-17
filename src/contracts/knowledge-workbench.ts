@@ -35,6 +35,10 @@ export const KnowledgeWorkbenchContextSchema = z.object({
   extractionRunId: z.string().nullable(),
   providerRef: z.string().nullable(),
   providerCommit: z.string().nullable(),
+  targetEvidenceRef: z.string().nullable().default(null),
+  activeRuleVersionId: z.string().nullable().default(null),
+  graphRuleId: z.string().nullable().default(null),
+  originEvidenceRef: z.string().nullable().default(null),
 })
 
 export const KnowledgeWorkbenchResultSchema = z.object({

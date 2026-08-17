@@ -132,6 +132,7 @@ type ChatScreenProps = {
    * user out to /chat/<uuid> on mount, refresh, or after send.
    */
   embedded?: boolean
+  emptyChatPrompts?: readonly string[]
 }
 
 type PortableHistoryMessage = {
@@ -597,6 +598,7 @@ export function ChatScreen({
   forcedSessionKey,
   compact = false,
   embedded = false,
+  emptyChatPrompts,
 }: ChatScreenProps) {
   const navigate = useNavigate()
   const chatFocusMode = useWorkspaceStore((s) => s.chatFocusMode)
@@ -3168,6 +3170,7 @@ export function ChatScreen({
               emptyState={
                 <ChatEmptyState
                   compact={compact}
+                  emptyChatPrompts={emptyChatPrompts}
                   onSuggestionClick={(prompt) => {
                     composerHandleRef.current?.setValue(prompt + ' ')
                   }}

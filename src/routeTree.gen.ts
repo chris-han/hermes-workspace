@@ -91,6 +91,7 @@ import { Route as ApiAuthCheckRouteImport } from './routes/api/auth-check'
 import { Route as ApiAuthRouteImport } from './routes/api/auth'
 import { Route as ApiUploadBatchRouteImport } from './routes/api/upload.batch'
 import { Route as ApiToolsToolsetsRouteImport } from './routes/api/tools/toolsets'
+import { Route as ApiTenderDocumentReviewGraphFocusRouteImport } from './routes/api/tender-document-review/graph-focus'
 import { Route as ApiSkillsUninstallRouteImport } from './routes/api/skills.uninstall'
 import { Route as ApiSkillsToggleRouteImport } from './routes/api/skills.toggle'
 import { Route as ApiSkillsInstallRouteImport } from './routes/api/skills.install'
@@ -130,9 +131,11 @@ import { Route as ApiHermesTasksTaskIdRouteImport } from './routes/api/hermes-ta
 import { Route as ApiHermesProxySplatRouteImport } from './routes/api/hermes-proxy/$'
 import { Route as ApiHermesJobsJobIdRouteImport } from './routes/api/hermes-jobs.$jobId'
 import { Route as ApiDataConnectionsSummaryRouteImport } from './routes/api/data-connections/summary'
+import { Route as ApiTenderDocumentReviewRunsRunIdRouteImport } from './routes/api/tender-document-review/runs/$runId'
 import { Route as ApiSessionsSessionKeyStatusRouteImport } from './routes/api/sessions/$sessionKey.status'
 import { Route as ApiSessionsSessionKeyBranchesRouteImport } from './routes/api/sessions/$sessionKey.branches'
 import { Route as ApiSessionsSessionKeyActiveRunRouteImport } from './routes/api/sessions/$sessionKey.active-run'
+import { Route as ApiTenderDocumentReviewRunsRunIdArtifactRouteImport } from './routes/api/tender-document-review/runs/$runId/$artifact'
 
 const TerminalRoute = TerminalRouteImport.update({
   id: '/terminal',
@@ -546,6 +549,12 @@ const ApiToolsToolsetsRoute = ApiToolsToolsetsRouteImport.update({
   path: '/api/tools/toolsets',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTenderDocumentReviewGraphFocusRoute =
+  ApiTenderDocumentReviewGraphFocusRouteImport.update({
+    id: '/graph-focus',
+    path: '/graph-focus',
+    getParentRoute: () => ApiTenderDocumentReviewRoute,
+  } as any)
 const ApiSkillsUninstallRoute = ApiSkillsUninstallRouteImport.update({
   id: '/uninstall',
   path: '/uninstall',
@@ -743,6 +752,12 @@ const ApiDataConnectionsSummaryRoute =
     path: '/api/data-connections/summary',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiTenderDocumentReviewRunsRunIdRoute =
+  ApiTenderDocumentReviewRunsRunIdRouteImport.update({
+    id: '/runs/$runId',
+    path: '/runs/$runId',
+    getParentRoute: () => ApiTenderDocumentReviewRoute,
+  } as any)
 const ApiSessionsSessionKeyStatusRoute =
   ApiSessionsSessionKeyStatusRouteImport.update({
     id: '/$sessionKey/status',
@@ -760,6 +775,12 @@ const ApiSessionsSessionKeyActiveRunRoute =
     id: '/$sessionKey/active-run',
     path: '/$sessionKey/active-run',
     getParentRoute: () => ApiSessionsRoute,
+  } as any)
+const ApiTenderDocumentReviewRunsRunIdArtifactRoute =
+  ApiTenderDocumentReviewRunsRunIdArtifactRouteImport.update({
+    id: '/$artifact',
+    path: '/$artifact',
+    getParentRoute: () => ApiTenderDocumentReviewRunsRunIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -821,7 +842,7 @@ export interface FileRoutesByFullPath {
   '/api/skills': typeof ApiSkillsRouteWithChildren
   '/api/start-agent': typeof ApiStartAgentRoute
   '/api/start-hermes': typeof ApiStartHermesRoute
-  '/api/tender-document-review': typeof ApiTenderDocumentReviewRoute
+  '/api/tender-document-review': typeof ApiTenderDocumentReviewRouteWithChildren
   '/api/terminal-close': typeof ApiTerminalCloseRoute
   '/api/terminal-input': typeof ApiTerminalInputRoute
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
@@ -882,11 +903,14 @@ export interface FileRoutesByFullPath {
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/toggle': typeof ApiSkillsToggleRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/tender-document-review/graph-focus': typeof ApiTenderDocumentReviewGraphFocusRoute
   '/api/tools/toolsets': typeof ApiToolsToolsetsRoute
   '/api/upload/batch': typeof ApiUploadBatchRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
   '/api/sessions/$sessionKey/branches': typeof ApiSessionsSessionKeyBranchesRoute
   '/api/sessions/$sessionKey/status': typeof ApiSessionsSessionKeyStatusRoute
+  '/api/tender-document-review/runs/$runId': typeof ApiTenderDocumentReviewRunsRunIdRouteWithChildren
+  '/api/tender-document-review/runs/$runId/$artifact': typeof ApiTenderDocumentReviewRunsRunIdArtifactRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -946,7 +970,7 @@ export interface FileRoutesByTo {
   '/api/skills': typeof ApiSkillsRouteWithChildren
   '/api/start-agent': typeof ApiStartAgentRoute
   '/api/start-hermes': typeof ApiStartHermesRoute
-  '/api/tender-document-review': typeof ApiTenderDocumentReviewRoute
+  '/api/tender-document-review': typeof ApiTenderDocumentReviewRouteWithChildren
   '/api/terminal-close': typeof ApiTerminalCloseRoute
   '/api/terminal-input': typeof ApiTerminalInputRoute
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
@@ -1007,11 +1031,14 @@ export interface FileRoutesByTo {
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/toggle': typeof ApiSkillsToggleRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/tender-document-review/graph-focus': typeof ApiTenderDocumentReviewGraphFocusRoute
   '/api/tools/toolsets': typeof ApiToolsToolsetsRoute
   '/api/upload/batch': typeof ApiUploadBatchRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
   '/api/sessions/$sessionKey/branches': typeof ApiSessionsSessionKeyBranchesRoute
   '/api/sessions/$sessionKey/status': typeof ApiSessionsSessionKeyStatusRoute
+  '/api/tender-document-review/runs/$runId': typeof ApiTenderDocumentReviewRunsRunIdRouteWithChildren
+  '/api/tender-document-review/runs/$runId/$artifact': typeof ApiTenderDocumentReviewRunsRunIdArtifactRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -1073,7 +1100,7 @@ export interface FileRoutesById {
   '/api/skills': typeof ApiSkillsRouteWithChildren
   '/api/start-agent': typeof ApiStartAgentRoute
   '/api/start-hermes': typeof ApiStartHermesRoute
-  '/api/tender-document-review': typeof ApiTenderDocumentReviewRoute
+  '/api/tender-document-review': typeof ApiTenderDocumentReviewRouteWithChildren
   '/api/terminal-close': typeof ApiTerminalCloseRoute
   '/api/terminal-input': typeof ApiTerminalInputRoute
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
@@ -1134,11 +1161,14 @@ export interface FileRoutesById {
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/toggle': typeof ApiSkillsToggleRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/tender-document-review/graph-focus': typeof ApiTenderDocumentReviewGraphFocusRoute
   '/api/tools/toolsets': typeof ApiToolsToolsetsRoute
   '/api/upload/batch': typeof ApiUploadBatchRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
   '/api/sessions/$sessionKey/branches': typeof ApiSessionsSessionKeyBranchesRoute
   '/api/sessions/$sessionKey/status': typeof ApiSessionsSessionKeyStatusRoute
+  '/api/tender-document-review/runs/$runId': typeof ApiTenderDocumentReviewRunsRunIdRouteWithChildren
+  '/api/tender-document-review/runs/$runId/$artifact': typeof ApiTenderDocumentReviewRunsRunIdArtifactRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1262,11 +1292,14 @@ export interface FileRouteTypes {
     | '/api/skills/install'
     | '/api/skills/toggle'
     | '/api/skills/uninstall'
+    | '/api/tender-document-review/graph-focus'
     | '/api/tools/toolsets'
     | '/api/upload/batch'
     | '/api/sessions/$sessionKey/active-run'
     | '/api/sessions/$sessionKey/branches'
     | '/api/sessions/$sessionKey/status'
+    | '/api/tender-document-review/runs/$runId'
+    | '/api/tender-document-review/runs/$runId/$artifact'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1387,11 +1420,14 @@ export interface FileRouteTypes {
     | '/api/skills/install'
     | '/api/skills/toggle'
     | '/api/skills/uninstall'
+    | '/api/tender-document-review/graph-focus'
     | '/api/tools/toolsets'
     | '/api/upload/batch'
     | '/api/sessions/$sessionKey/active-run'
     | '/api/sessions/$sessionKey/branches'
     | '/api/sessions/$sessionKey/status'
+    | '/api/tender-document-review/runs/$runId'
+    | '/api/tender-document-review/runs/$runId/$artifact'
   id:
     | '__root__'
     | '/'
@@ -1513,11 +1549,14 @@ export interface FileRouteTypes {
     | '/api/skills/install'
     | '/api/skills/toggle'
     | '/api/skills/uninstall'
+    | '/api/tender-document-review/graph-focus'
     | '/api/tools/toolsets'
     | '/api/upload/batch'
     | '/api/sessions/$sessionKey/active-run'
     | '/api/sessions/$sessionKey/branches'
     | '/api/sessions/$sessionKey/status'
+    | '/api/tender-document-review/runs/$runId'
+    | '/api/tender-document-review/runs/$runId/$artifact'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1579,7 +1618,7 @@ export interface RootRouteChildren {
   ApiSkillsRoute: typeof ApiSkillsRouteWithChildren
   ApiStartAgentRoute: typeof ApiStartAgentRoute
   ApiStartHermesRoute: typeof ApiStartHermesRoute
-  ApiTenderDocumentReviewRoute: typeof ApiTenderDocumentReviewRoute
+  ApiTenderDocumentReviewRoute: typeof ApiTenderDocumentReviewRouteWithChildren
   ApiTerminalCloseRoute: typeof ApiTerminalCloseRoute
   ApiTerminalInputRoute: typeof ApiTerminalInputRoute
   ApiTerminalResizeRoute: typeof ApiTerminalResizeRoute
@@ -2200,6 +2239,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiToolsToolsetsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tender-document-review/graph-focus': {
+      id: '/api/tender-document-review/graph-focus'
+      path: '/graph-focus'
+      fullPath: '/api/tender-document-review/graph-focus'
+      preLoaderRoute: typeof ApiTenderDocumentReviewGraphFocusRouteImport
+      parentRoute: typeof ApiTenderDocumentReviewRoute
+    }
     '/api/skills/uninstall': {
       id: '/api/skills/uninstall'
       path: '/uninstall'
@@ -2473,6 +2519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDataConnectionsSummaryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tender-document-review/runs/$runId': {
+      id: '/api/tender-document-review/runs/$runId'
+      path: '/runs/$runId'
+      fullPath: '/api/tender-document-review/runs/$runId'
+      preLoaderRoute: typeof ApiTenderDocumentReviewRunsRunIdRouteImport
+      parentRoute: typeof ApiTenderDocumentReviewRoute
+    }
     '/api/sessions/$sessionKey/status': {
       id: '/api/sessions/$sessionKey/status'
       path: '/$sessionKey/status'
@@ -2493,6 +2546,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/sessions/$sessionKey/active-run'
       preLoaderRoute: typeof ApiSessionsSessionKeyActiveRunRouteImport
       parentRoute: typeof ApiSessionsRoute
+    }
+    '/api/tender-document-review/runs/$runId/$artifact': {
+      id: '/api/tender-document-review/runs/$runId/$artifact'
+      path: '/$artifact'
+      fullPath: '/api/tender-document-review/runs/$runId/$artifact'
+      preLoaderRoute: typeof ApiTenderDocumentReviewRunsRunIdArtifactRouteImport
+      parentRoute: typeof ApiTenderDocumentReviewRunsRunIdRoute
     }
   }
 }
@@ -2601,6 +2661,39 @@ const ApiSkillsRouteWithChildren = ApiSkillsRoute._addFileChildren(
   ApiSkillsRouteChildren,
 )
 
+interface ApiTenderDocumentReviewRunsRunIdRouteChildren {
+  ApiTenderDocumentReviewRunsRunIdArtifactRoute: typeof ApiTenderDocumentReviewRunsRunIdArtifactRoute
+}
+
+const ApiTenderDocumentReviewRunsRunIdRouteChildren: ApiTenderDocumentReviewRunsRunIdRouteChildren =
+  {
+    ApiTenderDocumentReviewRunsRunIdArtifactRoute:
+      ApiTenderDocumentReviewRunsRunIdArtifactRoute,
+  }
+
+const ApiTenderDocumentReviewRunsRunIdRouteWithChildren =
+  ApiTenderDocumentReviewRunsRunIdRoute._addFileChildren(
+    ApiTenderDocumentReviewRunsRunIdRouteChildren,
+  )
+
+interface ApiTenderDocumentReviewRouteChildren {
+  ApiTenderDocumentReviewGraphFocusRoute: typeof ApiTenderDocumentReviewGraphFocusRoute
+  ApiTenderDocumentReviewRunsRunIdRoute: typeof ApiTenderDocumentReviewRunsRunIdRouteWithChildren
+}
+
+const ApiTenderDocumentReviewRouteChildren: ApiTenderDocumentReviewRouteChildren =
+  {
+    ApiTenderDocumentReviewGraphFocusRoute:
+      ApiTenderDocumentReviewGraphFocusRoute,
+    ApiTenderDocumentReviewRunsRunIdRoute:
+      ApiTenderDocumentReviewRunsRunIdRouteWithChildren,
+  }
+
+const ApiTenderDocumentReviewRouteWithChildren =
+  ApiTenderDocumentReviewRoute._addFileChildren(
+    ApiTenderDocumentReviewRouteChildren,
+  )
+
 interface ApiUploadRouteChildren {
   ApiUploadBatchRoute: typeof ApiUploadBatchRoute
 }
@@ -2672,7 +2765,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSkillsRoute: ApiSkillsRouteWithChildren,
   ApiStartAgentRoute: ApiStartAgentRoute,
   ApiStartHermesRoute: ApiStartHermesRoute,
-  ApiTenderDocumentReviewRoute: ApiTenderDocumentReviewRoute,
+  ApiTenderDocumentReviewRoute: ApiTenderDocumentReviewRouteWithChildren,
   ApiTerminalCloseRoute: ApiTerminalCloseRoute,
   ApiTerminalInputRoute: ApiTerminalInputRoute,
   ApiTerminalResizeRoute: ApiTerminalResizeRoute,

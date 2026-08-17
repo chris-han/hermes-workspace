@@ -3,8 +3,8 @@
  * Renders a full ChatScreen in a side panel so users can chat while
  * viewing dashboard, skills, other pages, etc.
  */
-import { useCallback, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useCallback, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -23,6 +23,8 @@ import {
   resetNewChatHistory,
 } from '@/screens/chat/chat-queries'
 import { useWorkspaceStore } from '@/stores/workspace-store'
+import { useKnowledgeWorkbenchStore } from '@/stores/knowledge-workbench-store'
+import { deriveEmptyChatPrompts } from '@/screens/contextgraph-studio/contextgraph-workbench-context'
 import { Button } from '@/components/ui/button'
 import {
   TooltipContent,
@@ -35,11 +37,13 @@ export function ChatPanel() {
   const isOpen = useWorkspaceStore((s) => s.chatPanelOpen)
   const sessionKey = useWorkspaceStore((s) => s.chatPanelSessionKey)
   const legalContext = useWorkspaceStore((s) => s.legalCorpusChatContext)
+  const workbenchContext = useKnowledgeWorkbenchStore((s) => s.context)
   const setChatPanelOpen = useWorkspaceStore((s) => s.setChatPanelOpen)
   const setChatPanelSessionKey = useWorkspaceStore(
     (s) => s.setChatPanelSessionKey,
   )
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
 
   const [forcedSession, setForcedSession] = useState<{
@@ -53,6 +57,18 @@ export function ChatPanel() {
     forcedSession?.friendlyId === activeFriendlyId
       ? forcedSession.sessionKey
       : undefined
+  // UC-E16: when the right chat is open while the user is on the
+  // ContextGraph Studio surface, surface Studio-specific empty prompts
+  // (Sources / Extract / Graph / Inspect / Compare / Evaluate workbench)
+  // rather than the generic demo-dataset business prompts.
+  const isOnStudioSurface = location.pathname.startsWith('/contextgraph-studio')
+  const emptyChatPrompts = useMemo(
+    () =>
+      deriveEmptyChatPrompts(workbenchContext, {
+        studioSurface: isOnStudioSurface,
+      }),
+    [workbenchContext, isOnStudioSurface],
+  )
 
   // Session list for the dropdown
   const sessionsQuery = useQuery({
@@ -310,6 +326,7 @@ export function ChatPanel() {
                 }
                 compact
                 embedded
+                emptyChatPrompts={emptyChatPrompts}
               />
             </div>
           </motion.div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { projectGraphViewModel } from '@/screens/graph-explorer/graph/graphology-projection'
+import { projectGraphViewModel } from '../graphology-projection'
 import { useContextGraphStudioStore } from '@/stores/contextgraph-studio-store'
 import { uprightEdgeLabel } from '../edge-labels'
 

@@ -5,7 +5,7 @@ import forceAtlas2 from 'graphology-layout-forceatlas2'
 import Sigma from 'sigma'
 
 import type { GraphViewModel } from '@/contracts/graph-view-model'
-import { projectGraphViewModel } from '@/screens/graph-explorer/graph/graphology-projection'
+import { projectGraphViewModel } from './graphology-projection'
 import type { LayoutAlgorithm } from '@/stores/contextgraph-studio-store'
 import { cssToken, graphCategoryColor, stableGraphKeyHash } from './graph-viz-palette'
 import { uprightEdgeLabel } from './edge-labels'

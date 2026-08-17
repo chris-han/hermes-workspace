@@ -146,33 +146,64 @@
   background-color: var(--theme-card2) !important;
 }
 
+/* ----------------------------------------------------------------------
+ * Dropdown / <select> chrome — green swatch, never OS-default blue.
+ * Spec: DESIGN.md §5 "Dropdown Highlight Color — Green Swatch".
+ * Applies to all <select> elements + the workspace-specific
+ * .role-config-select / .theme-native-select hooks. The closed control
+ * gets accent-color so browsers paint the native chevron / scrollbar
+ * in green; the option popup palette is pinned with !important because
+ * OS chrome otherwise overrides :checked / :hover / :focus. The native
+ * popup is still drawn by the OS on most platforms — for full popup
+ * theming migrate to DropdownSelect.
+ * -------------------------------------------------------------------- */
+select,
 .role-config-select,
 .theme-native-select {
   background-color: var(--theme-input, var(--theme-card));
   border-color: var(--theme-border);
   color: var(--theme-text);
+  accent-color: var(--theme-accent);
 }
 
+select option,
 .role-config-select option,
 .theme-native-select option {
-  background-color: var(--theme-card) !important;
-  color: var(--theme-text) !important;
+  background-color: var(--theme-card);
+  color: var(--theme-text);
 }
 
+/* Highlighted / focused / selected / active option — all wear the green swatch
+   so keyboard navigation does not flicker between OS blue and our green. */
+select option:checked,
+select option:hover,
+select option:focus,
+select option:active,
 .role-config-select option:checked,
-.theme-native-select option:checked {
-  background: linear-gradient(
-    var(--theme-accent),
-    var(--theme-accent)
-  ) !important;
+.role-config-select option:hover,
+.role-config-select option:focus,
+.role-config-select option:active,
+.theme-native-select option:checked,
+.theme-native-select option:hover,
+.theme-native-select option:focus,
+.theme-native-select option:active {
   background-color: var(--theme-accent) !important;
-  box-shadow: 0 0 0 9999px var(--theme-accent) inset;
+  background: linear-gradient(var(--theme-accent), var(--theme-accent)) !important;
+  box-shadow: 0 0 0 9999px var(--theme-accent) inset !important;
   color: var(--theme-accent-foreground) !important;
 }
 
+select:focus,
 .role-config-select:focus,
 .theme-native-select:focus {
   border-color: var(--theme-focus);
+}
+
+select:disabled,
+.role-config-select:disabled,
+.theme-native-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .theme-border {
@@ -1889,4 +1920,25 @@ code {
       opacity 0.3s ease,
       border-radius 0.3s ease;
   }
+}
+
+/* Cursor affordance: every interactive surface advertises clickability. */
+/* Required so legacy/unstyled <button>, <a>, <select>, [role="button"], and any
+   element with an inline onclick handler show cursor: pointer by default. */
+button,
+a,
+select,
+[role='button'],
+[role='tab'],
+[role='link'],
+[onclick] {
+  cursor: pointer;
+}
+
+button:disabled,
+button[aria-disabled='true'],
+select:disabled,
+a[aria-disabled='true'],
+[role='button'][aria-disabled='true'] {
+  cursor: not-allowed;
 }

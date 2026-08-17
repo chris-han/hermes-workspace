@@ -13,13 +13,34 @@ export const GovernanceStateSchema = z.enum([
   'rejected',
 ])
 
+export const ActiveFunctionSchema = z.object({
+  surface: z.string().min(1),
+  function: z.string().min(1),
+  tab: z.string().min(1),
+})
+
+export const UserIntentSchema = z.object({
+  kind: z.string().min(1),
+  source: z.enum(['web_ui', 'chat', 'navigation']),
+  explicitness: z.enum(['implicit', 'explicit']),
+  targetType: z.string().nullable(),
+  targetIds: z.array(z.string()),
+})
+
 export const KnowledgeWorkbenchContextSchema = z.object({
-  schemaVersion: z.literal('knowledge_workbench_context.v2').default('knowledge_workbench_context.v2'),
+  schemaVersion: z
+    .literal('knowledge_workbench_context.v2')
+    .default('knowledge_workbench_context.v2'),
+  activeFunction: ActiveFunctionSchema.nullable().default(null),
+  userIntent: UserIntentSchema.nullable().default(null),
   graphRef: z.string().nullable().optional(),
   graphVersion: z.string().nullable().optional(),
   graphHash: z.string().nullable().optional(),
   authorityState: z.enum(['candidate', 'authoritative']).nullable().optional(),
-  runMode: z.enum(['evaluation_baseline', 'authoritative']).nullable().optional(),
+  runMode: z
+    .enum(['evaluation_baseline', 'authoritative'])
+    .nullable()
+    .optional(),
   candidateGraphId: z.string().nullable(),
   acceptedReleaseId: z.string().nullable(),
   acceptedReleaseVersion: z.string().nullable(),
@@ -27,7 +48,9 @@ export const KnowledgeWorkbenchContextSchema = z.object({
   selectedEdgeIds: z.array(z.string()),
   selectedRuleIds: z.array(z.string()),
   selectedCandidateId: z.string().nullable().default(null),
-  selectedEvidenceRefs: z.array(EvidenceRefSchema.shape.evidenceRef).default([]),
+  selectedEvidenceRefs: z
+    .array(EvidenceRefSchema.shape.evidenceRef)
+    .default([]),
   activeSourceIdentityRef: z.string().nullable().default(null),
   sourceAnchors: z.array(SourceAnchorSchema),
   governanceState: GovernanceStateSchema,
@@ -42,7 +65,9 @@ export const KnowledgeWorkbenchContextSchema = z.object({
 })
 
 export const KnowledgeWorkbenchResultSchema = z.object({
-  schemaVersion: z.literal('knowledge_workbench_result.v2').default('knowledge_workbench_result.v2'),
+  schemaVersion: z
+    .literal('knowledge_workbench_result.v2')
+    .default('knowledge_workbench_result.v2'),
   message: z.string(),
   focus: z.object({
     nodeIds: z.array(z.string()),
@@ -64,7 +89,11 @@ export const KnowledgeWorkbenchResultSchema = z.object({
 })
 
 export type GovernanceState = z.infer<typeof GovernanceStateSchema>
-export type KnowledgeWorkbenchContext = z.input<typeof KnowledgeWorkbenchContextSchema>
+export type ActiveFunction = z.infer<typeof ActiveFunctionSchema>
+export type UserIntent = z.infer<typeof UserIntentSchema>
+export type KnowledgeWorkbenchContext = z.input<
+  typeof KnowledgeWorkbenchContextSchema
+>
 export type KnowledgeWorkbenchResult = z.infer<
   typeof KnowledgeWorkbenchResultSchema
 >

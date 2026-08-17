@@ -1,5 +1,6 @@
 import path from 'node:path'
 import * as fs from 'node:fs/promises'
+import type { Stats } from 'node:fs'
 
 import {
   WORKSPACE_WIKI_DIRNAME,
@@ -384,6 +385,7 @@ export async function deleteKnowledgeFile(
 ): Promise<{
   ok: true
   path: string
+  alreadyGone: boolean
 }> {
   const resolved = resolveEffectiveWikiRoot(workspaceRoot, context)
   const rawPath = requestedPath?.trim() ?? ''
@@ -397,7 +399,22 @@ export async function deleteKnowledgeFile(
     resolved.effectiveRoot,
     path.resolve(resolved.effectiveRoot, rawPath),
   )
-  const stats = await fs.stat(targetPath)
+  // Idempotent delete: if the file is already gone (a previous delete, a race with
+  // another tab, or a stale path from the client), treat it as success instead of
+  // surfacing ENOENT to the UI.
+  let stats: Stats | null
+  try {
+    stats = await fs.stat(targetPath)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return {
+        ok: true,
+        path: relativeToWikiRoot(resolved.effectiveRoot, targetPath),
+        alreadyGone: true,
+      }
+    }
+    throw error
+  }
   if (!stats.isFile()) {
     throw new Error('Only files can be deleted here')
   }
@@ -405,6 +422,7 @@ export async function deleteKnowledgeFile(
   return {
     ok: true,
     path: relativeToWikiRoot(resolved.effectiveRoot, targetPath),
+    alreadyGone: false,
   }
 }
 

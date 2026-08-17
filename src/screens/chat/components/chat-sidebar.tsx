@@ -621,7 +621,6 @@ function ChatSidebarComponent({
     pathname === '/legal-corpus' ||
     pathname === '/database' ||
     pathname === '/effective-context'
-  const isGraphExplorerActive = pathname === '/graph-explorer'
   const isContextGraphStudioActive = pathname === '/contextgraph-studio'
   const isEvaluationActive = pathname.startsWith('/evaluation')
   const isTasksActive = pathname === '/tasks'
@@ -632,7 +631,6 @@ function ChatSidebarComponent({
   const knowledgeRoutes = [
     '/memory',
     '/knowledge-base',
-    '/graph-explorer',
     '/contextgraph-studio',
     '/evaluation',
     '/generated-policies',
@@ -978,13 +976,6 @@ function ChatSidebarComponent({
       icon: Book01Icon,
       label: t('nav.knowledgeBase'),
       active: isKnowledgeBaseActive,
-    },
-    {
-      kind: 'link',
-      to: '/graph-explorer',
-      icon: Book01Icon,
-      label: 'Graph Explorer',
-      active: isGraphExplorerActive,
     },
     {
       kind: 'link',

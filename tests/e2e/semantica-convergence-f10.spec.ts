@@ -166,16 +166,45 @@ test('F10 candidate review materialization and replay', async ({ page }) => {
   const sessionBody = await sessionResponse.text()
   expect(sessionResponse.ok(), sessionBody).toBeTruthy()
   const sessionId = JSON.parse(sessionBody).sessionKey as string
+  const graphContextResponse = await page.request.post(
+    '/api/semantier-proxy/api/contextgraph/builder/build',
+    { data: { source: 'fixed-docx' } },
+  )
+  const graphContextBody = await graphContextResponse.text()
+  expect(graphContextResponse.ok(), graphContextBody).toBeTruthy()
+  const graphContext = JSON.parse(graphContextBody) as {
+    artifactId: string
+    graphVersion: string
+    graphHash: string
+    authorityState: 'candidate' | 'authoritative'
+  }
+  const graphProjectionResponse = await page.request.get(
+    `/api/semantier-proxy/api/contextgraph/runtime?graph_ref=${encodeURIComponent(graphContext.artifactId)}&graph_version=${encodeURIComponent(graphContext.graphVersion)}`,
+  )
+  const graphProjectionBody = await graphProjectionResponse.text()
+  expect(graphProjectionResponse.ok(), graphProjectionBody).toBeTruthy()
+  const graphProjection = JSON.parse(graphProjectionBody) as {
+    nodes?: Array<{ id: string; sourceAnchors?: Array<{ anchorId?: string }> }>
+    edges?: Array<{ id: string }>
+  }
+  const selectedNodeId = graphProjection.nodes?.[0]?.id
+  const selectedEdgeId = graphProjection.edges?.[0]?.id
   async function askChat(message: string) {
     const response = await page.request.post(`http://127.0.0.1:8899/api/sessions/${encodeURIComponent(sessionId)}/chat/stream`, {
       timeout: 60_000,
       data: {
         message,
         knowledge_workbench_context: {
-          candidateGraphId: candidateId,
+          graphRef: graphContext.artifactId,
+          graphVersion: graphContext.graphVersion,
+          graphHash: graphContext.graphHash,
+          authorityState: graphContext.authorityState,
+          runMode: null,
+          candidateGraphId: graphContext.artifactId,
           acceptedReleaseId: detailPayload.acceptedTopology.graph_version,
-          selectedEdgeIds: [candidateId],
-          sourceAnchors: [{ anchorId: sourceAnchor }],
+          selectedNodeIds: selectedNodeId ? [selectedNodeId] : [],
+          selectedEdgeIds: selectedEdgeId ? [selectedEdgeId] : [],
+          sourceAnchors: graphProjection.nodes?.[0]?.sourceAnchors ?? [],
         },
       },
       headers: { accept: 'text/event-stream' },

@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  deriveEmptyChatPrompts,
-  projectStudioWorkbenchContext,
-  STUDIO_EMPTY_CHAT_PROMPTS,
-} from './contextgraph-workbench-context'
+import { projectStudioWorkbenchContext } from './contextgraph-workbench-context'
 
 const candidateIdentity = {
   graphRef: 'graph_v12',
@@ -46,6 +42,55 @@ describe('contextgraph workbench context projector', () => {
     expect(ctx.acceptedReleaseId).toBeNull()
     expect(ctx.selectedNodeIds).toEqual(['rule-001'])
     expect(ctx.runMode).toBeNull()
+  })
+
+  it('projects the active Studio function and tab navigation intent', () => {
+    const ctx = projectStudioWorkbenchContext({
+      mode: 'ground',
+      identity: null,
+      sourceIdentityRef: null,
+      extractionRunId: null,
+      selectedCandidateId: null,
+      selectedEvidenceRefs: [],
+      selectedNodeId: null,
+      selectedEdgeId: null,
+      mvlSummary: emptyMvl,
+    })
+
+    expect(ctx.activeFunction).toEqual({
+      surface: 'contextgraph-studio',
+      function: 'human_grounding',
+      tab: 'ground',
+    })
+    expect(ctx.userIntent).toEqual({
+      kind: 'open_function',
+      source: 'navigation',
+      explicitness: 'implicit',
+      targetType: null,
+      targetIds: [],
+    })
+  })
+
+  it('projects semantic selection intent without treating presentation state as intent', () => {
+    const ctx = projectStudioWorkbenchContext({
+      mode: 'graph',
+      identity: candidateIdentity,
+      sourceIdentityRef: null,
+      extractionRunId: null,
+      selectedCandidateId: null,
+      selectedEvidenceRefs: [],
+      selectedNodeId: 'rule-001',
+      selectedEdgeId: null,
+      mvlSummary: emptyMvl,
+    })
+
+    expect(ctx.userIntent).toEqual({
+      kind: 'inspect_selection',
+      source: 'web_ui',
+      explicitness: 'implicit',
+      targetType: 'node',
+      targetIds: ['rule-001'],
+    })
   })
 
   it('sets acceptedReleaseId for authoritative graphs and clears candidateGraphId', () => {
@@ -123,37 +168,5 @@ describe('contextgraph workbench context projector', () => {
     })
     expect(ctx.runMode).toBe('evaluation_baseline')
     expect(ctx.graphRef).toBe('graph_v12')
-  })
-
-  it('falls back to demo prompts when no active workbench context exists', () => {
-    const empty = projectStudioWorkbenchContext({
-      mode: 'sources',
-      identity: null,
-      sourceIdentityRef: null,
-      extractionRunId: null,
-      selectedCandidateId: null,
-      selectedEvidenceRefs: [],
-      selectedNodeId: null,
-      selectedEdgeId: null,
-      mvlSummary: emptyMvl,
-    })
-    expect(deriveEmptyChatPrompts(empty)).toEqual([...STUDIO_EMPTY_CHAT_PROMPTS])
-  })
-
-  it('derives context-aware prompts when source/candidate/graph is active', () => {
-    const ctx = projectStudioWorkbenchContext({
-      mode: 'ground',
-      identity: candidateIdentity,
-      sourceIdentityRef: 'src_poc_sensitive_terms',
-      extractionRunId: 'extraction_run_v1',
-      selectedCandidateId: 'candidate-001',
-      selectedEvidenceRefs: ['ev_73bc'],
-      selectedNodeId: null,
-      selectedEdgeId: null,
-      mvlSummary: emptyMvl,
-    })
-    const prompts = deriveEmptyChatPrompts(ctx)
-    expect(prompts.length).toBeGreaterThan(0)
-    expect(prompts).toContain('帮助我审阅这个候选')
   })
 })

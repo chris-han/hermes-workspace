@@ -179,6 +179,7 @@ describe('knowledge-files workspace operations', () => {
     ).resolves.toEqual({
       ok: true,
       path: '招投标/source.pdf',
+      alreadyGone: false,
     })
     expect(
       fsSync.existsSync(

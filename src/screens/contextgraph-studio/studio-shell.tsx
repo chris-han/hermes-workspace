@@ -1,10 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
+  AiScanIcon,
   Alert02Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowUpRight01Icon,
+  Delete02Icon,
   PanelRightCloseIcon,
   PanelRightOpenIcon,
   PauseIcon,
@@ -20,6 +22,7 @@ import {
   Settings01Icon,
   ZoomInAreaIcon,
   ZoomOutAreaIcon,
+  ViewIcon,
 } from '@hugeicons/core-free-icons'
 
 import { useSettingsStore } from '@/hooks/use-settings'
@@ -94,6 +97,41 @@ type AssertionCandidate = {
 
 type SourceRow = [string, string, string, string, string, string]
 
+export function canonicalBodyFromCurationMarkdown(content: string): string {
+  const lines = content.replace(/\r\n/g, '\n').split('\n')
+  let index = 0
+  if (lines[index]?.startsWith('# ')) index += 1
+  while (index < lines.length && !lines[index]?.trim()) index += 1
+  while (index < lines.length && lines[index]?.trim().startsWith('>')) index += 1
+  while (index < lines.length && !lines[index]?.trim()) index += 1
+  return lines.slice(index).join('\n').trim()
+}
+
+const KNOWLEDGE_BUILDER_API = '/api/semantier-proxy/api/knowledge/builder'
+
+type KnowledgeUploadResult = {
+  ok?: boolean
+  kind?: string
+  originalName?: string
+  storedName?: string
+  path?: string
+  stagedUploadRef?: string
+  targetWikiPath?: string
+  message?: string
+}
+
+function sourceRowFromUpload(result: KnowledgeUploadResult): SourceRow | null {
+  const name = result.storedName ?? result.originalName
+  if (!result.ok || !name) return null
+  const extension = name.split('.').pop()?.toUpperCase() || 'SOURCE'
+  const status = result.kind === 'staged_for_ingest' ? 'Waiting for ingest' : 'Ready'
+  return [name, extension, status, '—', '—', '—']
+}
+
+function sourceNameKey(name: string): string {
+  return name.trim().toLocaleLowerCase().replace(/\.(docx?|pdf|md)$/i, '')
+}
+
 function StatusPill({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'candidate' | 'success' | 'warning' }) {
   const toneClass =
     tone === 'candidate'
@@ -106,14 +144,19 @@ function StatusPill({ children, tone = 'neutral' }: { children: React.ReactNode;
   return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${toneClass}`}>{children}</span>
 }
 
-function StudioButton({ children, primary = false, className = '', onClick, title, disabled = false }: { children: React.ReactNode; primary?: boolean; className?: string; onClick?: () => void; title?: string; disabled?: boolean }) {
+function StudioButton({ children, primary = false, className = '', onClick, title, ariaLabel, disabled = false }: { children: React.ReactNode; primary?: boolean; className?: string; onClick?: () => void; title?: string; ariaLabel?: string; disabled?: boolean }) {
   return (
     <button
       type="button"
       title={title}
+      aria-label={ariaLabel}
       onClick={onClick}
       disabled={disabled}
       className={`inline-flex h-8 items-center justify-center rounded-md border px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)] ${
+        disabled
+          ? 'cursor-not-allowed opacity-60'
+          : 'cursor-pointer'
+      } ${
         primary
           ? 'border-primary bg-primary text-primary-foreground hover:brightness-95'
           : 'border-border bg-background text-foreground hover:bg-muted'
@@ -287,6 +330,7 @@ export function StudioShell() {
       extractionRunId,
       selectedCandidateId: null,
       selectedEvidenceRefs: selectedEvidenceRef ? [selectedEvidenceRef] : (viewModel?.ok ? (viewModel.viewModel.sourceEvidenceRefs ?? []) : []),
+      selectedEvidenceRef,
       selectedNodeId,
       selectedEdgeId,
       mvlSummary,
@@ -360,21 +404,20 @@ export function StudioShell() {
     >
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-3.5">
         <h1 className="shrink-0 text-sm font-semibold">{zh ? 'ContextGraph Studio / 上下文图工作台' : 'ContextGraph Studio'}</h1>
-        <div className="hidden min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground md:flex">
-          <span className="max-w-[220px] truncate">{runtimeIdentity.graphRef}</span>
-          <StatusPill tone={runtimeIdentity.authorityState === 'authoritative' ? 'success' : 'candidate'}>{runtimeIdentity.authorityState}</StatusPill>
-          <span className="font-mono">{runtimeIdentity.graphVersion} · {runtimeIdentity.graphHash.slice(0, 8)}…</span>
-        </div>
+        {(runtimeIdentity.graphRef || runtimeIdentity.graphVersion || runtimeIdentity.graphHash) ? (
+          <div className="hidden min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground md:flex">
+            {runtimeIdentity.graphRef ? (
+              <span className="max-w-[220px] truncate">{runtimeIdentity.graphRef}</span>
+            ) : null}
+            <StatusPill tone={runtimeIdentity.authorityState === 'authoritative' ? 'success' : 'candidate'}>{runtimeIdentity.authorityState}</StatusPill>
+            <span className="font-mono">
+              {runtimeIdentity.graphVersion}
+              {runtimeIdentity.graphHash ? ` · ${runtimeIdentity.graphHash.slice(0, 8)}…` : null}
+            </span>
+          </div>
+        ) : null}
         <div className="min-w-0 flex-1" />
         <span className="hidden max-w-[300px] truncate text-[10px] text-muted-foreground xl:block">{contextSummary}</span>
-        <button
-          type="button"
-          onClick={() => setSourceOpen(!sourceOpen)}
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]"
-        >
-          <HugeiconsIcon icon={FileViewIcon} size={15} strokeWidth={1.7} />
-          <span>{zh ? '来源' : 'Source'}</span>
-        </button>
         <button
           type="button"
           aria-label={chatPanelOpen ? (zh ? '关闭右侧对话面板' : 'Close right chat panel') : (zh ? '打开右侧对话面板' : 'Open right chat panel')}
@@ -386,20 +429,22 @@ export function StudioShell() {
         </button>
       </header>
 
-      <nav className="flex h-10 shrink-0 items-end gap-1 overflow-x-auto border-b border-border bg-card px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <nav aria-label="ContextGraph Studio modes" className="flex h-10 shrink-0 items-end gap-1 overflow-x-auto border-b border-border bg-card px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {(['sources', 'extract', 'ground', 'graph', 'inspect', 'compare', 'evaluate'] as const).map((item) => (
           <button
             key={item}
             type="button"
+            aria-current={mode === item ? 'page' : undefined}
             onClick={() => setMode(item)}
-            className={`h-9 shrink-0 border-b-2 px-2.5 text-xs transition-colors ${mode === item ? 'border-primary font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+            className={`h-9 shrink-0 cursor-pointer border-b-2 px-2.5 text-xs transition-colors ${mode === item ? 'border-primary font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
           >
             {item === 'sources' ? (zh ? '来源' : 'Sources') : item === 'extract' ? (zh ? '抽取' : 'Extract') : item === 'ground' ? (zh ? '校准' : 'Ground') : item === 'graph' ? (zh ? '图谱' : 'Graph') : item === 'inspect' ? (zh ? '检查' : 'Inspect') : item === 'compare' ? (zh ? '比较' : 'Compare') : (zh ? '评估' : 'Evaluate')}
           </button>
         ))}
       </nav>
 
-      <section className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
         {mode === 'sources' ? <SourcesMode zh={zh} onNext={() => setMode('extract')} /> : null}
         {mode === 'extract' ? <ExtractMode zh={zh} extractionRunId={extractionRunId} onRun={handleExtractionRun} onNext={() => setMode('ground')} onCandidates={setCandidates} /> : null}
         {mode === 'ground' ? <GroundMode zh={zh} extractionRunId={extractionRunId} candidateGraphId={candidateGraphId} assertionCandidates={candidates} /> : null}
@@ -426,11 +471,12 @@ export function StudioShell() {
         ) : null}
         {mode === 'compare' ? <CompareMode zh={zh} runtimeIdentity={runtimeIdentity} onGraph={() => setMode('graph')} onGround={() => setMode('ground')} /> : null}
         {mode === 'evaluate' ? <EvaluateMode zh={zh} runtimeIdentity={runtimeIdentity} /> : null}
+        </div>
         {runtimeProjectionError ? (
           <div
             data-testid="contextgraph-studio-runtime-error"
             role="status"
-            className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 flex items-start gap-2 border-t border-warning/40 bg-warning/10 px-4 py-2 text-[11px] text-warning"
+            className="pointer-events-auto flex items-start gap-2 border-t border-warning/40 bg-warning/10 px-4 py-2 text-[11px] text-warning"
           >
             <HugeiconsIcon icon={Alert02Icon} size={14} strokeWidth={1.7} className="mt-0.5 shrink-0" />
             <div className="flex-1 leading-5">
@@ -447,15 +493,16 @@ export function StudioShell() {
                       ? '运行时投影不符合 v1 schema；Studio 不能在解析前显示数据。'
                       : 'Runtime projection does not match the v1 schema; the Studio cannot display data before parsing.'
                     : zh
-                      ? '运行时投影请求失败；请稍后重试或打开 /graph-explorer。'
+                      ? '运行时投影请求失败；请稍后重试或选择已发布的图。'
                     : 'Runtime projection request failed; select a released graph and retry.'}
               </span>
-              <a
-                href="/contextgraph-studio"
+              <button
+                type="button"
+                onClick={() => setMode('graph')}
                 className="ml-2 underline-offset-2 hover:underline"
               >
-                {zh ? '打开 Graph Explorer' : 'Open Graph Explorer'}
-              </a>
+                {zh ? '打开 Graph 标签页' : 'Open Graph tab'}
+              </button>
             </div>
           </div>
         ) : null}
@@ -466,20 +513,36 @@ export function StudioShell() {
 
 export function SourcesMode({ zh, onNext }: { zh: boolean; onNext: () => void }) {
   const [rows, setRows] = useState<SourceRow[]>([])
+  const [pendingRows, setPendingRows] = useState<SourceRow[]>([])
+  const [sourcePaths, setSourcePaths] = useState<Record<string, string>>({})
+  const [sourcePreview, setSourcePreview] = useState<{ name: string; content: string } | null>(null)
+  const [selectedSourceNames, setSelectedSourceNames] = useState<string[]>([])
   const [status, setStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   const [uploading, setUploading] = useState(false)
+  const [extracting, setExtracting] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const refreshSources = useCallback(async () => {
     setStatus('loading')
-    const response = await fetch('/api/sources')
+    const response = await fetch('/api/knowledge/list')
     if (!response.ok) throw new Error(`sources:${response.status}`)
-    const payload = (await response.json()) as { sources?: Array<{ name?: string; mediaType?: string; status?: string; candidates?: number; issues?: number; lastRun?: string }> }
-    setRows((payload.sources ?? []).map((source) => [
-          source.name ?? 'Unnamed source', source.mediaType ?? 'DOCX', source.status ?? 'Processing',
-          String(source.candidates ?? '—'), String(source.issues ?? '—'), source.lastRun ?? '—',
-        ]))
+    const payload = (await response.json()) as {
+      pages?: Array<{ name?: string; title?: string; path?: string; updatedAt?: string }>
+    }
+    const nextPaths: Record<string, string> = {}
+    const nextRows = (payload.pages ?? []).map((page): SourceRow => {
+      const name = page.title ?? page.name ?? page.path ?? 'Unnamed source'
+      if (page.path) nextPaths[name] = page.path
+      const extension = page.path?.split('.').pop()?.toUpperCase() || 'SOURCE'
+      return [name, extension, 'Ready', '—', '—', page.updatedAt ?? '—']
+    })
+    // Replace rows + sourcePaths wholesale (not merge) so deleted entries do not linger
+    // and we never call /api/knowledge/read with a path that no longer exists on disk.
+    const persistedKeys = new Set(nextRows.map((row) => sourceNameKey(row[0])))
+    setRows(nextRows)
+    setPendingRows((current) => current.filter((row) => !persistedKeys.has(sourceNameKey(row[0]))))
+    setSourcePaths(nextPaths)
     setStatus('ready')
   }, [])
 
@@ -492,18 +555,203 @@ export function SourcesMode({ zh, onNext }: { zh: boolean; onNext: () => void })
     setUploading(true)
     try {
       const form = new FormData()
-      form.append('file', file)
+      form.append('files', file)
+      form.append('path', 'uploads')
+      form.append('ingestMode', 'extract')
       form.append('session_id', 'knowledge-builder')
-      const response = await fetch('/upload', { method: 'POST', body: form })
+      const response = await fetch('/api/knowledge/upload', { method: 'POST', body: form })
       if (!response.ok) throw new Error(`upload:${response.status}`)
+      const results = (await response.json()) as KnowledgeUploadResult[]
+      const failures = results.filter((result) => result.ok === false)
+      const uploadedRows = results
+        .map(sourceRowFromUpload)
+        .filter((row): row is SourceRow => row !== null)
+      if (failures.length > 0) {
+        setUploadError(
+          failures
+            .map((result) => result.message ?? `Upload failed: ${result.originalName ?? file.name}`)
+            .join('; '),
+        )
+      }
+      if (uploadedRows.length > 0) {
+        const uploadedPaths: Record<string, string> = {}
+        results.forEach((result) => {
+          const name = result.storedName ?? result.originalName
+          const path = result.path ?? result.targetWikiPath
+          if (result.ok && name && path) uploadedPaths[name] = path
+        })
+        setSourcePaths((current) => ({ ...current, ...uploadedPaths }))
+        setPendingRows((current) => [
+          ...uploadedRows.filter((candidate) => !current.some((row) => row[0] === candidate[0])),
+          ...current,
+        ])
+
+        for (const result of results) {
+          if (result.kind !== 'staged_for_ingest' || !result.stagedUploadRef) continue
+          const ingestResponse = await fetch('/api/knowledge/ingest', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              uploadRef: result.stagedUploadRef,
+              confirmed: true,
+              targetDir: 'uploads',
+              sessionId: 'knowledge-builder',
+            }),
+          })
+          const ingestPayload = (await ingestResponse.json().catch(() => ({}))) as {
+            ok?: boolean
+            message?: string
+            error?: string
+          }
+          if (!ingestResponse.ok || ingestPayload.ok === false) {
+            throw new Error(ingestPayload.message ?? ingestPayload.error ?? `ingest:${ingestResponse.status}`)
+          }
+        }
+      }
       await refreshSources()
-    } catch {
+    } catch (error) {
       setStatus('unavailable')
-      setUploadError(zh ? '上传失败，请重试。' : 'Upload failed. Please try again.')
+      setUploadError(
+        error instanceof Error && error.message !== 'Failed to fetch'
+          ? error.message
+          : zh
+            ? '上传失败，请重试。'
+            : 'Upload failed. Please try again.',
+      )
     } finally {
       setUploading(false)
     }
   }, [refreshSources, zh])
+
+  const visibleRows = [
+    ...pendingRows,
+    ...rows.filter((row) => !pendingRows.some((pending) => pending[0] === row[0])),
+  ]
+
+  const openSource = useCallback(async (row: SourceRow) => {
+    const path = sourcePaths[row[0]]
+    if (!path) {
+      setUploadError(zh ? '该来源尚未生成可打开的页面。' : 'This source has no readable page yet.')
+      return
+    }
+    try {
+      const response = await fetch(`/api/knowledge/read?path=${encodeURIComponent(path)}`)
+      const payload = (await response.json()) as { content?: string; error?: string }
+      if (!response.ok) throw new Error(payload.error ?? `source:${response.status}`)
+      setSourcePreview({ name: row[0], content: payload.content ?? '' })
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : (zh ? '无法打开来源。' : 'Unable to open source.'))
+    }
+  }, [sourcePaths, zh])
+
+  const extractSource = useCallback(async (row: SourceRow) => {
+    const path = sourcePaths[row[0]]
+    if (!path) throw new Error(zh ? '该来源尚未生成可抽取的页面。' : 'This source has no extractable page yet.')
+    const sourceResponse = await fetch(`/api/knowledge/read?path=${encodeURIComponent(path)}`)
+    const sourcePayload = (await sourceResponse.json().catch(() => ({}))) as { content?: string; error?: string }
+    if (!sourceResponse.ok) throw new Error(sourcePayload.error ?? `source:${sourceResponse.status}`)
+
+    const discoveryResponse = await fetch(`${KNOWLEDGE_BUILDER_API}/discovery-runs`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        schemaVersion: 'knowledge_builder_discovery_run_request.v1',
+        sourceKind: 'text',
+        sourceRef: path,
+        sourceText: canonicalBodyFromCurationMarkdown(sourcePayload.content ?? ''),
+      }),
+    })
+    const discoveryPayload = (await discoveryResponse.json().catch(() => ({}))) as { run?: { discovery_run_id?: string; source_id?: string }; detail?: string; error?: string }
+    if (!discoveryResponse.ok || !discoveryPayload.run?.discovery_run_id || !discoveryPayload.run.source_id) {
+      throw new Error(discoveryPayload.detail ?? discoveryPayload.error ?? `discovery:${discoveryResponse.status}`)
+    }
+
+    const packageResponse = await fetch(`${KNOWLEDGE_BUILDER_API}/tender-packages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        schemaVersion: 'knowledge_builder_tender_package_request.v1',
+        discoveryRunId: discoveryPayload.run.discovery_run_id,
+        documents: [{ sourceId: discoveryPayload.run.source_id, documentId: row[0], role: 'main_tender' }],
+      }),
+    })
+    const packagePayload = (await packageResponse.json().catch(() => ({}))) as { tenderPackage?: { package_id?: string }; detail?: string; error?: string }
+    if (!packageResponse.ok || !packagePayload.tenderPackage?.package_id) {
+      throw new Error(packagePayload.detail ?? packagePayload.error ?? `package:${packageResponse.status}`)
+    }
+
+    const extractionResponse = await fetch(`${KNOWLEDGE_BUILDER_API}/extraction-runs`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        schemaVersion: 'knowledge_builder_extraction_run_request.v1',
+        discoveryRunId: discoveryPayload.run.discovery_run_id,
+        tenderPackageId: packagePayload.tenderPackage.package_id,
+        sourceKind: 'text',
+        sourceRef: path,
+        sourceText: sourcePayload.content ?? '',
+        documentId: row[0],
+        provider: 'semantica',
+        profile: 'tender_sensitive_v1',
+      }),
+    })
+    const extractionPayload = (await extractionResponse.json().catch(() => ({}))) as { detail?: string; error?: string }
+    if (!extractionResponse.ok) throw new Error(extractionPayload.detail ?? extractionPayload.error ?? `extraction:${extractionResponse.status}`)
+  }, [sourcePaths, zh])
+
+  const runBatchExtraction = useCallback(async () => {
+    const selectedRows = visibleRows.filter((row) => selectedSourceNames.includes(row[0]))
+    if (selectedRows.length === 0) return
+    setExtracting(true)
+    setUploadError(null)
+    try {
+      for (const row of selectedRows) await extractSource(row)
+      setSelectedSourceNames([])
+      onNext()
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : (zh ? '无法抽取来源。' : 'Unable to extract source.'))
+    } finally {
+      setExtracting(false)
+    }
+  }, [extractSource, onNext, selectedSourceNames, visibleRows, zh])
+
+  const deleteSource = useCallback(async (row: SourceRow) => {
+    const path = sourcePaths[row[0]]
+    if (!path) {
+      setUploadError(zh ? '该来源尚未生成可删除的页面。' : 'This source has no deletable page yet.')
+      return
+    }
+    if (!window.confirm(zh ? `删除来源“${row[0]}”？` : `Delete source “${row[0]}”?`)) return
+    // Optimistic update: remove the row from local state FIRST so the table refreshes immediately.
+    // If the API call fails we restore the row and surface the error.
+    const restoreRow = row
+    setUploadError(null)
+    setPendingRows((current) => current.filter((candidate) => candidate[0] !== row[0]))
+    setRows((current) => current.filter((candidate) => candidate[0] !== row[0]))
+    setSourcePaths((current) => {
+      const next = { ...current }
+      delete next[row[0]]
+      return next
+    })
+    try {
+      const response = await fetch('/api/knowledge/files', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ path }),
+      })
+      const payload = (await response.json().catch(() => ({}))) as { error?: string }
+      if (!response.ok) throw new Error(payload.error ?? `delete:${response.status}`)
+      // Re-sync with the server so the row stays gone even if the listing API returns a stale entry.
+      await refreshSources().catch(() => {
+        /* refresh failure shouldn't re-show the deleted file */
+      })
+    } catch (error) {
+      // Restore the row so the user can retry, and surface the error message.
+      setRows((current) => (current.some((candidate) => candidate[0] === restoreRow[0]) ? current : [restoreRow, ...current]))
+      setSourcePaths((current) => (current[restoreRow[0]] ? current : { ...current, [restoreRow[0]]: path }))
+      setUploadError(error instanceof Error ? error.message : (zh ? '无法删除来源。' : 'Unable to delete source.'))
+    }
+  }, [refreshSources, sourcePaths, zh])
 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -541,14 +789,29 @@ export function SourcesMode({ zh, onNext }: { zh: boolean; onNext: () => void })
           {uploading ? (zh ? '正在上传…' : 'Uploading…') : (zh ? '上传来源' : 'Upload source')}
         </StudioButton>
       </div>
-      <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5"><Input placeholder={zh ? '搜索来源…' : 'Search sources…'} className="min-w-[220px] flex-1 md:max-w-[340px]" /><select className="h-8 rounded-md border border-border bg-background px-2 text-xs"><option>{zh ? '全部状态' : 'All status'}</option></select><div className="flex-1" /><StudioButton>{zh ? '刷新' : 'Refresh'}</StudioButton></div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5"><Input placeholder={zh ? '搜索来源…' : 'Search sources…'} className="min-w-[220px] flex-1 md:max-w-[340px]" /><select className="h-8 rounded-md border border-border bg-background px-2 text-xs"><option>{zh ? '全部状态' : 'All status'}</option></select><div className="flex-1" /><StudioButton onClick={() => { void refreshSources().catch(() => setStatus('unavailable')) }}>{zh ? '刷新' : 'Refresh'}</StudioButton></div>
       <div className="min-h-0 overflow-auto">
         <table className="w-full border-collapse text-xs">
-          <thead className="sticky top-0 z-10 bg-muted text-[10px] uppercase tracking-wide text-muted-foreground"><tr>{[zh ? '文件 / 来源' : 'File / Source', zh ? '类型' : 'Type', zh ? '状态' : 'Status', zh ? '候选' : 'Candidates', zh ? '问题' : 'Issues', zh ? '最后运行' : 'Last run', zh ? '操作' : 'Actions'].map((h) => <th key={h} className="border-b border-border px-3 py-2.5 text-left font-semibold">{h}</th>)}</tr></thead>
-          <tbody>{rows.map((row, index) => <tr key={row[0]} className={index === 0 ? 'bg-primary/10' : 'hover:bg-muted/40'}>{row.map((value, i) => <td key={`${row[0]}-${i}`} className="border-b border-border px-3 py-3">{i === 0 ? <><strong>{value}</strong><div className="mt-0.5 font-mono text-[10px] text-muted-foreground">source_identity_ref</div></> : value}</td>)}<td className="border-b border-border px-3 py-3"><StudioButton>{row[2] === 'Failed' ? (zh ? '重试' : 'Retry') : (zh ? '打开' : 'Open')}</StudioButton></td></tr>)}{status === 'loading' ? <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">{zh ? '正在加载来源…' : 'Loading sources…'}</td></tr> : null}{status === 'unavailable' ? <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">{zh ? '来源 API 尚未启用' : 'Sources API is not enabled yet'}</td></tr> : null}</tbody>
+          <thead className="sticky top-0 z-10 bg-muted text-[10px] uppercase tracking-wide text-muted-foreground"><tr><th className="w-10 border-b border-border px-3 py-2.5" aria-label={zh ? '选择来源' : 'Select source'} />{[zh ? '文件 / 来源' : 'File / Source', zh ? '类型' : 'Type', zh ? '状态' : 'Status', zh ? '候选' : 'Candidates', zh ? '问题' : 'Issues', zh ? '最后运行' : 'Last run', zh ? '操作' : 'Actions'].map((h) => <th key={h} className="border-b border-border px-3 py-2.5 text-left font-semibold">{h}</th>)}</tr></thead>
+          <tbody>{visibleRows.map((row, index) => <tr key={row[0]} className={index === 0 ? 'bg-primary/10' : 'hover:bg-muted/40'}><td className="border-b border-border px-3 py-3"><input type="checkbox" checked={selectedSourceNames.includes(row[0])} onChange={() => setSelectedSourceNames((current) => current.includes(row[0]) ? current.filter((name) => name !== row[0]) : [...current, row[0]])} aria-label={zh ? `选择 ${row[0]}` : `Select ${row[0]}`} /></td>{row.map((value, i) => <td key={`${row[0]}-${i}`} className="border-b border-border px-3 py-3">{i === 0 ? <><strong>{value}</strong><div className="mt-0.5 font-mono text-[10px] text-muted-foreground">source_identity_ref</div></> : value}</td>)}<td className="border-b border-border px-3 py-3"><div className="flex items-center gap-1"><StudioButton className="size-8 p-0" onClick={() => void openSource(row)} disabled={!sourcePaths[row[0]] || extracting} title={zh ? '查看来源' : 'View source'} ariaLabel={zh ? '查看来源' : `View ${row[0]}`}><HugeiconsIcon icon={ViewIcon} size={15} strokeWidth={1.7} /></StudioButton><StudioButton className="size-8 p-0" onClick={() => { setExtracting(true); void extractSource(row).then(onNext).catch((error) => setUploadError(error instanceof Error ? error.message : 'Unable to extract source.')).finally(() => setExtracting(false)) }} disabled={!sourcePaths[row[0]] || extracting} title={zh ? '抽取来源' : 'Extract source'} ariaLabel={zh ? '抽取来源' : `Extract ${row[0]}`}><HugeiconsIcon icon={AiScanIcon} size={15} strokeWidth={1.7} /></StudioButton><StudioButton className="size-8 p-0 text-destructive" onClick={() => void deleteSource(row)} disabled={!sourcePaths[row[0]] || extracting} title={zh ? '删除来源' : 'Delete source'} ariaLabel={zh ? '删除来源' : `Delete ${row[0]}`}><HugeiconsIcon icon={Delete02Icon} size={15} strokeWidth={1.7} /></StudioButton></div></td></tr>)}{visibleRows.length === 0 && status === 'loading' ? <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">{zh ? '正在加载来源…' : 'Loading sources…'}</td></tr> : null}{visibleRows.length === 0 && status === 'unavailable' ? <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">{zh ? '来源 API 尚未启用' : 'Sources API is not enabled yet'}</td></tr> : null}</tbody>
         </table>
       </div>
-      <div className="flex min-h-10 items-center gap-3 border-t border-border px-3 text-[11px] text-muted-foreground"><span>{zh ? '已选' : 'Selected'}: <strong className="text-foreground">{rows[0]?.[0] ?? '—'}</strong></span><span className="font-mono">SourceIdentity + CanonicalSourceIR</span><span>AnyDoc structured</span><div className="flex-1" /><StudioButton primary onClick={onNext} disabled={!rows.length}>{zh ? '抽取' : 'Extract'}<HugeiconsIcon icon={ArrowRight01Icon} size={14} strokeWidth={1.7} className="ml-1.5" /></StudioButton></div>
+      {sourcePreview ? <div role="dialog" aria-label={zh ? '来源预览' : 'Source preview'} className="fixed inset-4 z-30 flex min-h-0 flex-col rounded-lg border border-border bg-card p-4 shadow-lg"><div className="flex items-center justify-between border-b border-border pb-2 text-xs font-semibold"><span>{sourcePreview.name}</span><StudioButton onClick={() => setSourcePreview(null)}>{zh ? '关闭' : 'Close'}</StudioButton></div><pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap py-3 text-xs leading-5">{sourcePreview.content}</pre></div> : null}
+      <div className="flex min-h-10 items-center gap-3 border-t border-border py-1 pl-3 pr-20 text-[11px] text-muted-foreground">
+        <span>
+          {zh ? '已选' : 'Selected'}: <strong className="text-foreground">{visibleRows[0]?.[0] ?? '—'}</strong>
+        </span>
+        <span className="font-mono">source_identity_ref · {visibleRows[0]?.[1] ?? '—'}</span>
+        <span>AnyDoc structured</span>
+        <span>
+          <strong className="text-foreground">{rows[0]?.[4] ?? '0'}</strong> {zh ? '未解决' : 'unresolved'}
+        </span>
+        <div className="flex-1" />
+        <StudioButton primary onClick={() => void runBatchExtraction()} disabled={selectedSourceNames.length === 0 || extracting} title={zh ? '批量抽取' : 'Batch extract'}>
+          <HugeiconsIcon icon={AiScanIcon} size={14} strokeWidth={1.7} className="mr-1.5" />
+          {extracting ? (zh ? '正在抽取…' : 'Extracting…') : (zh ? '批量抽取' : 'Batch extract')}
+        </StudioButton>
+      </div>
     </div>
   )
 }
@@ -563,23 +826,26 @@ export function ExtractMode({ zh, extractionRunId, onRun, onNext, onCandidates }
     let cancelled = false
     void (async () => {
       try {
-        const runsResponse = await fetch('/api/knowledge/builder/extraction-runs?limit=20')
+        const runsResponse = await fetch(`${KNOWLEDGE_BUILDER_API}/extraction-runs?limit=20`)
         if (!runsResponse.ok) throw new Error(`runs request failed (${runsResponse.status})`)
         const runsPayload = (await runsResponse.json()) as { extractionRuns?: ExtractionRun[] }
         const nextRuns = runsPayload.extractionRuns ?? []
         const latest = nextRuns[0]
         if (latest) {
-          const candidatesResponse = await fetch(`/api/knowledge/builder/assertion-candidates?extractionRunId=${encodeURIComponent(latest.extraction_run_id)}`)
+          const candidatesResponse = await fetch(`${KNOWLEDGE_BUILDER_API}/assertion-candidates?extractionRunId=${encodeURIComponent(latest.extraction_run_id)}`)
           if (!candidatesResponse.ok) throw new Error(`candidate request failed (${candidatesResponse.status})`)
           const candidatePayload = (await candidatesResponse.json()) as { assertionCandidates?: AssertionCandidate[] }
           if (!cancelled) {
+            const nextCandidates = candidatePayload.assertionCandidates ?? []
             setRuns(nextRuns)
-            setCandidates(candidatePayload.assertionCandidates ?? [])
+            setCandidates(nextCandidates)
+            onCandidates?.(nextCandidates)
             onRun(latest)
           }
         } else if (!cancelled) {
           setRuns([])
           setCandidates([])
+          onCandidates?.([])
         }
       } catch (reason) {
         if (!cancelled) setError(reason instanceof Error ? reason.message : 'Unable to load extraction runs')
@@ -588,7 +854,7 @@ export function ExtractMode({ zh, extractionRunId, onRun, onNext, onCandidates }
       }
     })()
     return () => { cancelled = true }
-  }, [onRun])
+  }, [onCandidates, onRun])
 
   const selectedRun = runs.find((run) => run.extraction_run_id === extractionRunId) ?? runs[0]
   const labelFor = (candidate: AssertionCandidate) => candidate.normalized_assertion.subject?.text ?? candidate.normalized_assertion.object?.text ?? candidate.normalized_assertion.predicate ?? candidate.assertion_id
@@ -670,6 +936,8 @@ export function GroundMode({
   const [actionPending, setActionPending] = useState(false)
   const [regroundOpen, setRegroundOpen] = useState(false)
   const [regroundBlockId, setRegroundBlockId] = useState('')
+  const [acceptedRelease, setAcceptedRelease] = useState<Record<string, any> | null>(null)
+  const [activationProjection, setActivationProjection] = useState<Record<string, any> | null>(null)
 
   const current = pending[index] ?? null
 
@@ -690,10 +958,10 @@ export function GroundMode({
     void (async () => {
       try {
         const [detailRes, previewRes, runRes] = await Promise.all([
-          fetch(`/api/knowledge/builder/assertion-candidates/${current.assertion_id}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`detail:${r.status}`)))),
-          fetch(`/api/knowledge/builder/assertion-candidates/${current.assertion_id}/graph-delta-preview`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`preview:${r.status}`)))),
+          fetch(`${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`detail:${r.status}`)))),
+          fetch(`${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}/graph-delta-preview`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`preview:${r.status}`)))),
           current.extraction_run_id
-            ? fetch(`/api/knowledge/builder/extraction-runs/${current.extraction_run_id}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`run:${r.status}`))))
+            ? fetch(`${KNOWLEDGE_BUILDER_API}/extraction-runs/${current.extraction_run_id}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`run:${r.status}`))))
             : Promise.resolve(null),
         ])
         if (cancelled) return
@@ -716,7 +984,7 @@ export function GroundMode({
     setPreviewStale(false)
     try {
       const next = await fetch(
-        `/api/knowledge/builder/assertion-candidates/${current.assertion_id}/graph-delta-preview`,
+        `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}/graph-delta-preview`,
       ).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`preview:${r.status}`))))
       setPreview(next as GroundPreview)
     } catch (error) {
@@ -751,7 +1019,7 @@ export function GroundMode({
           body.editedAssertion = editedAssertion
         }
         const result = await fetch(
-          `/api/knowledge/builder/assertion-candidates/${current.assertion_id}/grounding-events`,
+          `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}/grounding-events`,
           {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
@@ -765,8 +1033,8 @@ export function GroundMode({
         }
         const learningEventId = (result.payload as { learningEvent?: { event_id?: string } }).learningEvent?.event_id
         if (decision === 'accept' && learningEventId) {
-          await fetch(
-            `/api/knowledge/builder/assertion-candidates/${current.assertion_id}/release`,
+          const releasePayload = await fetch(
+            `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}/release`,
             {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
@@ -775,10 +1043,14 @@ export function GroundMode({
                 humanEventId: learningEventId,
               }),
             },
-          ).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`release:${r.status}`))))
+          ).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`release:${r.status}`)))) as { graphRelease?: Record<string, any> }
+          setAcceptedRelease(releasePayload.graphRelease ?? null)
+          setActivationProjection(null)
           // R7-09: accepted release creation is separate from activation.
           // Learning-gate outcomes must never mutate the active snapshot.
         }
+        setPending((candidates) => candidates.filter((candidate) => candidate.assertion_id !== current.assertion_id))
+        setIndex(0)
       } catch (error) {
         setActionError(error instanceof Error ? error.message : 'Unable to record decision')
       } finally {
@@ -787,6 +1059,30 @@ export function GroundMode({
     },
     [current?.assertion_id, preview],
   )
+
+  const activateRelease = useCallback(async () => {
+    const graphVersion = acceptedRelease?.graph_version
+    if (!graphVersion) return
+    setActionPending(true)
+    setActionError(null)
+    try {
+      const response = await fetch(
+        `${KNOWLEDGE_BUILDER_API}/graph-releases/${encodeURIComponent(graphVersion)}/project-activate`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ effectiveAt: new Date().toISOString() }),
+        },
+      )
+      const payload = await response.json()
+      if (!response.ok) throw new Error(String(payload.detail ?? `activation:${response.status}`))
+      setActivationProjection(payload.projection ?? null)
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to activate release')
+    } finally {
+      setActionPending(false)
+    }
+  }, [acceptedRelease?.graph_version])
 
   const submitReground = useCallback(async () => {
     if (!current || !regroundBlockId) return
@@ -932,6 +1228,16 @@ export function GroundMode({
               {zh ? '重新定位' : 'Reground'}
             </StudioButton>
           </div>
+          {acceptedRelease ? (
+            <div className="mt-3 rounded border border-success/30 bg-success/10 p-2 text-[11px]" data-testid="ground-accepted-release">
+              <div>AcceptedGraphRelease: <span className="font-mono">{acceptedRelease.graph_version}</span></div>
+              {activationProjection ? (
+                <div data-testid="ground-activation-snapshot">Activation snapshot: <span className="font-mono">{activationProjection.activation_set_snapshot_id ?? activationProjection.activationSetSnapshotId ?? 'activated'}</span></div>
+              ) : (
+                <StudioButton primary disabled={actionPending} onClick={() => void activateRelease()}>{zh ? '激活发布版本' : 'Activate release'}</StudioButton>
+              )}
+            </div>
+          ) : null}
           {regroundOpen ? (
             <div className="mt-2 rounded border border-border bg-muted/40 p-2 text-[11px]">
               <label className="flex flex-col gap-1">
@@ -1085,7 +1391,7 @@ export function GraphMode({ zh, sourceOpen, setSourceOpen, legendOpen, setLegend
         </div>
         {settingsOpen ? <div className="absolute bottom-10 left-[190px] z-10 w-56 rounded-lg border border-border bg-card p-3 text-[11px] shadow-sm"><strong>{zh ? '图设置' : 'Graph settings'}</strong><label className="mt-2 flex items-center justify-between gap-3"><span>{zh ? '允许拖动节点' : 'Enable node drag'}</span><input type="checkbox" checked={dragEnabled} onChange={(event) => setDragEnabled(event.target.checked)} /></label><div className="mt-2 flex items-center justify-between gap-3 text-muted-foreground"><span>{zh ? '大图性能模式' : 'Large-graph mode'}</span><span>{largeGraphPerformance ? 'ON' : 'OFF'}</span></div></div> : null}
         {legendOpen ? <div className="absolute bottom-10 right-3 z-10 w-56 rounded-lg border border-border bg-card p-2.5 text-[11px] shadow-sm"><strong>{zh ? '图例' : 'Legend'}</strong>{semanticTypes.slice(0, 16).map((semanticType) => <div key={semanticType} className="mt-1.5 flex items-center gap-2"><span className="size-2.5 rounded-full" style={{ backgroundColor: graphCategoryColor(semanticType) }} /><span className="truncate">{semanticType}</span></div>)}<LegendRow><HugeiconsIcon icon={ArrowRight01Icon} size={13} strokeWidth={1.7} /> Directed relation</LegendRow><LegendRow><HugeiconsIcon icon={Layers01Icon} size={13} strokeWidth={1.7} /> Parallel edges preserved</LegendRow></div> : null}
-        {rendererError ? <div role="alert" className="absolute inset-x-3 top-14 z-20 rounded-md border border-warning/40 bg-card p-3 text-xs shadow-sm"><strong className="text-warning">{zh ? 'Sigma 渲染器不可用。' : 'Sigma renderer unavailable.'}</strong><span className="ml-1 text-muted-foreground">{rendererError}</span><a href="/graph-explorer" className="ml-2 font-medium underline-offset-2 hover:underline">{zh ? '打开 Graph Explorer' : 'Open Graph Explorer'}</a></div> : null}
+        {rendererError ? <div role="alert" className="absolute inset-x-3 top-14 z-20 rounded-md border border-warning/40 bg-card p-3 text-xs shadow-sm"><strong className="text-warning">{zh ? 'Sigma 渲染器不可用。' : 'Sigma renderer unavailable.'}</strong><span className="ml-1 text-muted-foreground">{rendererError}</span></div> : null}
         <div className="absolute inset-x-0 bottom-0 z-10 flex h-7 items-center gap-3 overflow-hidden border-t border-border bg-card px-3 text-[10px] text-muted-foreground"><span><strong className="text-foreground">{viewModel?.nodes.length ?? 0}</strong> nodes</span><span><strong className="text-foreground">{viewModel?.edges.length ?? 0}</strong> directed edges</span><span>multi-edge</span><span>{layoutLabels[graphLayout]}{layoutRunning ? ' · running' : ''}</span>{largeGraphPerformance ? <span>{zh ? '性能模式' : 'performance mode'}</span> : null}<span className="truncate">selected: <strong className="text-foreground">{selectedNode?.label || selectedEdge?.relationshipType || (zh ? '无' : 'none')}</strong></span><span className="font-mono">{runtimeIdentity.graphVersion}</span></div>
       </div>
     </div>
@@ -1134,7 +1440,7 @@ export function InspectMode({ zh, run, onRun, onFindingContext, onOpenGraph }: {
   const detect = async () => {
     setBusy(true); setError('')
     try {
-      const response = await fetch('/api/tender-document-review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'detect', fileRef, requestedRuleFamilies: ['tender_compliance'] }) })
+      const response = await fetch('/api/tender-document-review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'detect', fileRef, sessionId: 'knowledge-builder', requestedRuleFamilies: ['tender_compliance'] }) })
       const payload = await response.json()
       if (!response.ok) throw new Error(String(payload.detail || payload.error || 'Detection failed'))
       onRun(payload.run); setRunId(payload.run.run_id); if (payload.run.findings?.[0]) selectFinding(payload.run.findings[0])
@@ -1204,17 +1510,13 @@ export function CompareMode({ zh, runtimeIdentity, onGraph, onGround }: { zh: bo
     setLoading(true)
     setError(null)
     try {
-      // Compare endpoint is a R7 deliverable; until then, surface a
-      // graceful "not yet wired" error so the user can see the seam is
-      // tracked rather than silently substituting mock diff data.
       const result = await fetch(
-        `/api/knowledge/builder/graph-releases/${newVersion}/compare?base=${encodeURIComponent(oldVersion)}`,
-      ).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`compare:${r.status}`)))).catch(() => null)
-      if (!result) {
-        setError('compare: not-yet-wired (R7)')
-        setDiff(null)
-        return
-      }
+        `${KNOWLEDGE_BUILDER_API}/graph-releases/${newVersion}/compare?base=${encodeURIComponent(oldVersion)}`,
+      ).then(async (response) => {
+        const payload = await response.json()
+        if (!response.ok) throw new Error(String(payload.detail ?? payload.error ?? `compare:${response.status}`))
+        return payload
+      })
       setDiff(result as CompareDiff)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to compare versions')
@@ -1232,21 +1534,19 @@ export function CompareMode({ zh, runtimeIdentity, onGraph, onGround }: { zh: bo
     <div className="grid h-full grid-rows-[auto_auto_1fr] bg-card">
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5 text-xs">
         <span>V0</span>
-        <select
+        <input
+          aria-label="Base graph version"
           className="h-8 rounded-md border border-border bg-background px-2 font-mono"
           value={oldVersion}
           onChange={(event) => setOldVersion(event.target.value)}
-        >
-          <option value={baseVersion}>{baseVersion}</option>
-        </select>
+        />
         <span>V1</span>
-        <select
+        <input
+          aria-label="New graph version"
           className="h-8 rounded-md border border-border bg-background px-2 font-mono"
           value={newVersion}
           onChange={(event) => setNewVersion(event.target.value)}
-        >
-          <option value={baseVersion}>{baseVersion}</option>
-        </select>
+        />
         <div className="flex-1" />
         <StudioButton primary disabled={loading || oldVersion === newVersion} onClick={() => void compare()}>
           {zh ? '比较' : 'Compare'}
@@ -1292,7 +1592,40 @@ export function CompareMode({ zh, runtimeIdentity, onGraph, onGround }: { zh: bo
 
 export function EvaluateMode({ zh, runtimeIdentity }: { zh: boolean; runtimeIdentity: StudioIdentity }) {
   const mvlSummary = useContextGraphStudioStore((state) => state.mvlWorkflowSummary)
-  const learningDecision = mvlSummary.learningDecision
+  const setMvlWorkflowSummary = useContextGraphStudioStore((state) => state.setMvlWorkflowSummary)
+  const [v0RunRef, setV0RunRef] = useState(mvlSummary.v0RunRef ?? '')
+  const [v1RunRef, setV1RunRef] = useState(mvlSummary.v1RunRef ?? '')
+  const [gateResult, setGateResult] = useState<Record<string, any> | null>(null)
+  const [gateError, setGateError] = useState<string | null>(null)
+  const [gateLoading, setGateLoading] = useState(false)
+  const learningDecision = gateResult?.decision ?? mvlSummary.learningDecision
+  const evaluate = useCallback(async () => {
+    if (!v0RunRef || !v1RunRef) return
+    setGateLoading(true)
+    setGateError(null)
+    try {
+      const response = await fetch('/api/semantier-proxy/api/contextgraph/evaluation/learning-gate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ v0_run_ref: v0RunRef, v1_run_ref: v1RunRef }),
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(String(payload.detail ?? payload.error ?? `evaluation:${response.status}`))
+      setGateResult(payload)
+      setMvlWorkflowSummary({
+        ...mvlSummary,
+        v0RunRef,
+        v1RunRef,
+        learningDecision: payload.decision,
+        evaluationRunId: v1RunRef,
+      })
+    } catch (error) {
+      setGateResult(null)
+      setGateError(error instanceof Error ? error.message : 'Unable to evaluate canonical runs')
+    } finally {
+      setGateLoading(false)
+    }
+  }, [mvlSummary, setMvlWorkflowSummary, v0RunRef, v1RunRef])
   const decisionLabel =
     learningDecision === 'GO'
       ? 'GO'
@@ -1326,17 +1659,23 @@ export function EvaluateMode({ zh, runtimeIdentity }: { zh: boolean; runtimeIden
           <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} strokeWidth={1.7} className="ml-1.5" />
         </a>
       </div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5 text-xs">
+        <input aria-label="V0 evaluation run" value={v0RunRef} onChange={(event) => setV0RunRef(event.target.value)} placeholder="V0 evaluation run ID" className="h-8 min-w-56 rounded-md border border-border bg-background px-2 font-mono" />
+        <input aria-label="V1 evaluation run" value={v1RunRef} onChange={(event) => setV1RunRef(event.target.value)} placeholder="V1 evaluation run ID" className="h-8 min-w-56 rounded-md border border-border bg-background px-2 font-mono" />
+        <StudioButton primary disabled={gateLoading || !v0RunRef || !v1RunRef} onClick={() => void evaluate()}>{gateLoading ? '…' : (zh ? '运行学习 Gate' : 'Run learning gate')}</StudioButton>
+        {gateError ? <span role="alert" className="text-destructive">{gateError}</span> : null}
+      </div>
       <div className="grid grid-cols-1 border-b border-border md:grid-cols-3">
-        <EvalSection title={zh ? '技术' : 'Technical'} rows={[]} />
-        <EvalSection title="UX" rows={[]} />
-        <EvalSection title={zh ? '校准 / 证据' : 'Grounding / Evidence'} rows={[]} />
+        <EvalSection title={zh ? '技术' : 'Technical'} rows={gateResult ? [['F1 delta', Number(gateResult.f1_delta).toFixed(3)], ['Precision delta', Number(gateResult.precision_delta).toFixed(3)], ['Recall delta', Number(gateResult.recall_delta).toFixed(3)]] : []} />
+        <EvalSection title="UX" rows={gateResult?.reviewer_minutes_delta_ratio == null ? [] : [['Reviewer time delta', `${(Number(gateResult.reviewer_minutes_delta_ratio) * 100).toFixed(1)}%`]]} />
+        <EvalSection title={zh ? '校准 / 证据' : 'Grounding / Evidence'} rows={gateResult ? [['Resolution', String(gateResult.canonical_resolution)], ['Reason', String(gateResult.reason)]] : []} />
       </div>
       <div className="border-b border-border px-3 py-3 text-xs text-muted-foreground">
         {zh ? '指标将从规范评估运行加载。当前页面不推断或显示浏览器提供的指标真值。' : 'Metrics are loaded from canonical evaluation runs. This screen never infers or displays browser-supplied metric truth.'}
       </div>
       <div className="p-4">
         <MiniLabel>{zh ? '失败 / 需复核 Gate' : 'Failed / review-required gates'}</MiniLabel>
-          <Quote>{zh ? '尚未加载规范 Gate 结果。' : 'Canonical gate results have not been loaded.'}</Quote>
+          <Quote>{gateResult?.reason ?? (zh ? '尚未加载规范 Gate 结果。' : 'Canonical gate results have not been loaded.')}</Quote>
       </div>
       <div className="flex flex-col gap-2 border-t border-border p-4 md:flex-row md:items-center md:justify-between">
         <div>

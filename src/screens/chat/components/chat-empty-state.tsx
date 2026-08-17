@@ -31,19 +31,113 @@ type Category = {
 
 type PromptProfile = 'generic' | 'smb_default' | 'apparel_trade'
 
+type LocalizedSuggestion = {
+  en: string
+  zh: string
+}
+
+const STUDIO_TAB_SUGGESTIONS: Record<
+  string,
+  {
+    title: LocalizedSuggestion
+    desc: LocalizedSuggestion
+    prompt: LocalizedSuggestion
+  }
+> = {
+  sources: {
+    title: { en: 'Register a controlled source', zh: '登记受控来源' },
+    desc: {
+      en: 'Review the active source and its ingestion status.',
+      zh: '查看当前来源及其导入状态。',
+    },
+    prompt: {
+      en: 'Using the current source-registration context, explain the active source status, identity, and the next safe ingestion step.',
+      zh: '基于当前来源登记上下文，说明来源状态、身份和下一步安全导入操作。',
+    },
+  },
+  extract: {
+    title: { en: 'Review extracted candidates', zh: '审阅抽取候选' },
+    desc: {
+      en: 'Inspect candidate assertions produced from the active source.',
+      zh: '检查当前来源生成的候选断言。',
+    },
+    prompt: {
+      en: 'Using the current extraction context, summarize the candidate assertions, their evidence coverage, and the highest-priority review items.',
+      zh: '基于当前抽取上下文，总结候选断言、证据覆盖情况和最高优先级的审阅项。',
+    },
+  },
+  ground: {
+    title: { en: 'Ground the current candidate', zh: '校准当前候选' },
+    desc: {
+      en: 'Check whether candidate meaning is supported by canonical evidence.',
+      zh: '检查候选含义是否由规范证据支持。',
+    },
+    prompt: {
+      en: 'Using the current grounding context, explain the candidate meaning, evidence sufficiency, ambiguity, and the recommended grounding action.',
+      zh: '基于当前校准上下文，说明候选含义、证据充分性、歧义和建议的校准动作。',
+    },
+  },
+  graph: {
+    title: { en: 'Explore the active graph', zh: '探索当前图谱' },
+    desc: {
+      en: 'Explain the active graph and its selected relationships.',
+      zh: '解释当前图谱及选中的关系。',
+    },
+    prompt: {
+      en: 'Using the current graph context, explain the most relevant concepts, relationships, and evidence without leaving the active graph version.',
+      zh: '基于当前图谱上下文，在不离开当前图版本的前提下，解释最相关的概念、关系和证据。',
+    },
+  },
+  inspect: {
+    title: { en: 'Inspect the current finding', zh: '检查当前发现' },
+    desc: {
+      en: 'Trace a tender finding to its graph and source lineage.',
+      zh: '追溯招标发现对应的图谱和来源血缘。',
+    },
+    prompt: {
+      en: 'Using the current inspection context, explain the finding, its target evidence, graph rule, origin evidence, and the next review action.',
+      zh: '基于当前检查上下文，说明发现、目标证据、图规则、来源证据和下一步审阅动作。',
+    },
+  },
+  compare: {
+    title: { en: 'Compare graph releases', zh: '比较图谱发布版本' },
+    desc: {
+      en: 'Identify meaningful changes between the active comparison sides.',
+      zh: '识别当前比较两侧之间的关键变化。',
+    },
+    prompt: {
+      en: 'Using the current comparison context, summarize the meaningful graph, assertion, and evidence changes between the active releases.',
+      zh: '基于当前比较上下文，总结活动发布版本之间的关键图谱、断言和证据变化。',
+    },
+  },
+  evaluate: {
+    title: { en: 'Evaluate the active graph', zh: '评估当前图谱' },
+    desc: {
+      en: 'Explain evaluation status and the next learning-gate action.',
+      zh: '解释评估状态和下一步学习门动作。',
+    },
+    prompt: {
+      en: 'Using the current evaluation context, explain the evaluation result, failed or review-required gates, and the highest-value next correction.',
+      zh: '基于当前评估上下文，解释评估结果、失败或需要复核的门，以及最有价值的下一项修正。',
+    },
+  },
+}
+
 function hasWorkbenchContext(context: KnowledgeWorkbenchContext): boolean {
   return Boolean(
+    context.activeFunction ||
+    context.userIntent ||
     context.graphRef ||
-      context.candidateGraphId ||
-      context.acceptedReleaseId ||
-      context.activeSourceIdentityRef ||
-      context.selectedCandidateId ||
-      context.extractionRunId ||
-      context.selectedNodeIds.length > 0 ||
-      context.selectedEdgeIds.length > 0 ||
-      context.selectedRuleIds.length > 0 ||
-      (context.selectedEvidenceRefs?.length ?? 0) > 0 ||
-      context.sourceAnchors.length > 0,
+    context.candidateGraphId ||
+    context.acceptedReleaseId ||
+    context.activeSourceIdentityRef ||
+    context.selectedCandidateId ||
+    context.extractionRunId ||
+    context.selectedNodeIds.length > 0 ||
+    context.selectedEdgeIds.length > 0 ||
+    context.selectedRuleIds.length > 0 ||
+    (context.selectedEvidenceRefs?.length ?? 0) > 0 ||
+    context.sourceAnchors.length > 0,
   )
 }
 
@@ -59,7 +153,19 @@ export function contextAwareCategoriesForWorkbench(
     context.selectedEdgeIds.length > 0 ||
     context.selectedRuleIds.length > 0
   const hasEvidence =
-    (context.selectedEvidenceRefs?.length ?? 0) > 0 || context.sourceAnchors.length > 0
+    (context.selectedEvidenceRefs?.length ?? 0) > 0 ||
+    context.sourceAnchors.length > 0
+
+  const tabSuggestion = context.activeFunction
+    ? STUDIO_TAB_SUGGESTIONS[context.activeFunction.tab]
+    : null
+  if (tabSuggestion) {
+    examples.push({
+      title: zh ? tabSuggestion.title.zh : tabSuggestion.title.en,
+      desc: zh ? tabSuggestion.desc.zh : tabSuggestion.desc.en,
+      prompt: zh ? tabSuggestion.prompt.zh : tabSuggestion.prompt.en,
+    })
+  }
 
   if (context.runMode === 'evaluation_baseline') {
     examples.push(
@@ -343,7 +449,6 @@ type ChatEmptyStateProps = {
   onSuggestionClick?: (prompt: string) => void
   compact?: boolean
   onStartDemoWalkthrough?: () => void
-  emptyChatPrompts?: readonly string[]
 }
 
 export function resolveChatEmptyStatePromptProfile(params: {
@@ -398,7 +503,6 @@ export function ChatEmptyState({
   onSuggestionClick,
   compact = false,
   onStartDemoWalkthrough,
-  emptyChatPrompts,
 }: ChatEmptyStateProps) {
   const authQuery = useSemantierAuthStatus()
   const locale = useSettingsStore((state) => state.settings.locale)
@@ -433,47 +537,45 @@ export function ChatEmptyState({
   const contextualCategories = compact
     ? contextAwareCategoriesForWorkbench(workbenchContext, zh)
     : null
-  const studioPromptCategories = emptyChatPrompts?.length
-    ? [{
-        label: zh ? '工作台建议' : 'Workbench suggestions',
-        icon: BrainIcon,
-        accent: 'var(--theme-accent)',
-        examples: emptyChatPrompts.map((prompt) => ({
-          title: prompt,
-          desc: zh ? '点击以填入对话框' : 'Click to add this prompt to chat',
-          prompt,
-        })) as Array<Example>,
-      }]
-    : null
-  const categories = studioPromptCategories ?? contextualCategories ?? categoriesForPromptProfile(promptProfile)
-  const hasStudioContext = Boolean(studioPromptCategories || contextualCategories)
-  const capabilityChips = hasStudioContext
+  const categories =
+    contextualCategories ?? categoriesForPromptProfile(promptProfile)
+  const hasContext = Boolean(contextualCategories)
+  const capabilityChips = hasContext
     ? []
     : capabilityChipsForPromptProfile(promptProfile)
   const visibleCategories =
     isShortViewport && !showAllCategories ? categories.slice(0, 2) : categories
-  const contextSummary = hasStudioContext && contextualCategories
-    ? [
-        workbenchContext.activeSourceIdentityRef ? (zh ? '来源' : 'source') : null,
-        workbenchContext.selectedCandidateId ? (zh ? '候选' : 'candidate') : null,
-        workbenchContext.selectedNodeIds.length > 0
-          ? `${workbenchContext.selectedNodeIds.length} ${zh ? '节点' : 'node'}`
-          : null,
-        workbenchContext.selectedEdgeIds.length > 0
-          ? `${workbenchContext.selectedEdgeIds.length} ${zh ? '边' : 'edge'}`
-          : null,
-        (workbenchContext.selectedEvidenceRefs?.length ?? 0) > 0
-          ? `${workbenchContext.selectedEvidenceRefs?.length ?? 0} EvidenceRef`
-          : null,
-        workbenchContext.runMode === 'evaluation_baseline'
-          ? zh
-            ? '评估'
-            : 'evaluation'
-          : null,
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : ''
+  const contextSummary =
+    hasContext && contextualCategories
+      ? [
+          workbenchContext.activeSourceIdentityRef
+            ? zh
+              ? '来源'
+              : 'source'
+            : null,
+          workbenchContext.selectedCandidateId
+            ? zh
+              ? '候选'
+              : 'candidate'
+            : null,
+          workbenchContext.selectedNodeIds.length > 0
+            ? `${workbenchContext.selectedNodeIds.length} ${zh ? '节点' : 'node'}`
+            : null,
+          workbenchContext.selectedEdgeIds.length > 0
+            ? `${workbenchContext.selectedEdgeIds.length} ${zh ? '边' : 'edge'}`
+            : null,
+          (workbenchContext.selectedEvidenceRefs?.length ?? 0) > 0
+            ? `${workbenchContext.selectedEvidenceRefs?.length ?? 0} EvidenceRef`
+            : null,
+          workbenchContext.runMode === 'evaluation_baseline'
+            ? zh
+              ? '评估'
+              : 'evaluation'
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : ''
 
   async function handleTrySuoYang() {
     setSeedingDemo(true)
@@ -514,19 +616,30 @@ export function ChatEmptyState({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className={`flex h-full flex-col items-center px-4 ${hasStudioContext ? 'justify-start py-4' : 'justify-center py-8'}`}
+      className={`flex h-full flex-col items-center px-4 ${hasContext ? 'justify-start py-4' : 'justify-center py-8'}`}
     >
-      <div className={`flex w-full max-w-5xl flex-col ${hasStudioContext ? 'items-stretch text-left' : 'items-center text-center'}`}>
-        {hasStudioContext ? (
+      <div
+        className={`flex w-full max-w-5xl flex-col ${hasContext ? 'items-stretch text-left' : 'items-center text-center'}`}
+      >
+        {hasContext ? (
           <div className="w-full">
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em]" style={{ color: 'var(--theme-muted)' }}>
+            <p
+              className="text-[11px] font-medium uppercase tracking-[0.12em]"
+              style={{ color: 'var(--theme-muted)' }}
+            >
               {zh ? '当前上下文' : 'Current context'}
             </p>
-            <h2 className="font-ui mt-1 text-lg font-semibold tracking-tight" style={{ color: 'var(--theme-text)' }}>
+            <h2
+              className="font-ui mt-1 text-lg font-semibold tracking-tight"
+              style={{ color: 'var(--theme-text)' }}
+            >
               {zh ? '基于正在查看的内容提问' : 'Ask about what you are viewing'}
             </h2>
             {contextSummary ? (
-              <p className="mt-1 text-[11px]" style={{ color: 'var(--theme-muted)' }}>
+              <p
+                className="mt-1 text-[11px]"
+                style={{ color: 'var(--theme-muted)' }}
+              >
                 {contextSummary}
               </p>
             ) : null}
@@ -541,10 +654,16 @@ export function ChatEmptyState({
                 style={{ padding: '4px' }}
               />
             </div>
-            <p className="brand-wordmark mb-2 text-[16px]" style={{ color: 'var(--theme-muted)' }}>
+            <p
+              className="brand-wordmark mb-2 text-[16px]"
+              style={{ color: 'var(--theme-muted)' }}
+            >
               semantier
             </p>
-            <h2 className="font-ui text-3xl font-bold tracking-tight" style={{ color: 'var(--theme-text)' }}>
+            <h2
+              className="font-ui text-3xl font-bold tracking-tight"
+              style={{ color: 'var(--theme-text)' }}
+            >
               Begin a session
             </h2>
           </>
@@ -582,19 +701,23 @@ export function ChatEmptyState({
           </>
         )}
 
-        <div className={`${hasStudioContext ? 'mt-4' : 'mt-6'} w-full max-w-4xl text-left`}>
+        <div
+          className={`${hasContext ? 'mt-4' : 'mt-6'} w-full max-w-4xl text-left`}
+        >
           <p
             className="mb-3 px-1 text-xs"
             style={{ color: 'var(--theme-muted)' }}
           >
-            {hasStudioContext
+            {hasContext
               ? zh
-                ? '基于统一上下文的建议'
-                : 'Suggestions from unified context'
-              : 'Demo dataset prompts'}
+                ? '基于当前上下文的建议'
+                : 'Suggested prompts for this context'
+              : 'Suggested prompts'}
           </p>
 
-          <div className={`grid grid-cols-1 gap-3 ${hasStudioContext || categories.length === 1 ? '' : 'sm:grid-cols-2'}`}>
+          <div
+            className={`grid grid-cols-1 gap-3 ${hasContext || categories.length === 1 ? '' : 'sm:grid-cols-2'}`}
+          >
             {visibleCategories.map((category) => (
               <div key={category.label} className="space-y-2">
                 <div

@@ -105,13 +105,18 @@ describe('chat empty state prompt profiles', () => {
     })
 
     expect(profile).toBe('smb_default')
-    expect(categoriesForPromptProfile(profile)[0]?.examples.map((item) => item.title)).toContain(
-      '试用 索阳 示例公司 — 60 秒获得洞察',
-    )
+    expect(
+      categoriesForPromptProfile(profile)[0]?.examples.map(
+        (item) => item.title,
+      ),
+    ).toContain('试用 索阳 示例公司 — 60 秒获得洞察')
   })
 
   it('derives graph and evidence prompts from unified workbench context', () => {
-    const categories = contextAwareCategoriesForWorkbench(WORKBENCH_CONTEXT, true)
+    const categories = contextAwareCategoriesForWorkbench(
+      WORKBENCH_CONTEXT,
+      true,
+    )
     const titles = categories?.[0]?.examples.map((item) => item.title)
 
     expect(titles).toContain('解释当前图选择')
@@ -128,6 +133,62 @@ describe('chat empty state prompt profiles', () => {
 
     expect(titles).toContain('Explain current evaluation')
     expect(titles).toContain('Diagnose failed gates')
+  })
+
+  it('uses the active tab to suggest work even when no object is selected', () => {
+    const emptyTabContext: KnowledgeWorkbenchContext = {
+      ...WORKBENCH_CONTEXT,
+      graphRef: null,
+      candidateGraphId: null,
+      selectedNodeIds: [],
+      selectedEdgeIds: [],
+      selectedRuleIds: [],
+      selectedEvidenceRefs: [],
+      activeSourceIdentityRef: null,
+      activeFunction: {
+        surface: 'contextgraph-studio',
+        function: 'source_registration',
+        tab: 'sources',
+      },
+      userIntent: {
+        kind: 'open_function',
+        source: 'navigation',
+        explicitness: 'implicit',
+        targetType: null,
+        targetIds: [],
+      },
+    }
+
+    const categories = contextAwareCategoriesForWorkbench(
+      emptyTabContext,
+      false,
+    )
+
+    expect(categories?.[0]?.examples.map((example) => example.title)).toContain(
+      'Register a controlled source',
+    )
+  })
+
+  it('uses the financial suggestions as the fallback when context is absent', () => {
+    expect(
+      contextAwareCategoriesForWorkbench(
+        {
+          ...WORKBENCH_CONTEXT,
+          graphRef: null,
+          candidateGraphId: null,
+          selectedNodeIds: [],
+          selectedRuleIds: [],
+          selectedEvidenceRefs: [],
+          activeSourceIdentityRef: null,
+        },
+        true,
+      ),
+    ).toBeNull()
+
+    const markup = renderToStaticMarkup(<ChatEmptyState compact />)
+    expect(markup).toContain('Suggested prompts')
+    expect(markup).toContain('营业分析')
+    expect(markup).not.toContain('Upload a controlled knowledge document')
   })
 
   it('renders the demo walkthrough actions inside the walkthrough cards', () => {

@@ -76,6 +76,7 @@ export async function createTenderDetection(
     tenderDocumentId?: string
   documentText?: string
   fileRef?: string
+  sessionId?: string
   sourceIdentity?: Record<string, unknown>
   canonicalSourceDocument?: Record<string, unknown>
     requestedRuleFamilies?: Array<string>

@@ -28,12 +28,17 @@ type WorkbenchState = {
   appliedCommandIds: Set<string>
   setContext: (context: KnowledgeWorkbenchContext) => void
   applyInteraction: (command: unknown, graph: GraphViewModel) => boolean
-  applyWorkbenchResult: (result: KnowledgeWorkbenchResult, graph: GraphViewModel) => boolean
+  applyWorkbenchResult: (
+    result: KnowledgeWorkbenchResult,
+    graph: GraphViewModel,
+  ) => boolean
   clearFocus: () => void
 }
 
 const EMPTY_CONTEXT: KnowledgeWorkbenchContext = {
   schemaVersion: 'knowledge_workbench_context.v2',
+  activeFunction: null,
+  userIntent: null,
   graphRef: null,
   graphVersion: null,
   graphHash: null,
@@ -116,7 +121,11 @@ export const useKnowledgeWorkbenchStore = create<WorkbenchState>(
       const nextIds = new Set(appliedCommandIds)
       nextIds.add(value.commandId)
       set({
-        context: { ...context, selectedNodeIds: value.nodeIds, selectedEdgeIds: value.edgeIds },
+        context: {
+          ...context,
+          selectedNodeIds: value.nodeIds,
+          selectedEdgeIds: value.edgeIds,
+        },
         presentation: {
           highlightedNodeIds:
             value.action === 'clear_focus' ? [] : value.nodeIds,
@@ -131,12 +140,28 @@ export const useKnowledgeWorkbenchStore = create<WorkbenchState>(
       return true
     },
     applyWorkbenchResult: (result, graph) => {
-      if (result.candidateGraphId !== get().context.candidateGraphId || result.acceptedReleaseId !== get().context.acceptedReleaseId) {
+      if (
+        result.candidateGraphId !== get().context.candidateGraphId ||
+        result.acceptedReleaseId !== get().context.acceptedReleaseId
+      ) {
         set({ diagnostic: 'graph_interaction_rejected_stale' })
         return false
       }
-      if (result.interaction && !get().applyInteraction(result.interaction, graph)) return false
-      set((state) => ({ context: { ...state.context, selectedNodeIds: result.focus.nodeIds, selectedEdgeIds: result.focus.edgeIds, selectedRuleIds: result.focus.ruleIds, selectedEvidenceRefs: result.focus.evidenceRefs, sourceAnchors: result.focus.sourceAnchors } }))
+      if (
+        result.interaction &&
+        !get().applyInteraction(result.interaction, graph)
+      )
+        return false
+      set((state) => ({
+        context: {
+          ...state.context,
+          selectedNodeIds: result.focus.nodeIds,
+          selectedEdgeIds: result.focus.edgeIds,
+          selectedRuleIds: result.focus.ruleIds,
+          selectedEvidenceRefs: result.focus.evidenceRefs,
+          sourceAnchors: result.focus.sourceAnchors,
+        },
+      }))
       return true
     },
     clearFocus: () => set({ presentation: EMPTY_PRESENTATION }),

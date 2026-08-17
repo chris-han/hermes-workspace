@@ -1,8 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router'
-
-import { GraphExplorerScreen } from '@/screens/graph-explorer/graph-explorer-screen'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/graph-explorer')({
   ssr: false,
-  component: GraphExplorerScreen,
+  beforeLoad: function redirectLegacyGraphExplorer({ search }) {
+    throw redirect({
+      to: '/contextgraph-studio',
+      search,
+      replace: true,
+    })
+  },
+  component: function LegacyGraphExplorerRedirect() {
+    return null
+  },
 })

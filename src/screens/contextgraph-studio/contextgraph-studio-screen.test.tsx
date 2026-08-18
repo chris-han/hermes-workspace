@@ -655,11 +655,11 @@ describe('ContextGraphStudioScreen', () => {
         ok: true,
         json: async () => ({
           authorityState: 'candidate_only',
+          assessmentSource: 'llm_structured',
           suggestions: [{
-            assertion_id: 'assertion-1', suggestion_status: 'ready_for_review',
-            confidence: 0.9, evidence_anchor_count: 1, provider: 'semantica',
-            provider_version: 'test', threshold: 0.75, rationale: 'ready',
-            suggested_at: '2026-08-18T00:00:00+00:00',
+            assertion_id: 'assertion-1', status: 'supported',
+            confidence: 0.9, evidence_anchor_refs: ['anchor-1'], provider: 'fixture',
+            model: 'fixture-model', rationale: 'supported', issues: [],
           }],
         }),
       })
@@ -687,7 +687,11 @@ describe('ContextGraphStudioScreen', () => {
       '/api/semantier-proxy/api/knowledge/builder/extraction-runs/run-1/ai-grounding-suggestions',
     )
     expect(onCandidates.mock.calls.at(-1)?.[0]?.[0]).toMatchObject({
-      ai_grounding_suggestion: { suggestion_status: 'ready_for_review' },
+      ai_grounding_suggestion: { suggestion_status: 'supported', assessment_source: 'llm_structured' },
+    })
+    expect(JSON.parse(String((fetchMock.mock.calls[2]?.[1] as RequestInit).body))).toEqual({
+      schemaVersion: 'knowledge_builder_ai_grounding_request.v2',
+      extractionRunId: 'run-1',
     })
   })
 
@@ -887,7 +891,7 @@ describe('ContextGraphStudioScreen', () => {
         },
       },
     ]
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input)
       if (url.endsWith('/graph-delta-preview')) {
         return { ok: true, json: async () => ({ available: false }) }
@@ -915,6 +919,46 @@ describe('ContextGraphStudioScreen', () => {
     expect(screen.queryByText('Ready candidate')).toBeNull()
     expect(screen.getAllByText('Low candidate').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy()
+  })
+
+  it('selects table rows and batch accepts without releasing or activating', async () => {
+    const candidate = {
+      assertion_id: 'assertion-batch', candidate_graph_id: 'graph-1', confidence: 0.8,
+      grounding_state: 'unresolved',
+      evidence_refs: [{ evidence_ref: 'ev-1', selector_hash: 'sel-1' }],
+      source_anchors: [{ anchor_id: 'anchor-1', exact_text: 'source' }],
+      normalized_assertion: { subject: { text: 'Batch candidate' } },
+      ai_grounding_suggestion: {
+        assertion_id: 'assertion-batch', assessment_source: 'llm_structured' as const,
+        suggestion_status: 'supported' as const, confidence: 0.95,
+        provider: 'fixture', model: 'fixture-model', rationale: 'supported',
+      },
+    }
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/batch-grounding-events')) {
+        return { ok: true, json: async () => ({ acceptedCount: 1, authorityState: 'human_grounded_not_released' }) }
+      }
+      if (url.endsWith('/graph-delta-preview')) {
+        return { ok: true, json: async () => ({ available: false }) }
+      }
+      return { ok: true, json: async () => ({ assertionCandidate: candidate, learningEvents: [] }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<GroundMode zh={false} extractionRunId="run-batch" candidateGraphId="graph-1" assertionCandidates={[candidate]} />)
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select Batch candidate' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Batch Accept' }))
+    expect(screen.getAllByText(/does not release or activate/i).length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Accept' }))
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/batch-grounding-events'))).toBe(true))
+    const batchCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/batch-grounding-events'))
+    const body = JSON.parse(String((batchCall?.[1] as RequestInit).body))
+    expect(body.items).toEqual([{ assertionId: 'assertion-batch', evidenceAnchorRefs: ['anchor-1'] }])
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/release'))).toBe(false)
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('project-activate'))).toBe(false)
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Batch Accept' })).toBeNull())
   })
 
   it('runs Inspect against the tender review API', async () => {

@@ -149,11 +149,23 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
   expect(aiGroundingResponse.ok(), await aiGroundingResponse.text()).toBeTruthy()
   const aiGroundingPayload = await aiGroundingResponse.json() as Record<string, any>
   expect(aiGroundingPayload.authorityState).toBe('candidate_only')
+  expect(aiGroundingPayload.assessmentSource).toBe('llm_structured')
   expect(aiGroundingPayload.summary?.total).toBe(extractedCandidates.length)
+  expect(String(aiGroundingPayload.aiGroundingRun?.provider ?? '')).toBeTruthy()
+  expect(String(aiGroundingPayload.aiGroundingRun?.model ?? '')).toBeTruthy()
   await expect(modeNavigation.getByRole('tab', { name: /^Ground$/i })).toHaveAttribute('aria-selected', 'true')
   await expectCurrentLineageStep('Ground')
   await expect(page.getByText(/Human Grounding/i)).toBeVisible()
-  await expect(page.getByText(/ready for review|low confidence|missing evidence/i).first()).toBeVisible()
+  await expect(page.getByText(/supported|unsupported|ambiguous|needs edit|provider error/i).first()).toBeVisible()
+  const batchResponsePromise = page.waitForResponse((response) =>
+    response.url().includes('/batch-grounding-events') && response.request().method() === 'POST',
+  )
+  await page.getByRole('checkbox', { name: /Select /i }).nth(1).click()
+  await page.getByRole('button', { name: /^Batch Accept$/i }).click()
+  await page.getByRole('button', { name: /^Confirm Accept$/i }).click()
+  const batchResponse = await batchResponsePromise
+  expect(batchResponse.ok(), await batchResponse.text()).toBeTruthy()
+  expect((await batchResponse.json() as Record<string, any>).authorityState).toBe('human_grounded_not_released')
   const releaseResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/release') && response.request().method() === 'POST',
   )

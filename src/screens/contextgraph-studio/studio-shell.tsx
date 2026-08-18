@@ -142,6 +142,7 @@ type AssertionCandidate = {
   confidence: number
   grounding_state: string
   evidence_refs: Array<{ evidence_ref: string; selector_hash: string }>
+  source_anchors?: Array<{ anchor_id: string; exact_text?: string }>
   normalized_assertion: {
     subject?: { text?: string } | null
     predicate?: string | null
@@ -2261,13 +2262,17 @@ export function ExtractMode({
           const candidatePayload = (await candidatesResponse.json()) as {
             assertionCandidates?: AssertionCandidate[]
             aiGroundingSuggestions?: AiGroundingSuggestion[]
+            aiGroundingAssessmentSource?: AiGroundingSuggestion['assessment_source']
           }
           if (!cancelled) {
             const suggestionByAssertion = Object.fromEntries(
-              (candidatePayload.aiGroundingSuggestions ?? []).map((suggestion) => [
-                suggestion.assertion_id,
-                suggestion,
-              ]),
+              (candidatePayload.aiGroundingSuggestions ?? []).map((suggestion) => {
+                const normalized = normalizeAiSuggestion(
+                  suggestion,
+                  candidatePayload.aiGroundingAssessmentSource ?? 'legacy_threshold',
+                )
+                return [normalized.assertion_id, normalized]
+              }),
             )
             const nextCandidates = (candidatePayload.assertionCandidates ?? []).map(
               (candidate) => ({
@@ -2320,8 +2325,8 @@ export function ExtractMode({
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            schemaVersion: 'knowledge_builder_ai_grounding_request.v1',
-            confidenceThreshold: 0.75,
+            schemaVersion: 'knowledge_builder_ai_grounding_request.v2',
+            extractionRunId: selectedRun.extraction_run_id,
           }),
         },
       )
@@ -2332,10 +2337,10 @@ export function ExtractMode({
       if (!response.ok)
         throw new Error(payload.detail ?? `ai-grounding:${response.status}`)
       const suggestionByAssertion = Object.fromEntries(
-        (payload.suggestions ?? []).map((suggestion) => [
-          suggestion.assertion_id,
-          suggestion,
-        ]),
+        (payload.suggestions ?? []).map((suggestion) => {
+          const normalized = normalizeAiSuggestion(suggestion, 'llm_structured')
+          return [normalized.assertion_id, normalized]
+        }),
       )
       const groundedCandidates = candidates.map((candidate) => ({
         ...candidate,
@@ -2383,6 +2388,7 @@ export function ExtractMode({
         <div className="flex-1" />
         <StudioButton
           primary
+          aria-busy={aiGroundingPending}
           disabled={
             !selectedRun ||
             selectedRun.run_status !== 'completed' ||
@@ -2404,6 +2410,11 @@ export function ExtractMode({
               ? 'AI 校准'
               : 'AI Ground'}
         </StudioButton>
+        <span className="sr-only" aria-live="polite">
+          {aiGroundingPending
+            ? (zh ? 'AI 校准正在运行' : 'AI grounding is running')
+            : (zh ? 'AI 校准空闲' : 'AI grounding is idle')}
+        </span>
       </div>
       {selectedRun?.run_status === 'failed' ? (
         <div
@@ -2517,6 +2528,7 @@ type GroundCandidate = {
   confidence: number
   grounding_state: string
   evidence_refs: Array<{ evidence_ref: string; selector_hash: string }>
+  source_anchors?: Array<{ anchor_id: string; exact_text?: string }>
   normalized_assertion: {
     subject?: { text?: string } | null
     predicate?: string | null
@@ -2528,14 +2540,37 @@ type GroundCandidate = {
 
 type AiGroundingSuggestion = {
   assertion_id: string
-  suggestion_status: 'ready_for_review' | 'low_confidence' | 'missing_evidence'
+  assessment_source?: 'legacy_threshold' | 'llm_structured'
+  suggestion_status:
+    | 'ready_for_review'
+    | 'low_confidence'
+    | 'missing_evidence'
+    | 'supported'
+    | 'unsupported'
+    | 'ambiguous'
+    | 'needs_edit'
+    | 'provider_error'
   confidence: number
-  evidence_anchor_count: number
-  provider: string
-  provider_version: string
-  threshold: number
+  evidence_anchor_count?: number
+  evidence_anchor_refs?: string[]
+  provider?: string
+  provider_version?: string
+  model?: string
+  threshold?: number
   rationale: string
-  suggested_at: string
+  issues?: string[]
+  suggested_at?: string
+}
+
+function normalizeAiSuggestion(
+  suggestion: AiGroundingSuggestion & { status?: AiGroundingSuggestion['suggestion_status'] },
+  source: NonNullable<AiGroundingSuggestion['assessment_source']>,
+): AiGroundingSuggestion {
+  return {
+    ...suggestion,
+    assessment_source: source,
+    suggestion_status: suggestion.status ?? suggestion.suggestion_status,
+  }
 }
 
 type GroundDetail = {
@@ -2598,6 +2633,9 @@ export function GroundMode({
   )
   const [aiFocus, setAiFocus] = useState('all')
   const [aiSort, setAiSort] = useState('priority')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [batchConfirmOpen, setBatchConfirmOpen] = useState(false)
+  const [batchPending, setBatchPending] = useState(false)
   const [index, setIndex] = useState(0)
   const [detail, setDetail] = useState<GroundDetail | null>(null)
   const [preview, setPreview] = useState<GroundPreview | null>(null)
@@ -2625,7 +2663,16 @@ export function GroundMode({
   const current = candidateList[index] ?? null
 
   const visibleCandidates = useMemo(() => {
-    const priority = { missing_evidence: 0, low_confidence: 1, ready_for_review: 2 }
+    const priority: Record<string, number> = {
+      provider_error: 0,
+      unsupported: 1,
+      ambiguous: 2,
+      needs_edit: 3,
+      missing_evidence: 4,
+      low_confidence: 5,
+      supported: 6,
+      ready_for_review: 7,
+    }
     return candidateList
       .filter((candidate) => {
         const suggestion = aiSuggestions[candidate.assertion_id]
@@ -2634,12 +2681,14 @@ export function GroundMode({
       .sort((left, right) => {
         const leftSuggestion = aiSuggestions[left.assertion_id]
         const rightSuggestion = aiSuggestions[right.assertion_id]
-        if (aiSort === 'confidence_asc') return left.confidence - right.confidence
-        if (aiSort === 'confidence_desc') return right.confidence - left.confidence
+        const leftConfidence = leftSuggestion?.confidence ?? left.confidence
+        const rightConfidence = rightSuggestion?.confidence ?? right.confidence
+        if (aiSort === 'confidence_asc') return leftConfidence - rightConfidence
+        if (aiSort === 'confidence_desc') return rightConfidence - leftConfidence
         return (
           (priority[leftSuggestion?.suggestion_status ?? 'ready_for_review'] ?? 3) -
             (priority[rightSuggestion?.suggestion_status ?? 'ready_for_review'] ?? 3) ||
-          left.confidence - right.confidence
+          leftConfidence - rightConfidence
         )
       })
   }, [aiFocus, aiSort, aiSuggestions, candidateList])
@@ -2655,6 +2704,11 @@ export function GroundMode({
     )
     setIndex((value) => Math.min(value, Math.max(assertionCandidates.length - 1, 0)))
   }, [assertionCandidates])
+
+  useEffect(() => {
+    setSelectedIds(new Set())
+    setBatchConfirmOpen(false)
+  }, [extractionRunId])
 
   useEffect(() => {
     if (!visibleCandidates.length) return
@@ -2852,6 +2906,52 @@ export function GroundMode({
     [current?.assertion_id, preview],
   )
 
+  const submitBatchAccept = useCallback(async () => {
+    const selected = candidateList.filter((candidate) => selectedIds.has(candidate.assertion_id))
+    if (!selected.length) return
+    setBatchPending(true)
+    setActionError(null)
+    try {
+      const response = await fetch(
+        `${KNOWLEDGE_BUILDER_API}/assertion-candidates/batch-grounding-events`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            schemaVersion: 'learning_event_grounding_batch_request.v1',
+            batchIdempotencyKey: `${extractionRunId ?? 'run'}:${[...selectedIds].sort().join(',')}`,
+            decision: 'accept',
+            items: selected.map((candidate) => ({
+              assertionId: candidate.assertion_id,
+              evidenceAnchorRefs: (candidate.source_anchors ?? []).map((anchor) => anchor.anchor_id),
+            })),
+            certainty: 'high',
+            reasonCode: 'batch_human_accept',
+            justification: 'Reviewer confirmed the selected candidates against canonical evidence.',
+          }),
+        },
+      )
+      const payload = (await response.json().catch(() => ({}))) as { detail?: string }
+      if (!response.ok) throw new Error(payload.detail ?? `batch-grounding:${response.status}`)
+      setReviewStatuses((statuses) => ({
+        ...statuses,
+        ...Object.fromEntries(selected.map((candidate) => [candidate.assertion_id, 'accepted'])),
+      }))
+      if (current && selectedIds.has(current.assertion_id)) {
+        const refreshed = await fetch(
+          `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}`,
+        )
+        if (refreshed.ok) setDetail((await refreshed.json()) as GroundDetail)
+      }
+      setSelectedIds(new Set())
+      setBatchConfirmOpen(false)
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to batch accept candidates')
+    } finally {
+      setBatchPending(false)
+    }
+  }, [candidateList, current, extractionRunId, selectedIds])
+
   const activateRelease = useCallback(async () => {
     const graphVersion = acceptedRelease?.graph_version
     if (!graphVersion) return
@@ -2937,6 +3037,15 @@ export function GroundMode({
     detail?.assertionCandidate?.confidence !== undefined
       ? `${(detail.assertionCandidate.confidence * 100).toFixed(0)}% confidence`
       : ''
+  const visibleIds = visibleCandidates.map((candidate) => candidate.assertion_id)
+  const selectableVisibleIds = visibleIds.slice(0, 100)
+  const visibleSelectedCount = selectableVisibleIds.filter((id) => selectedIds.has(id)).length
+  const allVisibleSelected = selectableVisibleIds.length > 0 && visibleSelectedCount === selectableVisibleIds.length
+  const selectedStatusCounts = [...selectedIds].reduce<Record<string, number>>((counts, id) => {
+    const status = aiSuggestions[id]?.suggestion_status ?? 'not_run'
+    counts[status] = (counts[status] ?? 0) + 1
+    return counts
+  }, {})
 
   return (
     <div className="grid h-full grid-rows-[auto_1fr_auto] bg-card">
@@ -2955,6 +3064,11 @@ export function GroundMode({
           onValueChange={setAiFocus}
           options={[
             { value: 'all', label: zh ? '全部 AI 状态' : 'All AI statuses' },
+            { value: 'provider_error', label: zh ? '提供方错误' : 'Provider error' },
+            { value: 'unsupported', label: zh ? '不支持' : 'Unsupported' },
+            { value: 'ambiguous', label: zh ? '有歧义' : 'Ambiguous' },
+            { value: 'needs_edit', label: zh ? '需要编辑' : 'Needs edit' },
+            { value: 'supported', label: zh ? '支持' : 'Supported' },
             { value: 'missing_evidence', label: zh ? '缺少证据' : 'Missing evidence' },
             { value: 'low_confidence', label: zh ? '低置信度' : 'Low confidence' },
             { value: 'ready_for_review', label: zh ? '可供复核' : 'Ready for review' },
@@ -2972,14 +3086,48 @@ export function GroundMode({
           ]}
         />
       </div>
+      {selectedIds.size ? (
+        <div className="flex items-center gap-3 border-b border-border bg-primary/5 px-3 py-2 text-xs">
+          <strong>{zh ? `已选择 ${selectedIds.size} 项` : `${selectedIds.size} selected`}</strong>
+          <span className="text-muted-foreground">
+            {zh ? '仅记录人工接受，不发布或激活。' : 'Records human acceptance only; does not release or activate.'}
+          </span>
+          {visibleIds.length > 100 ? (
+            <span className="text-warning">{zh ? '每批最多 100 项。' : 'Maximum 100 candidates per batch.'}</span>
+          ) : null}
+          <div className="flex-1" />
+          <Button variant="outline" onClick={() => setSelectedIds(new Set())} disabled={batchPending}>
+            {zh ? '清除' : 'Clear'}
+          </Button>
+          <Button onClick={() => setBatchConfirmOpen(true)} disabled={batchPending}>
+            {zh ? '批量接受' : 'Batch Accept'}
+          </Button>
+        </div>
+      ) : null}
       <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
         <section
           aria-label={zh ? '校准候选列表' : 'Grounding candidate list'}
           className="min-h-0 overflow-auto border-r border-border bg-muted/20 p-3"
         >
-          <Table className="text-xs">
+          <Table className="min-w-[36rem] text-xs">
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    ref={(element) => {
+                      if (element) element.indeterminate = visibleSelectedCount > 0 && !allVisibleSelected
+                    }}
+                    checked={allVisibleSelected}
+                    aria-checked={visibleSelectedCount > 0 && !allVisibleSelected ? 'mixed' : allVisibleSelected}
+                    aria-label={zh ? '选择本页全部候选' : 'Select all candidates on this page'}
+                    onChange={() => setSelectedIds((currentIds) => {
+                      const next = new Set(currentIds)
+                      if (allVisibleSelected) selectableVisibleIds.forEach((id) => next.delete(id))
+                      else selectableVisibleIds.forEach((id) => next.add(id))
+                      return next
+                    })}
+                  />
+                </TableHead>
                 <TableHead>{zh ? '候选' : 'Candidate'}</TableHead>
                 <TableHead>{zh ? '置信度' : 'Confidence'}</TableHead>
                 <TableHead>{zh ? '证据' : 'Evidence'}</TableHead>
@@ -3006,7 +3154,20 @@ export function GroundMode({
                     key={candidate.assertion_id}
                     aria-selected={candidateIndex === index ? 'true' : undefined}
                   >
-                    <TableCell className="min-w-0 p-0">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(candidate.assertion_id)}
+                        disabled={!selectedIds.has(candidate.assertion_id) && selectedIds.size >= 100}
+                        aria-label={zh ? `选择 ${candidateLabel}` : `Select ${candidateLabel}`}
+                        onChange={() => setSelectedIds((currentIds) => {
+                          const next = new Set(currentIds)
+                          if (next.has(candidate.assertion_id)) next.delete(candidate.assertion_id)
+                          else next.add(candidate.assertion_id)
+                          return next
+                        })}
+                      />
+                    </TableCell>
+                    <TableCell className="p-0">
                       <Button
                         type="button"
                         variant="ghost"
@@ -3014,9 +3175,9 @@ export function GroundMode({
                           candidateIndex === index ? 'true' : undefined
                         }
                         onClick={() => setIndex(candidateIndex)}
-                        className="h-auto w-full min-w-0 justify-start rounded-none px-[1.1rem] py-[0.9rem] text-left hover:bg-transparent"
+                        className="h-auto justify-start rounded-none px-[1.1rem] py-[0.9rem] text-left whitespace-nowrap hover:bg-transparent"
                       >
-                        <span className="min-w-0">
+                        <span className="block max-w-[20rem]">
                           <span className="block truncate text-xs font-semibold">
                             {candidateLabel}
                           </span>
@@ -3037,15 +3198,16 @@ export function GroundMode({
                         <div className="grid gap-1">
                           <Badge
                             tone={
-                              aiSuggestion.suggestion_status === 'ready_for_review'
+                              ['ready_for_review', 'supported'].includes(aiSuggestion.suggestion_status)
                                 ? 'success'
-                                : aiSuggestion.suggestion_status === 'low_confidence'
+                                : ['low_confidence', 'ambiguous', 'needs_edit'].includes(aiSuggestion.suggestion_status)
                                   ? 'warning'
                                   : 'danger'
                             }
+                            className="whitespace-nowrap"
                           >
                             {zh
-                              ? aiSuggestion.suggestion_status === 'ready_for_review'
+                              ? ['ready_for_review', 'supported'].includes(aiSuggestion.suggestion_status)
                                 ? '可供复核'
                                 : aiSuggestion.suggestion_status === 'low_confidence'
                                   ? '低置信度'
@@ -3055,9 +3217,16 @@ export function GroundMode({
                           <span className="font-mono text-[10px] text-muted-foreground">
                             {aiSuggestion.confidence.toFixed(2)}
                           </span>
+                          {aiSuggestion.assessment_source === 'legacy_threshold' ? (
+                            <span className="text-[9px] text-warning">
+                              {zh ? '旧版阈值结果；请重新运行 AI 校准' : 'Legacy threshold; run AI Ground to replace'}
+                            </span>
+                          ) : null}
                         </div>
                       ) : (
-                        <Badge tone="neutral">{zh ? '未运行' : 'Not run'}</Badge>
+                        <Badge tone="neutral" className="whitespace-nowrap">
+                          {zh ? '未运行' : 'Not run'}
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell>
@@ -3135,6 +3304,15 @@ export function GroundMode({
             </div>
           ) : null}
           <MiniLabel>Human Grounding</MiniLabel>
+          {aiSuggestions[current.assertion_id]?.assessment_source === 'llm_structured' ? (
+            <div className="mb-3 rounded border border-border bg-muted/30 p-2 text-[11px]">
+              <strong>{zh ? 'AI 校准理由' : 'AI grounding rationale'}</strong>
+              <p className="mt-1 text-muted-foreground">{aiSuggestions[current.assertion_id]?.rationale}</p>
+              <p className="font-mono text-[9px] text-muted-foreground">
+                {aiSuggestions[current.assertion_id]?.provider ?? '—'} / {aiSuggestions[current.assertion_id]?.model ?? '—'}
+              </p>
+            </div>
+          ) : null}
           {editOpen ? (
             <div className="mb-3 grid gap-2 rounded-[12px] border border-border bg-muted/30 p-3">
               <label className="grid gap-1 text-[11px] font-semibold">
@@ -3263,6 +3441,27 @@ export function GroundMode({
               )}
             </div>
           ) : null}
+          <AlertDialogRoot open={batchConfirmOpen} onOpenChange={setBatchConfirmOpen}>
+            <AlertDialogContent>
+              <AlertDialogTitle>{zh ? '确认批量接受' : 'Confirm batch acceptance'}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {zh
+                  ? `将记录 ${selectedIds.size} 项人工接受。此操作不会发布或激活图谱。`
+                  : `This records human acceptance for ${selectedIds.size} candidates. It does not release or activate the graph.`}
+              </AlertDialogDescription>
+              <div className="text-xs text-muted-foreground">
+                {Object.entries(selectedStatusCounts).map(([status, count]) => (
+                  <div key={status}>{status}: {count}</div>
+                ))}
+              </div>
+              <div className="flex justify-end gap-2">
+                <AlertDialogCancel disabled={batchPending}>{zh ? '取消' : 'Cancel'}</AlertDialogCancel>
+                <AlertDialogAction disabled={batchPending} onClick={() => void submitBatchAccept()}>
+                  {batchPending ? (zh ? '接受中…' : 'Accepting…') : (zh ? '确认接受' : 'Confirm Accept')}
+                </AlertDialogAction>
+              </div>
+            </AlertDialogContent>
+          </AlertDialogRoot>
           {regroundOpen ? (
             <div className="mt-2 rounded border border-border bg-muted/40 p-2 text-[11px]">
               <label className="flex flex-col gap-1">

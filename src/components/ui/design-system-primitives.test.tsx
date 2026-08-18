@@ -23,7 +23,11 @@ import { Field } from './form-controls'
 import { Input } from './input'
 import { UploadDropzone } from './upload-dropzone'
 import { DESIGN_SYSTEM_GALLERY_FAMILIES } from './design-system-gallery-manifest'
-import { Listbox, ListboxOption } from './selection-surfaces'
+import {
+  ControlledSelect,
+  Listbox,
+  ListboxOption,
+} from './selection-surfaces'
 import { Disclosure, DisclosureSummary } from './disclosure'
 import { Switch } from './switch'
 import { Tabs, TabsList, TabsPanel, TabsTab } from './tabs'
@@ -56,6 +60,14 @@ describe('design-system primitive contracts', () => {
     )
   })
 
+  it('keeps alert dialogs on canonical theme classes without inline styles', () => {
+    const source = readFileSync('src/components/ui/alert-dialog.tsx', 'utf8')
+    expect(source).not.toContain('style={{')
+    expect(source).toContain('bg-[var(--theme-card)]')
+    expect(source).toContain('border-[var(--theme-border)]')
+    expect(source).toContain('rounded-[1.25rem]')
+  })
+
   it('defaults buttons to non-submitting controls', () => {
     render(<Button>Save</Button>)
     expect(screen.getByRole('button', { name: 'Save' })).toHaveProperty(
@@ -64,11 +76,12 @@ describe('design-system primitive contracts', () => {
     )
   })
 
-  it('pins canonical control geometry to the reference demo', () => {
+  it('pins canonical control geometry to authenticated workspace density', () => {
     render(<DesignSystemGallery />)
     const primary = screen.getByRole('button', { name: 'Primary' })
-    expect(primary.className).toContain('py-3')
-    expect(primary.className).toContain('px-[1.375rem]')
+    expect(primary.className).toContain('h-8')
+    expect(primary.className).toContain('px-2.5')
+    expect(primary.className).toContain('text-xs')
 
     const toggle = screen.getByRole('switch', { name: 'Switch' })
     expect(toggle.className).toContain('h-6')
@@ -287,6 +300,38 @@ describe('design-system primitive contracts', () => {
     alpha.focus()
     fireEvent.keyDown(alpha, { key: 'Enter' })
     expect(onSelect).toHaveBeenCalledOnce()
+  })
+
+  it('operates the controlled dropdown without a native select', () => {
+    const onValueChange = vi.fn()
+    const { container } = render(
+      <ControlledSelect
+        label="Role"
+        value="design"
+        options={[
+          { value: 'design', label: 'Design' },
+          { value: 'engineering', label: 'Engineering' },
+        ]}
+        onValueChange={onValueChange}
+      />,
+    )
+    expect(container.querySelector('select')).toBeNull()
+    const chevron = container.querySelector(
+      '[data-slot="controlled-select-chevron"]',
+    )
+    expect(chevron?.tagName).toBe('svg')
+    expect(chevron?.getAttribute('class')).toContain('size-[1.0625rem]')
+    expect(chevron?.getAttribute('class')).toContain('self-center')
+    const trigger = screen.getByRole('button', { name: 'Role' })
+    fireEvent.click(trigger)
+    const selectedCheck = container.querySelector(
+      '[data-slot="controlled-select-check"]',
+    )
+    expect(selectedCheck?.tagName).toBe('svg')
+    expect(selectedCheck?.getAttribute('class')).toContain('size-[0.9375rem]')
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+    fireEvent.keyDown(trigger, { key: 'Enter' })
+    expect(onValueChange).toHaveBeenCalledWith('engineering')
   })
 
   it('supports data-grid and tree keyboard navigation with a canvas fallback', () => {

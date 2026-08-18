@@ -109,6 +109,7 @@ import {
   BreadcrumbSeparator,
 } from './navigation-surfaces'
 import {
+  ControlledSelect,
   Listbox,
   ListboxGroup,
   ListboxOption,
@@ -175,77 +176,6 @@ const gallerySelectOptions = [
   { value: 'two', label: 'Option two' },
 ]
 
-function GallerySelect() {
-  const [value, setValue] = useState('one')
-  const [open, setOpen] = useState(false)
-  const [highlighted, setHighlighted] = useState(0)
-
-  function choose(index: number) {
-    setValue(gallerySelectOptions[index].value)
-    setHighlighted(index)
-    setOpen(false)
-  }
-
-  function onKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
-    if (event.key === 'Escape') {
-      setOpen(false)
-    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault()
-      const direction = event.key === 'ArrowDown' ? 1 : -1
-      setOpen(true)
-      setHighlighted(
-        (current) =>
-          (current + direction + gallerySelectOptions.length) %
-          gallerySelectOptions.length,
-      )
-    } else if ((event.key === 'Enter' || event.key === ' ') && open) {
-      event.preventDefault()
-      choose(highlighted)
-    }
-  }
-
-  return (
-    <div
-      className="gallery-select"
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false)
-      }}
-    >
-      <button
-        type="button"
-        className="gallery-select-trigger"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
-        onKeyDown={onKeyDown}
-      >
-        {gallerySelectOptions.find((option) => option.value === value)?.label}
-        <span aria-hidden="true" className="gallery-select-chevron">⌄</span>
-      </button>
-      {open ? (
-        <ul className="gallery-select-menu" role="listbox">
-          {gallerySelectOptions.map((option, index) => (
-            <li key={option.value} role="presentation">
-              <button
-                type="button"
-                role="option"
-                aria-selected={value === option.value}
-                className="gallery-select-option"
-                data-highlighted={highlighted === index ? '' : undefined}
-                onMouseEnter={() => setHighlighted(index)}
-                onClick={() => choose(index)}
-              >
-                {option.label}
-                {value === option.value ? <span aria-hidden="true">✓</span> : null}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  )
-}
-
 function DesignSystemGallery() {
   const [locale, setLocale] = useState<'en' | 'zh'>('en')
   const [page, setPage] = useState(2)
@@ -253,6 +183,7 @@ function DesignSystemGallery() {
   const [enabled, setEnabled] = useState(true)
   const [selection, setSelection] = useState('alpha')
   const [segment, setSegment] = useState('comfortable')
+  const [controlledSelect, setControlledSelect] = useState('one')
   const text = copy[locale]
 
   function toggleTheme() {
@@ -428,7 +359,12 @@ function DesignSystemGallery() {
               <Input disabled value="Unavailable" readOnly />
             </Field>
             <Field label="Controlled select">
-              <GallerySelect />
+              <ControlledSelect
+                label="Controlled select"
+                value={controlledSelect}
+                options={gallerySelectOptions}
+                onValueChange={setControlledSelect}
+              />
             </Field>
             <Field label="Notes">
               <Textarea placeholder="Write a note" required />

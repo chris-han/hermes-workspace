@@ -25,22 +25,19 @@ function AlertDialogContent({ className, children }: AlertDialogContentProps) {
   return (
     <AlertDialog.Portal>
       <AlertDialog.Backdrop
-        className="fixed inset-0 transition-all duration-150 data-[state=open]:opacity-100 data-[state=closed]:opacity-0"
-        style={{ background: 'rgba(0,0,0,0.5)' }}
+        className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-[2px] transition-opacity duration-150 data-[state=open]:opacity-100 data-[state=closed]:opacity-0"
+        data-slot="alert-dialog-backdrop"
       />
       <AlertDialog.Popup
         className={cn(
-          'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-          'w-[min(400px,92vw)] rounded-xl border p-0 shadow-xl',
+          'fixed left-1/2 top-1/2 z-[101] -translate-x-1/2 -translate-y-1/2',
+          'w-[min(26rem,calc(100vw-2rem))] rounded-[1.25rem] border border-[var(--theme-border)] bg-[var(--theme-card)] p-0 text-[var(--theme-text)] shadow-xl',
           'transition-all duration-150',
           'data-[state=open]:opacity-100 data-[state=closed]:opacity-0',
           'data-[state=open]:scale-100 data-[state=closed]:scale-95',
           className,
         )}
-        style={{
-          background: 'var(--theme-panel)',
-          borderColor: 'var(--theme-border)',
-        }}
+        data-slot="alert-dialog-content"
       >
         {children}
       </AlertDialog.Popup>
@@ -53,8 +50,7 @@ type AlertDialogTitleProps = React.ComponentProps<typeof AlertDialog.Title>
 function AlertDialogTitle({ className, ...props }: AlertDialogTitleProps) {
   return (
     <AlertDialog.Title
-      className={cn('text-lg font-medium', className)}
-      style={{ color: 'var(--theme-text)' }}
+      className={cn('text-base font-semibold text-[var(--theme-text)]', className)}
       {...props}
     />
   )
@@ -70,8 +66,7 @@ function AlertDialogDescription({
 }: AlertDialogDescriptionProps) {
   return (
     <AlertDialog.Description
-      className={cn('text-sm', className)}
-      style={{ color: 'var(--theme-muted)' }}
+      className={cn('text-sm leading-6 text-[var(--theme-muted)]', className)}
       {...props}
     />
   )

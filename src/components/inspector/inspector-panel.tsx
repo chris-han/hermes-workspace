@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/form-controls'
 
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
@@ -2858,13 +2859,18 @@ export function InspectorPanel({
             </Button>
           </div>
 
-          {/* Tab bar */}
-          <div
-            className="flex shrink-0 overflow-x-auto"
-            style={{ borderBottom: '1px solid var(--theme-border)' }}
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as TabId)}
+            className="min-h-0 flex-1 gap-0"
           >
-            {TABS.map((tab) =>
-              (() => {
+            {/* Limited-width inspectors use line/top-menu tabs, not segmented controls. */}
+            <TabsList
+              variant="underline"
+              aria-label={copy.title}
+              className="w-full shrink-0 justify-start overflow-x-auto border-b border-[var(--theme-border)] px-1 py-0"
+            >
+              {TABS.map((tab) => {
                 const available =
                   tab.feature === 'memory'
                     ? memoryAvailable
@@ -2873,28 +2879,11 @@ export function InspectorPanel({
                       : true
 
                 return (
-                  <Button
+                  <TabsTab
                     key={tab.id}
-                    type="button"
-                    onClick={() => {
-                      if (available) setActiveTab(tab.id)
-                    }}
+                    value={tab.id}
                     disabled={!available}
-                    className={cn(
-                      'px-3 py-2 text-xs font-medium shrink-0 transition-colors',
-                      activeTab === tab.id ? 'border-b-2' : 'hover:opacity-80',
-                      !available && 'cursor-not-allowed opacity-50',
-                    )}
-                    style={{
-                      color:
-                        activeTab === tab.id
-                          ? 'var(--theme-accent)'
-                          : 'var(--theme-muted)',
-                      borderBottomColor:
-                        activeTab === tab.id
-                          ? 'var(--theme-accent)'
-                          : 'transparent',
-                    }}
+                    className="h-auto min-w-fit px-3 py-2 text-xs"
                     title={
                       !available && tab.feature
                         ? getUnavailableReason(tab.feature)
@@ -2903,30 +2892,29 @@ export function InspectorPanel({
                   >
                     <span>{copy.tabs[tab.id]}</span>
                     {!available ? (
-                      <span className="ml-1 rounded-full border border-amber-300 bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-amber-700">
+                      <span className="rounded-full border border-amber-300 bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-amber-700">
                         {copy.gate}
                       </span>
                     ) : null}
-                  </Button>
+                  </TabsTab>
                 )
-              })(),
-            )}
-          </div>
+              })}
+            </TabsList>
 
-          {/* Content */}
-          <div className="flex-1 overflow-auto">
-            {activeTab === 'context' && <ContextTab sessionKey={sessionKey} />}
-            {activeTab === 'activity' && (
-              <ActivityTab sessionKey={sessionKey} />
-            )}
-            {activeTab === 'artifacts' && (
-              <ArtifactsTab sessionKey={sessionKey} />
-            )}
-            {activeTab === 'memory' && <MemoryTab sessionKey={sessionKey} />}
-            {activeTab === 'skills' && <SkillsTab sessionKey={sessionKey} />}
-            {activeTab === 'logs' && <LogsTab sessionKey={sessionKey} />}
-            {activeTab === 'guidance' && <GuidanceTab />}
-          </div>
+            <TabsPanel value={activeTab} className="min-h-0 overflow-auto">
+              {activeTab === 'context' && <ContextTab sessionKey={sessionKey} />}
+              {activeTab === 'activity' && (
+                <ActivityTab sessionKey={sessionKey} />
+              )}
+              {activeTab === 'artifacts' && (
+                <ArtifactsTab sessionKey={sessionKey} />
+              )}
+              {activeTab === 'memory' && <MemoryTab sessionKey={sessionKey} />}
+              {activeTab === 'skills' && <SkillsTab sessionKey={sessionKey} />}
+              {activeTab === 'logs' && <LogsTab sessionKey={sessionKey} />}
+              {activeTab === 'guidance' && <GuidanceTab />}
+            </TabsPanel>
+          </Tabs>
         </>
       )}
     </div>

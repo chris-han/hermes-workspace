@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import {
   artifactMatchesHighlight,
   getInspectorCopy,
+  InspectorPanel,
   loadInspectorMemorySnapshots,
   skillMatchesSessionAttachment,
   useInspectorStore,
@@ -96,6 +99,26 @@ describe('InspectorPanel', () => {
     expect(copy.labels.assignedRole).toBe('分配角色')
     expect(copy.labels.reasonCodes).toBe('原因码')
     expect(copy.labels.replayStatus).toBe('重放状态')
+  })
+
+  it('uses line tabs instead of a segmented control in the narrow inspector', () => {
+    useInspectorStore.setState({ isOpen: true, activeTab: 'activity' })
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const { container } = render(
+      <QueryClientProvider client={queryClient}>
+        <InspectorPanel />
+      </QueryClientProvider>,
+    )
+
+    const tablist = screen.getByRole('tablist', { name: 'Inspector' })
+    expect(tablist.getAttribute('data-variant')).toBe('underline')
+    expect(container.querySelector('[data-slot="segmented-control"]')).toBeNull()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Artifacts' }))
+    expect(useInspectorStore.getState().activeTab).toBe('artifacts')
   })
 
   it('formats sensitive governance escalation details for the activity inspector', () => {

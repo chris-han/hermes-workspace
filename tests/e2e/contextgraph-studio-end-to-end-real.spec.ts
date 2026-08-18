@@ -19,10 +19,17 @@ type IdentityFixture = {
 const repositoryRoot = join(process.cwd(), '..')
 const fixtureScript = join(repositoryRoot, 'tests', 'fixtures', 'contextgraph_e2e_identity.py')
 const fixturePython = join(repositoryRoot, '.venv', 'bin', 'python')
+const fixtureAuthDb = process.env.SEMANTIER_AUTH_DB_PATH
+  ?? join(process.env.F10_ROOT ?? repositoryRoot, 'auth.db')
+const workspacePassword = process.env.F10_ROOT
+  ? (JSON.parse(readFileSync(join(process.env.F10_ROOT, 'credentials.json'), 'utf8')) as { password: string }).password
+  : null
 let identityFixture: IdentityFixture | null = null
 
 test.beforeAll(() => {
-  identityFixture = JSON.parse(execFileSync(fixturePython, [fixtureScript, 'provision'], {
+  identityFixture = JSON.parse(execFileSync(fixturePython, [
+    fixtureScript, '--auth-db-path', fixtureAuthDb, 'provision',
+  ], {
     cwd: repositoryRoot,
     encoding: 'utf8',
   })) as IdentityFixture
@@ -32,6 +39,7 @@ test.afterAll(() => {
   if (!identityFixture) return
   execFileSync(fixturePython, [
     fixtureScript,
+    '--auth-db-path', fixtureAuthDb,
     'teardown',
     '--fixture-token', identityFixture.fixtureToken,
     '--user-id', identityFixture.userId,
@@ -52,14 +60,16 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
   })
 
   await page.goto('/contextgraph-studio')
-  const gatewayLogin = await page.request.post('/auth/password/login', {
+  const gatewayLogin = await page.request.post(
+    `${process.env.HERMES_API_URL ?? ''}/auth/password/login`, {
     data: { login: credentials.login, password: credentials.password },
-  })
+    },
+  )
   expect(gatewayLogin.ok(), await gatewayLogin.text()).toBeTruthy()
   const workspaceLogin = await page.request.post('/api/auth', {
-    data: { password: credentials.password },
+    data: { password: workspacePassword ?? credentials.password },
   })
-  expect(workspaceLogin.ok() || workspaceLogin.status() === 400).toBeTruthy()
+  expect(workspaceLogin.ok() || workspaceLogin.status() === 400, await workspaceLogin.text()).toBeTruthy()
   await page.reload()
 
   await expect(page.getByRole('heading', { name: /ContextGraph Studio/i })).toBeVisible()
@@ -82,11 +92,26 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
   const ingestPayload = await ingestResponse.json() as Record<string, unknown>
   const uploadedFileRef = String(ingestPayload.normalizedDocumentArtifactRef ?? '')
   expect(uploadedFileRef).toBeTruthy()
-  const persistedSourceName = uploadedName.replace(/\.(docx?|pdf|md)$/i, '')
-  await expect(page.getByText(persistedSourceName, { exact: true }).first()).toBeVisible()
+  const normalizedSourceName = uploadedName.replace(/\.(docx?|pdf|md)$/i, '.md')
+  await expect(page.getByText(uploadedName, { exact: true }).first()).toBeVisible()
+  await expect(page.getByText(normalizedSourceName, { exact: true })).toBeVisible()
+  await expect(page.getByText('Internal normalized representation')).toBeVisible()
+  await page.getByRole('button', { name: normalizedSourceName, exact: true }).click()
+  const sourceInspector = page.getByTestId('contextgraph-studio-inspector')
+  await expect(sourceInspector.getByText('Metadata context')).toBeVisible()
+  await expect(sourceInspector.getByText('Context lineage')).toBeVisible()
+  await expect(sourceInspector.getByText('Document normalization')).toBeVisible()
+  await expect(sourceInspector.getByText('Context added by this step').first()).toBeVisible()
+  await expect(sourceInspector.getByText('docx_ooxml', { exact: true })).toBeVisible()
+  const expectCurrentLineageStep = async (label: string) => {
+    const step = sourceInspector
+      .getByRole('listitem')
+      .filter({ hasText: label })
+    await expect(step.getByText('Current step')).toBeVisible()
+  }
 
   const modeNavigation = page.getByRole('navigation', { name: 'ContextGraph Studio modes' })
-  await page.getByLabel(`Select ${persistedSourceName}`).check()
+  await page.getByLabel(`Select ${normalizedSourceName}`).check()
   const extractionResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/api/knowledge/builder/extraction-runs')
       && response.request().method() === 'POST',
@@ -96,12 +121,39 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
   expect(extractionResponse.ok(), await extractionResponse.text()).toBeTruthy()
   const extractionPayload = await extractionResponse.json() as Record<string, any>
   expect(extractionPayload.extractionRun?.run_status).toBe('completed')
-  await expect(modeNavigation.getByRole('button', { name: /^Extract$/i })).toHaveAttribute('aria-current', 'page')
-  await expect(page.getByRole('button', { name: /^Ground candidates$/i })).toBeEnabled()
-
-  await page.getByRole('button', { name: /^Ground candidates$/i }).click()
-  await expect(modeNavigation.getByRole('button', { name: /^Ground$/i })).toHaveAttribute('aria-current', 'page')
+  const extractionRunId = String(extractionPayload.extractionRun?.extraction_run_id ?? '')
+  expect(extractionRunId).toBeTruthy()
+  const candidatesResponse = await page.request.get(
+    `/api/semantier-proxy/api/knowledge/builder/assertion-candidates?extractionRunId=${encodeURIComponent(extractionRunId)}&limit=500`,
+  )
+  expect(candidatesResponse.ok(), await candidatesResponse.text()).toBeTruthy()
+  const candidatesPayload = await candidatesResponse.json() as Record<string, any>
+  const extractedCandidates = candidatesPayload.assertionCandidates ?? []
+  expect(extractedCandidates.length).toBeGreaterThan(100)
+  const extractedTerms = extractedCandidates.map((candidate: any) =>
+    candidate.normalized_assertion?.subject?.text
+      ?? candidate.normalized_assertion?.object?.text
+      ?? candidate.normalized_assertion?.predicate,
+  )
+  expect(extractedTerms).toContain('央企')
+  expect(extractedTerms).toContain('本地企业')
+  expect(extractedTerms).toContain('DeepSeek')
+  await expect(modeNavigation.getByRole('tab', { name: /^Extract$/i })).toHaveAttribute('aria-selected', 'true')
+  await expectCurrentLineageStep('Extract')
+  await expect(page.getByRole('button', { name: /^AI Ground$/i })).toBeEnabled()
+  const aiGroundingResponsePromise = page.waitForResponse((response) =>
+    response.url().includes('/ai-grounding-suggestions') && response.request().method() === 'POST',
+  )
+  await page.getByRole('button', { name: /^AI Ground$/i }).click()
+  const aiGroundingResponse = await aiGroundingResponsePromise
+  expect(aiGroundingResponse.ok(), await aiGroundingResponse.text()).toBeTruthy()
+  const aiGroundingPayload = await aiGroundingResponse.json() as Record<string, any>
+  expect(aiGroundingPayload.authorityState).toBe('candidate_only')
+  expect(aiGroundingPayload.summary?.total).toBe(extractedCandidates.length)
+  await expect(modeNavigation.getByRole('tab', { name: /^Ground$/i })).toHaveAttribute('aria-selected', 'true')
+  await expectCurrentLineageStep('Ground')
   await expect(page.getByText(/Human Grounding/i)).toBeVisible()
+  await expect(page.getByText(/ready for review|low confidence|missing evidence/i).first()).toBeVisible()
   const releaseResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/release') && response.request().method() === 'POST',
   )
@@ -146,9 +198,10 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
   const v1EvaluationRun = await createEvaluationRun()
 
   for (const mode of ['Graph', 'Inspect']) {
-    const modeTab = modeNavigation.getByRole('button', { name: new RegExp(`^${mode}$`, 'i') })
+    const modeTab = modeNavigation.getByRole('tab', { name: new RegExp(`^${mode}$`, 'i') })
     await modeTab.click()
-    await expect(modeTab).toHaveAttribute('aria-current', 'page')
+    await expect(modeTab).toHaveAttribute('aria-selected', 'true')
+    await expectCurrentLineageStep(mode)
   }
 
   await page.getByPlaceholder('artifacts/document_extraction/target.json').fill(uploadedFileRef)
@@ -166,12 +219,13 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
   await expect(page.getByText(/Findings \([1-9]/)).toBeVisible()
 
   for (const mode of ['Compare', 'Evaluate']) {
-    const modeTab = modeNavigation.getByRole('button', { name: new RegExp(`^${mode}$`, 'i') })
+    const modeTab = modeNavigation.getByRole('tab', { name: new RegExp(`^${mode}$`, 'i') })
     await modeTab.click()
-    await expect(modeTab).toHaveAttribute('aria-current', 'page')
+    await expect(modeTab).toHaveAttribute('aria-selected', 'true')
+    await expectCurrentLineageStep(mode)
   }
 
-  await modeNavigation.getByRole('button', { name: /^Compare$/i }).click()
+  await modeNavigation.getByRole('tab', { name: /^Compare$/i }).click()
   await expect(page.getByLabel('Base graph version')).toBeVisible()
   await expect(page.getByLabel('New graph version')).toBeVisible()
   await page.getByLabel('Base graph version').fill(baseGraphVersion)
@@ -183,7 +237,7 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
   const compareResponse = await compareResponsePromise
   expect(compareResponse.ok(), await compareResponse.text()).toBeTruthy()
   await expect(page.getByText(/Diff loaded/i)).toBeVisible()
-  await modeNavigation.getByRole('button', { name: /^Evaluate$/i }).click()
+  await modeNavigation.getByRole('tab', { name: /^Evaluate$/i }).click()
   await expect(page.getByLabel('V0 evaluation run')).toBeVisible()
   await expect(page.getByLabel('V1 evaluation run')).toBeVisible()
   await page.getByLabel('V0 evaluation run').fill(String(v0EvaluationRun.evaluation_run_id))

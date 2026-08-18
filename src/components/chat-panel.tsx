@@ -31,7 +31,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 
-export function ChatPanel() {
+export function ChatPanel({ embedded = false }: { embedded?: boolean } = {}) {
+  const isStudioRoute =
+    typeof window !== 'undefined' &&
+    window.location.pathname.toLowerCase().includes('contextgraph')
+  if (isStudioRoute && !embedded) return null
+  return <ChatPanelContent embedded={embedded} />
+}
+
+function ChatPanelContent({ embedded }: { embedded: boolean }) {
   const isOpen = useWorkspaceStore((s) => s.chatPanelOpen)
   const sessionKey = useWorkspaceStore((s) => s.chatPanelSessionKey)
   const legalContext = useWorkspaceStore((s) => s.legalCorpusChatContext)
@@ -129,31 +137,32 @@ export function ChatPanel() {
 
   // Simple dropdown state
   const [showSessionList, setShowSessionList] = useState(false)
-
   return (
     <AnimatePresence>
-      {isOpen && (
+      {(embedded || isOpen) && (
         <>
           {/* Backdrop for narrow screens */}
+          {!embedded ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="fixed inset-0 z-10 bg-black/20 min-[1200px]:hidden"
+              onClick={handleClose}
+              aria-hidden
+            />
+          ) : null}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-black/20 z-10 min-[1200px]:hidden"
-            onClick={handleClose}
-            aria-hidden
-          />
-          <motion.div
-            initial={{ x: '100%', opacity: 0 }}
+            initial={embedded ? false : { x: '100%', opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: '100%', opacity: 0 }}
+            exit={embedded ? undefined : { x: '100%', opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="fixed right-0 bottom-0 top-[var(--titlebar-h,0px)] h-[calc(100dvh-var(--titlebar-h,0px))] max-h-[calc(100dvh-var(--titlebar-h,0px))] w-[420px] max-w-[100vw] border-l overflow-hidden flex flex-col z-20 shadow-xl"
-            style={{
-              background: 'var(--theme-bg)',
-              borderColor: 'var(--theme-border)',
-            }}
+            className={
+              embedded
+                ? 'flex h-full min-h-0 w-full flex-col overflow-hidden bg-[var(--theme-bg)]'
+                : 'fixed bottom-0 right-0 top-[var(--titlebar-h,0px)] z-20 flex h-[calc(100dvh-var(--titlebar-h,0px))] max-h-[calc(100dvh-var(--titlebar-h,0px))] w-[420px] max-w-[100vw] flex-col overflow-hidden border-l border-[var(--theme-border)] bg-[var(--theme-bg)] shadow-xl'
+            }
           >
             {/* Panel header */}
             <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-3">
@@ -210,19 +219,21 @@ export function ChatPanel() {
                     <TooltipContent side="bottom">Full view</TooltipContent>
                   </TooltipRoot>
                 </TooltipProvider>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  onClick={handleClose}
-                  className="text-primary-600 hover:text-primary-900"
-                  aria-label="Close chat panel"
-                >
-                  <HugeiconsIcon
-                    icon={Cancel01Icon}
-                    size={14}
-                    strokeWidth={1.5}
-                  />
-                </Button>
+                {!embedded ? (
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    onClick={handleClose}
+                    className="text-primary-600 hover:text-primary-900"
+                    aria-label="Close chat panel"
+                  >
+                    <HugeiconsIcon
+                      icon={Cancel01Icon}
+                      size={14}
+                      strokeWidth={1.5}
+                    />
+                  </Button>
+                ) : null}
               </div>
             </div>
 

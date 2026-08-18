@@ -4,6 +4,7 @@ import {
   knowledgeRootExists,
   listKnowledgePages,
 } from '../../../server/knowledge-browser'
+import { listKnowledgeDirectory } from '../../../server/knowledge-files'
 import {
   getKnowledgeBaseEffectiveRoot,
   readKnowledgeBaseConfig,
@@ -26,8 +27,18 @@ export const Route = createFileRoute('/api/knowledge/list')({
           const config = readKnowledgeBaseConfig(workspaceRoot, context)
           const source = config.source
           const exists = knowledgeRootExists(workspaceRoot, context)
+          const uploads = await listKnowledgeDirectory(
+            workspaceRoot,
+            'uploads',
+            { ...context, forceWorkspaceWikiRoot: true },
+          )
           return json({
             pages: exists ? listKnowledgePages(workspaceRoot, context) : [],
+            sourceFiles: uploads.entries.filter(
+              (entry) =>
+                entry.kind === 'file' &&
+                /\.(?:docx?|pdf)$/i.test(entry.name),
+            ),
             exists,
             source,
             knowledgeRoot: getKnowledgeBaseEffectiveRoot(

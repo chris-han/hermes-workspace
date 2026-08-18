@@ -2,25 +2,55 @@ import { Link as DsLink } from '@/components/ui/link'
 
 import { Checkbox, Radio } from '@/components/ui/form-controls'
 
-import { Table } from '@/components/ui/table'
-
-import { NativeSelect } from '@/components/ui/form-controls'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 import { Textarea } from '@/components/ui/form-controls'
 
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/status'
 import { Input } from '@/components/ui/input'
 import { DialogSurface } from '@/components/ui/dialog-surface'
+import {
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogRoot,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { ChatPanel } from '@/components/chat-panel'
 import { UploadDropzone } from '@/components/ui/upload-dropzone'
+import {
+  ControlledSelect,
+} from '@/components/ui/selection-surfaces'
+import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { extractRawText } from 'mammoth'
 import {
   AiScanIcon,
   Alert02Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowUpRight01Icon,
+  Cancel01Icon,
+  CheckmarkBadge04Icon,
   Delete02Icon,
   PanelRightCloseIcon,
   PanelRightOpenIcon,
@@ -61,9 +91,7 @@ import {
   parseDeepLinkFromSearchParams,
   validateDeepLinkAgainstIdentity,
 } from './contextgraph-deep-link'
-import {
-  projectStudioWorkbenchContext,
-} from './contextgraph-workbench-context'
+import { projectStudioWorkbenchContext } from './contextgraph-workbench-context'
 import { LineagePanel } from './lineage/lineage-panel'
 
 const ContextGraphSigmaViewer = lazy(() =>
@@ -72,7 +100,14 @@ const ContextGraphSigmaViewer = lazy(() =>
   })),
 )
 
-type StudioMode = 'sources' | 'extract' | 'ground' | 'graph' | 'inspect' | 'compare' | 'evaluate'
+type StudioMode =
+  | 'sources'
+  | 'extract'
+  | 'ground'
+  | 'graph'
+  | 'inspect'
+  | 'compare'
+  | 'evaluate'
 
 // R4: SOURCE_REF is the canonical source identity ref resolved from the
 // live runtime projection; the design-preview fallback is only used when
@@ -107,17 +142,43 @@ type AssertionCandidate = {
   confidence: number
   grounding_state: string
   evidence_refs: Array<{ evidence_ref: string; selector_hash: string }>
-  normalized_assertion: { subject?: { text?: string } | null; predicate?: string | null; object?: { text?: string } | null }
+  normalized_assertion: {
+    subject?: { text?: string } | null
+    predicate?: string | null
+    object?: { text?: string } | null
+  }
+  ai_grounding_suggestion?: AiGroundingSuggestion
 }
 
 type SourceRow = [string, string, string, string, string, string]
+
+type SourceInspectorContext = {
+  name: string
+  kind: 'original' | 'normalized'
+  path: string
+  metadata: Array<{ label: string; value: string }>
+  lineage: Array<{
+    id: string
+    label: string
+    contextAdded: Array<string>
+    refs: Array<string>
+    status?: 'completed' | 'current' | 'pending'
+  }>
+}
+
+function normalizedMetadataValue(content: string, label: string): string | null {
+  const prefix = `> ${label}:`
+  const line = content.split('\n').find((candidate) => candidate.startsWith(prefix))
+  return line?.slice(prefix.length).trim() || null
+}
 
 export function canonicalBodyFromCurationMarkdown(content: string): string {
   const lines = content.replace(/\r\n/g, '\n').split('\n')
   let index = 0
   if (lines[index]?.startsWith('# ')) index += 1
   while (index < lines.length && !lines[index]?.trim()) index += 1
-  while (index < lines.length && lines[index]?.trim().startsWith('>')) index += 1
+  while (index < lines.length && lines[index]?.trim().startsWith('>'))
+    index += 1
   while (index < lines.length && !lines[index]?.trim()) index += 1
   return lines.slice(index).join('\n').trim()
 }
@@ -139,15 +200,25 @@ function sourceRowFromUpload(result: KnowledgeUploadResult): SourceRow | null {
   const name = result.storedName ?? result.originalName
   if (!result.ok || !name) return null
   const extension = name.split('.').pop()?.toUpperCase() || 'SOURCE'
-  const status = result.kind === 'staged_for_ingest' ? 'Waiting for ingest' : 'Ready'
+  const status =
+    result.kind === 'staged_for_ingest' ? 'Waiting for ingest' : 'Ready'
   return [name, extension, status, '—', '—', '—']
 }
 
 function sourceNameKey(name: string): string {
-  return name.trim().toLocaleLowerCase().replace(/\.(docx?|pdf|md)$/i, '')
+  return name
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/\.(docx?|pdf|md)$/i, '')
 }
 
-function StatusPill({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'candidate' | 'success' | 'warning' }) {
+function StatusPill({
+  children,
+  tone = 'neutral',
+}: {
+  children: React.ReactNode
+  tone?: 'neutral' | 'candidate' | 'success' | 'warning'
+}) {
   const toneClass =
     tone === 'candidate'
       ? 'border-warning/30 bg-warning/10 text-warning'
@@ -156,10 +227,32 @@ function StatusPill({ children, tone = 'neutral' }: { children: React.ReactNode;
         : tone === 'warning'
           ? 'border-warning/30 bg-warning/10 text-warning'
           : 'border-border bg-muted/45 text-muted-foreground'
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${toneClass}`}>{children}</span>
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${toneClass}`}
+    >
+      {children}
+    </span>
+  )
 }
 
-function StudioButton({ children, primary = false, className = '', onClick, title, ariaLabel, disabled = false }: { children: React.ReactNode; primary?: boolean; className?: string; onClick?: () => void; title?: string; ariaLabel?: string; disabled?: boolean }) {
+function StudioButton({
+  children,
+  primary = false,
+  className = '',
+  onClick,
+  title,
+  ariaLabel,
+  disabled = false,
+}: {
+  children: React.ReactNode
+  primary?: boolean
+  className?: string
+  onClick?: () => void
+  title?: string
+  ariaLabel?: string
+  disabled?: boolean
+}) {
   return (
     <Button
       type="button"
@@ -168,9 +261,7 @@ function StudioButton({ children, primary = false, className = '', onClick, titl
       onClick={onClick}
       disabled={disabled}
       className={`inline-flex h-8 items-center justify-center rounded-md border px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)] ${
-        disabled
-          ? 'cursor-not-allowed opacity-60'
-          : 'cursor-pointer'
+        disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
       } ${
         primary
           ? 'border-primary bg-primary text-primary-foreground hover:brightness-95'
@@ -187,7 +278,9 @@ export function StudioShell() {
   const zh = locale === 'zh'
   const chatPanelOpen = useWorkspaceStore((state) => state.chatPanelOpen)
   const setChatPanelOpen = useWorkspaceStore((state) => state.setChatPanelOpen)
-  const setWorkbenchContext = useKnowledgeWorkbenchStore((state) => state.setContext)
+  const setWorkbenchContext = useKnowledgeWorkbenchStore(
+    (state) => state.setContext,
+  )
   const applyWorkbenchResult = useKnowledgeWorkbenchStore(
     (state) => state.applyWorkbenchResult,
   )
@@ -196,15 +289,31 @@ export function StudioShell() {
   const mode = useContextGraphStudioStore((state) => state.mode)
   const sourceOpen = useContextGraphStudioStore((state) => state.sourceOpen)
   const legendOpen = useContextGraphStudioStore((state) => state.legendOpen)
-  const selectedNodeId = useContextGraphStudioStore((state) => state.selectedNodeId)
-  const selectedEdgeId = useContextGraphStudioStore((state) => state.selectedEdgeId)
+  const selectedNodeId = useContextGraphStudioStore(
+    (state) => state.selectedNodeId,
+  )
+  const selectedEdgeId = useContextGraphStudioStore(
+    (state) => state.selectedEdgeId,
+  )
   const selectedEvidenceRef = useContextGraphStudioStore(
     (state) => state.selectedEvidenceRef,
   )
-  const mvlSummary = useContextGraphStudioStore((state) => state.mvlWorkflowSummary)
+  const mvlSummary = useContextGraphStudioStore(
+    (state) => state.mvlWorkflowSummary,
+  )
   const setMode = useContextGraphStudioStore((state) => state.setMode)
-  const setSourceOpen = useContextGraphStudioStore((state) => state.setSourceOpen)
-  const setLegendOpen = useContextGraphStudioStore((state) => state.setLegendOpen)
+  const setSourceOpen = useContextGraphStudioStore(
+    (state) => state.setSourceOpen,
+  )
+  const setLegendOpen = useContextGraphStudioStore(
+    (state) => state.setLegendOpen,
+  )
+  const inspectorOpen = useContextGraphStudioStore(
+    (state) => state.inspectorOpen,
+  )
+  const setInspectorOpen = useContextGraphStudioStore(
+    (state) => state.setInspectorOpen,
+  )
   const selectNode = useContextGraphStudioStore((state) => state.selectNode)
   const selectEdge = useContextGraphStudioStore((state) => state.selectEdge)
   const selectEvidenceRef = useContextGraphStudioStore(
@@ -223,24 +332,34 @@ export function StudioShell() {
     (state) => state.setMvlWorkflowSummary,
   )
 
-  const [runtimeIdentity, setRuntimeIdentity] = useState<StudioIdentity>(EMPTY_IDENTITY)
+  const [runtimeIdentity, setRuntimeIdentity] =
+    useState<StudioIdentity>(EMPTY_IDENTITY)
   const [extractionRunId, setExtractionRunId] = useState<string | null>(null)
   const [candidateGraphId, setCandidateGraphId] = useState<string | null>(null)
   const [candidates, setCandidates] = useState<GroundCandidate[]>([])
   const [inspectRun, setInspectRun] = useState<Record<string, any> | null>(null)
-  const [inspectFindingContext, setInspectFindingContext] = useState<Record<string, string | null> | null>(null)
+  const [inspectFindingContext, setInspectFindingContext] = useState<Record<
+    string,
+    string | null
+  > | null>(null)
+  const [sourceInspectorContext, setSourceInspectorContext] =
+    useState<SourceInspectorContext | null>(null)
   const handleExtractionRun = useCallback((run: ExtractionRun) => {
     setExtractionRunId(run.extraction_run_id)
     setCandidateGraphId(run.candidate_graph_id ?? null)
   }, [])
   // CF-E18: surfaces a visible error when the canonical runtime path is unavailable.
-  const [runtimeProjectionError, setRuntimeProjectionError] =
-    useState<'http_error' | 'invalid_transport' | 'network_error' | null>(null)
-  const [viewModel, setViewModel] = useState<Awaited<RuntimeFetchResult> | null>(null)
+  const [runtimeProjectionError, setRuntimeProjectionError] = useState<
+    'http_error' | 'invalid_transport' | 'network_error' | null
+  >(null)
+  const [viewModel, setViewModel] =
+    useState<Awaited<RuntimeFetchResult> | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    const params = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search)
+    const params = new URLSearchParams(
+      typeof window === 'undefined' ? '' : window.location.search,
+    )
     const identityQuery = new URLSearchParams()
     for (const key of ['graph_ref', 'graph_version', 'accepted_release_id']) {
       const value = params.get(key)
@@ -282,10 +401,20 @@ export function StudioShell() {
         // dedicated summary field, this is the only site that needs
         // to be updated to read it.
         const props = vm as unknown as {
-          properties?: { mvlV0RunRef?: string; mvlV1RunRef?: string; mvlEvaluationRunId?: string; mvlLearningDecision?: 'GO' | 'STOP_REVISE' | 'SPLIT_FIX' }
+          properties?: {
+            mvlV0RunRef?: string
+            mvlV1RunRef?: string
+            mvlEvaluationRunId?: string
+            mvlLearningDecision?: 'GO' | 'STOP_REVISE' | 'SPLIT_FIX'
+          }
         }
         const p = props.properties ?? {}
-        if (p.mvlV0RunRef || p.mvlV1RunRef || p.mvlEvaluationRunId || p.mvlLearningDecision) {
+        if (
+          p.mvlV0RunRef ||
+          p.mvlV1RunRef ||
+          p.mvlEvaluationRunId ||
+          p.mvlLearningDecision
+        ) {
           setMvlWorkflowSummary({
             v0RunRef: p.mvlV0RunRef ?? null,
             v1RunRef: p.mvlV1RunRef ?? null,
@@ -298,7 +427,12 @@ export function StudioShell() {
     return () => {
       cancelled = true
     }
-  }, [invalidateSelectionForIdentity, setLastIdentity, applyLargeGraphPerformance, setMvlWorkflowSummary])
+  }, [
+    invalidateSelectionForIdentity,
+    setLastIdentity,
+    applyLargeGraphPerformance,
+    setMvlWorkflowSummary,
+  ])
 
   // CF-E25: deep-link restoration.  Hints from the route query are
   // validated against the current identity + view model before being
@@ -329,7 +463,7 @@ export function StudioShell() {
       // selection via the existing selector.
       selectEvidenceRef(validated.evidenceRef ?? null)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewModel, runtimeIdentity, mvlSummary])
 
   // Projection goes through `projectStudioWorkbenchContext` (CORE-06).
@@ -340,17 +474,23 @@ export function StudioShell() {
       sourceIdentityRef: runtimeIdentity.graphRef,
       extractionRunId,
       selectedCandidateId: null,
-      selectedEvidenceRefs: selectedEvidenceRef ? [selectedEvidenceRef] : (viewModel?.ok ? (viewModel.viewModel.sourceEvidenceRefs ?? []) : []),
+      selectedEvidenceRefs: selectedEvidenceRef
+        ? [selectedEvidenceRef]
+        : viewModel?.ok
+          ? (viewModel.viewModel.sourceEvidenceRefs ?? [])
+          : [],
       selectedEvidenceRef,
       selectedNodeId,
       selectedEdgeId,
       mvlSummary,
-      findingContext: inspectFindingContext ? {
-        targetEvidenceRef: inspectFindingContext.targetEvidenceRef,
-        activeRuleVersionId: inspectFindingContext.activeRuleVersionId,
-        graphRuleId: inspectFindingContext.graphRuleId,
-        originEvidenceRef: inspectFindingContext.originEvidenceRef,
-      } : null,
+      findingContext: inspectFindingContext
+        ? {
+            targetEvidenceRef: inspectFindingContext.targetEvidenceRef,
+            activeRuleVersionId: inspectFindingContext.activeRuleVersionId,
+            graphRuleId: inspectFindingContext.graphRuleId,
+            originEvidenceRef: inspectFindingContext.originEvidenceRef,
+          }
+        : null,
     })
     setWorkbenchContext(context)
   }, [
@@ -368,7 +508,9 @@ export function StudioShell() {
 
   useEffect(() => {
     const onWorkbenchResult = (event: Event) => {
-      const parsed = parseKnowledgeWorkbenchResult((event as CustomEvent<unknown>).detail)
+      const parsed = parseKnowledgeWorkbenchResult(
+        (event as CustomEvent<unknown>).detail,
+      )
       if (!parsed) return
       const vm = viewModel?.ok ? viewModel.viewModel : null
       // CF-E11/CF-E19 — chat focus applies only after the workbench store
@@ -394,18 +536,191 @@ export function StudioShell() {
         setSourceOpen(true)
       }
     }
-    window.addEventListener('semantier:knowledge-workbench-result', onWorkbenchResult)
-    return () => window.removeEventListener('semantier:knowledge-workbench-result', onWorkbenchResult)
-  }, [viewModel, applyWorkbenchResult, selectEdge, selectNode, setMode, setSourceOpen])
+    window.addEventListener(
+      'semantier:knowledge-workbench-result',
+      onWorkbenchResult,
+    )
+    return () =>
+      window.removeEventListener(
+        'semantier:knowledge-workbench-result',
+        onWorkbenchResult,
+      )
+  }, [
+    viewModel,
+    applyWorkbenchResult,
+    selectEdge,
+    selectNode,
+    setMode,
+    setSourceOpen,
+  ])
 
   const contextSummary = useMemo(() => {
-    if (mode === 'sources') return zh ? '来源上下文已同步到右侧对话' : 'Source context synced to right chat'
-    if (mode === 'extract') return zh ? '抽取运行 + 候选 + 证据已同步' : 'Extraction + candidate + evidence synced'
-    if (mode === 'ground') return zh ? '候选 + EvidenceRef + 图身份已同步' : 'Candidate + EvidenceRef + graph identity synced'
-    if (mode === 'graph') return zh ? '图 + 节点 + EvidenceRef + 来源已同步' : 'Graph + node + EvidenceRef + source synced'
-    if (mode === 'compare') return zh ? 'V1 比较侧 + 当前断言已同步' : 'Active V1 comparison side synced'
-    return zh ? '评估目标图 + runMode 已同步' : 'Evaluation target graph + runMode synced'
+    if (mode === 'sources')
+      return zh
+        ? '来源上下文已同步到右侧对话'
+        : 'Source context synced to right chat'
+    if (mode === 'extract')
+      return zh
+        ? '抽取运行 + 候选 + 证据已同步'
+        : 'Extraction + candidate + evidence synced'
+    if (mode === 'ground')
+      return zh
+        ? '候选 + EvidenceRef + 图身份已同步'
+        : 'Candidate + EvidenceRef + graph identity synced'
+    if (mode === 'graph')
+      return zh
+        ? '图 + 节点 + EvidenceRef + 来源已同步'
+        : 'Graph + node + EvidenceRef + source synced'
+    if (mode === 'compare')
+      return zh
+        ? 'V1 比较侧 + 当前断言已同步'
+        : 'Active V1 comparison side synced'
+    return zh
+      ? '评估目标图 + runMode 已同步'
+      : 'Evaluation target graph + runMode synced'
   }, [mode, zh])
+
+  const studioSelection = resolveValidSelection(
+    viewModel?.ok ? viewModel.viewModel : null,
+    selectedNodeId,
+    selectedEdgeId,
+  )
+  const inspectorNode = studioSelection.node
+  const inspectorEdge = studioSelection.edge
+  const inspectorEvidenceRefs =
+    inspectorNode?.evidenceRefs ?? inspectorEdge?.evidenceRefs ?? []
+
+  const persistentSourceLineage = useMemo(() => {
+    if (!sourceInspectorContext) return []
+    const base = sourceInspectorContext.lineage.filter(
+      (step) =>
+        step.id !== 'semantic-extraction' && step.id !== 'candidate-graph',
+    )
+    const stage = (
+      id: StudioMode,
+      label: string,
+      contextAdded: Array<string>,
+      refs: Array<string | null | undefined>,
+      complete: boolean,
+    ): SourceInspectorContext['lineage'][number] => ({
+      id,
+      label,
+      contextAdded,
+      refs: refs.filter((ref): ref is string => Boolean(ref)),
+      status: mode === id ? 'current' : complete ? 'completed' : 'pending',
+    })
+    const graphIdentity = [
+      runtimeIdentity.graphRef,
+      runtimeIdentity.graphVersion,
+    ].filter(Boolean)
+    const inspectionRunId =
+      typeof inspectRun?.run_id === 'string'
+        ? inspectRun.run_id
+        : typeof inspectRun?.inspection_run_id === 'string'
+          ? inspectRun.inspection_run_id
+          : null
+    return [
+      ...base.map((step) => ({ ...step, status: 'completed' as const })),
+      stage(
+        'extract',
+        zh ? '语义抽取' : 'Extract',
+        [
+          extractionRunId
+            ? zh
+              ? `增加 ${candidates.length} 个断言候选、置信度与证据引用`
+              : `${candidates.length} assertion candidates, confidence, and evidence references added`
+            : zh
+              ? '将增加断言候选、置信度与证据引用'
+              : 'Will add assertion candidates, confidence, and evidence references',
+        ],
+        [extractionRunId, candidateGraphId],
+        Boolean(extractionRunId),
+      ),
+      stage(
+        'ground',
+        zh ? '人工校准与发布' : 'Ground',
+        [
+          zh
+            ? '校准候选状态，并增加已接受发布与激活快照上下文'
+            : 'Grounds candidate state and adds accepted-release and activation-snapshot context',
+        ],
+        [candidateGraphId],
+        candidates.some(
+          (candidate) => candidate.grounding_state !== 'unresolved',
+        ),
+      ),
+      stage(
+        'graph',
+        zh ? '规范图投影' : 'Graph',
+        [
+          zh
+            ? '增加规范节点、关系、图版本与证据映射'
+            : 'Adds canonical nodes, relationships, graph version, and evidence mapping',
+        ],
+        graphIdentity,
+        graphIdentity.length > 0,
+      ),
+      stage(
+        'inspect',
+        zh ? '文档检查' : 'Inspect',
+        [
+          zh
+            ? '增加命中项、激活规则快照与来源图规则引用'
+            : 'Adds findings, activated-rule snapshot, and source graph-rule references',
+        ],
+        [inspectionRunId],
+        Boolean(inspectRun),
+      ),
+      stage(
+        'compare',
+        zh ? '图版本比较' : 'Compare',
+        [
+          zh
+            ? '增加基线与新图版本之间的结构差异上下文'
+            : 'Adds structural-diff context between baseline and new graph versions',
+        ],
+        graphIdentity,
+        mode === 'evaluate' && graphIdentity.length > 0,
+      ),
+      stage(
+        'evaluate',
+        zh ? '闭环评估' : 'Evaluate',
+        [
+          zh
+            ? '增加 V0/V1 评估运行、学习门决策与改进反馈'
+            : 'Adds V0/V1 evaluation runs, learning-gate decision, and improvement feedback',
+        ],
+        [mvlSummary.v0RunRef, mvlSummary.v1RunRef, mvlSummary.evaluationRunId],
+        Boolean(mvlSummary.evaluationRunId || mvlSummary.learningDecision),
+      ),
+    ]
+  }, [
+    candidateGraphId,
+    candidates,
+    extractionRunId,
+    inspectRun,
+    mode,
+    mvlSummary,
+    runtimeIdentity.graphRef,
+    runtimeIdentity.graphVersion,
+    sourceInspectorContext,
+    zh,
+  ])
+
+  const openInspectorEvidence = async () => {
+    const ref = inspectorEvidenceRefs[0]
+    if (!ref) return
+    selectEvidenceRef(ref)
+    const details =
+      inspectorNode?.evidenceRefDetails ??
+      inspectorEdge?.evidenceRefDetails ??
+      []
+    const detail = details.find(
+      (item) => item.evidenceRef === ref || item.evidence_ref === ref,
+    )
+    const response = await resolveEvidenceRef(ref, detail)
+    if (response.ok) setSourceOpen(true)
+  }
 
   return (
     <main
@@ -414,124 +729,514 @@ export function StudioShell() {
       className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground transition-[padding] duration-200 ${chatPanelOpen ? 'min-[1200px]:pr-[420px]' : ''}`}
     >
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-3.5">
-        <h1 className="shrink-0 text-sm font-semibold">{zh ? 'ContextGraph Studio / 上下文图工作台' : 'ContextGraph Studio'}</h1>
-        {(runtimeIdentity.graphRef || runtimeIdentity.graphVersion || runtimeIdentity.graphHash) ? (
+        <h1 className="shrink-0 text-sm font-semibold">
+          {zh ? 'ContextGraph Studio / 上下文图工作台' : 'ContextGraph Studio'}
+        </h1>
+        {runtimeIdentity.graphRef ||
+        runtimeIdentity.graphVersion ||
+        runtimeIdentity.graphHash ? (
           <div className="hidden min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground md:flex">
             {runtimeIdentity.graphRef ? (
-              <span className="max-w-[220px] truncate">{runtimeIdentity.graphRef}</span>
+              <span className="max-w-[220px] truncate">
+                {runtimeIdentity.graphRef}
+              </span>
             ) : null}
-            <StatusPill tone={runtimeIdentity.authorityState === 'authoritative' ? 'success' : 'candidate'}>{runtimeIdentity.authorityState}</StatusPill>
+            <StatusPill
+              tone={
+                runtimeIdentity.authorityState === 'authoritative'
+                  ? 'success'
+                  : 'candidate'
+              }
+            >
+              {runtimeIdentity.authorityState}
+            </StatusPill>
             <span className="font-mono">
               {runtimeIdentity.graphVersion}
-              {runtimeIdentity.graphHash ? ` · ${runtimeIdentity.graphHash.slice(0, 8)}…` : null}
+              {runtimeIdentity.graphHash
+                ? ` · ${runtimeIdentity.graphHash.slice(0, 8)}…`
+                : null}
             </span>
           </div>
         ) : null}
         <div className="min-w-0 flex-1" />
-        <span className="hidden max-w-[300px] truncate text-[10px] text-muted-foreground xl:block">{contextSummary}</span>
+        <span className="hidden max-w-[300px] truncate text-[10px] text-muted-foreground xl:block">
+          {contextSummary}
+        </span>
         <Button
           type="button"
-          aria-label={chatPanelOpen ? (zh ? '关闭右侧对话面板' : 'Close right chat panel') : (zh ? '打开右侧对话面板' : 'Open right chat panel')}
-          title={chatPanelOpen ? (zh ? '关闭右侧对话面板' : 'Close right chat panel') : (zh ? '打开右侧对话面板' : 'Open right chat panel')}
+          aria-label={
+            chatPanelOpen
+              ? zh
+                ? '关闭右侧边栏'
+                : 'Close right sidebar'
+              : zh
+                ? '打开右侧边栏'
+                : 'Open right sidebar'
+          }
+          title={
+            chatPanelOpen
+              ? zh
+                ? '关闭右侧边栏'
+                : 'Close right sidebar'
+              : zh
+                ? '打开右侧边栏'
+                : 'Open right sidebar'
+          }
           onClick={() => setChatPanelOpen(!chatPanelOpen)}
           className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]"
         >
-          <HugeiconsIcon icon={chatPanelOpen ? PanelRightOpenIcon : PanelRightCloseIcon} size={17} strokeWidth={1.7} />
+          <HugeiconsIcon
+            icon={chatPanelOpen ? PanelRightOpenIcon : PanelRightCloseIcon}
+            size={17}
+            strokeWidth={1.7}
+          />
         </Button>
       </header>
 
-      <nav aria-label="ContextGraph Studio modes" className="flex h-10 shrink-0 items-end gap-1 overflow-x-auto border-b border-border bg-card px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {(['sources', 'extract', 'ground', 'graph', 'inspect', 'compare', 'evaluate'] as const).map((item) => (
-          <Button
-            key={item}
-            type="button"
-            aria-current={mode === item ? 'page' : undefined}
-            onClick={() => setMode(item)}
-            className={`h-9 shrink-0 cursor-pointer border-b-2 px-2.5 text-xs transition-colors ${mode === item ? 'border-primary font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+      <nav
+        aria-label="ContextGraph Studio modes"
+        className="flex h-11 shrink-0 items-center overflow-x-auto border-b border-border bg-card px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <Tabs
+          value={mode}
+          onValueChange={(value) => setMode(value as StudioMode)}
+          className="h-full min-w-max flex-row gap-0"
+        >
+          <TabsList
+            variant="underline"
+            aria-label={
+              zh ? 'ContextGraph Studio 模式' : 'ContextGraph Studio modes'
+            }
+            className="h-full w-max justify-start gap-3 bg-transparent px-0 py-0 text-muted-foreground"
           >
-            {item === 'sources' ? (zh ? '来源' : 'Sources') : item === 'extract' ? (zh ? '抽取' : 'Extract') : item === 'ground' ? (zh ? '校准' : 'Ground') : item === 'graph' ? (zh ? '图谱' : 'Graph') : item === 'inspect' ? (zh ? '检查' : 'Inspect') : item === 'compare' ? (zh ? '比较' : 'Compare') : (zh ? '评估' : 'Evaluate')}
-          </Button>
-        ))}
+            {(
+              [
+              ['sources', zh ? '来源' : 'Sources'],
+              ['extract', zh ? '抽取' : 'Extract'],
+              ['ground', zh ? '校准' : 'Ground'],
+              ['graph', zh ? '图谱' : 'Graph'],
+              ['inspect', zh ? '检查' : 'Inspect'],
+              ['compare', zh ? '比较' : 'Compare'],
+              ['evaluate', zh ? '评估' : 'Evaluate'],
+              ] as const
+            ).map(([item, itemLabel]) => (
+              <TabsTab
+                key={item}
+                value={item}
+                aria-current={mode === item ? 'page' : undefined}
+                className="h-full px-1 text-xs text-muted-foreground data-active:text-foreground"
+              >
+                {itemLabel}
+              </TabsTab>
+            ))}
+          </TabsList>
+        </Tabs>
       </nav>
 
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
-        {mode === 'sources' ? <SourcesMode zh={zh} onNext={() => setMode('extract')} /> : null}
-        {mode === 'extract' ? <ExtractMode zh={zh} extractionRunId={extractionRunId} onRun={handleExtractionRun} onNext={() => setMode('ground')} onCandidates={setCandidates} /> : null}
-        {mode === 'ground' ? <GroundMode zh={zh} extractionRunId={extractionRunId} candidateGraphId={candidateGraphId} assertionCandidates={candidates} /> : null}
-        {mode === 'inspect' ? <InspectMode zh={zh} run={inspectRun} onRun={setInspectRun} onFindingContext={setInspectFindingContext} onOpenGraph={(finding) => { setMode('graph'); selectNode(finding.source_graph_rule_id ?? null) }} /> : null}
-        {mode === 'graph' ? (
-          <GraphMode
-            zh={zh}
-            sourceOpen={sourceOpen}
-            setSourceOpen={setSourceOpen}
-            legendOpen={legendOpen}
-            setLegendOpen={setLegendOpen}
-            viewModel={viewModel?.ok ? viewModel.viewModel : null}
-            selectedNodeId={selectedNodeId}
-            selectedEdgeId={selectedEdgeId}
-            highlightedNodeIds={selectedEvidenceRef && viewModel?.ok ? viewModel.viewModel.nodes.filter((node) => (node.evidenceRefs ?? []).includes(selectedEvidenceRef)).map((node) => node.id) : []}
-            highlightedEdgeIds={selectedEvidenceRef && viewModel?.ok ? viewModel.viewModel.edges.filter((edge) => (edge.evidenceRefs ?? []).includes(selectedEvidenceRef)).map((edge) => edge.id) : []}
-            setSelectedNodeId={selectNode}
-            setSelectedEdgeId={selectEdge}
-            onSelectEvidenceRef={selectEvidenceRef}
-            onGround={() => setMode('ground')}
-            runtimeIdentity={runtimeIdentity}
-            candidateGraphId={candidateGraphId}
-          />
-        ) : null}
-        {mode === 'compare' ? <CompareMode zh={zh} runtimeIdentity={runtimeIdentity} onGraph={() => setMode('graph')} onGround={() => setMode('ground')} /> : null}
-        {mode === 'evaluate' ? <EvaluateMode zh={zh} runtimeIdentity={runtimeIdentity} /> : null}
-        </div>
-        {runtimeProjectionError ? (
-          <div
-            data-testid="contextgraph-studio-runtime-error"
-            role="status"
-            className="pointer-events-auto flex items-start gap-2 border-t border-warning/40 bg-warning/10 px-4 py-2 text-[11px] text-warning"
-          >
-            <HugeiconsIcon icon={Alert02Icon} size={14} strokeWidth={1.7} className="mt-0.5 shrink-0" />
-            <div className="flex-1 leading-5">
-              <strong className="font-semibold">
-                {zh ? '画布没有可用的规范图：' : 'No canonical graph is available: '}
-              </strong>
-              <span>
-                {runtimeProjectionError === 'http_error'
-                  ? zh
-                    ? '上游运行时路由返回了非 2xx 响应。'
-                    : 'The upstream runtime route returned a non-2xx response.'
-                  : runtimeProjectionError === 'invalid_transport'
-                    ? zh
-                      ? '运行时投影不符合 v1 schema；Studio 不能在解析前显示数据。'
-                      : 'Runtime projection does not match the v1 schema; the Studio cannot display data before parsing.'
-                    : zh
-                      ? '运行时投影请求失败；请稍后重试或选择已发布的图。'
-                    : 'Runtime projection request failed; select a released graph and retry.'}
-              </span>
-              <Button
-                type="button"
-                onClick={() => setMode('graph')}
-                className="ml-2 underline-offset-2 hover:underline"
-              >
-                {zh ? '打开 Graph 标签页' : 'Open Graph tab'}
-              </Button>
-            </div>
+      <section className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+            {mode === 'sources' ? (
+              <SourcesMode
+                zh={zh}
+                onNext={() => setMode('extract')}
+                extractionRunId={extractionRunId}
+                candidateGraphId={candidateGraphId}
+                onInspectSource={(context) => {
+                  setSourceInspectorContext(context)
+                  setInspectorOpen(true)
+                  setChatPanelOpen(true)
+                }}
+              />
+            ) : null}
+            {mode === 'extract' ? (
+              <ExtractMode
+                zh={zh}
+                extractionRunId={extractionRunId}
+                onRun={handleExtractionRun}
+                onNext={() => setMode('ground')}
+                onCandidates={setCandidates}
+              />
+            ) : null}
+            {mode === 'ground' ? (
+              <GroundMode
+                zh={zh}
+                extractionRunId={extractionRunId}
+                candidateGraphId={candidateGraphId}
+                assertionCandidates={candidates}
+              />
+            ) : null}
+            {mode === 'inspect' ? (
+              <InspectMode
+                zh={zh}
+                run={inspectRun}
+                onRun={setInspectRun}
+                onFindingContext={setInspectFindingContext}
+                onOpenGraph={(finding) => {
+                  setMode('graph')
+                  selectNode(finding.source_graph_rule_id ?? null)
+                }}
+              />
+            ) : null}
+            {mode === 'graph' ? (
+              <GraphMode
+                zh={zh}
+                sourceOpen={sourceOpen}
+                setSourceOpen={setSourceOpen}
+                legendOpen={legendOpen}
+                setLegendOpen={setLegendOpen}
+                viewModel={viewModel?.ok ? viewModel.viewModel : null}
+                selectedNodeId={selectedNodeId}
+                selectedEdgeId={selectedEdgeId}
+                highlightedNodeIds={
+                  selectedEvidenceRef && viewModel?.ok
+                    ? viewModel.viewModel.nodes
+                        .filter((node) =>
+                          (node.evidenceRefs ?? []).includes(
+                            selectedEvidenceRef,
+                          ),
+                        )
+                        .map((node) => node.id)
+                    : []
+                }
+                highlightedEdgeIds={
+                  selectedEvidenceRef && viewModel?.ok
+                    ? viewModel.viewModel.edges
+                        .filter((edge) =>
+                          (edge.evidenceRefs ?? []).includes(
+                            selectedEvidenceRef,
+                          ),
+                        )
+                        .map((edge) => edge.id)
+                    : []
+                }
+                setSelectedNodeId={selectNode}
+                setSelectedEdgeId={selectEdge}
+                runtimeIdentity={runtimeIdentity}
+                candidateGraphId={candidateGraphId}
+              />
+            ) : null}
+            {mode === 'compare' ? (
+              <CompareMode
+                zh={zh}
+                runtimeIdentity={runtimeIdentity}
+                onGraph={() => setMode('graph')}
+                onGround={() => setMode('ground')}
+              />
+            ) : null}
+            {mode === 'evaluate' ? (
+              <EvaluateMode zh={zh} runtimeIdentity={runtimeIdentity} />
+            ) : null}
           </div>
+          {runtimeProjectionError ? (
+            <div
+              data-testid="contextgraph-studio-runtime-error"
+              role="status"
+              className="pointer-events-auto flex items-start gap-2 border-t border-warning/40 bg-warning/10 px-4 py-2 text-[11px] text-warning"
+            >
+              <HugeiconsIcon
+                icon={Alert02Icon}
+                size={14}
+                strokeWidth={1.7}
+                className="mt-0.5 shrink-0"
+              />
+              <div className="flex-1 leading-5">
+                <strong className="font-semibold">
+                  {zh
+                    ? '画布没有可用的规范图：'
+                    : 'No canonical graph is available: '}
+                </strong>
+                <span>
+                  {runtimeProjectionError === 'http_error'
+                    ? zh
+                      ? '上游运行时路由返回了非 2xx 响应。'
+                      : 'The upstream runtime route returned a non-2xx response.'
+                    : runtimeProjectionError === 'invalid_transport'
+                      ? zh
+                        ? '运行时投影不符合 v1 schema；Studio 不能在解析前显示数据。'
+                        : 'Runtime projection does not match the v1 schema; the Studio cannot display data before parsing.'
+                      : zh
+                        ? '运行时投影请求失败；请稍后重试或选择已发布的图。'
+                        : 'Runtime projection request failed; select a released graph and retry.'}
+                </span>
+                <Button
+                  type="button"
+                  onClick={() => setMode('graph')}
+                  className="ml-2 underline-offset-2 hover:underline"
+                >
+                  {zh ? '打开 Graph 标签页' : 'Open Graph tab'}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+        {chatPanelOpen ? (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              data-testid="contextgraph-studio-right-sidebar-backdrop"
+              aria-label={zh ? '关闭右侧边栏' : 'Close right sidebar'}
+              onClick={() => setChatPanelOpen(false)}
+              className="fixed inset-0 z-10 rounded-none bg-black/20 min-[1200px]:hidden"
+            />
+            <aside
+              aria-label={
+                zh ? 'ContextGraph 侧边面板' : 'ContextGraph side panel'
+              }
+              data-testid="contextgraph-studio-right-sidebar"
+              className="fixed bottom-0 right-0 top-[var(--titlebar-h,0px)] z-20 flex h-[calc(100dvh-var(--titlebar-h,0px))] w-[420px] max-w-[100vw] flex-col overflow-hidden border-l border-border bg-card shadow-xl"
+            >
+          <nav
+            aria-label={
+              zh ? 'ContextGraph 侧边面板' : 'ContextGraph side panel'
+            }
+            className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3"
+          >
+            <Tabs
+              value={inspectorOpen ? 'inspector' : 'chat'}
+              onValueChange={(value) => {
+                setInspectorOpen(value === 'inspector')
+              }}
+              className="min-w-0 flex-1 gap-0"
+            >
+              <TabsList
+                variant="underline"
+                aria-label={zh ? '右侧面板视图' : 'Right sidebar view'}
+                className="w-full justify-start gap-2 bg-transparent px-0 py-0 text-muted-foreground"
+              >
+                <TabsTab
+                  value="inspector"
+                  aria-current={inspectorOpen ? 'page' : undefined}
+                  className="h-11 flex-1 px-2 text-xs text-muted-foreground data-active:text-foreground"
+                >
+                  {zh ? '检查器' : 'Inspector'}
+                </TabsTab>
+                <TabsTab
+                  value="chat"
+                  aria-current={!inspectorOpen ? 'page' : undefined}
+                  className="h-11 flex-1 px-2 text-xs text-muted-foreground data-active:text-foreground"
+                >
+                  {zh ? '对话' : 'Chat'}
+                </TabsTab>
+              </TabsList>
+            </Tabs>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              aria-label={zh ? '关闭右侧边栏' : 'Close right sidebar'}
+              onClick={() => setChatPanelOpen(false)}
+              className="shrink-0"
+            >
+              <HugeiconsIcon
+                icon={Cancel01Icon}
+                size={14}
+                strokeWidth={1.7}
+              />
+            </Button>
+          </nav>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {inspectorOpen ? (
+              <div
+                data-testid="contextgraph-studio-inspector"
+                className="h-full overflow-y-auto p-4"
+              >
+                <h2 className="text-sm font-semibold">
+                  {sourceInspectorContext?.name ||
+                    inspectorNode?.label ||
+                    inspectorEdge?.relationshipType ||
+                    (zh ? '图检查器' : 'Graph inspector')}
+                </h2>
+                {sourceInspectorContext ? (
+                  <>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <StatusPill tone="success">
+                        {sourceInspectorContext.kind === 'normalized'
+                          ? zh
+                            ? '内部规范化表示'
+                            : 'Internal normalized representation'
+                          : zh
+                            ? '原始来源'
+                            : 'Original source'}
+                      </StatusPill>
+                    </div>
+                    <MiniLabel>{zh ? '元数据上下文' : 'Metadata context'}</MiniLabel>
+                    <dl className="space-y-2 text-[11px]">
+                      {sourceInspectorContext.metadata.map((item) => (
+                        <div key={item.label}>
+                          <dt className="text-muted-foreground">{item.label}</dt>
+                          <dd className="break-all font-mono text-[10px]">
+                            {item.value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <MiniLabel>{zh ? '上下文谱系' : 'Context lineage'}</MiniLabel>
+                    <ol className="space-y-3">
+                      {persistentSourceLineage.map((step, index) => (
+                        <li
+                          key={step.id}
+                          className="relative rounded-[12px] border border-border bg-muted/35 p-3"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                              {index + 1}
+                            </span>
+                            <strong className="text-xs">{step.label}</strong>
+                            <StatusPill
+                              tone={
+                                step.status === 'completed'
+                                  ? 'success'
+                                  : step.status === 'current'
+                                    ? 'candidate'
+                                    : 'neutral'
+                              }
+                            >
+                              {step.status === 'completed'
+                                ? zh
+                                  ? '已完成'
+                                  : 'Completed'
+                                : step.status === 'current'
+                                  ? zh
+                                    ? '当前步骤'
+                                    : 'Current step'
+                                  : zh
+                                    ? '等待中'
+                                    : 'Pending'}
+                            </StatusPill>
+                          </div>
+                          <div className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            {zh ? '本步骤增加的上下文' : 'Context added by this step'}
+                          </div>
+                          <ul className="mt-1 space-y-1 text-[11px]">
+                            {step.contextAdded.map((item) => (
+                              <li key={item}>• {item}</li>
+                            ))}
+                          </ul>
+                          {step.refs.length > 0 ? (
+                            <div className="mt-2 space-y-1 break-all font-mono text-[9px] text-muted-foreground">
+                              {step.refs.map((ref) => (
+                                <div key={ref}>{ref}</div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ol>
+                  </>
+                ) : inspectorNode || inspectorEdge ? (
+                  <>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <StatusPill>
+                        {inspectorNode
+                          ? inspectorNode.semanticType
+                          : inspectorEdge?.relationshipType}
+                      </StatusPill>
+                      <StatusPill tone="candidate">
+                        {runtimeIdentity.authorityState}
+                      </StatusPill>
+                    </div>
+                    <MiniLabel>Graph identity</MiniLabel>
+                    <div className="break-all font-mono text-[10px]">
+                      {runtimeIdentity.graphRef || '—'} ·{' '}
+                      {runtimeIdentity.graphVersion || '—'}
+                    </div>
+                    <MiniLabel>Lineage</MiniLabel>
+                    <div className="space-y-1 text-[10px] text-muted-foreground">
+                      <div>
+                        SourceIdentity:{' '}
+                        {(
+                          inspectorNode?.lineage?.sourceIdentityRefs ??
+                          inspectorEdge?.lineage?.sourceIdentityRefs ??
+                          []
+                        ).join(', ') || '—'}
+                      </div>
+                      <div>
+                        ExtractionRun:{' '}
+                        {inspectorNode?.lineage?.extractionRunRef ??
+                          inspectorEdge?.lineage?.extractionRunRef ??
+                          '—'}
+                      </div>
+                    </div>
+                    <MiniLabel>Canonical ID</MiniLabel>
+                    <div className="break-all font-mono text-[10px]">
+                      {inspectorNode?.id || inspectorEdge?.id}
+                    </div>
+                    <MiniLabel>EvidenceRef</MiniLabel>
+                    <div className="text-xs text-muted-foreground">
+                      {inspectorEvidenceRefs.length > 0
+                        ? inspectorEvidenceRefs.join(', ')
+                        : zh
+                          ? '当前图对象未携带规范 EvidenceRef。'
+                          : 'No canonical EvidenceRef is attached to this graph object.'}
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <StudioButton
+                        primary
+                        onClick={() => void openInspectorEvidence()}
+                      >
+                        {zh ? '打开证据' : 'Open evidence'}
+                      </StudioButton>
+                      <StudioButton onClick={() => setMode('ground')}>
+                        {zh ? '校准' : 'Ground'}
+                      </StudioButton>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    {zh
+                      ? '在图谱中选择节点或边以查看身份、谱系与证据。'
+                      : 'Select a graph node or edge to inspect its identity, lineage, and evidence.'}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <ChatPanel embedded />
+            )}
+          </div>
+            </aside>
+          </>
         ) : null}
       </section>
     </main>
   )
 }
 
-export function SourcesMode({ zh, onNext }: { zh: boolean; onNext: () => void }) {
+export function SourcesMode({
+  zh,
+  onNext,
+  onInspectSource,
+  extractionRunId = null,
+  candidateGraphId = null,
+}: {
+  zh: boolean
+  onNext: () => void
+  onInspectSource?: (context: SourceInspectorContext) => void
+  extractionRunId?: string | null
+  candidateGraphId?: string | null
+}) {
   const [rows, setRows] = useState<SourceRow[]>([])
   const [pendingRows, setPendingRows] = useState<SourceRow[]>([])
   const [sourcePaths, setSourcePaths] = useState<Record<string, string>>({})
-  const [sourcePreview, setSourcePreview] = useState<{ name: string; content: string } | null>(null)
+  const [originalSourcePaths, setOriginalSourcePaths] = useState<
+    Record<string, string>
+  >({})
+  const [sourcePreview, setSourcePreview] = useState<{
+    name: string
+    content: string
+  } | null>(null)
   const [selectedSourceNames, setSelectedSourceNames] = useState<string[]>([])
-  const [status, setStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading')
+  const [status, setStatus] = useState<'loading' | 'ready' | 'unavailable'>(
+    'loading',
+  )
+  const [statusFilter, setStatusFilter] = useState('all')
   const [uploading, setUploading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [pendingDeleteRow, setPendingDeleteRow] = useState<SourceRow | null>(
+    null,
+  )
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const refreshSources = useCallback(async () => {
@@ -539,21 +1244,76 @@ export function SourcesMode({ zh, onNext }: { zh: boolean; onNext: () => void })
     const response = await fetch('/api/knowledge/list')
     if (!response.ok) throw new Error(`sources:${response.status}`)
     const payload = (await response.json()) as {
-      pages?: Array<{ name?: string; title?: string; path?: string; updatedAt?: string }>
+      pages?: Array<{
+        name?: string
+        title?: string
+        path?: string
+        updatedAt?: string
+      }>
+      sourceFiles?: Array<{
+        name: string
+        path: string
+        kind: 'file'
+        modified?: string
+      }>
     }
     const nextPaths: Record<string, string> = {}
-    const nextRows = (payload.pages ?? []).map((page): SourceRow => {
-      const name = page.title ?? page.name ?? page.path ?? 'Unnamed source'
+    const pageRows = (payload.pages ?? []).map((page): SourceRow => {
+      const name =
+        page.path?.split('/').pop() ??
+        page.name ??
+        page.title ??
+        'Unnamed source'
       if (page.path) nextPaths[name] = page.path
       const extension = page.path?.split('.').pop()?.toUpperCase() || 'SOURCE'
       return [name, extension, 'Ready', '—', '—', page.updatedAt ?? '—']
     })
+    const nextOriginalPaths: Record<string, string> = {}
+    const matchedNormalizedNames = new Set<string>()
+    const groupedRows = (payload.sourceFiles ?? []).flatMap(
+      (source): SourceRow[] => {
+          const name = source.name
+          nextOriginalPaths[name] = source.path
+          const normalizedPage = (payload.pages ?? []).find(
+            (page) =>
+              sourceNameKey(page.path?.split('/').pop() ?? '') ===
+              sourceNameKey(source.path.split('/').pop() ?? source.name),
+          )
+          const normalized = normalizedPage
+            ? pageRows.find(
+                (row) =>
+                  row[0] ===
+                  (normalizedPage.title ??
+                    normalizedPage.name ??
+                    normalizedPage.path ??
+                    'Unnamed source'),
+              )
+            : undefined
+          if (normalized) matchedNormalizedNames.add(normalized[0])
+          const originalRow: SourceRow = [
+            name,
+            source.name.split('.').pop()?.toUpperCase() || 'SOURCE',
+            normalized ? 'Normalized' : 'Waiting for ingest',
+            '—',
+            '—',
+            source.modified ?? normalized?.[5] ?? '—',
+          ]
+          return normalized ? [originalRow, normalized] : [originalRow]
+        },
+    )
+    const nextRows = [
+      ...groupedRows,
+      ...pageRows.filter((row) => !matchedNormalizedNames.has(row[0])),
+    ]
     // Replace rows + sourcePaths wholesale (not merge) so deleted entries do not linger
     // and we never call /api/knowledge/read with a path that no longer exists on disk.
-    const persistedKeys = new Set(nextRows.map((row) => sourceNameKey(row[0])))
+    const persistedKeys = new Set(nextRows.map((row) => row[0]))
     setRows(nextRows)
-    setPendingRows((current) => current.filter((row) => !persistedKeys.has(sourceNameKey(row[0]))))
+    setPendingRows((current) =>
+      current.filter((row) => !persistedKeys.has(row[0])),
+    )
     setSourcePaths(nextPaths)
+    setOriginalSourcePaths(nextOriginalPaths)
     setStatus('ready')
   }, [])
 
@@ -561,157 +1321,451 @@ export function SourcesMode({ zh, onNext }: { zh: boolean; onNext: () => void })
     void refreshSources().catch(() => setStatus('unavailable'))
   }, [refreshSources])
 
-  const uploadSource = useCallback(async (file: File) => {
-    setUploadError(null)
-    setUploading(true)
-    try {
-      const form = new FormData()
-      form.append('files', file)
-      form.append('path', 'uploads')
-      form.append('ingestMode', 'extract')
-      form.append('session_id', 'knowledge-builder')
-      const response = await fetch('/api/knowledge/upload', { method: 'POST', body: form })
-      if (!response.ok) throw new Error(`upload:${response.status}`)
-      const results = (await response.json()) as KnowledgeUploadResult[]
-      const failures = results.filter((result) => result.ok === false)
-      const uploadedRows = results
-        .map(sourceRowFromUpload)
-        .filter((row): row is SourceRow => row !== null)
-      if (failures.length > 0) {
-        setUploadError(
-          failures
-            .map((result) => result.message ?? `Upload failed: ${result.originalName ?? file.name}`)
-            .join('; '),
-        )
-      }
-      if (uploadedRows.length > 0) {
-        const uploadedPaths: Record<string, string> = {}
-        results.forEach((result) => {
-          const name = result.storedName ?? result.originalName
-          const path = result.path ?? result.targetWikiPath
-          if (result.ok && name && path) uploadedPaths[name] = path
+  const uploadSource = useCallback(
+    async (file: File) => {
+      setUploadError(null)
+      setUploading(true)
+      try {
+        const form = new FormData()
+        form.append('files', file)
+        form.append('path', 'uploads')
+        form.append('ingestMode', 'extract')
+        form.append('session_id', 'knowledge-builder')
+        const response = await fetch('/api/knowledge/upload', {
+          method: 'POST',
+          body: form,
         })
-        setSourcePaths((current) => ({ ...current, ...uploadedPaths }))
-        setPendingRows((current) => [
-          ...uploadedRows.filter((candidate) => !current.some((row) => row[0] === candidate[0])),
-          ...current,
-        ])
-
-        for (const result of results) {
-          if (result.kind !== 'staged_for_ingest' || !result.stagedUploadRef) continue
-          const ingestResponse = await fetch('/api/knowledge/ingest', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              uploadRef: result.stagedUploadRef,
-              confirmed: true,
-              targetDir: 'uploads',
-              sessionId: 'knowledge-builder',
-            }),
+        if (!response.ok) throw new Error(`upload:${response.status}`)
+        const results = (await response.json()) as KnowledgeUploadResult[]
+        const failures = results.filter((result) => result.ok === false)
+        const uploadedRows = results
+          .map(sourceRowFromUpload)
+          .filter((row): row is SourceRow => row !== null)
+        if (failures.length > 0) {
+          setUploadError(
+            failures
+              .map(
+                (result) =>
+                  result.message ??
+                  `Upload failed: ${result.originalName ?? file.name}`,
+              )
+              .join('; '),
+          )
+        }
+        if (uploadedRows.length > 0) {
+          const uploadedPaths: Record<string, string> = {}
+          results.forEach((result) => {
+            const name = result.storedName ?? result.originalName
+            const path = result.path ?? result.targetWikiPath
+            if (result.ok && name && path) {
+              uploadedPaths[name] = path
+            }
           })
-          const ingestPayload = (await ingestResponse.json().catch(() => ({}))) as {
-            ok?: boolean
-            message?: string
-            error?: string
-          }
-          if (!ingestResponse.ok || ingestPayload.ok === false) {
-            throw new Error(ingestPayload.message ?? ingestPayload.error ?? `ingest:${ingestResponse.status}`)
+          setOriginalSourcePaths((current) => ({
+            ...current,
+            ...uploadedPaths,
+          }))
+          setPendingRows((current) => [
+            ...uploadedRows.filter(
+              (candidate) => !current.some((row) => row[0] === candidate[0]),
+            ),
+            ...current,
+          ])
+
+          for (const result of results) {
+            if (result.kind !== 'staged_for_ingest' || !result.stagedUploadRef)
+              continue
+            const ingestResponse = await fetch('/api/knowledge/ingest', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                uploadRef: result.stagedUploadRef,
+                confirmed: true,
+                targetDir: 'uploads',
+                sessionId: 'knowledge-builder',
+              }),
+            })
+            const ingestPayload = (await ingestResponse
+              .json()
+              .catch(() => ({}))) as {
+              ok?: boolean
+              message?: string
+              error?: string
+            }
+            if (!ingestResponse.ok || ingestPayload.ok === false) {
+              throw new Error(
+                ingestPayload.message ??
+                  ingestPayload.error ??
+                  `ingest:${ingestResponse.status}`,
+              )
+            }
           }
         }
+        await refreshSources()
+      } catch (error) {
+        setStatus('unavailable')
+        setUploadError(
+          error instanceof Error && error.message !== 'Failed to fetch'
+            ? error.message
+            : zh
+              ? '上传失败，请重试。'
+              : 'Upload failed. Please try again.',
+        )
+      } finally {
+        setUploading(false)
       }
-      await refreshSources()
-    } catch (error) {
-      setStatus('unavailable')
-      setUploadError(
-        error instanceof Error && error.message !== 'Failed to fetch'
-          ? error.message
-          : zh
-            ? '上传失败，请重试。'
-            : 'Upload failed. Please try again.',
-      )
-    } finally {
-      setUploading(false)
-    }
-  }, [refreshSources, zh])
+    },
+    [refreshSources, zh],
+  )
 
-  const visibleRows = [
+  const allRows = [
     ...pendingRows,
-    ...rows.filter((row) => !pendingRows.some((pending) => pending[0] === row[0])),
+    ...rows.filter(
+      (row) => !pendingRows.some((pending) => pending[0] === row[0]),
+    ),
   ]
+  const visibleRows =
+    statusFilter === 'all'
+      ? allRows
+      : allRows.filter((row) =>
+          statusFilter === 'ready' ? row[2] === 'Ready' : row[2] !== 'Ready',
+        )
 
-  const openSource = useCallback(async (row: SourceRow) => {
-    const path = sourcePaths[row[0]]
-    if (!path) {
-      setUploadError(zh ? '该来源尚未生成可打开的页面。' : 'This source has no readable page yet.')
-      return
-    }
-    try {
-      const response = await fetch(`/api/knowledge/read?path=${encodeURIComponent(path)}`)
-      const payload = (await response.json()) as { content?: string; error?: string }
-      if (!response.ok) throw new Error(payload.error ?? `source:${response.status}`)
-      setSourcePreview({ name: row[0], content: payload.content ?? '' })
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : (zh ? '无法打开来源。' : 'Unable to open source.'))
-    }
-  }, [sourcePaths, zh])
+  const inspectSourceContext = useCallback(
+    async (row: SourceRow) => {
+      if (!onInspectSource) return
+      const originalPath = originalSourcePaths[row[0]]
+      const normalizedPath = sourcePaths[row[0]]
+      if (originalPath) {
+        onInspectSource({
+          name: row[0],
+          kind: 'original',
+          path: originalPath,
+          metadata: [
+            { label: zh ? '路径' : 'Path', value: originalPath },
+            { label: zh ? '格式' : 'Format', value: row[1] },
+            { label: zh ? '修改时间' : 'Modified', value: row[5] },
+          ],
+          lineage: [
+            {
+              id: 'upload',
+              label: zh ? '来源上传' : 'Source upload',
+              contextAdded: [
+                zh ? `原始文件身份：${row[0]}` : `Original file identity: ${row[0]}`,
+                zh ? `受管工作区路径：${originalPath}` : `Governed workspace path: ${originalPath}`,
+              ],
+              refs: [originalPath],
+            },
+          ],
+        })
+        return
+      }
+      if (!normalizedPath) return
+      try {
+        const response = await fetch(
+          `/api/knowledge/read?path=${encodeURIComponent(normalizedPath)}`,
+        )
+        const payload = (await response.json().catch(() => ({}))) as {
+          content?: string
+          error?: string
+        }
+        if (!response.ok)
+          throw new Error(payload.error ?? `source:${response.status}`)
+        const content = payload.content ?? ''
+        const sourceFile = normalizedMetadataValue(content, 'Source file')
+        const uploadRef = normalizedMetadataValue(content, 'Source upload ref')
+        const artifactRef = normalizedMetadataValue(
+          content,
+          'Normalized artifact ref',
+        )
+        const parserMethod = normalizedMetadataValue(content, 'Parser method')
+        const authorityLevel = normalizedMetadataValue(
+          content,
+          'Authority level',
+        )
+        const authorityUse = normalizedMetadataValue(content, 'Authority use')
+        const lineage: SourceInspectorContext['lineage'] = [
+          {
+            id: 'upload',
+            label: zh ? '来源上传' : 'Source upload',
+            contextAdded: [
+              sourceFile
+                ? zh
+                  ? `原始来源：${sourceFile}`
+                  : `Original source: ${sourceFile}`
+                : zh
+                  ? '记录原始来源文件身份'
+                  : 'Original source file identity recorded',
+              zh ? '建立受管上传引用' : 'Governed upload reference established',
+            ],
+            refs: [sourceFile, uploadRef].filter((value): value is string => Boolean(value)),
+          },
+          {
+            id: 'normalize',
+            label: zh ? '文档规范化' : 'Document normalization',
+            contextAdded: [
+              parserMethod
+                ? zh
+                  ? `解析方法：${parserMethod}`
+                  : `Parser method: ${parserMethod}`
+                : zh
+                  ? '生成内部 Markdown 表示'
+                  : 'Internal Markdown representation generated',
+              zh ? `规范化路径：${normalizedPath}` : `Normalized path: ${normalizedPath}`,
+              zh ? '保留结构化证据锚点' : 'Structured evidence anchors preserved',
+            ],
+            refs: [normalizedPath, artifactRef].filter((value): value is string => Boolean(value)),
+          },
+          {
+            id: 'governance-context',
+            label: zh ? '治理上下文标注' : 'Governance context annotation',
+            contextAdded: [
+              authorityLevel
+                ? zh
+                  ? `权威级别：${authorityLevel}`
+                  : `Authority level: ${authorityLevel}`
+                : zh
+                  ? '标记为策展材料'
+                  : 'Marked as curation material',
+              authorityUse
+                ? zh
+                  ? `权威用途：${authorityUse}`
+                  : `Authority use: ${authorityUse}`
+                : zh
+                  ? '治理晋升前禁止权威使用'
+                  : 'Authority use prohibited until governed promotion',
+            ],
+            refs: [],
+          },
+        ]
+        if (extractionRunId) {
+          lineage.push({
+            id: 'semantic-extraction',
+            label: zh ? '语义抽取' : 'Semantic extraction',
+            contextAdded: [
+              zh
+                ? '增加断言候选、置信度与证据引用'
+                : 'Assertion candidates, confidence, and evidence references added',
+            ],
+            refs: [extractionRunId],
+          })
+        }
+        if (candidateGraphId) {
+          lineage.push({
+            id: 'candidate-graph',
+            label: zh ? '候选图投影' : 'Candidate graph projection',
+            contextAdded: [
+              zh
+                ? '增加候选节点、关系与图身份'
+                : 'Candidate nodes, relationships, and graph identity added',
+            ],
+            refs: [candidateGraphId],
+          })
+        }
+        onInspectSource({
+          name: row[0],
+          kind: 'normalized',
+          path: normalizedPath,
+          metadata: [
+            { label: zh ? '路径' : 'Path', value: normalizedPath },
+            { label: zh ? '格式' : 'Format', value: row[1] },
+            { label: zh ? '解析方法' : 'Parser method', value: parserMethod ?? '—' },
+            { label: zh ? '规范化制品' : 'Normalized artifact', value: artifactRef ?? '—' },
+            { label: zh ? '权威级别' : 'Authority level', value: authorityLevel ?? '—' },
+          ],
+          lineage,
+        })
+      } catch (error) {
+        setUploadError(
+          error instanceof Error
+            ? error.message
+            : zh
+              ? '无法加载来源上下文。'
+              : 'Unable to load source context.',
+        )
+      }
+    },
+    [
+      candidateGraphId,
+      extractionRunId,
+      onInspectSource,
+      originalSourcePaths,
+      sourcePaths,
+      zh,
+    ],
+  )
 
-  const extractSource = useCallback(async (row: SourceRow) => {
-    const path = sourcePaths[row[0]]
-    if (!path) throw new Error(zh ? '该来源尚未生成可抽取的页面。' : 'This source has no extractable page yet.')
-    const sourceResponse = await fetch(`/api/knowledge/read?path=${encodeURIComponent(path)}`)
-    const sourcePayload = (await sourceResponse.json().catch(() => ({}))) as { content?: string; error?: string }
-    if (!sourceResponse.ok) throw new Error(sourcePayload.error ?? `source:${sourceResponse.status}`)
+  const openSource = useCallback(
+    async (row: SourceRow) => {
+      const originalPath = originalSourcePaths[row[0]]
+      const normalizedPath = sourcePaths[row[0]]
+      const path = originalPath ?? normalizedPath
+      if (!path) {
+        setUploadError(
+          zh
+            ? '该来源尚未生成可打开的页面。'
+            : 'This source has no readable page yet.',
+        )
+        return
+      }
+      try {
+        if (originalPath) {
+          const response = await fetch(
+            `/api/files?action=download&path=${encodeURIComponent(`wiki/${originalPath}`)}`,
+          )
+          if (!response.ok) throw new Error(`source:${response.status}`)
+          const result = await extractRawText({
+            arrayBuffer: await response.arrayBuffer(),
+          })
+          setSourcePreview({ name: row[0], content: result.value })
+        } else {
+          const response = await fetch(
+            `/api/knowledge/read?path=${encodeURIComponent(normalizedPath!)}`,
+          )
+          const payload = (await response.json().catch(() => ({}))) as {
+            content?: string
+            error?: string
+          }
+          if (!response.ok)
+            throw new Error(payload.error ?? `source:${response.status}`)
+          setSourcePreview({ name: row[0], content: payload.content ?? '' })
+        }
+      } catch (error) {
+        setUploadError(
+          error instanceof Error
+            ? error.message
+            : zh
+              ? '无法打开来源。'
+              : 'Unable to open source.',
+        )
+      }
+    },
+    [originalSourcePaths, sourcePaths, zh],
+  )
 
-    const discoveryResponse = await fetch(`${KNOWLEDGE_BUILDER_API}/discovery-runs`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        schemaVersion: 'knowledge_builder_discovery_run_request.v1',
-        sourceKind: 'text',
-        sourceRef: path,
-        sourceText: canonicalBodyFromCurationMarkdown(sourcePayload.content ?? ''),
-      }),
-    })
-    const discoveryPayload = (await discoveryResponse.json().catch(() => ({}))) as { run?: { discovery_run_id?: string; source_id?: string }; detail?: string; error?: string }
-    if (!discoveryResponse.ok || !discoveryPayload.run?.discovery_run_id || !discoveryPayload.run.source_id) {
-      throw new Error(discoveryPayload.detail ?? discoveryPayload.error ?? `discovery:${discoveryResponse.status}`)
-    }
+  const extractSource = useCallback(
+    async (row: SourceRow) => {
+      const path = sourcePaths[row[0]]
+      if (!path)
+        throw new Error(
+          zh
+            ? '该来源尚未生成可抽取的页面。'
+            : 'This source has no extractable page yet.',
+        )
+      const sourceResponse = await fetch(
+        `/api/knowledge/read?path=${encodeURIComponent(path)}`,
+      )
+      const sourcePayload = (await sourceResponse.json().catch(() => ({}))) as {
+        content?: string
+        error?: string
+      }
+      if (!sourceResponse.ok)
+        throw new Error(
+          sourcePayload.error ?? `source:${sourceResponse.status}`,
+        )
 
-    const packageResponse = await fetch(`${KNOWLEDGE_BUILDER_API}/tender-packages`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        schemaVersion: 'knowledge_builder_tender_package_request.v1',
-        discoveryRunId: discoveryPayload.run.discovery_run_id,
-        documents: [{ sourceId: discoveryPayload.run.source_id, documentId: row[0], role: 'main_tender' }],
-      }),
-    })
-    const packagePayload = (await packageResponse.json().catch(() => ({}))) as { tenderPackage?: { package_id?: string }; detail?: string; error?: string }
-    if (!packageResponse.ok || !packagePayload.tenderPackage?.package_id) {
-      throw new Error(packagePayload.detail ?? packagePayload.error ?? `package:${packageResponse.status}`)
-    }
+      const discoveryResponse = await fetch(
+        `${KNOWLEDGE_BUILDER_API}/discovery-runs`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            schemaVersion: 'knowledge_builder_discovery_run_request.v1',
+            sourceKind: 'text',
+            sourceRef: path,
+            sourceText: canonicalBodyFromCurationMarkdown(
+              sourcePayload.content ?? '',
+            ),
+          }),
+        },
+      )
+      const discoveryPayload = (await discoveryResponse
+        .json()
+        .catch(() => ({}))) as {
+        run?: { discovery_run_id?: string; source_id?: string }
+        detail?: string
+        error?: string
+      }
+      if (
+        !discoveryResponse.ok ||
+        !discoveryPayload.run?.discovery_run_id ||
+        !discoveryPayload.run.source_id
+      ) {
+        throw new Error(
+          discoveryPayload.detail ??
+            discoveryPayload.error ??
+            `discovery:${discoveryResponse.status}`,
+        )
+      }
 
-    const extractionResponse = await fetch(`${KNOWLEDGE_BUILDER_API}/extraction-runs`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        schemaVersion: 'knowledge_builder_extraction_run_request.v1',
-        discoveryRunId: discoveryPayload.run.discovery_run_id,
-        tenderPackageId: packagePayload.tenderPackage.package_id,
-        sourceKind: 'text',
-        sourceRef: path,
-        sourceText: sourcePayload.content ?? '',
-        documentId: row[0],
-        provider: 'semantica',
-        profile: 'tender_sensitive_v1',
-      }),
-    })
-    const extractionPayload = (await extractionResponse.json().catch(() => ({}))) as { detail?: string; error?: string }
-    if (!extractionResponse.ok) throw new Error(extractionPayload.detail ?? extractionPayload.error ?? `extraction:${extractionResponse.status}`)
-  }, [sourcePaths, zh])
+      const packageResponse = await fetch(
+        `${KNOWLEDGE_BUILDER_API}/tender-packages`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            schemaVersion: 'knowledge_builder_tender_package_request.v1',
+            discoveryRunId: discoveryPayload.run.discovery_run_id,
+            documents: [
+              {
+                sourceId: discoveryPayload.run.source_id,
+                documentId: row[0],
+                role: 'main_tender',
+              },
+            ],
+          }),
+        },
+      )
+      const packagePayload = (await packageResponse
+        .json()
+        .catch(() => ({}))) as {
+        tenderPackage?: { package_id?: string }
+        detail?: string
+        error?: string
+      }
+      if (!packageResponse.ok || !packagePayload.tenderPackage?.package_id) {
+        throw new Error(
+          packagePayload.detail ??
+            packagePayload.error ??
+            `package:${packageResponse.status}`,
+        )
+      }
+
+      const extractionResponse = await fetch(
+        `${KNOWLEDGE_BUILDER_API}/extraction-runs`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            schemaVersion: 'knowledge_builder_extraction_run_request.v1',
+            discoveryRunId: discoveryPayload.run.discovery_run_id,
+            tenderPackageId: packagePayload.tenderPackage.package_id,
+            sourceKind: 'text',
+            sourceRef: path,
+            sourceText: sourcePayload.content ?? '',
+            documentId: row[0],
+            provider: 'semantica',
+            profile: 'tender_sensitive_v1',
+          }),
+        },
+      )
+      const extractionPayload = (await extractionResponse
+        .json()
+        .catch(() => ({}))) as { detail?: string; error?: string }
+      if (!extractionResponse.ok)
+        throw new Error(
+          extractionPayload.detail ??
+            extractionPayload.error ??
+            `extraction:${extractionResponse.status}`,
+        )
+    },
+    [sourcePaths, zh],
+  )
 
   const runBatchExtraction = useCallback(async () => {
-    const selectedRows = visibleRows.filter((row) => selectedSourceNames.includes(row[0]))
+    const selectedRows = visibleRows.filter((row) =>
+      selectedSourceNames.includes(row[0]),
+    )
     if (selectedRows.length === 0) return
     setExtracting(true)
     setUploadError(null)
@@ -720,68 +1774,126 @@ export function SourcesMode({ zh, onNext }: { zh: boolean; onNext: () => void })
       setSelectedSourceNames([])
       onNext()
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : (zh ? '无法抽取来源。' : 'Unable to extract source.'))
+      setUploadError(
+        error instanceof Error
+          ? error.message
+          : zh
+            ? '无法抽取来源。'
+            : 'Unable to extract source.',
+      )
     } finally {
       setExtracting(false)
     }
   }, [extractSource, onNext, selectedSourceNames, visibleRows, zh])
 
-  const deleteSource = useCallback(async (row: SourceRow) => {
-    const path = sourcePaths[row[0]]
-    if (!path) {
-      setUploadError(zh ? '该来源尚未生成可删除的页面。' : 'This source has no deletable page yet.')
-      return
-    }
-    if (!window.confirm(zh ? `删除来源“${row[0]}”？` : `Delete source “${row[0]}”?`)) return
-    // Optimistic update: remove the row from local state FIRST so the table refreshes immediately.
-    // If the API call fails we restore the row and surface the error.
-    const restoreRow = row
-    setUploadError(null)
-    setPendingRows((current) => current.filter((candidate) => candidate[0] !== row[0]))
-    setRows((current) => current.filter((candidate) => candidate[0] !== row[0]))
-    setSourcePaths((current) => {
-      const next = { ...current }
-      delete next[row[0]]
-      return next
-    })
-    try {
-      const response = await fetch('/api/knowledge/files', {
-        method: 'DELETE',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ path }),
+  const deleteSource = useCallback(
+    async (row: SourceRow) => {
+      const originalPath = originalSourcePaths[row[0]]
+      const normalizedPath = sourcePaths[row[0]]
+      const path = originalPath ?? normalizedPath
+      if (!path) {
+        setUploadError(
+          zh
+            ? '找不到可删除的原始来源文件。'
+            : 'This source has no deletable original file.',
+        )
+        return
+      }
+      // Optimistic update: remove the row from local state FIRST so the table refreshes immediately.
+      // If the API call fails we restore the row and surface the error.
+      const restoreRow = row
+      setUploadError(null)
+      setPendingRows((current) =>
+        current.filter((candidate) => candidate[0] !== row[0]),
+      )
+      setRows((current) =>
+        current.filter((candidate) => candidate[0] !== row[0]),
+      )
+      setSourcePaths((current) => {
+        const next = { ...current }
+        delete next[row[0]]
+        return next
       })
-      const payload = (await response.json().catch(() => ({}))) as { error?: string }
-      if (!response.ok) throw new Error(payload.error ?? `delete:${response.status}`)
-      // Re-sync with the server so the row stays gone even if the listing API returns a stale entry.
-      await refreshSources().catch(() => {
-        /* refresh failure shouldn't re-show the deleted file */
+      setOriginalSourcePaths((current) => {
+        const next = { ...current }
+        delete next[row[0]]
+        return next
       })
-    } catch (error) {
-      // Restore the row so the user can retry, and surface the error message.
-      setRows((current) => (current.some((candidate) => candidate[0] === restoreRow[0]) ? current : [restoreRow, ...current]))
-      setSourcePaths((current) => (current[restoreRow[0]] ? current : { ...current, [restoreRow[0]]: path }))
-      setUploadError(error instanceof Error ? error.message : (zh ? '无法删除来源。' : 'Unable to delete source.'))
-    }
-  }, [refreshSources, sourcePaths, zh])
+      try {
+        const response = await fetch('/api/knowledge/files', {
+          method: 'DELETE',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ path }),
+        })
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string
+        }
+        if (!response.ok)
+          throw new Error(payload.error ?? `delete:${response.status}`)
+        // Re-sync with the server so the row stays gone even if the listing API returns a stale entry.
+        await refreshSources().catch(() => {
+          /* refresh failure shouldn't re-show the deleted file */
+        })
+      } catch (error) {
+        // Restore the row so the user can retry, and surface the error message.
+        setRows((current) =>
+          current.some((candidate) => candidate[0] === restoreRow[0])
+            ? current
+            : [restoreRow, ...current],
+        )
+        if (normalizedPath)
+          setSourcePaths((current) => ({
+            ...current,
+            [restoreRow[0]]: normalizedPath,
+          }))
+        if (originalPath)
+          setOriginalSourcePaths((current) => ({
+            ...current,
+            [restoreRow[0]]: originalPath,
+          }))
+        setUploadError(
+          error instanceof Error
+            ? error.message
+            : zh
+              ? '无法删除来源。'
+              : 'Unable to delete source.',
+        )
+      }
+    },
+    [originalSourcePaths, refreshSources, sourcePaths, zh],
+  )
 
-  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (file) void uploadSource(file)
-  }, [uploadSource])
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      event.target.value = ''
+      if (file) void uploadSource(file)
+    },
+    [uploadSource],
+  )
 
-  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault()
-    const file = event.dataTransfer.files?.[0]
-    if (file) void uploadSource(file)
-  }, [uploadSource])
+  const handleDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      const file = event.dataTransfer.files?.[0]
+      if (file) void uploadSource(file)
+    },
+    [uploadSource],
+  )
 
   const browseFiles = useCallback(() => fileInputRef.current?.click(), [])
 
   return (
     <div className="grid h-full grid-rows-[auto_auto_1fr_auto] bg-card">
       <div className="flex items-center gap-2 border-b border-border p-2.5">
-        <Input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc" data-testid="source-file-input" className="hidden" onChange={handleFileChange} />
+        <Input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,.doc"
+          data-testid="source-file-input"
+          className="hidden"
+          onChange={handleFileChange}
+        />
         <UploadDropzone
           onClick={browseFiles}
           onDragOver={(event) => event.preventDefault()}
@@ -789,62 +1901,380 @@ export function SourcesMode({ zh, onNext }: { zh: boolean; onNext: () => void })
           className="flex min-h-10 flex-1 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-3 text-xs text-muted-foreground hover:border-primary hover:bg-muted/30"
         >
           <HugeiconsIcon icon={FileUploadIcon} size={16} strokeWidth={1.6} />
-          <span>{zh ? '拖入 PDF/DOCX，或浏览文件' : 'Drop PDF/DOCX here or browse files'}</span>
-          {uploadError ? <span className="text-red-600">{uploadError}</span> : null}
+          <span>
+            {zh
+              ? '拖入 PDF/DOCX，或浏览文件'
+              : 'Drop PDF/DOCX here or browse files'}
+          </span>
+          {uploadError ? (
+            <span className="text-red-600">{uploadError}</span>
+          ) : null}
         </UploadDropzone>
         <StudioButton primary onClick={browseFiles} disabled={uploading}>
-          <HugeiconsIcon icon={FileUploadIcon} size={15} strokeWidth={1.7} className="mr-1.5" />
-          {uploading ? (zh ? '正在上传…' : 'Uploading…') : (zh ? '上传来源' : 'Upload source')}
+          <HugeiconsIcon
+            icon={FileUploadIcon}
+            size={15}
+            strokeWidth={1.7}
+            className="mr-1.5"
+          />
+          {uploading
+            ? zh
+              ? '正在上传…'
+              : 'Uploading…'
+            : zh
+              ? '上传来源'
+              : 'Upload source'}
         </StudioButton>
       </div>
-      <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5"><Input placeholder={zh ? '搜索来源…' : 'Search sources…'} className="min-w-[220px] flex-1 md:max-w-[340px]" /><NativeSelect className="h-8 rounded-md border border-border bg-background px-2 text-xs"><option>{zh ? '全部状态' : 'All status'}</option></NativeSelect><div className="flex-1" /><StudioButton onClick={() => { void refreshSources().catch(() => setStatus('unavailable')) }}>{zh ? '刷新' : 'Refresh'}</StudioButton></div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5">
+        <Input
+          placeholder={zh ? '搜索来源…' : 'Search sources…'}
+          className="min-w-[220px] flex-1 md:max-w-[340px]"
+        />
+        <ControlledSelect
+          compact
+          label={zh ? '来源状态' : 'Source status'}
+          value={statusFilter}
+          onValueChange={setStatusFilter}
+          options={[
+            { value: 'all', label: zh ? '全部状态' : 'All status' },
+            { value: 'ready', label: zh ? '就绪' : 'Ready' },
+            { value: 'pending', label: zh ? '等待导入' : 'Waiting for ingest' },
+          ]}
+        />
+        <div className="flex-1" />
+        <StudioButton
+          onClick={() => {
+            void refreshSources().catch(() => setStatus('unavailable'))
+          }}
+        >
+          {zh ? '刷新' : 'Refresh'}
+        </StudioButton>
+      </div>
       <div className="min-h-0 overflow-auto">
         <Table className="w-full border-collapse text-xs">
-          <thead className="sticky top-0 z-10 bg-muted text-[10px] uppercase tracking-wide text-muted-foreground"><tr><th className="w-10 border-b border-border px-3 py-2.5" aria-label={zh ? '选择来源' : 'Select source'} />{[zh ? '文件 / 来源' : 'File / Source', zh ? '类型' : 'Type', zh ? '状态' : 'Status', zh ? '候选' : 'Candidates', zh ? '问题' : 'Issues', zh ? '最后运行' : 'Last run', zh ? '操作' : 'Actions'].map((h) => <th key={h} className="border-b border-border px-3 py-2.5 text-left font-semibold">{h}</th>)}</tr></thead>
-          <tbody>{visibleRows.map((row, index) => <tr key={row[0]} className={index === 0 ? 'bg-primary/10' : 'hover:bg-muted/40'}><td className="border-b border-border px-3 py-3"><Checkbox checked={selectedSourceNames.includes(row[0])} onChange={() => setSelectedSourceNames((current) => current.includes(row[0]) ? current.filter((name) => name !== row[0]) : [...current, row[0]])} aria-label={zh ? `选择 ${row[0]}` : `Select ${row[0]}`} /></td>{row.map((value, i) => <td key={`${row[0]}-${i}`} className="border-b border-border px-3 py-3">{i === 0 ? <><strong>{value}</strong><div className="mt-0.5 font-mono text-[10px] text-muted-foreground">source_identity_ref</div></> : value}</td>)}<td className="border-b border-border px-3 py-3"><div className="flex items-center gap-1"><StudioButton className="size-8 p-0" onClick={() => void openSource(row)} disabled={!sourcePaths[row[0]] || extracting} title={zh ? '查看来源' : 'View source'} ariaLabel={zh ? '查看来源' : `View ${row[0]}`}><HugeiconsIcon icon={ViewIcon} size={15} strokeWidth={1.7} /></StudioButton><StudioButton className="size-8 p-0" onClick={() => { setExtracting(true); void extractSource(row).then(onNext).catch((error) => setUploadError(error instanceof Error ? error.message : 'Unable to extract source.')).finally(() => setExtracting(false)) }} disabled={!sourcePaths[row[0]] || extracting} title={zh ? '抽取来源' : 'Extract source'} ariaLabel={zh ? '抽取来源' : `Extract ${row[0]}`}><HugeiconsIcon icon={AiScanIcon} size={15} strokeWidth={1.7} /></StudioButton><StudioButton className="size-8 p-0 text-destructive" onClick={() => void deleteSource(row)} disabled={!sourcePaths[row[0]] || extracting} title={zh ? '删除来源' : 'Delete source'} ariaLabel={zh ? '删除来源' : `Delete ${row[0]}`}><HugeiconsIcon icon={Delete02Icon} size={15} strokeWidth={1.7} /></StudioButton></div></td></tr>)}{visibleRows.length === 0 && status === 'loading' ? <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">{zh ? '正在加载来源…' : 'Loading sources…'}</td></tr> : null}{visibleRows.length === 0 && status === 'unavailable' ? <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">{zh ? '来源 API 尚未启用' : 'Sources API is not enabled yet'}</td></tr> : null}</tbody>
+          <thead className="sticky top-0 z-10 bg-muted text-[10px] uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th
+                className="w-10 border-b border-border px-3 py-2.5"
+                aria-label={zh ? '选择来源' : 'Select source'}
+              />
+              {[
+                zh ? '文件 / 来源' : 'File / Source',
+                zh ? '类型' : 'Type',
+                zh ? '状态' : 'Status',
+                zh ? '候选' : 'Candidates',
+                zh ? '问题' : 'Issues',
+                zh ? '最后运行' : 'Last run',
+                zh ? '操作' : 'Actions',
+              ].map((h) => (
+                <th
+                  key={h}
+                  className="border-b border-border px-3 py-2.5 text-left font-semibold"
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleRows.map((row, index) => (
+              <tr
+                key={row[0]}
+                className={index === 0 ? 'bg-primary/10' : 'hover:bg-muted/40'}
+              >
+                <td className="border-b border-border px-3 py-3">
+                  <Checkbox
+                    checked={selectedSourceNames.includes(row[0])}
+                    onChange={() =>
+                      setSelectedSourceNames((current) =>
+                        current.includes(row[0])
+                          ? current.filter((name) => name !== row[0])
+                          : [...current, row[0]],
+                      )
+                    }
+                    disabled={!sourcePaths[row[0]] || extracting}
+                    aria-label={zh ? `选择 ${row[0]}` : `Select ${row[0]}`}
+                  />
+                </td>
+                {row.map((value, i) => (
+                  <td
+                    key={`${row[0]}-${i}`}
+                    className="border-b border-border px-3 py-3"
+                  >
+                    {i === 0 ? (
+                      <div
+                        className={
+                          sourcePaths[row[0]] ? 'relative pl-6' : undefined
+                        }
+                      >
+                        {sourcePaths[row[0]] ? (
+                          <span
+                            aria-hidden="true"
+                            className="absolute left-1 top-0 text-muted-foreground"
+                          >
+                            └─
+                          </span>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => void inspectSourceContext(row)}
+                          className="h-auto justify-start p-0 text-left font-semibold hover:bg-transparent hover:underline"
+                        >
+                          {value}
+                        </Button>
+                        {sourcePaths[row[0]] ? (
+                          <div className="mt-0.5 text-[10px] text-muted-foreground">
+                            {zh
+                              ? '内部规范化表示'
+                              : 'Internal normalized representation'}
+                          </div>
+                        ) : null}
+                        <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                          source_identity_ref
+                        </div>
+                      </div>
+                    ) : (
+                      value
+                    )}
+                  </td>
+                ))}
+                <td className="border-b border-border px-3 py-3">
+                  <div className="flex items-center gap-1">
+                    <StudioButton
+                      className="size-8 p-0"
+                      onClick={() => void openSource(row)}
+                      disabled={
+                        (!originalSourcePaths[row[0]] &&
+                          !sourcePaths[row[0]]) ||
+                        extracting
+                      }
+                      title={zh ? '查看来源' : 'View source'}
+                      ariaLabel={zh ? '查看来源' : `View ${row[0]}`}
+                    >
+                      <HugeiconsIcon
+                        icon={ViewIcon}
+                        size={15}
+                        strokeWidth={1.7}
+                      />
+                    </StudioButton>
+                    <StudioButton
+                      className="size-8 p-0"
+                      onClick={() => {
+                        setExtracting(true)
+                        void extractSource(row)
+                          .then(onNext)
+                          .catch((error) =>
+                            setUploadError(
+                              error instanceof Error
+                                ? error.message
+                                : 'Unable to extract source.',
+                            ),
+                          )
+                          .finally(() => setExtracting(false))
+                      }}
+                      disabled={!sourcePaths[row[0]] || extracting}
+                      title={zh ? '抽取来源' : 'Extract source'}
+                      ariaLabel={zh ? '抽取来源' : `Extract ${row[0]}`}
+                    >
+                      <HugeiconsIcon
+                        icon={AiScanIcon}
+                        size={15}
+                        strokeWidth={1.7}
+                      />
+                    </StudioButton>
+                    <StudioButton
+                      className="size-8 p-0 text-destructive"
+                      onClick={() => setPendingDeleteRow(row)}
+                      disabled={
+                        (!originalSourcePaths[row[0]] &&
+                          !sourcePaths[row[0]]) ||
+                        extracting
+                      }
+                      title={zh ? '删除来源' : 'Delete source'}
+                      ariaLabel={zh ? '删除来源' : `Delete ${row[0]}`}
+                    >
+                      <HugeiconsIcon
+                        icon={Delete02Icon}
+                        size={15}
+                        strokeWidth={1.7}
+                      />
+                    </StudioButton>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {visibleRows.length === 0 && status === 'loading' ? (
+              <tr>
+                <td
+                  colSpan={8}
+                  className="p-6 text-center text-muted-foreground"
+                >
+                  {zh ? '正在加载来源…' : 'Loading sources…'}
+                </td>
+              </tr>
+            ) : null}
+            {visibleRows.length === 0 && status === 'unavailable' ? (
+              <tr>
+                <td
+                  colSpan={8}
+                  className="p-6 text-center text-muted-foreground"
+                >
+                  {zh ? '来源 API 尚未启用' : 'Sources API is not enabled yet'}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
         </Table>
       </div>
-      {sourcePreview ? <DialogSurface aria-label={zh ? '来源预览' : 'Source preview'} onDismiss={() => setSourcePreview(null)} className="fixed inset-4 z-30 flex min-h-0 flex-col rounded-lg border border-border bg-card p-4 shadow-lg"><div className="flex items-center justify-between border-b border-border pb-2 text-xs font-semibold"><span>{sourcePreview.name}</span><StudioButton onClick={() => setSourcePreview(null)}>{zh ? '关闭' : 'Close'}</StudioButton></div><pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap py-3 text-xs leading-5">{sourcePreview.content}</pre></DialogSurface> : null}
+      {sourcePreview ? (
+        <DialogSurface
+          aria-label={zh ? '来源预览' : 'Source preview'}
+          onDismiss={() => setSourcePreview(null)}
+          className="fixed inset-4 z-30 flex min-h-0 flex-col rounded-lg border border-border bg-card p-4 shadow-lg"
+        >
+          <div className="flex items-center justify-between border-b border-border pb-2 text-xs font-semibold">
+            <span>{sourcePreview.name}</span>
+            <StudioButton onClick={() => setSourcePreview(null)}>
+              {zh ? '关闭' : 'Close'}
+            </StudioButton>
+          </div>
+          <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap py-3 text-xs leading-5">
+            {sourcePreview.content}
+          </pre>
+        </DialogSurface>
+      ) : null}
+      <AlertDialogRoot
+        open={pendingDeleteRow !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDeleteRow(null)
+        }}
+      >
+        <AlertDialogContent>
+          <div className="grid gap-3 p-5">
+            <AlertDialogTitle>
+              {zh ? '删除来源？' : 'Delete source?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {zh
+                ? `将永久删除“${pendingDeleteRow?.[0] ?? ''}”。此操作无法撤销。`
+                : `Permanently delete “${pendingDeleteRow?.[0] ?? ''}”? This action cannot be undone.`}
+            </AlertDialogDescription>
+            <div className="mt-1 flex justify-end gap-2">
+              <AlertDialogCancel>{zh ? '取消' : 'Cancel'}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  const row = pendingDeleteRow
+                  setPendingDeleteRow(null)
+                  if (row) void deleteSource(row)
+                }}
+              >
+                {zh ? '删除' : 'Delete'}
+              </AlertDialogAction>
+            </div>
+          </div>
+        </AlertDialogContent>
+      </AlertDialogRoot>
       <div className="flex min-h-10 items-center gap-3 border-t border-border py-1 pl-3 pr-20 text-[11px] text-muted-foreground">
         <span>
-          {zh ? '已选' : 'Selected'}: <strong className="text-foreground">{visibleRows[0]?.[0] ?? '—'}</strong>
+          {zh ? '已选' : 'Selected'}:{' '}
+          <strong className="text-foreground">
+            {visibleRows[0]?.[0] ?? '—'}
+          </strong>
         </span>
-        <span className="font-mono">source_identity_ref · {visibleRows[0]?.[1] ?? '—'}</span>
+        <span className="font-mono">
+          source_identity_ref · {visibleRows[0]?.[1] ?? '—'}
+        </span>
         <span>AnyDoc structured</span>
         <span>
-          <strong className="text-foreground">{rows[0]?.[4] ?? '0'}</strong> {zh ? '未解决' : 'unresolved'}
+          <strong className="text-foreground">{rows[0]?.[4] ?? '0'}</strong>{' '}
+          {zh ? '未解决' : 'unresolved'}
         </span>
         <div className="flex-1" />
-        <StudioButton primary onClick={() => void runBatchExtraction()} disabled={selectedSourceNames.length === 0 || extracting} title={zh ? '批量抽取' : 'Batch extract'}>
-          <HugeiconsIcon icon={AiScanIcon} size={14} strokeWidth={1.7} className="mr-1.5" />
-          {extracting ? (zh ? '正在抽取…' : 'Extracting…') : (zh ? '批量抽取' : 'Batch extract')}
+        <StudioButton
+          primary
+          onClick={() => void runBatchExtraction()}
+          disabled={selectedSourceNames.length === 0 || extracting}
+          title={zh ? '批量抽取' : 'Batch extract'}
+        >
+          <HugeiconsIcon
+            icon={AiScanIcon}
+            size={14}
+            strokeWidth={1.7}
+            className="mr-1.5"
+          />
+          {extracting
+            ? zh
+              ? '正在抽取…'
+              : 'Extracting…'
+            : zh
+              ? '批量抽取'
+              : 'Batch extract'}
         </StudioButton>
       </div>
     </div>
   )
 }
 
-export function ExtractMode({ zh, extractionRunId, onRun, onNext, onCandidates }: { zh: boolean; extractionRunId: string | null; onRun: (run: ExtractionRun) => void; onNext: () => void; onCandidates?: (next: GroundCandidate[]) => void }) {
+export function ExtractMode({
+  zh,
+  extractionRunId,
+  onRun,
+  onNext,
+  onCandidates,
+}: {
+  zh: boolean
+  extractionRunId: string | null
+  onRun: (run: ExtractionRun) => void
+  onNext: () => void
+  onCandidates?: (next: GroundCandidate[]) => void
+}) {
   const [runs, setRuns] = useState<ExtractionRun[]>([])
   const [candidates, setCandidates] = useState<AssertionCandidate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [aiGroundingPending, setAiGroundingPending] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
       try {
-        const runsResponse = await fetch(`${KNOWLEDGE_BUILDER_API}/extraction-runs?limit=20`)
-        if (!runsResponse.ok) throw new Error(`runs request failed (${runsResponse.status})`)
-        const runsPayload = (await runsResponse.json()) as { extractionRuns?: ExtractionRun[] }
+        const runsResponse = await fetch(
+          `${KNOWLEDGE_BUILDER_API}/extraction-runs?limit=20`,
+        )
+        if (!runsResponse.ok)
+          throw new Error(`runs request failed (${runsResponse.status})`)
+        const runsPayload = (await runsResponse.json()) as {
+          extractionRuns?: ExtractionRun[]
+        }
         const nextRuns = runsPayload.extractionRuns ?? []
         const latest = nextRuns[0]
         if (latest) {
-          const candidatesResponse = await fetch(`${KNOWLEDGE_BUILDER_API}/assertion-candidates?extractionRunId=${encodeURIComponent(latest.extraction_run_id)}`)
-          if (!candidatesResponse.ok) throw new Error(`candidate request failed (${candidatesResponse.status})`)
-          const candidatePayload = (await candidatesResponse.json()) as { assertionCandidates?: AssertionCandidate[] }
+          const candidatesResponse = await fetch(
+            `${KNOWLEDGE_BUILDER_API}/assertion-candidates?extractionRunId=${encodeURIComponent(latest.extraction_run_id)}&limit=500`,
+          )
+          if (!candidatesResponse.ok)
+            throw new Error(
+              `candidate request failed (${candidatesResponse.status})`,
+            )
+          const candidatePayload = (await candidatesResponse.json()) as {
+            assertionCandidates?: AssertionCandidate[]
+            aiGroundingSuggestions?: AiGroundingSuggestion[]
+          }
           if (!cancelled) {
-            const nextCandidates = candidatePayload.assertionCandidates ?? []
+            const suggestionByAssertion = Object.fromEntries(
+              (candidatePayload.aiGroundingSuggestions ?? []).map((suggestion) => [
+                suggestion.assertion_id,
+                suggestion,
+              ]),
+            )
+            const nextCandidates = (candidatePayload.assertionCandidates ?? []).map(
+              (candidate) => ({
+                ...candidate,
+                ai_grounding_suggestion: suggestionByAssertion[candidate.assertion_id],
+              }),
+            )
             setRuns(nextRuns)
             setCandidates(nextCandidates)
             onCandidates?.(nextCandidates)
@@ -856,26 +2286,226 @@ export function ExtractMode({ zh, extractionRunId, onRun, onNext, onCandidates }
           onCandidates?.([])
         }
       } catch (reason) {
-        if (!cancelled) setError(reason instanceof Error ? reason.message : 'Unable to load extraction runs')
+        if (!cancelled)
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : 'Unable to load extraction runs',
+          )
       } finally {
         if (!cancelled) setLoading(false)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [onCandidates, onRun])
 
-  const selectedRun = runs.find((run) => run.extraction_run_id === extractionRunId) ?? runs[0]
-  const labelFor = (candidate: AssertionCandidate) => candidate.normalized_assertion.subject?.text ?? candidate.normalized_assertion.object?.text ?? candidate.normalized_assertion.predicate ?? candidate.assertion_id
+  const selectedRun =
+    runs.find((run) => run.extraction_run_id === extractionRunId) ?? runs[0]
+  const labelFor = (candidate: AssertionCandidate) =>
+    candidate.normalized_assertion.subject?.text ??
+    candidate.normalized_assertion.object?.text ??
+    candidate.normalized_assertion.predicate ??
+    candidate.assertion_id
+
+  const aiGroundAndContinue = useCallback(async () => {
+    if (!selectedRun) return
+    setAiGroundingPending(true)
+    setError(null)
+    try {
+      const response = await fetch(
+        `${KNOWLEDGE_BUILDER_API}/extraction-runs/${encodeURIComponent(selectedRun.extraction_run_id)}/ai-grounding-suggestions`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            schemaVersion: 'knowledge_builder_ai_grounding_request.v1',
+            confidenceThreshold: 0.75,
+          }),
+        },
+      )
+      const payload = (await response.json()) as {
+        detail?: string
+        suggestions?: AiGroundingSuggestion[]
+      }
+      if (!response.ok)
+        throw new Error(payload.detail ?? `ai-grounding:${response.status}`)
+      const suggestionByAssertion = Object.fromEntries(
+        (payload.suggestions ?? []).map((suggestion) => [
+          suggestion.assertion_id,
+          suggestion,
+        ]),
+      )
+      const groundedCandidates = candidates.map((candidate) => ({
+        ...candidate,
+        ai_grounding_suggestion: suggestionByAssertion[candidate.assertion_id],
+      }))
+      setCandidates(groundedCandidates)
+      onCandidates?.(groundedCandidates)
+      onNext()
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : zh
+            ? '无法运行 AI 校准。'
+            : 'Unable to run AI grounding.',
+      )
+    } finally {
+      setAiGroundingPending(false)
+    }
+  }, [candidates, onCandidates, onNext, selectedRun, zh])
   return (
     <div className="grid h-full grid-rows-[auto_auto_1fr] bg-card">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5 text-xs"><span className="text-muted-foreground">{zh ? '最近运行' : 'Latest run'}:</span><strong className="font-mono">{selectedRun?.extraction_run_id ?? (zh ? '暂无运行' : 'No extraction run')}</strong><StatusPill tone={selectedRun?.run_status === 'failed' ? 'warning' : selectedRun?.run_status === 'completed' ? 'success' : 'neutral'}>{selectedRun?.run_status ?? 'idle'}</StatusPill><span className="text-muted-foreground">{selectedRun?.provider_ref ?? 'semantica'}</span><div className="flex-1" /><StudioButton primary disabled={!selectedRun || selectedRun.run_status !== 'completed'} onClick={onNext}>{zh ? '校准候选' : 'Ground candidates'}</StudioButton></div>
-      {selectedRun?.run_status === 'failed' ? <div role="alert" className="border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"><strong>{zh ? '抽取失败' : 'Extraction failed'}:</strong> {selectedRun.failure_reason ?? selectedRun.warnings[0] ?? (zh ? '提供方未返回原因' : 'provider did not return a reason')}</div> : null}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-border px-3 py-2 text-[11px] text-muted-foreground"><span><strong className="text-foreground">{loading ? '…' : candidates.length}</strong> {zh ? '候选' : 'candidates'}</span><span>{selectedRun?.profile_ref ?? 'tender_sensitive_v1'}</span><div className="flex-1" /><Input placeholder={zh ? '搜索候选…' : 'Search candidates…'} /></div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5 text-xs">
+        <span className="text-muted-foreground">
+          {zh ? '最近运行' : 'Latest run'}:
+        </span>
+        <strong className="font-mono">
+          {selectedRun?.extraction_run_id ??
+            (zh ? '暂无运行' : 'No extraction run')}
+        </strong>
+        <StatusPill
+          tone={
+            selectedRun?.run_status === 'failed'
+              ? 'warning'
+              : selectedRun?.run_status === 'completed'
+                ? 'success'
+                : 'neutral'
+          }
+        >
+          {selectedRun?.run_status ?? 'idle'}
+        </StatusPill>
+        <span className="text-muted-foreground">
+          {selectedRun?.provider_ref ?? 'semantica'}
+        </span>
+        <div className="flex-1" />
+        <StudioButton
+          primary
+          disabled={
+            !selectedRun ||
+            selectedRun.run_status !== 'completed' ||
+            aiGroundingPending
+          }
+          onClick={() => void aiGroundAndContinue()}
+        >
+          <HugeiconsIcon
+            icon={CheckmarkBadge04Icon}
+            size={14}
+            strokeWidth={1.7}
+            className="mr-1.5"
+          />
+          {aiGroundingPending
+            ? zh
+              ? 'AI 校准中…'
+              : 'AI grounding…'
+            : zh
+              ? 'AI 校准'
+              : 'AI Ground'}
+        </StudioButton>
+      </div>
+      {selectedRun?.run_status === 'failed' ? (
+        <div
+          role="alert"
+          className="border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+        >
+          <strong>{zh ? '抽取失败' : 'Extraction failed'}:</strong>{' '}
+          {selectedRun.failure_reason ??
+            selectedRun.warnings[0] ??
+            (zh ? '提供方未返回原因' : 'provider did not return a reason')}
+        </div>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-border px-3 py-2 text-[11px] text-muted-foreground">
+        <span>
+          <strong className="text-foreground">
+            {loading ? '…' : candidates.length}
+          </strong>{' '}
+          {zh ? '候选' : 'candidates'}
+        </span>
+        <span>{selectedRun?.profile_ref ?? 'tender_sensitive_v1'}</span>
+        <div className="flex-1" />
+        <Input placeholder={zh ? '搜索候选…' : 'Search candidates…'} />
+      </div>
       <div className="grid min-h-0 grid-cols-1 md:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-h-0 overflow-auto border-r border-border">
-          <Table className="w-full border-collapse text-xs"><thead className="sticky top-0 bg-muted text-[10px] uppercase tracking-wide text-muted-foreground"><tr>{[zh ? '候选 / 值' : 'Candidate / value', zh ? '置信度' : 'Confidence', zh ? '证据' : 'Evidence', zh ? '状态' : 'State'].map((h) => <th key={h} className="border-b border-border px-3 py-2.5 text-left">{h}</th>)}</tr></thead><tbody>{error ? <tr><td colSpan={4} className="p-4 text-destructive">{error}</td></tr> : candidates.map((candidate, index) => <tr key={candidate.assertion_id} className={index === 0 ? 'bg-primary/10' : 'hover:bg-muted/40'}><td className="border-b border-border px-3 py-3"><strong>{labelFor(candidate)}</strong><div className="font-mono text-[10px] text-muted-foreground">{candidate.assertion_id}</div></td><td className="border-b border-border px-3 py-3">{candidate.confidence.toFixed(2)}</td><td className="border-b border-border px-3 py-3">{candidate.evidence_refs?.length ?? 0}</td><td className="border-b border-border px-3 py-3">{candidate.grounding_state}</td></tr>)}</tbody></Table>
+          <Table className="w-full border-collapse text-xs">
+            <thead className="sticky top-0 bg-muted text-[10px] uppercase tracking-wide text-muted-foreground">
+              <tr>
+                {[
+                  zh ? '候选 / 值' : 'Candidate / value',
+                  zh ? '置信度' : 'Confidence',
+                  zh ? '证据' : 'Evidence',
+                  zh ? '状态' : 'State',
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="border-b border-border px-3 py-2.5 text-left"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {error ? (
+                <tr>
+                  <td colSpan={4} className="p-4 text-destructive">
+                    {error}
+                  </td>
+                </tr>
+              ) : (
+                candidates.map((candidate, index) => (
+                  <tr
+                    key={candidate.assertion_id}
+                    className={
+                      index === 0 ? 'bg-primary/10' : 'hover:bg-muted/40'
+                    }
+                  >
+                    <td className="border-b border-border px-3 py-3">
+                      <strong>{labelFor(candidate)}</strong>
+                      <div className="font-mono text-[10px] text-muted-foreground">
+                        {candidate.assertion_id}
+                      </div>
+                    </td>
+                    <td className="border-b border-border px-3 py-3">
+                      {candidate.confidence.toFixed(2)}
+                    </td>
+                    <td className="border-b border-border px-3 py-3">
+                      {candidate.evidence_refs?.length ?? 0}
+                    </td>
+                    <td className="border-b border-border px-3 py-3">
+                      {candidate.grounding_state}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </Table>
         </div>
-        <aside className="hidden min-h-0 overflow-auto bg-card p-4 md:block"><h2 className="text-sm font-semibold">{selectedRun?.candidate_graph_id ?? (zh ? '候选图待运行' : 'Candidate graph pending')}</h2><div className="mt-2 flex gap-1.5"><StatusPill>{selectedRun?.provider_ref ?? 'semantica'}</StatusPill><StatusPill>{candidates[0]?.evidence_refs?.length ?? 0} evidence</StatusPill></div><MiniLabel>{zh ? '状态' : 'Run state'}</MiniLabel><p className="text-xs text-muted-foreground">{selectedRun?.run_status ?? 'idle'} · {selectedRun?.extraction_run_id ?? '—'}</p><MiniLabel>{zh ? '规范证据' : 'Canonical evidence'}</MiniLabel><div className="font-mono text-[10px] text-muted-foreground">{candidates[0]?.evidence_refs?.map((ref) => `${ref.evidence_ref} · ${ref.selector_hash}`).join('\n') ?? (zh ? '暂无证据' : 'No evidence')}</div></aside>
+        <aside className="hidden min-h-0 overflow-auto bg-card p-4 md:block">
+          <h2 className="text-sm font-semibold">
+            {selectedRun?.candidate_graph_id ??
+              (zh ? '候选图待运行' : 'Candidate graph pending')}
+          </h2>
+          <div className="mt-2 flex gap-1.5">
+            <StatusPill>{selectedRun?.provider_ref ?? 'semantica'}</StatusPill>
+            <StatusPill>
+              {candidates[0]?.evidence_refs?.length ?? 0} evidence
+            </StatusPill>
+          </div>
+          <MiniLabel>{zh ? '状态' : 'Run state'}</MiniLabel>
+          <p className="text-xs text-muted-foreground">
+            {selectedRun?.run_status ?? 'idle'} ·{' '}
+            {selectedRun?.extraction_run_id ?? '—'}
+          </p>
+          <MiniLabel>{zh ? '规范证据' : 'Canonical evidence'}</MiniLabel>
+          <div className="font-mono text-[10px] text-muted-foreground">
+            {candidates[0]?.evidence_refs
+              ?.map((ref) => `${ref.evidence_ref} · ${ref.selector_hash}`)
+              .join('\n') ?? (zh ? '暂无证据' : 'No evidence')}
+          </div>
+        </aside>
       </div>
     </div>
   )
@@ -887,8 +2517,25 @@ type GroundCandidate = {
   confidence: number
   grounding_state: string
   evidence_refs: Array<{ evidence_ref: string; selector_hash: string }>
-  normalized_assertion: { subject?: { text?: string } | null; predicate?: string | null; object?: { text?: string } | null }
+  normalized_assertion: {
+    subject?: { text?: string } | null
+    predicate?: string | null
+    object?: { text?: string } | null
+  }
   extraction_run_id?: string
+  ai_grounding_suggestion?: AiGroundingSuggestion
+}
+
+type AiGroundingSuggestion = {
+  assertion_id: string
+  suggestion_status: 'ready_for_review' | 'low_confidence' | 'missing_evidence'
+  confidence: number
+  evidence_anchor_count: number
+  provider: string
+  provider_version: string
+  threshold: number
+  rationale: string
+  suggested_at: string
 }
 
 type GroundDetail = {
@@ -899,7 +2546,13 @@ type GroundDetail = {
     grounding_state: string
     source_anchors: Array<{ anchor_id: string; exact_text?: string }>
   } | null
-  learningEvents: Array<{ event_id: string; event_type: string; actor_ref: string | null; event_hash: string; occurred_at?: string }>
+  learningEvents: Array<{
+    event_id: string
+    event_type: string
+    actor_ref: string | null
+    event_hash: string
+    occurred_at?: string
+  }>
   candidateTopology?: { schema_version: string }
 }
 
@@ -931,12 +2584,22 @@ export function GroundMode({
   candidateGraphId: string | null
   assertionCandidates: GroundCandidate[]
 }) {
-  const [pending, setPending] = useState<GroundCandidate[]>(
-    assertionCandidates.filter((candidate) => candidate.grounding_state !== 'grounded'),
+  const [candidateList, setCandidateList] =
+    useState<GroundCandidate[]>(assertionCandidates)
+  const [reviewStatuses, setReviewStatuses] = useState<
+    Record<string, string>
+  >({})
+  const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiGroundingSuggestion>>(
+    Object.fromEntries(
+      assertionCandidates
+        .filter((candidate) => candidate.ai_grounding_suggestion)
+        .map((candidate) => [candidate.assertion_id, candidate.ai_grounding_suggestion!]),
+    ),
   )
+  const [aiFocus, setAiFocus] = useState('all')
+  const [aiSort, setAiSort] = useState('priority')
   const [index, setIndex] = useState(0)
   const [detail, setDetail] = useState<GroundDetail | null>(null)
-  const [run, setRun] = useState<Record<string, unknown> | null>(null)
   const [preview, setPreview] = useState<GroundPreview | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewStale, setPreviewStale] = useState(false)
@@ -944,14 +2607,74 @@ export function GroundMode({
   const [actionPending, setActionPending] = useState(false)
   const [regroundOpen, setRegroundOpen] = useState(false)
   const [regroundBlockId, setRegroundBlockId] = useState('')
-  const [acceptedRelease, setAcceptedRelease] = useState<Record<string, any> | null>(null)
-  const [activationProjection, setActivationProjection] = useState<Record<string, any> | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editDraft, setEditDraft] = useState({
+    subject_text: '',
+    predicate_text: '',
+    object_text: '',
+  })
+  const [acceptedRelease, setAcceptedRelease] = useState<Record<
+    string,
+    any
+  > | null>(null)
+  const [activationProjection, setActivationProjection] = useState<Record<
+    string,
+    any
+  > | null>(null)
 
-  const current = pending[index] ?? null
+  const current = candidateList[index] ?? null
+
+  const visibleCandidates = useMemo(() => {
+    const priority = { missing_evidence: 0, low_confidence: 1, ready_for_review: 2 }
+    return candidateList
+      .filter((candidate) => {
+        const suggestion = aiSuggestions[candidate.assertion_id]
+        return aiFocus === 'all' || suggestion?.suggestion_status === aiFocus
+      })
+      .sort((left, right) => {
+        const leftSuggestion = aiSuggestions[left.assertion_id]
+        const rightSuggestion = aiSuggestions[right.assertion_id]
+        if (aiSort === 'confidence_asc') return left.confidence - right.confidence
+        if (aiSort === 'confidence_desc') return right.confidence - left.confidence
+        return (
+          (priority[leftSuggestion?.suggestion_status ?? 'ready_for_review'] ?? 3) -
+            (priority[rightSuggestion?.suggestion_status ?? 'ready_for_review'] ?? 3) ||
+          left.confidence - right.confidence
+        )
+      })
+  }, [aiFocus, aiSort, aiSuggestions, candidateList])
 
   useEffect(() => {
-    setPending(assertionCandidates.filter((candidate) => candidate.grounding_state !== 'grounded'))
+    setCandidateList(assertionCandidates)
+    setAiSuggestions(
+      Object.fromEntries(
+        assertionCandidates
+          .filter((candidate) => candidate.ai_grounding_suggestion)
+          .map((candidate) => [candidate.assertion_id, candidate.ai_grounding_suggestion!]),
+      ),
+    )
+    setIndex((value) => Math.min(value, Math.max(assertionCandidates.length - 1, 0)))
   }, [assertionCandidates])
+
+  useEffect(() => {
+    if (!visibleCandidates.length) return
+    if (!visibleCandidates.some((candidate) => candidate.assertion_id === current?.assertion_id)) {
+      setIndex(candidateList.findIndex(
+        (candidate) => candidate.assertion_id === visibleCandidates[0]?.assertion_id,
+      ))
+    }
+  }, [candidateList, current?.assertion_id, visibleCandidates])
+
+
+  useEffect(() => {
+    if (!current) return
+    setEditOpen(false)
+    setEditDraft({
+      subject_text: current.normalized_assertion.subject?.text ?? '',
+      predicate_text: current.normalized_assertion.predicate ?? '',
+      object_text: current.normalized_assertion.object?.text ?? '',
+    })
+  }, [current?.assertion_id])
 
   useEffect(() => {
     if (!current) {
@@ -965,26 +2688,51 @@ export function GroundMode({
     setPreviewStale(false)
     void (async () => {
       try {
-        const [detailRes, previewRes, runRes] = await Promise.all([
-          fetch(`${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`detail:${r.status}`)))),
-          fetch(`${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}/graph-delta-preview`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`preview:${r.status}`)))),
-          current.extraction_run_id
-            ? fetch(`${KNOWLEDGE_BUILDER_API}/extraction-runs/${current.extraction_run_id}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`run:${r.status}`))))
-            : Promise.resolve(null),
+        const [detailRes, previewRes] = await Promise.all([
+          fetch(
+            `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}`,
+          ).then((r) =>
+            r.ok ? r.json() : Promise.reject(new Error(`detail:${r.status}`)),
+          ),
+          fetch(
+            `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}/graph-delta-preview`,
+          ).then((r) =>
+            r.ok ? r.json() : Promise.reject(new Error(`preview:${r.status}`)),
+          ),
         ])
         if (cancelled) return
         setDetail(detailRes as GroundDetail)
         setPreview(previewRes as GroundPreview)
-        if (runRes) setRun((runRes as { extractionRun?: Record<string, unknown> }).extractionRun ?? null)
+        const loadedDetail = detailRes as GroundDetail
+        const latestEvent = loadedDetail.learningEvents.at(-1)?.event_type
+        const persistedStatus =
+          loadedDetail.assertionCandidate?.grounding_state === 'grounded'
+            ? 'grounded'
+            : latestEvent === 'human_reject'
+              ? 'rejected'
+              : latestEvent === 'human_uncertain'
+                ? 'uncertain'
+                : latestEvent === 'human_edit'
+                  ? 'edited'
+                  : latestEvent === 'human_accept'
+                    ? 'accepted'
+                    : null
+        if (persistedStatus)
+          setReviewStatuses((currentStatuses) => ({
+            ...currentStatuses,
+            [current.assertion_id]: persistedStatus,
+          }))
       } catch (error) {
         if (cancelled) return
-        setActionError(error instanceof Error ? error.message : 'Unable to load candidate')
+        setActionError(
+          error instanceof Error ? error.message : 'Unable to load candidate',
+        )
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [current?.assertion_id, current?.extraction_run_id])
+  }, [current?.assertion_id])
 
   const refreshPreview = useCallback(async () => {
     if (!current) return
@@ -993,10 +2741,14 @@ export function GroundMode({
     try {
       const next = await fetch(
         `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}/graph-delta-preview`,
-      ).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`preview:${r.status}`))))
+      ).then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`preview:${r.status}`)),
+      )
       setPreview(next as GroundPreview)
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to reload preview')
+      setActionError(
+        error instanceof Error ? error.message : 'Unable to reload preview',
+      )
     } finally {
       setPreviewLoading(false)
     }
@@ -1016,10 +2768,17 @@ export function GroundMode({
           decision,
           certainty: 'high',
           reasonCode: 'reviewed_against_source',
-          justification: 'Reviewer decision recorded against the canonical source evidence.',
+          justification:
+            'Reviewer decision recorded against the canonical source evidence.',
         }
-        if (preview?.available && preview.previewHash && (decision === 'accept' || decision === 'edit')) {
+        if (preview?.available && preview.evidenceAnchorRefs) {
           body.evidenceAnchorRefs = preview.evidenceAnchorRefs
+        }
+        if (
+          preview?.available &&
+          preview.previewHash &&
+          decision === 'edit'
+        ) {
           body.graphDelta = preview.graphDelta
           body.graphDeltaPreviewHash = preview.previewHash
         }
@@ -1033,15 +2792,26 @@ export function GroundMode({
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(body),
           },
-        ).then(async (r) => ({ ok: r.ok, status: r.status, payload: await r.json().catch(() => ({})) }))
+        ).then(async (r) => ({
+          ok: r.ok,
+          status: r.status,
+          payload: await r.json().catch(() => ({})),
+        }))
         if (!result.ok) {
-          const detail = (result.payload as { detail?: string }).detail ?? `grounding:${result.status}`
+          const detail =
+            (result.payload as { detail?: string }).detail ??
+            `grounding:${result.status}`
           if (/stale/i.test(detail)) setPreviewStale(true)
           throw new Error(detail)
         }
-        const learningEventId = (result.payload as { learningEvent?: { event_id?: string } }).learningEvent?.event_id
-        if (decision === 'accept' && learningEventId) {
-          const releasePayload = await fetch(
+        const learningEventId = (
+          result.payload as { learningEvent?: { event_id?: string } }
+        ).learningEvent?.event_id
+        if (
+          (decision === 'accept' || decision === 'edit') &&
+          learningEventId
+        ) {
+          const releasePayload = (await fetch(
             `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}/release`,
             {
               method: 'POST',
@@ -1051,16 +2821,30 @@ export function GroundMode({
                 humanEventId: learningEventId,
               }),
             },
-          ).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`release:${r.status}`)))) as { graphRelease?: Record<string, any> }
+          ).then((r) =>
+            r.ok ? r.json() : Promise.reject(new Error(`release:${r.status}`)),
+          )) as { graphRelease?: Record<string, any> }
           setAcceptedRelease(releasePayload.graphRelease ?? null)
           setActivationProjection(null)
           // R7-09: accepted release creation is separate from activation.
           // Learning-gate outcomes must never mutate the active snapshot.
         }
-        setPending((candidates) => candidates.filter((candidate) => candidate.assertion_id !== current.assertion_id))
-        setIndex(0)
+        setReviewStatuses((currentStatuses) => ({
+          ...currentStatuses,
+          [current.assertion_id]:
+            decision === 'accept' || decision === 'edit'
+              ? 'grounded'
+              : decision === 'reject'
+                ? 'rejected'
+                : decision === 'uncertain'
+                  ? 'uncertain'
+                  : currentStatuses[current.assertion_id] ?? 'unresolved',
+        }))
+        setEditOpen(false)
       } catch (error) {
-        setActionError(error instanceof Error ? error.message : 'Unable to record decision')
+        setActionError(
+          error instanceof Error ? error.message : 'Unable to record decision',
+        )
       } finally {
         setActionPending(false)
       }
@@ -1083,10 +2867,15 @@ export function GroundMode({
         },
       )
       const payload = await response.json()
-      if (!response.ok) throw new Error(String(payload.detail ?? `activation:${response.status}`))
+      if (!response.ok)
+        throw new Error(
+          String(payload.detail ?? `activation:${response.status}`),
+        )
       setActivationProjection(payload.projection ?? null)
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to activate release')
+      setActionError(
+        error instanceof Error ? error.message : 'Unable to activate release',
+      )
     } finally {
       setActionPending(false)
     }
@@ -1098,7 +2887,8 @@ export function GroundMode({
     setActionError(null)
     try {
       const evidenceRef = current.evidence_refs[0]?.evidence_ref
-      if (!evidenceRef) throw new Error('No canonical EvidenceRef bound to this candidate')
+      if (!evidenceRef)
+        throw new Error('No canonical EvidenceRef bound to this candidate')
       // The Reground seam validates the new selector against the canonical
       // document server-side; we send a structural selector keyed to the
       // chosen source block id.
@@ -1110,15 +2900,24 @@ export function GroundMode({
           newSelector: {
             schemaVersion: 'semantier.evidence_selector.v1',
             selectorKind: 'structure',
-            structuralPath: [`block:paragraph`, `localContentHash:${regroundBlockId}`],
+            structuralPath: [
+              `block:paragraph`,
+              `localContentHash:${regroundBlockId}`,
+            ],
             sourceElementRef: regroundBlockId,
           },
           sourceBlockId: regroundBlockId,
         } satisfies Partial<GroundRegroundPayload>),
-      }).then(async (r) => ({ ok: r.ok, status: r.status, payload: await r.json().catch(() => ({})) }))
+      }).then(async (r) => ({
+        ok: r.ok,
+        status: r.status,
+        payload: await r.json().catch(() => ({})),
+      }))
       setRegroundOpen(false)
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to reground')
+      setActionError(
+        error instanceof Error ? error.message : 'Unable to reground',
+      )
     } finally {
       setActionPending(false)
     }
@@ -1127,74 +2926,184 @@ export function GroundMode({
   if (!current) {
     return (
       <div className="grid h-full place-items-center bg-card text-xs text-muted-foreground">
-        {zh ? '当前抽取运行下没有待校准的候选。' : 'No pending candidates under the current extraction run.'}
+        {zh
+          ? '当前抽取运行下没有待校准的候选。'
+          : 'No pending candidates under the current extraction run.'}
       </div>
     )
   }
 
-  const sourceBlocks = (detail?.assertionCandidate?.source_anchors ?? []).map((anchor) => ({
-    block_id: anchor.anchor_id,
-    block_type: 'source-anchor',
-    content: anchor.exact_text ?? '',
-  }))
-  const label = detail?.assertionCandidate?.confidence !== undefined
-    ? `${(detail.assertionCandidate.confidence * 100).toFixed(0)}% confidence`
-    : ''
+  const label =
+    detail?.assertionCandidate?.confidence !== undefined
+      ? `${(detail.assertionCandidate.confidence * 100).toFixed(0)}% confidence`
+      : ''
 
   return (
     <div className="grid h-full grid-rows-[auto_1fr_auto] bg-card">
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5 text-xs">
-        <strong>{zh ? '待校准' : 'Pending'} {pending.length}</strong>
-        <span className="font-mono text-[10px] text-muted-foreground">{current.assertion_id}</span>
-        <div className="flex-1" />
-        <Button
-          type="button"
-          aria-label={zh ? '上一条' : 'Previous'}
-          className="inline-flex h-8 items-center gap-1.5 px-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]"
-          onClick={() => setIndex((value) => Math.max(0, value - 1))}
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={15} strokeWidth={1.7} />
-          {zh ? '上一条' : 'Previous'}
-        </Button>
-        <span className="min-w-[52px] text-center text-[11px] text-muted-foreground">
-          {index + 1} / {pending.length}
+        <strong>
+          {zh ? '校准候选' : 'Grounding candidates'} {candidateList.length}
+        </strong>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {current.assertion_id}
         </span>
-        <Button
-          type="button"
-          aria-label={zh ? '下一条' : 'Next'}
-          className="inline-flex h-8 items-center gap-1.5 px-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]"
-          onClick={() => setIndex((value) => Math.min(pending.length - 1, value + 1))}
-        >
-          {zh ? '下一条' : 'Next'}
-          <HugeiconsIcon icon={ArrowRight01Icon} size={15} strokeWidth={1.7} />
-        </Button>
-      </div>
-      <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(320px,.95fr)_minmax(340px,1.05fr)]">
-        <SourceDocument
-          zh={zh}
-          className="hidden border-r border-border lg:flex"
-          sourceLabel={run?.['source_identity_ref'] as string ?? current.assertion_id}
-          blocks={sourceBlocks}
-          loading={!detail && !actionError}
-          error={actionError}
+        <div className="flex-1" />
+        <ControlledSelect
+          compact
+          label={zh ? 'AI 校准筛选' : 'AI grounding filter'}
+          value={aiFocus}
+          onValueChange={setAiFocus}
+          options={[
+            { value: 'all', label: zh ? '全部 AI 状态' : 'All AI statuses' },
+            { value: 'missing_evidence', label: zh ? '缺少证据' : 'Missing evidence' },
+            { value: 'low_confidence', label: zh ? '低置信度' : 'Low confidence' },
+            { value: 'ready_for_review', label: zh ? '可供复核' : 'Ready for review' },
+          ]}
         />
+        <ControlledSelect
+          compact
+          label={zh ? '候选排序' : 'Candidate sort'}
+          value={aiSort}
+          onValueChange={setAiSort}
+          options={[
+            { value: 'priority', label: zh ? 'AI 优先级' : 'AI priority' },
+            { value: 'confidence_asc', label: zh ? '置信度：低到高' : 'Confidence: low first' },
+            { value: 'confidence_desc', label: zh ? '置信度：高到低' : 'Confidence: high first' },
+          ]}
+        />
+      </div>
+      <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
+        <section
+          aria-label={zh ? '校准候选列表' : 'Grounding candidate list'}
+          className="min-h-0 overflow-auto border-r border-border bg-muted/20 p-3"
+        >
+          <Table className="text-xs">
+            <TableHeader>
+              <TableRow>
+                <TableHead>{zh ? '候选' : 'Candidate'}</TableHead>
+                <TableHead>{zh ? '置信度' : 'Confidence'}</TableHead>
+                <TableHead>{zh ? '证据' : 'Evidence'}</TableHead>
+                <TableHead>{zh ? 'AI 校准' : 'AI Ground'}</TableHead>
+                <TableHead>{zh ? '状态' : 'Status'}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visibleCandidates.map((candidate) => {
+                const candidateIndex = candidateList.findIndex(
+                  (item) => item.assertion_id === candidate.assertion_id,
+                )
+                const candidateLabel =
+                  candidate.normalized_assertion.subject?.text ??
+                  candidate.normalized_assertion.object?.text ??
+                  candidate.normalized_assertion.predicate ??
+                  candidate.assertion_id
+                const candidateStatus =
+                  reviewStatuses[candidate.assertion_id] ??
+                  candidate.grounding_state
+                const aiSuggestion = aiSuggestions[candidate.assertion_id]
+                return (
+                  <TableRow
+                    key={candidate.assertion_id}
+                    aria-selected={candidateIndex === index ? 'true' : undefined}
+                  >
+                    <TableCell className="min-w-0 p-0">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        aria-current={
+                          candidateIndex === index ? 'true' : undefined
+                        }
+                        onClick={() => setIndex(candidateIndex)}
+                        className="h-auto w-full min-w-0 justify-start rounded-none px-[1.1rem] py-[0.9rem] text-left hover:bg-transparent"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-semibold">
+                            {candidateLabel}
+                          </span>
+                          <span className="mt-1 block truncate font-mono text-[9px] text-muted-foreground">
+                            {candidate.assertion_id}
+                          </span>
+                        </span>
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      {candidate.confidence.toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      {candidate.evidence_refs?.length ?? 0}
+                    </TableCell>
+                    <TableCell>
+                      {aiSuggestion ? (
+                        <div className="grid gap-1">
+                          <Badge
+                            tone={
+                              aiSuggestion.suggestion_status === 'ready_for_review'
+                                ? 'success'
+                                : aiSuggestion.suggestion_status === 'low_confidence'
+                                  ? 'warning'
+                                  : 'danger'
+                            }
+                          >
+                            {zh
+                              ? aiSuggestion.suggestion_status === 'ready_for_review'
+                                ? '可供复核'
+                                : aiSuggestion.suggestion_status === 'low_confidence'
+                                  ? '低置信度'
+                                  : '缺少证据'
+                              : aiSuggestion.suggestion_status.replaceAll('_', ' ')}
+                          </Badge>
+                          <span className="font-mono text-[10px] text-muted-foreground">
+                            {aiSuggestion.confidence.toFixed(2)}
+                          </span>
+                        </div>
+                      ) : (
+                        <Badge tone="neutral">{zh ? '未运行' : 'Not run'}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        tone={
+                          candidateStatus === 'grounded'
+                            ? 'success'
+                            : candidateStatus === 'rejected'
+                              ? 'danger'
+                              : candidateStatus === 'edited'
+                                ? 'info'
+                                : 'neutral'
+                        }
+                      >
+                        {candidateStatus}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </section>
         <div className="min-h-0 overflow-auto p-4 lg:p-5">
           <h2 className="text-lg font-semibold">
-            {current.normalized_assertion.subject?.text ?? current.normalized_assertion.predicate ?? current.assertion_id}
+            {current.normalized_assertion.subject?.text ??
+              current.normalized_assertion.predicate ??
+              current.assertion_id}
           </h2>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <StatusPill>{current.grounding_state}</StatusPill>
             {label ? <StatusPill>{label}</StatusPill> : null}
             <StatusPill tone="candidate">{candidateGraphId ?? '—'}</StatusPill>
             {preview?.available && preview.previewHash ? (
-              <StatusPill tone="success">{zh ? '预览就绪' : 'Preview ready'}</StatusPill>
+              <StatusPill tone="success">
+                {zh ? '预览就绪' : 'Preview ready'}
+              </StatusPill>
             ) : preview?.reason ? (
               <StatusPill tone="warning">{preview.reason}</StatusPill>
             ) : null}
           </div>
           <MiniLabel>{zh ? '证据' : 'Evidence'}</MiniLabel>
           <p className="font-mono text-[10px] text-muted-foreground">
-            {(detail?.assertionCandidate?.source_anchors ?? []).map((a) => a.anchor_id).join('\n') || (zh ? '暂无证据' : 'No evidence yet')}
+            {(detail?.assertionCandidate?.source_anchors ?? [])
+              .map((a) => a.anchor_id)
+              .join('\n') || (zh ? '暂无证据' : 'No evidence yet')}
           </p>
           <MiniLabel>{zh ? '预览 hash' : 'Preview hash'}</MiniLabel>
           <div className="flex items-center gap-2">
@@ -1202,7 +3111,9 @@ export function GroundMode({
               {preview?.previewHash ?? (zh ? '尚无预览' : 'No preview yet')}
             </code>
             {previewLoading ? (
-              <span className="text-[10px] text-muted-foreground">{zh ? '加载中…' : 'Loading…'}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {zh ? '加载中…' : 'Loading…'}
+              </span>
             ) : (
               <Button
                 type="button"
@@ -1214,42 +3125,150 @@ export function GroundMode({
             )}
           </div>
           {previewStale ? (
-            <div role="alert" className="mt-2 rounded border border-warning/40 bg-warning/10 px-2 py-1 text-[11px] text-warning">
-              {zh ? '预览已陈旧，请重新加载后再提交。' : 'Preview is stale; reload before submitting.'}
+            <div
+              role="alert"
+              className="mt-2 rounded border border-warning/40 bg-warning/10 px-2 py-1 text-[11px] text-warning"
+            >
+              {zh
+                ? '预览已陈旧，请重新加载后再提交。'
+                : 'Preview is stale; reload before submitting.'}
             </div>
           ) : null}
           <MiniLabel>Human Grounding</MiniLabel>
+          {editOpen ? (
+            <div className="mb-3 grid gap-2 rounded-[12px] border border-border bg-muted/30 p-3">
+              <label className="grid gap-1 text-[11px] font-semibold">
+                {zh ? '主语' : 'Subject'}
+                <Input
+                  value={editDraft.subject_text}
+                  onChange={(event) =>
+                    setEditDraft((currentDraft) => ({
+                      ...currentDraft,
+                      subject_text: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label className="grid gap-1 text-[11px] font-semibold">
+                {zh ? '谓词' : 'Predicate'}
+                <Input
+                  value={editDraft.predicate_text}
+                  onChange={(event) =>
+                    setEditDraft((currentDraft) => ({
+                      ...currentDraft,
+                      predicate_text: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label className="grid gap-1 text-[11px] font-semibold">
+                {zh ? '宾语' : 'Object'}
+                <Input
+                  value={editDraft.object_text}
+                  onChange={(event) =>
+                    setEditDraft((currentDraft) => ({
+                      ...currentDraft,
+                      object_text: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  disabled={actionPending}
+                  onClick={() => setEditOpen(false)}
+                >
+                  {zh ? '取消' : 'Cancel'}
+                </Button>
+                <Button
+                  disabled={
+                    actionPending ||
+                    !preview?.available ||
+                    !preview.previewHash
+                  }
+                  onClick={() => void submitGrounding('edit', editDraft)}
+                >
+                  {zh ? '保存编辑' : 'Save edit'}
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <div className="flex flex-wrap gap-2">
-            <StudioButton primary disabled={actionPending} onClick={() => void submitGrounding('accept')}>
+            <Button
+              variant="default"
+              disabled={actionPending}
+              onClick={() => void submitGrounding('accept')}
+            >
               {zh ? '接受' : 'Accept'}
-            </StudioButton>
-            <StudioButton disabled={actionPending} onClick={() => void submitGrounding('edit', { subject_text: current.normalized_assertion.subject?.text ?? '' })}>
+            </Button>
+            <Button
+              variant="outline"
+              disabled={actionPending || !preview?.available}
+              onClick={() => setEditOpen(true)}
+            >
               {zh ? '编辑' : 'Edit'}
-            </StudioButton>
-            <StudioButton disabled={actionPending} className="text-destructive" onClick={() => void submitGrounding('reject')}>
+            </Button>
+            <Button
+              variant="outline"
+              disabled={actionPending}
+              className="text-destructive"
+              onClick={() => void submitGrounding('reject')}
+            >
               {zh ? '拒绝' : 'Reject'}
-            </StudioButton>
-            <StudioButton disabled={actionPending} onClick={() => void submitGrounding('uncertain')}>
+            </Button>
+            <Button
+              variant="outline"
+              disabled={actionPending}
+              onClick={() => void submitGrounding('uncertain')}
+            >
               {zh ? '不确定' : 'Uncertain'}
-            </StudioButton>
-            <StudioButton disabled={actionPending} onClick={() => setRegroundOpen((open) => !open)}>
+            </Button>
+            <Button
+              variant="outline"
+              disabled={actionPending}
+              onClick={() => setRegroundOpen((open) => !open)}
+            >
               {zh ? '重新定位' : 'Reground'}
-            </StudioButton>
+            </Button>
           </div>
           {acceptedRelease ? (
-            <div className="mt-3 rounded border border-success/30 bg-success/10 p-2 text-[11px]" data-testid="ground-accepted-release">
-              <div>AcceptedGraphRelease: <span className="font-mono">{acceptedRelease.graph_version}</span></div>
+            <div
+              className="mt-3 rounded border border-success/30 bg-success/10 p-2 text-[11px]"
+              data-testid="ground-accepted-release"
+            >
+              <div>
+                AcceptedGraphRelease:{' '}
+                <span className="font-mono">
+                  {acceptedRelease.graph_version}
+                </span>
+              </div>
               {activationProjection ? (
-                <div data-testid="ground-activation-snapshot">Activation snapshot: <span className="font-mono">{activationProjection.activation_set_snapshot_id ?? activationProjection.activationSetSnapshotId ?? 'activated'}</span></div>
+                <div data-testid="ground-activation-snapshot">
+                  Activation snapshot:{' '}
+                  <span className="font-mono">
+                    {activationProjection.activation_set_snapshot_id ??
+                      activationProjection.activationSetSnapshotId ??
+                      'activated'}
+                  </span>
+                </div>
               ) : (
-                <StudioButton primary disabled={actionPending} onClick={() => void activateRelease()}>{zh ? '激活发布版本' : 'Activate release'}</StudioButton>
+                <StudioButton
+                  primary
+                  disabled={actionPending}
+                  onClick={() => void activateRelease()}
+                >
+                  {zh ? '激活发布版本' : 'Activate release'}
+                </StudioButton>
               )}
             </div>
           ) : null}
           {regroundOpen ? (
             <div className="mt-2 rounded border border-border bg-muted/40 p-2 text-[11px]">
               <label className="flex flex-col gap-1">
-                <span>{zh ? '目标 source_block_id' : 'Target source_block_id'}</span>
+                <span>
+                  {zh ? '目标 source_block_id' : 'Target source_block_id'}
+                </span>
                 <Input
                   value={regroundBlockId}
                   onChange={(event) => setRegroundBlockId(event.target.value)}
@@ -1269,13 +3288,19 @@ export function GroundMode({
           <MiniLabel>{zh ? '历史' : 'History'}</MiniLabel>
           <ul className="space-y-1 text-xs">
             {(detail?.learningEvents ?? []).map((event) => (
-              <li key={event.event_id} className="font-mono text-[10px] text-muted-foreground">
-                {event.occurred_at ?? ''} · {event.event_type} · {event.actor_ref ?? '—'} · {event.event_hash.slice(0, 12)}…
+              <li
+                key={event.event_id}
+                className="font-mono text-[10px] text-muted-foreground"
+              >
+                {event.occurred_at ?? ''} · {event.event_type} ·{' '}
+                {event.actor_ref ?? '—'} · {event.event_hash.slice(0, 12)}…
               </li>
             ))}
             {(detail?.learningEvents ?? []).length === 0 ? (
               <li className="text-xs text-muted-foreground">
-                {zh ? '尚无人工决策；写入前会对固定来源进行服务端重新校验。' : 'No prior human decision; the pinned source is revalidated server-side before write.'}
+                {zh
+                  ? '尚无人工决策；写入前会对固定来源进行服务端重新校验。'
+                  : 'No prior human decision; the pinned source is revalidated server-side before write.'}
               </li>
             ) : null}
           </ul>
@@ -1290,51 +3315,130 @@ export function GroundMode({
   )
 }
 
-export function GraphMode({ zh, sourceOpen, setSourceOpen, legendOpen, setLegendOpen, viewModel, selectedNodeId, selectedEdgeId, highlightedNodeIds, highlightedEdgeIds, setSelectedNodeId, setSelectedEdgeId, onSelectEvidenceRef, onGround, runtimeIdentity, candidateGraphId }: { zh: boolean; sourceOpen: boolean; setSourceOpen: (open: boolean) => void; legendOpen: boolean; setLegendOpen: (open: boolean) => void; viewModel: GraphViewModel | null; selectedNodeId: string | null; selectedEdgeId: string | null; highlightedNodeIds: string[]; highlightedEdgeIds: string[]; setSelectedNodeId: (id: string | null) => void; setSelectedEdgeId: (id: string | null) => void; onSelectEvidenceRef: (id: string | null) => void; onGround: () => void; runtimeIdentity: StudioIdentity; candidateGraphId: string | null }) {
+export function GraphMode({
+  zh,
+  sourceOpen,
+  setSourceOpen,
+  legendOpen,
+  setLegendOpen,
+  viewModel,
+  selectedNodeId,
+  selectedEdgeId,
+  highlightedNodeIds,
+  highlightedEdgeIds,
+  setSelectedNodeId,
+  setSelectedEdgeId,
+  runtimeIdentity,
+  candidateGraphId,
+}: {
+  zh: boolean
+  sourceOpen: boolean
+  setSourceOpen: (open: boolean) => void
+  legendOpen: boolean
+  setLegendOpen: (open: boolean) => void
+  viewModel: GraphViewModel | null
+  selectedNodeId: string | null
+  selectedEdgeId: string | null
+  highlightedNodeIds: string[]
+  highlightedEdgeIds: string[]
+  setSelectedNodeId: (id: string | null) => void
+  setSelectedEdgeId: (id: string | null) => void
+  runtimeIdentity: StudioIdentity
+  candidateGraphId: string | null
+}) {
   const graphSearch = useContextGraphStudioStore((state) => state.graphSearch)
   const graphLayout = useContextGraphStudioStore((state) => state.graphLayout)
-  const layoutRunning = useContextGraphStudioStore((state) => state.layoutRunning)
+  const layoutRunning = useContextGraphStudioStore(
+    (state) => state.layoutRunning,
+  )
   const settingsOpen = useContextGraphStudioStore((state) => state.settingsOpen)
   const dragEnabled = useContextGraphStudioStore((state) => state.dragEnabled)
-  const largeGraphPerformance = useContextGraphStudioStore((state) => state.largeGraphPerformance)
-  const setGraphSearch = useContextGraphStudioStore((state) => state.setGraphSearch)
-  const setGraphLayout = useContextGraphStudioStore((state) => state.setGraphLayout)
-  const setLayoutRunning = useContextGraphStudioStore((state) => state.setLayoutRunning)
-  const setSettingsOpen = useContextGraphStudioStore((state) => state.setSettingsOpen)
-  const setDragEnabled = useContextGraphStudioStore((state) => state.setDragEnabled)
-  const setCameraIntent = useContextGraphStudioStore((state) => state.setCameraIntent)
+  const largeGraphPerformance = useContextGraphStudioStore(
+    (state) => state.largeGraphPerformance,
+  )
+  const setGraphSearch = useContextGraphStudioStore(
+    (state) => state.setGraphSearch,
+  )
+  const setGraphLayout = useContextGraphStudioStore(
+    (state) => state.setGraphLayout,
+  )
+  const setLayoutRunning = useContextGraphStudioStore(
+    (state) => state.setLayoutRunning,
+  )
+  const setSettingsOpen = useContextGraphStudioStore(
+    (state) => state.setSettingsOpen,
+  )
+  const setDragEnabled = useContextGraphStudioStore(
+    (state) => state.setDragEnabled,
+  )
+  const setCameraIntent = useContextGraphStudioStore(
+    (state) => state.setCameraIntent,
+  )
   const [rendererError, setRendererError] = useState<string | null>(null)
-  const [controlCommand, setControlCommand] = useState<{ id: number; type: 'zoom-in' | 'zoom-out' | 'fit' | 'fullscreen' | 'reset-layout' } | null>(null)
-  const selected = resolveValidSelection(viewModel, selectedNodeId, selectedEdgeId)
+  const [controlCommand, setControlCommand] = useState<{
+    id: number
+    type: 'zoom-in' | 'zoom-out' | 'fit' | 'fullscreen' | 'reset-layout'
+  } | null>(null)
+  const selected = resolveValidSelection(
+    viewModel,
+    selectedNodeId,
+    selectedEdgeId,
+  )
   const selectedNode = selected.node
   const selectedEdge = selected.edge
-  const selectedSourceAnchors = selectedNode?.sourceAnchors ?? selectedEdge?.sourceAnchors ?? []
-  const selectedEvidenceRefs = selectedNode?.evidenceRefs ?? selectedEdge?.evidenceRefs ?? []
-  const selectedEvidenceDetails = selectedNode?.evidenceRefDetails ?? selectedEdge?.evidenceRefDetails ?? []
+  const selectedSourceAnchors =
+    selectedNode?.sourceAnchors ?? selectedEdge?.sourceAnchors ?? []
   const sourceBlocks = selectedSourceAnchors.map((anchor, index) => ({
     block_id: `${anchor.sourceRef}:${anchor.locator}:${index}`,
     block_type: anchor.locator,
     content: anchor.quote ?? '',
   }))
-  const openEvidence = async () => {
-    const ref = selectedEvidenceRefs[0]
-    if (!ref) return
-    onSelectEvidenceRef(ref)
-    const detail = selectedEvidenceDetails.find((item) => item.evidenceRef === ref || item.evidence_ref === ref)
-    const response = await resolveEvidenceRef(ref, detail)
-    if (!response.ok) return
-    setSourceOpen(true)
+  const semanticTypes = [
+    ...new Set(
+      (viewModel?.nodes ?? []).map((node) => node.semanticType ?? 'unknown'),
+    ),
+  ].sort()
+  const dynamicLayout =
+    graphLayout === 'force-atlas' || graphLayout === 'force-directed'
+  const layoutLabels: Record<LayoutAlgorithm, string> = {
+    circular: 'Circular',
+    circlepack: 'Circlepack',
+    random: 'Random',
+    noverlaps: 'Noverlaps',
+    'force-directed': 'Force Directed',
+    'force-atlas': 'Force Atlas',
   }
-  const semanticTypes = [...new Set((viewModel?.nodes ?? []).map((node) => node.semanticType ?? 'unknown'))].sort()
-  const dynamicLayout = graphLayout === 'force-atlas' || graphLayout === 'force-directed'
-  const layoutLabels: Record<LayoutAlgorithm, string> = { circular: 'Circular', circlepack: 'Circlepack', random: 'Random', noverlaps: 'Noverlaps', 'force-directed': 'Force Directed', 'force-atlas': 'Force Atlas' }
-  const issueControl = (type: 'zoom-in' | 'zoom-out' | 'fit' | 'fullscreen' | 'reset-layout') => setControlCommand((previous) => ({ id: (previous?.id ?? 0) + 1, type }))
+  const issueControl = (
+    type: 'zoom-in' | 'zoom-out' | 'fit' | 'fullscreen' | 'reset-layout',
+  ) => setControlCommand((previous) => ({ id: (previous?.id ?? 0) + 1, type }))
   return (
-    <div className={`grid h-full min-h-0 transition-[grid-template-columns] duration-200 ${sourceOpen ? 'min-[1200px]:grid-cols-[minmax(260px,31%)_minmax(0,1fr)]' : 'grid-cols-[0_minmax(0,1fr)]'}`}>
-      <div className={`min-h-0 min-w-0 overflow-hidden border-r border-border bg-card ${sourceOpen ? 'max-[1199px]:absolute max-[1199px]:inset-y-0 max-[1199px]:left-0 max-[1199px]:z-20 max-[1199px]:w-[min(420px,88vw)] max-[1199px]:shadow-sm' : 'pointer-events-none opacity-0'}`}><SourceDocument zh={zh} onClose={() => setSourceOpen(false)} className="flex h-full" sourceLabel={runtimeIdentity.graphRef} blocks={sourceBlocks} loading={false} error={null} /></div>
+    <div
+      className={`grid h-full min-h-0 transition-[grid-template-columns] duration-200 ${sourceOpen ? 'min-[1200px]:grid-cols-[minmax(260px,31%)_minmax(0,1fr)]' : 'grid-cols-[0_minmax(0,1fr)]'}`}
+    >
+      <div
+        className={`min-h-0 min-w-0 overflow-hidden border-r border-border bg-card ${sourceOpen ? 'max-[1199px]:absolute max-[1199px]:inset-y-0 max-[1199px]:left-0 max-[1199px]:z-20 max-[1199px]:w-[min(420px,88vw)] max-[1199px]:shadow-sm' : 'pointer-events-none opacity-0'}`}
+      >
+        <SourceDocument
+          zh={zh}
+          onClose={() => setSourceOpen(false)}
+          className="flex h-full"
+          sourceLabel={runtimeIdentity.graphRef}
+          blocks={sourceBlocks}
+          loading={false}
+          error={null}
+        />
+      </div>
       <div className="relative min-h-0 min-w-0 overflow-hidden bg-background">
         {viewModel ? (
-          <Suspense fallback={<div className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">{zh ? '正在加载 Sigma 图渲染器…' : 'Loading Sigma graph renderer…'}</div>}>
+          <Suspense
+            fallback={
+              <div className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">
+                {zh
+                  ? '正在加载 Sigma 图渲染器…'
+                  : 'Loading Sigma graph renderer…'}
+              </div>
+            }
+          >
             <ContextGraphSigmaViewer
               model={viewModel}
               selectedNodeId={selectedNodeId}
@@ -1360,47 +3464,234 @@ export function GraphMode({ zh, sourceOpen, setSourceOpen, legendOpen, setLegend
         ) : (
           <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-muted-foreground">
             <div>
-              <strong className="block text-foreground">{zh ? '没有可渲染的规范图快照' : 'No canonical graph snapshot available'}</strong>
-              <span className="mt-1 block">{zh ? 'Studio 不会用 SVG 或推测数据静默替代规范图。' : 'Studio will not silently substitute SVG or guessed graph data.'}</span>
+              <strong className="block text-foreground">
+                {zh
+                  ? '没有可渲染的规范图快照'
+                  : 'No canonical graph snapshot available'}
+              </strong>
+              <span className="mt-1 block">
+                {zh
+                  ? 'Studio 不会用 SVG 或推测数据静默替代规范图。'
+                  : 'Studio will not silently substitute SVG or guessed graph data.'}
+              </span>
             </div>
           </div>
         )}
         <div className="absolute left-3 top-3 z-10 flex w-[min(340px,calc(100%_-_24px))] items-center gap-1.5 rounded-md border border-border bg-card px-2 shadow-sm">
-          <HugeiconsIcon icon={Search01Icon} size={15} strokeWidth={1.7} className="shrink-0 text-muted-foreground" />
+          <HugeiconsIcon
+            icon={Search01Icon}
+            size={15}
+            strokeWidth={1.7}
+            className="shrink-0 text-muted-foreground"
+          />
           <Input
             value={graphSearch}
             onChange={(event) => setGraphSearch(event.target.value)}
-            placeholder={zh ? '搜索标签或规范 ID…' : 'Search label or canonical ID…'}
+            placeholder={
+              zh ? '搜索标签或规范 ID…' : 'Search label or canonical ID…'
+            }
             className="h-8 min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
           />
         </div>
         {!sourceOpen ? (
-          <Button type="button" onClick={() => setSourceOpen(true)} className="absolute left-3 top-[54px] z-10 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] shadow-sm">
+          <Button
+            type="button"
+            onClick={() => setSourceOpen(true)}
+            className="absolute left-3 top-[54px] z-10 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] shadow-sm"
+          >
             <HugeiconsIcon icon={FileViewIcon} size={14} strokeWidth={1.7} />
             {zh ? '来源证据' : 'Source evidence'}
           </Button>
         ) : null}
-        {selectedNode || selectedEdge ? <aside aria-label="Graph lineage inspector" className="absolute right-3 top-3 z-10 hidden w-[min(320px,calc(100%_-_24px))] max-h-[58%] overflow-auto rounded-lg border border-border bg-card p-3 shadow-sm md:block"><h2 className="text-sm font-semibold">{selectedNode?.label || selectedEdge?.relationshipType || (zh ? '图选择' : 'Graph selection')}</h2><div className="mt-1.5 flex flex-wrap gap-1.5"><StatusPill>{selectedNode ? selectedNode.semanticType : selectedEdge?.relationshipType}</StatusPill><StatusPill tone="candidate">{runtimeIdentity.authorityState}</StatusPill></div><MiniLabel>Graph identity</MiniLabel><div className="break-all font-mono text-[10px]">{viewModel?.graphRef} · {viewModel?.graphVersion}</div><MiniLabel>Lineage</MiniLabel><div className="space-y-1 text-[10px] text-muted-foreground"><div>SourceIdentity: {(selectedNode?.lineage?.sourceIdentityRefs ?? selectedEdge?.lineage?.sourceIdentityRefs ?? []).join(', ') || '—'}</div><div>ExtractionRun: {selectedNode?.lineage?.extractionRunRef ?? selectedEdge?.lineage?.extractionRunRef ?? '—'}</div><div>Candidate: {selectedNode?.lineage?.candidateGraphId ?? selectedEdge?.lineage?.candidateGraphId ?? '—'}</div><div>Accepted release: {selectedNode?.lineage?.acceptedReleaseId ?? selectedEdge?.lineage?.acceptedReleaseId ?? '—'} · {selectedNode?.lineage?.acceptedReleaseVersion ?? selectedEdge?.lineage?.acceptedReleaseVersion ?? '—'}</div></div><MiniLabel>Canonical ID</MiniLabel><div className="break-all font-mono text-[10px]">{selectedNode?.id || selectedEdge?.id}</div>{selectedEdge ? <><MiniLabel>{zh ? '方向' : 'Direction'}</MiniLabel><div className="font-mono text-[10px]">{selectedEdge.sourceId} → {selectedEdge.targetId}</div></> : null}<MiniLabel>{zh ? '校准状态' : 'Grounding'}</MiniLabel><div className="text-xs">{selectedNode?.groundingState || selectedEdge?.groundingState || 'pending'}</div><MiniLabel>EvidenceRef</MiniLabel><div className="text-xs text-muted-foreground">{selectedEvidenceRefs.length > 0 ? selectedEvidenceRefs.join(', ') : (zh ? '当前图对象未携带规范 EvidenceRef。' : 'No canonical EvidenceRef is attached to this graph object.')}</div><div className="mt-3 flex gap-2"><StudioButton primary onClick={() => void openEvidence()}>{zh ? '打开证据' : 'Open evidence'}</StudioButton><StudioButton onClick={onGround}>{zh ? '校准' : 'Ground'}</StudioButton></div></aside> : null}
         <div className="absolute bottom-10 left-3 z-10 flex items-end gap-2">
           <div className="flex flex-col gap-0.5 rounded-xl border border-border bg-card p-1 shadow-sm">
-            <Rail title={zh ? '布局' : 'Layout'}><HugeiconsIcon icon={Layout01Icon} size={16} strokeWidth={1.7} /></Rail>
-            <Rail title={layoutRunning ? (zh ? '暂停布局' : 'Pause layout') : (zh ? '运行布局' : 'Run layout')} onClick={() => dynamicLayout && setLayoutRunning(!layoutRunning)}><HugeiconsIcon icon={layoutRunning ? PauseIcon : PlayIcon} size={16} strokeWidth={1.7} /></Rail>
-            <Rail title={zh ? '重置布局' : 'Reset layout'} onClick={() => { setLayoutRunning(false); issueControl('reset-layout') }}><HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={1.7} /></Rail>
-            <Rail title={zh ? '放大' : 'Zoom in'} onClick={() => issueControl('zoom-in')}><HugeiconsIcon icon={ZoomInAreaIcon} size={16} strokeWidth={1.7} /></Rail>
-            <Rail title={zh ? '缩小' : 'Zoom out'} onClick={() => issueControl('zoom-out')}><HugeiconsIcon icon={ZoomOutAreaIcon} size={16} strokeWidth={1.7} /></Rail>
-            <Rail title={zh ? '适配' : 'Fit'} onClick={() => issueControl('fit')}><HugeiconsIcon icon={FitToScreenIcon} size={16} strokeWidth={1.7} /></Rail>
-            <Rail title={zh ? '全屏' : 'Fullscreen'} onClick={() => issueControl('fullscreen')}><HugeiconsIcon icon={FullScreenIcon} size={16} strokeWidth={1.7} /></Rail>
-            <Rail title={zh ? '图例' : 'Legend'} onClick={() => setLegendOpen(!legendOpen)}><HugeiconsIcon icon={Layers01Icon} size={16} strokeWidth={1.7} /></Rail>
-            <Rail title={zh ? '设置' : 'Settings'} onClick={() => setSettingsOpen(!settingsOpen)}><HugeiconsIcon icon={Settings01Icon} size={16} strokeWidth={1.7} /></Rail>
+            <Rail title={zh ? '布局' : 'Layout'}>
+              <HugeiconsIcon icon={Layout01Icon} size={16} strokeWidth={1.7} />
+            </Rail>
+            <Rail
+              title={
+                layoutRunning
+                  ? zh
+                    ? '暂停布局'
+                    : 'Pause layout'
+                  : zh
+                    ? '运行布局'
+                    : 'Run layout'
+              }
+              onClick={() => dynamicLayout && setLayoutRunning(!layoutRunning)}
+            >
+              <HugeiconsIcon
+                icon={layoutRunning ? PauseIcon : PlayIcon}
+                size={16}
+                strokeWidth={1.7}
+              />
+            </Rail>
+            <Rail
+              title={zh ? '重置布局' : 'Reset layout'}
+              onClick={() => {
+                setLayoutRunning(false)
+                issueControl('reset-layout')
+              }}
+            >
+              <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={1.7} />
+            </Rail>
+            <Rail
+              title={zh ? '放大' : 'Zoom in'}
+              onClick={() => issueControl('zoom-in')}
+            >
+              <HugeiconsIcon
+                icon={ZoomInAreaIcon}
+                size={16}
+                strokeWidth={1.7}
+              />
+            </Rail>
+            <Rail
+              title={zh ? '缩小' : 'Zoom out'}
+              onClick={() => issueControl('zoom-out')}
+            >
+              <HugeiconsIcon
+                icon={ZoomOutAreaIcon}
+                size={16}
+                strokeWidth={1.7}
+              />
+            </Rail>
+            <Rail
+              title={zh ? '适配' : 'Fit'}
+              onClick={() => issueControl('fit')}
+            >
+              <HugeiconsIcon
+                icon={FitToScreenIcon}
+                size={16}
+                strokeWidth={1.7}
+              />
+            </Rail>
+            <Rail
+              title={zh ? '全屏' : 'Fullscreen'}
+              onClick={() => issueControl('fullscreen')}
+            >
+              <HugeiconsIcon
+                icon={FullScreenIcon}
+                size={16}
+                strokeWidth={1.7}
+              />
+            </Rail>
+            <Rail
+              title={zh ? '图例' : 'Legend'}
+              onClick={() => setLegendOpen(!legendOpen)}
+            >
+              <HugeiconsIcon icon={Layers01Icon} size={16} strokeWidth={1.7} />
+            </Rail>
+            <Rail
+              title={zh ? '设置' : 'Settings'}
+              onClick={() => setSettingsOpen(!settingsOpen)}
+            >
+              <HugeiconsIcon
+                icon={Settings01Icon}
+                size={16}
+                strokeWidth={1.7}
+              />
+            </Rail>
           </div>
-          <NativeSelect aria-label={zh ? '图布局' : 'Graph layout'} value={graphLayout} onChange={(event) => { const next = event.target.value as LayoutAlgorithm; setLayoutRunning(false); setGraphLayout(next) }} className="h-8 rounded-md border border-border bg-card px-2 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]">
-            {(Object.keys(layoutLabels) as LayoutAlgorithm[]).map((layout) => <option key={layout} value={layout}>{layoutLabels[layout]}</option>)}
-          </NativeSelect>
+          <ControlledSelect
+            compact
+            label={zh ? '图布局' : 'Graph layout'}
+            value={graphLayout}
+            onValueChange={(next) => {
+              setLayoutRunning(false)
+              setGraphLayout(next as LayoutAlgorithm)
+            }}
+            options={(Object.keys(layoutLabels) as LayoutAlgorithm[]).map(
+              (layout) => ({ value: layout, label: layoutLabels[layout] }),
+            )}
+          />
         </div>
-        {settingsOpen ? <div className="absolute bottom-10 left-[190px] z-10 w-56 rounded-lg border border-border bg-card p-3 text-[11px] shadow-sm"><strong>{zh ? '图设置' : 'Graph settings'}</strong><label className="mt-2 flex items-center justify-between gap-3"><span>{zh ? '允许拖动节点' : 'Enable node drag'}</span><Checkbox checked={dragEnabled} onChange={(event) => setDragEnabled(event.target.checked)} /></label><div className="mt-2 flex items-center justify-between gap-3 text-muted-foreground"><span>{zh ? '大图性能模式' : 'Large-graph mode'}</span><span>{largeGraphPerformance ? 'ON' : 'OFF'}</span></div></div> : null}
-        {legendOpen ? <div className="absolute bottom-10 right-3 z-10 w-56 rounded-lg border border-border bg-card p-2.5 text-[11px] shadow-sm"><strong>{zh ? '图例' : 'Legend'}</strong>{semanticTypes.slice(0, 16).map((semanticType) => <div key={semanticType} className="mt-1.5 flex items-center gap-2"><span className="size-2.5 rounded-full" style={{ backgroundColor: graphCategoryColor(semanticType) }} /><span className="truncate">{semanticType}</span></div>)}<LegendRow><HugeiconsIcon icon={ArrowRight01Icon} size={13} strokeWidth={1.7} /> Directed relation</LegendRow><LegendRow><HugeiconsIcon icon={Layers01Icon} size={13} strokeWidth={1.7} /> Parallel edges preserved</LegendRow></div> : null}
-        {rendererError ? <div role="alert" className="absolute inset-x-3 top-14 z-20 rounded-md border border-warning/40 bg-card p-3 text-xs shadow-sm"><strong className="text-warning">{zh ? 'Sigma 渲染器不可用。' : 'Sigma renderer unavailable.'}</strong><span className="ml-1 text-muted-foreground">{rendererError}</span></div> : null}
-        <div className="absolute inset-x-0 bottom-0 z-10 flex h-7 items-center gap-3 overflow-hidden border-t border-border bg-card px-3 text-[10px] text-muted-foreground"><span><strong className="text-foreground">{viewModel?.nodes.length ?? 0}</strong> nodes</span><span><strong className="text-foreground">{viewModel?.edges.length ?? 0}</strong> directed edges</span><span>multi-edge</span><span>{layoutLabels[graphLayout]}{layoutRunning ? ' · running' : ''}</span>{largeGraphPerformance ? <span>{zh ? '性能模式' : 'performance mode'}</span> : null}<span className="truncate">selected: <strong className="text-foreground">{selectedNode?.label || selectedEdge?.relationshipType || (zh ? '无' : 'none')}</strong></span><span className="font-mono">{runtimeIdentity.graphVersion}</span></div>
+        {settingsOpen ? (
+          <div className="absolute bottom-10 left-[190px] z-10 w-56 rounded-lg border border-border bg-card p-3 text-[11px] shadow-sm">
+            <strong>{zh ? '图设置' : 'Graph settings'}</strong>
+            <label className="mt-2 flex items-center justify-between gap-3">
+              <span>{zh ? '允许拖动节点' : 'Enable node drag'}</span>
+              <Checkbox
+                checked={dragEnabled}
+                onChange={(event) => setDragEnabled(event.target.checked)}
+              />
+            </label>
+            <div className="mt-2 flex items-center justify-between gap-3 text-muted-foreground">
+              <span>{zh ? '大图性能模式' : 'Large-graph mode'}</span>
+              <span>{largeGraphPerformance ? 'ON' : 'OFF'}</span>
+            </div>
+          </div>
+        ) : null}
+        {legendOpen ? (
+          <div className="absolute bottom-10 right-3 z-10 w-56 rounded-lg border border-border bg-card p-2.5 text-[11px] shadow-sm">
+            <strong>{zh ? '图例' : 'Legend'}</strong>
+            {semanticTypes.slice(0, 16).map((semanticType) => (
+              <div
+                key={semanticType}
+                className="mt-1.5 flex items-center gap-2"
+              >
+                <span
+                  className="size-2.5 rounded-full"
+                  style={{ backgroundColor: graphCategoryColor(semanticType) }}
+                />
+                <span className="truncate">{semanticType}</span>
+              </div>
+            ))}
+            <LegendRow>
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={13}
+                strokeWidth={1.7}
+              />{' '}
+              Directed relation
+            </LegendRow>
+            <LegendRow>
+              <HugeiconsIcon icon={Layers01Icon} size={13} strokeWidth={1.7} />{' '}
+              Parallel edges preserved
+            </LegendRow>
+          </div>
+        ) : null}
+        {rendererError ? (
+          <div
+            role="alert"
+            className="absolute inset-x-3 top-14 z-20 rounded-md border border-warning/40 bg-card p-3 text-xs shadow-sm"
+          >
+            <strong className="text-warning">
+              {zh ? 'Sigma 渲染器不可用。' : 'Sigma renderer unavailable.'}
+            </strong>
+            <span className="ml-1 text-muted-foreground">{rendererError}</span>
+          </div>
+        ) : null}
+        <div className="absolute inset-x-0 bottom-0 z-10 flex h-7 items-center gap-3 overflow-hidden border-t border-border bg-card px-3 text-[10px] text-muted-foreground">
+          <span>
+            <strong className="text-foreground">
+              {viewModel?.nodes.length ?? 0}
+            </strong>{' '}
+            nodes
+          </span>
+          <span>
+            <strong className="text-foreground">
+              {viewModel?.edges.length ?? 0}
+            </strong>{' '}
+            directed edges
+          </span>
+          <span>multi-edge</span>
+          <span>
+            {layoutLabels[graphLayout]}
+            {layoutRunning ? ' · running' : ''}
+          </span>
+          {largeGraphPerformance ? (
+            <span>{zh ? '性能模式' : 'performance mode'}</span>
+          ) : null}
+          <span className="truncate">
+            selected:{' '}
+            <strong className="text-foreground">
+              {selectedNode?.label ||
+                selectedEdge?.relationshipType ||
+                (zh ? '无' : 'none')}
+            </strong>
+          </span>
+          <span className="font-mono">{runtimeIdentity.graphVersion}</span>
+        </div>
       </div>
     </div>
   )
@@ -1414,17 +3705,41 @@ type CompareDiff = {
   rules?: { added?: string[]; removed?: string[]; changed?: string[] }
 }
 
-export function InspectMode({ zh, run, onRun, onFindingContext, onOpenGraph }: { zh: boolean; run: Record<string, any> | null; onRun: (run: Record<string, any>) => void; onFindingContext: (context: Record<string, string | null> | null) => void; onOpenGraph: (finding: Record<string, any>) => void }) {
-  const [runId, setRunId] = useState(() => new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search).get('tender_run_id') ?? '')
+export function InspectMode({
+  zh,
+  run,
+  onRun,
+  onFindingContext,
+  onOpenGraph,
+}: {
+  zh: boolean
+  run: Record<string, any> | null
+  onRun: (run: Record<string, any>) => void
+  onFindingContext: (context: Record<string, string | null> | null) => void
+  onOpenGraph: (finding: Record<string, any>) => void
+}) {
+  const [runId, setRunId] = useState(
+    () =>
+      new URLSearchParams(
+        typeof window === 'undefined' ? '' : window.location.search,
+      ).get('tender_run_id') ?? '',
+  )
   const [fileRef, setFileRef] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [selectedFinding, setSelectedFinding] = useState<Record<string, any> | null>(null)
+  const [selectedFinding, setSelectedFinding] = useState<Record<
+    string,
+    any
+  > | null>(null)
   const [lineageTrace, setLineageTrace] = useState<string[]>([])
   const [artifactResult, setArtifactResult] = useState<unknown>(null)
-  const [candidateDeltaRef, setCandidateDeltaRef] = useState<string | null>(null)
+  const [candidateDeltaRef, setCandidateDeltaRef] = useState<string | null>(
+    null,
+  )
   const [dispositionRecorded, setDispositionRecorded] = useState(false)
-  const [dispositionKind, setDispositionKind] = useState<'accept' | 'reject'>('accept')
+  const [dispositionKind, setDispositionKind] = useState<'accept' | 'reject'>(
+    'accept',
+  )
   const [actionBusy, setActionBusy] = useState(false)
   const selectFinding = (finding: Record<string, any>) => {
     setSelectedFinding(finding)
@@ -1432,75 +3747,454 @@ export function InspectMode({ zh, run, onRun, onFindingContext, onOpenGraph }: {
       targetEvidenceRef: finding.target_evidence_ref ?? null,
       activeRuleVersionId: finding.triggered_rule_version_id ?? null,
       graphRuleId: finding.source_graph_rule_id ?? null,
-      originEvidenceRef: finding.origin_evidence_ref ?? finding.resolver_evidence_ref ?? null,
+      originEvidenceRef:
+        finding.origin_evidence_ref ?? finding.resolver_evidence_ref ?? null,
     })
   }
   const load = async () => {
     if (!runId) return
-    setBusy(true); setError('')
+    setBusy(true)
+    setError('')
     try {
-      const response = await fetch(`/api/tender-document-review/runs/${encodeURIComponent(runId)}`)
+      const response = await fetch(
+        `/api/tender-document-review/runs/${encodeURIComponent(runId)}`,
+      )
       const payload = await response.json()
-      if (!response.ok) throw new Error(String(payload.detail || payload.error || 'Unable to load tender run'))
-      onRun(payload.run); if (payload.run.findings?.[0]) selectFinding(payload.run.findings[0])
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to load tender run') } finally { setBusy(false) }
+      if (!response.ok)
+        throw new Error(
+          String(
+            payload.detail || payload.error || 'Unable to load tender run',
+          ),
+        )
+      onRun(payload.run)
+      if (payload.run.findings?.[0]) selectFinding(payload.run.findings[0])
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'Unable to load tender run',
+      )
+    } finally {
+      setBusy(false)
+    }
   }
   const detect = async () => {
-    setBusy(true); setError('')
+    setBusy(true)
+    setError('')
     try {
-      const response = await fetch('/api/tender-document-review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'detect', fileRef, sessionId: 'knowledge-builder', requestedRuleFamilies: ['tender_compliance'] }) })
+      const response = await fetch('/api/tender-document-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'detect',
+          fileRef,
+          sessionId: 'knowledge-builder',
+          requestedRuleFamilies: ['tender_compliance'],
+        }),
+      })
       const payload = await response.json()
-      if (!response.ok) throw new Error(String(payload.detail || payload.error || 'Detection failed'))
-      onRun(payload.run); setRunId(payload.run.run_id); if (payload.run.findings?.[0]) selectFinding(payload.run.findings[0])
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Detection failed') } finally { setBusy(false) }
+      if (!response.ok)
+        throw new Error(
+          String(payload.detail || payload.error || 'Detection failed'),
+        )
+      onRun(payload.run)
+      setRunId(payload.run.run_id)
+      if (payload.run.findings?.[0]) selectFinding(payload.run.findings[0])
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Detection failed')
+    } finally {
+      setBusy(false)
+    }
   }
-  const disposition = async (value: 'accepted' | 'rejected' | 'edited' | 'deferred' | 'escalated') => {
+  const disposition = async (
+    value: 'accepted' | 'rejected' | 'edited' | 'deferred' | 'escalated',
+  ) => {
     if (!run?.run_id || !selectedFinding?.finding_id) return
-    const response = await fetch('/api/tender-document-review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'disposition', runId: run.run_id, findingId: selectedFinding.finding_id, disposition: value }) })
+    const response = await fetch('/api/tender-document-review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'disposition',
+        runId: run.run_id,
+        findingId: selectedFinding.finding_id,
+        disposition: value,
+      }),
+    })
     const payload = await response.json()
-    if (response.ok) { onRun({ ...run, dispositions: [...(run.dispositions ?? []), payload.disposition] }); setCandidateDeltaRef(null); setDispositionRecorded(value === 'accepted' || value === 'rejected'); setDispositionKind(value === 'rejected' ? 'reject' : 'accept') }
+    if (response.ok) {
+      onRun({
+        ...run,
+        dispositions: [...(run.dispositions ?? []), payload.disposition],
+      })
+      setCandidateDeltaRef(null)
+      setDispositionRecorded(value === 'accepted' || value === 'rejected')
+      setDispositionKind(value === 'rejected' ? 'reject' : 'accept')
+    }
   }
   const traceToOrigin = async () => {
     if (!selectedFinding) return
-    const refs = [selectedFinding.target_evidence_ref, selectedFinding.triggered_rule_version_id, selectedFinding.source_graph_release_hash, selectedFinding.source_graph_rule_id, selectedFinding.origin_evidence_ref ?? selectedFinding.resolver_evidence_ref].filter(Boolean).map(String)
+    const refs = [
+      selectedFinding.target_evidence_ref,
+      selectedFinding.triggered_rule_version_id,
+      selectedFinding.source_graph_release_hash,
+      selectedFinding.source_graph_rule_id,
+      selectedFinding.origin_evidence_ref ??
+        selectedFinding.resolver_evidence_ref,
+    ]
+      .filter(Boolean)
+      .map(String)
     setLineageTrace(refs)
   }
   const resolveGraphFocus = async (finding = selectedFinding) => {
     if (!finding || !finding.source_graph_release_hash) return
-    const response = await fetch('/api/tender-document-review/graph-focus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ finding, accepted_release_hash: finding.source_graph_release_hash }) })
+    const response = await fetch('/api/tender-document-review/graph-focus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        finding,
+        accepted_release_hash: finding.source_graph_release_hash,
+      }),
+    })
     const payload = await response.json()
-    if (!response.ok) { setError(String(payload.error ?? 'Graph release validation failed')); return }
-      onOpenGraph(payload.focus)
+    if (!response.ok) {
+      setError(String(payload.error ?? 'Graph release validation failed'))
+      return
+    }
+    onOpenGraph(payload.focus)
   }
   const artifact = async (kind: 'report' | 'labeled-docx' | 'replay') => {
     if (!run?.run_id) return
-    setActionBusy(true); setError('')
+    setActionBusy(true)
+    setError('')
     try {
-      const response = await fetch(`/api/tender-document-review/runs/${encodeURIComponent(run.run_id)}/${kind}`, { method: kind === 'replay' ? 'GET' : 'POST' })
+      const response = await fetch(
+        `/api/tender-document-review/runs/${encodeURIComponent(run.run_id)}/${kind}`,
+        { method: kind === 'replay' ? 'GET' : 'POST' },
+      )
       const payload = await response.json()
-      if (!response.ok) throw new Error(String(payload.error ?? `Unable to load ${kind}`))
-      setArtifactResult(payload.report ?? payload.derivative ?? payload.bundle ?? payload)
-    } catch (cause) { setError(cause instanceof Error ? cause.message : `Unable to load ${kind}`) } finally { setActionBusy(false) }
+      if (!response.ok)
+        throw new Error(String(payload.error ?? `Unable to load ${kind}`))
+      setArtifactResult(
+        payload.report ?? payload.derivative ?? payload.bundle ?? payload,
+      )
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : `Unable to load ${kind}`,
+      )
+    } finally {
+      setActionBusy(false)
+    }
   }
   const createCandidateDelta = async (kind: 'accept' | 'reject') => {
     if (!run?.run_id || !selectedFinding?.finding_id) return
-    setActionBusy(true); setError('')
+    setActionBusy(true)
+    setError('')
     try {
-      const response = await fetch('/api/tender-document-review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'feedback', runId: run.run_id, findingId: selectedFinding.finding_id, feedbackType: kind === 'accept' ? 'false_positive' : 'missing_control', userDisposition: { disposition: kind }, escalationOutcome: 'not_escalated' }) })
+      const response = await fetch('/api/tender-document-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'feedback',
+          runId: run.run_id,
+          findingId: selectedFinding.finding_id,
+          feedbackType:
+            kind === 'accept' ? 'false_positive' : 'missing_control',
+          userDisposition: { disposition: kind },
+          escalationOutcome: 'not_escalated',
+        }),
+      })
       const payload = await response.json()
-      if (!response.ok) throw new Error(String(payload.error ?? 'Unable to create candidate delta'))
-      setCandidateDeltaRef(payload.feedback?.candidateDelta?.candidate_delta_ref ?? payload.feedback?.candidateDelta?.candidateDeltaRef ?? null)
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to create candidate delta') } finally { setActionBusy(false) }
+      if (!response.ok)
+        throw new Error(
+          String(payload.error ?? 'Unable to create candidate delta'),
+        )
+      setCandidateDeltaRef(
+        payload.feedback?.candidateDelta?.candidate_delta_ref ??
+          payload.feedback?.candidateDelta?.candidateDeltaRef ??
+          null,
+      )
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'Unable to create candidate delta',
+      )
+    } finally {
+      setActionBusy(false)
+    }
   }
-  return <div className="flex h-full min-h-0 flex-col overflow-auto bg-background p-4 text-xs">
-    <div className="mx-auto w-full max-w-6xl space-y-3">
-      <div className="flex flex-wrap items-center gap-2"><h2 className="text-sm font-semibold">{zh ? 'Tender Inspect' : 'Tender Inspect'}</h2><StatusPill tone={run?.activation_set_snapshot_id ? 'success' : 'warning'}>{run?.activation_set_snapshot_id ? 'activated rules' : 'no activated rules'}</StatusPill><span className="text-muted-foreground">{run?.project_metadata?.source_graph_lineage?.[0]?.source_graph_release_hash ?? 'No accepted release loaded'}</span></div>
-      <div className="rounded-lg border border-border bg-card p-3"><div className="font-medium">{zh ? '目标 DOCX / CanonicalSourceIR' : 'Target DOCX / CanonicalSourceIR'}</div><div className="mt-2 flex flex-wrap gap-2"><Input value={fileRef} onChange={e => setFileRef(e.target.value)} placeholder="artifacts/document_extraction/target.json" className="h-8 min-w-[320px] flex-1 rounded-md border border-border bg-background px-2" /><StudioButton primary disabled={busy || !fileRef} onClick={() => void detect()}>{busy ? '…' : 'Run inspection'}</StudioButton><Input value={runId} onChange={e => setRunId(e.target.value)} placeholder="tender_run_id" className="h-8 w-48 rounded-md border border-border bg-background px-2" /><StudioButton disabled={busy || !runId} onClick={() => void load()}>Load</StudioButton></div>{error ? <div role="alert" className="mt-2 text-destructive">{error}</div> : null}<div className="mt-2 text-[11px] text-muted-foreground">Activation snapshot: {run?.activation_set_snapshot_id ?? 'inspection blocked until an eligible activated context exists'} · resolver: {run?.activation_resolver_policy_version ?? '—'}</div></div>
-      {run ? <div className="grid min-h-0 gap-3 lg:grid-cols-[minmax(260px,0.8fr)_minmax(340px,1.2fr)]"><div className="rounded-lg border border-border bg-card"><div className="border-b border-border p-3 font-medium">Findings ({run.findings?.length ?? 0})</div>{(run.findings ?? []).map((finding: Record<string, any>) => <div key={finding.finding_id} className={`border-b border-border p-3 hover:bg-muted/40 ${selectedFinding?.finding_id === finding.finding_id ? 'bg-primary/10' : ''}`}><Button type="button" onClick={() => selectFinding(finding)} className="block w-full text-left"><div className="flex justify-between gap-2"><strong>{finding.issue_type}</strong><StatusPill tone={finding.severity === 'high' ? 'warning' : 'neutral'}>{finding.severity}</StatusPill></div><div className="mt-1 font-mono text-[11px]">{finding.matched_text}</div><div className="mt-1 text-muted-foreground">{finding.target_evidence_ref ?? 'no target EvidenceRef'}</div></Button><div className="mt-2 flex gap-1"><StudioButton disabled={!finding.source_graph_rule_id} onClick={() => { selectFinding(finding); void resolveGraphFocus(finding) }}>Open in Graph</StudioButton><StudioButton disabled={!finding.target_evidence_ref} onClick={() => { selectFinding(finding); setLineageTrace([finding.target_evidence_ref, finding.triggered_rule_version_id, finding.source_graph_release_hash, finding.source_graph_rule_id, finding.origin_evidence_ref ?? finding.resolver_evidence_ref].filter(Boolean).map(String)) }}>Trace to origin</StudioButton></div></div>)}</div><div className="rounded-lg border border-border bg-card p-3">{selectedFinding ? <><h3 className="font-semibold">{selectedFinding.matched_text}</h3><div className="mt-2 grid gap-2 text-[11px]"><div><MiniLabel>Judgment basis</MiniLabel>{selectedFinding.judgment_basis}</div><div><MiniLabel>Target EvidenceRef / anchor</MiniLabel><span className="font-mono">{selectedFinding.target_evidence_ref ?? '—'} · {selectedFinding.target_anchor_ref ?? '—'}</span></div><div><MiniLabel>Activated rule</MiniLabel><span className="font-mono">{selectedFinding.triggered_rule_version_id ?? '—'}</span></div><div><MiniLabel>Graph lineage</MiniLabel><span className="font-mono">{selectedFinding.source_graph_release_hash ?? '—'} / {selectedFinding.source_graph_rule_id ?? '—'}</span></div><div><MiniLabel>Remediation</MiniLabel><Textarea defaultValue={selectedFinding.suggested_replacement ?? ''} className="mt-1 min-h-20 w-full rounded border border-border bg-background p-2" /></div></div><LineagePanel>{lineageTrace.length ? <div className="mt-3 rounded border border-border bg-muted/20 p-2 text-[10px]"><MiniLabel>Finding lineage trace</MiniLabel><div className="font-mono">{lineageTrace.join(' → ')}</div></div> : null}</LineagePanel><div className="mt-3 flex flex-wrap gap-2"><StudioButton primary onClick={() => void disposition('accepted')}>Accept</StudioButton><StudioButton onClick={() => void disposition('rejected')}>Reject</StudioButton><StudioButton onClick={() => void disposition('edited')}>Edit remediation</StudioButton><StudioButton onClick={() => void disposition('deferred')}>Defer</StudioButton><StudioButton onClick={() => void disposition('escalated')}>Escalate</StudioButton><StudioButton onClick={() => void resolveGraphFocus()}>Open in Graph</StudioButton><StudioButton onClick={() => void traceToOrigin()}>Trace to origin</StudioButton><StudioButton disabled={actionBusy || !run.run_id} onClick={() => void artifact('report')}>Persist Report</StudioButton><StudioButton disabled={actionBusy || !run.run_id} onClick={() => void artifact('labeled-docx')}>Generate Labeled DOCX</StudioButton><StudioButton disabled={actionBusy || !run.run_id} onClick={() => void artifact('replay')}>Open Replay</StudioButton>{dispositionRecorded ? <StudioButton disabled={actionBusy} onClick={() => void createCandidateDelta(dispositionKind)}>Create Candidate Delta</StudioButton> : null}</div>{candidateDeltaRef ? <div className="mt-3 rounded border border-success/30 bg-success/10 p-2 text-[11px]">candidate_delta_ref: <DsLink className="underline" href={`?mode=ground&candidate_id=${encodeURIComponent(candidateDeltaRef)}`}>{candidateDeltaRef}</DsLink></div> : null}{artifactResult ? <pre className="mt-3 max-h-48 overflow-auto rounded border border-border bg-muted/20 p-2 text-[10px]">{JSON.stringify(artifactResult, null, 2)}</pre> : null}</> : <div className="text-muted-foreground">Select a finding to inspect exact target evidence and lineage.</div>}</div></div> : null}
-    </div></div>
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-auto bg-background p-4 text-xs">
+      <div className="mx-auto w-full max-w-6xl space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-sm font-semibold">
+            {zh ? 'Tender Inspect' : 'Tender Inspect'}
+          </h2>
+          <StatusPill
+            tone={run?.activation_set_snapshot_id ? 'success' : 'warning'}
+          >
+            {run?.activation_set_snapshot_id
+              ? 'activated rules'
+              : 'no activated rules'}
+          </StatusPill>
+          <span className="text-muted-foreground">
+            {run?.project_metadata?.source_graph_lineage?.[0]
+              ?.source_graph_release_hash ?? 'No accepted release loaded'}
+          </span>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-3">
+          <div className="font-medium">
+            {zh
+              ? '目标 DOCX / CanonicalSourceIR'
+              : 'Target DOCX / CanonicalSourceIR'}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Input
+              value={fileRef}
+              onChange={(e) => setFileRef(e.target.value)}
+              placeholder="artifacts/document_extraction/target.json"
+              className="h-8 min-w-[320px] flex-1 rounded-md border border-border bg-background px-2"
+            />
+            <StudioButton
+              primary
+              disabled={busy || !fileRef}
+              onClick={() => void detect()}
+            >
+              {busy ? '…' : 'Run inspection'}
+            </StudioButton>
+            <Input
+              value={runId}
+              onChange={(e) => setRunId(e.target.value)}
+              placeholder="tender_run_id"
+              className="h-8 w-48 rounded-md border border-border bg-background px-2"
+            />
+            <StudioButton disabled={busy || !runId} onClick={() => void load()}>
+              Load
+            </StudioButton>
+          </div>
+          {error ? (
+            <div role="alert" className="mt-2 text-destructive">
+              {error}
+            </div>
+          ) : null}
+          <div className="mt-2 text-[11px] text-muted-foreground">
+            Activation snapshot:{' '}
+            {run?.activation_set_snapshot_id ??
+              'inspection blocked until an eligible activated context exists'}{' '}
+            · resolver: {run?.activation_resolver_policy_version ?? '—'}
+          </div>
+        </div>
+        {run ? (
+          <div className="grid min-h-0 gap-3 lg:grid-cols-[minmax(260px,0.8fr)_minmax(340px,1.2fr)]">
+            <div className="rounded-lg border border-border bg-card">
+              <div className="border-b border-border p-3 font-medium">
+                Findings ({run.findings?.length ?? 0})
+              </div>
+              {(run.findings ?? []).map((finding: Record<string, any>) => (
+                <div
+                  key={finding.finding_id}
+                  className={`border-b border-border p-3 hover:bg-muted/40 ${selectedFinding?.finding_id === finding.finding_id ? 'bg-primary/10' : ''}`}
+                >
+                  <Button
+                    type="button"
+                    onClick={() => selectFinding(finding)}
+                    className="block w-full text-left"
+                  >
+                    <div className="flex justify-between gap-2">
+                      <strong>{finding.issue_type}</strong>
+                      <StatusPill
+                        tone={
+                          finding.severity === 'high' ? 'warning' : 'neutral'
+                        }
+                      >
+                        {finding.severity}
+                      </StatusPill>
+                    </div>
+                    <div className="mt-1 font-mono text-[11px]">
+                      {finding.matched_text}
+                    </div>
+                    <div className="mt-1 text-muted-foreground">
+                      {finding.target_evidence_ref ?? 'no target EvidenceRef'}
+                    </div>
+                  </Button>
+                  <div className="mt-2 flex gap-1">
+                    <StudioButton
+                      disabled={!finding.source_graph_rule_id}
+                      onClick={() => {
+                        selectFinding(finding)
+                        void resolveGraphFocus(finding)
+                      }}
+                    >
+                      Open in Graph
+                    </StudioButton>
+                    <StudioButton
+                      disabled={!finding.target_evidence_ref}
+                      onClick={() => {
+                        selectFinding(finding)
+                        setLineageTrace(
+                          [
+                            finding.target_evidence_ref,
+                            finding.triggered_rule_version_id,
+                            finding.source_graph_release_hash,
+                            finding.source_graph_rule_id,
+                            finding.origin_evidence_ref ??
+                              finding.resolver_evidence_ref,
+                          ]
+                            .filter(Boolean)
+                            .map(String),
+                        )
+                      }}
+                    >
+                      Trace to origin
+                    </StudioButton>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3">
+              {selectedFinding ? (
+                <>
+                  <h3 className="font-semibold">
+                    {selectedFinding.matched_text}
+                  </h3>
+                  <div className="mt-2 grid gap-2 text-[11px]">
+                    <div>
+                      <MiniLabel>Judgment basis</MiniLabel>
+                      {selectedFinding.judgment_basis}
+                    </div>
+                    <div>
+                      <MiniLabel>Target EvidenceRef / anchor</MiniLabel>
+                      <span className="font-mono">
+                        {selectedFinding.target_evidence_ref ?? '—'} ·{' '}
+                        {selectedFinding.target_anchor_ref ?? '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <MiniLabel>Activated rule</MiniLabel>
+                      <span className="font-mono">
+                        {selectedFinding.triggered_rule_version_id ?? '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <MiniLabel>Graph lineage</MiniLabel>
+                      <span className="font-mono">
+                        {selectedFinding.source_graph_release_hash ?? '—'} /{' '}
+                        {selectedFinding.source_graph_rule_id ?? '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <MiniLabel>Remediation</MiniLabel>
+                      <Textarea
+                        defaultValue={
+                          selectedFinding.suggested_replacement ?? ''
+                        }
+                        className="mt-1 min-h-20 w-full rounded border border-border bg-background p-2"
+                      />
+                    </div>
+                  </div>
+                  <LineagePanel>
+                    {lineageTrace.length ? (
+                      <div className="mt-3 rounded border border-border bg-muted/20 p-2 text-[10px]">
+                        <MiniLabel>Finding lineage trace</MiniLabel>
+                        <div className="font-mono">
+                          {lineageTrace.join(' → ')}
+                        </div>
+                      </div>
+                    ) : null}
+                  </LineagePanel>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <StudioButton
+                      primary
+                      onClick={() => void disposition('accepted')}
+                    >
+                      Accept
+                    </StudioButton>
+                    <StudioButton onClick={() => void disposition('rejected')}>
+                      Reject
+                    </StudioButton>
+                    <StudioButton onClick={() => void disposition('edited')}>
+                      Edit remediation
+                    </StudioButton>
+                    <StudioButton onClick={() => void disposition('deferred')}>
+                      Defer
+                    </StudioButton>
+                    <StudioButton onClick={() => void disposition('escalated')}>
+                      Escalate
+                    </StudioButton>
+                    <StudioButton onClick={() => void resolveGraphFocus()}>
+                      Open in Graph
+                    </StudioButton>
+                    <StudioButton onClick={() => void traceToOrigin()}>
+                      Trace to origin
+                    </StudioButton>
+                    <StudioButton
+                      disabled={actionBusy || !run.run_id}
+                      onClick={() => void artifact('report')}
+                    >
+                      Persist Report
+                    </StudioButton>
+                    <StudioButton
+                      disabled={actionBusy || !run.run_id}
+                      onClick={() => void artifact('labeled-docx')}
+                    >
+                      Generate Labeled DOCX
+                    </StudioButton>
+                    <StudioButton
+                      disabled={actionBusy || !run.run_id}
+                      onClick={() => void artifact('replay')}
+                    >
+                      Open Replay
+                    </StudioButton>
+                    {dispositionRecorded ? (
+                      <StudioButton
+                        disabled={actionBusy}
+                        onClick={() =>
+                          void createCandidateDelta(dispositionKind)
+                        }
+                      >
+                        Create Candidate Delta
+                      </StudioButton>
+                    ) : null}
+                  </div>
+                  {candidateDeltaRef ? (
+                    <div className="mt-3 rounded border border-success/30 bg-success/10 p-2 text-[11px]">
+                      candidate_delta_ref:{' '}
+                      <DsLink
+                        className="underline"
+                        href={`?mode=ground&candidate_id=${encodeURIComponent(candidateDeltaRef)}`}
+                      >
+                        {candidateDeltaRef}
+                      </DsLink>
+                    </div>
+                  ) : null}
+                  {artifactResult ? (
+                    <pre className="mt-3 max-h-48 overflow-auto rounded border border-border bg-muted/20 p-2 text-[10px]">
+                      {JSON.stringify(artifactResult, null, 2)}
+                    </pre>
+                  ) : null}
+                </>
+              ) : (
+                <div className="text-muted-foreground">
+                  Select a finding to inspect exact target evidence and lineage.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
 }
 
-export function CompareMode({ zh, runtimeIdentity, onGraph, onGround }: { zh: boolean; runtimeIdentity: StudioIdentity; onGraph: () => void; onGround: () => void }) {
+export function CompareMode({
+  zh,
+  runtimeIdentity,
+  onGraph,
+  onGround,
+}: {
+  zh: boolean
+  runtimeIdentity: StudioIdentity
+  onGraph: () => void
+  onGround: () => void
+}) {
   const baseVersion = runtimeIdentity.graphVersion
   const [oldVersion, setOldVersion] = useState(baseVersion)
   const [newVersion, setNewVersion] = useState(baseVersion)
@@ -1522,12 +4216,19 @@ export function CompareMode({ zh, runtimeIdentity, onGraph, onGround }: { zh: bo
         `${KNOWLEDGE_BUILDER_API}/graph-releases/${newVersion}/compare?base=${encodeURIComponent(oldVersion)}`,
       ).then(async (response) => {
         const payload = await response.json()
-        if (!response.ok) throw new Error(String(payload.detail ?? payload.error ?? `compare:${response.status}`))
+        if (!response.ok)
+          throw new Error(
+            String(
+              payload.detail ?? payload.error ?? `compare:${response.status}`,
+            ),
+          )
         return payload
       })
       setDiff(result as CompareDiff)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to compare versions')
+      setError(
+        reason instanceof Error ? reason.message : 'Unable to compare versions',
+      )
       setDiff(null)
     } finally {
       setLoading(false)
@@ -1535,7 +4236,9 @@ export function CompareMode({ zh, runtimeIdentity, onGraph, onGround }: { zh: bo
   }, [oldVersion, newVersion])
 
   const totalChanges = diff
-    ? (diff.nodes?.changed?.length ?? 0) + (diff.edges?.changed?.length ?? 0) + (diff.rules?.changed?.length ?? 0)
+    ? (diff.nodes?.changed?.length ?? 0) +
+      (diff.edges?.changed?.length ?? 0) +
+      (diff.rules?.changed?.length ?? 0)
     : 0
 
   return (
@@ -1556,51 +4259,88 @@ export function CompareMode({ zh, runtimeIdentity, onGraph, onGround }: { zh: bo
           onChange={(event) => setNewVersion(event.target.value)}
         />
         <div className="flex-1" />
-        <StudioButton primary disabled={loading || oldVersion === newVersion} onClick={() => void compare()}>
+        <StudioButton
+          primary
+          disabled={loading || oldVersion === newVersion}
+          onClick={() => void compare()}
+        >
           {zh ? '比较' : 'Compare'}
         </StudioButton>
       </div>
       <div className="flex flex-wrap items-center gap-5 border-b border-border px-3 py-2 text-[11px] text-muted-foreground">
         <span>
-          <strong className="text-foreground">{diff?.nodes?.added?.length ?? 0}</strong> {zh ? '新增节点' : 'added nodes'}
+          <strong className="text-foreground">
+            {diff?.nodes?.added?.length ?? 0}
+          </strong>{' '}
+          {zh ? '新增节点' : 'added nodes'}
         </span>
         <span>
-          <strong className="text-foreground">{diff?.nodes?.removed?.length ?? 0}</strong> {zh ? '移除节点' : 'removed nodes'}
+          <strong className="text-foreground">
+            {diff?.nodes?.removed?.length ?? 0}
+          </strong>{' '}
+          {zh ? '移除节点' : 'removed nodes'}
         </span>
         <span>
-          <strong className="text-foreground">{diff?.edges?.changed?.length ?? 0}</strong> {zh ? '变化边' : 'changed edges'}
+          <strong className="text-foreground">
+            {diff?.edges?.changed?.length ?? 0}
+          </strong>{' '}
+          {zh ? '变化边' : 'changed edges'}
         </span>
         <span>
-          <strong className="text-foreground">{totalChanges}</strong> {zh ? '总变化' : 'total changes'}
+          <strong className="text-foreground">{totalChanges}</strong>{' '}
+          {zh ? '总变化' : 'total changes'}
         </span>
       </div>
       <div className="grid min-h-0 place-items-center bg-card p-6 text-center text-xs text-muted-foreground">
         {error ? (
-          <p role="alert" className="text-destructive">{error}</p>
+          <p role="alert" className="text-destructive">
+            {error}
+          </p>
         ) : diff ? (
           <div>
             <strong className="block text-foreground">
-              {zh ? '差异已加载' : 'Diff loaded'} · {diff.old_graph_version} → {diff.new_graph_version}
+              {zh ? '差异已加载' : 'Diff loaded'} · {diff.old_graph_version} →{' '}
+              {diff.new_graph_version}
             </strong>
             <span className="mt-1 block">
-              {zh ? '在图中打开可查看具体差异。' : 'Open in Graph to inspect the detailed diff.'}
+              {zh
+                ? '在图中打开可查看具体差异。'
+                : 'Open in Graph to inspect the detailed diff.'}
             </span>
             <div className="mt-3 flex gap-2">
-              <StudioButton primary onClick={onGraph}>{zh ? '在图中打开' : 'Open in Graph'}</StudioButton>
-              <StudioButton onClick={onGround}>{zh ? '打开证据' : 'Open evidence'}</StudioButton>
+              <StudioButton primary onClick={onGraph}>
+                {zh ? '在图中打开' : 'Open in Graph'}
+              </StudioButton>
+              <StudioButton onClick={onGround}>
+                {zh ? '打开证据' : 'Open evidence'}
+              </StudioButton>
             </div>
           </div>
         ) : (
-          <span>{zh ? '选择两个已发布的版本并点击比较。' : 'Select two released versions and click Compare.'}</span>
+          <span>
+            {zh
+              ? '选择两个已发布的版本并点击比较。'
+              : 'Select two released versions and click Compare.'}
+          </span>
         )}
       </div>
     </div>
   )
 }
 
-export function EvaluateMode({ zh, runtimeIdentity }: { zh: boolean; runtimeIdentity: StudioIdentity }) {
-  const mvlSummary = useContextGraphStudioStore((state) => state.mvlWorkflowSummary)
-  const setMvlWorkflowSummary = useContextGraphStudioStore((state) => state.setMvlWorkflowSummary)
+export function EvaluateMode({
+  zh,
+  runtimeIdentity,
+}: {
+  zh: boolean
+  runtimeIdentity: StudioIdentity
+}) {
+  const mvlSummary = useContextGraphStudioStore(
+    (state) => state.mvlWorkflowSummary,
+  )
+  const setMvlWorkflowSummary = useContextGraphStudioStore(
+    (state) => state.setMvlWorkflowSummary,
+  )
   const [v0RunRef, setV0RunRef] = useState(mvlSummary.v0RunRef ?? '')
   const [v1RunRef, setV1RunRef] = useState(mvlSummary.v1RunRef ?? '')
   const [gateResult, setGateResult] = useState<Record<string, any> | null>(null)
@@ -1612,13 +4352,21 @@ export function EvaluateMode({ zh, runtimeIdentity }: { zh: boolean; runtimeIden
     setGateLoading(true)
     setGateError(null)
     try {
-      const response = await fetch('/api/semantier-proxy/api/contextgraph/evaluation/learning-gate', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ v0_run_ref: v0RunRef, v1_run_ref: v1RunRef }),
-      })
+      const response = await fetch(
+        '/api/semantier-proxy/api/contextgraph/evaluation/learning-gate',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ v0_run_ref: v0RunRef, v1_run_ref: v1RunRef }),
+        },
+      )
       const payload = await response.json()
-      if (!response.ok) throw new Error(String(payload.detail ?? payload.error ?? `evaluation:${response.status}`))
+      if (!response.ok)
+        throw new Error(
+          String(
+            payload.detail ?? payload.error ?? `evaluation:${response.status}`,
+          ),
+        )
       setGateResult(payload)
       setMvlWorkflowSummary({
         ...mvlSummary,
@@ -1629,7 +4377,11 @@ export function EvaluateMode({ zh, runtimeIdentity }: { zh: boolean; runtimeIden
       })
     } catch (error) {
       setGateResult(null)
-      setGateError(error instanceof Error ? error.message : 'Unable to evaluate canonical runs')
+      setGateError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to evaluate canonical runs',
+      )
     } finally {
       setGateLoading(false)
     }
@@ -1656,7 +4408,9 @@ export function EvaluateMode({ zh, runtimeIdentity }: { zh: boolean; runtimeIden
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5 text-xs">
         <span>{zh ? '目标' : 'Target'}:</span>
         <strong>{runtimeIdentity.graphVersion}</strong>
-        <span className="text-muted-foreground">corpus: tender-mvl · run: latest</span>
+        <span className="text-muted-foreground">
+          corpus: tender-mvl · run: latest
+        </span>
         <div className="flex-1" />
         <DsLink
           href="/evaluation"
@@ -1664,26 +4418,98 @@ export function EvaluateMode({ zh, runtimeIdentity }: { zh: boolean; runtimeIden
           data-testid="evaluate-open-evaluation"
         >
           {zh ? '打开完整评估' : 'Open Evaluation'}
-          <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} strokeWidth={1.7} className="ml-1.5" />
+          <HugeiconsIcon
+            icon={ArrowUpRight01Icon}
+            size={14}
+            strokeWidth={1.7}
+            className="ml-1.5"
+          />
         </DsLink>
       </div>
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5 text-xs">
-        <Input aria-label="V0 evaluation run" value={v0RunRef} onChange={(event) => setV0RunRef(event.target.value)} placeholder="V0 evaluation run ID" className="h-8 min-w-56 rounded-md border border-border bg-background px-2 font-mono" />
-        <Input aria-label="V1 evaluation run" value={v1RunRef} onChange={(event) => setV1RunRef(event.target.value)} placeholder="V1 evaluation run ID" className="h-8 min-w-56 rounded-md border border-border bg-background px-2 font-mono" />
-        <StudioButton primary disabled={gateLoading || !v0RunRef || !v1RunRef} onClick={() => void evaluate()}>{gateLoading ? '…' : (zh ? '运行学习 Gate' : 'Run learning gate')}</StudioButton>
-        {gateError ? <span role="alert" className="text-destructive">{gateError}</span> : null}
+        <Input
+          aria-label="V0 evaluation run"
+          value={v0RunRef}
+          onChange={(event) => setV0RunRef(event.target.value)}
+          placeholder="V0 evaluation run ID"
+          className="h-8 min-w-56 rounded-md border border-border bg-background px-2 font-mono"
+        />
+        <Input
+          aria-label="V1 evaluation run"
+          value={v1RunRef}
+          onChange={(event) => setV1RunRef(event.target.value)}
+          placeholder="V1 evaluation run ID"
+          className="h-8 min-w-56 rounded-md border border-border bg-background px-2 font-mono"
+        />
+        <StudioButton
+          primary
+          disabled={gateLoading || !v0RunRef || !v1RunRef}
+          onClick={() => void evaluate()}
+        >
+          {gateLoading ? '…' : zh ? '运行学习 Gate' : 'Run learning gate'}
+        </StudioButton>
+        {gateError ? (
+          <span role="alert" className="text-destructive">
+            {gateError}
+          </span>
+        ) : null}
       </div>
       <div className="grid grid-cols-1 border-b border-border md:grid-cols-3">
-        <EvalSection title={zh ? '技术' : 'Technical'} rows={gateResult ? [['F1 delta', Number(gateResult.f1_delta).toFixed(3)], ['Precision delta', Number(gateResult.precision_delta).toFixed(3)], ['Recall delta', Number(gateResult.recall_delta).toFixed(3)]] : []} />
-        <EvalSection title="UX" rows={gateResult?.reviewer_minutes_delta_ratio == null ? [] : [['Reviewer time delta', `${(Number(gateResult.reviewer_minutes_delta_ratio) * 100).toFixed(1)}%`]]} />
-        <EvalSection title={zh ? '校准 / 证据' : 'Grounding / Evidence'} rows={gateResult ? [['Resolution', String(gateResult.canonical_resolution)], ['Reason', String(gateResult.reason)]] : []} />
+        <EvalSection
+          title={zh ? '技术' : 'Technical'}
+          rows={
+            gateResult
+              ? [
+                  ['F1 delta', Number(gateResult.f1_delta).toFixed(3)],
+                  [
+                    'Precision delta',
+                    Number(gateResult.precision_delta).toFixed(3),
+                  ],
+                  ['Recall delta', Number(gateResult.recall_delta).toFixed(3)],
+                ]
+              : []
+          }
+        />
+        <EvalSection
+          title="UX"
+          rows={
+            gateResult?.reviewer_minutes_delta_ratio == null
+              ? []
+              : [
+                  [
+                    'Reviewer time delta',
+                    `${(Number(gateResult.reviewer_minutes_delta_ratio) * 100).toFixed(1)}%`,
+                  ],
+                ]
+          }
+        />
+        <EvalSection
+          title={zh ? '校准 / 证据' : 'Grounding / Evidence'}
+          rows={
+            gateResult
+              ? [
+                  ['Resolution', String(gateResult.canonical_resolution)],
+                  ['Reason', String(gateResult.reason)],
+                ]
+              : []
+          }
+        />
       </div>
       <div className="border-b border-border px-3 py-3 text-xs text-muted-foreground">
-        {zh ? '指标将从规范评估运行加载。当前页面不推断或显示浏览器提供的指标真值。' : 'Metrics are loaded from canonical evaluation runs. This screen never infers or displays browser-supplied metric truth.'}
+        {zh
+          ? '指标将从规范评估运行加载。当前页面不推断或显示浏览器提供的指标真值。'
+          : 'Metrics are loaded from canonical evaluation runs. This screen never infers or displays browser-supplied metric truth.'}
       </div>
       <div className="p-4">
-        <MiniLabel>{zh ? '失败 / 需复核 Gate' : 'Failed / review-required gates'}</MiniLabel>
-          <Quote>{gateResult?.reason ?? (zh ? '尚未加载规范 Gate 结果。' : 'Canonical gate results have not been loaded.')}</Quote>
+        <MiniLabel>
+          {zh ? '失败 / 需复核 Gate' : 'Failed / review-required gates'}
+        </MiniLabel>
+        <Quote>
+          {gateResult?.reason ??
+            (zh
+              ? '尚未加载规范 Gate 结果。'
+              : 'Canonical gate results have not been loaded.')}
+        </Quote>
       </div>
       <div className="flex flex-col gap-2 border-t border-border p-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -1728,23 +4554,40 @@ function SourceDocument({
   return (
     <div className={`min-h-0 min-w-0 flex-col bg-card ${className}`}>
       <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-2.5 text-[11px] font-semibold">
-        <span className="truncate">{zh ? '原始来源' : 'Original source'} · {sourceLabel}</span>
+        <span className="truncate">
+          {zh ? '原始来源' : 'Original source'} · {sourceLabel}
+        </span>
         {onClose ? (
           <StudioButton onClick={onClose}>{zh ? '关闭' : 'Close'}</StudioButton>
         ) : null}
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-5 text-xs leading-6 md:p-7">
         {loading ? (
-          <p className="text-muted-foreground">{zh ? '正在加载规范来源块…' : 'Loading canonical source blocks…'}</p>
+          <p className="text-muted-foreground">
+            {zh ? '正在加载规范来源块…' : 'Loading canonical source blocks…'}
+          </p>
         ) : error ? (
-          <p className="text-destructive" role="alert">{error}</p>
+          <p className="text-destructive" role="alert">
+            {error}
+          </p>
         ) : blocks.length === 0 ? (
-          <p className="text-muted-foreground">{zh ? '当前候选未引用任何规范来源块。' : 'No canonical source blocks are referenced by the current candidate.'}</p>
+          <p className="text-muted-foreground">
+            {zh
+              ? '当前候选未引用任何规范来源块。'
+              : 'No canonical source blocks are referenced by the current candidate.'}
+          </p>
         ) : (
           blocks.map((block) => (
-            <div key={block.block_id} className="mb-4 border-l-2 border-border pl-3">
-              <div className="font-mono text-[10px] text-muted-foreground">{block.block_type} · {block.block_id.slice(0, 16)}…</div>
-              <div className="mt-1 whitespace-pre-wrap text-foreground">{block.content || (zh ? '（空块）' : '(empty block)')}</div>
+            <div
+              key={block.block_id}
+              className="mb-4 border-l-2 border-border pl-3"
+            >
+              <div className="font-mono text-[10px] text-muted-foreground">
+                {block.block_type} · {block.block_id.slice(0, 16)}…
+              </div>
+              <div className="mt-1 whitespace-pre-wrap text-foreground">
+                {block.content || (zh ? '（空块）' : '(empty block)')}
+              </div>
             </div>
           ))
         )}
@@ -1753,9 +4596,95 @@ function SourceDocument({
   )
 }
 
-function MiniLabel({ children }: { children: React.ReactNode }) { return <div className="mb-1.5 mt-4 text-[10px] font-semibold uppercase tracking-[.1em] text-muted-foreground">{children}</div> }
-function Quote({ children, compact = false }: { children: React.ReactNode; compact?: boolean }) { return <div className={`rounded-r-md border-l-[3px] border-primary bg-muted/60 text-xs leading-5 ${compact ? 'px-2 py-1.5' : 'px-3 py-2.5'}`}>{children}</div> }
-function Rail({ children, title, onClick }: { children: React.ReactNode; title: string; onClick?: () => void }) { return <Button type="button" title={title} onClick={onClick} className="grid size-8 place-items-center rounded-md text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]">{children}</Button> }
-function LegendRow({ children, dot }: { children: React.ReactNode; dot?: string }) { return <div className="mt-1.5 flex items-center gap-2">{dot ? <span className={`size-2.5 rounded-full ${dot}`} /> : null}<span>{children}</span></div> }
-function DiffCard({ title, children }: { title: string; children: React.ReactNode }) { return <div className="rounded-md border border-border bg-muted/45 p-3 text-xs"><strong>{title}</strong><div className="mt-2 leading-5">{children}</div></div> }
-function EvalSection({ title, rows }: { title: string; rows: string[][] }) { return <section className="border-b border-border p-3.5 md:border-b-0 md:border-r md:last:border-r-0"><MiniLabel>{title}</MiniLabel>{rows.map(([label, value]) => <div key={label} className="grid grid-cols-[1fr_auto] gap-3 border-b border-border/70 py-2 text-xs last:border-b-0"><span>{label}</span><strong className={value === 'PASS' || value === 'improved' ? 'text-success' : ''}>{value}</strong></div>)}</section> }
+function MiniLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-1.5 mt-4 text-[10px] font-semibold uppercase tracking-[.1em] text-muted-foreground">
+      {children}
+    </div>
+  )
+}
+function Quote({
+  children,
+  compact = false,
+}: {
+  children: React.ReactNode
+  compact?: boolean
+}) {
+  return (
+    <div
+      className={`rounded-r-md border-l-[3px] border-primary bg-muted/60 text-xs leading-5 ${compact ? 'px-2 py-1.5' : 'px-3 py-2.5'}`}
+    >
+      {children}
+    </div>
+  )
+}
+function Rail({
+  children,
+  title,
+  onClick,
+}: {
+  children: React.ReactNode
+  title: string
+  onClick?: () => void
+}) {
+  return (
+    <Button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className="grid size-8 place-items-center rounded-md text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]"
+    >
+      {children}
+    </Button>
+  )
+}
+function LegendRow({
+  children,
+  dot,
+}: {
+  children: React.ReactNode
+  dot?: string
+}) {
+  return (
+    <div className="mt-1.5 flex items-center gap-2">
+      {dot ? <span className={`size-2.5 rounded-full ${dot}`} /> : null}
+      <span>{children}</span>
+    </div>
+  )
+}
+function DiffCard({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-md border border-border bg-muted/45 p-3 text-xs">
+      <strong>{title}</strong>
+      <div className="mt-2 leading-5">{children}</div>
+    </div>
+  )
+}
+function EvalSection({ title, rows }: { title: string; rows: string[][] }) {
+  return (
+    <section className="border-b border-border p-3.5 md:border-b-0 md:border-r md:last:border-r-0">
+      <MiniLabel>{title}</MiniLabel>
+      {rows.map(([label, value]) => (
+        <div
+          key={label}
+          className="grid grid-cols-[1fr_auto] gap-3 border-b border-border/70 py-2 text-xs last:border-b-0"
+        >
+          <span>{label}</span>
+          <strong
+            className={
+              value === 'PASS' || value === 'improved' ? 'text-success' : ''
+            }
+          >
+            {value}
+          </strong>
+        </div>
+      ))}
+    </section>
+  )
+}

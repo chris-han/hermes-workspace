@@ -27,6 +27,7 @@ function Pagination({
       <Button
         variant="outline"
         size={compact ? 'sm' : 'icon-sm'}
+        className={compact ? undefined : 'size-9 text-[0.8125rem]'}
         aria-label="Previous"
         disabled={page <= 1}
         onClick={() => onPageChange(page - 1)}
@@ -43,6 +44,7 @@ function Pagination({
             key={item}
             variant={item === page ? 'default' : 'ghost'}
             size="icon-sm"
+            className="size-9 text-[0.8125rem]"
             aria-current={item === page ? 'page' : undefined}
             aria-label={`Page ${item}`}
             onClick={() => onPageChange(item)}
@@ -54,6 +56,7 @@ function Pagination({
       <Button
         variant="outline"
         size={compact ? 'sm' : 'icon-sm'}
+        className={compact ? undefined : 'size-9 text-[0.8125rem]'}
         aria-label="Next"
         disabled={page >= pageCount}
         onClick={() => onPageChange(page + 1)}

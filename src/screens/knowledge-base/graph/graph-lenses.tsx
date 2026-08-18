@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import type { GraphLens } from './graph-types'
 
 const LENS_VALUES: GraphLens[] = [
@@ -132,7 +134,7 @@ export function GraphLensTabs({
   return (
     <div aria-label={copy.scene} className="flex flex-wrap gap-2">
       {LENS_VALUES.map((value) => (
-        <button
+        <Button
           key={value}
           type="button"
           className="rounded-md border border-border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--focus-blue)]"
@@ -147,7 +149,7 @@ export function GraphLensTabs({
           onClick={() => onChange(value)}
         >
           {copy[value === 'authority' ? 'authorityTab' : value] ?? value}
-        </button>
+        </Button>
       ))}
     </div>
   )

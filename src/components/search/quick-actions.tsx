@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { cn } from '@/lib/utils'
 
 type QuickAction = {
@@ -27,7 +29,7 @@ export function QuickActions({
         </div>
         <div className="flex flex-wrap gap-2">
           {recentSearches.map((entry) => (
-            <button
+            <Button
               key={entry}
               type="button"
               onClick={() => onSelectRecent(entry)}
@@ -37,7 +39,7 @@ export function QuickActions({
               )}
             >
               {entry}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -48,7 +50,7 @@ export function QuickActions({
         </div>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           {actions.map((action) => (
-            <button
+            <Button
               key={action.id}
               type="button"
               onClick={action.onSelect}
@@ -64,7 +66,7 @@ export function QuickActions({
               <span className="mt-1 line-clamp-2 text-xs text-muted-foreground text-pretty">
                 {action.description}
               </span>
-            </button>
+            </Button>
           ))}
         </div>
       </div>

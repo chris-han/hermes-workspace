@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useMemo, useState } from 'react'
 import {
   ArrowLeft01Icon,
@@ -428,16 +430,16 @@ export function CalendarView({
     <section className="rounded-xl border border-primary-800 bg-primary-950 p-3 sm:p-4">
       <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
             onClick={() => stepCursor(-1)}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary-800 text-primary-200 transition-colors hover:bg-primary-900"
             aria-label="Previous"
           >
             <HugeiconsIcon icon={ArrowLeft01Icon} size={16} strokeWidth={1.7} />
-          </button>
+          </Button>
           <h3 className="text-sm font-semibold text-primary-100">{title}</h3>
-          <button
+          <Button
             type="button"
             onClick={() => stepCursor(1)}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary-800 text-primary-200 transition-colors hover:bg-primary-900"
@@ -448,12 +450,12 @@ export function CalendarView({
               size={16}
               strokeWidth={1.7}
             />
-          </button>
+          </Button>
         </div>
 
         <div className="inline-flex rounded-md border border-primary-800 bg-primary-900/60 p-0.5">
           {(['month', 'week', 'day'] as const).map((view) => (
-            <button
+            <Button
               key={view}
               type="button"
               onClick={() => setMode(view)}
@@ -465,7 +467,7 @@ export function CalendarView({
               )}
             >
               {view}
-            </button>
+            </Button>
           ))}
         </div>
       </header>
@@ -515,7 +517,7 @@ export function CalendarView({
                     </div>
                     <div className="space-y-1">
                       {visibleEvents.map((event) => (
-                        <button
+                        <Button
                           key={event.key}
                           type="button"
                           onClick={() =>
@@ -536,7 +538,7 @@ export function CalendarView({
                             strokeWidth={1.9}
                           />
                           <span className="truncate">{event.title}</span>
-                        </button>
+                        </Button>
                       ))}
                       {dayEvents.length > 3 ? (
                         <div className="px-1.5 text-[11px] font-medium text-primary-400">
@@ -600,7 +602,7 @@ export function CalendarView({
                         >
                           <div className="space-y-1">
                             {dayEvents.slice(0, 2).map((event) => (
-                              <button
+                              <Button
                                 key={event.key}
                                 type="button"
                                 onClick={() =>
@@ -619,7 +621,7 @@ export function CalendarView({
                                 )}
                               >
                                 {event.title}
-                              </button>
+                              </Button>
                             ))}
                             {dayEvents.length > 2 ? (
                               <div className="text-[10px] text-primary-400">
@@ -665,7 +667,7 @@ export function CalendarView({
                     >
                       <div className="space-y-1.5">
                         {dayEvents.map((event) => (
-                          <button
+                          <Button
                             key={event.key}
                             type="button"
                             onClick={() =>
@@ -699,7 +701,7 @@ export function CalendarView({
                                 minute: '2-digit',
                               }).format(event.date)}
                             </div>
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     </div>

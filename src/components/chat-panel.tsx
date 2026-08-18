@@ -158,14 +158,14 @@ export function ChatPanel() {
             {/* Panel header */}
             <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-3">
               <div className="flex items-center gap-1.5 min-w-0">
-                <button
+                <Button
                   type="button"
                   onClick={() => setShowSessionList((v) => !v)}
                   className="text-xs font-medium text-primary-700 hover:text-primary-900 truncate max-w-[200px] transition-colors"
                   title={panelTitle}
                 >
                   {panelTitle}
-                </button>
+                </Button>
               </div>
               <div className="flex items-center gap-0.5">
                 <TooltipProvider>
@@ -238,7 +238,7 @@ export function ChatPanel() {
                 >
                   <div className="max-h-48 overflow-y-auto py-1">
                     {sessions.map((s) => (
-                      <button
+                      <Button
                         key={s.key}
                         type="button"
                         onClick={() => {
@@ -252,7 +252,7 @@ export function ChatPanel() {
                         }`}
                       >
                         {s.label || s.title || s.derivedTitle || s.friendlyId}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </motion.div>
@@ -287,14 +287,14 @@ export function ChatPanel() {
                       ['candidate_impact', 'Impact'],
                       ['acknowledge_alert', 'Acknowledge'],
                     ].map(([actionType, label]) => (
-                      <button
+                      <Button
                         key={actionType}
                         type="button"
                         data-legal-action-type={actionType}
                         className="rounded border border-primary-200 px-2 py-1 text-left text-[11px] font-medium text-primary-700 transition-colors hover:border-accent-500 hover:bg-accent-500/10 hover:text-primary-900"
                       >
                         {label}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>

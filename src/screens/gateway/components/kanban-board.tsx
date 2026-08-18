@@ -1,3 +1,9 @@
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Textarea } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useMemo, useState } from 'react'
 import { addApproval } from '../lib/approvals-store'
 import type { HubTask, TaskPriority, TaskStatus } from './task-board'
@@ -434,7 +440,7 @@ export function KanbanBoard({
                                 >
                                   Assign
                                 </label>
-                                <select
+                                <NativeSelect
                                   value={task.agentId ?? ''}
                                   onChange={(event) => {
                                     const nextAgentId = event.target.value
@@ -459,7 +465,7 @@ export function KanbanBoard({
                                       {agent.name}
                                     </option>
                                   ))}
-                                </select>
+                                </NativeSelect>
                               </div>
                             ) : null}
 
@@ -526,7 +532,7 @@ export function KanbanBoard({
           <div className="mb-3 grid grid-cols-2 gap-1">
             {(Object.keys(PRIORITY_LABELS) as Array<TaskPriority>).map(
               (priority) => (
-                <button
+                <Button
                   key={priority}
                   type="button"
                   onClick={() => {
@@ -544,7 +550,7 @@ export function KanbanBoard({
                   )}
                 >
                   {PRIORITY_LABELS[priority]}
-                </button>
+                </Button>
               ),
             )}
           </div>
@@ -552,7 +558,7 @@ export function KanbanBoard({
           <label className="mb-1 block text-[11px] text-[var(--theme-muted)]">
             Reassign agent
           </label>
-          <select
+          <NativeSelect
             className="mb-3 w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-card2)] px-2 py-1.5 text-xs text-[var(--theme-text)] outline-none"
             defaultValue=""
             onChange={(event) => {
@@ -571,12 +577,12 @@ export function KanbanBoard({
                 {agent.name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
 
           <label className="mb-1 block text-[11px] text-[var(--theme-muted)]">
             Add note
           </label>
-          <textarea
+          <Textarea
             value={noteDraft}
             onChange={(event) => setNoteDraft(event.target.value)}
             rows={3}
@@ -584,7 +590,7 @@ export function KanbanBoard({
             placeholder="Leave a note for this task"
           />
           <div className="flex items-center justify-between gap-2">
-            <button
+            <Button
               type="button"
               onClick={() => {
                 onDeleteTask(menuTaskId)
@@ -593,8 +599,8 @@ export function KanbanBoard({
               className="rounded-md border border-red-400/40 bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-300 hover:bg-red-500/20"
             >
               Delete
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={!noteDraft.trim()}
               onClick={() => {
@@ -609,7 +615,7 @@ export function KanbanBoard({
               className="rounded-md bg-accent-500 px-2 py-1 text-[11px] font-medium text-white transition-colors hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Save note
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}

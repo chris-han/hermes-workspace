@@ -1,3 +1,18 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Checkbox, Radio } from '@/components/ui/form-controls'
+
+import { Table } from '@/components/ui/table'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Textarea } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { DialogSurface } from '@/components/ui/dialog-surface'
+import { UploadDropzone } from '@/components/ui/upload-dropzone'
+
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -146,7 +161,7 @@ function StatusPill({ children, tone = 'neutral' }: { children: React.ReactNode;
 
 function StudioButton({ children, primary = false, className = '', onClick, title, ariaLabel, disabled = false }: { children: React.ReactNode; primary?: boolean; className?: string; onClick?: () => void; title?: string; ariaLabel?: string; disabled?: boolean }) {
   return (
-    <button
+    <Button
       type="button"
       title={title}
       aria-label={ariaLabel}
@@ -163,12 +178,8 @@ function StudioButton({ children, primary = false, className = '', onClick, titl
       } ${className}`}
     >
       {children}
-    </button>
+    </Button>
   )
-}
-
-function Input({ placeholder, className = '' }: { placeholder: string; className?: string }) {
-  return <input placeholder={placeholder} className={`h-8 rounded-md border border-border bg-background px-2.5 text-xs outline-none placeholder:text-muted-foreground focus:border-primary ${className}`} />
 }
 
 export function StudioShell() {
@@ -418,7 +429,7 @@ export function StudioShell() {
         ) : null}
         <div className="min-w-0 flex-1" />
         <span className="hidden max-w-[300px] truncate text-[10px] text-muted-foreground xl:block">{contextSummary}</span>
-        <button
+        <Button
           type="button"
           aria-label={chatPanelOpen ? (zh ? '关闭右侧对话面板' : 'Close right chat panel') : (zh ? '打开右侧对话面板' : 'Open right chat panel')}
           title={chatPanelOpen ? (zh ? '关闭右侧对话面板' : 'Close right chat panel') : (zh ? '打开右侧对话面板' : 'Open right chat panel')}
@@ -426,12 +437,12 @@ export function StudioShell() {
           className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]"
         >
           <HugeiconsIcon icon={chatPanelOpen ? PanelRightOpenIcon : PanelRightCloseIcon} size={17} strokeWidth={1.7} />
-        </button>
+        </Button>
       </header>
 
       <nav aria-label="ContextGraph Studio modes" className="flex h-10 shrink-0 items-end gap-1 overflow-x-auto border-b border-border bg-card px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {(['sources', 'extract', 'ground', 'graph', 'inspect', 'compare', 'evaluate'] as const).map((item) => (
-          <button
+          <Button
             key={item}
             type="button"
             aria-current={mode === item ? 'page' : undefined}
@@ -439,7 +450,7 @@ export function StudioShell() {
             className={`h-9 shrink-0 cursor-pointer border-b-2 px-2.5 text-xs transition-colors ${mode === item ? 'border-primary font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
           >
             {item === 'sources' ? (zh ? '来源' : 'Sources') : item === 'extract' ? (zh ? '抽取' : 'Extract') : item === 'ground' ? (zh ? '校准' : 'Ground') : item === 'graph' ? (zh ? '图谱' : 'Graph') : item === 'inspect' ? (zh ? '检查' : 'Inspect') : item === 'compare' ? (zh ? '比较' : 'Compare') : (zh ? '评估' : 'Evaluate')}
-          </button>
+          </Button>
         ))}
       </nav>
 
@@ -496,13 +507,13 @@ export function StudioShell() {
                       ? '运行时投影请求失败；请稍后重试或选择已发布的图。'
                     : 'Runtime projection request failed; select a released graph and retry.'}
               </span>
-              <button
+              <Button
                 type="button"
                 onClick={() => setMode('graph')}
                 className="ml-2 underline-offset-2 hover:underline"
               >
                 {zh ? '打开 Graph 标签页' : 'Open Graph tab'}
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -770,12 +781,9 @@ export function SourcesMode({ zh, onNext }: { zh: boolean; onNext: () => void })
   return (
     <div className="grid h-full grid-rows-[auto_auto_1fr_auto] bg-card">
       <div className="flex items-center gap-2 border-b border-border p-2.5">
-        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc" data-testid="source-file-input" className="hidden" onChange={handleFileChange} />
-        <div
-          role="button"
-          tabIndex={0}
+        <Input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc" data-testid="source-file-input" className="hidden" onChange={handleFileChange} />
+        <UploadDropzone
           onClick={browseFiles}
-          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') browseFiles() }}
           onDragOver={(event) => event.preventDefault()}
           onDrop={handleDrop}
           className="flex min-h-10 flex-1 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-3 text-xs text-muted-foreground hover:border-primary hover:bg-muted/30"
@@ -783,20 +791,20 @@ export function SourcesMode({ zh, onNext }: { zh: boolean; onNext: () => void })
           <HugeiconsIcon icon={FileUploadIcon} size={16} strokeWidth={1.6} />
           <span>{zh ? '拖入 PDF/DOCX，或浏览文件' : 'Drop PDF/DOCX here or browse files'}</span>
           {uploadError ? <span className="text-red-600">{uploadError}</span> : null}
-        </div>
+        </UploadDropzone>
         <StudioButton primary onClick={browseFiles} disabled={uploading}>
           <HugeiconsIcon icon={FileUploadIcon} size={15} strokeWidth={1.7} className="mr-1.5" />
           {uploading ? (zh ? '正在上传…' : 'Uploading…') : (zh ? '上传来源' : 'Upload source')}
         </StudioButton>
       </div>
-      <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5"><Input placeholder={zh ? '搜索来源…' : 'Search sources…'} className="min-w-[220px] flex-1 md:max-w-[340px]" /><select className="h-8 rounded-md border border-border bg-background px-2 text-xs"><option>{zh ? '全部状态' : 'All status'}</option></select><div className="flex-1" /><StudioButton onClick={() => { void refreshSources().catch(() => setStatus('unavailable')) }}>{zh ? '刷新' : 'Refresh'}</StudioButton></div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5"><Input placeholder={zh ? '搜索来源…' : 'Search sources…'} className="min-w-[220px] flex-1 md:max-w-[340px]" /><NativeSelect className="h-8 rounded-md border border-border bg-background px-2 text-xs"><option>{zh ? '全部状态' : 'All status'}</option></NativeSelect><div className="flex-1" /><StudioButton onClick={() => { void refreshSources().catch(() => setStatus('unavailable')) }}>{zh ? '刷新' : 'Refresh'}</StudioButton></div>
       <div className="min-h-0 overflow-auto">
-        <table className="w-full border-collapse text-xs">
+        <Table className="w-full border-collapse text-xs">
           <thead className="sticky top-0 z-10 bg-muted text-[10px] uppercase tracking-wide text-muted-foreground"><tr><th className="w-10 border-b border-border px-3 py-2.5" aria-label={zh ? '选择来源' : 'Select source'} />{[zh ? '文件 / 来源' : 'File / Source', zh ? '类型' : 'Type', zh ? '状态' : 'Status', zh ? '候选' : 'Candidates', zh ? '问题' : 'Issues', zh ? '最后运行' : 'Last run', zh ? '操作' : 'Actions'].map((h) => <th key={h} className="border-b border-border px-3 py-2.5 text-left font-semibold">{h}</th>)}</tr></thead>
-          <tbody>{visibleRows.map((row, index) => <tr key={row[0]} className={index === 0 ? 'bg-primary/10' : 'hover:bg-muted/40'}><td className="border-b border-border px-3 py-3"><input type="checkbox" checked={selectedSourceNames.includes(row[0])} onChange={() => setSelectedSourceNames((current) => current.includes(row[0]) ? current.filter((name) => name !== row[0]) : [...current, row[0]])} aria-label={zh ? `选择 ${row[0]}` : `Select ${row[0]}`} /></td>{row.map((value, i) => <td key={`${row[0]}-${i}`} className="border-b border-border px-3 py-3">{i === 0 ? <><strong>{value}</strong><div className="mt-0.5 font-mono text-[10px] text-muted-foreground">source_identity_ref</div></> : value}</td>)}<td className="border-b border-border px-3 py-3"><div className="flex items-center gap-1"><StudioButton className="size-8 p-0" onClick={() => void openSource(row)} disabled={!sourcePaths[row[0]] || extracting} title={zh ? '查看来源' : 'View source'} ariaLabel={zh ? '查看来源' : `View ${row[0]}`}><HugeiconsIcon icon={ViewIcon} size={15} strokeWidth={1.7} /></StudioButton><StudioButton className="size-8 p-0" onClick={() => { setExtracting(true); void extractSource(row).then(onNext).catch((error) => setUploadError(error instanceof Error ? error.message : 'Unable to extract source.')).finally(() => setExtracting(false)) }} disabled={!sourcePaths[row[0]] || extracting} title={zh ? '抽取来源' : 'Extract source'} ariaLabel={zh ? '抽取来源' : `Extract ${row[0]}`}><HugeiconsIcon icon={AiScanIcon} size={15} strokeWidth={1.7} /></StudioButton><StudioButton className="size-8 p-0 text-destructive" onClick={() => void deleteSource(row)} disabled={!sourcePaths[row[0]] || extracting} title={zh ? '删除来源' : 'Delete source'} ariaLabel={zh ? '删除来源' : `Delete ${row[0]}`}><HugeiconsIcon icon={Delete02Icon} size={15} strokeWidth={1.7} /></StudioButton></div></td></tr>)}{visibleRows.length === 0 && status === 'loading' ? <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">{zh ? '正在加载来源…' : 'Loading sources…'}</td></tr> : null}{visibleRows.length === 0 && status === 'unavailable' ? <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">{zh ? '来源 API 尚未启用' : 'Sources API is not enabled yet'}</td></tr> : null}</tbody>
-        </table>
+          <tbody>{visibleRows.map((row, index) => <tr key={row[0]} className={index === 0 ? 'bg-primary/10' : 'hover:bg-muted/40'}><td className="border-b border-border px-3 py-3"><Checkbox checked={selectedSourceNames.includes(row[0])} onChange={() => setSelectedSourceNames((current) => current.includes(row[0]) ? current.filter((name) => name !== row[0]) : [...current, row[0]])} aria-label={zh ? `选择 ${row[0]}` : `Select ${row[0]}`} /></td>{row.map((value, i) => <td key={`${row[0]}-${i}`} className="border-b border-border px-3 py-3">{i === 0 ? <><strong>{value}</strong><div className="mt-0.5 font-mono text-[10px] text-muted-foreground">source_identity_ref</div></> : value}</td>)}<td className="border-b border-border px-3 py-3"><div className="flex items-center gap-1"><StudioButton className="size-8 p-0" onClick={() => void openSource(row)} disabled={!sourcePaths[row[0]] || extracting} title={zh ? '查看来源' : 'View source'} ariaLabel={zh ? '查看来源' : `View ${row[0]}`}><HugeiconsIcon icon={ViewIcon} size={15} strokeWidth={1.7} /></StudioButton><StudioButton className="size-8 p-0" onClick={() => { setExtracting(true); void extractSource(row).then(onNext).catch((error) => setUploadError(error instanceof Error ? error.message : 'Unable to extract source.')).finally(() => setExtracting(false)) }} disabled={!sourcePaths[row[0]] || extracting} title={zh ? '抽取来源' : 'Extract source'} ariaLabel={zh ? '抽取来源' : `Extract ${row[0]}`}><HugeiconsIcon icon={AiScanIcon} size={15} strokeWidth={1.7} /></StudioButton><StudioButton className="size-8 p-0 text-destructive" onClick={() => void deleteSource(row)} disabled={!sourcePaths[row[0]] || extracting} title={zh ? '删除来源' : 'Delete source'} ariaLabel={zh ? '删除来源' : `Delete ${row[0]}`}><HugeiconsIcon icon={Delete02Icon} size={15} strokeWidth={1.7} /></StudioButton></div></td></tr>)}{visibleRows.length === 0 && status === 'loading' ? <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">{zh ? '正在加载来源…' : 'Loading sources…'}</td></tr> : null}{visibleRows.length === 0 && status === 'unavailable' ? <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">{zh ? '来源 API 尚未启用' : 'Sources API is not enabled yet'}</td></tr> : null}</tbody>
+        </Table>
       </div>
-      {sourcePreview ? <div role="dialog" aria-label={zh ? '来源预览' : 'Source preview'} className="fixed inset-4 z-30 flex min-h-0 flex-col rounded-lg border border-border bg-card p-4 shadow-lg"><div className="flex items-center justify-between border-b border-border pb-2 text-xs font-semibold"><span>{sourcePreview.name}</span><StudioButton onClick={() => setSourcePreview(null)}>{zh ? '关闭' : 'Close'}</StudioButton></div><pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap py-3 text-xs leading-5">{sourcePreview.content}</pre></div> : null}
+      {sourcePreview ? <DialogSurface aria-label={zh ? '来源预览' : 'Source preview'} onDismiss={() => setSourcePreview(null)} className="fixed inset-4 z-30 flex min-h-0 flex-col rounded-lg border border-border bg-card p-4 shadow-lg"><div className="flex items-center justify-between border-b border-border pb-2 text-xs font-semibold"><span>{sourcePreview.name}</span><StudioButton onClick={() => setSourcePreview(null)}>{zh ? '关闭' : 'Close'}</StudioButton></div><pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap py-3 text-xs leading-5">{sourcePreview.content}</pre></DialogSurface> : null}
       <div className="flex min-h-10 items-center gap-3 border-t border-border py-1 pl-3 pr-20 text-[11px] text-muted-foreground">
         <span>
           {zh ? '已选' : 'Selected'}: <strong className="text-foreground">{visibleRows[0]?.[0] ?? '—'}</strong>
@@ -865,7 +873,7 @@ export function ExtractMode({ zh, extractionRunId, onRun, onNext, onCandidates }
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-border px-3 py-2 text-[11px] text-muted-foreground"><span><strong className="text-foreground">{loading ? '…' : candidates.length}</strong> {zh ? '候选' : 'candidates'}</span><span>{selectedRun?.profile_ref ?? 'tender_sensitive_v1'}</span><div className="flex-1" /><Input placeholder={zh ? '搜索候选…' : 'Search candidates…'} /></div>
       <div className="grid min-h-0 grid-cols-1 md:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-h-0 overflow-auto border-r border-border">
-          <table className="w-full border-collapse text-xs"><thead className="sticky top-0 bg-muted text-[10px] uppercase tracking-wide text-muted-foreground"><tr>{[zh ? '候选 / 值' : 'Candidate / value', zh ? '置信度' : 'Confidence', zh ? '证据' : 'Evidence', zh ? '状态' : 'State'].map((h) => <th key={h} className="border-b border-border px-3 py-2.5 text-left">{h}</th>)}</tr></thead><tbody>{error ? <tr><td colSpan={4} className="p-4 text-destructive">{error}</td></tr> : candidates.map((candidate, index) => <tr key={candidate.assertion_id} className={index === 0 ? 'bg-primary/10' : 'hover:bg-muted/40'}><td className="border-b border-border px-3 py-3"><strong>{labelFor(candidate)}</strong><div className="font-mono text-[10px] text-muted-foreground">{candidate.assertion_id}</div></td><td className="border-b border-border px-3 py-3">{candidate.confidence.toFixed(2)}</td><td className="border-b border-border px-3 py-3">{candidate.evidence_refs?.length ?? 0}</td><td className="border-b border-border px-3 py-3">{candidate.grounding_state}</td></tr>)}</tbody></table>
+          <Table className="w-full border-collapse text-xs"><thead className="sticky top-0 bg-muted text-[10px] uppercase tracking-wide text-muted-foreground"><tr>{[zh ? '候选 / 值' : 'Candidate / value', zh ? '置信度' : 'Confidence', zh ? '证据' : 'Evidence', zh ? '状态' : 'State'].map((h) => <th key={h} className="border-b border-border px-3 py-2.5 text-left">{h}</th>)}</tr></thead><tbody>{error ? <tr><td colSpan={4} className="p-4 text-destructive">{error}</td></tr> : candidates.map((candidate, index) => <tr key={candidate.assertion_id} className={index === 0 ? 'bg-primary/10' : 'hover:bg-muted/40'}><td className="border-b border-border px-3 py-3"><strong>{labelFor(candidate)}</strong><div className="font-mono text-[10px] text-muted-foreground">{candidate.assertion_id}</div></td><td className="border-b border-border px-3 py-3">{candidate.confidence.toFixed(2)}</td><td className="border-b border-border px-3 py-3">{candidate.evidence_refs?.length ?? 0}</td><td className="border-b border-border px-3 py-3">{candidate.grounding_state}</td></tr>)}</tbody></Table>
         </div>
         <aside className="hidden min-h-0 overflow-auto bg-card p-4 md:block"><h2 className="text-sm font-semibold">{selectedRun?.candidate_graph_id ?? (zh ? '候选图待运行' : 'Candidate graph pending')}</h2><div className="mt-2 flex gap-1.5"><StatusPill>{selectedRun?.provider_ref ?? 'semantica'}</StatusPill><StatusPill>{candidates[0]?.evidence_refs?.length ?? 0} evidence</StatusPill></div><MiniLabel>{zh ? '状态' : 'Run state'}</MiniLabel><p className="text-xs text-muted-foreground">{selectedRun?.run_status ?? 'idle'} · {selectedRun?.extraction_run_id ?? '—'}</p><MiniLabel>{zh ? '规范证据' : 'Canonical evidence'}</MiniLabel><div className="font-mono text-[10px] text-muted-foreground">{candidates[0]?.evidence_refs?.map((ref) => `${ref.evidence_ref} · ${ref.selector_hash}`).join('\n') ?? (zh ? '暂无证据' : 'No evidence')}</div></aside>
       </div>
@@ -1139,7 +1147,7 @@ export function GroundMode({
         <strong>{zh ? '待校准' : 'Pending'} {pending.length}</strong>
         <span className="font-mono text-[10px] text-muted-foreground">{current.assertion_id}</span>
         <div className="flex-1" />
-        <button
+        <Button
           type="button"
           aria-label={zh ? '上一条' : 'Previous'}
           className="inline-flex h-8 items-center gap-1.5 px-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]"
@@ -1147,11 +1155,11 @@ export function GroundMode({
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} size={15} strokeWidth={1.7} />
           {zh ? '上一条' : 'Previous'}
-        </button>
+        </Button>
         <span className="min-w-[52px] text-center text-[11px] text-muted-foreground">
           {index + 1} / {pending.length}
         </span>
-        <button
+        <Button
           type="button"
           aria-label={zh ? '下一条' : 'Next'}
           className="inline-flex h-8 items-center gap-1.5 px-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]"
@@ -1159,7 +1167,7 @@ export function GroundMode({
         >
           {zh ? '下一条' : 'Next'}
           <HugeiconsIcon icon={ArrowRight01Icon} size={15} strokeWidth={1.7} />
-        </button>
+        </Button>
       </div>
       <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(320px,.95fr)_minmax(340px,1.05fr)]">
         <SourceDocument
@@ -1196,13 +1204,13 @@ export function GroundMode({
             {previewLoading ? (
               <span className="text-[10px] text-muted-foreground">{zh ? '加载中…' : 'Loading…'}</span>
             ) : (
-              <button
+              <Button
                 type="button"
                 onClick={() => void refreshPreview()}
                 className="text-[10px] text-primary underline-offset-2 hover:underline"
               >
                 {zh ? '重新加载' : 'Reload'}
-              </button>
+              </Button>
             )}
           </div>
           {previewStale ? (
@@ -1242,20 +1250,20 @@ export function GroundMode({
             <div className="mt-2 rounded border border-border bg-muted/40 p-2 text-[11px]">
               <label className="flex flex-col gap-1">
                 <span>{zh ? '目标 source_block_id' : 'Target source_block_id'}</span>
-                <input
+                <Input
                   value={regroundBlockId}
                   onChange={(event) => setRegroundBlockId(event.target.value)}
                   className="rounded border border-border bg-background px-2 py-1 font-mono text-[10px]"
                 />
               </label>
-              <button
+              <Button
                 type="button"
                 disabled={actionPending || !regroundBlockId}
                 onClick={() => void submitReground()}
                 className="mt-2 rounded border border-primary bg-primary px-2 py-1 text-[10px] font-medium text-primary-foreground"
               >
                 {zh ? '提交 Reground' : 'Submit Reground'}
-              </button>
+              </Button>
             </div>
           ) : null}
           <MiniLabel>{zh ? '历史' : 'History'}</MiniLabel>
@@ -1359,7 +1367,7 @@ export function GraphMode({ zh, sourceOpen, setSourceOpen, legendOpen, setLegend
         )}
         <div className="absolute left-3 top-3 z-10 flex w-[min(340px,calc(100%_-_24px))] items-center gap-1.5 rounded-md border border-border bg-card px-2 shadow-sm">
           <HugeiconsIcon icon={Search01Icon} size={15} strokeWidth={1.7} className="shrink-0 text-muted-foreground" />
-          <input
+          <Input
             value={graphSearch}
             onChange={(event) => setGraphSearch(event.target.value)}
             placeholder={zh ? '搜索标签或规范 ID…' : 'Search label or canonical ID…'}
@@ -1367,10 +1375,10 @@ export function GraphMode({ zh, sourceOpen, setSourceOpen, legendOpen, setLegend
           />
         </div>
         {!sourceOpen ? (
-          <button type="button" onClick={() => setSourceOpen(true)} className="absolute left-3 top-[54px] z-10 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] shadow-sm">
+          <Button type="button" onClick={() => setSourceOpen(true)} className="absolute left-3 top-[54px] z-10 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] shadow-sm">
             <HugeiconsIcon icon={FileViewIcon} size={14} strokeWidth={1.7} />
             {zh ? '来源证据' : 'Source evidence'}
-          </button>
+          </Button>
         ) : null}
         {selectedNode || selectedEdge ? <aside aria-label="Graph lineage inspector" className="absolute right-3 top-3 z-10 hidden w-[min(320px,calc(100%_-_24px))] max-h-[58%] overflow-auto rounded-lg border border-border bg-card p-3 shadow-sm md:block"><h2 className="text-sm font-semibold">{selectedNode?.label || selectedEdge?.relationshipType || (zh ? '图选择' : 'Graph selection')}</h2><div className="mt-1.5 flex flex-wrap gap-1.5"><StatusPill>{selectedNode ? selectedNode.semanticType : selectedEdge?.relationshipType}</StatusPill><StatusPill tone="candidate">{runtimeIdentity.authorityState}</StatusPill></div><MiniLabel>Graph identity</MiniLabel><div className="break-all font-mono text-[10px]">{viewModel?.graphRef} · {viewModel?.graphVersion}</div><MiniLabel>Lineage</MiniLabel><div className="space-y-1 text-[10px] text-muted-foreground"><div>SourceIdentity: {(selectedNode?.lineage?.sourceIdentityRefs ?? selectedEdge?.lineage?.sourceIdentityRefs ?? []).join(', ') || '—'}</div><div>ExtractionRun: {selectedNode?.lineage?.extractionRunRef ?? selectedEdge?.lineage?.extractionRunRef ?? '—'}</div><div>Candidate: {selectedNode?.lineage?.candidateGraphId ?? selectedEdge?.lineage?.candidateGraphId ?? '—'}</div><div>Accepted release: {selectedNode?.lineage?.acceptedReleaseId ?? selectedEdge?.lineage?.acceptedReleaseId ?? '—'} · {selectedNode?.lineage?.acceptedReleaseVersion ?? selectedEdge?.lineage?.acceptedReleaseVersion ?? '—'}</div></div><MiniLabel>Canonical ID</MiniLabel><div className="break-all font-mono text-[10px]">{selectedNode?.id || selectedEdge?.id}</div>{selectedEdge ? <><MiniLabel>{zh ? '方向' : 'Direction'}</MiniLabel><div className="font-mono text-[10px]">{selectedEdge.sourceId} → {selectedEdge.targetId}</div></> : null}<MiniLabel>{zh ? '校准状态' : 'Grounding'}</MiniLabel><div className="text-xs">{selectedNode?.groundingState || selectedEdge?.groundingState || 'pending'}</div><MiniLabel>EvidenceRef</MiniLabel><div className="text-xs text-muted-foreground">{selectedEvidenceRefs.length > 0 ? selectedEvidenceRefs.join(', ') : (zh ? '当前图对象未携带规范 EvidenceRef。' : 'No canonical EvidenceRef is attached to this graph object.')}</div><div className="mt-3 flex gap-2"><StudioButton primary onClick={() => void openEvidence()}>{zh ? '打开证据' : 'Open evidence'}</StudioButton><StudioButton onClick={onGround}>{zh ? '校准' : 'Ground'}</StudioButton></div></aside> : null}
         <div className="absolute bottom-10 left-3 z-10 flex items-end gap-2">
@@ -1385,11 +1393,11 @@ export function GraphMode({ zh, sourceOpen, setSourceOpen, legendOpen, setLegend
             <Rail title={zh ? '图例' : 'Legend'} onClick={() => setLegendOpen(!legendOpen)}><HugeiconsIcon icon={Layers01Icon} size={16} strokeWidth={1.7} /></Rail>
             <Rail title={zh ? '设置' : 'Settings'} onClick={() => setSettingsOpen(!settingsOpen)}><HugeiconsIcon icon={Settings01Icon} size={16} strokeWidth={1.7} /></Rail>
           </div>
-          <select aria-label={zh ? '图布局' : 'Graph layout'} value={graphLayout} onChange={(event) => { const next = event.target.value as LayoutAlgorithm; setLayoutRunning(false); setGraphLayout(next) }} className="h-8 rounded-md border border-border bg-card px-2 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]">
+          <NativeSelect aria-label={zh ? '图布局' : 'Graph layout'} value={graphLayout} onChange={(event) => { const next = event.target.value as LayoutAlgorithm; setLayoutRunning(false); setGraphLayout(next) }} className="h-8 rounded-md border border-border bg-card px-2 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]">
             {(Object.keys(layoutLabels) as LayoutAlgorithm[]).map((layout) => <option key={layout} value={layout}>{layoutLabels[layout]}</option>)}
-          </select>
+          </NativeSelect>
         </div>
-        {settingsOpen ? <div className="absolute bottom-10 left-[190px] z-10 w-56 rounded-lg border border-border bg-card p-3 text-[11px] shadow-sm"><strong>{zh ? '图设置' : 'Graph settings'}</strong><label className="mt-2 flex items-center justify-between gap-3"><span>{zh ? '允许拖动节点' : 'Enable node drag'}</span><input type="checkbox" checked={dragEnabled} onChange={(event) => setDragEnabled(event.target.checked)} /></label><div className="mt-2 flex items-center justify-between gap-3 text-muted-foreground"><span>{zh ? '大图性能模式' : 'Large-graph mode'}</span><span>{largeGraphPerformance ? 'ON' : 'OFF'}</span></div></div> : null}
+        {settingsOpen ? <div className="absolute bottom-10 left-[190px] z-10 w-56 rounded-lg border border-border bg-card p-3 text-[11px] shadow-sm"><strong>{zh ? '图设置' : 'Graph settings'}</strong><label className="mt-2 flex items-center justify-between gap-3"><span>{zh ? '允许拖动节点' : 'Enable node drag'}</span><Checkbox checked={dragEnabled} onChange={(event) => setDragEnabled(event.target.checked)} /></label><div className="mt-2 flex items-center justify-between gap-3 text-muted-foreground"><span>{zh ? '大图性能模式' : 'Large-graph mode'}</span><span>{largeGraphPerformance ? 'ON' : 'OFF'}</span></div></div> : null}
         {legendOpen ? <div className="absolute bottom-10 right-3 z-10 w-56 rounded-lg border border-border bg-card p-2.5 text-[11px] shadow-sm"><strong>{zh ? '图例' : 'Legend'}</strong>{semanticTypes.slice(0, 16).map((semanticType) => <div key={semanticType} className="mt-1.5 flex items-center gap-2"><span className="size-2.5 rounded-full" style={{ backgroundColor: graphCategoryColor(semanticType) }} /><span className="truncate">{semanticType}</span></div>)}<LegendRow><HugeiconsIcon icon={ArrowRight01Icon} size={13} strokeWidth={1.7} /> Directed relation</LegendRow><LegendRow><HugeiconsIcon icon={Layers01Icon} size={13} strokeWidth={1.7} /> Parallel edges preserved</LegendRow></div> : null}
         {rendererError ? <div role="alert" className="absolute inset-x-3 top-14 z-20 rounded-md border border-warning/40 bg-card p-3 text-xs shadow-sm"><strong className="text-warning">{zh ? 'Sigma 渲染器不可用。' : 'Sigma renderer unavailable.'}</strong><span className="ml-1 text-muted-foreground">{rendererError}</span></div> : null}
         <div className="absolute inset-x-0 bottom-0 z-10 flex h-7 items-center gap-3 overflow-hidden border-t border-border bg-card px-3 text-[10px] text-muted-foreground"><span><strong className="text-foreground">{viewModel?.nodes.length ?? 0}</strong> nodes</span><span><strong className="text-foreground">{viewModel?.edges.length ?? 0}</strong> directed edges</span><span>multi-edge</span><span>{layoutLabels[graphLayout]}{layoutRunning ? ' · running' : ''}</span>{largeGraphPerformance ? <span>{zh ? '性能模式' : 'performance mode'}</span> : null}<span className="truncate">selected: <strong className="text-foreground">{selectedNode?.label || selectedEdge?.relationshipType || (zh ? '无' : 'none')}</strong></span><span className="font-mono">{runtimeIdentity.graphVersion}</span></div>
@@ -1487,8 +1495,8 @@ export function InspectMode({ zh, run, onRun, onFindingContext, onOpenGraph }: {
   return <div className="flex h-full min-h-0 flex-col overflow-auto bg-background p-4 text-xs">
     <div className="mx-auto w-full max-w-6xl space-y-3">
       <div className="flex flex-wrap items-center gap-2"><h2 className="text-sm font-semibold">{zh ? 'Tender Inspect' : 'Tender Inspect'}</h2><StatusPill tone={run?.activation_set_snapshot_id ? 'success' : 'warning'}>{run?.activation_set_snapshot_id ? 'activated rules' : 'no activated rules'}</StatusPill><span className="text-muted-foreground">{run?.project_metadata?.source_graph_lineage?.[0]?.source_graph_release_hash ?? 'No accepted release loaded'}</span></div>
-      <div className="rounded-lg border border-border bg-card p-3"><div className="font-medium">{zh ? '目标 DOCX / CanonicalSourceIR' : 'Target DOCX / CanonicalSourceIR'}</div><div className="mt-2 flex flex-wrap gap-2"><input value={fileRef} onChange={e => setFileRef(e.target.value)} placeholder="artifacts/document_extraction/target.json" className="h-8 min-w-[320px] flex-1 rounded-md border border-border bg-background px-2" /><StudioButton primary disabled={busy || !fileRef} onClick={() => void detect()}>{busy ? '…' : 'Run inspection'}</StudioButton><input value={runId} onChange={e => setRunId(e.target.value)} placeholder="tender_run_id" className="h-8 w-48 rounded-md border border-border bg-background px-2" /><StudioButton disabled={busy || !runId} onClick={() => void load()}>Load</StudioButton></div>{error ? <div role="alert" className="mt-2 text-destructive">{error}</div> : null}<div className="mt-2 text-[11px] text-muted-foreground">Activation snapshot: {run?.activation_set_snapshot_id ?? 'inspection blocked until an eligible activated context exists'} · resolver: {run?.activation_resolver_policy_version ?? '—'}</div></div>
-      {run ? <div className="grid min-h-0 gap-3 lg:grid-cols-[minmax(260px,0.8fr)_minmax(340px,1.2fr)]"><div className="rounded-lg border border-border bg-card"><div className="border-b border-border p-3 font-medium">Findings ({run.findings?.length ?? 0})</div>{(run.findings ?? []).map((finding: Record<string, any>) => <div key={finding.finding_id} className={`border-b border-border p-3 hover:bg-muted/40 ${selectedFinding?.finding_id === finding.finding_id ? 'bg-primary/10' : ''}`}><button type="button" onClick={() => selectFinding(finding)} className="block w-full text-left"><div className="flex justify-between gap-2"><strong>{finding.issue_type}</strong><StatusPill tone={finding.severity === 'high' ? 'warning' : 'neutral'}>{finding.severity}</StatusPill></div><div className="mt-1 font-mono text-[11px]">{finding.matched_text}</div><div className="mt-1 text-muted-foreground">{finding.target_evidence_ref ?? 'no target EvidenceRef'}</div></button><div className="mt-2 flex gap-1"><StudioButton disabled={!finding.source_graph_rule_id} onClick={() => { selectFinding(finding); void resolveGraphFocus(finding) }}>Open in Graph</StudioButton><StudioButton disabled={!finding.target_evidence_ref} onClick={() => { selectFinding(finding); setLineageTrace([finding.target_evidence_ref, finding.triggered_rule_version_id, finding.source_graph_release_hash, finding.source_graph_rule_id, finding.origin_evidence_ref ?? finding.resolver_evidence_ref].filter(Boolean).map(String)) }}>Trace to origin</StudioButton></div></div>)}</div><div className="rounded-lg border border-border bg-card p-3">{selectedFinding ? <><h3 className="font-semibold">{selectedFinding.matched_text}</h3><div className="mt-2 grid gap-2 text-[11px]"><div><MiniLabel>Judgment basis</MiniLabel>{selectedFinding.judgment_basis}</div><div><MiniLabel>Target EvidenceRef / anchor</MiniLabel><span className="font-mono">{selectedFinding.target_evidence_ref ?? '—'} · {selectedFinding.target_anchor_ref ?? '—'}</span></div><div><MiniLabel>Activated rule</MiniLabel><span className="font-mono">{selectedFinding.triggered_rule_version_id ?? '—'}</span></div><div><MiniLabel>Graph lineage</MiniLabel><span className="font-mono">{selectedFinding.source_graph_release_hash ?? '—'} / {selectedFinding.source_graph_rule_id ?? '—'}</span></div><div><MiniLabel>Remediation</MiniLabel><textarea defaultValue={selectedFinding.suggested_replacement ?? ''} className="mt-1 min-h-20 w-full rounded border border-border bg-background p-2" /></div></div><LineagePanel>{lineageTrace.length ? <div className="mt-3 rounded border border-border bg-muted/20 p-2 text-[10px]"><MiniLabel>Finding lineage trace</MiniLabel><div className="font-mono">{lineageTrace.join(' → ')}</div></div> : null}</LineagePanel><div className="mt-3 flex flex-wrap gap-2"><StudioButton primary onClick={() => void disposition('accepted')}>Accept</StudioButton><StudioButton onClick={() => void disposition('rejected')}>Reject</StudioButton><StudioButton onClick={() => void disposition('edited')}>Edit remediation</StudioButton><StudioButton onClick={() => void disposition('deferred')}>Defer</StudioButton><StudioButton onClick={() => void disposition('escalated')}>Escalate</StudioButton><StudioButton onClick={() => void resolveGraphFocus()}>Open in Graph</StudioButton><StudioButton onClick={() => void traceToOrigin()}>Trace to origin</StudioButton><StudioButton disabled={actionBusy || !run.run_id} onClick={() => void artifact('report')}>Persist Report</StudioButton><StudioButton disabled={actionBusy || !run.run_id} onClick={() => void artifact('labeled-docx')}>Generate Labeled DOCX</StudioButton><StudioButton disabled={actionBusy || !run.run_id} onClick={() => void artifact('replay')}>Open Replay</StudioButton>{dispositionRecorded ? <StudioButton disabled={actionBusy} onClick={() => void createCandidateDelta(dispositionKind)}>Create Candidate Delta</StudioButton> : null}</div>{candidateDeltaRef ? <div className="mt-3 rounded border border-success/30 bg-success/10 p-2 text-[11px]">candidate_delta_ref: <a className="underline" href={`?mode=ground&candidate_id=${encodeURIComponent(candidateDeltaRef)}`}>{candidateDeltaRef}</a></div> : null}{artifactResult ? <pre className="mt-3 max-h-48 overflow-auto rounded border border-border bg-muted/20 p-2 text-[10px]">{JSON.stringify(artifactResult, null, 2)}</pre> : null}</> : <div className="text-muted-foreground">Select a finding to inspect exact target evidence and lineage.</div>}</div></div> : null}
+      <div className="rounded-lg border border-border bg-card p-3"><div className="font-medium">{zh ? '目标 DOCX / CanonicalSourceIR' : 'Target DOCX / CanonicalSourceIR'}</div><div className="mt-2 flex flex-wrap gap-2"><Input value={fileRef} onChange={e => setFileRef(e.target.value)} placeholder="artifacts/document_extraction/target.json" className="h-8 min-w-[320px] flex-1 rounded-md border border-border bg-background px-2" /><StudioButton primary disabled={busy || !fileRef} onClick={() => void detect()}>{busy ? '…' : 'Run inspection'}</StudioButton><Input value={runId} onChange={e => setRunId(e.target.value)} placeholder="tender_run_id" className="h-8 w-48 rounded-md border border-border bg-background px-2" /><StudioButton disabled={busy || !runId} onClick={() => void load()}>Load</StudioButton></div>{error ? <div role="alert" className="mt-2 text-destructive">{error}</div> : null}<div className="mt-2 text-[11px] text-muted-foreground">Activation snapshot: {run?.activation_set_snapshot_id ?? 'inspection blocked until an eligible activated context exists'} · resolver: {run?.activation_resolver_policy_version ?? '—'}</div></div>
+      {run ? <div className="grid min-h-0 gap-3 lg:grid-cols-[minmax(260px,0.8fr)_minmax(340px,1.2fr)]"><div className="rounded-lg border border-border bg-card"><div className="border-b border-border p-3 font-medium">Findings ({run.findings?.length ?? 0})</div>{(run.findings ?? []).map((finding: Record<string, any>) => <div key={finding.finding_id} className={`border-b border-border p-3 hover:bg-muted/40 ${selectedFinding?.finding_id === finding.finding_id ? 'bg-primary/10' : ''}`}><Button type="button" onClick={() => selectFinding(finding)} className="block w-full text-left"><div className="flex justify-between gap-2"><strong>{finding.issue_type}</strong><StatusPill tone={finding.severity === 'high' ? 'warning' : 'neutral'}>{finding.severity}</StatusPill></div><div className="mt-1 font-mono text-[11px]">{finding.matched_text}</div><div className="mt-1 text-muted-foreground">{finding.target_evidence_ref ?? 'no target EvidenceRef'}</div></Button><div className="mt-2 flex gap-1"><StudioButton disabled={!finding.source_graph_rule_id} onClick={() => { selectFinding(finding); void resolveGraphFocus(finding) }}>Open in Graph</StudioButton><StudioButton disabled={!finding.target_evidence_ref} onClick={() => { selectFinding(finding); setLineageTrace([finding.target_evidence_ref, finding.triggered_rule_version_id, finding.source_graph_release_hash, finding.source_graph_rule_id, finding.origin_evidence_ref ?? finding.resolver_evidence_ref].filter(Boolean).map(String)) }}>Trace to origin</StudioButton></div></div>)}</div><div className="rounded-lg border border-border bg-card p-3">{selectedFinding ? <><h3 className="font-semibold">{selectedFinding.matched_text}</h3><div className="mt-2 grid gap-2 text-[11px]"><div><MiniLabel>Judgment basis</MiniLabel>{selectedFinding.judgment_basis}</div><div><MiniLabel>Target EvidenceRef / anchor</MiniLabel><span className="font-mono">{selectedFinding.target_evidence_ref ?? '—'} · {selectedFinding.target_anchor_ref ?? '—'}</span></div><div><MiniLabel>Activated rule</MiniLabel><span className="font-mono">{selectedFinding.triggered_rule_version_id ?? '—'}</span></div><div><MiniLabel>Graph lineage</MiniLabel><span className="font-mono">{selectedFinding.source_graph_release_hash ?? '—'} / {selectedFinding.source_graph_rule_id ?? '—'}</span></div><div><MiniLabel>Remediation</MiniLabel><Textarea defaultValue={selectedFinding.suggested_replacement ?? ''} className="mt-1 min-h-20 w-full rounded border border-border bg-background p-2" /></div></div><LineagePanel>{lineageTrace.length ? <div className="mt-3 rounded border border-border bg-muted/20 p-2 text-[10px]"><MiniLabel>Finding lineage trace</MiniLabel><div className="font-mono">{lineageTrace.join(' → ')}</div></div> : null}</LineagePanel><div className="mt-3 flex flex-wrap gap-2"><StudioButton primary onClick={() => void disposition('accepted')}>Accept</StudioButton><StudioButton onClick={() => void disposition('rejected')}>Reject</StudioButton><StudioButton onClick={() => void disposition('edited')}>Edit remediation</StudioButton><StudioButton onClick={() => void disposition('deferred')}>Defer</StudioButton><StudioButton onClick={() => void disposition('escalated')}>Escalate</StudioButton><StudioButton onClick={() => void resolveGraphFocus()}>Open in Graph</StudioButton><StudioButton onClick={() => void traceToOrigin()}>Trace to origin</StudioButton><StudioButton disabled={actionBusy || !run.run_id} onClick={() => void artifact('report')}>Persist Report</StudioButton><StudioButton disabled={actionBusy || !run.run_id} onClick={() => void artifact('labeled-docx')}>Generate Labeled DOCX</StudioButton><StudioButton disabled={actionBusy || !run.run_id} onClick={() => void artifact('replay')}>Open Replay</StudioButton>{dispositionRecorded ? <StudioButton disabled={actionBusy} onClick={() => void createCandidateDelta(dispositionKind)}>Create Candidate Delta</StudioButton> : null}</div>{candidateDeltaRef ? <div className="mt-3 rounded border border-success/30 bg-success/10 p-2 text-[11px]">candidate_delta_ref: <DsLink className="underline" href={`?mode=ground&candidate_id=${encodeURIComponent(candidateDeltaRef)}`}>{candidateDeltaRef}</DsLink></div> : null}{artifactResult ? <pre className="mt-3 max-h-48 overflow-auto rounded border border-border bg-muted/20 p-2 text-[10px]">{JSON.stringify(artifactResult, null, 2)}</pre> : null}</> : <div className="text-muted-foreground">Select a finding to inspect exact target evidence and lineage.</div>}</div></div> : null}
     </div></div>
 }
 
@@ -1534,14 +1542,14 @@ export function CompareMode({ zh, runtimeIdentity, onGraph, onGround }: { zh: bo
     <div className="grid h-full grid-rows-[auto_auto_1fr] bg-card">
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5 text-xs">
         <span>V0</span>
-        <input
+        <Input
           aria-label="Base graph version"
           className="h-8 rounded-md border border-border bg-background px-2 font-mono"
           value={oldVersion}
           onChange={(event) => setOldVersion(event.target.value)}
         />
         <span>V1</span>
-        <input
+        <Input
           aria-label="New graph version"
           className="h-8 rounded-md border border-border bg-background px-2 font-mono"
           value={newVersion}
@@ -1650,18 +1658,18 @@ export function EvaluateMode({ zh, runtimeIdentity }: { zh: boolean; runtimeIden
         <strong>{runtimeIdentity.graphVersion}</strong>
         <span className="text-muted-foreground">corpus: tender-mvl · run: latest</span>
         <div className="flex-1" />
-        <a
+        <DsLink
           href="/evaluation"
           className="inline-flex h-8 items-center justify-center rounded-md border border-primary bg-primary px-2.5 text-xs font-medium text-primary-foreground transition-colors hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]"
           data-testid="evaluate-open-evaluation"
         >
           {zh ? '打开完整评估' : 'Open Evaluation'}
           <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} strokeWidth={1.7} className="ml-1.5" />
-        </a>
+        </DsLink>
       </div>
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5 text-xs">
-        <input aria-label="V0 evaluation run" value={v0RunRef} onChange={(event) => setV0RunRef(event.target.value)} placeholder="V0 evaluation run ID" className="h-8 min-w-56 rounded-md border border-border bg-background px-2 font-mono" />
-        <input aria-label="V1 evaluation run" value={v1RunRef} onChange={(event) => setV1RunRef(event.target.value)} placeholder="V1 evaluation run ID" className="h-8 min-w-56 rounded-md border border-border bg-background px-2 font-mono" />
+        <Input aria-label="V0 evaluation run" value={v0RunRef} onChange={(event) => setV0RunRef(event.target.value)} placeholder="V0 evaluation run ID" className="h-8 min-w-56 rounded-md border border-border bg-background px-2 font-mono" />
+        <Input aria-label="V1 evaluation run" value={v1RunRef} onChange={(event) => setV1RunRef(event.target.value)} placeholder="V1 evaluation run ID" className="h-8 min-w-56 rounded-md border border-border bg-background px-2 font-mono" />
         <StudioButton primary disabled={gateLoading || !v0RunRef || !v1RunRef} onClick={() => void evaluate()}>{gateLoading ? '…' : (zh ? '运行学习 Gate' : 'Run learning gate')}</StudioButton>
         {gateError ? <span role="alert" className="text-destructive">{gateError}</span> : null}
       </div>
@@ -1747,7 +1755,7 @@ function SourceDocument({
 
 function MiniLabel({ children }: { children: React.ReactNode }) { return <div className="mb-1.5 mt-4 text-[10px] font-semibold uppercase tracking-[.1em] text-muted-foreground">{children}</div> }
 function Quote({ children, compact = false }: { children: React.ReactNode; compact?: boolean }) { return <div className={`rounded-r-md border-l-[3px] border-primary bg-muted/60 text-xs leading-5 ${compact ? 'px-2 py-1.5' : 'px-3 py-2.5'}`}>{children}</div> }
-function Rail({ children, title, onClick }: { children: React.ReactNode; title: string; onClick?: () => void }) { return <button type="button" title={title} onClick={onClick} className="grid size-8 place-items-center rounded-md text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]">{children}</button> }
+function Rail({ children, title, onClick }: { children: React.ReactNode; title: string; onClick?: () => void }) { return <Button type="button" title={title} onClick={onClick} className="grid size-8 place-items-center rounded-md text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]">{children}</Button> }
 function LegendRow({ children, dot }: { children: React.ReactNode; dot?: string }) { return <div className="mt-1.5 flex items-center gap-2">{dot ? <span className={`size-2.5 rounded-full ${dot}`} /> : null}<span>{children}</span></div> }
 function DiffCard({ title, children }: { title: string; children: React.ReactNode }) { return <div className="rounded-md border border-border bg-muted/45 p-3 text-xs"><strong>{title}</strong><div className="mt-2 leading-5">{children}</div></div> }
 function EvalSection({ title, rows }: { title: string; rows: string[][] }) { return <section className="border-b border-border p-3.5 md:border-b-0 md:border-r md:last:border-r-0"><MiniLabel>{title}</MiniLabel>{rows.map(([label, value]) => <div key={label} className="grid grid-cols-[1fr_auto] gap-3 border-b border-border/70 py-2 text-xs last:border-b-0"><span>{label}</span><strong className={value === 'PASS' || value === 'improved' ? 'text-success' : ''}>{value}</strong></div>)}</section> }

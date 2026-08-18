@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { ArrowDown01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -124,7 +126,7 @@ export function ModeSelector({
   return (
     <>
       <div className="relative flex items-center gap-2" ref={selectorRef}>
-        <button
+        <Button
           type="button"
           onClick={(event) => {
             event.stopPropagation()
@@ -153,7 +155,7 @@ export function ModeSelector({
             </span>
           )}
           <HugeiconsIcon icon={ArrowDown01Icon} size={20} strokeWidth={1.5} />
-        </button>
+        </Button>
 
         {!disabled && isMenuOpen && (
           <div className="absolute bottom-[calc(100%+0.5rem)] left-0 z-40 min-w-[14rem] max-w-[20rem] rounded-xl border border-primary-200 bg-surface shadow-lg">
@@ -172,7 +174,7 @@ export function ModeSelector({
                       !availableModels.includes(mode.preferredModel)
 
                     return (
-                      <button
+                      <Button
                         key={mode.id}
                         type="button"
                         onClick={(event) => {
@@ -211,7 +213,7 @@ export function ModeSelector({
                             ✓
                           </span>
                         )}
-                      </button>
+                      </Button>
                     )
                   })}
                 </>
@@ -219,7 +221,7 @@ export function ModeSelector({
 
               <div className="my-1 border-t border-primary-200" />
 
-              <button
+              <Button
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation()
@@ -231,10 +233,10 @@ export function ModeSelector({
                 aria-label="Save current settings as new mode"
               >
                 Save Current as New Mode...
-              </button>
+              </Button>
 
               {modes.length > 0 && (
-                <button
+                <Button
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation()
@@ -246,7 +248,7 @@ export function ModeSelector({
                   aria-label="Manage modes"
                 >
                   Manage Modes...
-                </button>
+                </Button>
               )}
             </div>
           </div>

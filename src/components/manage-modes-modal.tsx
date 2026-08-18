@@ -1,3 +1,6 @@
+import { Button } from '@/components/ui/button'
+import { DialogSurface } from '@/components/ui/dialog-surface'
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { RenameDialog } from './rename-mode-dialog'
 import type { Mode } from '@/hooks/use-modes'
@@ -63,16 +66,16 @@ export function ManageModesModal({
   if (modes.length === 0) {
     return (
       <>
-        <div
+        <Button
+          type="button"
+          aria-label="Close manage modes dialog"
           className="fixed inset-0 z-50 bg-black/50"
           onClick={onClose}
-          aria-hidden="true"
         />
-        <div
+        <DialogSurface
           ref={modalRef}
-          role="dialog"
           aria-labelledby="manage-modes-title"
-          aria-modal="true"
+          onDismiss={onClose}
           className="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-primary-200 bg-surface p-6 shadow-xl"
         >
           <h2
@@ -83,15 +86,15 @@ export function ManageModesModal({
           </h2>
           <p className="mb-6 text-sm text-primary-500">No modes saved.</p>
           <div className="flex justify-end">
-            <button
+            <Button
               type="button"
               onClick={onClose}
               className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
             >
               Close
-            </button>
+            </Button>
           </div>
-        </div>
+        </DialogSurface>
       </>
     )
   }
@@ -99,18 +102,18 @@ export function ManageModesModal({
   return (
     <>
       {/* Backdrop */}
-      <div
+      <Button
+        type="button"
+        aria-label="Close manage modes dialog"
         className="fixed inset-0 z-50 bg-black/50"
         onClick={onClose}
-        aria-hidden="true"
       />
 
       {/* Modal */}
-      <div
+      <DialogSurface
         ref={modalRef}
-        role="dialog"
         aria-labelledby="manage-modes-title"
-        aria-modal="true"
+        onDismiss={onClose}
         className="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-primary-200 bg-surface p-6 shadow-xl"
       >
         <h2
@@ -144,22 +147,22 @@ export function ManageModesModal({
                     )}
                   </h3>
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setModeToRename(mode)}
                       className="rounded-lg border border-primary-200 bg-surface px-3 py-1 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-400"
                       aria-label={`Rename ${mode.name}`}
                     >
                       Rename
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => setModeToDelete(mode)}
                       className="rounded-lg border border-red-200 bg-surface px-3 py-1 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400"
                       aria-label={`Delete ${mode.name}`}
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -199,15 +202,15 @@ export function ManageModesModal({
         </div>
 
         <div className="flex justify-end">
-          <button
+          <Button
             type="button"
             onClick={onClose}
             className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
           >
             Close
-          </button>
+          </Button>
         </div>
-      </div>
+      </DialogSurface>
 
       {/* Rename Dialog */}
       {modeToRename && (
@@ -220,15 +223,15 @@ export function ManageModesModal({
       {/* Delete Confirmation */}
       {modeToDelete && (
         <>
-          <div
+          <Button
+            type="button"
+            aria-label="Close delete mode dialog"
             className="fixed inset-0 z-[60] bg-black/50"
             onClick={() => setModeToDelete(null)}
-            aria-hidden="true"
           />
-          <div
-            role="dialog"
+          <DialogSurface
             aria-labelledby="delete-mode-title"
-            aria-modal="true"
+            onDismiss={() => setModeToDelete(null)}
             className="fixed left-1/2 top-1/2 z-[60] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-primary-200 bg-surface p-6 shadow-xl"
           >
             <h2
@@ -242,22 +245,22 @@ export function ManageModesModal({
               cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={() => setModeToDelete(null)}
                 className="rounded-lg border border-primary-200 bg-surface px-4 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-400"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => handleDelete(modeToDelete)}
                 className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
               >
                 Delete
-              </button>
+              </Button>
             </div>
-          </div>
+          </DialogSurface>
         </>
       )}
     </>

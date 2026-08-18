@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { Suspense, lazy } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { usePageTitle } from '@/hooks/use-page-title'
@@ -22,12 +24,12 @@ export const Route = createFileRoute('/terminal')({
             ? error.message
             : 'Failed to initialize terminal'}
         </p>
-        <button
+        <Button
           onClick={() => window.location.reload()}
           className="px-4 py-2 bg-accent-500 text-white rounded-lg hover:bg-accent-600 transition-colors"
         >
           Reload Terminal
-        </button>
+        </Button>
       </div>
     )
   },

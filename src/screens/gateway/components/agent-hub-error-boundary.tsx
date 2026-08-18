@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { Component } from 'react'
 import type { ReactNode } from 'react'
 
@@ -23,13 +25,13 @@ export class AgentHubErrorBoundary extends Component<Props, State> {
             <p className="mt-1 text-sm text-neutral-500 max-w-sm">
               {this.state.error.message}
             </p>
-            <button
+            <Button
               type="button"
               onClick={() => this.setState({ error: null })}
               className="mt-4 rounded-lg bg-accent-500 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-600 transition-colors"
             >
               Try again
-            </button>
+            </Button>
           </div>
         </div>
       )

@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { usePageTitle } from '@/hooks/use-page-title'
@@ -17,7 +19,7 @@ function ProfilesRoute() {
     <div className="min-h-full overflow-y-auto bg-surface text-ink">
       <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-5 flex gap-1 rounded-lg border border-primary-200 bg-primary-50/85 p-1 backdrop-blur-xl">
-          <button
+          <Button
             onClick={() => setTab('profiles')}
             className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
               tab === 'profiles'
@@ -26,8 +28,8 @@ function ProfilesRoute() {
             }`}
           >
             Profiles
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setTab('monitoring')}
             className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
               tab === 'monitoring'
@@ -36,7 +38,7 @@ function ProfilesRoute() {
             }`}
           >
             Monitoring
-          </button>
+          </Button>
         </div>
         {tab === 'profiles' ? <ProfilesScreen /> : <MissionControlScreen />}
       </div>

@@ -1,3 +1,5 @@
+import { Input } from '@/components/ui/input'
+
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon, Search01Icon } from '@hugeicons/core-free-icons'
 import { Button } from '@/components/ui/button'
@@ -30,7 +32,7 @@ export function SearchInput({
         strokeWidth={1.5}
         className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
       />
-      <input
+      <Input
         ref={inputRef}
         value={value}
         onChange={(event) => onValueChange(event.target.value)}

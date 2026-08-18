@@ -1,3 +1,15 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Checkbox, Radio } from '@/components/ui/form-controls'
+
+import { Input } from '@/components/ui/input'
+
+import { Table } from '@/components/ui/table'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Textarea } from '@/components/ui/form-controls'
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { cn } from '@/lib/utils'
@@ -208,7 +220,7 @@ function markdownToHtml(md: string): string {
   // Links
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>',
+    '<DsLink href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</DsLink>',
   )
 
   // Paragraphs
@@ -603,7 +615,7 @@ function TreeNode({
 
   return (
     <div>
-      <button
+      <Button
         type="button"
         onClick={handleClick}
         onContextMenu={(e) => onContextMenu(e, entry)}
@@ -629,7 +641,7 @@ function TreeNode({
         )}
         <span className="shrink-0 text-base leading-none">{icon}</span>
         <span className="truncate">{entry.name}</span>
-      </button>
+      </Button>
 
       {entry.type === 'folder' && isExpanded && entry.children ? (
         <div>
@@ -699,9 +711,9 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
   const [dataUrl, setDataUrl] = useState('')
   const [excelSheetNames, setExcelSheetNames] = useState<Array<string>>([])
   const [excelActiveSheet, setExcelActiveSheet] = useState('')
-  const [excelPreviewRows, setExcelPreviewRows] = useState<Array<Array<string>>>(
-    [],
-  )
+  const [excelPreviewRows, setExcelPreviewRows] = useState<
+    Array<Array<string>>
+  >([])
   const [excelTotalRows, setExcelTotalRows] = useState(0)
   const [excelHeaderEnabled, setExcelHeaderEnabled] = useState(true)
   const [excelHeaderRowIndex, setExcelHeaderRowIndex] = useState(0)
@@ -858,22 +870,24 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
   }, [selectedEntry])
 
   const excelColumnCount = useMemo(
-    () =>
-      excelPreviewRows.reduce(
-        (max, row) => Math.max(max, row.length),
-        0,
-      ),
+    () => excelPreviewRows.reduce((max, row) => Math.max(max, row.length), 0),
     [excelPreviewRows],
   )
 
   const excelTableModel = useMemo(() => {
     if (!excelPreviewRows.length || excelColumnCount === 0) {
-      return { headerCells: [] as Array<string>, bodyRows: [] as Array<Array<string>> }
+      return {
+        headerCells: [] as Array<string>,
+        bodyRows: [] as Array<Array<string>>,
+      }
     }
 
     if (!excelHeaderEnabled) {
       return {
-        headerCells: Array.from({ length: excelColumnCount }, (_, index) => `Column ${index + 1}`),
+        headerCells: Array.from(
+          { length: excelColumnCount },
+          (_, index) => `Column ${index + 1}`,
+        ),
         bodyRows: excelPreviewRows,
       }
     }
@@ -891,7 +905,12 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
       ),
       bodyRows: excelPreviewRows.slice(safeHeaderRowIndex + 1),
     }
-  }, [excelColumnCount, excelHeaderEnabled, excelHeaderRowIndex, excelPreviewRows])
+  }, [
+    excelColumnCount,
+    excelHeaderEnabled,
+    excelHeaderRowIndex,
+    excelPreviewRows,
+  ])
 
   /** Actually write to disk (called after diff confirmation or if nothing changed) */
   const commitSave = useCallback(async (path: string, value: string) => {
@@ -1093,7 +1112,7 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
               <span className="text-xs text-primary-500 dark:text-neutral-400">
                 Sheet
               </span>
-              <select
+              <NativeSelect
                 value={excelActiveSheet}
                 onChange={(e) => loadExcelSheetPreview(e.target.value)}
                 className="h-8 rounded-md border border-primary-200 bg-white px-2 text-xs text-primary-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
@@ -1103,12 +1122,16 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
                     {sheet}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               <div className="ml-auto flex items-center gap-2">
                 <span className="text-xs text-primary-500 dark:text-neutral-400">
                   {excelTotalRows.toLocaleString()} rows
                 </span>
-                <Button size="sm" variant="outline" onClick={() => void handleDownloadCurrent()}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void handleDownloadCurrent()}
+                >
                   Download file
                 </Button>
               </div>
@@ -1116,8 +1139,7 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
 
             <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-850">
               <label className="flex items-center gap-2 text-xs text-primary-700 dark:text-neutral-200">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={excelHeaderEnabled}
                   onChange={(e) => setExcelHeaderEnabled(e.target.checked)}
                 />
@@ -1125,12 +1147,14 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
               </label>
               <label className="flex items-center gap-2 text-xs text-primary-700 dark:text-neutral-200">
                 Header row
-                <input
+                <Input
                   type="number"
                   min={1}
                   max={Math.max(excelPreviewRows.length, 1)}
                   value={excelHeaderRowIndex + 1}
-                  disabled={!excelHeaderEnabled || excelPreviewRows.length === 0}
+                  disabled={
+                    !excelHeaderEnabled || excelPreviewRows.length === 0
+                  }
                   onChange={(e) => {
                     const nextRow = Number(e.target.value)
                     if (!Number.isFinite(nextRow)) return
@@ -1157,26 +1181,30 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
                   This sheet has no rows.
                 </div>
               ) : (
-                <table className="w-full border-separate border-spacing-0 text-xs">
+                <Table className="w-full border-separate border-spacing-0 text-xs">
                   {excelHeaderEnabled && (
-                  <thead>
-                    <tr>
-                      {excelTableModel.headerCells.map((cell, index) => (
-                        <th
-                          key={`header-${index}`}
-                          className="sticky top-0 z-20 border-b border-r border-border bg-table-header px-2 py-1.5 text-left font-semibold text-card-foreground shadow-sm"
-                        >
-                          {cell || `Column ${index + 1}`}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
+                    <thead>
+                      <tr>
+                        {excelTableModel.headerCells.map((cell, index) => (
+                          <th
+                            key={`header-${index}`}
+                            className="sticky top-0 z-20 border-b border-r border-border bg-table-header px-2 py-1.5 text-left font-semibold text-card-foreground shadow-sm"
+                          >
+                            {cell || `Column ${index + 1}`}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
                   )}
                   <tbody>
                     {excelTableModel.bodyRows.map((row, rowIndex) => (
                       <tr
                         key={`row-${rowIndex}`}
-                        className={rowIndex % 2 === 0 ? 'excel-preview-row-odd' : 'excel-preview-row-even'}
+                        className={
+                          rowIndex % 2 === 0
+                            ? 'excel-preview-row-odd'
+                            : 'excel-preview-row-even'
+                        }
                       >
                         {excelTableModel.headerCells.map((_, colIndex) => (
                           <td
@@ -1190,13 +1218,14 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               )}
             </div>
 
             {isTruncated ? (
               <p className="mt-2 text-xs text-primary-500 dark:text-neutral-400">
-                Preview is limited to the first {EXCEL_PREVIEW_MAX_ROWS.toLocaleString()} data rows.
+                Preview is limited to the first{' '}
+                {EXCEL_PREVIEW_MAX_ROWS.toLocaleString()} data rows.
               </p>
             ) : null}
           </div>
@@ -1272,7 +1301,7 @@ function FilePanel({ selectedEntry }: FilePanelProps) {
       <div className="flex h-full flex-col">
         {header}
         <div className="flex-1 min-h-0 p-3">
-          <textarea
+          <Textarea
             className={cn(
               'h-full w-full resize-none rounded-lg border border-primary-200 dark:border-neutral-800',
               'bg-white dark:bg-neutral-900 px-3 py-2 font-mono text-xs leading-relaxed',
@@ -1478,22 +1507,22 @@ export function FilesScreen() {
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-primary-200 dark:border-neutral-800 px-3">
           <Breadcrumb path={selectedEntry?.path ?? ''} />
           <div className="flex shrink-0 items-center gap-0.5 ml-2">
-            <button
+            <Button
               type="button"
               onClick={openNewFolderPrompt}
               title="New folder"
               className="rounded p-1 text-sm text-primary-400 hover:bg-primary-200 dark:hover:bg-neutral-800 hover:text-primary-600 dark:hover:text-neutral-300 transition-colors leading-none"
             >
               📁+
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => void loadTree()}
               title="Refresh"
               className="rounded p-1 text-lg text-primary-400 hover:bg-primary-200 dark:hover:bg-neutral-800 hover:text-primary-600 dark:hover:text-neutral-300 transition-colors leading-none"
             >
               ↺
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -1553,7 +1582,7 @@ export function FilesScreen() {
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
-          <button
+          <Button
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-primary-100 dark:hover:bg-neutral-800"
             onClick={() => {
               openRenamePrompt(contextMenu.entry)
@@ -1561,9 +1590,9 @@ export function FilesScreen() {
             }}
           >
             ✏️ Rename
-          </button>
+          </Button>
           {contextMenu.entry.type === 'folder' ? (
-            <button
+            <Button
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-primary-100 dark:hover:bg-neutral-800"
               onClick={() => {
                 setPromptState({
@@ -1575,9 +1604,9 @@ export function FilesScreen() {
               }}
             >
               📁 New folder inside
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-primary-100 dark:hover:bg-neutral-800"
               onClick={() => {
                 void handleDownload(contextMenu.entry)
@@ -1585,9 +1614,9 @@ export function FilesScreen() {
               }}
             >
               ⬇️ Download
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
             onClick={() => {
               setDeleteConfirm(contextMenu.entry)
@@ -1595,7 +1624,7 @@ export function FilesScreen() {
             }}
           >
             🗑️ Delete
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -1616,7 +1645,7 @@ export function FilesScreen() {
                 ? 'Enter a new name.'
                 : 'Enter a folder name to create.'}
             </DialogDescription>
-            <input
+            <Input
               value={promptValue}
               onChange={(e) => setPromptValue(e.target.value)}
               onKeyDown={(e) => {

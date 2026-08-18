@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AiBrain01Icon,
@@ -192,7 +194,7 @@ export function MissionEventLog({
       <div className="border-b border-primary-800 px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           {FILTER_OPTIONS.map((option) => (
-            <button
+            <Button
               key={option.key}
               type="button"
               onClick={() => setFilter(option.key)}
@@ -204,7 +206,7 @@ export function MissionEventLog({
               )}
             >
               {option.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -259,7 +261,7 @@ export function MissionEventLog({
 
                         {isOutputEvent ? (
                           <div className="mt-2">
-                            <button
+                            <Button
                               type="button"
                               onClick={() =>
                                 setExpandedOutputIds((current) => ({
@@ -270,7 +272,7 @@ export function MissionEventLog({
                               className="text-xs font-medium text-primary-400 transition-colors hover:text-primary-100"
                             >
                               {isExpanded ? 'Hide output' : 'Show output'}
-                            </button>
+                            </Button>
                             <AnimatePresence initial={false}>
                               {isExpanded ? (
                                 <motion.pre

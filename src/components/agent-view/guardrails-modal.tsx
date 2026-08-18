@@ -1,3 +1,7 @@
+import { Input } from '@/components/ui/input'
+
+import { Textarea } from '@/components/ui/form-controls'
+
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -167,17 +171,17 @@ export function GuardrailsModal({
             </p>
             <div className="inline-flex rounded-lg bg-neutral-100 dark:bg-neutral-800 p-1 gap-1">
               {TOKEN_PRESETS.map((preset) => (
-                <button
+                <Button
                   key={preset.label}
                   type="button"
                   onClick={() => setMaxTokens(preset.value)}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${maxTokens === preset.value ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100' : 'text-neutral-600 hover:bg-white/70 dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
                 >
                   {preset.label}
-                </button>
+                </Button>
               ))}
             </div>
-            <input
+            <Input
               type="number"
               min={0}
               step={1000}
@@ -197,18 +201,18 @@ export function GuardrailsModal({
               <p className="text-xs font-medium text-primary-700">Mode</p>
               <div className="inline-flex rounded-lg bg-neutral-100 dark:bg-neutral-800 p-1 gap-1">
                 {(['allowlist', 'blocklist'] as const).map((mode) => (
-                  <button
+                  <Button
                     key={mode}
                     type="button"
                     onClick={() => setToolMode(mode)}
                     className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${toolMode === mode ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100' : 'text-neutral-600 hover:bg-white/70 dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
                   >
                     {mode === 'allowlist' ? 'Allowlist' : 'Blocklist'}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
-            <textarea
+            <Textarea
               rows={4}
               value={toolsText}
               onChange={(event) => setToolsText(event.target.value)}
@@ -225,7 +229,7 @@ export function GuardrailsModal({
               Auto-Stop Triggers
             </p>
             {stopRows.map((row) => (
-              <button
+              <Button
                 key={row.label}
                 type="button"
                 onClick={row.onToggle}
@@ -235,7 +239,7 @@ export function GuardrailsModal({
                 <span className="text-sm text-primary-900 dark:text-primary-100">
                   {row.label}
                 </span>
-              </button>
+              </Button>
             ))}
           </section>
 

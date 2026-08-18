@@ -1,4 +1,5 @@
 import type { HermesTask } from '@/lib/tasks-api'
+import { ActionSurface } from '@/components/ui/action-surface'
 import type { PluginUiExtensionRegistration } from '@/lib/plugin-ui-extensions'
 import { cn } from '@/lib/utils'
 import {
@@ -86,7 +87,7 @@ export function TaskCard({
   }
 
   return (
-    <div
+    <ActionSurface
       draggable
       onDragStart={onDragStart}
       onClick={onClick}
@@ -96,8 +97,6 @@ export function TaskCard({
           onClick()
         }
       }}
-      role="button"
-      tabIndex={0}
       className={cn(
         'relative rounded-card border p-3 cursor-pointer transition-colors select-none outline-none',
         'bg-[var(--theme-card)] border-[var(--theme-border)]',
@@ -175,6 +174,6 @@ export function TaskCard({
           </div>
         )}
       </div>
-    </div>
+    </ActionSurface>
   )
 }

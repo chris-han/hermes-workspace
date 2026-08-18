@@ -1,5 +1,7 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -84,14 +86,14 @@ function ToastItem({ entry, onDismiss }: ToastItemProps) {
       <span className="flex-1 text-[13px] text-ink leading-snug">
         {entry.message}
       </span>
-      <button
+      <Button
         type="button"
         onClick={() => onDismiss(entry.id)}
         className="shrink-0 text-primary-400 hover:text-primary-600 transition-colors text-lg leading-none"
         aria-label="Dismiss"
       >
         ×
-      </button>
+      </Button>
     </div>
   )
 }

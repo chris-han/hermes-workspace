@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { ComponentType } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -19,9 +21,9 @@ vi.mock('@/lib/plugin-ui-extensions', async (importOriginal) => {
       <strong>{String(metadata.meeting_title)}</strong>
       <span>{String(metadata.status)}</span>
       <div>{String(metadata.declined_attendee_name)}</div>
-      <button type="button">Nudge</button>
-      <button type="button">Finalize</button>
-      <button type="button">Cancel</button>
+      <Button type="button">Nudge</Button>
+      <Button type="button">Finalize</Button>
+      <Button type="button">Cancel</Button>
     </div>
   )
   return {

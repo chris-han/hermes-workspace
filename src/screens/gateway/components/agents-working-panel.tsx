@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -167,6 +169,7 @@ function AgentRow({
     <div
       role="button"
       tabIndex={0}
+      aria-label={`Select agent ${agent.name}`}
       onKeyDown={(e) => e.key === 'Enter' && onSelect()}
       onClick={onSelect}
       className={cn(
@@ -225,7 +228,7 @@ function AgentRow({
 
           {/* Respawn on error */}
           {agent.status === 'error' && onRespawn ? (
-            <button
+            <Button
               type="button"
               onClick={(e) => {
                 e.stopPropagation()
@@ -235,13 +238,13 @@ function AgentRow({
               title="Respawn agent"
             >
               ↻
-            </button>
+            </Button>
           ) : null}
 
           {/* Context menu */}
           {onKill ? (
             <div className="relative">
-              <button
+              <Button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -250,20 +253,21 @@ function AgentRow({
                 className="shrink-0 text-sm text-neutral-500 transition-colors group-hover:text-neutral-700 hover:text-neutral-900"
               >
                 ⋯
-              </button>
+              </Button>
               {menuOpen ? (
                 <>
-                  <div
+                  <Button
+                    type="button"
+                    aria-label="Close agent actions"
                     className="fixed inset-0 z-10"
                     onClick={(e) => {
                       e.stopPropagation()
                       setMenuOpen(false)
                     }}
-                    aria-hidden
                   />
                   <div className="absolute bottom-full right-0 z-20 mb-1 min-w-[110px] rounded-lg border border-neutral-200 bg-white shadow-xl">
                     {canSteer && onSteer ? (
-                      <button
+                      <Button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -278,10 +282,10 @@ function AgentRow({
                         className="block w-full rounded-lg px-3 py-2 text-left text-[11px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
                       >
                         Send directive
-                      </button>
+                      </Button>
                     ) : null}
                     {canSteer && onPause ? (
-                      <button
+                      <Button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -291,9 +295,9 @@ function AgentRow({
                         className="block w-full rounded-lg px-3 py-2 text-left text-[11px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
                       >
                         {agent.status === 'paused' ? 'Resume' : 'Pause'}
-                      </button>
+                      </Button>
                     ) : null}
-                    <button
+                    <Button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
@@ -303,7 +307,7 @@ function AgentRow({
                       className="block w-full rounded-lg px-3 py-2 text-left text-[11px] font-medium text-red-400 transition-colors hover:bg-red-950/20"
                     >
                       Kill session
-                    </button>
+                    </Button>
                   </div>
                 </>
               ) : null}
@@ -340,7 +344,7 @@ function AgentCompactCard({
   const isActive = agent.status === 'active'
 
   return (
-    <button
+    <Button
       type="button"
       onClick={onSelect}
       className={cn(
@@ -388,7 +392,7 @@ function AgentCompactCard({
           {formatRelativeTime(agent.lastAt)}
         </span>
       ) : null}
-    </button>
+    </Button>
   )
 }
 
@@ -437,7 +441,7 @@ export function AgentsWorkingPanel({
           <span className="font-mono text-[10px] text-neutral-500">
             {agents.length} agent{agents.length !== 1 ? 's' : ''}
           </span>
-          <button
+          <Button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
             className="rounded p-0.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
@@ -462,7 +466,7 @@ export function AgentsWorkingPanel({
                 strokeLinejoin="round"
               />
             </svg>
-          </button>
+          </Button>
         </div>
       </div>
 

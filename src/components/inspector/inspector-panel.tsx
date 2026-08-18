@@ -1,3 +1,11 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Input } from '@/components/ui/input'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { create } from 'zustand'
@@ -668,7 +676,7 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
               <span className="font-medium break-all">{title}</span>
               <div className="flex shrink-0 items-center gap-2">
                 {isPersisted && entry.artifact.rawUrl ? (
-                  <a
+                  <DsLink
                     href={artifactRawHref(entry.artifact.rawUrl)}
                     target="_blank"
                     rel="noreferrer"
@@ -679,7 +687,7 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
                     }}
                   >
                     {copy.buttons.rawData}
-                  </a>
+                  </DsLink>
                 ) : null}
                 {entry.kind === 'activity' && time ? (
                   <span style={{ color: 'var(--theme-accent)' }}>{time}</span>
@@ -1113,7 +1121,7 @@ function ActivityExpandedPanel({ event }: { event: ActivityEvent }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-end">
-        <button
+        <Button
           type="button"
           onClick={() => setShowRaw((prev) => !prev)}
           className="rounded px-2 py-0.5 text-[10px]"
@@ -1124,7 +1132,7 @@ function ActivityExpandedPanel({ event }: { event: ActivityEvent }) {
           }}
         >
           {showRaw ? copy.states.friendly : copy.states.raw}
-        </button>
+        </Button>
       </div>
       {showRaw ? (
         <JsonDetailBlock
@@ -1310,7 +1318,7 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
             label: string
           }>
         ).map((item) => (
-          <button
+          <Button
             key={item.value}
             type="button"
             onClick={() => setActivityFilter(item.value)}
@@ -1331,11 +1339,11 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
             }}
           >
             {item.label}
-          </button>
+          </Button>
         ))}
       </div>
       <div className="mb-2 grid grid-cols-2 gap-1">
-        <select
+        <NativeSelect
           aria-label="State effect filter"
           value={semanticFilters.stateEffect}
           onChange={(event) =>
@@ -1365,8 +1373,8 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
               {value}
             </option>
           ))}
-        </select>
-        <select
+        </NativeSelect>
+        <NativeSelect
           aria-label="Source type filter"
           value={semanticFilters.sourceType}
           onChange={(event) =>
@@ -1395,8 +1403,8 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
               {value}
             </option>
           ))}
-        </select>
-        <input
+        </NativeSelect>
+        <Input
           aria-label="Actor filter"
           value={semanticFilters.actor}
           onChange={(event) =>
@@ -1414,7 +1422,7 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
           }}
         />
         <div className="grid grid-cols-2 gap-1">
-          <input
+          <Input
             aria-label="Sequence from"
             value={semanticFilters.sequenceFrom}
             onChange={(event) =>
@@ -1432,7 +1440,7 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
               color: 'var(--theme-text)',
             }}
           />
-          <input
+          <Input
             aria-label="Sequence to"
             value={semanticFilters.sequenceTo}
             onChange={(event) =>
@@ -1485,7 +1493,7 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
             }`,
           }}
         >
-          <button
+          <Button
             type="button"
             onClick={() => toggleExpanded(`${event.time}-${i}`)}
             className="w-full flex items-start gap-2 px-2 py-1.5 text-left"
@@ -1508,7 +1516,7 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
             >
               {expandedKeys[`${event.time}-${i}`] ? '▾' : '▸'}
             </span>
-          </button>
+          </Button>
           {expandedKeys[`${event.time}-${i}`] ? (
             <div
               className="mx-2 mb-2 rounded px-2 py-2"
@@ -1611,7 +1619,7 @@ function MemoryRawPanel({ snapshot }: { snapshot: MemorySnapshot }) {
             {snapshot.source || 'session_db.system_prompt'}
           </div>
         </div>
-        <button
+        <Button
           type="button"
           onClick={() => setShowRaw((prev) => !prev)}
           className="shrink-0 rounded border px-2 py-0.5 font-medium transition-opacity hover:opacity-80"
@@ -1621,7 +1629,7 @@ function MemoryRawPanel({ snapshot }: { snapshot: MemorySnapshot }) {
           }}
         >
           {showRaw ? copy.states.friendly : copy.states.raw}
-        </button>
+        </Button>
       </div>
       {showRaw ? (
         <JsonDetailBlock
@@ -1708,7 +1716,7 @@ function MemoryTab({ sessionKey }: { sessionKey: string | null }) {
     return (
       <div className="space-y-3 p-3">
         <div className="flex justify-end">
-          <button
+          <Button
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
@@ -1719,7 +1727,7 @@ function MemoryTab({ sessionKey }: { sessionKey: string | null }) {
             }}
           >
             {refreshing ? copy.loading.memory : copy.buttons.refresh}
-          </button>
+          </Button>
         </div>
         <EmptyState text={copy.empty.noMemorySnapshotInjected} />
       </div>
@@ -1731,7 +1739,7 @@ function MemoryTab({ sessionKey }: { sessionKey: string | null }) {
         <p className="text-xs" style={{ color: 'var(--theme-muted)' }}>
           {copy.counts.memorySnapshotsUsed(snapshots.length)}
         </p>
-        <button
+        <Button
           type="button"
           onClick={handleRefresh}
           disabled={refreshing}
@@ -1742,7 +1750,7 @@ function MemoryTab({ sessionKey }: { sessionKey: string | null }) {
           }}
         >
           {refreshing ? copy.loading.memory : copy.buttons.refresh}
-        </button>
+        </Button>
       </div>
       {snapshots.map((snapshot, index) => (
         <div
@@ -2198,7 +2206,7 @@ function SkillsTab({ sessionKey }: { sessionKey: string | null }) {
             {items.map((skill) => {
               const itemKey = `skill:${skill.id || skill.name}`
               return (
-                <button
+                <Button
                   key={itemKey}
                   type="button"
                   onClick={() =>
@@ -2233,7 +2241,7 @@ function SkillsTab({ sessionKey }: { sessionKey: string | null }) {
                       {skill.description}
                     </p>
                   ) : null}
-                </button>
+                </Button>
               )
             })}
           </div>
@@ -2255,7 +2263,7 @@ function SkillsTab({ sessionKey }: { sessionKey: string | null }) {
           plugins.map((plugin) => {
             const itemKey = `plugin:${plugin.id}`
             return (
-              <button
+              <Button
                 key={plugin.id}
                 type="button"
                 onClick={() =>
@@ -2298,7 +2306,7 @@ function SkillsTab({ sessionKey }: { sessionKey: string | null }) {
                     ) : null}
                   </div>
                 ) : null}
-              </button>
+              </Button>
             )
           })
         )}
@@ -2329,7 +2337,7 @@ function SkillsTab({ sessionKey }: { sessionKey: string | null }) {
           toolsets.map((toolset) => {
             const itemKey = `toolset:${toolset.id}`
             return (
-              <button
+              <Button
                 key={toolset.id}
                 type="button"
                 onClick={() =>
@@ -2373,7 +2381,7 @@ function SkillsTab({ sessionKey }: { sessionKey: string | null }) {
                     ) : null}
                   </div>
                 ) : null}
-              </button>
+              </Button>
             )
           })
         )}
@@ -2506,7 +2514,7 @@ function LogsTab({ sessionKey }: { sessionKey: string | null }) {
       )}
 
       <div className="flex items-center gap-2">
-        <button
+        <Button
           type="button"
           onClick={() => setShowRaw((prev) => !prev)}
           className="flex-1 rounded px-2 py-1 text-xs hover:opacity-80 transition-opacity"
@@ -2518,8 +2526,8 @@ function LogsTab({ sessionKey }: { sessionKey: string | null }) {
           disabled={loading || !log}
         >
           {showRaw ? copy.buttons.friendly : copy.buttons.raw}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={() => setRefreshKey((k) => k + 1)}
           className="flex-1 rounded px-2 py-1 text-xs hover:opacity-80 transition-opacity"
@@ -2531,7 +2539,7 @@ function LogsTab({ sessionKey }: { sessionKey: string | null }) {
           disabled={loading}
         >
           {copy.buttons.refresh}
-        </button>
+        </Button>
       </div>
 
       {sessionKeyLabel ? (
@@ -2750,14 +2758,14 @@ function GuidanceTab() {
         </span>
       </div>
       {dismissed ? (
-        <button
+        <Button
           type="button"
           onClick={() => useMvlWorkflowStore.setState({ dismissedCode: null })}
           className="text-xs underline"
           style={{ color: 'var(--theme-muted)' }}
         >
           {locale === 'zh' ? '重新显示' : 'Show guidance'}
-        </button>
+        </Button>
       ) : (
         <>
           <p
@@ -2766,14 +2774,14 @@ function GuidanceTab() {
           >
             {item.body}
           </p>
-          <button
+          <Button
             type="button"
             onClick={() => dismiss(item.code)}
             className="text-[11px] underline"
             style={{ color: 'var(--theme-muted)' }}
           >
             {locale === 'zh' ? '收起提示' : 'Dismiss guidance'}
-          </button>
+          </Button>
         </>
       )}
     </div>
@@ -2839,7 +2847,7 @@ export function InspectorPanel({
             >
               {copy.title}
             </span>
-            <button
+            <Button
               type="button"
               onClick={() => useInspectorStore.getState().setOpen(false)}
               className="rounded p-1 text-xs hover:opacity-70 transition-opacity"
@@ -2847,7 +2855,7 @@ export function InspectorPanel({
               aria-label={copy.close}
             >
               ✕
-            </button>
+            </Button>
           </div>
 
           {/* Tab bar */}
@@ -2865,7 +2873,7 @@ export function InspectorPanel({
                       : true
 
                 return (
-                  <button
+                  <Button
                     key={tab.id}
                     type="button"
                     onClick={() => {
@@ -2899,7 +2907,7 @@ export function InspectorPanel({
                         {copy.gate}
                       </span>
                     ) : null}
-                  </button>
+                  </Button>
                 )
               })(),
             )}
@@ -2932,8 +2940,9 @@ export function InspectorToggleButton({ className }: { className?: string }) {
   const isOpen = useInspectorStore((s) => s.isOpen)
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       onClick={toggle}
       title={isOpen ? 'Close inspector' : 'Open inspector'}
       className={cn(
@@ -2949,6 +2958,6 @@ export function InspectorToggleButton({ className }: { className?: string }) {
       aria-label="Toggle inspector panel"
     >
       <span className="font-mono text-[11px]">{'{ }'}</span>
-    </button>
+    </Button>
   )
 }

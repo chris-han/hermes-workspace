@@ -1,3 +1,11 @@
+import { Input } from '@/components/ui/input'
+
+import { Table } from '@/components/ui/table'
+
+import { Textarea } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -1720,14 +1728,14 @@ export function KnowledgeBaseScreen() {
               {copy.subtitle}
             </p>
           </div>
-          <button
+          <Button
             type="button"
             onClick={() => exportMutation.mutate()}
             className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold text-foreground transition-colors hover:border-primary hover:bg-primary/10"
           >
             <HugeiconsIcon icon={Tick02Icon} size={15} strokeWidth={1.6} />
             {copy.exportEvidence}
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -1763,7 +1771,7 @@ export function KnowledgeBaseScreen() {
             </div>
             <div className="mt-3 grid gap-2">
               <FormField label={copy.canonicalTitle}>
-                <input
+                <Input
                   type="text"
                   value={sourceForm.canonical_title}
                   onChange={(event) =>
@@ -1774,7 +1782,7 @@ export function KnowledgeBaseScreen() {
                 />
               </FormField>
               <FormField label={copy.issuer}>
-                <input
+                <Input
                   type="text"
                   value={sourceForm.issuer}
                   onChange={(event) =>
@@ -1801,7 +1809,7 @@ export function KnowledgeBaseScreen() {
                   </DropdownSelect>
                 </FormField>
                 <FormField label={copy.jurisdiction}>
-                  <input
+                  <Input
                     type="text"
                     value={sourceForm.jurisdiction}
                     onChange={(event) =>
@@ -1836,7 +1844,7 @@ export function KnowledgeBaseScreen() {
                   </DropdownSelect>
                 </FormField>
                 <FormField label={`${copy.documentNumber} (${copy.optional})`}>
-                  <input
+                  <Input
                     type="text"
                     value={sourceForm.document_number ?? ''}
                     onChange={(event) =>
@@ -1846,7 +1854,7 @@ export function KnowledgeBaseScreen() {
                   />
                 </FormField>
               </div>
-              <button
+              <Button
                 type="button"
                 disabled={
                   registerSourceMutation.isPending ||
@@ -1861,7 +1869,7 @@ export function KnowledgeBaseScreen() {
                 {registerSourceMutation.isPending
                   ? copy.registering
                   : copy.saveSource}
-              </button>
+              </Button>
               {registrationMessage ? (
                 <div className="rounded border border-border bg-muted px-2 py-1.5 text-xs text-muted-foreground">
                   {registrationMessage}
@@ -1877,7 +1885,7 @@ export function KnowledgeBaseScreen() {
                 const versions = sourceVersions(inventory, source.source_id)
                 const current = latestVersion(versions)
                 return (
-                  <button
+                  <Button
                     key={source.source_id}
                     type="button"
                     onClick={() => {
@@ -1901,7 +1909,7 @@ export function KnowledgeBaseScreen() {
                       </Badge>
                       <Badge>{copy.versionCount(versions.length)}</Badge>
                     </div>
-                  </button>
+                  </Button>
                 )
               })
             ) : (
@@ -1916,9 +1924,10 @@ export function KnowledgeBaseScreen() {
               ['source', copy.sourceView],
               ['compiled', copy.compiledOntologyView],
             ].map(([mode, label]) => (
-              <button
+              <Button
                 key={mode}
                 type="button"
+                variant="ghost"
                 onClick={() => setLegalViewMode(mode as LegalViewMode)}
                 className={cn(
                   'inline-flex h-8 items-center rounded-md border px-3 text-sm font-semibold transition-colors',
@@ -1928,7 +1937,7 @@ export function KnowledgeBaseScreen() {
                 )}
               >
                 {label}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -2147,7 +2156,7 @@ export function KnowledgeBaseScreen() {
                       strokeWidth={1.6}
                     />
                     {queuedSourceFile?.name || copy.choosePdf}
-                    <input
+                    <Input
                       type="file"
                       accept=".pdf,.txt,.md,text/plain,application/pdf"
                       className="hidden"
@@ -2160,7 +2169,7 @@ export function KnowledgeBaseScreen() {
                       }}
                     />
                   </label>
-                  <button
+                  <Button
                     type="button"
                     disabled={
                       uploadSourceMutation.isPending ||
@@ -2178,7 +2187,7 @@ export function KnowledgeBaseScreen() {
                     {uploadSourceMutation.isPending
                       ? copy.uploadingFile
                       : copy.uploadFile}
-                  </button>
+                  </Button>
                   {sourceUploadMessage ? (
                     <div className="rounded border border-border bg-muted px-2 py-1.5 text-xs text-muted-foreground">
                       {sourceUploadMessage}
@@ -2248,7 +2257,7 @@ export function KnowledgeBaseScreen() {
                 <div className="divide-y divide-border">
                   {bundle.candidates.length ? (
                     bundle.candidates.map((candidate) => (
-                      <button
+                      <Button
                         key={candidate.candidate_id}
                         type="button"
                         onClick={() =>
@@ -2271,7 +2280,7 @@ export function KnowledgeBaseScreen() {
                         <span className="text-xs text-muted-foreground">
                           {parseSpan(candidate, copy)}
                         </span>
-                      </button>
+                      </Button>
                     ))
                   ) : (
                     <EmptyState label={copy.noExtractedClaims} />
@@ -2340,7 +2349,7 @@ export function KnowledgeBaseScreen() {
                 ['candidate_impact', copy.candidateImpactAction],
                 ['acknowledge_alert', copy.acknowledgementAction],
               ].map(([actionType, label]) => (
-                <button
+                <Button
                   key={actionType}
                   type="button"
                   data-legal-action-type={actionType}
@@ -2348,7 +2357,7 @@ export function KnowledgeBaseScreen() {
                   className="rounded-md border border-border px-3 py-2 text-left text-sm font-medium transition-colors hover:border-primary hover:bg-primary/10"
                 >
                   {label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -2379,7 +2388,7 @@ export function KnowledgeBaseScreen() {
           <InspectorPanelWithMargin title={copy.changeCandidates}>
             {changeCandidatesQuery.data?.length ? (
               changeCandidatesQuery.data.slice(0, 5).map((candidate) => (
-                <button
+                <Button
                   key={candidate.candidate_id}
                   type="button"
                   onClick={() => setSelectedCandidateId(candidate.candidate_id)}
@@ -2397,7 +2406,7 @@ export function KnowledgeBaseScreen() {
                     {candidate.candidate_type || copy.candidate} /{' '}
                     {candidate.stable_locator || copy.locatorPending}
                   </div>
-                </button>
+                </Button>
               ))
             ) : (
               <EmptyState label={copy.noChangeCandidates} />
@@ -2872,7 +2881,7 @@ export function TenderDocumentReviewScreen() {
           <label className="text-sm font-medium" htmlFor="tender-document-text">
             {copy.documentText}
           </label>
-          <textarea
+          <Textarea
             id="tender-document-text"
             ref={documentRef}
             className="mt-3 min-h-72 w-full rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-primary"
@@ -2880,7 +2889,7 @@ export function TenderDocumentReviewScreen() {
             value={documentText}
             onChange={(event) => setDocumentText(event.target.value)}
           />
-          <input
+          <Input
             aria-label={copy.reviewerNote}
             className="mt-3 w-full rounded-md border border-border bg-background p-2 text-sm"
             placeholder={copy.reviewerNote}
@@ -2888,7 +2897,7 @@ export function TenderDocumentReviewScreen() {
             onChange={(event) => setReviewerNote(event.target.value)}
           />
           {run ? (
-            <button
+            <Button
               type="button"
               className="mt-3 rounded-button border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
               disabled={missedFindingMutation.isPending}
@@ -2909,16 +2918,16 @@ export function TenderDocumentReviewScreen() {
               }}
             >
               {copy.missedFinding}
-            </button>
+            </Button>
           ) : null}
-          <button
+          <Button
             type="button"
             className="mt-3 rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!documentText.trim() || reviewMutation.isPending}
             onClick={() => reviewMutation.mutate(documentText)}
           >
             {reviewMutation.isPending ? copy.running : copy.runReview}
-          </button>
+          </Button>
           {reviewMutation.isError ? (
             <p className="mt-3 text-sm text-destructive">{copy.unavailable}</p>
           ) : null}
@@ -2934,14 +2943,14 @@ export function TenderDocumentReviewScreen() {
               ) : null}
             </div>
             {run ? (
-              <button
+              <Button
                 type="button"
                 className="rounded-button border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                 disabled={reportMutation.isPending}
                 onClick={() => reportMutation.mutate(run.run_id)}
               >
                 {copy.persistReport}
-              </button>
+              </Button>
             ) : null}
           </div>
           {reportPersisted ? (
@@ -3340,7 +3349,7 @@ export function KnowledgeBuilderStudioScreen() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <label className="rounded-button border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted">
-                  <input
+                  <Input
                     type="file"
                     accept=".docx"
                     className="sr-only"
@@ -3350,7 +3359,7 @@ export function KnowledgeBuilderStudioScreen() {
                   />
                   {copy.chooseGovernedDocument}
                 </label>
-                <button
+                <Button
                   type="button"
                   className="inline-flex items-center gap-1.5 rounded-button bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={
@@ -3370,7 +3379,7 @@ export function KnowledgeBuilderStudioScreen() {
                   {sourceUploadMutation.isPending
                     ? copy.uploadingGovernedDocument
                     : copy.uploadGovernedDocument}
-                </button>
+                </Button>
               </div>
             </div>
             <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
@@ -3421,14 +3430,14 @@ export function KnowledgeBuilderStudioScreen() {
           <label className="text-sm font-medium" htmlFor="kb-source-ref">
             {copy.sourceRef}
           </label>
-          <input
+          <Input
             id="kb-source-ref"
             className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
             placeholder={copy.sourceRefPlaceholder}
             value={sourceRef}
             onChange={(event) => setSourceRef(event.target.value)}
           />
-          <button
+          <Button
             type="button"
             className="mt-3 rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!sourceRef.trim() || discoveryMutation.isPending}
@@ -3440,7 +3449,7 @@ export function KnowledgeBuilderStudioScreen() {
             }
           >
             {discoveryMutation.isPending ? copy.running : copy.runDiscovery}
-          </button>
+          </Button>
           {discoveryMutation.isError || discoveryRunQuery.isError ? (
             <p className="mt-3 text-sm text-destructive">
               {discoveryMutation.error instanceof Error
@@ -3518,9 +3527,10 @@ export function KnowledgeBuilderStudioScreen() {
             </h2>
             <div className="inline-flex rounded-md border border-border bg-background p-1">
               {(['lexicon', 'graph'] as const).map((view) => (
-                <button
+                <Button
                   key={view}
                   type="button"
+                  variant="ghost"
                   className={cn(
                     'rounded px-3 py-1 text-xs font-medium',
                     discoveryView === view
@@ -3530,7 +3540,7 @@ export function KnowledgeBuilderStudioScreen() {
                   onClick={() => setDiscoveryView(view)}
                 >
                   {view === 'lexicon' ? copy.viewLexicon : copy.viewGraph}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -3596,7 +3606,7 @@ export function KnowledgeBuilderStudioScreen() {
               </div>
               {discoveryView === 'lexicon' ? (
                 <div className="max-h-[520px] overflow-auto rounded-md border border-border bg-background">
-                  <table className="w-full min-w-[720px] text-left text-xs">
+                  <Table className="w-full min-w-[720px] text-left text-xs">
                     <thead className="sticky top-0 bg-muted text-muted-foreground">
                       <tr>
                         <th className="px-3 py-2 font-medium">{copy.term}</th>
@@ -3633,7 +3643,7 @@ export function KnowledgeBuilderStudioScreen() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </Table>
                 </div>
               ) : (
                 <div className="grid gap-3">
@@ -3683,7 +3693,7 @@ export function KnowledgeBuilderStudioScreen() {
                 >
                   {copy.canonicalLabel}
                 </label>
-                <input
+                <Input
                   id="kb-canonical-label"
                   className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-xs outline-none focus:border-primary"
                   value={canonicalLabel}
@@ -3695,7 +3705,7 @@ export function KnowledgeBuilderStudioScreen() {
                 >
                   {copy.definition}
                 </label>
-                <textarea
+                <Textarea
                   id="kb-definition"
                   className="mt-1 min-h-20 w-full rounded-md border border-border bg-card p-3 text-xs outline-none focus:border-primary"
                   value={definition}
@@ -3707,13 +3717,13 @@ export function KnowledgeBuilderStudioScreen() {
                 >
                   {copy.aliases}
                 </label>
-                <input
+                <Input
                   id="kb-aliases"
                   className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-xs outline-none focus:border-primary"
                   value={aliases}
                   onChange={(event) => setAliases(event.target.value)}
                 />
-                <button
+                <Button
                   type="button"
                   className="mt-3 rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={
@@ -3722,7 +3732,7 @@ export function KnowledgeBuilderStudioScreen() {
                   onClick={() => termMutation.mutate()}
                 >
                   {copy.promoteTerm}
-                </button>
+                </Button>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {copy.nonAuthority}
                 </p>
@@ -3797,15 +3807,15 @@ export function KnowledgeBuilderStudioScreen() {
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button
+                  <Button
                     type="button"
                     className="rounded-button border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!runId || evaluationDatasetMutation.isPending}
                     onClick={() => evaluationDatasetMutation.mutate()}
                   >
                     {copy.addEvaluationExamples}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     className="rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={
@@ -3816,7 +3826,7 @@ export function KnowledgeBuilderStudioScreen() {
                     onClick={() => evaluationRunMutation.mutate()}
                   >
                     {copy.runEvaluation}
-                  </button>
+                  </Button>
                 </div>
                 {evaluationDataset ? (
                   <div className="mt-3 grid gap-2">
@@ -3879,7 +3889,7 @@ export function KnowledgeBuilderStudioScreen() {
                             </span>
                           </div>
                           <div className="mt-2 flex flex-wrap gap-2">
-                            <button
+                            <Button
                               type="button"
                               className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                               disabled={ratingMutation.isPending}
@@ -3892,8 +3902,8 @@ export function KnowledgeBuilderStudioScreen() {
                               }
                             >
                               {copy.ratePass}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
                               className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                               disabled={ratingMutation.isPending}
@@ -3906,8 +3916,8 @@ export function KnowledgeBuilderStudioScreen() {
                               }
                             >
                               {copy.rateFail}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
                               className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                               disabled={ratingMutation.isPending}
@@ -3920,7 +3930,7 @@ export function KnowledgeBuilderStudioScreen() {
                               }
                             >
                               {copy.rateReview}
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -3933,14 +3943,14 @@ export function KnowledgeBuilderStudioScreen() {
                   <h3 className="text-sm font-semibold">
                     {copy.feedbackDeltas}
                   </h3>
-                  <button
+                  <Button
                     type="button"
                     className="rounded-button border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={feedbackDeltasQuery.isFetching}
                     onClick={() => void feedbackDeltasQuery.refetch()}
                   >
                     {copy.loadFeedbackDeltas}
-                  </button>
+                  </Button>
                 </div>
                 {feedbackDeltasQuery.data?.length ? (
                   <div className="mt-3 grid gap-3">
@@ -3992,13 +4002,13 @@ export function KnowledgeBuilderStudioScreen() {
                                 'evaluation',
                             )}
                           </p>
-                          <button
+                          <Button
                             type="button"
                             className="mt-2 rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
                             onClick={() => setRunId(delta.discovery_run_id)}
                           >
                             {copy.runEvaluation}
-                          </button>
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -4043,7 +4053,7 @@ export function KnowledgeBuilderStudioScreen() {
                   ) : null}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button
+                  <Button
                     type="button"
                     className="rounded-button bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={
@@ -4055,15 +4065,15 @@ export function KnowledgeBuilderStudioScreen() {
                     onClick={() => promotionMutation.mutate()}
                   >
                     {copy.promoteRuntimeAuthority}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     className="rounded-button border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!authorityVersion || rebuildMutation.isPending}
                     onClick={() => rebuildMutation.mutate()}
                   >
                     {copy.rebuildReadModel}
-                  </button>
+                  </Button>
                 </div>
               </div>
               <aside className="rounded-md border border-border bg-background p-3">
@@ -4155,55 +4165,55 @@ function TenderFindingCard({
         </div>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
-        <button
+        <Button
           type="button"
           className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onDisposition('accepted')}
         >
           {copy.accept}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onDisposition('rejected')}
         >
           {copy.reject}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onDisposition('edited')}
         >
           {copy.edit}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onFeedback('false_positive', 'not_escalated')}
         >
           {copy.falsePositive}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onFeedback('false_negative', 'not_escalated')}
         >
           {copy.falseNegative}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onFeedback('ambiguity', 'not_escalated')}
         >
           {copy.ambiguous}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           className="rounded-button border border-border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           onClick={() => onFeedback('weak_explanation', 'escalated')}
         >
           {copy.escalate}
-        </button>
+        </Button>
       </div>
     </article>
   )

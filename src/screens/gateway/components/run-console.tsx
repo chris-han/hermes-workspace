@@ -1,3 +1,9 @@
+import { Input } from '@/components/ui/input'
+
+import { Table } from '@/components/ui/table'
+
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CheckmarkCircle02Icon,
@@ -475,23 +481,23 @@ export function RunConsole({
             </div>
             <div className="flex items-center gap-2">
               {runStatus === 'running' && onStopMission ? (
-                <button
+                <Button
                   type="button"
                   onClick={onStopMission}
                   disabled={isStopping}
                   className="inline-flex h-8 items-center gap-1 rounded-md border border-red-500/40 bg-red-500/15 px-3 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isStopping ? 'Stopping...' : '■ Stop'}
-                </button>
+                </Button>
               ) : null}
               {onClose ? (
-                <button
+                <Button
                   type="button"
                   onClick={onClose}
                   className="inline-flex h-8 items-center rounded-md border border-primary-700 bg-primary-900/70 px-3 text-xs font-medium text-primary-200 transition-colors hover:border-primary-600 hover:bg-primary-800"
                 >
                   Close
-                </button>
+                </Button>
               ) : null}
             </div>
           </div>
@@ -509,7 +515,7 @@ export function RunConsole({
         <div className="flex flex-wrap gap-2">
           {TAB_OPTIONS.filter((tab) => allowedTabs.includes(tab.id)).map(
             (tab) => (
-              <button
+              <Button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
@@ -537,7 +543,7 @@ export function RunConsole({
                     {displayEvents.length}
                   </span>
                 )}
-              </button>
+              </Button>
             ),
           )}
         </div>
@@ -572,7 +578,7 @@ export function RunConsole({
                   {agent.name}
                 </span>
                 {onSteerAgent ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() =>
                       setSteerTarget(steerTarget === agent.id ? null : agent.id)
@@ -580,16 +586,16 @@ export function RunConsole({
                     className="rounded px-1.5 py-0.5 text-[10px] text-primary-400 transition-colors hover:bg-primary-800 hover:text-primary-200"
                   >
                     Steer
-                  </button>
+                  </Button>
                 ) : null}
                 {onKillAgent ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onKillAgent(agent.id)}
                     className="rounded px-1.5 py-0.5 text-[10px] text-red-400 transition-colors hover:bg-red-500/15 hover:text-red-300"
                   >
                     Kill
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             ))}
@@ -599,7 +605,7 @@ export function RunConsole({
               <span className="text-[11px] text-primary-400">
                 → {agents.find((a) => a.id === steerTarget)?.name}:
               </span>
-              <input
+              <Input
                 type="text"
                 value={steerInput}
                 onChange={(e) => setSteerInput(e.target.value)}
@@ -613,7 +619,7 @@ export function RunConsole({
                 placeholder="Send directive..."
                 className="flex-1 rounded-md border border-primary-700 bg-primary-950 px-2 py-1 text-xs text-primary-100 placeholder:text-primary-500 focus:border-accent-500 focus:outline-none"
               />
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   if (steerInput.trim()) {
@@ -625,8 +631,8 @@ export function RunConsole({
                 className="rounded-md bg-accent-500/20 px-2 py-1 text-[11px] font-medium text-accent-300 transition-colors hover:bg-accent-500/30"
               >
                 Send
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => {
                   setSteerTarget(null)
@@ -635,7 +641,7 @@ export function RunConsole({
                 className="text-[11px] text-primary-500 hover:text-primary-300"
               >
                 ✕
-              </button>
+              </Button>
             </div>
           ) : null}
         </div>
@@ -672,7 +678,7 @@ export function RunConsole({
                     : 'border border-primary-700 bg-primary-900/60',
                 )}
               >
-                <button
+                <Button
                   type="button"
                   onClick={() => setStreamView('combined')}
                   className={cn(
@@ -687,8 +693,8 @@ export function RunConsole({
                   )}
                 >
                   Combined
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => setStreamView('lanes')}
                   className={cn(
@@ -703,7 +709,7 @@ export function RunConsole({
                   )}
                 >
                   Lanes
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -737,22 +743,22 @@ export function RunConsole({
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <button
+                          <Button
                             type="button"
                             onClick={() => onApprove?.(approval.id)}
                             disabled={!onApprove}
                             className="rounded-md border border-amber-500/50 bg-amber-500/20 px-2.5 py-1 text-xs font-medium text-amber-100 transition-colors hover:bg-amber-500/30"
                           >
                             Approve
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
                             onClick={() => onDeny?.(approval.id)}
                             disabled={!onDeny}
                             className="rounded-md border border-primary-700 bg-primary-900/80 px-2.5 py-1 text-xs font-medium text-primary-200 transition-colors hover:bg-primary-800"
                           >
                             Deny
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     </li>
@@ -991,7 +997,7 @@ export function RunConsole({
             ) : null}
             <div ref={streamEndRef} />
             {!isAutoScroll && displayEvents.length > 5 && (
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   streamEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -1000,7 +1006,7 @@ export function RunConsole({
                 className="sticky bottom-2 mx-auto flex items-center gap-1 rounded-full border border-primary-700 bg-primary-900/90 px-3 py-1.5 text-[11px] font-medium text-primary-200 shadow-lg backdrop-blur transition-colors hover:bg-primary-800"
               >
                 ↓ Jump to latest
-              </button>
+              </Button>
             )}
           </div>
         ) : null}
@@ -1100,7 +1106,7 @@ export function RunConsole({
                               {artifact.name}
                             </p>
                           </div>
-                          <button
+                          <Button
                             type="button"
                             onClick={() => void copyArtifactContent(artifact)}
                             className="inline-flex items-center gap-1 rounded-md border border-primary-700 bg-primary-900/80 px-2 py-1 text-[11px] text-primary-200 transition-colors hover:bg-primary-800"
@@ -1113,7 +1119,7 @@ export function RunConsole({
                             {copiedArtifactId === artifact.id
                               ? 'Copied'
                               : 'Copy'}
-                          </button>
+                          </Button>
                         </div>
 
                         {artifact.type === 'file' ? (
@@ -1121,7 +1127,7 @@ export function RunConsole({
                             <p className="truncate text-primary-200">
                               Path: {artifact.path || 'Unknown path'}
                             </p>
-                            <button
+                            <Button
                               type="button"
                               onClick={() =>
                                 setExpandedArtifactId(
@@ -1136,7 +1142,7 @@ export function RunConsole({
                                 strokeWidth={1.8}
                               />
                               View
-                            </button>
+                            </Button>
                             {isExpanded ? (
                               <pre className="max-h-32 overflow-auto rounded-md border border-primary-800 bg-primary-950/80 p-2 text-[11px] text-primary-200">
                                 {artifact.content ||
@@ -1286,7 +1292,7 @@ export function RunConsole({
                   <h3 className="border-b border-primary-800/80 px-3 py-2 text-sm font-semibold text-primary-100">
                     Agent Breakdown
                   </h3>
-                  <table className="w-full text-left text-xs">
+                  <Table className="w-full text-left text-xs">
                     <thead className="bg-primary-950/70 text-primary-300">
                       <tr>
                         <th className="px-3 py-2 font-medium">Agent</th>
@@ -1310,7 +1316,7 @@ export function RunConsole({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </Table>
                 </section>
               </div>
             )}

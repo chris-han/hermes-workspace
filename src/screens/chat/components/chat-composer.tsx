@@ -1,3 +1,6 @@
+import { Input } from '@/components/ui/input'
+import { DialogSurface } from '@/components/ui/dialog-surface'
+
 import { createPortal } from 'react-dom'
 import {
   Add01Icon,
@@ -1885,7 +1888,7 @@ function ChatComposerComponent({
       style={composerWrapperStyle}
       ref={setWrapperRefs}
     >
-      <input
+      <Input
         ref={attachmentInputRef}
         type="file"
         accept={ATTACHMENT_ACCEPT}
@@ -1948,7 +1951,7 @@ function ChatComposerComponent({
                     )}
                   >
                     {isImageAttachment ? (
-                      <button
+                      <Button
                         type="button"
                         className="aspect-square w-full overflow-hidden rounded-xl border border-primary-200 bg-primary-50"
                         onClick={() =>
@@ -1964,14 +1967,14 @@ function ChatComposerComponent({
                           alt={attachment.name || 'Attached image'}
                           className="h-full w-full object-cover"
                         />
-                      </button>
+                      </Button>
                     ) : (
                       <div className="rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-700">
                         <span className="mr-1">📄</span>
                         <span className="truncate">{attachment.name}</span>
                       </div>
                     )}
-                    <button
+                    <Button
                       type="button"
                       aria-label="Remove attachment"
                       onClick={(event) => {
@@ -1986,7 +1989,7 @@ function ChatComposerComponent({
                         size={20}
                         strokeWidth={1.5}
                       />
-                    </button>
+                    </Button>
                     <div className="mt-1 truncate text-xs font-medium text-primary-700">
                       {attachment.name}
                     </div>
@@ -2005,7 +2008,7 @@ function ChatComposerComponent({
           <>
             <div className="flex items-center gap-2 px-3 py-2">
               {/* + button — opens bottom sheet actions menu */}
-              <button
+              <Button
                 type="button"
                 aria-label="Actions"
                 disabled={disabled}
@@ -2017,10 +2020,11 @@ function ChatComposerComponent({
                 className="size-8 shrink-0 rounded-full bg-neutral-100 dark:bg-white/10 flex items-center justify-center text-primary-600 active:bg-neutral-200 dark:active:bg-white/20 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <HugeiconsIcon icon={Add01Icon} size={18} strokeWidth={1.5} />
-              </button>
+              </Button>
 
               {/* Textarea — flex-1, auto-growing */}
               <PromptInputTextarea
+                aria-label={promptPlaceholder}
                 placeholder={promptPlaceholder}
                 autoFocus
                 inputRef={promptRef}
@@ -2045,7 +2049,7 @@ function ChatComposerComponent({
               {/* Right side: stop / send / mic */}
               <div className="shrink-0">
                 {isLoading ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={handleAbort}
                     aria-label="Stop generation"
@@ -2057,9 +2061,9 @@ function ChatComposerComponent({
                       strokeWidth={2}
                       className="theme-danger-contrast"
                     />
-                  </button>
+                  </Button>
                 ) : isAudioInputActive ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={handleStopAudioInput}
                     aria-label={audioInputLabel}
@@ -2069,11 +2073,11 @@ function ChatComposerComponent({
                       themeId={themeId}
                       label={audioInputLabel}
                     />
-                  </button>
+                  </Button>
                 ) : value.trim().length > 0 ||
                   attachments.length > 0 ||
                   attachmentProcessingCount > 0 ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={handleSubmit}
                     disabled={submitDisabled}
@@ -2086,9 +2090,9 @@ function ChatComposerComponent({
                       iconSize={18}
                       strokeWidth={2}
                     />
-                  </button>
+                  </Button>
                 ) : voiceInput.isSupported || voiceRecorder.isSupported ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       if (voiceInput.isListening) {
@@ -2130,9 +2134,9 @@ function ChatComposerComponent({
                         <span className="relative inline-flex size-3 rounded-full bg-red-500" />
                       </span>
                     ) : null}
-                  </button>
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     type="button"
                     onClick={handleSubmit}
                     disabled={submitDisabled}
@@ -2145,7 +2149,7 @@ function ChatComposerComponent({
                       iconSize={18}
                       strokeWidth={2}
                     />
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -2153,7 +2157,7 @@ function ChatComposerComponent({
             {typeof document !== 'undefined' && isMobileActionsMenuOpen
               ? createPortal(
                   <>
-                    <button
+                    <Button
                       type="button"
                       aria-label="Close actions"
                       className="fixed inset-0 z-[199] bg-black/30"
@@ -2162,10 +2166,10 @@ function ChatComposerComponent({
                         setIsModelMenuOpen(false)
                       }}
                     />
-                    <div
+                    <DialogSurface
                       className="fixed bottom-0 left-0 right-0 z-[200] rounded-t-2xl bg-white shadow-2xl pb-safe dark:bg-neutral-900 animate-in slide-in-from-bottom-10 duration-200"
-                      role="dialog"
                       aria-label="Actions"
+                      onDismiss={() => setIsMobileActionsMenuOpen(false)}
                       onClick={(event) => event.stopPropagation()}
                     >
                       <div className="mx-auto mt-3 mb-4 h-1 w-10 rounded-full bg-neutral-300 dark:bg-neutral-600" />
@@ -2174,7 +2178,7 @@ function ChatComposerComponent({
                       </div>
                       <div className="grid grid-cols-2 gap-2 px-4 pb-4">
                         {/* Attach File — keep sheet open so iOS picker can layer on top */}
-                        <button
+                        <Button
                           type="button"
                           disabled={disabled}
                           onClick={(event) => {
@@ -2193,10 +2197,10 @@ function ChatComposerComponent({
                           <span className="text-sm font-medium text-neutral-800 dark:text-neutral-100">
                             Attach File
                           </span>
-                        </button>
+                        </Button>
 
                         {/* Model selector — opens model picker sheet on top */}
-                        <button
+                        <Button
                           type="button"
                           disabled={isModelSwitcherDisabled}
                           onClick={(event) => {
@@ -2218,10 +2222,10 @@ function ChatComposerComponent({
                           <span className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate max-w-full">
                             {modelButtonLabel}
                           </span>
-                        </button>
+                        </Button>
 
                         {hasDraft && !isLoading ? (
-                          <button
+                          <Button
                             type="button"
                             onClick={() => {
                               handleClearDraft()
@@ -2239,11 +2243,11 @@ function ChatComposerComponent({
                             <span className="text-sm font-medium text-neutral-800 dark:text-neutral-100">
                               Clear Draft
                             </span>
-                          </button>
+                          </Button>
                         ) : null}
 
                         {onNewSession ? (
-                          <button
+                          <Button
                             type="button"
                             onClick={() => {
                               onNewSession()
@@ -2261,10 +2265,10 @@ function ChatComposerComponent({
                             <span className="text-sm font-medium text-neutral-800 dark:text-neutral-100">
                               New Session
                             </span>
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
-                    </div>
+                    </DialogSurface>
                   </>,
                   document.body,
                 )
@@ -2274,16 +2278,16 @@ function ChatComposerComponent({
             {typeof document !== 'undefined' && isModelMenuOpen
               ? createPortal(
                   <>
-                    <button
+                    <Button
                       type="button"
                       aria-label="Close model picker"
                       className="fixed inset-0 z-[209] bg-black/30"
                       onClick={() => setIsModelMenuOpen(false)}
                     />
-                    <div
+                    <DialogSurface
                       className="fixed bottom-0 left-0 right-0 z-[210] rounded-t-2xl bg-white shadow-2xl pb-safe dark:bg-neutral-900 animate-in slide-in-from-bottom-10 duration-200"
-                      role="dialog"
                       aria-label="Select model"
+                      onDismiss={() => setIsModelMenuOpen(false)}
                       onClick={(event) => event.stopPropagation()}
                     >
                       <div className="mx-auto mt-3 mb-4 h-1 w-10 rounded-full bg-neutral-300 dark:bg-neutral-600" />
@@ -2366,7 +2370,7 @@ function ChatComposerComponent({
                                 key={entry.id}
                                 className="group relative flex items-center"
                               >
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() => {
                                     handleModelSelect(
@@ -2392,8 +2396,8 @@ function ChatComposerComponent({
                                   {isActive && (
                                     <span className="size-1.5 rounded-full bg-accent-500 shrink-0" />
                                   )}
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -2424,7 +2428,7 @@ function ChatComposerComponent({
                                   >
                                     <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" />
                                   </svg>
-                                </button>
+                                </Button>
                               </div>
                             )
                           }
@@ -2463,7 +2467,7 @@ function ChatComposerComponent({
                           )
                         })()}
                       </div>
-                    </div>
+                    </DialogSurface>
                   </>,
                   document.body,
                 )
@@ -2473,6 +2477,7 @@ function ChatComposerComponent({
           /* ── Desktop: original layout ── */
           <>
             <PromptInputTextarea
+              aria-label={promptPlaceholder}
               placeholder={promptPlaceholder}
               autoFocus
               inputRef={promptRef}
@@ -2540,7 +2545,7 @@ function ChatComposerComponent({
                   className="ml-0.5 md:ml-1 flex min-w-0 items-center"
                   ref={modelSelectorRef}
                 >
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setIsModelMenuOpen((prev) => !prev)}
                     disabled={isModelSwitcherDisabled}
@@ -2550,10 +2555,12 @@ function ChatComposerComponent({
                     <span className="max-w-[5.5rem] truncate sm:max-w-[8.5rem] md:max-w-[12rem]">
                       {modelButtonLabel}
                     </span>
-                  </button>
+                  </Button>
                   {isModelMenuOpen && (
                     <>
-                      <div
+                      <Button
+                        type="button"
+                        aria-label="Close model menu"
                         className="fixed inset-0 z-[199]"
                         onClick={() => setIsModelMenuOpen(false)}
                       />
@@ -2626,7 +2633,7 @@ function ChatComposerComponent({
                                   key={entry.id}
                                   className="group relative flex items-center"
                                 >
-                                  <button
+                                  <Button
                                     type="button"
                                     onClick={() => {
                                       handleModelSelect(
@@ -2652,8 +2659,8 @@ function ChatComposerComponent({
                                     {isActive && (
                                       <span className="h-1.5 w-1.5 rounded-full bg-accent-500" />
                                     )}
-                                  </button>
-                                  <button
+                                  </Button>
+                                  <Button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation()
@@ -2684,7 +2691,7 @@ function ChatComposerComponent({
                                     >
                                       <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" />
                                     </svg>
-                                  </button>
+                                  </Button>
                                 </div>
                               )
                             }
@@ -2852,13 +2859,13 @@ function ChatComposerComponent({
       {/* Fullscreen image preview overlay — portaled to body to escape stacking context */}
       {previewImage &&
         createPortal(
-          <div
+          <DialogSurface
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => setPreviewImage(null)}
-            role="dialog"
             aria-label="Image preview"
+            onDismiss={() => setPreviewImage(null)}
           >
-            <button
+            <Button
               type="button"
               className="absolute right-4 top-4 z-10 inline-flex size-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white dark:hover:bg-white/10/30 active:bg-white/40 transition-colors"
               onClick={(e) => {
@@ -2868,14 +2875,14 @@ function ChatComposerComponent({
               aria-label="Close preview"
             >
               <HugeiconsIcon icon={Cancel01Icon} size={24} strokeWidth={2} />
-            </button>
+            </Button>
             <img
               src={previewImage.url}
               alt={previewImage.name}
               className="max-h-[85vh] max-w-[92vw] rounded-lg object-contain shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             />
-          </div>,
+          </DialogSurface>,
           document.body,
         )}
     </div>

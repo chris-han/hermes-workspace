@@ -1,3 +1,7 @@
+import { Input } from '@/components/ui/input'
+
+import { Textarea } from '@/components/ui/form-controls'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -9,6 +13,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { AGENT_PRESETS } from '../agent-presets'
 import type { GatewayModelCatalogEntry } from '@/lib/gateway-api'
 import { Button } from '@/components/ui/button'
+import { DialogSurface } from '@/components/ui/dialog-surface'
 import { fetchModels } from '@/lib/gateway-api'
 import { cn } from '@/lib/utils'
 
@@ -100,7 +105,7 @@ function ModelSelector({
 
   return (
     <div className="relative" ref={containerRef}>
-      <button
+      <Button
         type="button"
         onClick={() => setOpen((current) => !current)}
         className="inline-flex min-h-[3rem] w-full cursor-pointer items-center justify-between gap-3 rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-left text-sm text-[var(--theme-text)]"
@@ -119,13 +124,13 @@ function ModelSelector({
             open && 'rotate-180',
           )}
         />
-      </button>
+      </Button>
 
       {open ? (
         <div className="absolute left-0 top-[calc(100%+0.5rem)] z-[80] w-full overflow-hidden rounded-card border border-[var(--theme-border2)] bg-[var(--theme-card)]">
           <div className="max-h-80 overflow-y-auto p-2">
             {models.map((model) => (
-              <button
+              <Button
                 key={model.id}
                 type="button"
                 onClick={() => {
@@ -140,7 +145,7 @@ function ModelSelector({
                 )}
               >
                 {model.provider} / {model.name}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -212,9 +217,10 @@ export function AgentRosterNewAgentModal({
   if (!open) return null
 
   return (
-    <div
+    <DialogSurface
       className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--theme-bg)_48%,transparent)] px-4 py-6 backdrop-blur-md"
       onClick={onClose}
+      onDismiss={onClose}
     >
       <div
         className="w-full max-w-3xl rounded-card border border-[var(--theme-border2)] bg-[var(--theme-card)] p-6"
@@ -234,13 +240,13 @@ export function AgentRosterNewAgentModal({
               </p>
             </div>
           </div>
-          <button
+          <Button
             type="button"
             onClick={onClose}
             className="cursor-pointer rounded-button border border-[var(--theme-border)] bg-[var(--theme-bg)] p-2 text-[var(--theme-muted)] hover:text-[var(--theme-text)]"
           >
             <HugeiconsIcon icon={Cancel01Icon} size={18} strokeWidth={1.8} />
-          </button>
+          </Button>
         </div>
 
         <div className="mt-6 space-y-2">
@@ -249,7 +255,7 @@ export function AgentRosterNewAgentModal({
           </span>
           <div className="flex flex-wrap gap-2">
             {PRESET_OPTIONS.map((preset) => (
-              <button
+              <Button
                 key={preset.id}
                 type="button"
                 onClick={() => applyPreset(preset.id)}
@@ -262,7 +268,7 @@ export function AgentRosterNewAgentModal({
               >
                 <span aria-hidden="true">{preset.emoji}</span>
                 <span>{preset.name}</span>
-              </button>
+              </Button>
             ))}
           </div>
           <p className="text-xs text-[var(--theme-muted)]">
@@ -276,7 +282,7 @@ export function AgentRosterNewAgentModal({
             <span className="text-sm font-medium text-[var(--theme-text)]">
               Name
             </span>
-            <input
+            <Input
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Sage"
@@ -288,7 +294,7 @@ export function AgentRosterNewAgentModal({
             <span className="text-sm font-medium text-[var(--theme-text)]">
               Emoji
             </span>
-            <input
+            <Input
               value={emoji}
               onChange={(event) => setEmoji(event.target.value)}
               placeholder="🐦"
@@ -308,7 +314,7 @@ export function AgentRosterNewAgentModal({
           <span className="text-sm font-medium text-[var(--theme-text)]">
             Description
           </span>
-          <input
+          <Input
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             placeholder="X/Twitter growth agent"
@@ -320,7 +326,7 @@ export function AgentRosterNewAgentModal({
           <span className="text-sm font-medium text-[var(--theme-text)]">
             System Prompt
           </span>
-          <textarea
+          <Textarea
             value={systemPrompt}
             onChange={(event) => setSystemPrompt(event.target.value)}
             placeholder="You are Sage, an expert..."
@@ -353,6 +359,6 @@ export function AgentRosterNewAgentModal({
           </Button>
         </div>
       </div>
-    </div>
+    </DialogSurface>
   )
 }

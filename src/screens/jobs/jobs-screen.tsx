@@ -1,5 +1,9 @@
 'use client'
 
+import { Input } from '@/components/ui/input'
+
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
@@ -192,7 +196,7 @@ function JobCard({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button
+          <Button
             onClick={() => setExpanded((current) => !current)}
             className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title={expanded ? 'Hide run history' : 'Show run history'}
@@ -202,8 +206,8 @@ function JobCard({
               size={14}
               className="text-[var(--theme-muted)]"
             />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => onTrigger(job.id)}
             className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title="Run now"
@@ -213,8 +217,8 @@ function JobCard({
               size={14}
               className="text-[var(--theme-accent)]"
             />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => (isPaused ? onResume(job.id) : onPause(job.id))}
             className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title={isPaused ? 'Resume' : 'Pause'}
@@ -224,8 +228,8 @@ function JobCard({
               size={14}
               className="text-[var(--theme-muted)]"
             />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => onEdit(job)}
             className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title="Edit"
@@ -235,9 +239,9 @@ function JobCard({
               size={14}
               className="text-[var(--theme-muted)]"
             />
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={() => onDelete()}
             className="cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
             title="Delete"
@@ -247,7 +251,7 @@ function JobCard({
               size={14}
               style={{ color: 'var(--theme-danger)' }}
             />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -431,7 +435,7 @@ export function JobsScreen() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 onClick={() =>
                   void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
                 }
@@ -443,8 +447,8 @@ export function JobsScreen() {
                   size={16}
                   className="text-[var(--theme-muted)]"
                 />
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setShowCreate(true)}
                 className="flex cursor-pointer items-center gap-1.5 rounded-button px-3 py-1.5 text-xs font-medium transition-colors hover:scale-105 active:scale-95"
                 style={{
@@ -454,7 +458,7 @@ export function JobsScreen() {
               >
                 <HugeiconsIcon icon={Add01Icon} size={14} />
                 New Job
-              </button>
+              </Button>
             </div>
           </div>
         </header>
@@ -466,7 +470,8 @@ export function JobsScreen() {
               size={14}
               className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--theme-muted)]"
             />
-            <input
+            <Input
+              aria-label="Search jobs"
               type="text"
               placeholder="Search jobs..."
               value={search}
@@ -558,7 +563,7 @@ export function JobsScreen() {
                 <DialogClose className="px-3 py-1.5 text-xs">
                   Cancel
                 </DialogClose>
-                <button
+                <Button
                   onClick={() => {
                     if (deletingJob) {
                       deleteMutation.mutate(deletingJob.id)
@@ -569,7 +574,7 @@ export function JobsScreen() {
                   style={{ background: 'var(--theme-danger)' }}
                 >
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
           </DialogContent>

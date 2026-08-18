@@ -1,3 +1,7 @@
+import { Input } from '@/components/ui/input'
+
+import { Textarea } from '@/components/ui/form-controls'
+
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Add01Icon, Clock01Icon, Tick01Icon } from '@hugeicons/core-free-icons'
@@ -112,7 +116,7 @@ export function AgentRosterJobs({
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-3">
-                    <button
+                    <Button
                       type="button"
                       onClick={() =>
                         toggleMutation.mutate({
@@ -131,7 +135,7 @@ export function AgentRosterJobs({
                           className="text-[var(--theme-success)]"
                         />
                       ) : null}
-                    </button>
+                    </Button>
                     <div>
                       <p className="text-sm font-semibold capitalize text-[var(--theme-text)]">
                         {displayJobName(job, agentId)}
@@ -176,7 +180,7 @@ export function AgentRosterJobs({
               <span className="text-sm font-medium text-[var(--theme-text)]">
                 Job Name
               </span>
-              <input
+              <Input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="Daily scan"
@@ -187,7 +191,7 @@ export function AgentRosterJobs({
               <span className="text-sm font-medium text-[var(--theme-text)]">
                 Schedule
               </span>
-              <input
+              <Input
                 value={schedule}
                 onChange={(event) => setSchedule(event.target.value)}
                 placeholder="0 9 * * *"
@@ -199,7 +203,7 @@ export function AgentRosterJobs({
             <span className="text-sm font-medium text-[var(--theme-text)]">
               Description
             </span>
-            <textarea
+            <Textarea
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder="What this job should do"

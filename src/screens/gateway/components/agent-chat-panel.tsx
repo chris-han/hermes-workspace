@@ -1,3 +1,8 @@
+import { Textarea } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+import { DialogSurface } from '@/components/ui/dialog-surface'
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SessionHistoryMessage } from '@/lib/gateway-api'
 import { cn } from '@/lib/utils'
@@ -224,9 +229,10 @@ export function AgentChatPanel({
   }, [])
 
   return (
-    <div
+    <DialogSurface
       className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm"
       onClick={onClose}
+      onDismiss={onClose}
     >
       <div
         className="flex h-full w-full max-w-lg flex-col bg-white shadow-2xl dark:bg-slate-900 animate-in slide-in-from-right duration-200"
@@ -256,21 +262,21 @@ export function AgentChatPanel({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
               onClick={() => void loadHistory()}
               disabled={loading}
               className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
             >
               {loading ? '↻' : '↻ Refresh'}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={onClose}
               className="flex size-8 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
             >
               ✕
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -339,7 +345,7 @@ export function AgentChatPanel({
         {/* ── Input ───────────────────────────────────────────────────────── */}
         <div className="border-t border-neutral-200 px-4 py-3 dark:border-neutral-700">
           <div className="flex items-end gap-2">
-            <textarea
+            <Textarea
               ref={textareaRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -360,7 +366,7 @@ export function AgentChatPanel({
                 }
               }}
             />
-            <button
+            <Button
               type="button"
               disabled={!draft.trim() || !sessionKey || sending}
               onClick={() => void handleSend()}
@@ -370,7 +376,7 @@ export function AgentChatPanel({
               )}
             >
               {sending ? '…' : isRunning ? 'Steer ⌘↵' : 'Send ⌘↵'}
-            </button>
+            </Button>
           </div>
           <p className="mt-1.5 text-[10px] text-neutral-400">
             {isRunning
@@ -379,6 +385,6 @@ export function AgentChatPanel({
           </p>
         </div>
       </div>
-    </div>
+    </DialogSurface>
   )
 }

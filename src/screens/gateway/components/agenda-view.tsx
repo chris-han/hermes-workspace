@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
@@ -162,7 +164,7 @@ function SectionCard({
           : 'border-primary-800 bg-primary-900',
       )}
     >
-      <button
+      <Button
         type="button"
         onClick={() => onToggle(id)}
         className="flex w-full items-center justify-between gap-3 text-left"
@@ -176,7 +178,7 @@ function SectionCard({
             {open ? 'Hide' : 'Show'}
           </span>
         </div>
-      </button>
+      </Button>
 
       <AnimatePresence initial={false}>
         {open && (

@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { emitFeedEvent, onFeedEvent } from './feed-event-bus'
 import type { FeedEvent, FeedEventType } from './feed-event-bus'
@@ -300,13 +302,13 @@ export function LiveFeedPanel() {
         </h2>
         <div className="flex items-center gap-2">
           {events.length > 0 ? (
-            <button
+            <Button
               type="button"
               onClick={() => setEvents([])}
               className="rounded px-1.5 py-0.5 text-[10px] text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
             >
               Clear
-            </button>
+            </Button>
           ) : null}
           {/* Animated LIVE badge */}
           <span className="flex items-center gap-1.5 rounded-full border border-emerald-800/50 bg-emerald-950/40 px-2 py-0.5 text-[9px] font-bold tracking-wider text-emerald-400">
@@ -322,7 +324,7 @@ export function LiveFeedPanel() {
       {/* ── Filters ─────────────────────────────────────────────────────── */}
       <div className="flex shrink-0 gap-0.5 border-b border-neutral-200 px-2 py-1.5 dark:border-neutral-800">
         {FILTERS.map((tab) => (
-          <button
+          <Button
             key={tab}
             type="button"
             onClick={() => setActiveFilter(tab)}
@@ -334,7 +336,7 @@ export function LiveFeedPanel() {
             )}
           >
             {tab}
-          </button>
+          </Button>
         ))}
       </div>
 

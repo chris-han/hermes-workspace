@@ -1,3 +1,7 @@
+import { Disclosure, DisclosureSummary } from '@/components/ui/disclosure'
+
+import { Button } from '@/components/ui/button'
+
 import {
   ArrowRight,
   CircleAlert,
@@ -100,13 +104,13 @@ export function GraphCanvas({
                 width="150"
                 height="32"
               >
-                <button
+                <Button
                   type="button"
                   className="rounded-md border border-border bg-background px-2 py-1 text-[10px] font-medium text-foreground shadow-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--focus-blue)]"
                   onClick={() => onSelect({ type: 'edge', id: edge.id })}
                 >
                   {edge.predicateLabel}
-                </button>
+                </Button>
               </foreignObject>
             </g>
           ))}
@@ -141,7 +145,7 @@ export function GraphCanvas({
                   ? FileText
                   : GitBranch
           return (
-            <button
+            <Button
               key={node.id}
               type="button"
               aria-label={`${node.kind}: ${node.label}, ${node.governanceState}`}
@@ -164,36 +168,36 @@ export function GraphCanvas({
                 {node.authorityRole}
               </span>
               <span className="text-[10px]">{node.governanceState}</span>
-            </button>
+            </Button>
           )
         })}
         </div>
       </div>
-      <details className="border-t border-border px-3 py-2 text-xs">
-        <summary className="cursor-pointer font-medium">Keyboard graph objects</summary>
+      <Disclosure className="border-t border-border px-3 py-2 text-xs">
+        <DisclosureSummary className="cursor-pointer font-medium">Keyboard graph objects</DisclosureSummary>
         <div className="mt-2 flex max-h-32 flex-wrap gap-1 overflow-auto">
           {projection.nodes.map((node) => (
-            <button
+            <Button
               key={node.id}
               type="button"
               className="rounded border border-border px-2 py-1 text-left hover:bg-muted"
               onClick={() => onSelect({ type: 'node', id: node.id })}
             >
               {node.label}
-            </button>
+            </Button>
           ))}
           {projection.edges.map((edge) => (
-            <button
+            <Button
               key={edge.id}
               type="button"
               className="rounded border border-border px-2 py-1 text-left hover:bg-muted"
               onClick={() => onSelect({ type: 'edge', id: edge.id })}
             >
               {edge.predicateLabel}: {edge.source} → {edge.target}
-            </button>
+            </Button>
           ))}
         </div>
-      </details>
+      </Disclosure>
     </section>
   )
 }

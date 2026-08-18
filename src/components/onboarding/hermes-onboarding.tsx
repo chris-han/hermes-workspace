@@ -1,5 +1,11 @@
 'use client'
 
+import { Input } from '@/components/ui/input'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
@@ -569,7 +575,7 @@ export function HermesOnboarding() {
                 <code>SEMANTIER_AGENT_API_URL</code>. Hermes Workspace talks to
                 that backend surface directly.
               </p>
-              <button
+              <Button
                 onClick={() => {
                   setStep('connect')
                   void checkBackend()
@@ -577,8 +583,8 @@ export function HermesOnboarding() {
                 className="w-full rounded-xl bg-accent-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-600"
               >
                 Connect Backend
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={async () => {
                   setDemoSeeding('seeding')
                   setDemoError('')
@@ -595,9 +601,9 @@ export function HermesOnboarding() {
                 style={{ borderColor: 'var(--theme-border)' }}
               >
                 {demoSeeding === 'seeding' ? '正在准备演示...' : '试用 索阳 示例公司'}
-              </button>
+              </Button>
               {demoError ? <p className="text-xs text-red-400">{demoError}</p> : null}
-              <button
+              <Button
                 onClick={async () => {
                   setDemoInsightsSeeding('seeding')
                   setDemoInsightsError('')
@@ -614,11 +620,11 @@ export function HermesOnboarding() {
                 style={{ borderColor: 'var(--theme-border)' }}
               >
                 {demoInsightsSeeding === 'seeding' ? '正在准备并生成洞察...' : '试用并生成 3 条示例洞察'}
-              </button>
+              </Button>
               {demoInsightsError ? <p className="text-xs text-red-400">{demoInsightsError}</p> : null}
-              <button onClick={complete} className="text-xs" style={mutedStyle}>
+              <Button onClick={complete} className="text-xs" style={mutedStyle}>
                 Skip setup
-              </button>
+              </Button>
             </div>
           )}
 
@@ -694,14 +700,14 @@ export function HermesOnboarding() {
               )}
 
               <div className="flex gap-2">
-                <button
+                <Button
                   onClick={() => void checkBackend()}
                   className="flex-1 rounded-xl border py-3 text-sm font-semibold transition-colors"
                   style={{ borderColor: 'var(--theme-border)' }}
                 >
                   Retry
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => {
                     setStep('provider')
                     void loadModels()
@@ -710,7 +716,7 @@ export function HermesOnboarding() {
                   className="flex-1 rounded-xl bg-accent-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-600 disabled:opacity-50"
                 >
                   Continue
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -743,7 +749,7 @@ export function HermesOnboarding() {
 
               <div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto pr-1">
                 {PROVIDERS.map((p) => (
-                  <button
+                  <Button
                     key={p.id}
                     onClick={() => {
                       setSelectedProvider(p.id)
@@ -771,7 +777,7 @@ export function HermesOnboarding() {
                     {selectedProvider === p.id ? (
                       <span className="ml-auto size-2.5 shrink-0 rounded-full bg-green-500" />
                     ) : null}
-                  </button>
+                  </Button>
                 ))}
               </div>
 
@@ -784,12 +790,12 @@ export function HermesOnboarding() {
                     style={{ ...cardStyle, borderColor: 'var(--theme-border)' }}
                   >
                     {oauthStep === 'idle' && (
-                      <button
+                      <Button
                         onClick={startNousOAuth}
                         className="w-full rounded-lg bg-accent-500 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-600"
                       >
                         Connect with Nous Portal
-                      </button>
+                      </Button>
                     )}
                     {oauthStep === 'loading' && (
                       <div
@@ -820,7 +826,7 @@ export function HermesOnboarding() {
                           </div>
                         ) : null}
                         {oauthVerificationUrl ? (
-                          <button
+                          <Button
                             onClick={() =>
                               window.open(oauthVerificationUrl, '_blank')
                             }
@@ -828,7 +834,7 @@ export function HermesOnboarding() {
                             style={{ borderColor: 'var(--theme-border)' }}
                           >
                             Open Nous Portal ↗
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                     )}
@@ -843,12 +849,12 @@ export function HermesOnboarding() {
                         <p className="text-xs text-red-400">
                           {oauthError || 'Authentication failed'}
                         </p>
-                        <button
+                        <Button
                           onClick={startNousOAuth}
                           className="w-full rounded-lg bg-accent-500 py-2 text-xs font-medium text-white"
                         >
                           Retry
-                        </button>
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -873,7 +879,7 @@ export function HermesOnboarding() {
                       After the login flow completes, click below to refresh
                       provider settings.
                     </p>
-                    <button
+                    <Button
                       onClick={async () => {
                         await saveProviderConfig()
                         await loadModels()
@@ -881,7 +887,7 @@ export function HermesOnboarding() {
                       className="w-full rounded-lg bg-accent-500 py-2 text-xs font-medium text-white"
                     >
                       I&apos;ve authenticated
-                    </button>
+                    </Button>
                   </div>
                 )}
 
@@ -899,7 +905,7 @@ export function HermesOnboarding() {
                             ? 'Atomic Chat URL'
                             : 'Base URL'}
                       </label>
-                      <input
+                      <Input
                         type="text"
                         value={baseUrl}
                         onChange={(e) => setBaseUrl(e.target.value)}
@@ -923,7 +929,7 @@ export function HermesOnboarding() {
                       >
                         API Key
                       </label>
-                      <input
+                      <Input
                         type="password"
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
@@ -944,7 +950,7 @@ export function HermesOnboarding() {
                   Model
                 </label>
                 {availableModels.length > 0 ? (
-                  <select
+                  <NativeSelect
                     value={selectedModel}
                     onChange={(e) =>
                       setSelectedModel(stripProviderPrefix(e.target.value))
@@ -957,9 +963,9 @@ export function HermesOnboarding() {
                         {stripProviderPrefix(model)}
                       </option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 ) : (
-                  <input
+                  <Input
                     type="text"
                     value={selectedModel}
                     onChange={(e) => setSelectedModel(e.target.value)}
@@ -991,7 +997,7 @@ export function HermesOnboarding() {
                 {selectedProvider &&
                 canEditConfig &&
                 (needsApiKey || needsBaseUrl) ? (
-                  <button
+                  <Button
                     onClick={() => void saveProviderConfig()}
                     disabled={
                       saving || (needsApiKey && !apiKey && !needsBaseUrl)
@@ -999,9 +1005,9 @@ export function HermesOnboarding() {
                     className="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
                   >
                     {saving ? 'Saving...' : 'Save Settings'}
-                  </button>
+                  </Button>
                 ) : null}
-                <button
+                <Button
                   onClick={async () => {
                     let ok = true
                     if (
@@ -1024,7 +1030,7 @@ export function HermesOnboarding() {
                   className="flex-1 rounded-xl bg-accent-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-600 disabled:opacity-50"
                 >
                   Continue →
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -1057,12 +1063,12 @@ export function HermesOnboarding() {
               </div>
 
               {testStatus === 'idle' ? (
-                <button
+                <Button
                   onClick={testConnection}
                   className="w-full rounded-xl bg-accent-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-600"
                 >
                   Send Test Message
-                </button>
+                </Button>
               ) : null}
 
               {testStatus === 'testing' ? (
@@ -1086,12 +1092,12 @@ export function HermesOnboarding() {
                     </span>{' '}
                     <span>{testMessage}</span>
                   </div>
-                  <button
+                  <Button
                     onClick={() => setStep('done')}
                     className="w-full rounded-xl bg-green-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-green-700"
                   >
                     Continue
-                  </button>
+                  </Button>
                 </div>
               ) : null}
 
@@ -1121,27 +1127,27 @@ export function HermesOnboarding() {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       onClick={testConnection}
                       className="flex-1 rounded-lg bg-accent-500 py-2 text-xs font-medium text-white"
                     >
                       Retry
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => setStep('provider')}
                       className="flex-1 rounded-lg border py-2 text-xs font-medium"
                       style={{ borderColor: 'var(--theme-border)' }}
                     >
                       ← Back
-                    </button>
+                    </Button>
                   </div>
-                  <button
+                  <Button
                     onClick={() => setStep('done')}
                     className="mx-auto block text-xs"
                     style={mutedStyle}
                   >
                     Skip for now
-                  </button>
+                  </Button>
                 </div>
               ) : null}
             </div>
@@ -1186,12 +1192,12 @@ export function HermesOnboarding() {
                   Available now: {enhancedFeatures.join(', ')}.
                 </p>
               ) : null}
-              <button
+              <Button
                 onClick={complete}
                 className="w-full rounded-xl bg-accent-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-600"
               >
                 Open Workspace
-              </button>
+              </Button>
             </div>
           )}
         </motion.div>

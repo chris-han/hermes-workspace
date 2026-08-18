@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -61,7 +63,7 @@ function OverflowGrid({
       </h3>
       <div className="grid grid-cols-2 gap-2">
         {items.map((item) => (
-          <button
+          <Button
             key={item.to}
             type="button"
             onClick={() => onSelect(item.to)}
@@ -74,7 +76,7 @@ function OverflowGrid({
               <HugeiconsIcon icon={item.icon} size={16} strokeWidth={1.6} />
             </span>
             <span className="truncate font-medium">{item.label}</span>
-          </button>
+          </Button>
         ))}
       </div>
     </section>
@@ -123,7 +125,7 @@ export function DashboardOverflowPanel({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[80] no-swipe md:hidden">
-      <button
+      <Button
         type="button"
         className="absolute inset-0 bg-black/40 animate-in fade-in duration-200"
         aria-label="Close overflow panel"
@@ -137,7 +139,7 @@ export function DashboardOverflowPanel({ open, onClose }: Props) {
             <h3 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-primary-500">
               Quick Menu
             </h3>
-            <button
+            <Button
               type="button"
               onClick={toggleThemeWithinFamily}
               className="flex w-full items-center justify-between rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-left text-sm text-ink transition-colors hover:border-accent-200 hover:bg-accent-50 active:scale-[0.99]"
@@ -151,7 +153,7 @@ export function DashboardOverflowPanel({ open, onClose }: Props) {
               <span className="text-xs text-primary-500">
                 Tap for {nextTheme}
               </span>
-            </button>
+            </Button>
           </section>
           <OverflowGrid
             title="System"

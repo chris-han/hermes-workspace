@@ -1,3 +1,13 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Input } from '@/components/ui/input'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Textarea } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { Fragment, useState } from 'react'
 import type { A2UiNode, A2UiSchema } from '../types'
 
@@ -163,7 +173,7 @@ function SchemaForm({
         <label key={field.key} className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">{field.label}</span>
           {field.type === 'textarea' ? (
-            <textarea
+            <Textarea
               value={asString(values[field.key])}
               onChange={(event) => setFieldValue(field.key, event.target.value)}
               rows={3}
@@ -172,7 +182,7 @@ function SchemaForm({
               required={field.required}
             />
           ) : field.type === 'select' ? (
-            <select
+            <NativeSelect
               value={asString(values[field.key])}
               onChange={(event) => setFieldValue(field.key, event.target.value)}
               className="rounded-md border border-border bg-background px-2.5 py-2 text-sm"
@@ -186,9 +196,9 @@ function SchemaForm({
                   {option.label}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           ) : (
-            <input
+            <Input
               type={field.type === 'datetime' ? 'text' : field.type}
               value={asString(values[field.key])}
               onChange={(event) => setFieldValue(field.key, event.target.value)}
@@ -201,12 +211,12 @@ function SchemaForm({
           )}
         </label>
       ))}
-      <button
+      <Button
         type="submit"
         className="theme-accent-button inline-flex w-fit items-center rounded-md border px-3 py-1.5 text-xs hover:opacity-90"
       >
         {submitLabel}
-      </button>
+      </Button>
     </form>
   )
 }
@@ -312,7 +322,7 @@ function renderNode(
       const value = asString(props.value)
       if (href) {
         return (
-          <a
+          <DsLink
             key={key}
             href={href}
             target="_blank"
@@ -320,11 +330,11 @@ function renderNode(
             className="inline-flex items-center rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"
           >
             {text}
-          </a>
+          </DsLink>
         )
       }
       return (
-        <button
+        <Button
           key={key}
           type="button"
           className="inline-flex items-center rounded-md border border-border px-2.5 py-1.5 text-xs opacity-80"
@@ -340,7 +350,7 @@ function renderNode(
           }}
         >
           {text}
-        </button>
+        </Button>
       )
     }
     case 'schema_form': {

@@ -1,5 +1,7 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -252,22 +254,22 @@ function AgentCard({ member }: { member: MissionControlMember }) {
 
         {/* Footer actions */}
         <div className="flex justify-between">
-          <button
+          <Button
             type="button"
             onClick={handleViewTasks}
             className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted px-2.5 py-1.5 rounded-button transition-colors -ml-2.5"
           >
             <HugeiconsIcon icon={CheckListIcon} size={12} />
             Tasks
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={handleViewJobs}
             className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted px-2.5 py-1.5 rounded-button transition-colors -mr-2.5"
           >
             <HugeiconsIcon icon={Clock01Icon} size={12} />
             Cron Jobs
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -362,7 +364,7 @@ export function MissionControlScreen() {
               ) : null}
             </div>
           </div>
-          <button
+          <Button
             type="button"
             onClick={handleRefresh}
             disabled={isLoading}
@@ -378,7 +380,7 @@ export function MissionControlScreen() {
               className={isLoading ? 'animate-spin' : ''}
             />
             Refresh manifest
-          </button>
+          </Button>
         </div>
         <div className="h-px bg-gradient-to-r from-primary/50 to-transparent" />
       </div>
@@ -387,13 +389,13 @@ export function MissionControlScreen() {
       {isError && !isLoading && (
         <div className="rounded-card border border-destructive/30 bg-destructive/10 p-4 text-sm text-danger">
           Failed to load Mission Control status.{' '}
-          <button
+          <Button
             type="button"
             onClick={handleRefresh}
             className="underline hover:text-red-300"
           >
             Retry
-          </button>
+          </Button>
         </div>
       )}
 

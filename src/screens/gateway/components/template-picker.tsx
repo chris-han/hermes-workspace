@@ -1,3 +1,7 @@
+import { Input } from '@/components/ui/input'
+
+import { Button } from '@/components/ui/button'
+
 import { useMemo, useState } from 'react'
 import { deleteTemplate, getAllTemplates } from '../lib/workflow-templates'
 import type { WorkflowTemplate } from '../lib/workflow-templates'
@@ -91,17 +95,17 @@ export function TemplatePicker({ onSelect, onClose }: TemplatePickerProps) {
           <h2 className="text-base font-semibold text-neutral-900 dark:text-white">
             Mission Templates
           </h2>
-          <button
+          <Button
             type="button"
             onClick={onClose}
             className="flex size-8 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800"
           >
             ✕
-          </button>
+          </Button>
         </div>
 
         <div className="px-5 pt-4">
-          <input
+          <Input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -171,7 +175,7 @@ function TemplateCard({
   onDelete?: () => void
 }) {
   return (
-    <button
+    <Button
       type="button"
       onClick={() => onSelect(template)}
       className={cn(
@@ -198,7 +202,7 @@ function TemplateCard({
           </p>
         </div>
         {onDelete && (
-          <button
+          <Button
             type="button"
             onClick={(e) => {
               e.stopPropagation()
@@ -207,9 +211,9 @@ function TemplateCard({
             className="shrink-0 rounded p-1 text-xs text-neutral-400 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
           >
             🗑
-          </button>
+          </Button>
         )}
       </div>
-    </button>
+    </Button>
   )
 }

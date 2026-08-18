@@ -1,3 +1,9 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Disclosure, DisclosureSummary } from '@/components/ui/disclosure'
+
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ShieldCheck,
@@ -199,11 +205,11 @@ function AuthorityEvidenceCard({
   const refs = segment.authority_refs || []
   if (refs.length === 0) return null
   return (
-    <details className="group relative">
-      <summary className="inline-flex h-6 cursor-pointer list-none items-center gap-1 rounded border border-[var(--theme-border)] px-1.5 text-[11px] text-[var(--theme-text)] transition-colors hover:bg-[var(--theme-card2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)]">
+    <Disclosure className="group relative">
+      <DisclosureSummary className="inline-flex h-6 cursor-pointer list-none items-center gap-1 rounded border border-[var(--theme-border)] px-1.5 text-[11px] text-[var(--theme-text)] transition-colors hover:bg-[var(--theme-card2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)]">
         <FileSearch className="size-3" aria-hidden="true" />
         Evidence
-      </summary>
+      </DisclosureSummary>
       <div className="absolute z-20 mt-1 w-72 rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] p-2 shadow-lg">
         <div className="space-y-1.5">
           {refs.map((ref, index) => (
@@ -228,7 +234,7 @@ function AuthorityEvidenceCard({
           ))}
         </div>
       </div>
-    </details>
+    </Disclosure>
   )
 }
 
@@ -350,7 +356,7 @@ function GovernedSegment({
           <ClassificationBadge classification={segment.classification} />
         ) : null}
         {segment.eligible_for_reveal ? (
-          <button
+          <Button
             type="button"
             onClick={state === 'revealed' ? () => remask() : reveal}
             disabled={state === 'requesting'}
@@ -367,10 +373,10 @@ function GovernedSegment({
               : state === 'revealed'
                 ? `Remask${expiresInSeconds !== null ? ` ${expiresInSeconds}s` : ''}`
                 : 'Reveal'}
-          </button>
+          </Button>
         ) : null}
         {segment.display_action !== 'NEVER_RENDER' ? (
-          <button
+          <Button
             type="button"
             onClick={copyRequest}
             className="inline-flex h-6 items-center gap-1 rounded border border-[var(--theme-border)] px-1.5 text-[11px] text-[var(--theme-text)] transition-colors hover:bg-[var(--theme-card2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)]"
@@ -378,7 +384,7 @@ function GovernedSegment({
           >
             <Copy className="size-3" aria-hidden="true" />
             Copy
-          </button>
+          </Button>
         ) : null}
         {segment.display_action === 'NEVER_RENDER' ? (
           <span className="inline-flex items-center gap-1 rounded border border-[color:color-mix(in_srgb,var(--theme-danger)_42%,var(--theme-border))] px-1.5 text-[var(--theme-danger)]">
@@ -387,12 +393,12 @@ function GovernedSegment({
           </span>
         ) : null}
         <AuthorityEvidenceCard segment={segment} />
-        <a
+        <DsLink
           href={inspectorHref}
           className="rounded border border-[var(--theme-border)] px-1.5 py-0.5 text-[11px] text-[var(--theme-text)] transition-colors hover:bg-[var(--theme-card2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)]"
         >
           Inspector
-        </a>
+        </DsLink>
       </div>
       {state === 'denied' || state === 'expired' || state === 'failed' ? (
         <div className="mt-1.5 rounded border border-[var(--theme-border)] bg-[var(--theme-card2)] px-2 py-1 text-[11px] text-[var(--theme-muted)]">
@@ -471,14 +477,14 @@ export function GovernedResponseRenderer({
             </div>
           </div>
         </div>
-        <a
+        <DsLink
           href={inspectorHref}
           className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[var(--theme-border)] px-2 text-[11px] font-medium text-[var(--theme-text)] transition-colors hover:bg-[var(--theme-card2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)]"
         >
           <FileSearch className="size-3.5" aria-hidden="true" />
           Inspector
-        </a>
-        <button
+        </DsLink>
+        <Button
           type="button"
           onClick={requestReplay}
           disabled={replayState === 'requesting'}
@@ -486,7 +492,7 @@ export function GovernedResponseRenderer({
         >
           <RotateCw className="size-3.5" aria-hidden="true" />
           {replayState === 'requesting' ? 'Checking' : 'Replay'}
-        </button>
+        </Button>
       </div>
       {replayState !== 'idle' ? (
         <div

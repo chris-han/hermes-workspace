@@ -688,7 +688,7 @@ export function TerminalWorkspace({
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runtime safety
             const isActive = tab.id === activeTab?.id
             return (
-              <button
+              <Button
                 key={tab.id}
                 type="button"
                 onClick={function onClick() {
@@ -758,7 +758,7 @@ export function TerminalWorkspace({
                     isActive ? 'opacity-100' : 'opacity-0',
                   )}
                 />
-              </button>
+              </Button>
             )
           })}
         </div>
@@ -878,7 +878,7 @@ export function TerminalWorkspace({
             event.stopPropagation()
           }}
         >
-          <button
+          <Button
             type="button"
             className="flex w-full items-center rounded px-2 py-1.5 text-left text-xs text-primary-900 hover:bg-primary-200"
             onClick={function renameTabFromMenu() {
@@ -894,8 +894,8 @@ export function TerminalWorkspace({
             }}
           >
             Rename
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             className="flex w-full items-center rounded px-2 py-1.5 text-left text-xs text-primary-900 hover:bg-primary-200"
             onClick={function closeTabFromMenu() {
@@ -906,7 +906,7 @@ export function TerminalWorkspace({
             }}
           >
             Close
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

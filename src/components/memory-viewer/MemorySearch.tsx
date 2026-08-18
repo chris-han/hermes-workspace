@@ -1,3 +1,7 @@
+import { Input } from '@/components/ui/input'
+
+import { Button } from '@/components/ui/button'
+
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Search01Icon } from '@hugeicons/core-free-icons'
 import type { MemorySearchResult } from './memory-types'
@@ -27,7 +31,7 @@ function MemorySearch({
           strokeWidth={1.5}
           className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-primary-500"
         />
-        <input
+        <Input
           value={query}
           onChange={function onChangeQuery(event) {
             onQueryChange(event.target.value)
@@ -50,7 +54,7 @@ function MemorySearch({
             <div className="max-h-44 space-y-1 overflow-y-auto">
               {results.slice(0, 20).map(function renderResult(result) {
                 return (
-                  <button
+                  <Button
                     key={`${result.path}:${result.line}:${result.snippet}`}
                     type="button"
                     onClick={function onClickResult() {
@@ -67,7 +71,7 @@ function MemorySearch({
                     <p className="line-clamp-2 text-xs text-primary-700 text-pretty">
                       {result.snippet}
                     </p>
-                  </button>
+                  </Button>
                 )
               })}
             </div>

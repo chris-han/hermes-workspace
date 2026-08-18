@@ -1,3 +1,10 @@
+import { Checkbox, Radio } from '@/components/ui/form-controls'
+
+import { Input } from '@/components/ui/input'
+
+import { Button } from '@/components/ui/button'
+import { DialogSurface } from '@/components/ui/dialog-surface'
+
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { Mode } from '@/hooks/use-modes'
 import { cn } from '@/lib/utils'
@@ -84,18 +91,18 @@ export const SaveModeDialog = memo(function SaveModeDialog({
   return (
     <>
       {/* Backdrop */}
-      <div
+      <Button
+        type="button"
+        aria-label="Close save mode dialog"
         className="fixed inset-0 z-50 bg-black/50"
         onClick={onClose}
-        aria-hidden="true"
       />
 
       {/* Dialog */}
-      <div
+      <DialogSurface
         ref={dialogRef}
-        role="dialog"
         aria-labelledby="save-mode-title"
-        aria-modal="true"
+        onDismiss={onClose}
         className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-primary-200 bg-surface p-6 shadow-xl"
       >
         <h2
@@ -113,7 +120,7 @@ export const SaveModeDialog = memo(function SaveModeDialog({
             >
               Mode Name
             </label>
-            <input
+            <Input
               ref={inputRef}
               id="mode-name"
               type="text"
@@ -145,8 +152,7 @@ export const SaveModeDialog = memo(function SaveModeDialog({
 
           <div className="mb-6">
             <label className="flex items-center gap-2 text-sm text-primary-700">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={includeModel}
                 onChange={(e) => setIncludeModel(e.target.checked)}
                 className="size-4 rounded border-primary-300 text-primary-600 focus:ring-2 focus:ring-primary-400 focus:ring-offset-0"
@@ -160,22 +166,22 @@ export const SaveModeDialog = memo(function SaveModeDialog({
           </div>
 
           <div className="flex justify-end gap-2">
-            <button
+            <Button
               type="button"
               onClick={onClose}
               className="rounded-lg border border-primary-200 bg-surface px-4 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-400"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
             >
               Save Mode
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
+      </DialogSurface>
     </>
   )
 })

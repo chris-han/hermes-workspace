@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -734,7 +736,7 @@ export function ChatEmptyState({
 
                 <div className="space-y-2">
                   {category.examples.map((example) => (
-                    <button
+                    <Button
                       key={example.title}
                       type="button"
                       onClick={() => handleExampleSelect(example)}
@@ -771,7 +773,7 @@ export function ChatEmptyState({
                       >
                         {example.desc}
                       </span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -780,7 +782,7 @@ export function ChatEmptyState({
 
           {!compact && isShortViewport && !showAllCategories && (
             <div className="mt-3 flex justify-center">
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowAllCategories(true)}
                 className="rounded-full px-3 py-1 text-xs transition-colors theme-border-1"
@@ -790,7 +792,7 @@ export function ChatEmptyState({
                 }}
               >
                 Show more presets
-              </button>
+              </Button>
             </div>
           )}
         </div>

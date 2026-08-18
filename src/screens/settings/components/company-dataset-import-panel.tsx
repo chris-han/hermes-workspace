@@ -1,3 +1,13 @@
+import { Checkbox, Radio } from '@/components/ui/form-controls'
+
+import { Input } from '@/components/ui/input'
+
+import { Table } from '@/components/ui/table'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { OrganizationContext } from '@/lib/organization-membership'
@@ -37,7 +47,9 @@ export function getOrganizationSetupStatus(
   if (organization?.dataset_type === 'REAL') {
     return organization.setup_status || 'REAL_EMPTY'
   }
-  return organization?.setup_status || organization?.authority_state || 'DEMO_ACTIVE'
+  return (
+    organization?.setup_status || organization?.authority_state || 'DEMO_ACTIVE'
+  )
 }
 
 export const REAL_SETUP_STATUS_DISPLAY_LABELS: Record<string, string> = {
@@ -403,7 +415,7 @@ export function CompanyDatasetImportPanel({
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="min-w-0 text-sm text-primary-700 dark:text-neutral-300">
               Spreadsheet files
-              <input
+              <Input
                 type="file"
                 multiple
                 accept=".xlsx,.xls,.csv"
@@ -418,7 +430,7 @@ export function CompanyDatasetImportPanel({
             </label>
             <label className="min-w-0 text-sm text-primary-700 dark:text-neutral-300">
               Folder or file path
-              <input
+              <Input
                 value={sourcePath}
                 disabled={!canImport}
                 placeholder="D:\\ChrisH\\Documents\\soyon-data"
@@ -439,7 +451,7 @@ export function CompanyDatasetImportPanel({
                 : 'No files or path selected'}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <button
+            <Button
               type="button"
               disabled={
                 !canImport || !hasImportSource || previewMutation.isPending
@@ -448,8 +460,8 @@ export function CompanyDatasetImportPanel({
               className="rounded-xl border border-primary-300 px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700"
             >
               Preview
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={
                 !canImport || !hasImportSource || uploadMutation.isPending
@@ -458,8 +470,8 @@ export function CompanyDatasetImportPanel({
               className="rounded-xl bg-primary-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-950"
             >
               Upload
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={
                 !canValidateImport(activeImport) || validateMutation.isPending
@@ -470,8 +482,8 @@ export function CompanyDatasetImportPanel({
               {activeImport?.status === 'validating'
                 ? 'Validating...'
                 : 'Validate'}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={
                 !canPromote ||
@@ -482,15 +494,14 @@ export function CompanyDatasetImportPanel({
               className="rounded-xl border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-800 dark:text-emerald-300"
             >
               Stage governed dataset candidate
-            </button>
+            </Button>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="min-w-0 text-sm text-primary-700 dark:text-neutral-300">
               <div className="mb-1 flex items-center justify-between gap-3">
                 <label htmlFor="company-dataset-sheets">Sheets</label>
                 <label className="inline-flex items-center gap-2 text-xs font-medium text-primary-600 dark:text-neutral-400">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={allSheets}
                     disabled={!canImport}
                     onChange={(event) => setAllSheets(event.target.checked)}
@@ -498,7 +509,7 @@ export function CompanyDatasetImportPanel({
                   All sheets
                 </label>
               </div>
-              <input
+              <Input
                 id="company-dataset-sheets"
                 role="combobox"
                 list={sheetDatalistId}
@@ -532,8 +543,7 @@ export function CompanyDatasetImportPanel({
                   Header row <span className="font-normal">(0 = none)</span>
                 </label>
                 <label className="inline-flex items-center gap-2 text-xs font-medium text-primary-600 dark:text-neutral-400">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={autoHeader}
                     disabled={!canImport}
                     onChange={(event) => setAutoHeader(event.target.checked)}
@@ -541,7 +551,7 @@ export function CompanyDatasetImportPanel({
                   Auto header
                 </label>
               </div>
-              <input
+              <Input
                 id="company-dataset-header-row"
                 type="number"
                 min={0}
@@ -566,7 +576,7 @@ export function CompanyDatasetImportPanel({
                 {preview.sheet_names.map((sheetName) => {
                   const selected = selectedSheetNames.includes(sheetName)
                   return (
-                    <button
+                    <Button
                       type="button"
                       key={sheetName}
                       onClick={() => {
@@ -585,13 +595,13 @@ export function CompanyDatasetImportPanel({
                       }`}
                     >
                       {sheetName}
-                    </button>
+                    </Button>
                   )
                 })}
               </div>
               {activePreviewSheet ? (
                 <div className="mt-3 overflow-auto">
-                  <table className="min-w-full border-collapse text-xs">
+                  <Table className="min-w-full border-collapse text-xs">
                     <tbody>
                       {activePreview?.rows.slice(0, 8).map((row, rowIndex) => (
                         <tr
@@ -603,7 +613,7 @@ export function CompanyDatasetImportPanel({
                           }
                         >
                           <th className="sticky left-0 border border-primary-200 bg-white px-2 py-1 text-left font-mono dark:border-neutral-800 dark:bg-neutral-900">
-                            <button
+                            <Button
                               type="button"
                               onClick={() => {
                                 setAutoHeader(false)
@@ -611,7 +621,7 @@ export function CompanyDatasetImportPanel({
                               }}
                             >
                               {rowIndex + 1}
-                            </button>
+                            </Button>
                           </th>
                           {row.slice(0, 8).map((cell, cellIndex) => (
                             <td
@@ -624,7 +634,7 @@ export function CompanyDatasetImportPanel({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </Table>
                 </div>
               ) : null}
             </div>
@@ -739,7 +749,7 @@ export function CompanyDatasetImportPanel({
           <div className="grid gap-3 border-b border-primary-200 p-3 dark:border-neutral-800 lg:grid-cols-[1fr_18rem]">
             <label className="min-w-0 text-xs font-semibold text-primary-700 dark:text-neutral-300">
               Source file
-              <select
+              <NativeSelect
                 value={explorerFileId}
                 onChange={(event) => {
                   setExplorerFileId(event.target.value)
@@ -756,11 +766,11 @@ export function CompanyDatasetImportPanel({
                     {file.original_filename || file.file_id}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <label className="min-w-0 text-xs font-semibold text-primary-700 dark:text-neutral-300">
               Filter rows
-              <input
+              <Input
                 value={explorerFilterDraft}
                 onChange={(event) => setExplorerFilterDraft(event.target.value)}
                 placeholder="Search any visible value"
@@ -770,7 +780,7 @@ export function CompanyDatasetImportPanel({
           </div>
           {activeDatasetRows.length > 0 ? (
             <div className="max-h-[420px] overflow-auto">
-              <table className="w-max min-w-full border-collapse text-xs">
+              <Table className="w-max min-w-full border-collapse text-xs">
                 <thead className="sticky top-0 z-10 bg-primary-50 dark:bg-neutral-900">
                   <tr>
                     {activeDatasetColumns.map((column) => (
@@ -797,7 +807,7 @@ export function CompanyDatasetImportPanel({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             </div>
           ) : (
             <p className="px-4 py-3 text-xs text-primary-600 dark:text-neutral-400">
@@ -811,15 +821,15 @@ export function CompanyDatasetImportPanel({
               {activeDatasetPagination?.total_rows ?? 0} matching rows
             </span>
             <div className="flex gap-2">
-              <button
+              <Button
                 type="button"
                 disabled={(activeDatasetPagination?.page ?? 1) <= 1}
                 onClick={() => setExplorerPage((page) => Math.max(1, page - 1))}
                 className="rounded-lg border border-primary-200 px-3 py-1 font-semibold disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800"
               >
                 Previous
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 disabled={
                   (activeDatasetPagination?.page ?? 1) >=
@@ -836,7 +846,7 @@ export function CompanyDatasetImportPanel({
                 className="rounded-lg border border-primary-200 px-3 py-1 font-semibold disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800"
               >
                 Next
-              </button>
+              </Button>
             </div>
           </div>
         </div>

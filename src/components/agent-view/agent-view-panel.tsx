@@ -1,3 +1,5 @@
+import { Input } from '@/components/ui/input'
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useNavigate } from '@tanstack/react-router'
@@ -445,7 +447,7 @@ function OrchestratorCard({
             )}
           >
             {isEditing ? (
-              <input
+              <Input
                 ref={inputRef}
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
@@ -459,7 +461,7 @@ function OrchestratorCard({
                 maxLength={20}
               />
             ) : (
-              <button
+              <Button
                 type="button"
                 onClick={startEdit}
                 className={cn(
@@ -469,7 +471,7 @@ function OrchestratorCard({
                 title="Click to rename"
               >
                 {displayName}
-              </button>
+              </Button>
             )}
           </div>
           {/* State indicator — dot + label */}
@@ -524,7 +526,7 @@ function OrchestratorCard({
           {/* Provider header row — centered */}
           <div className="flex w-full items-center justify-between">
             <div className="flex-1" />
-            <button
+            <Button
               type="button"
               onClick={canCycleOc ? cycleOcProvider : undefined}
               className={cn(
@@ -550,16 +552,16 @@ function OrchestratorCard({
               )}
               <span className="capitalize">{usageHeader}</span>
               {canCycleOc && <span className="text-[9px] opacity-50">↻</span>}
-            </button>
+            </Button>
             <div className="flex-1 flex justify-end">
-              <button
+              <Button
                 type="button"
                 onClick={() => setUsageExpanded((v) => !v)}
                 className="rounded p-0.5 text-[9px] text-primary-300 hover:text-primary-500 transition-colors cursor-pointer"
                 aria-expanded={usageExpanded}
               >
                 {usageExpanded ? '▲' : '▼'}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -1313,7 +1315,7 @@ export function AgentViewPanel() {
                                   <span className="shrink-0 text-[10px] text-primary-500 tabular-nums">
                                     {formatRuntimeLabel(agent.runtimeSeconds)}
                                   </span>
-                                  <button
+                                  <Button
                                     type="button"
                                     onClick={async () => {
                                       try {
@@ -1330,7 +1332,7 @@ export function AgentViewPanel() {
                                     title="Kill agent"
                                   >
                                     ✕
-                                  </button>
+                                  </Button>
                                 </div>
                                 {agent.task ? (
                                   <p className="mt-0.5 truncate pl-3 text-[10px] text-primary-500">
@@ -1421,7 +1423,7 @@ export function AgentViewPanel() {
                   <h2 className="text-sm font-semibold text-primary-900">
                     Agent View
                   </h2>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setOpen(false)}
                     className="rounded-lg p-1.5 text-primary-500 hover:bg-primary-200"
@@ -1435,7 +1437,7 @@ export function AgentViewPanel() {
                         strokeLinecap="round"
                       />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
                 {/* Content — same as desktop sidebar */}
                 <div className="space-y-3 p-3">
@@ -1487,13 +1489,13 @@ export function AgentViewPanel() {
                                 ) : (
                                   <span />
                                 )}
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() => killAgent(node.id)}
                                   className="text-[10px] text-red-500 hover:text-red-700 font-medium"
                                 >
                                   Kill
-                                </button>
+                                </Button>
                               </div>
                             }
                           />
@@ -1503,14 +1505,14 @@ export function AgentViewPanel() {
                   </section>
                   {historyAgents.length > 0 ? (
                     <section className="rounded-2xl border border-primary-300/70 bg-primary-200/35 p-2">
-                      <button
+                      <Button
                         type="button"
                         onClick={() => setHistoryOpen(!historyOpen)}
                         className="flex w-full items-center justify-between text-[11px] font-medium text-primary-700"
                       >
                         <span>History ({historyAgents.length})</span>
                         <span>{historyOpen ? '▾' : '▸'}</span>
-                      </button>
+                      </Button>
                       {historyOpen ? (
                         <div className="mt-1.5 space-y-1">
                           {historyAgents.map((agent) => (
@@ -1521,7 +1523,7 @@ export function AgentViewPanel() {
                               status={getMiniAgentCardStatus(agent.status)}
                               footer={
                                 <div className="flex justify-end">
-                                  <button
+                                  <Button
                                     type="button"
                                     onClick={() =>
                                       setSelectedAgentChat({
@@ -1533,7 +1535,7 @@ export function AgentViewPanel() {
                                     className="text-[10px] text-accent-600 hover:text-accent-800 font-medium"
                                   >
                                     View
-                                  </button>
+                                  </Button>
                                 </div>
                               }
                             />

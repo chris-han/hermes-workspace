@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -96,7 +98,7 @@ export function openHamburgerMenu() {
 /** The hamburger trigger button — inline, no fixed positioning */
 export function HamburgerTrigger({ className }: { className?: string }) {
   return (
-    <button
+    <Button
       type="button"
       aria-label="Open navigation menu"
       onClick={openHamburgerMenu}
@@ -108,7 +110,7 @@ export function HamburgerTrigger({ className }: { className?: string }) {
       )}
     >
       <HugeiconsIcon icon={Menu01Icon} size={20} strokeWidth={1.8} />
-    </button>
+    </Button>
   )
 }
 
@@ -185,7 +187,9 @@ export function MobileHamburgerMenu() {
         )}
       >
         {/* Main content overlay — dims and shifts right when sidebar is open */}
-        <div
+        <Button
+          type="button"
+          aria-label="Close navigation menu"
           className={cn(
             'absolute inset-0 transition-all duration-300 ease-in-out',
             open
@@ -237,7 +241,7 @@ export function MobileHamburgerMenu() {
               </span>
             </div>
           </div>
-          <button
+          <Button
             type="button"
             aria-label="Close menu"
             onClick={() => setOpen(false)}
@@ -245,7 +249,7 @@ export function MobileHamburgerMenu() {
             style={{ color: 'var(--color-muted, #888)' }}
           >
             <HugeiconsIcon icon={Cancel01Icon} size={18} strokeWidth={1.8} />
-          </button>
+          </Button>
         </div>
 
         {/* Nav items */}
@@ -253,7 +257,7 @@ export function MobileHamburgerMenu() {
           {NAV_ITEMS.map((item) => {
             const isActive = item.match(pathname)
             return (
-              <button
+              <Button
                 key={item.id}
                 type="button"
                 onClick={() => handleNav(item.to)}
@@ -277,7 +281,7 @@ export function MobileHamburgerMenu() {
                   strokeWidth={isActive ? 2 : 1.6}
                 />
                 <span className="text-[15px] font-medium">{item.label}</span>
-              </button>
+              </Button>
             )
           })}
         </nav>
@@ -305,7 +309,7 @@ export function MobileHamburgerMenu() {
             <div className="flex-1" />
 
             {/* Settings cog */}
-            <button
+            <Button
               type="button"
               onClick={() => handleNav('/settings')}
               className="flex items-center justify-center size-9 rounded-xl active:bg-white/10 transition-colors"
@@ -317,10 +321,10 @@ export function MobileHamburgerMenu() {
                 size={20}
                 strokeWidth={1.5}
               />
-            </button>
+            </Button>
 
             {/* Theme toggle — sun/moon */}
-            <button
+            <Button
               type="button"
               onClick={() => {
                 const current = getTheme()
@@ -344,7 +348,7 @@ export function MobileHamburgerMenu() {
               >
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
-            </button>
+            </Button>
           </div>
 
           <div className="mt-3 px-2">
@@ -366,7 +370,7 @@ export function MobileHamburgerMenu() {
                     : `Guest workspace: ${semantierAuth?.workspace_slug || 'public'}`}
                 </p>
                 {semantierAuth?.authenticated ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       void handleFeishuLogout()
@@ -378,9 +382,9 @@ export function MobileHamburgerMenu() {
                     }}
                   >
                     {semantierAuthActionPending ? 'Logging out...' : 'Logout'}
-                  </button>
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       redirectToSemantierLogin()
@@ -389,7 +393,7 @@ export function MobileHamburgerMenu() {
                     style={{ background: 'var(--color-accent, #6366f1)' }}
                   >
                     Login
-                  </button>
+                  </Button>
                 )}
               </div>
             )}

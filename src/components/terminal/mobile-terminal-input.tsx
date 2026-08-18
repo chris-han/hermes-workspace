@@ -3,6 +3,10 @@
  * Rendered as a sibling in WorkspaceShell so SSE stream re-renders
  * in the terminal component never freeze this input.
  */
+import { Input } from '@/components/ui/input'
+
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useRef } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowUp02Icon, Copy01Icon } from '@hugeicons/core-free-icons'
@@ -50,7 +54,7 @@ export function MobileTerminalInput() {
       className="flex items-center gap-1 px-2 py-1.5 shrink-0"
       style={{ background: '#1a1a1a', borderTop: '1px solid #333' }}
     >
-      <button
+      <Button
         type="button"
         onClick={() => void paste()}
         className="flex items-center justify-center size-8 rounded-lg shrink-0 active:opacity-60"
@@ -58,8 +62,8 @@ export function MobileTerminalInput() {
         aria-label="Paste"
       >
         <HugeiconsIcon icon={Copy01Icon} size={16} strokeWidth={1.6} />
-      </button>
-      <input
+      </Button>
+      <Input
         ref={inputRef}
         type="text"
         defaultValue=""
@@ -86,7 +90,7 @@ export function MobileTerminalInput() {
           fontFamily: 'JetBrains Mono, Menlo, monospace',
         }}
       />
-      <button
+      <Button
         type="button"
         onClick={ctrlC}
         className="flex items-center justify-center px-2 h-8 rounded-lg shrink-0 text-xs active:opacity-60"
@@ -94,8 +98,8 @@ export function MobileTerminalInput() {
         aria-label="Ctrl+C"
       >
         ^C
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
         onClick={send}
         className="flex items-center justify-center size-8 rounded-lg shrink-0 active:opacity-60"
@@ -103,7 +107,7 @@ export function MobileTerminalInput() {
         aria-label="Send"
       >
         <HugeiconsIcon icon={ArrowUp02Icon} size={16} strokeWidth={1.8} />
-      </button>
+      </Button>
     </div>
   )
 }

@@ -2,6 +2,8 @@
 // The Overview content is instead rendered inline via renderOverviewContent().
 // To reduce agent-hub-layout.tsx size, the inline overview rendering could be
 // migrated to use this component instead.
+import { Button } from '@/components/ui/button'
+
 import {
   AGENT_ACCENT_COLORS,
   AgentAvatar,
@@ -93,20 +95,20 @@ export function OverviewTab({
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <button
+                <Button
                   type="button"
                   onClick={onViewMission}
                   className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 shadow-sm transition-colors hover:bg-neutral-50"
                 >
                   View Mission
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={onStopMission}
                   className="rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600"
                 >
                   Stop
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
@@ -119,13 +121,13 @@ export function OverviewTab({
                   Configure your team and launch a mission when ready.
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={onOpenLaunchWizard}
                 className="rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600"
               >
                 Start Mission
-              </button>
+              </Button>
             </div>
           )}
         </section>
@@ -199,7 +201,7 @@ export function OverviewTab({
                 <div className="inline-flex items-center rounded-full border border-neutral-200 bg-neutral-100 p-0.5 align-middle">
                   <div className="flex items-center gap-0.5">
                     {(['cards', 'live'] as const).map((mode) => (
-                      <button
+                      <Button
                         key={mode}
                         type="button"
                         onClick={() => onOverviewAgentsViewChange(mode)}
@@ -211,19 +213,19 @@ export function OverviewTab({
                         )}
                       >
                         {mode === 'cards' ? 'Cards' : 'Live'}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
               ) : null}
             </div>
-            <button
+            <Button
               type="button"
               onClick={onOpenConfigureAgents}
               className="text-xs font-medium text-accent-600 hover:text-accent-700"
             >
               Configure
-            </button>
+            </Button>
           </div>
           {agentWorkingRows.length === 0 ? (
             <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-6 text-center">
@@ -358,7 +360,7 @@ export function OverviewTab({
                       </p>
                     )}
                     <div className="mt-auto flex gap-2 pt-3">
-                      <button
+                      <Button
                         type="button"
                         onClick={onOpenConfigureAgents}
                         className={cn(
@@ -369,8 +371,8 @@ export function OverviewTab({
                         )}
                       >
                         Configure
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         onClick={() => onViewAgentOutput(agent.id)}
                         className={cn(
@@ -381,7 +383,7 @@ export function OverviewTab({
                         )}
                       >
                         View Output
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )

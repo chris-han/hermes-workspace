@@ -1,3 +1,7 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Input } from '@/components/ui/input'
+
 import {
   ArrowLeft01Icon,
   Cancel01Icon,
@@ -386,9 +390,7 @@ export function ProviderWizard({
                       'rounded-xl border px-2.5 py-2',
                       isCurrent && 'theme-border theme-card2',
                       isComplete && 'border-green-500/30 bg-green-500/10',
-                      !isCurrent &&
-                        !isComplete &&
-                        'theme-border theme-card2',
+                      !isCurrent && !isComplete && 'theme-border theme-card2',
                     )}
                   >
                     <div className="flex items-center gap-2">
@@ -425,7 +427,7 @@ export function ProviderWizard({
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {PROVIDER_CATALOG.map(function mapProvider(provider) {
                     return (
-                      <button
+                      <Button
                         key={provider.id}
                         type="button"
                         onClick={function onSelectProvider() {
@@ -458,7 +460,7 @@ export function ProviderWizard({
                             )
                           })}
                         </div>
-                      </button>
+                      </Button>
                     )
                   })}
                 </div>
@@ -494,7 +496,7 @@ export function ProviderWizard({
                       selectedProvider.authTypes.includes(authType)
 
                     return (
-                      <button
+                      <Button
                         key={authType}
                         type="button"
                         disabled={!supported}
@@ -519,7 +521,7 @@ export function ProviderWizard({
                             Not supported by {selectedProvider.name}.
                           </p>
                         ) : null}
-                      </button>
+                      </Button>
                     )
                   })}
                 </div>
@@ -558,9 +560,7 @@ export function ProviderWizard({
                   <>
                     <p className="mt-1 text-sm theme-muted text-pretty">
                       This will run{' '}
-                      <code className="font-mono theme-text">
-                        hermes setup
-                      </code>{' '}
+                      <code className="font-mono theme-text">hermes setup</code>{' '}
                       in the terminal to start the OAuth flow. A browser window
                       will open for you to sign in with Google.
                     </p>
@@ -598,14 +598,14 @@ export function ProviderWizard({
                       <div className="rounded-xl border theme-border theme-card2 px-3 py-2">
                         <p className="text-xs theme-text text-pretty">
                           No terminal access?{' '}
-                          <a
+                          <DsLink
                             href="https://github.com/NousResearch/hermes-agent"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="theme-text underline hover:text-foreground"
                           >
                             See the Hermes Agent docs
-                          </a>{' '}
+                          </DsLink>{' '}
                           for setup instructions.
                         </p>
                       </div>
@@ -662,14 +662,14 @@ export function ProviderWizard({
                       <div className="rounded-xl border theme-border theme-card2 px-3 py-2">
                         <p className="text-xs theme-text text-pretty">
                           No terminal access?{' '}
-                          <a
+                          <DsLink
                             href="https://github.com/NousResearch/hermes-agent"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="theme-text underline hover:text-foreground"
                           >
                             See the Hermes Agent docs
-                          </a>{' '}
+                          </DsLink>{' '}
                           for CLI token setup instructions.
                         </p>
                       </div>
@@ -684,7 +684,7 @@ export function ProviderWizard({
 
                     <div className="mt-4 flex flex-col gap-3">
                       <div className="flex gap-2">
-                        <input
+                        <Input
                           type="password"
                           value={apiKeyInput}
                           onChange={function onInputChange(e) {
@@ -728,7 +728,7 @@ export function ProviderWizard({
                       ) : null}
                     </div>
 
-                    <a
+                    <DsLink
                       href={selectedProvider.docsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -740,7 +740,7 @@ export function ProviderWizard({
                         strokeWidth={1.5}
                       />
                       Get your {selectedProvider.name} API key
-                    </a>
+                    </DsLink>
 
                     <div className="mt-4 rounded-xl border theme-border theme-card2 px-3 py-2">
                       <p className="text-xs theme-text text-pretty">
@@ -751,7 +751,7 @@ export function ProviderWizard({
                     </div>
 
                     {/* Manual fallback */}
-                    <button
+                    <Button
                       type="button"
                       onClick={function toggleManual() {
                         setShowManualSnippet(!showManualSnippet)
@@ -760,7 +760,7 @@ export function ProviderWizard({
                     >
                       {showManualSnippet ? 'Hide' : 'Show'} manual config
                       snippet
-                    </button>
+                    </Button>
 
                     {showManualSnippet ? (
                       <div className="mt-2">

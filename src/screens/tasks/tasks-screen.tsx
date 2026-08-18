@@ -1,5 +1,8 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
+import { DialogSurface } from '@/components/ui/dialog-surface'
+
 import { useCallback, useMemo, useState } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import {
@@ -343,19 +346,19 @@ export function TasksScreen() {
                       {assigneeFilter}
                     </span>
                   </span>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setAssigneeFilter(null)}
                     className="cursor-pointer rounded-md border border-[var(--theme-border)] px-2 py-1 text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-text)]"
                   >
                     Clear filter
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
 
             <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowDone((v) => !v)}
                 className={cn(
@@ -366,8 +369,8 @@ export function TasksScreen() {
                 )}
               >
                 {showDone ? 'Hide Done' : 'Show Done'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={invalidate}
                 className="cursor-pointer rounded-button border border-[var(--theme-border)] p-2 text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-text)]"
@@ -378,8 +381,8 @@ export function TasksScreen() {
                   size={16}
                   className="text-current"
                 />
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => {
                   setCreateColumn('backlog')
@@ -393,7 +396,7 @@ export function TasksScreen() {
               >
                 <HugeiconsIcon icon={Add01Icon} size={14} />
                 New Task
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -456,7 +459,7 @@ export function TasksScreen() {
                         : colTasks.length}
                     </span>
                   </div>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       setCreateColumn(col)
@@ -470,7 +473,7 @@ export function TasksScreen() {
                       size={14}
                       className="text-current"
                     />
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
@@ -485,13 +488,13 @@ export function TasksScreen() {
                       <p className="text-xs font-medium">
                         Failed to load tasks
                       </p>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => tasksQuery.refetch()}
                         className="cursor-pointer rounded-md border border-[var(--theme-border)] px-2 py-1 text-xs text-[var(--theme-text)] transition-colors hover:border-[var(--theme-accent)]"
                       >
                         Retry
-                      </button>
+                      </Button>
                     </motion.div>
                   ) : tasksQuery.isLoading ? (
                     <>
@@ -570,9 +573,10 @@ export function TasksScreen() {
         />
 
         {editingTask && editingPluginRegistration && EditingPluginDetail ? (
-          <div
+          <DialogSurface
             className="fixed inset-0 z-50 flex justify-end bg-black/45"
             onClick={() => setEditingTask(null)}
+            onDismiss={() => setEditingTask(null)}
           >
             <div
               className="h-full w-full max-w-lg overflow-y-auto border-l border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-2xl"
@@ -594,7 +598,7 @@ export function TasksScreen() {
                 }
               />
             </div>
-          </div>
+          </DialogSurface>
         ) : (
           <TaskDialog
             open={editingTask !== null}

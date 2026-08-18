@@ -1,3 +1,7 @@
+import { Checkbox, Radio } from '@/components/ui/form-controls'
+
+import { Input } from '@/components/ui/input'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -9,6 +13,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import type { AgentRosterSettings } from '../hooks/use-agent-roster'
 import type { GatewayModelCatalogEntry } from '@/lib/gateway-api'
 import { Button } from '@/components/ui/button'
+import { DialogSurface } from '@/components/ui/dialog-surface'
 import { fetchModels } from '@/lib/gateway-api'
 import { cn } from '@/lib/utils'
 
@@ -73,7 +78,7 @@ function ModelSelector({
 
   return (
     <div className="relative" ref={containerRef}>
-      <button
+      <Button
         type="button"
         onClick={() => setOpen((current) => !current)}
         className="inline-flex min-h-[3rem] w-full cursor-pointer items-center justify-between gap-3 rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-left text-sm text-[var(--theme-text)]"
@@ -92,12 +97,12 @@ function ModelSelector({
             open && 'rotate-180',
           )}
         />
-      </button>
+      </Button>
 
       {open ? (
         <div className="absolute left-0 top-[calc(100%+0.5rem)] z-[80] w-full overflow-hidden rounded-card border border-[var(--theme-border2)] bg-[var(--theme-card)]">
           <div className="max-h-80 overflow-y-auto p-2">
-            <button
+            <Button
               type="button"
               onClick={() => {
                 onChange('')
@@ -111,9 +116,9 @@ function ModelSelector({
               )}
             >
               Default (auto)
-            </button>
+            </Button>
             {models.map((model) => (
-              <button
+              <Button
                 key={model.id}
                 type="button"
                 onClick={() => {
@@ -128,7 +133,7 @@ function ModelSelector({
                 )}
               >
                 {model.provider} / {model.name}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -171,9 +176,10 @@ export function AgentRosterSettingsModal({
   if (!open) return null
 
   return (
-    <div
+    <DialogSurface
       className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--theme-bg)_48%,transparent)] px-4 py-6 backdrop-blur-md"
       onClick={onClose}
+      onDismiss={onClose}
     >
       <div
         className="w-full max-w-2xl rounded-card border border-[var(--theme-border2)] bg-[var(--theme-card)] p-6"
@@ -197,13 +203,13 @@ export function AgentRosterSettingsModal({
               </p>
             </div>
           </div>
-          <button
+          <Button
             type="button"
             onClick={onClose}
             className="cursor-pointer rounded-button border border-[var(--theme-border)] bg-[var(--theme-bg)] p-2 text-[var(--theme-muted)] hover:text-[var(--theme-text)]"
           >
             <HugeiconsIcon icon={Cancel01Icon} size={18} strokeWidth={1.8} />
-          </button>
+          </Button>
         </div>
 
         <div className="mt-6 space-y-4">
@@ -229,8 +235,7 @@ export function AgentRosterSettingsModal({
                 Reserved for future workflow automation.
               </span>
             </span>
-            <input
-              type="checkbox"
+            <Checkbox
               checked={draft.autoApprove}
               onChange={(event) =>
                 setDraft((current) => ({
@@ -246,7 +251,7 @@ export function AgentRosterSettingsModal({
             <span className="text-sm font-medium text-[var(--theme-text)]">
               Activity feed length
             </span>
-            <input
+            <Input
               type="number"
               min={1}
               max={20}
@@ -281,6 +286,6 @@ export function AgentRosterSettingsModal({
           </Button>
         </div>
       </div>
-    </div>
+    </DialogSurface>
   )
 }

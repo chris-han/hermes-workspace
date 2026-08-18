@@ -122,7 +122,7 @@ function FilterPill({
   onClick: () => void
 }) {
   return (
-    <button
+    <Button
       type="button"
       onClick={onClick}
       className={cn(
@@ -136,7 +136,7 @@ function FilterPill({
         {emoji ? <span>{emoji}</span> : null}
         <span>{label}</span>
       </span>
-    </button>
+    </Button>
   )
 }
 

@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -124,7 +126,7 @@ export function ExportMissionButton({
 
   return (
     <div className="flex items-center gap-1.5">
-      <button
+      <Button
         type="button"
         onClick={handleDownload}
         className={cn(
@@ -134,8 +136,8 @@ export function ExportMissionButton({
         )}
       >
         📄 Export .md
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
         onClick={() => void handleCopy()}
         className={cn(
@@ -147,7 +149,7 @@ export function ExportMissionButton({
         )}
       >
         {copied ? '✓ Copied' : '📋 Copy MD'}
-      </button>
+      </Button>
     </div>
   )
 }

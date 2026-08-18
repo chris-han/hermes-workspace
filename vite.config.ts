@@ -293,6 +293,12 @@ const config = defineConfig(({ mode, command }) => {
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
+        // Routes may render repo-owned design prototypes outside this package.
+        // Pin their dependency resolution to the workspace installation instead
+        // of searching from the prototype's docs/ directory.
+        'lucide-react': fileURLToPath(
+          new URL('./node_modules/lucide-react', import.meta.url),
+        ),
         '@semantica-explorer': fileURLToPath(
           new URL('../third_party/semantica/explorer/src', import.meta.url),
         ),

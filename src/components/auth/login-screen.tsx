@@ -1,3 +1,9 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Input } from '@/components/ui/input'
+
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import QRCode from 'qrcode'
@@ -391,8 +397,9 @@ export function LoginScreen({
 
           <div className="mb-4 flex justify-center">
             <div className="inline-flex rounded-button border border-border bg-background p-0.5 text-xs">
-              <button
+              <Button
                 type="button"
+                variant={locale === 'zh' ? 'default' : 'ghost'}
                 onClick={() => setLocale('zh')}
                 className={`rounded-button px-2.5 py-1 transition-colors ${
                   locale === 'zh'
@@ -402,9 +409,10 @@ export function LoginScreen({
                 aria-pressed={locale === 'zh'}
               >
                 中文
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant={locale === 'en' ? 'default' : 'ghost'}
                 onClick={() => setLocale('en')}
                 className={`rounded-button px-2.5 py-1 transition-colors ${
                   locale === 'en'
@@ -414,7 +422,7 @@ export function LoginScreen({
                 aria-pressed={locale === 'en'}
               >
                 English
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -465,24 +473,24 @@ export function LoginScreen({
                             }`}
                           />
                           {weixinQrExpired ? (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => void startWeixinLogin()}
                               className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-md bg-background/55 px-6 text-center text-sm font-medium text-foreground transition-colors hover:bg-background/65"
                             >
                               {copy.renewQrButton}
-                            </button>
+                            </Button>
                           ) : null}
                         </div>
                         {weixinMessage ? (
                           weixinTerminalError ? (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => void startWeixinLogin()}
                               className="cursor-pointer text-sm font-medium text-foreground underline-offset-2 hover:underline"
                             >
                               {weixinMessage}
-                            </button>
+                            </Button>
                           ) : (
                             <p className="text-center text-sm text-muted-foreground">
                               {weixinMessage}
@@ -495,14 +503,14 @@ export function LoginScreen({
                           </p>
                         )}
                         {weixinQrUrl ? (
-                          <a
+                          <DsLink
                             href={weixinQrUrl}
                             target="_blank"
                             rel="noreferrer"
                             className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                           >
                             {copy.openQrLink}
-                          </a>
+                          </DsLink>
                         ) : null}
                       </div>
                     </div>
@@ -511,13 +519,13 @@ export function LoginScreen({
                   {weixinTerminalError &&
                   !weixinLoading &&
                   !weixinQrScanData ? (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => void startWeixinLogin()}
                       className="w-full cursor-pointer rounded-button bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 hover:scale-105 active:scale-95"
                     >
                       {copy.weixinSignIn}
-                    </button>
+                    </Button>
                   ) : null}
                 </TabsContent>
 
@@ -525,7 +533,7 @@ export function LoginScreen({
                   <form onSubmit={handleSubmit} className="space-y-4">
                     {isSemantierPasswordMode ? (
                       <div>
-                        <input
+                        <Input
                           type="text"
                           value={loginName}
                           onChange={(e) => setLoginName(e.target.value)}
@@ -538,7 +546,7 @@ export function LoginScreen({
                       </div>
                     ) : null}
                     <div>
-                      <input
+                      <Input
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -549,7 +557,7 @@ export function LoginScreen({
                       />
                     </div>
 
-                    <button
+                    <Button
                       type="submit"
                       disabled={
                         loading ||
@@ -561,7 +569,7 @@ export function LoginScreen({
                       {loading
                         ? copy.authenticating
                         : copy.continueWithPassword}
-                    </button>
+                    </Button>
                   </form>
                 </TabsContent>
               </Tabs>
@@ -569,7 +577,7 @@ export function LoginScreen({
 
             {!showMethodTabs && showWeixinQr ? (
               <>
-                <button
+                <Button
                   type="button"
                   onClick={() => void startWeixinLogin()}
                   disabled={weixinLoading}
@@ -583,7 +591,7 @@ export function LoginScreen({
                   ) : (
                     <span>{copy.weixinSignIn}</span>
                   )}
-                </button>
+                </Button>
 
                 {weixinQrScanData ? (
                   <div className="rounded-card border border-border bg-muted/50 p-4">
@@ -595,13 +603,13 @@ export function LoginScreen({
                       />
                       {weixinMessage ? (
                         weixinTerminalError ? (
-                          <button
+                          <Button
                             type="button"
                             onClick={() => void startWeixinLogin()}
                             className="cursor-pointer text-sm font-medium text-foreground underline-offset-2 hover:underline"
                           >
                             {weixinMessage}
-                          </button>
+                          </Button>
                         ) : (
                           <p className="text-center text-sm text-muted-foreground">
                             {weixinMessage}
@@ -613,14 +621,14 @@ export function LoginScreen({
                         </p>
                       )}
                       {weixinQrUrl ? (
-                        <a
+                        <DsLink
                           href={weixinQrUrl}
                           target="_blank"
                           rel="noreferrer"
                           className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                         >
                           {copy.openQrLink}
-                        </a>
+                        </DsLink>
                       ) : null}
                     </div>
                   </div>
@@ -632,7 +640,7 @@ export function LoginScreen({
               <form onSubmit={handleSubmit} className="space-y-4">
                 {isSemantierPasswordMode ? (
                   <div>
-                    <input
+                    <Input
                       type="text"
                       value={loginName}
                       onChange={(e) => setLoginName(e.target.value)}
@@ -645,7 +653,7 @@ export function LoginScreen({
                   </div>
                 ) : null}
                 <div>
-                  <input
+                  <Input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -656,7 +664,7 @@ export function LoginScreen({
                   />
                 </div>
 
-                <button
+                <Button
                   type="submit"
                   disabled={
                     loading ||
@@ -666,7 +674,7 @@ export function LoginScreen({
                   className="w-full cursor-pointer rounded-button bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? copy.authenticating : copy.continueWithPassword}
-                </button>
+                </Button>
               </form>
             ) : null}
 
@@ -681,14 +689,14 @@ export function LoginScreen({
         {/* Footer */}
         <p className="mt-6 text-center text-xs text-muted-foreground">
           {copy.poweredBy}{' '}
-          <a
+          <DsLink
             href="https://semantier.com"
             target="_blank"
             rel="noreferrer"
             className="underline underline-offset-2 hover:text-foreground"
           >
             Semantier
-          </a>
+          </DsLink>
         </p>
       </div>
     </div>

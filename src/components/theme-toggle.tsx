@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { ComputerIcon, Moon01Icon, Sun01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import type { SettingsThemeMode } from '@/hooks/use-settings'
@@ -40,7 +42,7 @@ export function ThemeToggle({ variant = 'pill' }: ThemeToggleProps) {
 
   if (variant === 'icon') {
     return (
-      <button
+      <Button
         type="button"
         onClick={() => setTheme(isDark ? 'light' : 'dark')}
         className="inline-flex size-7 items-center justify-center rounded-md text-primary-400 transition-colors hover:text-primary-700 dark:hover:text-primary-300"
@@ -52,7 +54,7 @@ export function ThemeToggle({ variant = 'pill' }: ThemeToggleProps) {
           size={16}
           strokeWidth={1.5}
         />
-      </button>
+      </Button>
     )
   }
 
@@ -65,7 +67,7 @@ export function ThemeToggle({ variant = 'pill' }: ThemeToggleProps) {
       {MODES.map((mode) => {
         const active = settings.theme === mode.value
         return (
-          <button
+          <Button
             key={mode.value}
             type="button"
             onClick={() => setTheme(mode.value)}
@@ -81,7 +83,7 @@ export function ThemeToggle({ variant = 'pill' }: ThemeToggleProps) {
             title={mode.label}
           >
             <HugeiconsIcon icon={mode.icon} size={14} strokeWidth={1.8} />
-          </button>
+          </Button>
         )
       })}
     </div>

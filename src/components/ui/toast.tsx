@@ -3,6 +3,8 @@
  * Usage: import { toast } from '@/components/ui/toast'
  *        toast('Context compacted', { type: 'info' })
  */
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
@@ -42,10 +44,10 @@ const typeStyles: Record<ToastType, string> = {
 }
 
 const defaultIcons: Record<ToastType, string> = {
-  info: 'ℹ️',
-  success: '✅',
-  warning: '⚠️',
-  error: '❌',
+  info: 'i',
+  success: '✓',
+  warning: '!',
+  error: '×',
 }
 
 export function Toaster() {
@@ -85,17 +87,20 @@ export function Toaster() {
             typeStyles[t.type],
           )}
         >
-          <span className="text-base">{t.icon ?? defaultIcons[t.type]}</span>
+          <span aria-hidden="true" className="text-base">
+            {t.icon ?? defaultIcons[t.type]}
+          </span>
           <span className="min-w-0 break-words">{t.message}</span>
-          <button
+          <Button
             type="button"
+            aria-label="Dismiss notification"
             onClick={() =>
               setToasts((prev) => prev.filter((x) => x.id !== t.id))
             }
             className="ml-2 shrink-0 rounded-full p-0.5 opacity-70 transition-opacity hover:opacity-100"
           >
             ✕
-          </button>
+          </Button>
         </div>
       ))}
     </div>,

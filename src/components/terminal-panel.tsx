@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useNavigate } from '@tanstack/react-router'
+import { ResizeHandle } from '@/components/ui/advanced-surfaces'
 import {
   DEFAULT_PANEL_HEIGHT,
   MIN_PANEL_HEIGHT,
@@ -110,11 +111,19 @@ export function TerminalPanel() {
           className="absolute inset-x-0 bottom-0 z-40 border-t border-primary-300 bg-primary-50 shadow-[0_-12px_40px_rgba(0,0,0,0.45)]"
           style={{ height: panelHeight }}
         >
-          <div
+          <ResizeHandle
             className="absolute inset-x-0 top-0 h-1 cursor-row-resize bg-primary-300/50 transition-colors hover:bg-[#ea580c]/80"
             onMouseDown={handleResizeStart}
-            role="separator"
-            aria-label="Resize terminal panel"
+            orientation="horizontal"
+            value={panelHeight}
+            min={MIN_PANEL_HEIGHT}
+            max={
+              typeof window === 'undefined'
+                ? panelHeight
+                : Math.floor(window.innerHeight * MAX_VIEWPORT_RATIO)
+            }
+            onValueChange={setPanelHeight}
+            label="Resize terminal panel"
           />
           <div className="h-full pt-1">
             <Suspense

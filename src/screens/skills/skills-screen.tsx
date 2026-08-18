@@ -1,3 +1,9 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Input } from '@/components/ui/input'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -1442,7 +1448,7 @@ export function SkillsScreen() {
               </TabsList>
 
               <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                <input
+                <Input
                   value={searchInput}
                   onChange={(event) => handleSearchChange(event.target.value)}
                   placeholder={
@@ -1459,7 +1465,7 @@ export function SkillsScreen() {
 
                 <div className="flex flex-wrap items-center gap-2">
                   {tab === 'installed' ? (
-                    <select
+                    <NativeSelect
                       value={category}
                       onChange={(event) =>
                         handleCategoryChange(event.target.value)
@@ -1471,11 +1477,11 @@ export function SkillsScreen() {
                           {item}
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
                   ) : null}
 
                   {tab === 'installed' ? (
-                    <select
+                    <NativeSelect
                       value={sort}
                       onChange={(event) =>
                         handleSortChange(
@@ -1488,11 +1494,11 @@ export function SkillsScreen() {
                     >
                       <option value="name">Name A-Z</option>
                       <option value="category">Category</option>
-                    </select>
+                    </NativeSelect>
                   ) : null}
 
                   {tab === 'plugins' ? (
-                    <select
+                    <NativeSelect
                       value={pluginCategory}
                       onChange={(event) => {
                         setPluginCategory(event.target.value)
@@ -1505,7 +1511,7 @@ export function SkillsScreen() {
                           {item}
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
                   ) : null}
 
                   {tab === 'marketplace' ? (
@@ -1521,7 +1527,7 @@ export function SkillsScreen() {
               {visibleSourceFilters.map((filter) => {
                 const active = filter === sourceFilter
                 return (
-                  <button
+                  <Button
                     key={filter}
                     type="button"
                     onClick={() => {
@@ -1536,7 +1542,7 @@ export function SkillsScreen() {
                     )}
                   >
                     {filter}
-                  </button>
+                  </Button>
                 )
               })}
             </div>
@@ -1600,7 +1606,7 @@ export function SkillsScreen() {
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-500">
                     Install From Git Repo
                   </p>
-                  <input
+                  <Input
                     value={directInstallIdentifier}
                     onChange={(event) =>
                       setDirectInstallIdentifier(event.target.value)
@@ -1631,7 +1637,7 @@ export function SkillsScreen() {
                     Marketplace URL
                   </p>
                   <div className="flex h-10 w-full overflow-hidden rounded-button border border-border bg-primary-50/90 focus-within:border-primary">
-                    <input
+                    <Input
                       role="combobox"
                       aria-label="Marketplace URL"
                       aria-controls="marketplace-url-preset-menu"
@@ -1889,14 +1895,14 @@ export function SkillsScreen() {
                     {selectedSkill.homepage ? (
                       <p className="text-sm text-primary-500">
                         Homepage:{' '}
-                        <a
+                        <DsLink
                           href={selectedSkill.homepage}
                           target="_blank"
                           rel="noreferrer"
                           className="break-all underline decoration-border underline-offset-4 hover:decoration-primary"
                         >
                           {selectedSkill.homepage}
-                        </a>
+                        </DsLink>
                       </p>
                     ) : null}
 
@@ -1963,7 +1969,7 @@ export function SkillsScreen() {
                               ) : null}
 
                               {node.control === 'boolean' ? (
-                                <select
+                                <NativeSelect
                                   value={installConfigValues[node.key] || ''}
                                   onChange={(event) =>
                                     setInstallConfigValues((current) => ({
@@ -1976,9 +1982,9 @@ export function SkillsScreen() {
                                   <option value="">Select</option>
                                   <option value="true">True</option>
                                   <option value="false">False</option>
-                                </select>
+                                </NativeSelect>
                               ) : node.control === 'select' ? (
-                                <select
+                                <NativeSelect
                                   value={installConfigValues[node.key] || ''}
                                   onChange={(event) =>
                                     setInstallConfigValues((current) => ({
@@ -1997,9 +2003,9 @@ export function SkillsScreen() {
                                       {option.label}
                                     </option>
                                   ))}
-                                </select>
+                                </NativeSelect>
                               ) : (
-                                <input
+                                <Input
                                   type={
                                     node.secret
                                       ? 'password'
@@ -2321,12 +2327,12 @@ export function SkillsScreen() {
                                     ) : null}
                                   </div>
                                   {hostHref ? (
-                                    <a
+                                    <DsLink
                                       href={hostHref}
                                       className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium text-primary-700 transition hover:border-primary-300 hover:bg-primary-50"
                                     >
                                       Open host
-                                    </a>
+                                    </DsLink>
                                   ) : null}
                                 </div>
 
@@ -2658,7 +2664,7 @@ function SecurityBadge({
   if (compact) {
     return (
       <div className="relative">
-        <button
+        <Button
           type="button"
           className={cn(
             'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
@@ -2672,7 +2678,7 @@ function SecurityBadge({
           }}
         >
           {config.label}
-        </button>
+        </Button>
         {expanded && (
           <div className="absolute bottom-[calc(100%+6px)] left-0 z-50 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-border bg-card p-0 shadow-lg">
             <SecurityScanCard security={security} />
@@ -2729,7 +2735,7 @@ function SecurityScanCard({ security }: { security: SecurityRisk }) {
       </div>
       {security.flags.length > 0 && (
         <div className="border-t border-primary-100">
-          <button
+          <Button
             type="button"
             onClick={(e) => {
               e.stopPropagation()
@@ -2739,7 +2745,7 @@ function SecurityScanCard({ security }: { security: SecurityRisk }) {
           >
             <span className="text-[11px] font-medium">Details</span>
             <span className="text-[10px]">{showDetails ? '▲' : '▼'}</span>
-          </button>
+          </Button>
           {showDetails && (
             <div className="px-3 pb-3 space-y-1">
               {security.flags.map((flag) => (

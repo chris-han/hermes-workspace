@@ -1,5 +1,7 @@
 'use client'
 
+import { Input } from '@/components/ui/input'
+
 import { useState } from 'react'
 import {
   DialogClose,
@@ -41,7 +43,7 @@ export function SessionRenameDialog({
           <DialogDescription className="mb-4">
             Enter a new name for this session.
           </DialogDescription>
-          <input
+          <Input
             type="text"
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}

@@ -1,3 +1,7 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
@@ -1369,7 +1373,7 @@ export function AgentsScreen({
                 <li>Connect a gateway</li>
                 <li>Spawn your first session</li>
               </ul>
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   void navigate({ to: '/settings' })
@@ -1377,7 +1381,7 @@ export function AgentsScreen({
                 className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 sm:px-4 sm:py-2 sm:text-sm"
               >
                 Open Settings
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="space-y-4">
@@ -1465,12 +1469,12 @@ export function AgentsScreen({
                           </div>
 
                           {sessionTarget ? (
-                            <a
+                            <DsLink
                               href={`/chat/${encodeURIComponent(sessionTarget)}`}
                               className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-primary-700 px-3 py-1.5 text-xs font-semibold text-accent-300 transition-colors hover:border-accent-500 hover:text-accent-300 sm:px-4 sm:py-2 sm:text-sm"
                             >
                               Open Chat
-                            </a>
+                            </DsLink>
                           ) : null}
                         </div>
                       )
@@ -1485,7 +1489,7 @@ export function AgentsScreen({
 
       {selectedConfigAgent ? (
         <div className="fixed inset-0 z-[95]">
-          <button
+          <Button
             type="button"
             aria-label="Close agent config"
             className="absolute inset-0 bg-primary-950/25 backdrop-blur-sm"
@@ -1664,7 +1668,7 @@ export function AgentsScreen({
                           <span className="text-xs font-semibold uppercase tracking-wide text-primary-500">
                             Model Override
                           </span>
-                          <select
+                          <NativeSelect
                             value={agentConfigDraft?.modelOverride ?? ''}
                             disabled={
                               !agentConfigDraft ||
@@ -1690,7 +1694,7 @@ export function AgentsScreen({
                                 {formatModelName(option)}
                               </option>
                             ))}
-                          </select>
+                          </NativeSelect>
                         </label>
 
                         <div className="rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-600">
@@ -1942,7 +1946,7 @@ export function AgentsScreen({
 
       {selectedHistoryAgent ? (
         <div className="fixed inset-0 z-[90] md:hidden">
-          <button
+          <Button
             type="button"
             aria-label="Close history"
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -1954,13 +1958,13 @@ export function AgentsScreen({
               <h3 className="truncate pr-2 text-base font-bold text-neutral-900 dark:text-neutral-100">
                 {selectedHistoryAgent.name} history
               </h3>
-              <button
+              <Button
                 type="button"
                 className="min-h-11 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 sm:px-4 sm:py-2 sm:text-sm"
                 onClick={() => setHistoryAgentId(null)}
               >
                 Close
-              </button>
+              </Button>
             </div>
 
             {selectedHistoryAgent.matchedSessions.length === 0 ? (
@@ -1995,7 +1999,7 @@ export function AgentsScreen({
                               : readString(session.status) || 'unknown'}
                           </span>
                           {friendlyId ? (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => {
                                 setHistoryAgentId(null)
@@ -2007,7 +2011,7 @@ export function AgentsScreen({
                               className="min-h-11 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-accent-700 transition-colors hover:bg-accent-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-accent-300 dark:hover:bg-accent-950/30 sm:px-4 sm:py-2 sm:text-sm"
                             >
                               Open Chat
-                            </button>
+                            </Button>
                           ) : null}
                         </div>
                       </div>

@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useState } from 'react'
 import type { ApprovalRequest } from '../lib/approvals-store'
 import { cn } from '@/lib/utils'
@@ -58,7 +60,7 @@ export function InlineApprovalCard({
           )}
           {isPending ? (
             <div className="mt-2 flex items-center gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   setResolved('approved')
@@ -67,8 +69,8 @@ export function InlineApprovalCard({
                 className="rounded-md bg-emerald-600 px-3 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-700"
               >
                 ✓ Approve
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => {
                   setResolved('denied')
@@ -77,7 +79,7 @@ export function InlineApprovalCard({
                 className="rounded-md border border-red-300 bg-white px-3 py-1 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-50 dark:border-red-700 dark:bg-neutral-800 dark:text-red-400 dark:hover:bg-red-950"
               >
                 ✕ Deny
-              </button>
+              </Button>
             </div>
           ) : (
             <p className="mt-1.5 text-[11px] font-medium text-neutral-500">

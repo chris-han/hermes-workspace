@@ -1,3 +1,7 @@
+import { Input } from '@/components/ui/input'
+
+import { Button } from '@/components/ui/button'
+
 import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -37,7 +41,7 @@ export function ReusableSnippets({ snippets, onUseSnippet }: SnippetProps) {
         <label className="sr-only" htmlFor="snippet-search">
           Search snippets
         </label>
-        <input
+        <Input
           id="snippet-search"
           type="text"
           value={query}
@@ -87,13 +91,13 @@ export function ReusableSnippets({ snippets, onUseSnippet }: SnippetProps) {
                   ))}
                 </div>
 
-                <button
+                <Button
                   type="button"
                   onClick={() => onUseSnippet(snippet.id)}
                   className="mt-auto h-9 rounded-lg bg-accent-500 px-3 text-xs font-semibold text-primary-950 transition-colors hover:bg-accent-400"
                 >
                   Use
-                </button>
+                </Button>
               </article>
             ))}
           </div>

@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useState } from 'react'
 import { fetchHermesAuthStatus } from '@/lib/hermes-auth'
 
@@ -57,7 +59,7 @@ export function HermesHealthBanner({
     >
       <span className="inline-block h-2 w-2 rounded-full bg-white/60 animate-pulse" />
       <span>Hermes Agent unreachable{lastError ? ` — ${lastError}` : ''}</span>
-      <button
+      <Button
         type="button"
         onClick={() => {
           setStatus('checking')
@@ -77,7 +79,7 @@ export function HermesHealthBanner({
         style={{ background: 'rgba(255,255,255,0.2)' }}
       >
         Retry
-      </button>
+      </Button>
     </div>
   )
 }

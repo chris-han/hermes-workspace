@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
@@ -253,7 +255,7 @@ export function AgentStreamPanel({
 
   return (
     <>
-      <button
+      <Button
         type="button"
         aria-label="Close live stream panel"
         className="fixed inset-0 z-40 bg-black/30"
@@ -281,14 +283,14 @@ export function AgentStreamPanel({
                   {model} · {sessionKey}
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={onClose}
                 className="rounded-lg px-2 py-1 text-sm text-neutral-500 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 aria-label="Close panel"
               >
                 ×
-              </button>
+              </Button>
             </div>
             <div className="flex flex-wrap gap-2 px-4 pb-3">
               <span className="inline-flex items-center gap-1 rounded-lg bg-neutral-100 px-2 py-1 text-xs dark:bg-neutral-800">
@@ -353,17 +355,17 @@ export function AgentStreamPanel({
           </div>
           <div className="sticky bottom-0 border-t border-[var(--theme-border)] bg-[var(--theme-panel)]/95 px-3 py-3 backdrop-blur">
             <div className="grid grid-cols-3 gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={() => setSteerOpen(true)}
                 className="rounded-lg border border-[var(--theme-border)] px-2 py-2 text-xs font-medium text-neutral-800 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-neutral-800"
               >
                 Steer
-              </button>
+              </Button>
               <div className="relative">
                 {menuOpen ? (
                   <div className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-card)] p-1 shadow-lg">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => void onPauseToggle()}
                       disabled={pausePending}
@@ -374,26 +376,26 @@ export function AgentStreamPanel({
                         : isPaused
                           ? 'Resume'
                           : 'Pause'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => void onKill()}
                       disabled={killPending}
                       className="flex w-full rounded-md px-2 py-1.5 text-left text-xs text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-300 dark:hover:bg-red-950/40"
                     >
                       {killPending ? 'Terminating...' : 'Kill'}
-                    </button>
+                    </Button>
                   </div>
                 ) : null}
-                <button
+                <Button
                   type="button"
                   onClick={() => setMenuOpen((open) => !open)}
                   className="w-full rounded-lg border border-[var(--theme-border)] px-2 py-2 text-xs font-medium text-neutral-800 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-neutral-800"
                 >
                   Pause/Kill
-                </button>
+                </Button>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   onClose()
@@ -405,7 +407,7 @@ export function AgentStreamPanel({
                 className="rounded-lg bg-accent-500 px-2 py-2 text-xs font-medium text-white hover:bg-accent-600"
               >
                 Open Chat
-              </button>
+              </Button>
             </div>
           </div>
         </div>

@@ -1,3 +1,13 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Input } from '@/components/ui/input'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Textarea } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   ArrowDown01Icon,
@@ -1823,7 +1833,7 @@ export function KnowledgeBrowserScreen() {
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
                   style={{ color: 'var(--theme-muted)' }}
                 />
-                <input
+                <Input
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
                   placeholder={copy.searchPlaceholder}
@@ -1836,7 +1846,7 @@ export function KnowledgeBrowserScreen() {
               </div>
             </div>
 
-            <button
+            <Button
               type="button"
               onClick={() => setGraphOpen(true)}
               className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-primary-100 dark:hover:bg-neutral-900 theme-border-1"
@@ -1847,7 +1857,7 @@ export function KnowledgeBrowserScreen() {
             >
               <HugeiconsIcon icon={Link01Icon} size={16} strokeWidth={1.7} />
               {copy.graphView}
-            </button>
+            </Button>
 
             <Link
               to="/settings/data-connections"
@@ -1868,7 +1878,7 @@ export function KnowledgeBrowserScreen() {
             <DialogRoot open={settingsOpen} onOpenChange={setSettingsOpen}>
               <DialogTrigger
                 render={
-                  <button
+                  <Button
                     type="button"
                     className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-primary-100 dark:hover:bg-neutral-900 theme-border-1"
                     style={{
@@ -1883,7 +1893,7 @@ export function KnowledgeBrowserScreen() {
                       strokeWidth={1.7}
                     />
                     <span className="hidden sm:inline">{copy.settings}</span>
-                  </button>
+                  </Button>
                 }
               />
               <DialogContent
@@ -1932,7 +1942,7 @@ export function KnowledgeBrowserScreen() {
         <div className="flex flex-wrap items-center justify-between gap-3 px-3 pt-3 md:px-4">
           <div className="inline-flex rounded-lg border border-primary-200 bg-primary-50 p-1 dark:border-neutral-800 dark:bg-neutral-950">
             {(['source', 'wiki'] as const).map((mode) => (
-              <button
+              <Button
                 key={mode}
                 type="button"
                 onClick={() => setFileViewMode(mode)}
@@ -1944,7 +1954,7 @@ export function KnowledgeBrowserScreen() {
                 )}
               >
                 {mode === 'source' ? copy.sourceFiles : copy.wikiPages}
-              </button>
+              </Button>
             ))}
           </div>
           <div className="text-xs text-primary-500 dark:text-neutral-400">
@@ -1955,7 +1965,7 @@ export function KnowledgeBrowserScreen() {
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 md:grid-cols-[320px_minmax(0,1fr)] md:p-4">
           <aside className="flex min-h-0 flex-col rounded-2xl border border-primary-200 bg-primary-50 dark:border-neutral-800 dark:bg-neutral-950">
-            <button
+            <Button
               type="button"
               className="flex items-center justify-between px-3 py-2 text-left md:cursor-default"
               onClick={() => setMobileTreeOpen((value) => !value)}
@@ -1972,7 +1982,7 @@ export function KnowledgeBrowserScreen() {
                   strokeWidth={1.7}
                 />
               </span>
-            </button>
+            </Button>
 
             {fileViewMode === 'source' ? (
               <div
@@ -1988,17 +1998,17 @@ export function KnowledgeBrowserScreen() {
                         { label: 'wiki', path: '' },
                       ]
                     ).map((crumb, index) => (
-                      <button
+                      <Button
                         key={`${crumb.path}:${index}`}
                         type="button"
                         onClick={() => handleBrowseKnowledgeFolder(crumb.path)}
                         className="rounded-md border border-primary-200 px-2 py-1 font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
                       >
                         {crumb.label}
-                      </button>
+                      </Button>
                     ))}
                   </div>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       setFolderPromptValue('')
@@ -2013,7 +2023,7 @@ export function KnowledgeBrowserScreen() {
                       strokeWidth={1.7}
                     />
                     {copy.newFolder}
-                  </button>
+                  </Button>
                 </div>
                 <section className="rounded-xl border border-primary-200 bg-primary-50/80 p-1 dark:border-neutral-800 dark:bg-neutral-900/60">
                   {filesLoading ? (
@@ -2049,7 +2059,7 @@ export function KnowledgeBrowserScreen() {
                     <StateBox label={copy.noMatchesFound} />
                   ) : (
                     searchResults.map((result, index) => (
-                      <button
+                      <Button
                         key={`${result.path}:${result.line}:${index}`}
                         type="button"
                         onClick={() =>
@@ -2076,7 +2086,7 @@ export function KnowledgeBrowserScreen() {
                             ),
                           )}
                         </div>
-                      </button>
+                      </Button>
                     ))
                   )}
                 </div>
@@ -2171,7 +2181,7 @@ export function KnowledgeBrowserScreen() {
                         strokeWidth={1.7}
                       />
                       {copy.chooseFiles}
-                      <input
+                      <Input
                         type="file"
                         multiple
                         className="hidden"
@@ -2184,7 +2194,7 @@ export function KnowledgeBrowserScreen() {
                         }}
                       />
                     </label>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => void handleUploadQueuedKnowledgeFiles()}
                       disabled={uploadPending || queuedUploadFiles.length === 0}
@@ -2196,7 +2206,7 @@ export function KnowledgeBrowserScreen() {
                         strokeWidth={1.7}
                       />
                       {uploadPending ? copy.uploading : copy.upload}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -2237,7 +2247,7 @@ export function KnowledgeBrowserScreen() {
                                     status="waiting"
                                     label={copy.queued}
                                   />
-                                  <button
+                                  <Button
                                     type="button"
                                     disabled={uploadPending}
                                     onClick={() =>
@@ -2253,11 +2263,11 @@ export function KnowledgeBrowserScreen() {
                                     {uploadPending
                                       ? copy.uploading.replace('...', '')
                                       : copy.upload}
-                                  </button>
+                                  </Button>
                                   <span className="text-xs text-primary-400 dark:text-neutral-500">
                                     {formatBytes(file.size)}
                                   </span>
-                                  <button
+                                  <Button
                                     type="button"
                                     onClick={() =>
                                       setQueuedUploadFiles((current) =>
@@ -2270,7 +2280,7 @@ export function KnowledgeBrowserScreen() {
                                     className="rounded-lg border border-primary-200 px-2 py-1.5 text-xs font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
                                   >
                                     {copy.remove}
-                                  </button>
+                                  </Button>
                                 </span>
                               </div>
                             ))}
@@ -2316,7 +2326,7 @@ export function KnowledgeBrowserScreen() {
                                             : copy.needsBuild
                                       }
                                     />
-                                    <button
+                                    <Button
                                       type="button"
                                       disabled={ingestPending}
                                       onClick={() =>
@@ -2332,8 +2342,8 @@ export function KnowledgeBrowserScreen() {
                                         strokeWidth={1.7}
                                       />
                                       {copy.build}
-                                    </button>
-                                    <button
+                                    </Button>
+                                    <Button
                                       type="button"
                                       onClick={() =>
                                         setReviewRows((current) =>
@@ -2347,10 +2357,10 @@ export function KnowledgeBrowserScreen() {
                                       className="rounded-lg border border-primary-200 px-2 py-1.5 text-xs font-medium hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
                                     >
                                       {copy.remove}
-                                    </button>
+                                    </Button>
                                   </span>
                                 </div>
-                                <textarea
+                                <Textarea
                                   value={
                                     manualCurationJustifications[
                                       row.retryUploadRef
@@ -2420,7 +2430,7 @@ export function KnowledgeBrowserScreen() {
 
                               if (entry.kind === 'directory') {
                                 return (
-                                  <button
+                                  <Button
                                     key={entry.path}
                                     type="button"
                                     onClick={() => {
@@ -2447,7 +2457,7 @@ export function KnowledgeBrowserScreen() {
                                     <span className="shrink-0 text-xs text-primary-400 dark:text-neutral-500">
                                       {locale === 'zh' ? '文件夹' : 'Folder'}
                                     </span>
-                                  </button>
+                                  </Button>
                                 )
                               }
 
@@ -2474,7 +2484,7 @@ export function KnowledgeBrowserScreen() {
                                         </span>
                                       ) : null}
                                       {reviewRow ? (
-                                        <textarea
+                                        <Textarea
                                           value={
                                             manualCurationJustifications[
                                               reviewRow.retryUploadRef
@@ -2507,7 +2517,7 @@ export function KnowledgeBrowserScreen() {
                                           status={status}
                                           label={statusLabel}
                                         />
-                                        <button
+                                        <Button
                                           type="button"
                                           disabled={
                                             ingestPending ||
@@ -2526,13 +2536,13 @@ export function KnowledgeBrowserScreen() {
                                             strokeWidth={1.7}
                                           />
                                           {copy.build}
-                                        </button>
+                                        </Button>
                                       </>
                                     ) : null}
                                     <span className="text-xs text-primary-400 dark:text-neutral-500">
                                       {formatBytes(entry.size ?? 0)}
                                     </span>
-                                    <button
+                                    <Button
                                       type="button"
                                       disabled={deleting}
                                       onClick={() =>
@@ -2548,7 +2558,7 @@ export function KnowledgeBrowserScreen() {
                                         strokeWidth={1.7}
                                       />
                                       {deleting ? copy.deleting : copy.delete}
-                                    </button>
+                                    </Button>
                                   </span>
                                 </div>
                               )
@@ -2581,7 +2591,7 @@ export function KnowledgeBrowserScreen() {
                   </div>
                   {page ? (
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
-                      <button
+                      <Button
                         type="button"
                         disabled={deletingFilePaths.has(page.path)}
                         onClick={() =>
@@ -2597,8 +2607,8 @@ export function KnowledgeBrowserScreen() {
                         {deletingFilePaths.has(page.path)
                           ? copy.deleting
                           : copy.delete}
-                      </button>
-                      <a
+                      </Button>
+                      <DsLink
                         href={askUrl}
                         className="inline-flex items-center gap-1.5 rounded-md border border-primary-200 px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
                       >
@@ -2608,7 +2618,7 @@ export function KnowledgeBrowserScreen() {
                           strokeWidth={1.7}
                         />
                         {copy.askAgent}
-                      </a>
+                      </DsLink>
                     </div>
                   ) : null}
                 </div>
@@ -2663,7 +2673,7 @@ export function KnowledgeBrowserScreen() {
                                     href.slice('wiki:'.length),
                                   )
                                   return (
-                                    <button
+                                    <Button
                                       type="button"
                                       onClick={() => {
                                         if (resolvedPath)
@@ -2677,19 +2687,19 @@ export function KnowledgeBrowserScreen() {
                                         strokeWidth={1.7}
                                       />
                                       <span>{children}</span>
-                                    </button>
+                                    </Button>
                                   )
                                 }
 
                                 return (
-                                  <a
+                                  <DsLink
                                     href={href}
                                     className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                   >
                                     {children}
-                                  </a>
+                                  </DsLink>
                                 )
                               },
                             }}
@@ -2716,7 +2726,7 @@ export function KnowledgeBrowserScreen() {
                                   const backlinkPath =
                                     resolveWikiPath(backlink) || backlink
                                   return (
-                                    <button
+                                    <Button
                                       key={backlink}
                                       type="button"
                                       onClick={() =>
@@ -2725,7 +2735,7 @@ export function KnowledgeBrowserScreen() {
                                       className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
                                     >
                                       {backlink}
-                                    </button>
+                                    </Button>
                                   )
                                 })}
                               </div>
@@ -2811,14 +2821,14 @@ export function KnowledgeBrowserScreen() {
                                 </span>
                               ) : (
                                 page.tags.map((tag) => (
-                                  <button
+                                  <Button
                                     key={tag}
                                     type="button"
                                     onClick={() => setSelectedTag(tag)}
                                     className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
                                   >
                                     #{tag}
-                                  </button>
+                                  </Button>
                                 ))
                               )}
                             </div>
@@ -2841,14 +2851,14 @@ export function KnowledgeBrowserScreen() {
                                 {page.wikilinks.map((link) => {
                                   const linkPath = resolveWikiPath(link) || link
                                   return (
-                                    <button
+                                    <Button
                                       key={link}
                                       type="button"
                                       onClick={() => handleSelectPath(linkPath)}
                                       className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 transition-colors hover:border-primary-300 hover:bg-primary-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
                                     >
                                       {link}
-                                    </button>
+                                    </Button>
                                   )
                                 })}
                               </div>
@@ -2878,7 +2888,7 @@ export function KnowledgeBrowserScreen() {
                 {copy.createFolderInside}
                 {browserPath || ''}
               </DialogDescription>
-              <input
+              <Input
                 value={folderPromptValue}
                 onChange={(event) => setFolderPromptValue(event.target.value)}
                 onKeyDown={(event) => {
@@ -2890,7 +2900,7 @@ export function KnowledgeBrowserScreen() {
                 autoFocus
               />
               <div className="flex justify-end gap-2 pt-2">
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     setFolderPromptOpen(false)
@@ -2899,15 +2909,15 @@ export function KnowledgeBrowserScreen() {
                   className="rounded-lg border border-primary-200 px-3 py-2 text-sm font-semibold hover:bg-primary-100 dark:border-neutral-800 dark:hover:bg-neutral-900"
                 >
                   {copy.cancel}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   disabled={!folderPromptValue.trim()}
                   onClick={() => void handleCreateFolderPromptSubmit()}
                   className="rounded-lg border border-accent-600 bg-accent-500 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {copy.save}
-                </button>
+                </Button>
               </div>
             </div>
           </DialogContent>
@@ -2993,7 +3003,7 @@ function TreeSection({
             style={{ marginLeft: depth > 0 ? depth * 14 : 0 }}
             aria-current={active ? 'page' : undefined}
           >
-            <button
+            <Button
               type="button"
               onClick={() => onSelectPath(page.path)}
               className="flex min-w-0 flex-1 items-center gap-2 text-left"
@@ -3022,8 +3032,8 @@ function TreeSection({
                   </div>
                 )}
               </div>
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={deleting}
               onClick={() => onDeletePath(page.path)}
@@ -3040,7 +3050,7 @@ function TreeSection({
                 size={14}
                 strokeWidth={1.7}
               />
-            </button>
+            </Button>
           </div>
         )
       })}
@@ -3084,7 +3094,7 @@ function KnowledgeFileTree({
 
   return (
     <div>
-      <button
+      <Button
         type="button"
         onClick={() => {
           if (isDirectory) {
@@ -3121,7 +3131,7 @@ function KnowledgeFileTree({
           className="shrink-0"
         />
         <span className="min-w-0 flex-1 truncate">{entry.name}</span>
-      </button>
+      </Button>
 
       {isDirectory && isExpanded && entry.children?.length ? (
         <div>
@@ -3233,7 +3243,7 @@ function TagPill({
   onClick: () => void
 }) {
   return (
-    <button
+    <Button
       type="button"
       onClick={onClick}
       className={cn(
@@ -3244,7 +3254,7 @@ function TagPill({
       )}
     >
       {label} <span className="opacity-70">{count}</span>
-    </button>
+    </Button>
   )
 }
 
@@ -3461,7 +3471,7 @@ function PromotionLineageCard({
           <div className="space-y-2 rounded-lg border border-primary-200 bg-white p-2.5 dark:border-neutral-800 dark:bg-neutral-950">
             <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
               {copy.targetAuthority}
-              <select
+              <NativeSelect
                 value={targetAuthorityLevel}
                 onChange={(event) =>
                   setTargetAuthorityLevel(
@@ -3474,11 +3484,11 @@ function PromotionLineageCard({
                 <option value="T3">T3 Doctrine / Standard</option>
                 <option value="T4">T4 Org Policy</option>
                 <option value="T5">T5 Scoped Preference</option>
-              </select>
+              </NativeSelect>
             </label>
             <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
               {copy.justification}
-              <textarea
+              <Textarea
                 value={promotionJustification}
                 onChange={(event) =>
                   setPromotionJustification(event.target.value)
@@ -3490,7 +3500,7 @@ function PromotionLineageCard({
             </label>
             <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
               {copy.officialSourceUri}
-              <input
+              <Input
                 value={sourceUri}
                 onChange={(event) => setSourceUri(event.target.value)}
                 placeholder={copy.sourceUriPlaceholder}
@@ -3500,7 +3510,7 @@ function PromotionLineageCard({
             <div className="grid gap-2 sm:grid-cols-3">
               <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
                 {copy.jurisdiction}
-                <input
+                <Input
                   value={jurisdiction}
                   onChange={(event) => setJurisdiction(event.target.value)}
                   className="mt-1 w-full rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs normal-case tracking-normal text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
@@ -3508,7 +3518,7 @@ function PromotionLineageCard({
               </label>
               <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
                 {copy.effectiveFrom}
-                <input
+                <Input
                   value={effectiveFrom}
                   onChange={(event) => setEffectiveFrom(event.target.value)}
                   placeholder="YYYY-MM-DD"
@@ -3517,7 +3527,7 @@ function PromotionLineageCard({
               </label>
               <label className="block text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
                 {copy.sourceVersion}
-                <input
+                <Input
                   value={sourceVersion}
                   onChange={(event) => setSourceVersion(event.target.value)}
                   className="mt-1 w-full rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs normal-case tracking-normal text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
@@ -3535,7 +3545,7 @@ function PromotionLineageCard({
                   </span>
                 ) : null}
                 {submitState.result.status !== 'APPROVED' ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() =>
                       void approvePromotionRequest(submitState.result.requestId)
@@ -3543,7 +3553,7 @@ function PromotionLineageCard({
                     className="mt-2 w-full rounded-lg border border-primary-900 bg-primary-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-800 dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
                   >
                     {copy.approveForDemo}
-                  </button>
+                  </Button>
                 ) : (
                   <>
                     <span className="mt-1 block text-primary-600 dark:text-neutral-300">
@@ -3567,7 +3577,7 @@ function PromotionLineageCard({
                 {submitState.message}
               </div>
             ) : null}
-            <button
+            <Button
               type="button"
               disabled={
                 submitState.kind === 'submitting' ||
@@ -3580,7 +3590,7 @@ function PromotionLineageCard({
               {submitState.kind === 'submitting'
                 ? copy.submitting
                 : copy.requestPromotion}
-            </button>
+            </Button>
           </div>
           <Link
             to="/memory"
@@ -3615,7 +3625,7 @@ function PromotionLineageCard({
             {gates.map((gate, index) => {
               const selected = index === selectedIndex
               return (
-                <button
+                <Button
                   key={`${gate.stage || 'gate'}:${index}`}
                   type="button"
                   onClick={() => onSelectGate(index)}
@@ -3644,7 +3654,7 @@ function PromotionLineageCard({
                       {shortEvidenceValue(gate.hash)}
                     </span>
                   </span>
-                </button>
+                </Button>
               )
             })}
           </div>
@@ -3699,7 +3709,7 @@ function PromotionLineageCard({
                 </div>
               ) : (
                 <div className="mt-3 space-y-2">
-                  <textarea
+                  <Textarea
                     value={overrideDraft}
                     onChange={(event) =>
                       onOverrideDraftChange(event.target.value)
@@ -3708,14 +3718,14 @@ function PromotionLineageCard({
                     placeholder={copy.overridePlaceholder}
                     className="w-full resize-none rounded-lg border border-primary-200 bg-white px-2.5 py-2 text-xs text-primary-900 outline-none focus:ring-2 focus:ring-primary-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                   />
-                  <button
+                  <Button
                     type="button"
                     disabled={!overrideDraft.trim()}
                     onClick={onRecordOverride}
                     className="w-full rounded-lg border border-accent-600 bg-accent-500 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {copy.overrideContinue}
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -3792,7 +3802,7 @@ function EmptyKnowledgeState({ knowledgeRoot }: { knowledgeRoot: string }) {
           </>
         )}
       </p>
-      <a
+      <DsLink
         href="https://karpathy.ai/"
         target="_blank"
         rel="noopener noreferrer"
@@ -3802,7 +3812,7 @@ function EmptyKnowledgeState({ knowledgeRoot }: { knowledgeRoot: string }) {
         {locale === 'zh'
           ? '查看 Karpathy LLM wiki pattern'
           : 'See the Karpathy LLM wiki pattern'}
-      </a>
+      </DsLink>
     </div>
   )
 }

@@ -1,0 +1,20 @@
+[
+  {
+    "shim": "--font-ui",
+    "owner": "workspace-ui",
+    "allowed_files": ["src/styles.css"],
+    "remaining_consumer_count": 4,
+    "replacement": "--font-sans",
+    "rationale": "Temporary bridge for legacy workspace typography selectors while downstream theme overrides move to the canonical font token.",
+    "remove_by": "2026-10-01"
+  },
+  {
+    "shim": "--font-ui-zh",
+    "owner": "workspace-ui",
+    "allowed_files": ["src/styles.css"],
+    "remaining_consumer_count": 1,
+    "replacement": "--font-sans with the zh locale fallback stack",
+    "rationale": "Temporary locale-specific bridge retained only for the existing zh root selector.",
+    "remove_by": "2026-10-01"
+  }
+]

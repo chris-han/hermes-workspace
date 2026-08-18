@@ -1,5 +1,14 @@
 'use client'
 
+import { Input } from '@/components/ui/input'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Textarea } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+import { DialogSurface } from '@/components/ui/dialog-surface'
+
 import { useEffect, useRef, useState } from 'react'
 import { TEAM_TEMPLATES } from './team-panel'
 import type { TeamMember, TeamTemplateId } from './team-panel'
@@ -473,23 +482,24 @@ export function WizardModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop — clicking this closes the modal */}
-      <div
+      <Button
+        type="button"
+        aria-label="Close configuration dialog"
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
       {/* Panel — clicks inside stay inside */}
-      <div
+      <DialogSurface
         className={cn(
           'relative w-full rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-2xl',
           'max-h-[90vh] overflow-y-auto',
           width,
         )}
-        role="dialog"
-        aria-modal="true"
+        onDismiss={onClose}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
-      </div>
+      </DialogSurface>
     </div>
   )
 }
@@ -598,7 +608,7 @@ export function AgentWizardModal({
             {headerSubtitle}
           </p>
         </div>
-        <button
+        <Button
           type="button"
           onClick={onClose}
           className="flex size-7 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:text-neutral-700 dark:hover:text-white transition-colors"
@@ -611,7 +621,7 @@ export function AgentWizardModal({
               strokeLinecap="round"
             />
           </svg>
-        </button>
+        </Button>
       </div>
 
       {/* Form body */}
@@ -619,7 +629,7 @@ export function AgentWizardModal({
         {/* Row 1: NAME (full width, prominent) */}
         <div>
           <FieldLabel>Name</FieldLabel>
-          <input
+          <Input
             value={member.name}
             onChange={(e) => onUpdate({ name: e.target.value })}
             className="h-10 w-full rounded-lg border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800 px-3 text-base font-semibold text-neutral-900 dark:text-white outline-none ring-accent-400 focus:ring-1 transition-colors"
@@ -631,7 +641,7 @@ export function AgentWizardModal({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <FieldLabel>Model</FieldLabel>
-            <select
+            <NativeSelect
               value={member.modelId}
               onChange={(e) => onUpdate({ modelId: e.target.value })}
               className={SELECT_CLS}
@@ -652,11 +662,11 @@ export function AgentWizardModal({
                   ))}
                 </optgroup>
               ) : null}
-            </select>
+            </NativeSelect>
           </div>
           <div>
             <FieldLabel>Role</FieldLabel>
-            <input
+            <Input
               value={member.roleDescription}
               onChange={(e) => onUpdate({ roleDescription: e.target.value })}
               className={INPUT_CLS}
@@ -673,7 +683,7 @@ export function AgentWizardModal({
                 (optional)
               </span>
             </FieldLabel>
-            <input
+            <Input
               value={member.memoryPath ?? ''}
               onChange={(e) =>
                 onUpdate({ memoryPath: e.target.value || undefined } as Partial<
@@ -694,7 +704,7 @@ export function AgentWizardModal({
                 (optional)
               </span>
             </FieldLabel>
-            <input
+            <Input
               value={(member.skillAllowlist ?? []).join(', ')}
               onChange={(e) => {
                 const skills = e.target.value
@@ -730,13 +740,13 @@ export function AgentWizardModal({
                 {isCustomPrompt ? '✏️ Custom' : 'Template'}
               </span>
               {member.backstory.trim() ? (
-                <button
+                <Button
                   type="button"
                   onClick={() => onUpdate({ backstory: '' })}
                   className="rounded-md border border-neutral-200 dark:border-neutral-700 px-1.5 py-0.5 text-[9px] text-neutral-400 hover:text-red-500 transition-colors"
                 >
                   ✕ Clear
-                </button>
+                </Button>
               ) : null}
             </div>
           </div>
@@ -764,7 +774,7 @@ export function AgentWizardModal({
                   {catTemplates.map((tpl) => {
                     const active = member.backstory === tpl.prompt
                     return (
-                      <button
+                      <Button
                         key={tpl.id}
                         type="button"
                         onClick={() => {
@@ -779,7 +789,7 @@ export function AgentWizardModal({
                         title={tpl.prompt.slice(0, 120)}
                       >
                         {tpl.icon} {tpl.label}
-                      </button>
+                      </Button>
                     )
                   })}
                 </div>
@@ -787,7 +797,7 @@ export function AgentWizardModal({
             })}
           </div>
 
-          <textarea
+          <Textarea
             ref={systemPromptRef}
             value={member.backstory}
             onChange={(e) => {
@@ -802,7 +812,7 @@ export function AgentWizardModal({
 
       {/* Footer */}
       <div className="flex items-center justify-between gap-3 border-t border-neutral-100 dark:border-neutral-800 px-6 py-4">
-        <button
+        <Button
           type="button"
           onClick={onDelete}
           className={cn(
@@ -824,14 +834,14 @@ export function AgentWizardModal({
             </svg>
           )}
           {addMode ? 'Cancel' : 'Remove Agent'}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={onClose}
           className="rounded-lg bg-accent-500 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-accent-600 transition-colors"
         >
           {addMode ? '+ Add Agent' : 'Save Changes'}
-        </button>
+        </Button>
       </div>
     </WizardModal>
   )
@@ -895,7 +905,7 @@ function TeamIconPicker({
     <div className="absolute left-0 top-full mt-1 z-[60] rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-xl p-2 w-52">
       <div className="grid grid-cols-8 gap-0.5">
         {TEAM_ICONS.map((icon) => (
-          <button
+          <Button
             key={icon}
             type="button"
             onClick={() => {
@@ -910,7 +920,7 @@ function TeamIconPicker({
             )}
           >
             {icon}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -1015,7 +1025,7 @@ export function TeamWizardModal({
           <div className="flex size-14 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-3xl shadow-sm">
             {icon}
           </div>
-          <button
+          <Button
             type="button"
             onClick={() => setShowIconPicker((v) => !v)}
             className="absolute -bottom-0.5 -right-0.5 flex size-5 items-center justify-center rounded-full border-2 border-border bg-neutral-700 text-white shadow-md hover:bg-neutral-600 transition-colors"
@@ -1030,7 +1040,7 @@ export function TeamWizardModal({
                 strokeLinejoin="round"
               />
             </svg>
-          </button>
+          </Button>
           {showIconPicker ? (
             <TeamIconPicker
               currentIcon={icon}
@@ -1053,7 +1063,7 @@ export function TeamWizardModal({
         </div>
 
         {/* Star — active team toggle */}
-        <button
+        <Button
           type="button"
           onClick={() => {
             if (!isActive) {
@@ -1070,9 +1080,9 @@ export function TeamWizardModal({
           )}
         >
           {isActive ? '⭐' : '☆'}
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
           onClick={onClose}
           className="flex size-7 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:text-neutral-700 dark:hover:text-white transition-colors"
@@ -1085,14 +1095,14 @@ export function TeamWizardModal({
               strokeLinecap="round"
             />
           </svg>
-        </button>
+        </Button>
       </div>
 
       <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
         {/* Team name */}
         <div>
           <FieldLabel>Team Name</FieldLabel>
-          <input
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             className={INPUT_CLS}
@@ -1102,7 +1112,7 @@ export function TeamWizardModal({
         {/* Specialty */}
         <div>
           <FieldLabel>Specialty</FieldLabel>
-          <input
+          <Input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="What is this team best at? e.g. Deep research & analysis"
@@ -1133,7 +1143,7 @@ export function TeamWizardModal({
                   <p className="min-w-0 flex-1 text-xs font-semibold text-neutral-900 dark:text-white truncate">
                     {member.name}
                   </p>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => removeAgent(member.id)}
                     className="flex size-6 items-center justify-center rounded-full text-neutral-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-colors"
@@ -1147,7 +1157,7 @@ export function TeamWizardModal({
                         strokeLinecap="round"
                       />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
               ))
             )}
@@ -1188,7 +1198,7 @@ export function TeamWizardModal({
                       </p>
                     ) : null}
                   </div>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => addAgent(agent.id)}
                     className="flex size-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white transition-colors"
@@ -1202,7 +1212,7 @@ export function TeamWizardModal({
                         strokeLinecap="round"
                       />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -1211,7 +1221,7 @@ export function TeamWizardModal({
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t border-neutral-100 dark:border-neutral-800 px-6 py-4">
-        <button
+        <Button
           type="button"
           onClick={onDelete}
           className="flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800/50 px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -1226,14 +1236,14 @@ export function TeamWizardModal({
             />
           </svg>
           Delete Team
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={handleSave}
           className="rounded-lg bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600 transition-colors"
         >
           ✓ Save
-        </button>
+        </Button>
       </div>
     </WizardModal>
   )
@@ -1422,7 +1432,7 @@ export function AddTeamModal({
             )}
           />
         </div>
-        <button
+        <Button
           type="button"
           onClick={onClose}
           className="flex size-7 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:text-neutral-700 dark:hover:text-white transition-colors"
@@ -1435,7 +1445,7 @@ export function AddTeamModal({
               strokeLinecap="round"
             />
           </svg>
-        </button>
+        </Button>
       </div>
 
       {/* ── Step 1: Name your team ── */}
@@ -1445,7 +1455,7 @@ export function AddTeamModal({
             <p className="mb-5 text-xl font-bold text-neutral-900 dark:text-white">
               Name your team
             </p>
-            <input
+            <Input
               ref={nameInputRef}
               value={teamName}
               onChange={(e) => setTeamName(e.target.value)}
@@ -1460,14 +1470,14 @@ export function AddTeamModal({
             </p>
           </div>
           <div className="flex justify-end border-t border-neutral-100 dark:border-neutral-800 px-6 py-4">
-            <button
+            <Button
               type="button"
               onClick={() => setStep(2)}
               disabled={!teamName.trim()}
               className="rounded-lg bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600 disabled:opacity-40 transition-colors"
             >
               Next →
-            </button>
+            </Button>
           </div>
         </>
       ) : null}
@@ -1481,7 +1491,7 @@ export function AddTeamModal({
             </p>
             <div className="grid grid-cols-6 gap-2">
               {INLINE_TEAM_ICONS.map((ic) => (
-                <button
+                <Button
                   key={ic}
                   type="button"
                   onClick={() => setTeamIcon(ic)}
@@ -1493,25 +1503,25 @@ export function AddTeamModal({
                   )}
                 >
                   {ic}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
           <div className="flex items-center justify-between border-t border-neutral-100 dark:border-neutral-800 px-6 py-4">
-            <button
+            <Button
               type="button"
               onClick={() => setStep(1)}
               className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-2 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
             >
               ← Back
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => setStep(3)}
               className="rounded-lg bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600 transition-colors"
             >
               Next →
-            </button>
+            </Button>
           </div>
         </>
       ) : null}
@@ -1527,7 +1537,7 @@ export function AddTeamModal({
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {quickStartTemplates.map((tpl) => (
-                  <button
+                  <Button
                     key={tpl.id}
                     type="button"
                     onClick={() => {
@@ -1567,7 +1577,7 @@ export function AddTeamModal({
                           ? '⚖️'
                           : '🚀'}
                     </span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -1601,7 +1611,7 @@ export function AddTeamModal({
                     const modelShort =
                       modelParts[modelParts.length - 1] || m.modelId
                     return (
-                      <button
+                      <Button
                         key={m.id}
                         type="button"
                         onClick={() => toggleAgent(m.id)}
@@ -1648,7 +1658,7 @@ export function AddTeamModal({
                         <span className="shrink-0 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-1.5 py-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-400">
                           {modelShort}
                         </span>
-                      </button>
+                      </Button>
                     )
                   })
                 )}
@@ -1662,21 +1672,21 @@ export function AddTeamModal({
           </div>
 
           <div className="flex items-center justify-between gap-3 border-t border-neutral-100 dark:border-neutral-800 px-6 py-4">
-            <button
+            <Button
               type="button"
               onClick={() => setStep(2)}
               className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-2 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
             >
               ← Back
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handleCreate}
               disabled={!canCreate}
               className="rounded-lg bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600 disabled:opacity-50 transition-colors"
             >
               Create Team
-            </button>
+            </Button>
           </div>
         </>
       ) : null}
@@ -1741,7 +1751,7 @@ export function ProviderEditModal({
             </div>
           ) : null}
         </div>
-        <button
+        <Button
           type="button"
           onClick={onClose}
           className="flex size-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:text-neutral-700 dark:hover:text-white transition-colors"
@@ -1754,7 +1764,7 @@ export function ProviderEditModal({
               strokeLinecap="round"
             />
           </svg>
-        </button>
+        </Button>
       </div>
 
       <div className="px-6 py-5 space-y-4">
@@ -1795,7 +1805,7 @@ export function ProviderEditModal({
                   </span>
                 ) : null}
               </FieldLabel>
-              <select
+              <NativeSelect
                 value={defaultModel}
                 onChange={(e) => setDefaultModel(e.target.value)}
                 className={SELECT_CLS}
@@ -1806,7 +1816,7 @@ export function ProviderEditModal({
                     {m.label}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           )
         })()}
@@ -1819,7 +1829,7 @@ export function ProviderEditModal({
               — leave blank to keep current
             </span>
           </FieldLabel>
-          <input
+          <Input
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
@@ -1832,24 +1842,24 @@ export function ProviderEditModal({
       <div className="flex items-center justify-between gap-2 border-t border-neutral-100 dark:border-neutral-800 px-6 py-4">
         <div>
           {onDelete ? (
-            <button
+            <Button
               type="button"
               onClick={() => void onDelete()}
               className="rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 transition-colors"
             >
               Remove Provider
-            </button>
+            </Button>
           ) : null}
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
             onClick={onClose}
             className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-2 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => {
               onSave(apiKey, defaultModel)
@@ -1858,7 +1868,7 @@ export function ProviderEditModal({
             className="rounded-lg bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600 transition-colors"
           >
             Update Provider
-          </button>
+          </Button>
         </div>
       </div>
     </WizardModal>

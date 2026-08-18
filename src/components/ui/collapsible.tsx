@@ -15,7 +15,7 @@ function CollapsibleTrigger({
   return (
     <BaseCollapsible.Trigger
       className={cn(
-        'group inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs font-medium text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-card2)] hover:text-[var(--theme-text)] data-panel-open:text-[var(--theme-text)]',
+        'group inline-flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-[0.9375rem] leading-[1.5] font-semibold text-[var(--theme-text)] transition-colors hover:bg-[var(--theme-card2)] data-panel-open:text-[var(--theme-text)]',
         className,
       )}
       {...props}
@@ -44,7 +44,14 @@ function CollapsiblePanel({
       )}
       {...props}
     >
-      <div className={cn('pt-1', contentClassName)}>{children}</div>
+      <div
+        className={cn(
+          'px-5 pb-[1.1rem] text-sm leading-[1.6] text-[var(--theme-muted)]',
+          contentClassName,
+        )}
+      >
+        {children}
+      </div>
     </BaseCollapsible.Panel>
   )
 }

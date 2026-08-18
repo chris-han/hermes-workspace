@@ -11,6 +11,8 @@
  * Chat routes get the full ChatScreen treatment.
  * Non-chat routes show the sub-page content.
  */
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -481,7 +483,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         {!isOnChatRoute && !isMobile && <ChatPanelToggle />}
 
         {showDesktopSidebarBackdrop ? (
-          <button
+          <Button
             type="button"
             aria-label="Collapse navigation sidebar"
             onClick={() => setSidebarCollapsed(true)}

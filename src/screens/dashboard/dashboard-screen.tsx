@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
@@ -304,15 +306,15 @@ function DecisionRow({
         </span>
         {isPending ? (
           <>
-            <button
+            <Button
               type="button"
               disabled={busy}
               onClick={() => onDeny(decision.gatewayApprovalId ?? decision.id)}
               className="rounded-full border border-danger/20 bg-danger/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-danger transition-colors hover:bg-danger/15 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Block
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={busy}
               onClick={() =>
@@ -321,7 +323,7 @@ function DecisionRow({
               className="rounded-full border border-success/20 bg-success/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-success transition-colors hover:bg-success/15 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Clear
-            </button>
+            </Button>
           </>
         ) : null}
       </div>
@@ -418,7 +420,7 @@ function AdminEnforcementPanel({
                   { value: 'agent_decision', label: 'Agent decisions' },
                 ] as Array<{ value: DecisionFilter; label: string }>
               ).map((item) => (
-                <button
+                <Button
                   key={item.value}
                   type="button"
                   onClick={() => onFilterChange(item.value)}
@@ -430,7 +432,7 @@ function AdminEnforcementPanel({
                   )}
                 >
                   {item.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -1035,7 +1037,7 @@ function QuickAction({
   badge?: string
 }) {
   return (
-    <button
+    <Button
       type="button"
       onClick={onClick}
       disabled={disabled}
@@ -1063,7 +1065,7 @@ function QuickAction({
           {badge}
         </span>
       ) : null}
-    </button>
+    </Button>
   )
 }
 
@@ -1084,7 +1086,7 @@ function SessionRow({
   const barWidth = maxTokens > 0 ? Math.max(1, (tokens / maxTokens) * 100) : 0
 
   return (
-    <button
+    <Button
       type="button"
       onClick={onClick}
       className="w-full text-left px-4 py-2.5 rounded-lg hover:bg-muted transition-colors group"
@@ -1115,7 +1117,7 @@ function SessionRow({
           }}
         />
       </div>
-    </button>
+    </Button>
   )
 }
 
@@ -1322,7 +1324,7 @@ export function DashboardScreen() {
         className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-2 h-12"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <button
+        <Button
           type="button"
           aria-label="Open navigation menu"
           onClick={openHamburgerMenu}
@@ -1342,8 +1344,8 @@ export function DashboardScreen() {
               strokeLinecap="round"
             />
           </svg>
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           aria-label="Toggle theme"
           onClick={() => {
@@ -1379,7 +1381,7 @@ export function DashboardScreen() {
             size={20}
             strokeWidth={1.5}
           />
-        </button>
+        </Button>
       </div>
       <div className="px-4 pt-14 md:pt-4 py-4 md:px-8 md:py-6 lg:px-10 space-y-5 pb-28">
         {/* ── Header: Hermes Logo + Quick Actions ── */}
@@ -1509,7 +1511,7 @@ export function DashboardScreen() {
           <DashboardCard
             title="Recent Sessions"
             titleRight={
-              <button
+              <Button
                 type="button"
                 className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() =>
@@ -1520,7 +1522,7 @@ export function DashboardScreen() {
                 }
               >
                 View all →
-              </button>
+              </Button>
             }
             noPadding
           >

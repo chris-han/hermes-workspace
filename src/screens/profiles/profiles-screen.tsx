@@ -1,3 +1,5 @@
+import { Textarea } from '@/components/ui/form-controls'
+
 import {
   type ChangeEvent,
   useCallback,
@@ -616,7 +618,7 @@ export function ProfilesScreen() {
 
               {/* Actions */}
               <div className="mt-4 flex border-t border-border">
-                <button
+                <Button
                   type="button"
                   onClick={() => void handleActivate(profile.name)}
                   disabled={profile.readOnly || profile.active || busy}
@@ -633,8 +635,8 @@ export function ProfilesScreen() {
                     strokeWidth={1.8}
                   />{' '}
                   Activate
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => setDetailsName(profile.name)}
                   className="flex flex-1 items-center justify-center gap-1.5 border-r border-border py-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -645,8 +647,8 @@ export function ProfilesScreen() {
                     strokeWidth={1.8}
                   />{' '}
                   Details
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => {
                     if (profile.readOnly) return
@@ -662,8 +664,8 @@ export function ProfilesScreen() {
                     strokeWidth={1.8}
                   />{' '}
                   Rename
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => void handleDelete(profile.name)}
                   disabled={profile.readOnly || profile.active || busy}
@@ -680,7 +682,7 @@ export function ProfilesScreen() {
                     strokeWidth={1.8}
                   />{' '}
                   Delete
-                </button>
+                </Button>
               </div>
             </article>
           )
@@ -1123,11 +1125,13 @@ export function ProfilesScreen() {
                     </span>
                     <div className="flex items-center gap-2">
                       <label className="block">
-                        <input
+                        <Input
                           type="file"
                           accept="image/*"
                           onChange={handleProfileAvatarUpload}
-                          disabled={detailQuery.data.profile.readOnly || detailSaving}
+                          disabled={
+                            detailQuery.data.profile.readOnly || detailSaving
+                          }
                           aria-label="Upload profile avatar"
                           className="block w-full cursor-pointer text-xs text-foreground md:max-w-xs file:mr-2 file:cursor-pointer file:rounded-md file:border file:border-border file:bg-muted file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-foreground file:transition-colors hover:file:bg-muted/80 disabled:cursor-not-allowed disabled:opacity-50"
                         />
@@ -1136,7 +1140,11 @@ export function ProfilesScreen() {
                         variant="outline"
                         size="sm"
                         onClick={() => setDetailAvatarDataUrl(null)}
-                        disabled={detailQuery.data.profile.readOnly || detailSaving || !detailAvatarDataUrl}
+                        disabled={
+                          detailQuery.data.profile.readOnly ||
+                          detailSaving ||
+                          !detailAvatarDataUrl
+                        }
                       >
                         Remove
                       </Button>
@@ -1172,7 +1180,9 @@ export function ProfilesScreen() {
                     <DropdownSelect
                       value={detailModel}
                       onChange={(event) => setDetailModel(event.target.value)}
-                      disabled={detailQuery.data.profile.readOnly || !detailProvider}
+                      disabled={
+                        detailQuery.data.profile.readOnly || !detailProvider
+                      }
                       className="role-config-select h-10 w-full rounded-md border px-3 text-sm outline-none transition-colors disabled:opacity-60"
                     >
                       {!detailProvider ? (
@@ -1199,7 +1209,7 @@ export function ProfilesScreen() {
                   <p className="mb-2 break-all text-xs text-muted-foreground">
                     {detailQuery.data.profile.soulPath || 'No SOUL.md file'}
                   </p>
-                  <textarea
+                  <Textarea
                     value={detailSoul}
                     onChange={(event) => setDetailSoul(event.target.value)}
                     readOnly={detailQuery.data.profile.readOnly}
@@ -1212,7 +1222,11 @@ export function ProfilesScreen() {
                       variant="outline"
                       size="sm"
                       onClick={() => setDetailSoul('')}
-                      disabled={detailQuery.data.profile.readOnly || detailSaving || !detailSoul}
+                      disabled={
+                        detailQuery.data.profile.readOnly ||
+                        detailSaving ||
+                        !detailSoul
+                      }
                     >
                       Clear
                     </Button>

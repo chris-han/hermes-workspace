@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { GatewaySession } from '@/lib/gateway-api'
 import { formatModelName } from '@/lib/format-model-name'
@@ -123,14 +125,14 @@ export function RemoteAgentsPanel({
             {sessions.length}
           </span>
         </h3>
-        <button
+        <Button
           type="button"
           onClick={() => void refresh()}
           disabled={loading}
           className="rounded-lg px-2.5 py-1 text-xs text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
         >
           {loading ? 'Refreshing...' : 'Refresh'}
-        </button>
+        </Button>
       </div>
 
       {error && (
@@ -197,7 +199,7 @@ export function RemoteAgentsPanel({
               </div>
 
               <div className="mt-2">
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     if (!s.key) return
@@ -210,7 +212,7 @@ export function RemoteAgentsPanel({
                   )}
                 >
                   Open Session
-                </button>
+                </Button>
               </div>
             </div>
           )

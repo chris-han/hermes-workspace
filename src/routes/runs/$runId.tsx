@@ -1,3 +1,5 @@
+import { Table } from '@/components/ui/table'
+
 import { useEffect, useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { usePageTitle } from '@/hooks/use-page-title'
@@ -59,7 +61,7 @@ function MetricsTable({ metrics }: { metrics: BacktestMetrics }) {
 
   return (
     <div className="overflow-hidden rounded-lg border border-primary-200 dark:border-neutral-800">
-      <table className="w-full text-sm">
+      <Table className="w-full text-sm">
         <thead>
           <tr className="border-b border-primary-200 bg-primary-50 dark:border-neutral-800 dark:bg-neutral-900">
             <th className="px-4 py-2 text-left font-medium text-primary-700 dark:text-neutral-300">Metric</th>
@@ -74,7 +76,7 @@ function MetricsTable({ metrics }: { metrics: BacktestMetrics }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </Table>
     </div>
   )
 }

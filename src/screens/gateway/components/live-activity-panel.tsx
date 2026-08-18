@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useState } from 'react'
 import { AgentOutputPanel } from './agent-output-panel'
 import type {
@@ -161,7 +163,7 @@ function AgentCard({
 
       {/* Row 4: View button + ⋯ overflow */}
       <div className="mt-2.5 flex items-center gap-1.5">
-        <button
+        <Button
           type="button"
           onClick={onView}
           className={cn(
@@ -172,11 +174,11 @@ function AgentCard({
           )}
         >
           {isSelected ? '✓ Viewing' : 'View'}
-        </button>
+        </Button>
 
         {/* ⋯ Overflow menu — warden controls */}
         <div className="relative">
-          <button
+          <Button
             type="button"
             onClick={(e) => {
               e.stopPropagation()
@@ -186,19 +188,20 @@ function AgentCard({
             aria-label="Agent options"
           >
             ⋯
-          </button>
+          </Button>
           {menuOpen ? (
             <>
-              <div
+              <Button
+                type="button"
+                aria-label="Close agent options"
                 className="fixed inset-0 z-10"
                 onClick={() => setMenuOpen(false)}
-                aria-hidden
               />
               <div
                 className="absolute right-0 top-full z-20 mt-1 min-w-[140px] rounded-xl border border-neutral-200 bg-white py-1 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
                 style={{ overflow: 'visible' }}
               >
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     setMenuOpen(false)
@@ -207,9 +210,9 @@ function AgentCard({
                   className="block w-full px-3 py-1.5 text-left text-[11px] text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   View Output
-                </button>
+                </Button>
                 {agent.status === 'error' ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       setMenuOpen(false)
@@ -218,7 +221,7 @@ function AgentCard({
                     className="block w-full px-3 py-1.5 text-left text-[11px] text-amber-600 transition-colors hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/20"
                   >
                     Respawn
-                  </button>
+                  </Button>
                 ) : null}
                 {agent.status !== 'none' && agent.status !== 'error' ? (
                   <>
@@ -226,7 +229,7 @@ function AgentCard({
                     <p className="px-3 pb-0.5 pt-1 text-[9px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-600">
                       Warden
                     </p>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => {
                         setMenuOpen(false)
@@ -241,8 +244,8 @@ function AgentCard({
                       className="block w-full px-3 py-1.5 text-left text-[11px] text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
                     >
                       Steer
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => {
                         setMenuOpen(false)
@@ -251,11 +254,11 @@ function AgentCard({
                       className="block w-full px-3 py-1.5 text-left text-[11px] text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
                     >
                       {agent.status === 'paused' ? 'Resume' : 'Pause'}
-                    </button>
+                    </Button>
                   </>
                 ) : null}
                 <div className="my-1 border-t border-neutral-100 dark:border-neutral-800" />
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     setMenuOpen(false)
@@ -264,7 +267,7 @@ function AgentCard({
                   className="block w-full px-3 py-1.5 text-left text-[11px] text-red-500 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20"
                 >
                   Kill session
-                </button>
+                </Button>
               </div>
             </>
           ) : null}
@@ -360,7 +363,7 @@ export function LiveActivityPanel({
 
         {/* Tab switcher */}
         <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-100 p-0.5 dark:border-neutral-700 dark:bg-neutral-900">
-          <button
+          <Button
             type="button"
             onClick={() => setTab('activity')}
             className={cn(
@@ -371,8 +374,8 @@ export function LiveActivityPanel({
             )}
           >
             Activity
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => setTab('output')}
             className={cn(
@@ -386,7 +389,7 @@ export function LiveActivityPanel({
             {selectedAgentId && tab !== 'output' ? (
               <span className="ml-1 inline-flex size-1.5 rounded-full bg-emerald-500" />
             ) : null}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -466,7 +469,7 @@ export function LiveActivityPanel({
               )}
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <button
+              <Button
                 type="button"
                 onClick={() => setPinnedOutput((p) => !p)}
                 title={
@@ -482,15 +485,15 @@ export function LiveActivityPanel({
                 )}
               >
                 📌
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={handleCloseOutput}
                 className="rounded p-1 text-[11px] text-neutral-400 transition-colors hover:text-neutral-700 dark:hover:text-neutral-300"
                 aria-label="Close output"
               >
                 ✕
-              </button>
+              </Button>
             </div>
           </div>
 

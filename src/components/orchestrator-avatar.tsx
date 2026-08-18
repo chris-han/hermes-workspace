@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { memo, useCallback, useMemo, useState } from 'react'
 import type { OrchestratorState } from '@/hooks/use-orchestrator-state'
 import { useOrchestratorState } from '@/hooks/use-orchestrator-state'
@@ -1360,7 +1362,7 @@ function AvatarPicker({
         Choose Avatar
       </p>
       {AVATAR_OPTIONS.map((opt) => (
-        <button
+        <Button
           key={opt.id}
           type="button"
           onClick={() => onSelect(opt.id)}
@@ -1375,7 +1377,7 @@ function AvatarPicker({
           <span className="text-[10px] font-medium text-primary-700">
             {opt.label}
           </span>
-        </button>
+        </Button>
       ))}
     </div>
   )
@@ -1463,7 +1465,7 @@ function OrchestratorAvatarComponent({
       </TooltipProvider>
 
       {/* Edit pencil overlay */}
-      <button
+      <Button
         type="button"
         onClick={() => setShowPicker((v) => !v)}
         className="absolute -right-1 -top-1 rounded-full border border-primary-300/70 bg-primary-100/90 p-1 text-primary-500 shadow-sm transition-all hover:bg-primary-200 hover:text-primary-800 hover:scale-110"
@@ -1472,12 +1474,14 @@ function OrchestratorAvatarComponent({
         <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
           <path d="M12.146.854a.5.5 0 0 1 .708 0l2.292 2.292a.5.5 0 0 1 0 .708L5.854 13.146a.5.5 0 0 1-.233.131l-3.5 1a.5.5 0 0 1-.617-.617l1-3.5a.5.5 0 0 1 .131-.233L12.146.854zM11.5 2.5 13.5 4.5" />
         </svg>
-      </button>
+      </Button>
 
       {/* Picker popover — fixed so it can't be clipped by parent overflow */}
       {showPicker && (
         <>
-          <div
+          <Button
+            type="button"
+            aria-label="Close avatar picker"
             className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm animate-in fade-in duration-150"
             onClick={() => setShowPicker(false)}
           />

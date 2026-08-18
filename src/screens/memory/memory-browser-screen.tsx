@@ -1,3 +1,9 @@
+import { Input } from '@/components/ui/input'
+
+import { Textarea } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   ArrowDown01Icon,
@@ -334,7 +340,7 @@ export function MemoryBrowserScreen() {
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
                   style={{ color: 'var(--theme-muted)' }}
                 />
-                <input
+                <Input
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
                   placeholder={copy.searchPlaceholder}
@@ -351,7 +357,7 @@ export function MemoryBrowserScreen() {
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 md:grid-cols-3 md:p-4">
           <aside className="flex min-h-0 flex-col rounded-2xl border border-primary-200 bg-primary-50 dark:border-neutral-800 dark:bg-neutral-950 md:col-span-1">
-            <button
+            <Button
               type="button"
               className="flex items-center justify-between px-3 py-2 text-left md:cursor-default"
               onClick={() => setMobileFilesOpen((value) => !value)}
@@ -366,7 +372,7 @@ export function MemoryBrowserScreen() {
                   strokeWidth={1.7}
                 />
               </span>
-            </button>
+            </Button>
 
             {searchEnabled ? (
               <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
@@ -384,7 +390,7 @@ export function MemoryBrowserScreen() {
                     </div>
                   ) : (
                     searchResults.map((result, index) => (
-                      <button
+                      <Button
                         key={`${result.path}:${result.line}:${index}`}
                         type="button"
                         onClick={() => {
@@ -413,7 +419,7 @@ export function MemoryBrowserScreen() {
                             ),
                           )}
                         </div>
-                      </button>
+                      </Button>
                     ))
                   )}
                 </div>
@@ -478,7 +484,7 @@ export function MemoryBrowserScreen() {
                 <div className="ml-3 flex items-center gap-2">
                   {isEditing ? (
                     <>
-                      <button
+                      <Button
                         type="button"
                         disabled={isSaving}
                         onClick={handleSaveEditing}
@@ -495,15 +501,15 @@ export function MemoryBrowserScreen() {
                           strokeWidth={1.7}
                         />
                         {isSaving ? copy.saving : copy.save}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         disabled={isSaving}
                         onClick={handleCancelEditing}
                         className="rounded-md border border-primary-200 px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary-300 hover:bg-primary-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
                       >
                         {copy.cancel}
-                      </button>
+                      </Button>
                       {hasUnsavedChanges ? (
                         <span
                           title={copy.unsavedChanges}
@@ -512,7 +518,7 @@ export function MemoryBrowserScreen() {
                       ) : null}
                     </>
                   ) : (
-                    <button
+                    <Button
                       type="button"
                       onClick={handleStartEditing}
                       className="relative inline-flex items-center gap-1.5 rounded-md border border-primary-200 px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary-300 hover:bg-primary-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
@@ -526,7 +532,7 @@ export function MemoryBrowserScreen() {
                       {hasUnsavedChanges ? (
                         <span className="absolute -right-1 -top-1 size-2 rounded-full bg-amber-400" />
                       ) : null}
-                    </button>
+                    </Button>
                   )}
                 </div>
               ) : null}
@@ -555,7 +561,7 @@ export function MemoryBrowserScreen() {
                     backgroundColor: 'var(--theme-card)',
                   }}
                 >
-                  <textarea
+                  <Textarea
                     value={draftContent}
                     onChange={(event) => {
                       const nextValue = event.target.value
@@ -575,7 +581,7 @@ export function MemoryBrowserScreen() {
                         {copy.unsavedChanges}
                       </span>
                     ) : null}
-                    <button
+                    <Button
                       type="button"
                       disabled={isSaving}
                       onClick={handleSaveEditing}
@@ -592,7 +598,7 @@ export function MemoryBrowserScreen() {
                         strokeWidth={1.7}
                       />
                       {isSaving ? copy.saving : copy.save}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -652,7 +658,7 @@ function FileRow({
   onSelect: (pathValue: string) => void
 }) {
   return (
-    <button
+    <Button
       type="button"
       onClick={() => onSelect(file.path)}
       className={cn(
@@ -668,7 +674,7 @@ function FileRow({
       <div className="mt-0.5 text-[11px] text-primary-400 dark:text-neutral-500">
         {formatBytes(file.size)} · {formatModified(file.modified)}
       </div>
-    </button>
+    </Button>
   )
 }
 

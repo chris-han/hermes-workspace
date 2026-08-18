@@ -1,3 +1,5 @@
+import { Textarea } from '@/components/ui/form-controls'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUp01Icon, RefreshIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -102,7 +104,7 @@ export function AgentRosterChat({
       ) : null}
 
       <div className="mt-4 flex items-end gap-3">
-        <textarea
+        <Textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {

@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ApprovalRequest } from '../lib/approvals-store'
 import type { GatewayApprovalEntry } from '@/lib/gateway-api'
@@ -354,7 +356,7 @@ export function ApprovalsPage({
                           </div>
 
                           <div className="flex w-full gap-2 sm:w-auto">
-                            <button
+                            <Button
                               type="button"
                               onClick={() => void handleResolve(row, 'approve')}
                               disabled={isBusy}
@@ -363,8 +365,8 @@ export function ApprovalsPage({
                               {resolvingAction === 'approve'
                                 ? 'Approving...'
                                 : 'Approve'}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
                               onClick={() => void handleResolve(row, 'deny')}
                               disabled={isBusy}
@@ -373,7 +375,7 @@ export function ApprovalsPage({
                               {resolvingAction === 'deny'
                                 ? 'Denying...'
                                 : 'Deny'}
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </article>

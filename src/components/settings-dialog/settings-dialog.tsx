@@ -1,5 +1,11 @@
 'use client'
 
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Checkbox, Radio } from '@/components/ui/form-controls'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   ArrowLeft01Icon,
@@ -58,7 +64,10 @@ import {
   updateOrganizationMemberRole,
   useOrganizationSettings,
 } from '@/lib/organization-membership'
-import { semantierAuthQueryKey, useSemantierAuthStatus } from '@/lib/semantier-auth'
+import {
+  semantierAuthQueryKey,
+  useSemantierAuthStatus,
+} from '@/lib/semantier-auth'
 import {
   MessagingAccountLinkingScreen,
   MessagingPlatformSettingsScreen,
@@ -169,8 +178,7 @@ function Row({
   )
 }
 
-const SETTINGS_CARD_CLASS =
-  'rounded-xl px-4 py-3'
+const SETTINGS_CARD_CLASS = 'rounded-xl px-4 py-3'
 
 const getCardStyle = (): React.CSSProperties => ({
   border: '1px solid var(--theme-border)',
@@ -340,8 +348,9 @@ function HermesContent() {
   const fetchModelsForProvider = useCallback(
     (
       providerId: string,
-      setModels: React.Dispatch<React.SetStateAction<Array<string>>> =
-        setAvailableModels,
+      setModels: React.Dispatch<
+        React.SetStateAction<Array<string>>
+      > = setAvailableModels,
     ) => {
       // For local providers, prefer auto-discovered models first
       if (localDiscovery) {
@@ -389,7 +398,10 @@ function HermesContent() {
         setAuxiliaryProvider(auxiliary.provider)
         setAuxiliaryModel(auxiliary.model)
         if (auxiliary.provider) {
-          fetchModelsForProvider(auxiliary.provider, setAvailableAuxiliaryModels)
+          fetchModelsForProvider(
+            auxiliary.provider,
+            setAvailableAuxiliaryModels,
+          )
         }
         const mem =
           typeof d.config?.memory === 'object' && d.config.memory !== null
@@ -531,7 +543,7 @@ function HermesContent() {
               p.authType === 'oauth' ||
               (p.envKey ? !!configuredKeys[p.envKey] : false)
             return (
-              <button
+              <Button
                 key={p.id}
                 type="button"
                 onClick={() => {
@@ -570,7 +582,7 @@ function HermesContent() {
                     return hasKey ? 'Key set' : 'Key required'
                   })()}
                 </span>
-              </button>
+              </Button>
             )
           })}
         </div>
@@ -598,7 +610,7 @@ function HermesContent() {
                 []
               )
             })().map((model) => (
-              <button
+              <Button
                 key={model}
                 type="button"
                 onClick={() => selectProvider(activeProvider, model)}
@@ -611,7 +623,7 @@ function HermesContent() {
                 style={cardStyle}
               >
                 {model}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -629,7 +641,7 @@ function HermesContent() {
           Used for vision, web extraction, and compression helper calls.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <select
+          <NativeSelect
             value={auxiliaryProvider}
             onChange={(e) => selectAuxiliaryProvider(e.target.value)}
             className="min-h-10 flex-1 rounded-lg border px-3 text-sm outline-none"
@@ -644,7 +656,7 @@ function HermesContent() {
                 {p.name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
           <Input
             value={auxiliaryModel}
             onChange={(e) => setAuxiliaryModel(e.target.value)}
@@ -679,10 +691,12 @@ function HermesContent() {
                   ?.models || []
               )
             })().map((model) => (
-              <button
+              <Button
                 key={model}
                 type="button"
-                onClick={() => selectAuxiliaryProvider(auxiliaryProvider, model)}
+                onClick={() =>
+                  selectAuxiliaryProvider(auxiliaryProvider, model)
+                }
                 className={cn(
                   'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
                   auxiliaryModel === model
@@ -692,7 +706,7 @@ function HermesContent() {
                 style={cardStyle}
               >
                 {model}
-              </button>
+              </Button>
             ))}
           </div>
         )}
@@ -742,7 +756,7 @@ function HermesContent() {
                   <div className="text-sm font-medium">{p.name}</div>
                   <div className="text-[11px] font-mono" style={mutedStyle}>
                     {isEditing ? (
-                      <input
+                      <Input
                         type="password"
                         value={keyInput}
                         onChange={(e) => setKeyInput(e.target.value)}
@@ -778,7 +792,7 @@ function HermesContent() {
                   />
                   {isEditing ? (
                     <>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => {
                           if (keyInput) {
@@ -790,8 +804,8 @@ function HermesContent() {
                         className="rounded-lg px-2 py-1 text-[11px] font-medium bg-accent-500 text-white"
                       >
                         Save
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         onClick={() => {
                           setEditingKey(null)
@@ -801,10 +815,10 @@ function HermesContent() {
                         style={{ color: 'var(--theme-muted)' }}
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </>
                   ) : (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => {
                         setEditingKey(key)
@@ -816,7 +830,7 @@ function HermesContent() {
                       }}
                     >
                       {hasKey ? 'Update' : 'Add'}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -894,9 +908,7 @@ function HermesContent() {
               '—'}
           </span>
           <span style={mutedStyle}>Aux Model</span>
-          <span className="font-mono font-medium">
-            {auxiliaryModel || '—'}
-          </span>
+          <span className="font-mono font-medium">{auxiliaryModel || '—'}</span>
           <span style={mutedStyle}>Aux Provider</span>
           <span className="font-mono font-medium">
             {PROVIDER_CARDS.find((p) => p.id === auxiliaryProvider)?.name ||
@@ -1023,7 +1035,7 @@ function _ProfileContent() {
         <Row label="Avatar">
           <div className="flex items-center gap-2">
             <label className="block">
-              <input
+              <Input
                 type="file"
                 accept="image/*"
                 onChange={handleAvatarUpload}
@@ -1095,7 +1107,7 @@ function AppearanceContent() {
             { value: 'dark', label: 'Dark', icon: Moon01Icon },
             { value: 'system', label: 'System', icon: ComputerIcon },
           ].map((option) => (
-            <button
+            <Button
               key={option.value}
               type="button"
               onClick={() => handleThemeChange(option.value)}
@@ -1108,7 +1120,7 @@ function AppearanceContent() {
             >
               <HugeiconsIcon icon={option.icon} size={16} strokeWidth={1.5} />
               {option.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -1313,7 +1325,7 @@ function EnterpriseThemePicker() {
             variants.
           </p>
         </div>
-        <button
+        <Button
           type="button"
           onClick={toggleEnterpriseThemeMode}
           className="inline-flex items-center gap-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-medium text-primary-900 transition-colors hover:bg-primary-100"
@@ -1329,13 +1341,13 @@ function EnterpriseThemePicker() {
             strokeWidth={1.5}
           />
           {currentMode === 'dark' ? 'Light' : 'Dark'}
-        </button>
+        </Button>
       </div>
       <div className="grid w-full grid-cols-2 gap-2">
         {visibleThemes.map((t) => {
           const isActive = current === t.id
           return (
-            <button
+            <Button
               key={t.id}
               type="button"
               onClick={() => applyEnterpriseTheme(t.id)}
@@ -1361,7 +1373,7 @@ function EnterpriseThemePicker() {
               <p className="text-[10px] text-primary-500 dark:text-neutral-400 leading-tight">
                 {t.desc}
               </p>
-            </button>
+            </Button>
           )
         })}
       </div>
@@ -1415,7 +1427,7 @@ function _LoaderContent() {
       </p>
       <div className="grid grid-cols-4 gap-2">
         {styles.map((o) => (
-          <button
+          <Button
             key={o.value}
             type="button"
             onClick={() => updateCS({ loaderStyle: o.value })}
@@ -1431,7 +1443,7 @@ function _LoaderContent() {
               <Preview style={o.value} />
             </span>
             <span className="text-[10px] font-medium leading-3">{o.label}</span>
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -1491,7 +1503,7 @@ function NotificationsContent() {
         </Row>
         <Row label="Usage threshold">
           <div className="flex w-full max-w-[14rem] items-center gap-2">
-            <input
+            <Input
               type="range"
               min={50}
               max={100}
@@ -1642,12 +1654,12 @@ class SettingsErrorBoundary extends Component<
             <p className="mb-2 text-sm font-medium text-red-500">
               Settings failed to load
             </p>
-            <button
+            <Button
               onClick={() => this.setState({ error: null })}
               className="text-xs text-primary-600 underline hover:text-primary-900"
             >
               Try again
-            </button>
+            </Button>
           </div>
         </div>
       )
@@ -1710,7 +1722,7 @@ function AgentBehaviorContent() {
           label="Max turns"
           description="Maximum agent turns per request (1-100)"
         >
-          <input
+          <Input
             type="number"
             min={1}
             max={100}
@@ -1720,7 +1732,7 @@ function AgentBehaviorContent() {
           />
         </Row>
         <Row label="Gateway timeout" description="Seconds before timeout">
-          <input
+          <Input
             type="number"
             min={10}
             max={600}
@@ -1730,7 +1742,7 @@ function AgentBehaviorContent() {
           />
         </Row>
         <Row label="Tool enforcement" description="When agent must use tools">
-          <select
+          <NativeSelect
             value={String(config.tool_use_enforcement || 'auto')}
             onChange={(e) => save('tool_use_enforcement', e.target.value)}
             className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
@@ -1738,7 +1750,7 @@ function AgentBehaviorContent() {
             <option value="auto">Auto</option>
             <option value="required">Required</option>
             <option value="none">None</option>
-          </select>
+          </NativeSelect>
         </Row>
       </div>
     </div>
@@ -1870,22 +1882,29 @@ function AccessControlContent() {
 
       <div className={SETTINGS_CARD_CLASS} style={cardStyle}>
         {/* Role Selection with Radio Buttons */}
-        <div className="py-1.5 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+        <div
+          className="py-1.5 border-b"
+          style={{ borderColor: 'var(--theme-border)' }}
+        >
           <div className="flex flex-col gap-3">
-            <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
+            <p
+              className="text-sm font-medium"
+              style={{ color: 'var(--theme-text)' }}
+            >
               Runtime Mode
             </p>
             <p className="text-xs" style={mutedStyle}>
-              Workspace mode keeps the current sandbox. Elevated mode can use a dedicated Hermes home.
+              Workspace mode keeps the current sandbox. Elevated mode can use a
+              dedicated Hermes home.
             </p>
             <p className="text-xs" style={mutedStyle}>
-              Organization governance permissions for Materialization mode are configured in Organization Context, not here.
+              Organization governance permissions for Materialization mode are
+              configured in Organization Context, not here.
             </p>
-            
+
             {/* Radio Button: Workspace Mode */}
             <label className="flex items-center gap-3 cursor-pointer py-1.5 px-2 rounded-md transition-colors hover:opacity-80">
-              <input
-                type="radio"
+              <Radio
                 name="access-role"
                 value="regular"
                 checked={role === 'regular'}
@@ -1895,7 +1914,10 @@ function AccessControlContent() {
                 className="w-4 h-4"
               />
               <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: 'var(--theme-text)' }}
+                >
                   Workspace Mode
                 </p>
                 <p className="text-xs" style={mutedStyle}>
@@ -1906,8 +1928,7 @@ function AccessControlContent() {
 
             {/* Radio Button: Elevated Mode */}
             <label className="flex items-center gap-3 cursor-pointer py-1.5 px-2 rounded-md transition-colors hover:opacity-80">
-              <input
-                type="radio"
+              <Radio
                 name="access-role"
                 value="administrator"
                 checked={role === 'administrator'}
@@ -1922,7 +1943,10 @@ function AccessControlContent() {
                 className="w-4 h-4"
               />
               <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: 'var(--theme-text)' }}
+                >
                   Elevated Mode
                 </p>
                 <p className="text-xs" style={mutedStyle}>
@@ -1935,8 +1959,14 @@ function AccessControlContent() {
 
         {/* Workspace Sandbox Home - shown only in workspace mode */}
         {role === 'regular' && (
-          <div className="py-3 border-b" style={{ borderColor: 'var(--theme-border)' }}>
-            <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
+          <div
+            className="py-3 border-b"
+            style={{ borderColor: 'var(--theme-border)' }}
+          >
+            <p
+              className="text-xs font-semibold uppercase tracking-wider mb-1.5"
+              style={mutedStyle}
+            >
               Workspace Sandbox
             </p>
             <p className="text-xs mb-2" style={mutedStyle}>
@@ -1953,8 +1983,14 @@ function AccessControlContent() {
 
         {/* Elevated Runtime Home - Conditional Input/Display */}
         {role === 'administrator' && (
-          <div className="py-3 border-b" style={{ borderColor: 'var(--theme-border)' }}>
-            <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
+          <div
+            className="py-3 border-b"
+            style={{ borderColor: 'var(--theme-border)' }}
+          >
+            <p
+              className="text-xs font-semibold uppercase tracking-wider mb-1.5"
+              style={mutedStyle}
+            >
               Elevated Runtime Home
             </p>
             <p className="text-xs mb-2" style={mutedStyle}>
@@ -1976,7 +2012,9 @@ function AccessControlContent() {
                     administratorHome: adminHomeInput,
                   })
                 }
-                disabled={saving || loading || adminHomeInput === administratorHome}
+                disabled={
+                  saving || loading || adminHomeInput === administratorHome
+                }
                 className="h-8 rounded-md px-3"
               >
                 Save
@@ -1987,7 +2025,10 @@ function AccessControlContent() {
 
         {/* Effective Hermes Home - Text with Dimmed Underline */}
         <div className="py-3">
-          <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={mutedStyle}>
+          <p
+            className="text-xs font-semibold uppercase tracking-wider mb-1.5"
+            style={mutedStyle}
+          >
             Effective Hermes Home
           </p>
           <p className="text-xs mb-2" style={mutedStyle}>
@@ -2076,7 +2117,7 @@ function SmartRoutingContent() {
           />
         </Row>
         <Row label="Cheap model" description="Model for simple queries">
-          <select
+          <NativeSelect
             value={String(config.cheap_model || '')}
             onChange={(e) => save('cheap_model', e.target.value)}
             className="h-8 max-w-[12rem] rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
@@ -2087,10 +2128,10 @@ function SmartRoutingContent() {
                 {m.name || m.id}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </Row>
         <Row label="Max chars" description="Messages shorter use cheap model">
-          <input
+          <Input
             type="number"
             min={10}
             max={2000}
@@ -2103,7 +2144,7 @@ function SmartRoutingContent() {
           label="Max words"
           description="Messages with fewer words use cheap model"
         >
-          <input
+          <Input
             type="number"
             min={1}
             max={500}
@@ -2191,7 +2232,7 @@ function VoiceContent() {
           Text-to-Speech
         </p>
         <Row label="TTS Provider">
-          <select
+          <NativeSelect
             value={ttsProvider}
             onChange={(e) => saveTts('provider', e.target.value)}
             className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
@@ -2200,11 +2241,11 @@ function VoiceContent() {
             <option value="elevenlabs">ElevenLabs</option>
             <option value="openai">OpenAI TTS</option>
             <option value="neutts">NeuTTS</option>
-          </select>
+          </NativeSelect>
         </Row>
         {ttsProvider === 'openai' && (
           <Row label="Voice">
-            <select
+            <NativeSelect
               value={String(
                 (tts.openai as Record<string, unknown>)?.voice || 'nova',
               )}
@@ -2223,7 +2264,7 @@ function VoiceContent() {
                   </option>
                 ),
               )}
-            </select>
+            </NativeSelect>
           </Row>
         )}
       </div>
@@ -2238,14 +2279,14 @@ function VoiceContent() {
           />
         </Row>
         <Row label="STT Provider">
-          <select
+          <NativeSelect
             value={String(stt.provider || 'local')}
             onChange={(e) => saveStt('provider', e.target.value)}
             className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
           >
             <option value="local">Local (Whisper)</option>
             <option value="openai">OpenAI Whisper</option>
-          </select>
+          </NativeSelect>
         </Row>
       </div>
     </div>
@@ -2303,7 +2344,7 @@ function DisplayContent() {
       )}
       <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Personality" description="Agent response style">
-          <select
+          <NativeSelect
             value={String(config.personality || 'default')}
             onChange={(e) => save('personality', e.target.value)}
             className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
@@ -2312,7 +2353,7 @@ function DisplayContent() {
             <option value="concise">Concise</option>
             <option value="verbose">Verbose</option>
             <option value="creative">Creative</option>
-          </select>
+          </NativeSelect>
         </Row>
         <Row label="Streaming" description="Stream responses in real-time">
           <Switch
@@ -2359,7 +2400,7 @@ function LanguageContent() {
         label="Interface Language"
         description="Translates navigation, labels, and buttons."
       >
-        <select
+        <NativeSelect
           value={settings.locale}
           onChange={(e) => {
             updateSettings({ locale: e.target.value as LocaleId })
@@ -2374,7 +2415,7 @@ function LanguageContent() {
               </option>
             ),
           )}
-        </select>
+        </NativeSelect>
       </Row>
     </div>
   )
@@ -2396,7 +2437,9 @@ function OrganizationContent() {
   const authQuery = useSemantierAuthStatus()
   const organizationQuery = useOrganizationSettings()
   const [modePending, setModePending] = useState(false)
-  const [rolePendingUserId, setRolePendingUserId] = useState<string | null>(null)
+  const [rolePendingUserId, setRolePendingUserId] = useState<string | null>(
+    null,
+  )
   const [policyMode, setPolicyMode] = useState<'AUTO' | 'APPROVAL'>('AUTO')
   const [msg, setMsg] = useState<string | null>(null)
 
@@ -2409,7 +2452,10 @@ function OrganizationContent() {
     } else {
       setPolicyMode('AUTO')
     }
-  }, [organizationQuery.data?.organization?.t6_materialization_policy?.default_mode])
+  }, [
+    organizationQuery.data?.organization?.t6_materialization_policy
+      ?.default_mode,
+  ])
 
   async function refreshOrgContext() {
     await Promise.all([
@@ -2422,7 +2468,9 @@ function OrganizationContent() {
     setModePending(true)
     setMsg(null)
     try {
-      await updateOrganizationMaterializationPolicy({ default_mode: policyMode })
+      await updateOrganizationMaterializationPolicy({
+        default_mode: policyMode,
+      })
       await refreshOrgContext()
       setMsg('Materialization mode updated')
     } catch (error) {
@@ -2453,7 +2501,8 @@ function OrganizationContent() {
   const authUser = authQuery.data?.user
   const authUserId = authUser?.user_id || null
   const authIdentityCandidates = useMemo(() => {
-    const normalize = (value?: string | null) => value?.trim().toLowerCase() || ''
+    const normalize = (value?: string | null) =>
+      value?.trim().toLowerCase() || ''
     return new Set(
       [
         authUser?.user_id,
@@ -2502,7 +2551,7 @@ function OrganizationContent() {
     derivedCanChangeFromMembership ||
     Boolean(
       organizationQuery.data?.organization?.can_change_settings ??
-        authQuery.data?.can_change_settings,
+      authQuery.data?.can_change_settings,
     )
   const canEditRoles = orgMembershipStatus === 'active'
   const currentRole = orgRole
@@ -2518,7 +2567,7 @@ function OrganizationContent() {
   ).filter(
     (event) =>
       event.event_type === 'membership_role_updated' &&
-      (event.detail?.notification_pending === true),
+      event.detail?.notification_pending === true,
   )
 
   return (
@@ -2530,7 +2579,8 @@ function OrganizationContent() {
 
       {ownerDisplacedNotifications.length > 0 ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
-          Your owner role was transferred to another member. You are now a member of this organization.
+          Your owner role was transferred to another member. You are now a
+          member of this organization.
         </div>
       ) : null}
 
@@ -2565,17 +2615,19 @@ function OrganizationContent() {
           description="AUTO means auto-approve by default. APPROVAL means human-in-the-loop by default."
         >
           <div className="flex items-center gap-2">
-            <select
+            <NativeSelect
               value={policyMode}
               onChange={(e) =>
-                setPolicyMode(e.target.value === 'APPROVAL' ? 'APPROVAL' : 'AUTO')
+                setPolicyMode(
+                  e.target.value === 'APPROVAL' ? 'APPROVAL' : 'AUTO',
+                )
               }
               disabled={!canChangeSettings || modePending}
               className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
             >
               <option value="AUTO">AUTO</option>
               <option value="APPROVAL">APPROVAL</option>
-            </select>
+            </NativeSelect>
             <Button
               type="button"
               size="sm"
@@ -2589,7 +2641,8 @@ function OrganizationContent() {
         </Row>
         {!canChangeSettings ? (
           <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
-            Switching Runtime Home Mode to Elevated does not grant organization governance rights.
+            Switching Runtime Home Mode to Elevated does not grant organization
+            governance rights.
           </p>
         ) : null}
       </div>
@@ -2600,24 +2653,30 @@ function OrganizationContent() {
         </p>
         {adminContacts.length > 0 ? (
           <div className="mb-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
-            Ask these org admins: {adminContacts.map((member) => member.name).join(', ')}
+            Ask these org admins:{' '}
+            {adminContacts.map((member) => member.name).join(', ')}
           </div>
         ) : (
           <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
-            No active owner/admin assigned yet. Any active member can assign a single owner.
+            No active owner/admin assigned yet. Any active member can assign a
+            single owner.
           </div>
         )}
         {!canEditRoles ? (
           <p className="mb-2 text-xs text-amber-700 dark:text-amber-300">
-            Role editing disabled. Requires active membership in the selected organization.
-            {' '}Detected role={currentRole}, status={membershipStatus}
+            Role editing disabled. Requires active membership in the selected
+            organization. Detected role={currentRole}, status={membershipStatus}
             {authUserId ? `, user=${authUserId}.` : '.'}
           </p>
         ) : null}
         {organizationQuery.isLoading ? (
-          <p className="text-sm text-primary-500 dark:text-neutral-400">Loading members...</p>
+          <p className="text-sm text-primary-500 dark:text-neutral-400">
+            Loading members...
+          </p>
         ) : members.length === 0 ? (
-          <p className="text-sm text-primary-500 dark:text-neutral-400">No members in active organization.</p>
+          <p className="text-sm text-primary-500 dark:text-neutral-400">
+            No members in active organization.
+          </p>
         ) : (
           <div className="space-y-2">
             {members.map((member) => {
@@ -2640,9 +2699,11 @@ function OrganizationContent() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <select
+                    <NativeSelect
                       value={currentMemberRole}
-                      disabled={!canEditRoles || rolePendingUserId === member.user_id}
+                      disabled={
+                        !canEditRoles || rolePendingUserId === member.user_id
+                      }
                       onChange={(e) =>
                         void handleRoleUpdate(
                           member.user_id,
@@ -2653,7 +2714,7 @@ function OrganizationContent() {
                     >
                       <option value="owner">owner</option>
                       <option value="member">member</option>
-                    </select>
+                    </NativeSelect>
                   </div>
                 </div>
               )
@@ -2663,12 +2724,12 @@ function OrganizationContent() {
       </div>
 
       <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
-        <a
+        <DsLink
           href="/settings/organization"
           className="text-sm font-medium text-primary-700 underline underline-offset-2 hover:text-primary-900 dark:text-neutral-200 dark:hover:text-neutral-100"
         >
           Open full Organization settings page →
-        </a>
+        </DsLink>
       </div>
     </div>
   )
@@ -2757,7 +2818,7 @@ export function SettingsDialog({
               >
                 <nav className="space-y-1">
                   {SECTIONS.map((s) => (
-                    <button
+                    <Button
                       key={s.id}
                       type="button"
                       onClick={() => handleSectionSelect(s.id)}
@@ -2773,7 +2834,7 @@ export function SettingsDialog({
                         strokeWidth={1.5}
                       />
                       {s.label}
-                    </button>
+                    </Button>
                   ))}
                 </nav>
               </aside>
@@ -2806,12 +2867,12 @@ export function SettingsDialog({
 
           <div className="sticky bottom-0 z-10 border-t border-primary-200 bg-primary-50/60 px-4 py-3 text-xs text-primary-500 dark:text-neutral-400 md:rounded-b-2xl md:px-5">
             Changes saved automatically.{' '}
-            <a
+            <DsLink
               href="/settings"
               className="ml-2 font-medium underline underline-offset-2 hover:text-primary-700 dark:hover:text-neutral-200"
             >
               All settings →
-            </a>
+            </DsLink>
           </div>
         </div>
       </DialogContent>

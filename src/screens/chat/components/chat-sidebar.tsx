@@ -101,7 +101,7 @@ function ThemeToggleMini() {
   }
 
   return (
-    <button
+    <Button
       type="button"
       onClick={() => {
         // Fall back to current family rather than dropping the user into hermes-official
@@ -128,7 +128,7 @@ function ThemeToggleMini() {
         size={16}
         strokeWidth={1.5}
       />
-    </button>
+    </Button>
   )
 }
 
@@ -410,7 +410,7 @@ function SectionLabel({
         ) : (
           labelContent
         )}
-        <button
+        <Button
           type="button"
           onClick={onToggle}
           className="ml-auto p-0.5 rounded hover:bg-primary-200 dark:hover:bg-primary-800 transition-colors"
@@ -425,7 +425,7 @@ function SectionLabel({
               expanded ? 'rotate-0' : '-rotate-90',
             )}
           />
-        </button>
+        </Button>
       </motion.div>
     )
   }
@@ -473,7 +473,10 @@ function CollapsibleSection({
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className={cn('overflow-hidden space-y-0.5', isCollapsed && 'flex flex-col items-center')}
+          className={cn(
+            'overflow-hidden space-y-0.5',
+            isCollapsed && 'flex flex-col items-center',
+          )}
         >
           {items.map((item) => (
             <motion.div
@@ -556,17 +559,17 @@ function ChatSidebarComponent({
   })
   const queryClient = useQueryClient()
   const semantierAuthQuery = useSemantierAuthStatus()
-  const semantierAuth =
-    semantierAuthQuery.data ?? {
-      authenticated: false,
-      feishu_oauth_enabled: false,
-    }
+  const semantierAuth = semantierAuthQuery.data ?? {
+    authenticated: false,
+    feishu_oauth_enabled: false,
+  }
   const radarPluginQuery = useQuery({
     queryKey: ['semantier-plugins', 'vc_github_opportunity_radar'],
     enabled: semantierAuth.authenticated === true,
     queryFn: async () => {
       const response = await fetch('/api/plugins')
-      if (!response.ok) throw new Error(`Plugin inventory unavailable (${response.status})`)
+      if (!response.ok)
+        throw new Error(`Plugin inventory unavailable (${response.status})`)
       return (await response.json()) as {
         plugins?: Array<{ id?: string; enabled?: boolean }>
       }
@@ -1197,16 +1200,20 @@ function ChatSidebarComponent({
       {/* ── Scrollable body: nav + sessions ─────────────────────────── */}
       {/* Single scroll container: nav folds work, scroll extends to footer boundary.
           Collapsed-mode icons use fixed size-8 so scrollbar width never affects alignment. */}
-      <div className={cn(
-        'flex-1 min-h-0 overflow-y-auto scrollbar-thin flex flex-col',
-        isVisuallyCollapsed ? 'items-center' : '',
-      )}>
+      <div
+        className={cn(
+          'flex-1 min-h-0 overflow-y-auto scrollbar-thin flex flex-col',
+          isVisuallyCollapsed ? 'items-center' : '',
+        )}
+      >
         {/* Navigation sections */}
-        <div className={cn(
-          'shrink-0 space-y-0.5 w-full',
-          isVisuallyCollapsed ? 'px-0 py-1' : 'px-2',
-          isMobile && 'order-2'
-        )}>
+        <div
+          className={cn(
+            'shrink-0 space-y-0.5 w-full',
+            isVisuallyCollapsed ? 'px-0 py-1' : 'px-2',
+            isMobile && 'order-2',
+          )}
+        >
           <SectionLabel
             label={t('chat.main')}
             isCollapsed={isVisuallyCollapsed}
@@ -1372,7 +1379,7 @@ function ChatSidebarComponent({
                           >
                             ID: {semantierAuth.user.user_id}
                           </span>
-                          <button
+                          <Button
                             type="button"
                             onClick={async () => {
                               try {
@@ -1396,7 +1403,7 @@ function ChatSidebarComponent({
                               size={12}
                               strokeWidth={1.5}
                             />
-                          </button>
+                          </Button>
                         </div>
                       </>
                     ) : (
@@ -1447,7 +1454,7 @@ function ChatSidebarComponent({
           {/* Settings + Theme toggle */}
           {!isVisuallyCollapsed && (
             <div className="flex items-center gap-0.5">
-              <button
+              <Button
                 type="button"
                 onClick={() => handleOpenSettings('hermes')}
                 className="shrink-0 rounded-lg p-1.5 text-primary-400 hover:bg-primary-200 dark:hover:bg-neutral-800 hover:text-primary-600 dark:hover:text-neutral-300 transition-colors"
@@ -1458,7 +1465,7 @@ function ChatSidebarComponent({
                   size={16}
                   strokeWidth={1.5}
                 />
-              </button>
+              </Button>
               <ThemeToggleMini />
             </div>
           )}

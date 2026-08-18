@@ -1,3 +1,5 @@
+import { Input } from '@/components/ui/input'
+
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -303,7 +305,7 @@ export function WorkspaceSkillsScreen() {
                             : 'border-primary-200 hover:border-primary-300',
                         )}
                       >
-                        <button
+                        <Button
                           type="button"
                           onClick={() =>
                             setSelectedSkillId((current) =>
@@ -343,7 +345,7 @@ export function WorkspaceSkillsScreen() {
                             strokeWidth={1.7}
                             className="mt-0.5 shrink-0 text-primary-500"
                           />
-                        </button>
+                        </Button>
 
                         <AnimatePresence initial={false}>
                           {expanded ? (
@@ -465,7 +467,7 @@ export function WorkspaceSkillsScreen() {
                     strokeWidth={1.8}
                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-primary-500"
                   />
-                  <input
+                  <Input
                     value={memorySearch}
                     onChange={(event) => setMemorySearch(event.target.value)}
                     placeholder="Search memory..."
@@ -477,7 +479,7 @@ export function WorkspaceSkillsScreen() {
                   {MEMORY_FILTERS.map((filter) => {
                     const active = filter === memoryFilter
                     return (
-                      <button
+                      <Button
                         key={filter}
                         type="button"
                         onClick={() => setMemoryFilter(filter)}
@@ -489,7 +491,7 @@ export function WorkspaceSkillsScreen() {
                         )}
                       >
                         {filter}
-                      </button>
+                      </Button>
                     )
                   })}
                 </div>
@@ -595,7 +597,7 @@ function MemorySectionBlock({
           {files.map((file) => {
             const active = selectedPath === file.path
             return (
-              <button
+              <Button
                 key={file.path}
                 type="button"
                 onClick={() => onSelect(file.path)}
@@ -624,7 +626,7 @@ function MemorySectionBlock({
                 <span className="shrink-0 text-xs text-primary-400">
                   {file.size}
                 </span>
-              </button>
+              </Button>
             )
           })}
         </div>

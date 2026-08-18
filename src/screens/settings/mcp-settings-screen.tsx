@@ -1,3 +1,5 @@
+import { Textarea } from '@/components/ui/form-controls'
+
 import {
   Add01Icon,
   ArrowLeft01Icon,
@@ -302,7 +304,7 @@ function ServerDialog(props: {
                     <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                       Env Vars
                     </span>
-                    <textarea
+                    <Textarea
                       value={draft.envText}
                       rows={4}
                       placeholder={'API_KEY=${MCP_API_KEY}\nLOG_LEVEL=debug'}
@@ -336,7 +338,7 @@ function ServerDialog(props: {
                     <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                       Headers
                     </span>
-                    <textarea
+                    <Textarea
                       value={draft.headersText}
                       rows={4}
                       placeholder={

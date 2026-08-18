@@ -1,3 +1,7 @@
+import { Table } from '@/components/ui/table'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import {
@@ -178,13 +182,19 @@ export function buildDatasetCompatibilityBadges(
   if (!organization) {
     return [{ label: 'NO_DATASET', tone: 'warning' }]
   }
-  const badges: Array<{ label: string; tone: 'neutral' | 'warning' | 'success' }> = [
+  const badges: Array<{
+    label: string
+    tone: 'neutral' | 'warning' | 'success'
+  }> = [
     {
       label: organization.dataset_type || 'NO_DATASET',
       tone: organization.dataset_type ? 'neutral' : 'warning',
     },
     {
-      label: organization.authority_state || organization.setup_status || 'REAL_EMPTY',
+      label:
+        organization.authority_state ||
+        organization.setup_status ||
+        'REAL_EMPTY',
       tone: 'neutral',
     },
   ]
@@ -538,8 +548,9 @@ export function OrganizationSettingsScreen() {
   const activeOrganization = authQuery.data?.organization_id
   const memberships = organizationQuery.data?.memberships ?? []
   const activeOrganizationContext = organizationQuery.data?.organization ?? null
-  const datasetCompatibilityBadges =
-    buildDatasetCompatibilityBadges(activeOrganizationContext)
+  const datasetCompatibilityBadges = buildDatasetCompatibilityBadges(
+    activeOrganizationContext,
+  )
   const realCompanyMembership = findRealCompanyMembership(
     memberships,
     activeOrganizationContext?.organization_id || activeOrganization,
@@ -801,7 +812,7 @@ export function OrganizationSettingsScreen() {
                       selectedOrganizationId === option.organization_id ||
                       organizationId === option.organization_id
                     return (
-                      <button
+                      <Button
                         key={option.organization_id}
                         type="button"
                         className={`flex w-full items-start justify-between gap-3 rounded-2xl border px-3 py-3 text-left transition ${
@@ -832,7 +843,7 @@ export function OrganizationSettingsScreen() {
                         <span className="shrink-0 rounded-full border border-primary-200 bg-white px-2.5 py-1 text-xs font-medium text-primary-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
                           {selected ? 'Selected' : 'Select'}
                         </span>
-                      </button>
+                      </Button>
                     )
                   })
                 ) : (
@@ -1039,7 +1050,7 @@ export function OrganizationSettingsScreen() {
                 <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
                   Default Mode
                 </label>
-                <select
+                <NativeSelect
                   value={policyDefaultMode}
                   onChange={(event) =>
                     setPolicyDefaultMode(
@@ -1051,7 +1062,7 @@ export function OrganizationSettingsScreen() {
                 >
                   <option value="AUTO">AUTO (Auto-approve)</option>
                   <option value="APPROVAL">APPROVAL (Human in the loop)</option>
-                </select>
+                </NativeSelect>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
@@ -1170,7 +1181,7 @@ export function OrganizationSettingsScreen() {
               ) : null}
 
               <div className="overflow-x-auto rounded-2xl border border-primary-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-900/70">
-                <table className="min-w-full border-collapse text-sm">
+                <Table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-primary-200 dark:border-neutral-800">
                       <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
@@ -1231,7 +1242,7 @@ export function OrganizationSettingsScreen() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <select
+                            <NativeSelect
                               value={draftRole}
                               onChange={(event) =>
                                 setMemberRoleDrafts((current) => ({
@@ -1252,7 +1263,7 @@ export function OrganizationSettingsScreen() {
                                   {role}
                                 </option>
                               ))}
-                            </select>
+                            </NativeSelect>
                           </td>
                           <td className="px-4 py-3">
                             <Button
@@ -1276,7 +1287,7 @@ export function OrganizationSettingsScreen() {
                       )
                     })}
                   </tbody>
-                </table>
+                </Table>
               </div>
             </div>
           )}
@@ -1322,9 +1333,9 @@ export function OrganizationSettingsScreen() {
             </div>
           ) : (
             <div className="rounded-2xl border border-primary-200 bg-white/80 px-4 py-6 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400">
-              No organization memberships exist yet. Use the SMB demo organization
-              to create `{DEFAULT_SMB_ORGANIZATION_ID}` locally and attach it to
-              this user.
+              No organization memberships exist yet. Use the SMB demo
+              organization to create `{DEFAULT_SMB_ORGANIZATION_ID}` locally and
+              attach it to this user.
             </div>
           )}
         </section>
@@ -1380,7 +1391,7 @@ export function OrganizationSettingsScreen() {
               </div>
 
               <div className="overflow-x-auto rounded-2xl border border-primary-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-900/70">
-                <table className="min-w-full border-collapse text-sm">
+                <Table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-primary-200 dark:border-neutral-800">
                       <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
@@ -1426,7 +1437,7 @@ export function OrganizationSettingsScreen() {
                       )
                     })}
                   </tbody>
-                </table>
+                </Table>
               </div>
 
               <div className="grid gap-3 lg:grid-cols-3">

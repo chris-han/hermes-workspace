@@ -50,14 +50,14 @@ export function ModelSuggestionToast({
               )}
             </div>
           </div>
-          <button
+          <Button
             type="button"
             onClick={onDismiss}
             className="shrink-0 rounded-md p-1 text-primary-500 hover:bg-primary-200 hover:text-primary-900"
             aria-label="Dismiss"
           >
             <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={1.5} />
-          </button>
+          </Button>
         </div>
 
         <div className="flex gap-2">

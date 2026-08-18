@@ -1,5 +1,7 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -291,7 +293,7 @@ export function UsageMeterCompact() {
       {/* Header: provider label (click to cycle) | chevron (click to collapse) */}
       <div className="mb-1 flex w-full items-center justify-between">
         {/* Provider name — click to cycle */}
-        <button
+        <Button
           type="button"
           onClick={canCycle ? cycleProvider : undefined}
           className={cn(
@@ -306,10 +308,10 @@ export function UsageMeterCompact() {
         >
           <span>{headerLabel}</span>
           {canCycle && <span className="text-[8px] opacity-60">↻</span>}
-        </button>
+        </Button>
 
         {/* Collapse chevron */}
-        <button
+        <Button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className="text-[9px] text-neutral-300 hover:text-neutral-500 transition-colors cursor-pointer"
@@ -317,7 +319,7 @@ export function UsageMeterCompact() {
           aria-label={expanded ? 'Collapse usage' : 'Expand usage'}
         >
           {expanded ? '▲' : '▼'}
-        </button>
+        </Button>
       </div>
 
       {/* Bars */}

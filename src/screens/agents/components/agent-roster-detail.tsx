@@ -1,3 +1,7 @@
+import { Input } from '@/components/ui/input'
+
+import { Textarea } from '@/components/ui/form-controls'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -10,6 +14,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import type { AgentRosterAgent } from '../hooks/use-agent-roster'
 import type { GatewayModelCatalogEntry } from '@/lib/gateway-api'
 import { Button } from '@/components/ui/button'
+import { DialogSurface } from '@/components/ui/dialog-surface'
 import { fetchModels } from '@/lib/gateway-api'
 import { cn } from '@/lib/utils'
 
@@ -100,7 +105,7 @@ function ModelSelector({
 
   return (
     <div className="relative" ref={containerRef}>
-      <button
+      <Button
         type="button"
         onClick={() => setOpen((current) => !current)}
         className="inline-flex min-h-[3rem] w-full cursor-pointer items-center justify-between gap-3 rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-left text-sm text-[var(--theme-text)]"
@@ -119,12 +124,12 @@ function ModelSelector({
             open && 'rotate-180',
           )}
         />
-      </button>
+      </Button>
 
       {open ? (
         <div className="absolute left-0 top-[calc(100%+0.5rem)] z-[80] w-full overflow-hidden rounded-card border border-[var(--theme-border2)] bg-[var(--theme-card)]">
           <div className="max-h-80 overflow-y-auto p-2">
-            <button
+            <Button
               type="button"
               onClick={() => {
                 onChange('')
@@ -138,9 +143,9 @@ function ModelSelector({
               )}
             >
               Default (auto)
-            </button>
+            </Button>
             {models.map((model) => (
-              <button
+              <Button
                 key={model.id}
                 type="button"
                 onClick={() => {
@@ -155,7 +160,7 @@ function ModelSelector({
                 )}
               >
                 {model.provider} / {model.name}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -176,7 +181,7 @@ export function AgentRosterDetail({
   open: boolean
   agent: AgentRosterAgent | null
   onClose: () => void
- onSave: (input: {
+  onSave: (input: {
     agentId: string
     name: string
     provider: string
@@ -220,9 +225,10 @@ export function AgentRosterDetail({
   if (!open || !agent) return null
 
   return (
-    <div
+    <DialogSurface
       className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--theme-bg)_55%,transparent)] px-4 py-6 backdrop-blur-md"
       onClick={onClose}
+      onDismiss={onClose}
     >
       <div
         className="w-full max-w-3xl rounded-card border border-[var(--theme-border2)] bg-[var(--theme-card)] p-5 sm:p-6"
@@ -249,14 +255,14 @@ export function AgentRosterDetail({
               </p>
             </div>
           </div>
-          <button
+          <Button
             type="button"
             onClick={onClose}
             className="inline-flex size-10 cursor-pointer items-center justify-center rounded-button border border-[var(--theme-border)] bg-[var(--theme-card2)] text-lg text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-text)]"
             aria-label="Close agent settings"
           >
             <HugeiconsIcon icon={Cancel01Icon} size={18} strokeWidth={1.8} />
-          </button>
+          </Button>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-[1.2fr_0.6fr]">
@@ -264,7 +270,7 @@ export function AgentRosterDetail({
             <span className="text-sm font-medium text-[var(--theme-text)]">
               Display name
             </span>
-            <input
+            <Input
               value={name}
               onChange={(event) => setName(event.target.value)}
               className="w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none focus:ring-2 focus:ring-[var(--theme-accent)]"
@@ -275,7 +281,7 @@ export function AgentRosterDetail({
             <span className="text-sm font-medium text-[var(--theme-text)]">
               Emoji
             </span>
-            <input
+            <Input
               value={emoji}
               onChange={(event) => setEmoji(event.target.value)}
               className="w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none focus:ring-2 focus:ring-[var(--theme-accent)]"
@@ -287,7 +293,7 @@ export function AgentRosterDetail({
           <span className="text-sm font-medium text-[var(--theme-text)]">
             Provider
           </span>
-          <input
+          <Input
             value={provider}
             onChange={(event) => setProvider(event.target.value)}
             placeholder="OpenAI-compatible provider ID"
@@ -309,7 +315,7 @@ export function AgentRosterDetail({
           <span className="text-sm font-medium text-[var(--theme-text)]">
             System Prompt
           </span>
-          <textarea
+          <Textarea
             value={systemPrompt}
             onChange={(event) => setSystemPrompt(event.target.value)}
             className="min-h-[220px] w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none focus:ring-2 focus:ring-[var(--theme-accent)]"
@@ -354,6 +360,6 @@ export function AgentRosterDetail({
           </div>
         </div>
       </div>
-    </div>
+    </DialogSurface>
   )
 }

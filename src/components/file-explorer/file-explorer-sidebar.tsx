@@ -1,3 +1,5 @@
+import { Input } from '@/components/ui/input'
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -408,8 +410,9 @@ export function FileExplorerSidebar({
 
       return (
         <div key={entry.path}>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             data-filepath={entry.path}
             onClick={() => handleFileClick(entry)}
             onContextMenu={(event) => {
@@ -440,7 +443,7 @@ export function FileExplorerSidebar({
             )}
             <HugeiconsIcon icon={Icon} size={18} strokeWidth={1.6} />
             <span className="truncate">{entry.name}</span>
-          </button>
+          </Button>
           {entry.type === 'folder' && isExpanded && entry.children?.length ? (
             <div>
               {entry.children.map((child) => renderEntry(child, depth + 1))}
@@ -497,7 +500,8 @@ export function FileExplorerSidebar({
       </div>
 
       <div className="px-3 py-2">
-        <input
+        <Input
+          aria-label="Search files"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search files"
@@ -591,7 +595,7 @@ export function FileExplorerSidebar({
         <ScrollAreaCorner />
       </ScrollAreaRoot>
 
-      <input
+      <Input
         ref={uploadInputRef}
         type="file"
         multiple
@@ -604,7 +608,7 @@ export function FileExplorerSidebar({
           className="fixed z-50 min-w-[160px] rounded-lg bg-primary-50 p-1 text-sm text-primary-900 shadow-lg outline outline-primary-900/10"
           style={{ top: contextMenu.y, left: contextMenu.x }}
         >
-          <button
+          <Button
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-primary-100"
             onClick={() => {
               handleRename(contextMenu.entry)
@@ -612,10 +616,10 @@ export function FileExplorerSidebar({
             }}
           >
             <HugeiconsIcon icon={Pen01Icon} size={16} /> Rename
-          </button>
+          </Button>
           {contextMenu.entry.type === 'folder' ? (
             <>
-              <button
+              <Button
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-primary-100"
                 onClick={() => {
                   handleNewFile(contextMenu.entry)
@@ -623,8 +627,8 @@ export function FileExplorerSidebar({
                 }}
               >
                 <HugeiconsIcon icon={PlusSignIcon} size={16} /> New file
-              </button>
-              <button
+              </Button>
+              <Button
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-primary-100"
                 onClick={() => {
                   handleNewFolder(contextMenu.entry)
@@ -632,8 +636,8 @@ export function FileExplorerSidebar({
                 }}
               >
                 <HugeiconsIcon icon={Folder01Icon} size={16} /> New folder
-              </button>
-              <button
+              </Button>
+              <Button
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-primary-100"
                 onClick={() => {
                   handleUploadClick(contextMenu.entry.path)
@@ -641,10 +645,10 @@ export function FileExplorerSidebar({
                 }}
               >
                 <HugeiconsIcon icon={Upload01Icon} size={16} /> Upload
-              </button>
+              </Button>
             </>
           ) : (
-            <button
+            <Button
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-primary-100"
               onClick={() => {
                 void handleDownload(contextMenu.entry)
@@ -652,9 +656,9 @@ export function FileExplorerSidebar({
               }}
             >
               <HugeiconsIcon icon={Download01Icon} size={16} /> Download
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-red-700 hover:bg-red-50/80"
             onClick={() => {
               void handleDelete(contextMenu.entry)
@@ -662,7 +666,7 @@ export function FileExplorerSidebar({
             }}
           >
             <HugeiconsIcon icon={Delete01Icon} size={16} /> Delete
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -686,7 +690,7 @@ export function FileExplorerSidebar({
                 ? 'Enter a new name.'
                 : 'Enter a name to create.'}
             </DialogDescription>
-            <input
+            <Input
               value={promptValue}
               onChange={(event) => setPromptValue(event.target.value)}
               className="w-full rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-900 focus:outline-none focus:ring-2 focus:ring-primary-300"
@@ -706,7 +710,7 @@ export function FileExplorerSidebar({
         onSaved={refresh}
       />
 
-      <button
+      <Button
         type="button"
         onClick={onToggle}
         className="sr-only"

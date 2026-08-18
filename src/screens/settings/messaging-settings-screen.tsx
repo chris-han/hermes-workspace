@@ -1,3 +1,7 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ViewIcon, ViewOffIcon } from '@hugeicons/core-free-icons'
@@ -1288,14 +1292,14 @@ function FeishuAccountLinkCard({
               <p>Scan this QR with Feishu and approve authorization.</p>
               <p className="mt-1 break-all">
                 OAuth URL:{' '}
-                <a
+                <DsLink
                   className="underline"
                   href={model.feishuLinkAuthorizeUrl}
                   target="_blank"
                   rel="noreferrer"
                 >
                   Open link
-                </a>
+                </DsLink>
               </p>
             </div>
           </div>
@@ -1383,7 +1387,7 @@ function FeishuHomeChannelCard({
       </div>
       <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
         <div className="grid min-w-0 gap-2">
-          <select
+          <NativeSelect
             value={selectedKnownChannel ? model.feishu.homeChannel : ''}
             disabled={
               !model.platforms.feishu.configured || channels.length === 0
@@ -1409,7 +1413,7 @@ function FeishuHomeChannelCard({
                 {feishuChannelLabel(channel)}
               </option>
             ))}
-          </select>
+          </NativeSelect>
           <Input
             value={model.feishu.homeChannel}
             placeholder="oc_xxx"
@@ -1468,14 +1472,14 @@ function FeishuBotConfigCard({
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <StatusBadge configured={state.configured} />
-        <a
+        <DsLink
           href={state.docs_url}
           target="_blank"
           rel="noreferrer"
           className="text-xs font-medium theme-text underline underline-offset-2"
         >
           Open setup docs
-        </a>
+        </DsLink>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -1514,7 +1518,7 @@ function FeishuBotConfigCard({
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Domain
           </span>
-          <select
+          <NativeSelect
             value={model.feishu.domain}
             onChange={(event) =>
               model.setFeishu((current) => ({
@@ -1526,13 +1530,13 @@ function FeishuBotConfigCard({
           >
             <option value="feishu">Feishu</option>
             <option value="lark">Lark</option>
-          </select>
+          </NativeSelect>
         </label>
         <label className="space-y-1.5">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Connection Mode
           </span>
-          <select
+          <NativeSelect
             value={model.feishu.connectionMode}
             onChange={(event) =>
               model.setFeishu((current) => ({
@@ -1544,7 +1548,7 @@ function FeishuBotConfigCard({
           >
             <option value="websocket">WebSocket</option>
             <option value="webhook">Webhook</option>
-          </select>
+          </NativeSelect>
         </label>
 
         {state.configured ? (
@@ -1792,7 +1796,7 @@ function WeixinReadOnlyCard({
               className="pr-10"
             />
             {model.weixin.token ? (
-              <button
+              <Button
                 type="button"
                 onClick={() =>
                   model.setShowWeixinToken((current: boolean) => !current)
@@ -1805,7 +1809,7 @@ function WeixinReadOnlyCard({
                   size={16}
                   strokeWidth={1.5}
                 />
-              </button>
+              </Button>
             ) : null}
           </div>
         </label>
@@ -1884,14 +1888,14 @@ function WeixinReadOnlyCard({
       </div>
 
       <div className="mt-4">
-        <a
+        <DsLink
           href={state.docs_url}
           target="_blank"
           rel="noreferrer"
           className="text-xs font-medium theme-text underline underline-offset-2"
         >
           Open setup docs
-        </a>
+        </DsLink>
       </div>
     </SectionCard>
   )

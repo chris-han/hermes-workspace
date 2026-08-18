@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { createFileRoute } from '@tanstack/react-router'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { AgentRosterScreen } from '@/screens/agents/agent-roster-screen'
@@ -19,12 +21,12 @@ export const Route = createFileRoute('/agent-roster')({
             ? error.message
             : 'An unexpected error occurred'}
         </p>
-        <button
+        <Button
           onClick={() => window.location.reload()}
           className="px-4 py-2 bg-accent-500 text-white rounded-lg hover:bg-accent-600 transition-colors"
         >
           Reload Page
-        </button>
+        </Button>
       </div>
     )
   },

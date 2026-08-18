@@ -1,0 +1,47 @@
+[
+  {
+    "path": "src/components/prompt-kit/prompt-input.tsx",
+    "allowed_kinds": ["non-semantic-handler"],
+    "owner": "workspace-ui",
+    "rationale": "The composite prompt shell delegates activation to its textarea while excluding nested buttons, links, selects, and file inputs; replacing the shell with a button would create invalid nested controls.",
+    "accessible_fallback": "The actual textarea remains the keyboard and assistive-technology focus target.",
+    "replacement": "PromptComposerSurface primitive",
+    "remove_by": "2026-10-01"
+  },
+  {
+    "path": "src/components/terminal/terminal-panel.tsx",
+    "allowed_kinds": ["non-semantic-handler"],
+    "owner": "workspace-terminal",
+    "rationale": "The xterm host must receive copy/paste keyboard events, and the legacy compound tab close affordance cannot become a nested button until the tab header is split.",
+    "accessible_fallback": "xterm owns its accessible textarea; tab selection and add-tab actions use canonical buttons.",
+    "replacement": "TerminalSurface and CompoundTab primitives",
+    "remove_by": "2026-10-01"
+  },
+  {
+    "path": "src/components/terminal/terminal-workspace.tsx",
+    "allowed_kinds": ["role:button", "non-semantic-handler"],
+    "owner": "workspace-terminal",
+    "rationale": "The xterm focus host and legacy compound tab close affordance require terminal-specific event routing and cannot be represented as nested native buttons.",
+    "accessible_fallback": "The close affordance supports Enter and Space; xterm provides its own accessible input target; menu items use canonical buttons.",
+    "replacement": "TerminalSurface and CompoundTab primitives",
+    "remove_by": "2026-10-01"
+  },
+  {
+    "path": "src/screens/gateway/components/agents-working-panel.tsx",
+    "allowed_kinds": ["role:button", "non-semantic-handler"],
+    "owner": "gateway-ui",
+    "rationale": "The selectable agent row contains independent respawn and context-menu actions, so a native button wrapper would create invalid nested buttons.",
+    "accessible_fallback": "The row is keyboard selectable and its nested actions remain independent canonical buttons.",
+    "replacement": "CompositeSelectableRow primitive",
+    "remove_by": "2026-10-01"
+  },
+  {
+    "path": "src/screens/gateway/components/task-board.tsx",
+    "allowed_kinds": ["role:button", "non-semantic-handler"],
+    "owner": "gateway-ui",
+    "rationale": "The draggable task card expands into inline form controls; a button or action-surface wrapper would create invalid nested interactive descendants.",
+    "accessible_fallback": "The task title toggle receives keyboard activation and the expanded form uses canonical controls.",
+    "replacement": "DraggableDisclosureCard primitive",
+    "remove_by": "2026-10-01"
+  }
+]

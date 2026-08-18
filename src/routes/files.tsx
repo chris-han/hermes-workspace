@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useState } from 'react'
 import { Editor } from '@monaco-editor/react'
 import { createFileRoute } from '@tanstack/react-router'
@@ -36,12 +38,12 @@ export const Route = createFileRoute('/files')({
             ? error.message
             : 'An unexpected error occurred'}
         </p>
-        <button
+        <Button
           onClick={() => window.location.reload()}
           className="px-4 py-2 bg-accent-500 text-white rounded-lg hover:bg-accent-600 transition-colors"
         >
           Reload Page
-        </button>
+        </Button>
       </div>
     )
   },
@@ -98,7 +100,7 @@ function FilesRoute() {
         />
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <header className="flex items-center gap-3 border-b border-primary-200 px-3 py-2 md:px-4 md:py-3">
-            <button
+            <Button
               type="button"
               onClick={function onToggleFileExplorerHeader() {
                 setFileExplorerCollapsed((prev) => !prev)
@@ -108,7 +110,7 @@ function FilesRoute() {
               title={fileExplorerCollapsed ? 'Show files' : 'Hide files'}
             >
               <HugeiconsIcon icon={Folder01Icon} size={20} strokeWidth={1.5} />
-            </button>
+            </Button>
             <div>
               <h1 className="text-base font-medium text-balance md:text-lg">
                 Files

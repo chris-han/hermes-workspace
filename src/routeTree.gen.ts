@@ -31,6 +31,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContextgraphStudioRouteImport } from './routes/contextgraph-studio'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AgentRosterRouteImport } from './routes/agent-roster'
+import { Route as DesignSystemGalleryRouteImport } from './routes/DesignSystemGallery'
 import { Route as DesignSystemDemoRouteImport } from './routes/DesignSystemDemo'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
@@ -246,6 +247,11 @@ const AppRoute = AppRouteImport.update({
 const AgentRosterRoute = AgentRosterRouteImport.update({
   id: '/agent-roster',
   path: '/agent-roster',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DesignSystemGalleryRoute = DesignSystemGalleryRouteImport.update({
+  id: '/DesignSystemGallery',
+  path: '/DesignSystemGallery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DesignSystemDemoRoute = DesignSystemDemoRouteImport.update({
@@ -793,6 +799,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/DesignSystemDemo': typeof DesignSystemDemoRoute
+  '/DesignSystemGallery': typeof DesignSystemGalleryRoute
   '/agent-roster': typeof AgentRosterRoute
   '/app': typeof AppRoute
   '/contextgraph-studio': typeof ContextgraphStudioRoute
@@ -923,6 +930,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/DesignSystemDemo': typeof DesignSystemDemoRoute
+  '/DesignSystemGallery': typeof DesignSystemGalleryRoute
   '/agent-roster': typeof AgentRosterRoute
   '/app': typeof AppRoute
   '/contextgraph-studio': typeof ContextgraphStudioRoute
@@ -1053,6 +1061,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/DesignSystemDemo': typeof DesignSystemDemoRoute
+  '/DesignSystemGallery': typeof DesignSystemGalleryRoute
   '/agent-roster': typeof AgentRosterRoute
   '/app': typeof AppRoute
   '/contextgraph-studio': typeof ContextgraphStudioRoute
@@ -1185,6 +1194,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/DesignSystemDemo'
+    | '/DesignSystemGallery'
     | '/agent-roster'
     | '/app'
     | '/contextgraph-studio'
@@ -1315,6 +1325,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/DesignSystemDemo'
+    | '/DesignSystemGallery'
     | '/agent-roster'
     | '/app'
     | '/contextgraph-studio'
@@ -1444,6 +1455,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/DesignSystemDemo'
+    | '/DesignSystemGallery'
     | '/agent-roster'
     | '/app'
     | '/contextgraph-studio'
@@ -1575,6 +1587,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
   DesignSystemDemoRoute: typeof DesignSystemDemoRoute
+  DesignSystemGalleryRoute: typeof DesignSystemGalleryRoute
   AgentRosterRoute: typeof AgentRosterRoute
   AppRoute: typeof AppRoute
   ContextgraphStudioRoute: typeof ContextgraphStudioRoute
@@ -1830,6 +1843,13 @@ declare module '@tanstack/react-router' {
       path: '/agent-roster'
       fullPath: '/agent-roster'
       preLoaderRoute: typeof AgentRosterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/DesignSystemGallery': {
+      id: '/DesignSystemGallery'
+      path: '/DesignSystemGallery'
+      fullPath: '/DesignSystemGallery'
+      preLoaderRoute: typeof DesignSystemGalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/DesignSystemDemo': {
@@ -2730,6 +2750,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
   DesignSystemDemoRoute: DesignSystemDemoRoute,
+  DesignSystemGalleryRoute: DesignSystemGalleryRoute,
   AgentRosterRoute: AgentRosterRoute,
   AppRoute: AppRoute,
   ContextgraphStudioRoute: ContextgraphStudioRoute,

@@ -1,5 +1,7 @@
 'use client'
 
+import { Link as DsLink } from '@/components/ui/link'
+
 import { useState } from 'react'
 import {
   Alert02Icon,
@@ -210,7 +212,7 @@ export function ProviderSelectStep({
         {PROVIDERS.map((provider) => {
           const isSelected = selectedId === provider.id
           return (
-            <button
+            <Button
               key={provider.id}
               type="button"
               onClick={() => {
@@ -266,7 +268,7 @@ export function ProviderSelectStep({
                   {provider.description}
                 </p>
               </div>
-            </button>
+            </Button>
           )
         })}
       </div>
@@ -278,14 +280,14 @@ export function ProviderSelectStep({
             <label className="text-sm font-medium text-primary-900">
               {selected.name} API Key
             </label>
-            <a
+            <DsLink
               href={selected.helpUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs font-medium text-accent-600 hover:text-accent-700"
             >
               {selected.helpLabel}
-            </a>
+            </DsLink>
           </div>
 
           <div className="flex gap-2">
@@ -302,7 +304,7 @@ export function ProviderSelectStep({
                 className="h-10 pr-20 font-mono text-xs"
               />
               <div className="absolute right-1 top-1 flex gap-0.5">
-                <button
+                <Button
                   type="button"
                   onClick={() => setShowKey(!showKey)}
                   className="inline-flex size-8 items-center justify-center rounded-md text-primary-400 hover:text-primary-600"
@@ -313,8 +315,8 @@ export function ProviderSelectStep({
                     size={16}
                     strokeWidth={1.5}
                   />
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={handlePaste}
                   className="inline-flex size-8 items-center justify-center rounded-md text-primary-400 hover:text-primary-600"
@@ -325,7 +327,7 @@ export function ProviderSelectStep({
                     size={16}
                     strokeWidth={1.5}
                   />
-                </button>
+                </Button>
               </div>
             </div>
             <Button

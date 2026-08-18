@@ -1,3 +1,9 @@
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Textarea } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useMemo, useState } from 'react'
 import type { HubTask } from './task-board'
 import { cn } from '@/lib/utils'
@@ -256,7 +262,7 @@ export function TeamPanel({
         </p>
         <div className="mt-2 space-y-1.5">
           {TEAM_TEMPLATES.map((template) => (
-            <button
+            <Button
               key={template.id}
               type="button"
               onClick={() => onApplyTemplate(template.id)}
@@ -272,7 +278,7 @@ export function TeamPanel({
               <span className="text-[10px] text-primary-500">
                 {template.agents.length} agents
               </span>
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -332,7 +338,7 @@ export function TeamPanel({
             >
               {/* Header row: toggle button + optional retry button */}
               <div className="flex items-start">
-                <button
+                <Button
                   type="button"
                   onClick={() => handleToggleAgent(agent.id)}
                   className="flex min-w-0 flex-1 items-start gap-2 text-left"
@@ -400,11 +406,11 @@ export function TeamPanel({
                   >
                     ›
                   </span>
-                </button>
+                </Button>
 
                 {/* Retry spawn button — only shown when session is dead/error */}
                 {showRetry ? (
-                  <button
+                  <Button
                     type="button"
                     title="Retry spawn"
                     onClick={(event) => {
@@ -414,7 +420,7 @@ export function TeamPanel({
                     className="ml-1 mt-0.5 shrink-0 rounded p-0.5 text-sm leading-none text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-red-500 dark:hover:bg-red-950/20 dark:hover:text-red-400"
                   >
                     ↻
-                  </button>
+                  </Button>
                 ) : null}
               </div>
 
@@ -460,7 +466,7 @@ export function TeamPanel({
                     <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-primary-500">
                       Model
                     </span>
-                    <select
+                    <NativeSelect
                       value={agent.modelId}
                       onChange={(event) => {
                         onUpdateAgent(agent.id, {
@@ -485,14 +491,14 @@ export function TeamPanel({
                           ))}
                         </optgroup>
                       ) : null}
-                    </select>
+                    </NativeSelect>
                   </label>
 
                   <label className="block">
                     <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-primary-500">
                       Role Description
                     </span>
-                    <textarea
+                    <Textarea
                       value={agent.roleDescription}
                       onChange={(event) => {
                         onUpdateAgent(agent.id, {
@@ -509,7 +515,7 @@ export function TeamPanel({
                     <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-primary-500">
                       Goal
                     </span>
-                    <textarea
+                    <Textarea
                       value={agent.goal}
                       onChange={(event) => {
                         onUpdateAgent(agent.id, {
@@ -526,7 +532,7 @@ export function TeamPanel({
                     <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-primary-500">
                       Backstory
                     </span>
-                    <textarea
+                    <Textarea
                       value={agent.backstory}
                       onChange={(event) => {
                         onUpdateAgent(agent.id, {
@@ -572,13 +578,13 @@ export function TeamPanel({
 
                   {/* Kill session button */}
                   {agentSessionKey ? (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => onKillSession?.(agent)}
                       className="w-full rounded-md bg-red-500 px-2 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-red-600"
                     >
                       Kill Session
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               ) : null}
@@ -588,14 +594,14 @@ export function TeamPanel({
       </div>
 
       <div className="px-2 pb-3">
-        <button
+        <Button
           type="button"
           onClick={onAddAgent}
           className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-primary-300 py-2.5 text-xs font-semibold text-primary-500 transition-colors hover:border-accent-400 hover:text-accent-600 dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-accent-700 dark:hover:text-accent-300"
         >
           <span aria-hidden>+</span>
           <span>Add Agent</span>
-        </button>
+        </Button>
       </div>
     </div>
   )

@@ -1,5 +1,9 @@
 'use client'
 
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Button } from '@/components/ui/button'
+
 import { memo } from 'react'
 import { DialogContent, DialogRoot } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -138,19 +142,19 @@ function ContextAlertModalComponent({
 
           {/* Actions */}
           <div className="flex justify-end gap-2">
-            <button
+            <Button
               onClick={onClose}
               className="rounded-lg border border-primary-200 bg-surface px-4 py-2 text-xs font-medium text-primary-700 hover:bg-primary-50 transition-colors"
             >
               Got it
-            </button>
+            </Button>
             {isDanger && (
-              <a
+              <DsLink
                 href="/new"
                 className="rounded-lg bg-primary-900 px-4 py-2 text-xs font-medium text-white hover:bg-primary-800 transition-colors"
               >
                 New Chat
-              </a>
+              </DsLink>
             )}
           </div>
         </div>

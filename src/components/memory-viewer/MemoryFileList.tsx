@@ -196,7 +196,7 @@ function MemoryRow({
   isRoot = false,
 }: MemoryRowProps) {
   return (
-    <button
+    <Button
       type="button"
       onClick={function onClickRow() {
         onSelectPath(file.path)
@@ -220,7 +220,7 @@ function MemoryRow({
           {formatModifiedAt(file.modifiedAt)}
         </span>
       </div>
-    </button>
+    </Button>
   )
 }
 

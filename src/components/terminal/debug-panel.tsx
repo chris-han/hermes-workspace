@@ -1,3 +1,5 @@
+import { Link as DsLink } from '@/components/ui/link'
+
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { motion } from 'motion/react'
@@ -137,14 +139,14 @@ export function DebugPanel({
                 <h4 className="text-xs font-medium text-primary-300 text-balance">
                   Documentation
                 </h4>
-                <a
+                <DsLink
                   href={analysis.docsLink}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-1 inline-block text-xs text-primary-200 underline decoration-primary-500/60 underline-offset-2"
                 >
                   {analysis.docsLink}
-                </a>
+                </DsLink>
               </section>
             ) : null}
           </div>

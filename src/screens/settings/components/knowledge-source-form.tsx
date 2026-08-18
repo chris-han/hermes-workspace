@@ -1,3 +1,7 @@
+import { Input } from '@/components/ui/input'
+
+import { Button } from '@/components/ui/button'
+
 import {
   CheckmarkCircle02Icon,
   CodeIcon,
@@ -87,7 +91,7 @@ export function KnowledgeSourceForm({
       <div className="space-y-2">
         <label className="text-sm font-medium">Source type</label>
         <div className="flex gap-3">
-          <button
+          <Button
             type="button"
             onClick={() =>
               onChange({
@@ -108,8 +112,8 @@ export function KnowledgeSourceForm({
           >
             <HugeiconsIcon icon={Folder01Icon} size={16} strokeWidth={1.7} />
             Local folder
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() =>
               onChange({
@@ -132,7 +136,7 @@ export function KnowledgeSourceForm({
           >
             <HugeiconsIcon icon={CodeIcon} size={16} strokeWidth={1.7} />
             GitHub repo
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -165,15 +169,15 @@ export function KnowledgeSourceForm({
                   files.
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={onUseWorkspaceDefault}
                 className="rounded-lg border border-border px-2 py-1 text-xs font-medium"
               >
                 Use LLM Wiki default
-              </button>
+              </Button>
             </div>
-            <input
+            <Input
               id="knowledge-source-local-path"
               type="text"
               value={value.path}
@@ -212,7 +216,7 @@ export function KnowledgeSourceForm({
             >
               Repository
             </label>
-            <input
+            <Input
               id="knowledge-source-github-repo"
               type="text"
               value={value.repo}
@@ -228,7 +232,7 @@ export function KnowledgeSourceForm({
             />
           </div>
           <div className="flex gap-3">
-            <input
+            <Input
               type="text"
               value={value.branch}
               onChange={(event) =>
@@ -237,7 +241,7 @@ export function KnowledgeSourceForm({
               placeholder="main"
               className="min-w-0 flex-1 rounded-lg border border-border px-3 py-2 text-sm outline-none"
             />
-            <input
+            <Input
               type="text"
               value={value.path}
               onChange={(event) =>
@@ -268,13 +272,13 @@ export function KnowledgeSourceForm({
               <span>{viewModel.status.message}</span>
             </span>
             {hasFailures ? (
-              <button
+              <Button
                 type="button"
                 onClick={onDismissStatus}
                 className="rounded-md border border-border px-2 py-1 text-xs"
               >
                 Dismiss
-              </button>
+              </Button>
             ) : null}
           </div>
         ) : null}
@@ -305,7 +309,7 @@ export function KnowledgeSourceForm({
         ) : null}
         <div className="flex justify-end gap-2">
           {value.type === 'github' && onSync ? (
-            <button
+            <Button
               type="button"
               onClick={() => void onSync()}
               disabled={
@@ -314,16 +318,16 @@ export function KnowledgeSourceForm({
               className="rounded-lg border border-border px-3 py-2 text-sm font-medium disabled:opacity-50"
             >
               {viewModel.status.kind === 'syncing' ? 'Syncing...' : 'Sync now'}
-            </button>
+            </Button>
           ) : null}
-          <button
+          <Button
             type="button"
             onClick={() => void onSave()}
             disabled={viewModel.status.kind === 'saving'}
             className="rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             {viewModel.status.kind === 'saving' ? 'Saving...' : 'Save'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

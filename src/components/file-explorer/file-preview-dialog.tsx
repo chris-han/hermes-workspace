@@ -1,3 +1,13 @@
+import { Checkbox, Radio } from '@/components/ui/form-controls'
+
+import { Input } from '@/components/ui/input'
+
+import { Table } from '@/components/ui/table'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Textarea } from '@/components/ui/form-controls'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import {
@@ -88,7 +98,9 @@ export default function FilePreviewDialog({
         defval: '',
       }) as Array<Array<unknown>>
 
-      setExcelRows(rows.slice(0, 201).map((r) => r.map((cell) => String(cell ?? ''))))
+      setExcelRows(
+        rows.slice(0, 201).map((r) => r.map((cell) => String(cell ?? ''))),
+      )
       setExcelTotalRows(rows.length)
       setExcelActiveSheet(sheetName)
       setExcelHeaderEnabled(true)
@@ -122,12 +134,19 @@ export default function FilePreviewDialog({
         setExcelWorkbook(workbook)
         setExcelSheetNames(workbook.SheetNames)
         const firstSheet = workbook.SheetNames[0]
-        const firstRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], {
-          header: 1,
-          raw: false,
-          defval: '',
-        }) as Array<Array<unknown>>
-        setExcelRows(firstRows.slice(0, 201).map((r) => r.map((cell) => String(cell ?? ''))))
+        const firstRows = XLSX.utils.sheet_to_json(
+          workbook.Sheets[firstSheet],
+          {
+            header: 1,
+            raw: false,
+            defval: '',
+          },
+        ) as Array<Array<unknown>>
+        setExcelRows(
+          firstRows
+            .slice(0, 201)
+            .map((r) => r.map((cell) => String(cell ?? ''))),
+        )
         setExcelTotalRows(firstRows.length)
         setExcelActiveSheet(firstSheet)
         setExcelHeaderEnabled(true)
@@ -199,22 +218,24 @@ export default function FilePreviewDialog({
   }, [path])
 
   const excelColumnCount = useMemo(
-    () =>
-      excelRows.reduce(
-        (max, row) => Math.max(max, row.length),
-        0,
-      ),
+    () => excelRows.reduce((max, row) => Math.max(max, row.length), 0),
     [excelRows],
   )
 
   const excelTableModel = useMemo(() => {
     if (!excelRows.length || excelColumnCount === 0) {
-      return { headerCells: [] as Array<string>, bodyRows: [] as Array<Array<string>> }
+      return {
+        headerCells: [] as Array<string>,
+        bodyRows: [] as Array<Array<string>>,
+      }
     }
 
     if (!excelHeaderEnabled) {
       return {
-        headerCells: Array.from({ length: excelColumnCount }, (_, index) => `Column ${index + 1}`),
+        headerCells: Array.from(
+          { length: excelColumnCount },
+          (_, index) => `Column ${index + 1}`,
+        ),
         bodyRows: excelRows,
       }
     }
@@ -280,7 +301,7 @@ export default function FilePreviewDialog({
             <div className="h-[60vh] flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-primary-500">Sheet</span>
-                <select
+                <NativeSelect
                   value={excelActiveSheet}
                   onChange={(e) => loadExcelSheet(e.target.value)}
                   className="h-8 rounded-md border border-primary-200 bg-white px-2 text-xs text-primary-900"
@@ -290,7 +311,7 @@ export default function FilePreviewDialog({
                       {sheet}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
                 <span className="ml-auto text-xs text-primary-500">
                   {excelTotalRows.toLocaleString()} rows
                 </span>
@@ -298,8 +319,7 @@ export default function FilePreviewDialog({
 
               <div className="flex flex-wrap items-center gap-3 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2">
                 <label className="flex items-center gap-2 text-xs text-primary-700">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={excelHeaderEnabled}
                     onChange={(e) => setExcelHeaderEnabled(e.target.checked)}
                   />
@@ -307,7 +327,7 @@ export default function FilePreviewDialog({
                 </label>
                 <label className="flex items-center gap-2 text-xs text-primary-700">
                   Header row
-                  <input
+                  <Input
                     type="number"
                     min={1}
                     max={Math.max(excelRows.length, 1)}
@@ -339,26 +359,30 @@ export default function FilePreviewDialog({
                     This sheet has no rows.
                   </div>
                 ) : (
-                  <table className="w-full border-separate border-spacing-0 text-xs">
+                  <Table className="w-full border-separate border-spacing-0 text-xs">
                     {excelHeaderEnabled && (
-                    <thead>
-                      <tr>
-                        {excelTableModel.headerCells.map((cell, index) => (
-                          <th
-                            key={`h-${index}`}
+                      <thead>
+                        <tr>
+                          {excelTableModel.headerCells.map((cell, index) => (
+                            <th
+                              key={`h-${index}`}
                               className="sticky top-0 z-20 border-b border-r border-border bg-table-header px-2 py-1.5 text-left font-semibold text-card-foreground shadow-sm"
-                          >
-                            {cell || `Column ${index + 1}`}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
+                            >
+                              {cell || `Column ${index + 1}`}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
                     )}
                     <tbody>
                       {excelTableModel.bodyRows.map((row, rowIndex) => (
                         <tr
                           key={`r-${rowIndex}`}
-                          className={rowIndex % 2 === 0 ? 'excel-preview-row-odd' : 'excel-preview-row-even'}
+                          className={
+                            rowIndex % 2 === 0
+                              ? 'excel-preview-row-odd'
+                              : 'excel-preview-row-even'
+                          }
                         >
                           {excelTableModel.headerCells.map((_, colIndex) => (
                             <td
@@ -372,7 +396,7 @@ export default function FilePreviewDialog({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </Table>
                 )}
               </div>
 
@@ -384,7 +408,7 @@ export default function FilePreviewDialog({
             </div>
           ) : (
             <div className="h-[60vh]">
-              <textarea
+              <Textarea
                 className="h-full w-full resize-none rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 font-mono text-xs leading-relaxed text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                 value={content}
                 onChange={(e) => {

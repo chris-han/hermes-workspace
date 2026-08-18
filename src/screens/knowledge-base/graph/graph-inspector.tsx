@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { AlertCircle, CheckCircle2, Circle, FileText, KeyRound } from 'lucide-react'
 import { useState } from 'react'
 
@@ -41,7 +43,7 @@ export function GraphInspector({
       <div className="flex flex-wrap gap-1 border-b border-border px-3 py-2">
         {(['summary', 'evidence', 'authority', 'lineage', 'governance', 'replay'] as const).map(
           (value) => (
-            <button
+            <Button
               key={value}
               type="button"
               className="rounded-md px-2 py-1 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--focus-blue)]"
@@ -56,7 +58,7 @@ export function GraphInspector({
               onClick={() => setTab(value)}
             >
               {copy[value === 'authority' ? 'authorityTab' : value]}
-            </button>
+            </Button>
           ),
         )}
       </div>

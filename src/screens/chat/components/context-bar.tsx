@@ -1,5 +1,7 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
+
 import { memo, useCallback, useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
@@ -119,7 +121,7 @@ function ContextBarComponent({
     return (
       <div className="relative w-full">
         {/* Invisible tap target */}
-        <button
+        <Button
           type="button"
           className="absolute inset-x-0 -top-2 -bottom-2 z-10"
           onClick={() => setShowLabel((prev) => !prev)}

@@ -187,9 +187,10 @@ function WorkspaceThemePicker() {
       {THEMES.map((t) => {
         const isActive = current === t.id
         return (
-          <button
+          <Button
             key={t.id}
             type="button"
+            variant="ghost"
             onClick={() => applyWorkspaceTheme(t.id)}
             className={cn(
               'flex min-h-[112px] flex-col gap-2.5 rounded-xl border p-3.5 text-left transition-all',
@@ -211,7 +212,7 @@ function WorkspaceThemePicker() {
             <p className="text-[10px] leading-tight text-[var(--theme-muted)]">
               {t.description}
             </p>
-          </button>
+          </Button>
         )
       })}
     </div>
@@ -445,9 +446,10 @@ export function SettingsScreen() {
                     {item.label}
                   </Link>
                 ) : (
-                  <button
+                  <Button
                     key={item.id}
                     type="button"
+                    variant="ghost"
                     onClick={() =>
                       setActiveSection(item.id as SettingsSectionId)
                     }
@@ -459,7 +461,7 @@ export function SettingsScreen() {
                     )}
                   >
                     {item.label}
-                  </button>
+                  </Button>
                 ),
               )}
             </div>
@@ -480,7 +482,7 @@ export function SettingsScreen() {
                 {item.label}
               </Link>
             ) : (
-              <button
+              <Button
                 key={item.id}
                 type="button"
                 onClick={() => setActiveSection(item.id as SettingsSectionId)}
@@ -492,7 +494,7 @@ export function SettingsScreen() {
                 )}
               >
                 {item.label}
-              </button>
+              </Button>
             ),
           )}
         </div>
@@ -612,7 +614,7 @@ export function SettingsScreen() {
                 description="Adjust editor font size between 12 and 20."
               >
                 <div className="flex w-full items-center gap-2 md:max-w-xs">
-                  <input
+                  <Input
                     type="range"
                     min={12}
                     max={20}
@@ -713,7 +715,7 @@ export function SettingsScreen() {
                   description="Set usage warning trigger between 50% and 100%."
                 >
                   <div className="flex w-full items-center gap-2 md:max-w-xs">
-                    <input
+                    <Input
                       type="range"
                       min={50}
                       max={100}
@@ -949,7 +951,7 @@ function _ProfileSection() {
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <label className="block">
-              <input
+              <Input
                 type="file"
                 accept="image/*"
                 onChange={handleAvatarUpload}
@@ -1080,7 +1082,7 @@ function _LoaderStyleSection() {
         {LOADER_STYLES.map((option) => {
           const active = chatSettings.loaderStyle === option.value
           return (
-            <button
+            <Button
               key={option.value}
               type="button"
               onClick={() => updateChatSettings({ loaderStyle: option.value })}
@@ -1098,7 +1100,7 @@ function _LoaderStyleSection() {
               <span className="text-[11px] font-medium text-center leading-4">
                 {option.label}
               </span>
-            </button>
+            </Button>
           )
         })}
       </div>
@@ -1337,6 +1339,7 @@ function HermesConfigSection({
               </DropdownSelect>
             ) : (
               <Input
+                aria-label="Provider"
                 value={providerInput}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setProviderInput(e.target.value)
@@ -1371,6 +1374,7 @@ function HermesConfigSection({
               </DropdownSelect>
             ) : (
               <Input
+                aria-label="Model"
                 value={modelInput}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setModelInput(e.target.value)
@@ -1389,6 +1393,7 @@ function HermesConfigSection({
         >
           <div className="flex w-full max-w-sm gap-2">
             <Input
+              aria-label="Base URL"
               value={baseUrlInput}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setBaseUrlInput(e.target.value)
@@ -1503,6 +1508,7 @@ function HermesConfigSection({
           description="Store and recall memories across sessions."
         >
           <Switch
+            aria-label="Memory enabled"
             checked={memoryConfig.memory_enabled !== false}
             onCheckedChange={(checked: boolean) =>
               void saveConfig({
@@ -1516,6 +1522,7 @@ function HermesConfigSection({
           description="Remember user preferences and context."
         >
           <Switch
+            aria-label="User profile"
             checked={memoryConfig.user_profile_enabled !== false}
             onCheckedChange={(checked: boolean) =>
               void saveConfig({
@@ -1544,6 +1551,7 @@ function HermesConfigSection({
           description="Max seconds for terminal commands."
         >
           <Input
+            aria-label="Terminal timeout"
             type="number"
             min={10}
             value={readNumber(terminalConfig.timeout, 180)}

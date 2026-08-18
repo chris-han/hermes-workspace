@@ -1,5 +1,7 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
+
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -105,7 +107,7 @@ export function KeyboardShortcutsModal() {
               <h2 className="text-sm font-semibold text-primary-900">
                 Keyboard Shortcuts
               </h2>
-              <button
+              <Button
                 onClick={() => setIsOpen(false)}
                 className="rounded-lg p-1.5 text-primary-500 transition hover:bg-primary-100 hover:text-primary-900"
                 aria-label="Close"
@@ -118,7 +120,7 @@ export function KeyboardShortcutsModal() {
                     strokeLinecap="round"
                   />
                 </svg>
-              </button>
+              </Button>
             </div>
 
             {/* Content */}

@@ -2,6 +2,8 @@
  * MobilePageHeader — native app-style sticky top bar for non-chat pages.
  * Shows hamburger on the left, page title centered, optional right action.
  */
+import { Button } from '@/components/ui/button'
+
 import type { ReactNode } from 'react'
 import { openHamburgerMenu } from '@/components/mobile-hamburger-menu'
 import { cn } from '@/lib/utils'
@@ -29,7 +31,7 @@ export function MobilePageHeader({
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
     >
-      <button
+      <Button
         type="button"
         aria-label="Open navigation menu"
         onClick={openHamburgerMenu}
@@ -50,7 +52,7 @@ export function MobilePageHeader({
             strokeLinecap="round"
           />
         </svg>
-      </button>
+      </Button>
       <span
         className="flex-1 text-center text-[15px] font-semibold truncate -ml-11"
         style={{ color: 'var(--color-ink, #111)' }}

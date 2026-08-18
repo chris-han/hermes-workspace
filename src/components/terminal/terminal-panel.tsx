@@ -1,3 +1,5 @@
+import { Input } from '@/components/ui/input'
+
 import 'xterm/css/xterm.css'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -379,7 +381,7 @@ export function TerminalPanel({ isMobile }: TerminalPanelProps) {
             <div className="flex items-center gap-2 border-b border-primary-200 px-3 py-2">
               <div className="flex items-center gap-2 overflow-x-auto">
                 {tabs.map((tab) => (
-                  <button
+                  <Button
                     key={tab.id}
                     className={cn(
                       'flex items-center gap-2 rounded-full border px-3 py-1 text-xs',
@@ -402,7 +404,7 @@ export function TerminalPanel({ isMobile }: TerminalPanelProps) {
                         <HugeiconsIcon icon={Cancel01Icon} size={12} />
                       </span>
                     ) : null}
-                  </button>
+                  </Button>
                 ))}
               </div>
               <Button
@@ -418,7 +420,7 @@ export function TerminalPanel({ isMobile }: TerminalPanelProps) {
             <div className="flex items-center gap-2 border-b border-primary-200 px-3 py-2">
               <div className="flex items-center gap-2 text-xs text-primary-500">
                 <HugeiconsIcon icon={Search01Icon} size={14} />
-                <input
+                <Input
                   className="rounded border border-primary-200 bg-transparent px-2 py-1 text-xs focus:outline-none"
                   placeholder="Search output"
                   onKeyDown={(event) => {

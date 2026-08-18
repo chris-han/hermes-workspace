@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useState } from 'react'
 import { AGENT_ACCENT_COLORS, AgentAvatar } from './agent-avatar'
 import type {
@@ -571,7 +573,7 @@ function RemoteSessionCard({
     : null
 
   return (
-    <button
+    <Button
       type="button"
       onClick={onClick}
       className="group flex min-h-11 flex-col items-center gap-1.5 rounded-xl border border-neutral-200 bg-white p-3 text-center transition-all hover:border-accent-500 hover:shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
@@ -615,7 +617,7 @@ function RemoteSessionCard({
           </span>
         ) : null}
       </div>
-    </button>
+    </Button>
   )
 }
 
@@ -801,13 +803,13 @@ export function OfficeView({
                 Mission Live
               </span>
             ) : null}
-            <button
+            <Button
               type="button"
               onClick={() => onNewMission?.()}
               className="min-h-11 rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-600 sm:px-4 sm:py-2 sm:text-sm"
             >
               + New Mission
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -821,7 +823,7 @@ export function OfficeView({
             const statusMeta = getAgentStatusMeta(agent.status)
             const emoji = getAgentEmoji(agent)
             return (
-              <button
+              <Button
                 key={`${agent.id}-mobile`}
                 type="button"
                 onClick={() => onViewOutput(agent.id)}
@@ -861,7 +863,7 @@ export function OfficeView({
                 >
                   {statusMeta.label}
                 </span>
-              </button>
+              </Button>
             )
           })}
         </div>
@@ -870,18 +872,18 @@ export function OfficeView({
       {/* Desktop office canvas — layout picker (pencil icon) */}
       <div className="hidden shrink-0 justify-end px-3 pb-1 pt-2 md:flex">
         <div className="relative" data-layout-picker>
-          <button
+          <Button
             type="button"
             onClick={() => setLayoutPickerOpen((v) => !v)}
             className="inline-flex min-h-11 items-center rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-slate-700 dark:bg-slate-800 dark:text-neutral-300 dark:hover:bg-slate-700 sm:px-4 sm:py-2 sm:text-sm"
             title="Change office layout"
           >
             <span>✏️</span>
-          </button>
+          </Button>
           {layoutPickerOpen && (
             <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
               {LAYOUT_TEMPLATE_OPTIONS.map((opt) => (
-                <button
+                <Button
                   key={opt.key}
                   type="button"
                   onClick={() => {
@@ -896,7 +898,7 @@ export function OfficeView({
                   )}
                 >
                   {opt.label}
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -1071,7 +1073,7 @@ export function OfficeView({
           const movementTransform = `translate3d(${pos.x}px, ${pos.y}px, 0) translate(-50%, -50%)`
 
           return (
-            <button
+            <Button
               key={agent.id}
               type="button"
               onClick={() => onViewOutput(agent.id)}
@@ -1159,14 +1161,14 @@ export function OfficeView({
               <span className="max-w-full truncate text-xs text-neutral-500 dark:text-slate-400">
                 {getOfficeModelLabel(agent.modelId)}
               </span>
-            </button>
+            </Button>
           )
         })}
       </div>
 
       {remoteSessions.length > 0 ? (
         <div className="border-t border-neutral-200 dark:border-neutral-700 p-3">
-          <button
+          <Button
             type="button"
             onClick={() => setRemoteCollapsed((prev) => !prev)}
             className="mb-2 flex w-full items-center justify-between px-1 text-left"
@@ -1177,7 +1179,7 @@ export function OfficeView({
             <span className="text-[10px] text-neutral-400">
               {remoteCollapsed ? 'Show' : 'Hide'}
             </span>
-          </button>
+          </Button>
           {!remoteCollapsed ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {remoteSessions.map((session) => (

@@ -329,7 +329,7 @@ export function UsageDetailsModal({
 
       <div className="flex w-fit items-center gap-1 rounded-full border border-primary-100 bg-primary-50 p-1 text-xs">
         {(['session', 'providers'] as const).map((tab) => (
-          <button
+          <Button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
@@ -340,7 +340,7 @@ export function UsageDetailsModal({
             }`}
           >
             {tab === 'session' ? 'Session' : 'Providers'}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -560,7 +560,7 @@ export function UsageDetailsModal({
                           <div className="mt-3 flex items-center justify-between gap-2">
                             <div className="flex-1"></div>
                             {!isDefault ? (
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() =>
                                   handleSetDefault(provider.provider)
@@ -568,7 +568,7 @@ export function UsageDetailsModal({
                                 className="rounded-lg border border-primary-200 bg-white px-3 py-1.5 text-xs font-medium text-primary-700 transition hover:bg-primary-50"
                               >
                                 Set as Default
-                              </button>
+                              </Button>
                             ) : null}
                           </div>
                           <div className="mt-3 space-y-3">

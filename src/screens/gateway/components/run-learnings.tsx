@@ -1,3 +1,9 @@
+import { Input } from '@/components/ui/input'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
@@ -135,19 +141,19 @@ export function RunLearnings({
         <h2 className="truncate pr-3 text-sm font-semibold text-primary-100">
           📝 Learnings from: {runTitle}
         </h2>
-        <button
+        <Button
           type="button"
           onClick={onClose}
           className="rounded-lg border border-primary-700 px-2.5 py-1 text-xs font-medium text-primary-300 transition-colors hover:bg-primary-900 hover:text-primary-100"
         >
           Close
-        </button>
+        </Button>
       </header>
 
       <div className="border-b border-primary-800 px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           {FILTER_OPTIONS.map((option) => (
-            <button
+            <Button
               key={option.key}
               type="button"
               onClick={() => setActiveFilter(option.key)}
@@ -160,7 +166,7 @@ export function RunLearnings({
               )}
             >
               {option.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -201,7 +207,7 @@ export function RunLearnings({
                         {learning.text}
                       </p>
                     </div>
-                    <button
+                    <Button
                       type="button"
                       onClick={() =>
                         void handleCopy(learning.id, learning.text)
@@ -209,7 +215,7 @@ export function RunLearnings({
                       className="shrink-0 rounded-lg border border-primary-700 px-2 py-1 text-[11px] font-medium text-primary-300 transition-colors hover:bg-primary-800 hover:text-primary-100"
                     >
                       {copiedId === learning.id ? 'Copied' : 'Copy'}
-                    </button>
+                    </Button>
                   </div>
                 </motion.li>
               ))}
@@ -226,7 +232,7 @@ export function RunLearnings({
           <label className="sr-only" htmlFor="learning-category">
             Category
           </label>
-          <select
+          <NativeSelect
             id="learning-category"
             value={draftCategory}
             onChange={(event) =>
@@ -237,12 +243,12 @@ export function RunLearnings({
             <option value="success">Success</option>
             <option value="failure">Failure</option>
             <option value="optimization">Optimization</option>
-          </select>
+          </NativeSelect>
 
           <label className="sr-only" htmlFor="learning-text">
             Learning text
           </label>
-          <input
+          <Input
             id="learning-text"
             type="text"
             value={draftText}
@@ -251,13 +257,13 @@ export function RunLearnings({
             className="h-10 min-w-0 flex-1 rounded-lg border border-primary-700 bg-primary-900 px-3 text-sm text-primary-100 placeholder:text-primary-400 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
           />
 
-          <button
+          <Button
             type="submit"
             disabled={!draftText.trim()}
             className="h-10 rounded-lg bg-accent-500 px-4 text-sm font-semibold text-primary-950 transition-colors hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Add Learning
-          </button>
+          </Button>
         </div>
       </form>
     </section>

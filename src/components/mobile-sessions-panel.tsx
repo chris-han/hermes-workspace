@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useEffect } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Add01Icon, Chat01Icon } from '@hugeicons/core-free-icons'
@@ -80,7 +82,7 @@ export function MobileSessionsPanel({
 
   return (
     <div className="fixed inset-0 z-[97] no-swipe md:hidden">
-      <button
+      <Button
         type="button"
         className="absolute inset-0 bg-black/40 animate-in fade-in duration-200"
         aria-label="Close sessions panel"
@@ -97,14 +99,14 @@ export function MobileSessionsPanel({
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-primary-200 px-4 py-3">
             <h2 className="text-sm font-semibold text-ink">Sessions</h2>
-            <button
+            <Button
               type="button"
               onClick={onNewChat}
               className="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-xs font-medium text-primary-700 transition-colors hover:border-accent-200 hover:text-accent-600"
             >
               <HugeiconsIcon icon={Add01Icon} size={14} strokeWidth={1.8} />
               New Chat
-            </button>
+            </Button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-2">
@@ -122,7 +124,7 @@ export function MobileSessionsPanel({
                   const active = session.friendlyId === activeFriendlyId
                   const timestamp = formatUpdatedAt(session.updatedAt)
                   return (
-                    <button
+                    <Button
                       key={session.key}
                       type="button"
                       onClick={() => onSelectSession(session.friendlyId)}
@@ -140,7 +142,7 @@ export function MobileSessionsPanel({
                         <span className="truncate">{session.friendlyId}</span>
                         {timestamp ? <span>{timestamp}</span> : null}
                       </div>
-                    </button>
+                    </Button>
                   )
                 })}
               </div>

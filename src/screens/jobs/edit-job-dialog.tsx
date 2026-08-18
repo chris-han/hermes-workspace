@@ -1,5 +1,13 @@
 'use client'
 
+import { Input } from '@/components/ui/input'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Textarea } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -186,7 +194,9 @@ export function EditJobDialog({
             }
           }}
         >
-          <div
+          <Button
+            type="button"
+            aria-label="Close edit job dialog"
             className="absolute inset-0"
             style={{ background: 'rgba(0, 0, 0, 0.68)' }}
             onClick={() => onOpenChange(false)}
@@ -215,7 +225,7 @@ export function EditJobDialog({
                   Update the schedule, prompt, and routing for this Hermes task.
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={() => onOpenChange(false)}
                 className="rounded-lg p-2 transition-colors"
@@ -223,13 +233,13 @@ export function EditJobDialog({
                 aria-label="Close edit job dialog"
               >
                 <HugeiconsIcon icon={Cancel01Icon} size={18} />
-              </button>
+              </Button>
             </div>
 
             <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
               <section className="space-y-2">
                 <label className="text-sm font-medium">Name</label>
-                <input
+                <Input
                   value={form.name}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -260,7 +270,7 @@ export function EditJobDialog({
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Interval preset</label>
-                  <select
+                  <NativeSelect
                     value={form.scheduleMode === 'preset' ? form.schedule : 'custom'}
                     onChange={(event) => {
                       const nextValue = event.target.value
@@ -286,14 +296,14 @@ export function EditJobDialog({
                       </option>
                     ))}
                     <option value="custom">Custom minutes</option>
-                  </select>
+                  </NativeSelect>
                 </div>
                 {form.scheduleMode === 'custom' ? (
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
                       Custom minutes
                     </label>
-                    <input
+                    <Input
                       type="number"
                       min="1"
                       step="1"
@@ -328,7 +338,7 @@ export function EditJobDialog({
 
               <section className="space-y-2">
                 <label className="text-sm font-medium">Prompt</label>
-                <textarea
+                <Textarea
                   value={form.prompt}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -360,7 +370,7 @@ export function EditJobDialog({
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Skills</label>
-                  <input
+                  <Input
                     value={form.skillsInput}
                     onChange={(event) =>
                       setForm((current) => ({
@@ -385,7 +395,7 @@ export function EditJobDialog({
                       const needsGateway =
                         option === 'telegram' || option === 'discord'
                       return (
-                        <button
+                        <Button
                           key={option}
                           type="button"
                           onClick={() => toggleDelivery(option)}
@@ -410,7 +420,7 @@ export function EditJobDialog({
                           }}
                         >
                           {option}
-                        </button>
+                        </Button>
                       )
                     })}
                   </div>
@@ -419,7 +429,7 @@ export function EditJobDialog({
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Repeat cycles</label>
                   <div className="flex flex-wrap gap-2">
-                    <button
+                    <Button
                       type="button"
                       onClick={() =>
                         setForm((current) => ({
@@ -444,8 +454,8 @@ export function EditJobDialog({
                       }}
                     >
                       Once
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() =>
                         setForm((current) => ({
@@ -470,8 +480,8 @@ export function EditJobDialog({
                       }}
                     >
                       Many
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() =>
                         setForm((current) => ({
@@ -496,10 +506,10 @@ export function EditJobDialog({
                       }}
                     >
                       Forever
-                    </button>
+                    </Button>
                   </div>
                   {form.repeatMode === 'limited' ? (
-                    <input
+                    <Input
                       type="number"
                       min={2}
                       step={1}
@@ -524,7 +534,7 @@ export function EditJobDialog({
             <div
               className="flex items-center justify-end gap-2 border-t border-border px-5 py-4"
             >
-              <button
+              <Button
                 type="button"
                 onClick={() => onOpenChange(false)}
                 className="rounded-xl px-4 py-2 text-sm transition-colors"
@@ -534,8 +544,8 @@ export function EditJobDialog({
                 }}
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={
                   isSubmitting ||
@@ -550,7 +560,7 @@ export function EditJobDialog({
                 }}
               >
                 {isSubmitting ? 'Saving...' : 'Save changes'}
-              </button>
+              </Button>
             </div>
           </motion.form>
         </motion.div>

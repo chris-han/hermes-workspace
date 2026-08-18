@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { Button } from '@/components/ui/button'
+
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { ComponentType } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -20,9 +22,9 @@ vi.mock('@/lib/plugin-ui-extensions', async (importOriginal) => {
       <strong>{String(metadata.meeting_title)}</strong>
       <span>{String(metadata.status)}</span>
       <div>Declined attendee: {String(metadata.declined_attendee_name)}</div>
-      <button type="button" onClick={() => onAction('nudge_unblock')}>
+      <Button type="button" onClick={() => onAction('nudge_unblock')}>
         Nudge
-      </button>
+      </Button>
     </div>
   )
   return {

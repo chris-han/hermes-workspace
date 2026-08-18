@@ -1,3 +1,7 @@
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Textarea } from '@/components/ui/form-controls'
+
 import {
   Add01Icon,
   CheckmarkCircle02Icon,
@@ -659,7 +663,7 @@ function SettingCard(props: {
           ) : null}
 
           {setting.kind === 'select' ? (
-            <select
+            <NativeSelect
               className="w-full rounded-lg border theme-border theme-card px-3 py-2 text-sm theme-text outline-none"
               value={coerceString(currentValue)}
               disabled={disabled}
@@ -678,7 +682,7 @@ function SettingCard(props: {
                   {option.label}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           ) : null}
 
           {setting.kind === 'text' ? (
@@ -749,7 +753,7 @@ function SettingCard(props: {
           ) : null}
 
           {setting.kind === 'multiline' ? (
-            <textarea
+            <Textarea
               className="min-h-[88px] w-full rounded-lg border theme-border theme-card px-3 py-2 text-sm theme-text outline-none placeholder:theme-muted"
               value={draftValue}
               disabled={disabled}
@@ -931,7 +935,7 @@ function ModelConfigSection(props: {
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Provider
           </span>
-          <select
+          <NativeSelect
             className="h-10 w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 text-sm theme-text outline-none"
             value={value.provider}
             onChange={(event) => {
@@ -946,7 +950,7 @@ function ModelConfigSection(props: {
                 {option.label}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
 
         <label className="space-y-1.5">

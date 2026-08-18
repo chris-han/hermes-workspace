@@ -2,6 +2,8 @@
 // The active approval surface is ApprovalsBell (header dropdown).
 // ApprovalsPanel is a sidebar-style panel variant — consider wiring it to replace
 // or complement ApprovalsBell for a richer approvals experience.
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ApprovalRequest } from '../lib/approvals-store'
 import type { GatewayApprovalEntry } from '@/lib/gateway-api'
@@ -373,22 +375,22 @@ function ApprovalCard({
         {/* Actions or resolved label */}
         {isPending ? (
           <div className="flex gap-2">
-            <button
+            <Button
               type="button"
               onClick={onApprove}
               disabled={disabled}
               className="flex-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white transition-all duration-200 hover:bg-emerald-700"
             >
               ✓ Approve
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={onDeny}
               disabled={disabled}
               className="flex-1 rounded-lg border border-red-400 px-3 py-1.5 text-[11px] font-semibold text-red-600 transition-all duration-200 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/20"
             >
               ✕ Deny
-            </button>
+            </Button>
           </div>
         ) : (
           <p

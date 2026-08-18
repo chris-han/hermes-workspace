@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useRef, useState } from 'react'
 
 const POLL_INTERVAL_MS = 10_000
@@ -230,7 +232,7 @@ export function HermesReconnectBanner({
 
         {isDisconnected ? (
           <div className="flex shrink-0 items-center gap-2">
-            <button
+            <Button
               type="button"
               onClick={() => void handleRetry()}
               disabled={isChecking || isStarting}
@@ -242,8 +244,8 @@ export function HermesReconnectBanner({
               }}
             >
               {isChecking ? 'Retrying…' : 'Retry'}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => void handleStartAgent()}
               disabled={isStarting}
@@ -253,7 +255,7 @@ export function HermesReconnectBanner({
               }}
             >
               {isStarting ? 'Starting…' : 'Start Agent'}
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>

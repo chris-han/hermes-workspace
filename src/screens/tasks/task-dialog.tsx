@@ -1,3 +1,9 @@
+import { Input } from '@/components/ui/input'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Textarea } from '@/components/ui/form-controls'
+
 import { useEffect, useState } from 'react'
 import type {
   CreateTaskInput,
@@ -107,7 +113,7 @@ export function TaskDialog({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className={labelClass}>Title *</label>
-              <input
+              <Input
                 className={inputClass}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -119,7 +125,7 @@ export function TaskDialog({
 
             <div>
               <label className={labelClass}>Description</label>
-              <textarea
+              <Textarea
                 className={cn(inputClass, 'resize-none')}
                 rows={3}
                 value={description}
@@ -131,7 +137,7 @@ export function TaskDialog({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Column</label>
-                <select
+                <NativeSelect
                   className={inputClass}
                   value={column}
                   onChange={(e) => setColumn(e.target.value as TaskColumn)}
@@ -141,11 +147,11 @@ export function TaskDialog({
                       {COLUMN_LABELS[col]}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               <div>
                 <label className={labelClass}>Priority</label>
-                <select
+                <NativeSelect
                   className={inputClass}
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as TaskPriority)}
@@ -153,14 +159,14 @@ export function TaskDialog({
                   <option value="high">High</option>
                   <option value="medium">Medium</option>
                   <option value="low">Low</option>
-                </select>
+                </NativeSelect>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Assignee</label>
-                <select
+                <NativeSelect
                   className={inputClass}
                   value={assignee}
                   onChange={(e) => setAssignee(e.target.value)}
@@ -171,7 +177,7 @@ export function TaskDialog({
                       {label}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
                 <p className="mt-1.5 text-[10px] leading-relaxed text-[var(--theme-muted)]">
                   Assignee is separate from status. Dragging a card changes its
                   column only.
@@ -179,7 +185,7 @@ export function TaskDialog({
               </div>
               <div>
                 <label className={labelClass}>Due Date</label>
-                <input
+                <Input
                   type="date"
                   className={inputClass}
                   value={dueDate}
@@ -190,7 +196,7 @@ export function TaskDialog({
 
             <div>
               <label className={labelClass}>Tags (comma-separated)</label>
-              <input
+              <Input
                 className={inputClass}
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}

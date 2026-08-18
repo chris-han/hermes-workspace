@@ -1,5 +1,7 @@
 'use client'
 
+import { Textarea } from '@/components/ui/form-controls'
+
 import React, {
   createContext,
   useContext,
@@ -295,7 +297,7 @@ function PromptInputTextarea({
   }
 
   return (
-    <textarea
+    <Textarea
       ref={handleRef}
       value={value}
       onChange={handleChange}

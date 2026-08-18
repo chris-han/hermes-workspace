@@ -1,5 +1,7 @@
 'use client'
 
+import { Input } from '@/components/ui/input'
+
 import { useCallback, useRef } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { PlusSignIcon } from '@hugeicons/core-free-icons'
@@ -255,7 +257,7 @@ export function AttachmentButton({
 
   return (
     <>
-      <input
+      <Input
         ref={inputRef}
         type="file"
         accept={ACCEPTED_EXTENSIONS}

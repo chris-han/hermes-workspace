@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useMemo, useState } from 'react'
 import { AgentOutputPanel } from './agent-output-panel'
 import type { TeamMember } from './team-panel'
@@ -158,7 +160,7 @@ export function MissionTimeline({
                   </div>
                 ) : null}
 
-                <button
+                <Button
                   type="button"
                   onClick={() =>
                     setExpandedOutputs((prev) => ({
@@ -169,7 +171,7 @@ export function MissionTimeline({
                   className="mt-3 text-sm text-neutral-600"
                 >
                   {isExpanded ? '▼ Live output' : '▶ Live output'}
-                </button>
+                </Button>
 
                 {isExpanded ? (
                   agentSessionMap?.[member.id] ? (

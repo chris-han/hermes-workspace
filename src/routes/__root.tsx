@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import {
   HeadContent,
   Outlet,
@@ -127,7 +129,7 @@ export const Route = createRootRoute({
       {
         name: 'viewport',
         content:
-          'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual',
+          'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual',
       },
       {
         title: 'semantier',
@@ -237,12 +239,12 @@ export const Route = createRootRoute({
         <pre className="p-4 bg-primary-100 rounded-lg text-sm text-primary-700 max-w-full overflow-auto mb-6">
           {error instanceof Error ? error.message : String(error)}
         </pre>
-        <button
+        <Button
           onClick={() => (window.location.href = '/')}
           className="px-4 py-2 bg-accent-500 text-white rounded-lg hover:bg-accent-600 transition-colors"
         >
           Return Home
-        </button>
+        </Button>
       </div>
     )
   },
@@ -254,13 +256,16 @@ function RootLayout() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
-  const isPublicLanding = pathname === '/'
+  const isPublicSurface =
+    pathname === '/' ||
+    pathname === '/DesignSystemDemo' ||
+    pathname === '/DesignSystemGallery'
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(
     null,
   )
 
   useEffect(() => {
-    if (isPublicLanding) return undefined
+    if (isPublicSurface) return undefined
     initializeSettingsAppearance()
 
     const syncOnboardingCompletion = () => {
@@ -333,9 +338,9 @@ function RootLayout() {
         handleOnboardingCompleteChanged,
       )
     }
-  }, [isPublicLanding])
+  }, [isPublicSurface])
 
-  if (isPublicLanding) {
+  if (isPublicSurface) {
     return <Outlet />
   }
 

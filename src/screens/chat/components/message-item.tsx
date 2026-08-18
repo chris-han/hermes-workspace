@@ -1,3 +1,6 @@
+import { Link as DsLink } from '@/components/ui/link'
+import { ActionSurface } from '@/components/ui/action-surface'
+
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown01Icon, Idea01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -1125,7 +1128,7 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
       }}
     >
       {/* Header row — always clickable */}
-      <button
+      <Button
         type="button"
         className="w-full flex items-center gap-1.5 px-2.5 py-1.5 hover:opacity-80 text-left"
         onClick={() => setExpanded((v) => !v)}
@@ -1175,7 +1178,7 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
             label={`${displayName} running`}
           />
         ) : null}
-      </button>
+      </Button>
       {isRunning && !expanded && (
         <div
           className="px-2.5 pb-1.5 text-[10px]"
@@ -1213,7 +1216,7 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
               <pre className="text-[10px] font-mono whitespace-pre-wrap break-words max-h-48 overflow-y-auto text-ink opacity-80">
                 {showMore ? result : detail}
                 {hasMore && !showMore && (
-                  <button
+                  <Button
                     type="button"
                     className="block mt-1 text-[10px] underline text-accent-500"
                     onClick={(e) => {
@@ -1222,7 +1225,7 @@ function ToolCallPill({ toolCall }: { toolCall: StreamToolCall }) {
                     }}
                   >
                     Show more
-                  </button>
+                  </Button>
                 )}
               </pre>
             </div>
@@ -1430,14 +1433,14 @@ function MarkdownDocumentCard({
             </div>
           ) : null}
           {openHref ? (
-            <a
+            <DsLink
               href={openHref}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-primary-700 underline decoration-primary-300 underline-offset-4 hover:decoration-primary-500"
             >
               Open
-            </a>
+            </DsLink>
           ) : null}
         </div>
       </div>
@@ -1651,7 +1654,7 @@ function InlineToolSectionItem({
   return (
     <div>
       {/* ── Card — always clickable to expand ── */}
-      <div
+      <ActionSurface
         className={cn(
           'rounded-md text-[12px] overflow-hidden',
           'cursor-pointer transition-all',
@@ -1662,8 +1665,6 @@ function InlineToolSectionItem({
           color: 'var(--tool-card-title)',
         }}
         onClick={() => setOpen((v) => !v)}
-        role="button"
-        tabIndex={0}
       >
         <div className="flex items-center gap-2 px-3 py-2">
           <span className="text-base leading-none shrink-0">{icon}</span>
@@ -1717,7 +1718,7 @@ function InlineToolSectionItem({
             {'.'.repeat(dots)}
           </div>
         )}
-      </div>
+      </ActionSurface>
 
       {/* ── Expanded detail — terminal-style args + output ── */}
       {open && (
@@ -1804,7 +1805,7 @@ function InlineToolSectionItem({
           {(shouldTruncateOutput || toolSection.outputText) && (
             <div className="flex flex-wrap items-center gap-2">
               {shouldTruncateOutput && (
-                <button
+                <Button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation()
@@ -1814,9 +1815,9 @@ function InlineToolSectionItem({
                   style={{ color: 'var(--tool-card-muted)' }}
                 >
                   {showFullOutput ? 'less' : 'more'}
-                </button>
+                </Button>
               )}
-              <button
+              <Button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -1826,7 +1827,7 @@ function InlineToolSectionItem({
                 style={{ color: 'var(--tool-card-muted)' }}
               >
                 {showRawJson ? 'formatted' : 'raw'}
-              </button>
+              </Button>
             </div>
           )}
           {/* Fallback when no args or output available */}
@@ -2088,26 +2089,26 @@ function MessageItemComponent({
         if (href?.startsWith(fillInputPrefix)) {
           const value = decodeURIComponent(href.slice(fillInputPrefix.length))
           return (
-            <button
+            <Button
               type="button"
               onClick={() => onFillInput(value)}
               title={`Fill chat box with: ${value}`}
               className="inline p-0 align-baseline font-medium text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
             >
               {children}
-            </button>
+            </Button>
           )
         }
         const openInNewTab = Boolean(href && /^https?:\/\//i.test(href))
         return (
-          <a
+          <DsLink
             href={href}
             className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
             target={openInNewTab ? '_blank' : undefined}
             rel={openInNewTab ? 'noopener noreferrer' : undefined}
           >
             {children}
-          </a>
+          </DsLink>
         )
       },
     }
@@ -2242,11 +2243,11 @@ function MessageItemComponent({
             toolMessage.toolName.trim()) ||
           parseToolNameFromMessageText(messageText)
         const key =
-            (typeof (toolMessage as any).id === 'string' &&
-              (toolMessage as any).id) ||
-            (typeof toolMessage.toolCallId === 'string' &&
-              toolMessage.toolCallId) ||
-            `${toolType}-${index}`
+          (typeof (toolMessage as any).id === 'string' &&
+            (toolMessage as any).id) ||
+          (typeof toolMessage.toolCallId === 'string' &&
+            toolMessage.toolCallId) ||
+          `${toolType}-${index}`
         return projectPreparedToolSection({
           key,
           toolCallId:
@@ -2273,9 +2274,7 @@ function MessageItemComponent({
         const outputText =
           typeof toolCall.result === 'string' ? toolCall.result : ''
         const isError = toolCall.phase === 'error'
-        const isComplete =
-          toolCall.phase === 'done' ||
-          outputText.length > 0
+        const isComplete = toolCall.phase === 'done' || outputText.length > 0
         const state = isError
           ? 'output-error'
           : isComplete || !effectiveIsStreaming
@@ -2621,7 +2620,7 @@ function MessageItemComponent({
 
                   if (imageAttachment) {
                     return (
-                      <a
+                      <DsLink
                         key={attachment.id}
                         href={source}
                         target="_blank"
@@ -2634,7 +2633,7 @@ function MessageItemComponent({
                           className="max-h-64 w-auto max-w-full object-contain"
                           loading="lazy"
                         />
-                      </a>
+                      </DsLink>
                     )
                   }
 
@@ -2653,7 +2652,7 @@ function MessageItemComponent({
                   }
 
                   return (
-                    <a
+                    <DsLink
                       key={attachment.id}
                       href={source}
                       target="_blank"
@@ -2673,7 +2672,7 @@ function MessageItemComponent({
                       >
                         {ext || 'file'}
                       </span>
-                    </a>
+                    </DsLink>
                   )
                 })}
               </div>
@@ -2681,7 +2680,7 @@ function MessageItemComponent({
             {hasInlineImages && (
               <div className="flex flex-wrap gap-2">
                 {inlineImages.map((img) => (
-                  <a
+                  <DsLink
                     key={img.id}
                     href={img.src}
                     target="_blank"
@@ -2694,7 +2693,7 @@ function MessageItemComponent({
                       className="max-h-64 w-auto max-w-full object-contain"
                       loading="lazy"
                     />
-                  </a>
+                  </DsLink>
                 ))}
               </div>
             )}

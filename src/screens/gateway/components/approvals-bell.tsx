@@ -1,5 +1,7 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ApprovalRequest } from '../lib/approvals-store'
 import { cn } from '@/lib/utils'
@@ -99,7 +101,7 @@ export function ApprovalsBell({
 
   return (
     <div ref={ref} className="relative">
-      <button
+      <Button
         type="button"
         onClick={() => setOpen((value) => !value)}
         className={cn(
@@ -126,7 +128,7 @@ export function ApprovalsBell({
             {count > 99 ? '99+' : count}
           </span>
         ) : null}
-      </button>
+      </Button>
 
       {open ? (
         <div
@@ -134,7 +136,7 @@ export function ApprovalsBell({
             'absolute right-0 top-full z-50 mt-2 flex w-[360px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white',
             'shadow-[0_8px_30px_rgba(0,0,0,0.15)] dark:border-neutral-700 dark:bg-neutral-900 dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)]',
           )}
-          role="dialog"
+          role="region"
           aria-label="Pending approvals"
         >
           <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-700">
@@ -146,7 +148,7 @@ export function ApprovalsBell({
                 {count} pending
               </span>
             </div>
-            <button
+            <Button
               type="button"
               onClick={() => setOpen(false)}
               className="rounded-md p-0.5 text-neutral-400 transition-colors hover:text-neutral-600 dark:hover:text-neutral-200"
@@ -166,7 +168,7 @@ export function ApprovalsBell({
                   strokeLinecap="round"
                 />
               </svg>
-            </button>
+            </Button>
           </div>
 
           <div className="max-h-[420px] flex-1 space-y-2 overflow-y-auto p-3">
@@ -205,7 +207,7 @@ export function ApprovalsBell({
                       {approval.action}
                     </p>
                     <div className="mt-2 flex items-center gap-1.5">
-                      <button
+                      <Button
                         type="button"
                         onClick={() =>
                           void handleQuickAction(approval.id, 'approve')
@@ -214,8 +216,8 @@ export function ApprovalsBell({
                         className="flex-1 rounded-lg bg-emerald-500 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {busy === 'approve' ? 'Approving...' : 'Approve'}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         onClick={() =>
                           void handleQuickAction(approval.id, 'deny')
@@ -224,7 +226,7 @@ export function ApprovalsBell({
                         className="flex-1 rounded-lg border border-red-200 bg-white py-1.5 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-800/50 dark:bg-neutral-800 dark:text-red-400 dark:hover:bg-red-900/20"
                       >
                         {busy === 'deny' ? 'Denying...' : 'Deny'}
-                      </button>
+                      </Button>
                     </div>
                   </article>
                 )

@@ -2,7 +2,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowLeft01Icon, Home01Icon } from '@hugeicons/core-free-icons'
 import { usePageTitle } from '@/hooks/use-page-title'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 
 export const Route = createFileRoute('/$')({
   component: NotFoundPage,
@@ -38,13 +38,13 @@ function NotFoundPage() {
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button
+          <Button
             onClick={() => window.history.back()}
             className={buttonVariants({ variant: 'outline', size: 'default' })}
           >
             <HugeiconsIcon icon={ArrowLeft01Icon} size={18} strokeWidth={1.5} />
             Go Back
-          </button>
+          </Button>
           <Link
             to={'/chat' as string}
             className={buttonVariants({ variant: 'default', size: 'default' })}

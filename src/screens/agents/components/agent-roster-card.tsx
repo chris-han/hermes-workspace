@@ -1,3 +1,9 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Checkbox, Radio } from '@/components/ui/form-controls'
+
+import { Input } from '@/components/ui/input'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -178,7 +184,7 @@ export function AgentRosterInlineChat({
           <p className="mb-2 text-xs text-[var(--theme-danger)]">{error}</p>
         ) : null}
         <div className="flex items-center gap-2 rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] p-2">
-          <input
+          <Input
             type="text"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -301,7 +307,7 @@ export function AgentRosterCard({
     <article className="flex min-h-[19rem] flex-col rounded-card border border-[var(--theme-border)] bg-[var(--theme-card)] p-3">
       <div className="relative flex min-h-8 items-center">
         <div className="absolute left-0 flex items-center">
-          <button
+          <Button
             type="button"
             aria-label={
               cronJobCount > 0
@@ -321,7 +327,7 @@ export function AgentRosterCard({
                 {cronJobCount}
               </span>
             ) : null}
-          </button>
+          </Button>
         </div>
 
         <div className="flex w-full justify-center px-20">
@@ -333,7 +339,7 @@ export function AgentRosterCard({
         </div>
 
         <div className="absolute right-0 flex items-center gap-1">
-          <button
+          <Button
             type="button"
             aria-label={
               isActive ? `Pause ${displayName}` : `Run ${displayName} now`
@@ -347,16 +353,16 @@ export function AgentRosterCard({
               size={16}
               strokeWidth={1.8}
             />
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
             aria-label={`Open settings for ${displayName}`}
             onClick={() => onOpenSettings(agent.id)}
             className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-card2)] hover:text-[var(--theme-text)]"
           >
             <HugeiconsIcon icon={Settings01Icon} size={16} strokeWidth={1.8} />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -439,8 +445,7 @@ export function AgentRosterCard({
                         className="flex items-center gap-2 rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-2.5 py-2"
                       >
                         <label className="relative inline-flex cursor-pointer items-center">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={job.enabled}
                             onChange={() =>
                               toggleMutation.mutate({
@@ -482,7 +487,7 @@ export function AgentRosterCard({
                   </div>
                   <div className="mt-3 flex justify-end">
                     <Button
-                      render={<a href="/cron" />}
+                      render={<DsLink href="/cron" />}
                       variant="secondary"
                       className="h-8 rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 text-xs font-medium text-[var(--theme-text)] hover:bg-[var(--theme-card)]"
                     >
@@ -496,7 +501,7 @@ export function AgentRosterCard({
                     No scheduled jobs
                   </p>
                   <Button
-                    render={<a href="/cron" />}
+                    render={<DsLink href="/cron" />}
                     variant="secondary"
                     className="h-8 rounded-md border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 text-xs font-medium text-[var(--theme-text)] hover:bg-[var(--theme-card)]"
                   >

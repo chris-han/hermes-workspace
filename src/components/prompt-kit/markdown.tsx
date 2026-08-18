@@ -1,3 +1,7 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Table } from '@/components/ui/table'
+
 import { marked } from 'marked'
 import { createContext, memo, useContext, useId, useMemo, useRef } from 'react'
 import { useNavigate } from '@tanstack/react-router'
@@ -308,7 +312,7 @@ const INITIAL_COMPONENTS: Partial<Components> = {
     }
 
     return (
-      <a
+      <DsLink
         href={normalizedHref}
         className={linkClass}
         target={openInNewTab ? '_blank' : undefined}
@@ -316,7 +320,7 @@ const INITIAL_COMPONENTS: Partial<Components> = {
         onClick={handleClick}
       >
         {children}
-      </a>
+      </DsLink>
     )
   },
   blockquote: function BlockquoteComponent({ children }) {
@@ -345,9 +349,9 @@ const INITIAL_COMPONENTS: Partial<Components> = {
       >
         <div className="my-3 max-w-full overflow-hidden rounded-lg border border-primary-200 bg-primary-50/20">
           <div className="max-w-full overflow-x-auto">
-            <table className="w-full min-w-max border-collapse text-sm sm:min-w-full tabular-nums">
+            <Table className="w-full min-w-max border-collapse text-sm sm:min-w-full tabular-nums">
               {children}
-            </table>
+            </Table>
           </div>
         </div>
       </TableRenderContext.Provider>

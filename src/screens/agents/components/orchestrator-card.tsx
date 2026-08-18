@@ -1,3 +1,5 @@
+import { Input } from '@/components/ui/input'
+
 import { Suspense, lazy, useState } from 'react'
 import { Cancel01Icon, Settings01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -12,6 +14,7 @@ import {
 import { AgentProgress } from '@/components/agent-view/agent-progress'
 import { PixelAvatar } from '@/components/agent-swarm/pixel-avatar'
 import { Button } from '@/components/ui/button'
+import { DialogSurface } from '@/components/ui/dialog-surface'
 import { cn } from '@/lib/utils'
 
 const ChatScreen = lazy(() =>
@@ -88,7 +91,7 @@ export function OrchestratorCard({ totalAgents }: { totalAgents: number }) {
             </div>
           </div>
 
-          <button
+          <Button
             type="button"
             onClick={openSettings}
             className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-button border border-[var(--theme-border)] bg-[var(--theme-card2)] text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-text)]"
@@ -96,7 +99,7 @@ export function OrchestratorCard({ totalAgents }: { totalAgents: number }) {
             title="Orchestrator settings"
           >
             <HugeiconsIcon icon={Settings01Icon} size={16} strokeWidth={1.8} />
-          </button>
+          </Button>
         </div>
 
         <div className="mt-4 flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-card border border-[var(--theme-border)] bg-[var(--theme-card2)]">
@@ -122,9 +125,10 @@ export function OrchestratorCard({ totalAgents }: { totalAgents: number }) {
       </article>
 
       {settingsOpen ? (
-        <div
+        <DialogSurface
           className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--theme-bg)_48%,transparent)] px-4 py-6 backdrop-blur-md"
           onClick={() => setSettingsOpen(false)}
+          onDismiss={() => setSettingsOpen(false)}
         >
           <div
             className="w-full max-w-md rounded-card border border-[var(--theme-border2)] bg-[var(--theme-card)] p-6"
@@ -148,7 +152,7 @@ export function OrchestratorCard({ totalAgents }: { totalAgents: number }) {
                   </p>
                 </div>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={() => setSettingsOpen(false)}
                 className="inline-flex size-10 cursor-pointer items-center justify-center rounded-button border border-[var(--theme-border)] bg-[var(--theme-card2)] text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-text)]"
@@ -159,14 +163,14 @@ export function OrchestratorCard({ totalAgents }: { totalAgents: number }) {
                   size={18}
                   strokeWidth={1.8}
                 />
-              </button>
+              </Button>
             </div>
 
             <label className="mt-6 block space-y-2">
               <span className="text-sm font-medium text-[var(--theme-text)]">
                 Display name
               </span>
-              <input
+              <Input
                 value={draftName}
                 onChange={(event) => setDraftName(event.target.value)}
                 placeholder={DEFAULT_ORCHESTRATOR_NAME}
@@ -187,7 +191,7 @@ export function OrchestratorCard({ totalAgents }: { totalAgents: number }) {
               </Button>
             </div>
           </div>
-        </div>
+        </DialogSurface>
       ) : null}
     </>
   )

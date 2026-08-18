@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { Search } from 'lucide-react'
 
 import type { GovernedGraphProjection, GraphSelection } from './graph-types'
@@ -93,7 +95,7 @@ export function GraphFiltersRail({
             </div>
           ) : (
             matches.map((node) => (
-              <button
+              <Button
                 key={node.id}
                 type="button"
                 className="grid w-full gap-1 rounded-md border border-border px-3 py-2 text-left text-xs transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--focus-blue)]"
@@ -103,7 +105,7 @@ export function GraphFiltersRail({
                 <span className="text-muted-foreground">
                   {node.kind} · {node.semanticTier} · {node.governanceState}
                 </span>
-              </button>
+              </Button>
             ))
           )}
         </div>

@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 type RunSnapshot = {
   id: string
   title: string
@@ -129,14 +131,14 @@ export function RunCompare({ runA, runB, onClose }: RunCompareProps) {
           </h3>
           <p className="text-xs text-primary-400">Run metrics side by side</p>
         </div>
-        <button
+        <Button
           type="button"
           onClick={onClose}
           className="rounded-lg border border-primary-700 bg-primary-800 px-2 py-1 text-xs font-medium text-primary-200 transition-colors hover:border-accent-500 hover:text-accent-300"
           aria-label="Close compare view"
         >
           Close
-        </button>
+        </Button>
       </div>
 
       <div className="overflow-x-auto">

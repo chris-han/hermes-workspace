@@ -1,6 +1,7 @@
 'use client'
 
 import { Tabs as TabsPrimitive } from '@base-ui/react/tabs'
+import type { KeyboardEvent } from 'react'
 
 import { cn } from '@/lib/utils'
 
@@ -38,14 +39,15 @@ function TabsList({
         className,
       )}
       data-slot="tabs-list"
+      data-variant={variant}
       {...props}
     >
       {children}
-        <TabsPrimitive.Indicator
+      <TabsPrimitive.Indicator
         className={cn(
           '-translate-y-(--active-tab-bottom) absolute bottom-0 left-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) transition-[width,translate] duration-200 ease-in-out',
           variant === 'line' || variant === 'underline'
-            ? 'data-[orientation=vertical]:-translate-x-px z-10 bg-current data-[orientation=horizontal]:h-[3px] data-[orientation=vertical]:w-0.5 data-[orientation=horizontal]:translate-y-px'
+            ? 'data-[orientation=vertical]:-translate-x-px z-10 bg-current data-[orientation=horizontal]:h-0.5 data-[orientation=vertical]:w-0.5 data-[orientation=horizontal]:translate-y-px'
             : 'z-0 rounded-md bg-primary-200',
         )}
         data-slot="tab-indicator"
@@ -54,14 +56,43 @@ function TabsList({
   )
 }
 
-function TabsTab({ className, ...props }: TabsPrimitive.Tab.Props) {
+function TabsTab({ className, onKeyDown, ...props }: TabsPrimitive.Tab.Props) {
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    onKeyDown?.(
+      event as Parameters<NonNullable<TabsPrimitive.Tab.Props['onKeyDown']>>[0],
+    )
+    if (event.defaultPrevented) return
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+    const tabs = [
+      ...(event.currentTarget
+        .closest('[role="tablist"]')
+        ?.querySelectorAll<HTMLButtonElement>('[role="tab"]:not([disabled])') ??
+        []),
+    ]
+    const current = tabs.indexOf(event.currentTarget)
+    const next =
+      event.key === 'Home'
+        ? tabs[0]
+        : event.key === 'End'
+          ? tabs.at(-1)
+          : event.key === 'ArrowRight'
+            ? tabs[(current + 1) % tabs.length]
+            : tabs[(current - 1 + tabs.length) % tabs.length]
+    if (next) {
+      event.preventDefault()
+      next.focus()
+      next.click()
+    }
+  }
+
   return (
     <TabsPrimitive.Tab
       className={cn(
-        '[&_svg]:-mx-0.5 relative z-10 flex h-8 shrink-0 grow cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm font-medium outline-none transition-[color,background-color,box-shadow] hover:text-primary-900 focus-visible:ring-2 focus-visible:ring-primary-400 data-disabled:pointer-events-none data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-active:text-primary-900 data-disabled:opacity-64 [&_svg:not([class*="size-"])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0',
+        '[&_svg]:-mx-0.5 relative z-10 flex h-[2.8125rem] shrink-0 grow cursor-pointer items-center justify-center gap-[0.4rem] whitespace-nowrap rounded-none px-1 py-3 text-sm leading-[1.5] font-semibold outline-none transition-[color,background-color,box-shadow] hover:text-primary-900 focus-visible:ring-2 focus-visible:ring-primary-400 data-disabled:pointer-events-none data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-active:text-primary-900 data-disabled:opacity-64 [&_svg:not([class*="size-"])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0',
         className,
       )}
       data-slot="tabs-tab"
+      onKeyDown={handleKeyDown}
       {...props}
     />
   )

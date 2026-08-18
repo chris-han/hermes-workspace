@@ -1,3 +1,9 @@
+import { Input } from '@/components/ui/input'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 
@@ -190,11 +196,7 @@ export function ProfileCompletionScreen({
       }
       window.location.assign(payload.landing_route || '/chat/new')
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : copy.failedToComplete,
-      )
+      setError(err instanceof Error ? err.message : copy.failedToComplete)
       setLoading(false)
     }
   }
@@ -208,8 +210,9 @@ export function ProfileCompletionScreen({
           </h1>
           <div className="mt-4 flex justify-center">
             <div className="inline-flex rounded-button border border-border bg-background p-0.5 text-xs">
-              <button
+              <Button
                 type="button"
+                variant={locale === 'zh' ? 'default' : 'ghost'}
                 onClick={() => setLocale('zh')}
                 className={`rounded-button px-2.5 py-1 transition-colors ${
                   locale === 'zh'
@@ -219,9 +222,10 @@ export function ProfileCompletionScreen({
                 aria-pressed={locale === 'zh'}
               >
                 中文
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant={locale === 'en' ? 'default' : 'ghost'}
                 onClick={() => setLocale('en')}
                 className={`rounded-button px-2.5 py-1 transition-colors ${
                   locale === 'en'
@@ -231,19 +235,17 @@ export function ProfileCompletionScreen({
                 aria-pressed={locale === 'en'}
               >
                 English
-              </button>
+              </Button>
             </div>
           </div>
           <h2 className="mt-5 text-lg font-semibold text-foreground">
             {copy.title}
           </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {copy.subtitle}
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">{copy.subtitle}</p>
         </div>
 
         <form onSubmit={(e) => void submitCompletion(e)} className="space-y-4">
-          <input
+          <Input
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
@@ -251,7 +253,7 @@ export function ProfileCompletionScreen({
             className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
             disabled={loading}
           />
-          <input
+          <Input
             type="text"
             value={loginName}
             onChange={(e) => setLoginName(e.target.value)}
@@ -261,7 +263,7 @@ export function ProfileCompletionScreen({
             autoCapitalize="off"
             autoCorrect="off"
           />
-          <input
+          <Input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -269,7 +271,7 @@ export function ProfileCompletionScreen({
             className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
             disabled={loading}
           />
-          <input
+          <Input
             type="password"
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
@@ -281,7 +283,7 @@ export function ProfileCompletionScreen({
             <span className="text-sm font-medium text-foreground">
               {copy.industryLabel}
             </span>
-            <select
+            <NativeSelect
               value={industryCode}
               onChange={(e) => setIndustryCode(e.target.value)}
               className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
@@ -300,27 +302,27 @@ export function ProfileCompletionScreen({
                   </option>
                 ))
               )}
-            </select>
+            </NativeSelect>
             <span className="block text-xs text-muted-foreground">
               {copy.industryHint}
             </span>
           </label>
 
-          <button
+          <Button
             type="submit"
             disabled={loading || demoProfilesQuery.isLoading}
             className="w-full rounded-button bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? copy.savingButton : copy.saveButton}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => void submitCompletion(undefined, true)}
             disabled={loading || demoProfilesQuery.isLoading}
             className="w-full rounded-button border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-muted hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {copy.continueWithoutPasswordButton}
-          </button>
+          </Button>
         </form>
 
         {demoProfilesQuery.isError ? (

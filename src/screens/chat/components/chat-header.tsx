@@ -1,3 +1,5 @@
+import { Input } from '@/components/ui/input'
+
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Folder01Icon } from '@hugeicons/core-free-icons'
@@ -250,7 +252,7 @@ function ChatHeaderComponent({
       >
         <div className="px-3 h-12 flex items-center gap-0">
           {/* Hamburger lines — ChatGPT style, large tap target */}
-          <button
+          <Button
             type="button"
             onClick={openHamburgerMenu}
             className="shrink-0 flex items-center justify-center w-11 h-11 -ml-1 rounded-xl active:bg-white/10 transition-colors z-10"
@@ -270,10 +272,10 @@ function ChatHeaderComponent({
                 strokeLinecap="round"
               />
             </svg>
-          </button>
+          </Button>
 
           {/* Session name — centered pill, tappable */}
-          <button
+          <Button
             type="button"
             onClick={onOpenSessions}
             className="flex items-center gap-1 min-w-0 max-w-[55vw] px-3 py-1.5 rounded-full bg-primary-100/70 hover:bg-primary-200/80 dark:bg-neutral-700/80 dark:hover:bg-neutral-600/80 transition-colors"
@@ -297,7 +299,7 @@ function ChatHeaderComponent({
                 strokeLinejoin="round"
               />
             </svg>
-          </button>
+          </Button>
 
           <div className="flex-1" />
 
@@ -342,7 +344,7 @@ function ChatHeaderComponent({
         ) : null}
         <div className="group min-w-0 flex-1">
           {isEditingTitle ? (
-            <input
+            <Input
               ref={titleInputRef}
               value={titleDraft}
               disabled={renamingTitle}
@@ -369,23 +371,23 @@ function ChatHeaderComponent({
               className="relative flex items-center gap-1"
               ref={sessionPopoverRef}
             >
-              <button
+              <Button
                 type="button"
                 onClick={() => setSessionPopoverOpen((p) => !p)}
                 className="min-w-0 truncate text-sm font-medium text-balance hover:text-accent-600 transition-colors rounded-sm text-left"
                 title="Click to switch session"
               >
                 {activeTitle}
-              </button>
+              </Button>
               {canRenameTitle && !renamingTitle && (
-                <button
+                <Button
                   type="button"
                   onClick={startTitleEdit}
                   className="text-xs text-primary-400 opacity-0 group-hover:opacity-100 hover:text-primary-600 transition-opacity shrink-0"
                   title="Rename session"
                 >
                   ✏️
-                </button>
+                </Button>
               )}
               {sessionPopoverOpen && (
                 <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-80 rounded-xl border border-primary-200 bg-surface shadow-lg overflow-hidden">
@@ -402,7 +404,7 @@ function ChatHeaderComponent({
                       <circle cx="11" cy="11" r="8" />
                       <path d="m21 21-4.35-4.35" />
                     </svg>
-                    <input
+                    <Input
                       autoFocus
                       type="text"
                       placeholder="Search sessions..."
@@ -436,7 +438,7 @@ function ChatHeaderComponent({
                           (s.friendlyId === activeFriendlyId ||
                             s.key?.endsWith(`:${activeFriendlyId}`))
                         return (
-                          <button
+                          <Button
                             key={s.key || s.friendlyId}
                             type="button"
                             onClick={() => {
@@ -456,7 +458,7 @@ function ChatHeaderComponent({
                             {isActive && (
                               <span className="size-1.5 rounded-full bg-accent-500 shrink-0" />
                             )}
-                          </button>
+                          </Button>
                         )
                       })}
                     {sessions.length === 0 && (
@@ -503,7 +505,7 @@ function ChatHeaderComponent({
               <TooltipTrigger
                 onClick={onRefresh ? handleRefresh : undefined}
                 render={
-                  <button
+                  <Button
                     type="button"
                     aria-label={isStale ? 'Stale — click to sync' : 'Live'}
                     className={cn(
@@ -520,7 +522,7 @@ function ChatHeaderComponent({
                         isStale ? 'bg-amber-400' : 'bg-emerald-500',
                       )}
                     />
-                  </button>
+                  </Button>
                 }
               />
               <TooltipContent side="bottom">

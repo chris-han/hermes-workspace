@@ -1,5 +1,7 @@
 // Module-level local model override — set by composer when user picks a local model
 // Avoids prop threading. Reset when switching back to cloud models.
+import { Button } from '@/components/ui/button'
+
 import {
   useCallback,
   useEffect,
@@ -3129,7 +3131,7 @@ export function ChatScreen({
                       ) : null}
                     </div>
                     <div className="flex shrink-0 gap-2">
-                      <button
+                      <Button
                         type="button"
                         onClick={() => {
                           void resolvePendingApproval(approval, 'approved')
@@ -3137,8 +3139,8 @@ export function ChatScreen({
                         className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
                       >
                         Approve
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         onClick={() => {
                           void resolvePendingApproval(approval, 'denied')
@@ -3146,7 +3148,7 @@ export function ChatScreen({
                         className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 dark:border-red-800/50 dark:bg-red-900/10 dark:text-red-400"
                       >
                         Deny
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}

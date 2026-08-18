@@ -1,3 +1,5 @@
+import { Textarea } from '@/components/ui/form-controls'
+
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -63,7 +65,7 @@ export function SteerModal({
             </DialogDescription>
           </div>
 
-          <textarea
+          <Textarea
             value={message}
             rows={5}
             placeholder="Send a directive to this agent..."

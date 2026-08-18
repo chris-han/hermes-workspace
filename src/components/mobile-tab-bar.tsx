@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -254,7 +256,7 @@ export function MobileTabBar() {
               isCenter && isActive ? 'size-10' : isActive ? 'size-9' : 'size-10'
 
             return (
-              <button
+              <Button
                 key={tab.id}
                 type="button"
                 onClick={() => {
@@ -291,7 +293,7 @@ export function MobileTabBar() {
                     strokeWidth={isActive ? 2 : 1.6}
                   />
                 </span>
-              </button>
+              </Button>
             )
           })}
         </div>

@@ -105,13 +105,13 @@ export function OnboardingWizard() {
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent-500/5 via-transparent to-transparent" />
             <div className="pointer-events-none absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA2MCAwIEwgMCAwIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLDAsMCwwLjAyKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50" />
             {/* Skip button */}
-            <button
+            <Button
               onClick={skip}
               className="absolute right-4 top-4 z-10 rounded-full p-2 text-primary-500 transition-colors hover:bg-primary-100 hover:text-primary-700"
               aria-label="Skip onboarding"
             >
               <HugeiconsIcon icon={Cancel01Icon} className="size-5" />
-            </button>
+            </Button>
 
             {/* Content */}
             <div className="px-8 pb-6 pt-12">
@@ -174,7 +174,7 @@ export function OnboardingWizard() {
               {/* Step indicator dots */}
               <div className="mb-6 flex justify-center gap-2">
                 {ONBOARDING_STEPS.map((_, index) => (
-                  <button
+                  <Button
                     key={index}
                     onClick={() => {
                       if (index <= currentStep) {

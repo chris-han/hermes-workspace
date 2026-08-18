@@ -1,3 +1,5 @@
+import { Textarea } from '@/components/ui/form-controls'
+
 import { useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowUp01Icon } from '@hugeicons/core-free-icons'
@@ -47,7 +49,7 @@ export function AgentChatInput({
       className="border-t border-primary-300/70 bg-primary-100/60 p-3 backdrop-blur-sm"
     >
       <div className="flex items-end gap-2 rounded-2xl border border-primary-300/70 bg-primary-50/80 p-2 shadow-sm">
-        <textarea
+        <Textarea
           value={value}
           rows={1}
           placeholder="Message this agent..."

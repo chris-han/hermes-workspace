@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { useEffect, useState } from 'react'
 import { KillConfirmDialog } from './kill-confirm-dialog'
 import { SteerModal } from './steer-modal'
@@ -126,18 +128,6 @@ export function AgentRegistryCard({
 
   return (
     <article
-      onClick={(event) => {
-        if (!onTap) return
-        const target = event.target as HTMLElement | null
-        if (
-          target?.closest(
-            'button,a,input,textarea,select,[role="button"],[data-no-card-tap]',
-          )
-        ) {
-          return
-        }
-        onTap(agent)
-      }}
       className={`relative overflow-hidden rounded-2xl p-4 shadow-sm border border-[var(--theme-border-subtle)] ${CARD_GRADIENT_CLASS[agent.color]}`}
     >
       <div className="bg-white/40 dark:bg-neutral-900/20 backdrop-blur-md rounded-xl p-3">
@@ -151,16 +141,26 @@ export function AgentRegistryCard({
                 {STATUS_LABELS[agent.status]}
               </span>
             </div>
-            <h3 className="mt-1 truncate text-sm font-semibold text-neutral-900 dark:text-neutral-50">
-              {agent.name}
-            </h3>
+            {onTap ? (
+              <Button
+                variant="ghost"
+                className="mt-1 h-auto max-w-full justify-start truncate p-0 text-sm font-semibold text-neutral-900 hover:bg-transparent dark:text-neutral-50"
+                onClick={() => onTap(agent)}
+              >
+                {agent.name}
+              </Button>
+            ) : (
+              <h3 className="mt-1 truncate text-sm font-semibold text-neutral-900 dark:text-neutral-50">
+                {agent.name}
+              </h3>
+            )}
             <p className="truncate text-xs text-neutral-600 dark:text-neutral-300">
               {agent.role || agent.category}
             </p>
           </div>
 
           <div className="relative">
-            <button
+            <Button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--theme-card)]/60 text-neutral-700 shadow-sm border border-[var(--theme-border-subtle)] dark:text-neutral-100"
@@ -168,18 +168,18 @@ export function AgentRegistryCard({
               aria-expanded={menuOpen}
             >
               ⋯
-            </button>
+            </Button>
 
             {menuOpen ? (
               <>
-                <button
+                <Button
                   type="button"
                   aria-label="Close controls"
                   className="fixed inset-0 z-40"
                   onClick={() => setMenuOpen(false)}
                 />
                 <div className="absolute right-3 top-10 z-50 w-44 rounded-xl bg-[var(--theme-panel)]/90 backdrop-blur border border-[var(--theme-border-subtle)] shadow-lg p-1">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       setMenuOpen(false)
@@ -188,8 +188,8 @@ export function AgentRegistryCard({
                     className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
                   >
                     Steer
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={() => {
                       void handlePauseToggle()
@@ -204,8 +204,8 @@ export function AgentRegistryCard({
                       : isPaused
                         ? 'Resume'
                         : 'Pause'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={() => {
                       setMenuOpen(false)
@@ -214,7 +214,7 @@ export function AgentRegistryCard({
                     className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40"
                   >
                     Kill
-                  </button>
+                  </Button>
                 </div>
               </>
             ) : null}
@@ -228,7 +228,7 @@ export function AgentRegistryCard({
         ) : null}
 
         <div className="grid grid-cols-4 gap-2 mt-3">
-          <button
+          <Button
             type="button"
             onClick={() => {
               void onChat(agent)
@@ -236,22 +236,22 @@ export function AgentRegistryCard({
             className="rounded-xl bg-[var(--theme-card)]/60 backdrop-blur px-2 py-2 text-[11px] font-medium text-neutral-800 dark:text-neutral-100 shadow-sm border border-[var(--theme-border-subtle)] active:scale-[0.97] transition"
           >
             Chat
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={handleSteerIntent}
             className="rounded-xl bg-[var(--theme-card)]/60 backdrop-blur px-2 py-2 text-[11px] font-medium text-neutral-800 dark:text-neutral-100 shadow-sm border border-[var(--theme-border-subtle)] active:scale-[0.97] transition"
           >
             Steer
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => onHistory(agent)}
             className="rounded-xl bg-[var(--theme-card)]/60 backdrop-blur px-2 py-2 text-[11px] font-medium text-neutral-800 dark:text-neutral-100 shadow-sm border border-[var(--theme-border-subtle)] active:scale-[0.97] transition"
           >
             History
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => {
               void onSpawn(agent)
@@ -260,7 +260,7 @@ export function AgentRegistryCard({
             className="rounded-xl bg-white/60 dark:bg-neutral-900/30 backdrop-blur px-2 py-2 text-[11px] font-medium text-neutral-800 dark:text-neutral-100 shadow-sm border border-border active:scale-[0.97] transition disabled:opacity-60"
           >
             {isSpawning ? '...' : 'Spawn'}
-          </button>
+          </Button>
         </div>
       </div>
 

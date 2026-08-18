@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Chat01Icon,
@@ -419,7 +421,7 @@ export function SearchModal() {
 
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {SCOPE_TABS.map((tab) => (
-                  <button
+                  <Button
                     key={tab.value}
                     type="button"
                     onClick={() => setScope(tab.value)}
@@ -431,7 +433,7 @@ export function SearchModal() {
                     )}
                   >
                     <span>{tab.label}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>

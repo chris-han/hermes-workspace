@@ -1,3 +1,11 @@
+import { Input } from '@/components/ui/input'
+
+import { NativeSelect } from '@/components/ui/form-controls'
+
+import { Textarea } from '@/components/ui/form-controls'
+
+import { Button } from '@/components/ui/button'
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { emitFeedEvent } from './feed-event-bus'
 import { cn } from '@/lib/utils'
@@ -398,7 +406,7 @@ export function TaskBoard({
             </p>
           </div>
           {activeMissionId ? (
-            <button
+            <Button
               type="button"
               onClick={() => setShowAllTasks((p) => !p)}
               className={cn(
@@ -414,7 +422,7 @@ export function TaskBoard({
               }
             >
               {showAllTasks ? 'Mission only' : 'Show all'}
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>
@@ -433,7 +441,7 @@ export function TaskBoard({
                   </h3>
                   <div className="flex items-center gap-1.5">
                     {column.key === 'inbox' ? (
-                      <button
+                      <Button
                         type="button"
                         onClick={() =>
                           isCreating ? closeCreateForm() : openCreateForm()
@@ -446,7 +454,7 @@ export function TaskBoard({
                         )}
                       >
                         {isCreating ? 'Cancel' : '+ New Task'}
-                      </button>
+                      </Button>
                     ) : null}
                     <span className="rounded-full bg-neutral-800 px-1.5 text-[10px] text-neutral-300">
                       {columnTasks.length}
@@ -484,7 +492,7 @@ export function TaskBoard({
                         handleCreateTask()
                       }}
                     >
-                      <input
+                      <Input
                         type="text"
                         value={form.title}
                         onChange={(event) =>
@@ -497,7 +505,7 @@ export function TaskBoard({
                         className="w-full rounded-md border border-primary-200 bg-white px-2 py-1.5 text-xs text-primary-900 outline-none ring-accent-400 focus:ring-1 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
                         required
                       />
-                      <textarea
+                      <Textarea
                         value={form.description}
                         onChange={(event) =>
                           setForm((prev) => ({
@@ -511,7 +519,7 @@ export function TaskBoard({
                       />
                       <div className="flex flex-wrap gap-1">
                         {PRIORITIES.map((priority) => (
-                          <button
+                          <Button
                             key={priority.key}
                             type="button"
                             onClick={() =>
@@ -528,10 +536,10 @@ export function TaskBoard({
                             )}
                           >
                             {priority.label}
-                          </button>
+                          </Button>
                         ))}
                       </div>
-                      <select
+                      <NativeSelect
                         value={form.agentId}
                         onChange={(event) =>
                           setForm((prev) => ({
@@ -547,22 +555,22 @@ export function TaskBoard({
                             {agent.name}
                           </option>
                         ))}
-                      </select>
+                      </NativeSelect>
                       <div className="flex items-center justify-end gap-2">
-                        <button
+                        <Button
                           type="button"
                           onClick={closeCreateForm}
                           className="rounded-md px-2 py-1 text-[11px] font-medium text-primary-500 hover:bg-primary-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                         >
                           Cancel
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="submit"
                           disabled={!form.title.trim()}
                           className="rounded-md bg-accent-500 px-2 py-1 text-[11px] font-medium text-white transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Create
-                        </button>
+                        </Button>
                       </div>
                     </form>
                   ) : null}
@@ -607,6 +615,15 @@ export function TaskBoard({
                             openTaskDetail(task)
                           }
                         }}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter' && event.key !== ' ') return
+                          event.preventDefault()
+                          if (isExpanded) closeTaskDetail()
+                          else openTaskDetail(task)
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
                         className={cn(
                           'cursor-pointer rounded-lg border border-neutral-200 bg-white p-2.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 transition-colors active:cursor-grabbing',
                           dimmed && 'opacity-50',
@@ -645,7 +662,7 @@ export function TaskBoard({
                               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
                                 Title
                               </label>
-                              <input
+                              <Input
                                 type="text"
                                 value={taskEditDraft.title}
                                 onChange={(e) =>
@@ -662,7 +679,7 @@ export function TaskBoard({
                               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
                                 Description
                               </label>
-                              <textarea
+                              <Textarea
                                 value={taskEditDraft.description}
                                 onChange={(e) =>
                                   setTaskEditDraft((prev) =>
@@ -686,7 +703,7 @@ export function TaskBoard({
                               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
                                 Priority
                               </label>
-                              <select
+                              <NativeSelect
                                 value={taskEditDraft.priority}
                                 onChange={(e) =>
                                   setTaskEditDraft((prev) =>
@@ -706,13 +723,13 @@ export function TaskBoard({
                                     {p.label}
                                   </option>
                                 ))}
-                              </select>
+                              </NativeSelect>
                             </div>
                             <div>
                               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
                                 Status
                               </label>
-                              <select
+                              <NativeSelect
                                 value={taskEditDraft.status}
                                 onChange={(e) =>
                                   setTaskEditDraft((prev) =>
@@ -731,23 +748,23 @@ export function TaskBoard({
                                     {col.label}
                                   </option>
                                 ))}
-                              </select>
+                              </NativeSelect>
                             </div>
                             <div className="flex items-center gap-2 pt-1">
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() => saveTaskDetail(task.id)}
                                 className="rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-500"
                               >
                                 Save
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 type="button"
                                 onClick={closeTaskDetail}
                                 className="rounded-md px-2 py-1 text-[11px] font-medium text-neutral-300 transition-colors hover:bg-neutral-800"
                               >
                                 Cancel
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         ) : null}

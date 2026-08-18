@@ -1,3 +1,5 @@
+import { Input } from '@/components/ui/input'
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -135,7 +137,8 @@ const COPY = {
     reject: 'Reject',
     submitPromotion: 'Submit for Promotion',
     promotionDialogTitle: 'Submit for Promotion',
-    promotionDialogDescription: 'Freeze this workspace artifact for governed review.',
+    promotionDialogDescription:
+      'Freeze this workspace artifact for governed review.',
     targetScope: 'Target scope',
     proposedVersion: 'Proposed version',
     effectiveFrom: 'Effective from',
@@ -338,7 +341,10 @@ function GeneratedPoliciesRoute() {
     },
   })
   const policyActionMutation = useMutation({
-    mutationFn: (action: { endpoint: string; payload?: Record<string, unknown> }) =>
+    mutationFn: (action: {
+      endpoint: string
+      payload?: Record<string, unknown>
+    }) =>
       fetchPluginJson<Record<string, unknown>>(
         `/institutional-policies/tender-sensitive-term-detection-model/${action.endpoint}`,
         {
@@ -380,7 +386,14 @@ function GeneratedPoliciesRoute() {
         value: activePolicy?.active_model_version || 'not active',
       },
     ],
-    [activePolicy?.active_model_version, copy.active, copy.drafts, copy.queue, policies.length, queue.length],
+    [
+      activePolicy?.active_model_version,
+      copy.active,
+      copy.drafts,
+      copy.queue,
+      policies.length,
+      queue.length,
+    ],
   )
 
   return (
@@ -470,7 +483,9 @@ function GeneratedPoliciesRoute() {
                         policy={policy}
                         copy={copy}
                         selected={policy.candidate_id === selectedPolicyId}
-                        onSelect={() => setSelectedId(policy.candidate_id || null)}
+                        onSelect={() =>
+                          setSelectedId(policy.candidate_id || null)
+                        }
                       />
                     ))
                   )}
@@ -478,7 +493,9 @@ function GeneratedPoliciesRoute() {
                 <PolicyDetail
                   policy={selectedPolicy}
                   copy={copy}
-                  busy={actionMutation.isPending || selectedPolicyQuery.isFetching}
+                  busy={
+                    actionMutation.isPending || selectedPolicyQuery.isFetching
+                  }
                   onReplay={(candidateId) =>
                     actionMutation.mutate({
                       candidateId,
@@ -497,7 +514,9 @@ function GeneratedPoliciesRoute() {
                     actionMutation.mutate({
                       candidateId,
                       endpoint: 'request-changes',
-                      payload: { reason: 'Changes requested from workspace UI' },
+                      payload: {
+                        reason: 'Changes requested from workspace UI',
+                      },
                     })
                   }
                   onReject={(candidateId) =>
@@ -603,7 +622,7 @@ function PolicyRow({
   onSelect: () => void
 }) {
   return (
-    <button
+    <Button
       type="button"
       onClick={onSelect}
       className={cn(
@@ -627,13 +646,16 @@ function PolicyRow({
         <Meta label={copy.authority} value={policy.authority_badge} />
         <Meta label={copy.schema} value={policy.schema_validation_status} />
         <Meta label={copy.runtime} value={policy.runtime_validation_status} />
-        <Meta label={copy.jdmHash} value={shortValue(policy.jdm_artifact_hash)} />
+        <Meta
+          label={copy.jdmHash}
+          value={shortValue(policy.jdm_artifact_hash)}
+        />
         <Meta
           label={copy.ontologyHash}
           value={shortValue(policy.ontology_table_hash)}
         />
       </div>
-    </button>
+    </Button>
   )
 }
 
@@ -654,9 +676,14 @@ function PolicyDetail({
   onApprove: (candidateId: string) => void
   onRequestChanges: (candidateId: string) => void
   onReject: (candidateId: string) => void
-  onSubmitPromotion: (candidateId: string, payload: Record<string, unknown>) => void
+  onSubmitPromotion: (
+    candidateId: string,
+    payload: Record<string, unknown>,
+  ) => void
 }) {
-  const [detailTab, setDetailTab] = useState<'overview' | 'graph' | 'diff' | 'evidence'>('overview')
+  const [detailTab, setDetailTab] = useState<
+    'overview' | 'graph' | 'diff' | 'evidence'
+  >('overview')
   const [promotionOpen, setPromotionOpen] = useState(false)
   const [form, setForm] = useState({
     target_scope: 'workspace',
@@ -692,8 +719,14 @@ function PolicyDetail({
         </div>
       </div>
 
-      <Tabs value={detailTab} onValueChange={(value) => setDetailTab(value as typeof detailTab)}>
-        <TabsList variant="underline" className="w-full justify-start overflow-x-auto">
+      <Tabs
+        value={detailTab}
+        onValueChange={(value) => setDetailTab(value as typeof detailTab)}
+      >
+        <TabsList
+          variant="underline"
+          className="w-full justify-start overflow-x-auto"
+        >
           <TabsTab value="overview">{copy.overview}</TabsTab>
           <TabsTab value="graph">{copy.decisionGraph}</TabsTab>
           <TabsTab value="diff">{copy.policyDiff}</TabsTab>
@@ -707,10 +740,22 @@ function PolicyDetail({
           </div>
           <SectionTitle icon={Tick02Icon} text={copy.validation} />
           <div className="grid gap-2 text-xs">
-            <Meta label={copy.schema} value={String(schema.status || 'unknown')} />
-            <Meta label={copy.editor} value={String(schema.editor_conformance || 'unknown')} />
-            <Meta label={copy.runtime} value={String(runtime.status || 'unknown')} />
-            <Meta label={copy.fixtures} value={String(runtime.fixture_count || 'unknown')} />
+            <Meta
+              label={copy.schema}
+              value={String(schema.status || 'unknown')}
+            />
+            <Meta
+              label={copy.editor}
+              value={String(schema.editor_conformance || 'unknown')}
+            />
+            <Meta
+              label={copy.runtime}
+              value={String(runtime.status || 'unknown')}
+            />
+            <Meta
+              label={copy.fixtures}
+              value={String(runtime.fixture_count || 'unknown')}
+            />
           </div>
           <SectionTitle icon={CheckListIcon} text={copy.artifacts} />
           <div className="grid gap-2 text-xs">
@@ -722,8 +767,16 @@ function PolicyDetail({
         <TabsPanel value="graph" className="grid gap-2 pt-2">
           <Meta label={copy.lineage} value={shortValue(graph.lineage_ref)} />
           {(graph.nodes || []).map((node) => (
-            <div key={node.id} className="flex items-center justify-between gap-3 border-b border-border py-2 text-xs">
-              <span className="font-medium">{node.id || 'unknown'} <span className="text-muted-foreground">({node.kind || 'node'})</span></span>
+            <div
+              key={node.id}
+              className="flex items-center justify-between gap-3 border-b border-border py-2 text-xs"
+            >
+              <span className="font-medium">
+                {node.id || 'unknown'}{' '}
+                <span className="text-muted-foreground">
+                  ({node.kind || 'node'})
+                </span>
+              </span>
               <StatusBadge value={node.status || 'unknown'} />
             </div>
           ))}
@@ -737,9 +790,18 @@ function PolicyDetail({
           </div>
         </TabsPanel>
         <TabsPanel value="evidence" className="grid gap-2 pt-2 text-xs">
-          <Meta label={copy.schema} value={String(schema.status || 'unknown')} />
-          <Meta label={copy.runtime} value={`${String(runtime.status || 'unknown')} (${String(runtime.fixture_count || 0)} fixtures)`} />
-          <Meta label={copy.eventHistory} value={String(policy.promotion_events?.length || 0)} />
+          <Meta
+            label={copy.schema}
+            value={String(schema.status || 'unknown')}
+          />
+          <Meta
+            label={copy.runtime}
+            value={`${String(runtime.status || 'unknown')} (${String(runtime.fixture_count || 0)} fixtures)`}
+          />
+          <Meta
+            label={copy.eventHistory}
+            value={String(policy.promotion_events?.length || 0)}
+          />
           <Meta label={copy.lineage} value={shortValue(graph.lineage_ref)} />
         </TabsPanel>
       </Tabs>
@@ -763,7 +825,11 @@ function PolicyDetail({
           </Button>
         ) : null}
         {policy.promotion_controls?.submit_for_promotion ? (
-          <Button size="sm" disabled={busy} onClick={() => setPromotionOpen(true)}>
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={() => setPromotionOpen(true)}
+          >
             {copy.submitPromotion}
           </Button>
         ) : null}
@@ -793,7 +859,9 @@ function PolicyDetail({
           <div className="grid gap-4 p-5">
             <div>
               <DialogTitle>{copy.promotionDialogTitle}</DialogTitle>
-              <DialogDescription className="mt-1">{copy.promotionDialogDescription}</DialogDescription>
+              <DialogDescription className="mt-1">
+                {copy.promotionDialogDescription}
+              </DialogDescription>
             </div>
             <form
               className="grid gap-3"
@@ -801,7 +869,10 @@ function PolicyDetail({
                 event.preventDefault()
                 onSubmitPromotion(policy.candidate_id || '', {
                   ...form,
-                  requested_reviewer_roles: form.requested_reviewer_roles.split(',').map((role) => role.trim()).filter(Boolean),
+                  requested_reviewer_roles: form.requested_reviewer_roles
+                    .split(',')
+                    .map((role) => role.trim())
+                    .filter(Boolean),
                 })
                 setPromotionOpen(false)
               }}
@@ -812,19 +883,56 @@ function PolicyDetail({
                   .semantier-home/institutional_policies/Tender_Sensitive_Term_Detection_Model
                 </div>
               </div>
-              {(['target_scope', 'proposed_version', 'effective_from', 'change_summary', 'risk_impact', 'rollback_strategy', 'requested_reviewer_roles'] as const).map((field) => (
+              {(
+                [
+                  'target_scope',
+                  'proposed_version',
+                  'effective_from',
+                  'change_summary',
+                  'risk_impact',
+                  'rollback_strategy',
+                  'requested_reviewer_roles',
+                ] as const
+              ).map((field) => (
                 <label key={field} className="grid gap-1 text-xs font-medium">
-                  {copy[field === 'target_scope' ? 'targetScope' : field === 'proposed_version' ? 'proposedVersion' : field === 'effective_from' ? 'effectiveFrom' : field === 'change_summary' ? 'changeSummary' : field === 'risk_impact' ? 'riskImpact' : field === 'rollback_strategy' ? 'rollbackStrategy' : 'reviewerRoles']}
-                  <input
+                  {
+                    copy[
+                      field === 'target_scope'
+                        ? 'targetScope'
+                        : field === 'proposed_version'
+                          ? 'proposedVersion'
+                          : field === 'effective_from'
+                            ? 'effectiveFrom'
+                            : field === 'change_summary'
+                              ? 'changeSummary'
+                              : field === 'risk_impact'
+                                ? 'riskImpact'
+                                : field === 'rollback_strategy'
+                                  ? 'rollbackStrategy'
+                                  : 'reviewerRoles'
+                    ]
+                  }
+                  <Input
                     required
                     value={form[field]}
-                    onChange={(event) => setForm((current) => ({ ...current, [field]: event.target.value }))}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        [field]: event.target.value,
+                      }))
+                    }
                     className="h-9 rounded-md border border-border bg-background px-2 text-sm font-normal outline-none focus:ring-2 focus:ring-primary"
                   />
                 </label>
               ))}
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setPromotionOpen(false)}>{copy.cancel}</Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPromotionOpen(false)}
+                >
+                  {copy.cancel}
+                </Button>
                 <Button type="submit">{copy.submit}</Button>
               </div>
             </form>
@@ -854,14 +962,19 @@ function QueueRow({
             {item.policy_family || item.candidate_id}
           </div>
           <StatusBadge value={item.current_promotion_state || 'UNKNOWN'} />
-          {item.activation_ready ? <StatusBadge value="ACTIVATION_READY" /> : null}
+          {item.activation_ready ? (
+            <StatusBadge value="ACTIVATION_READY" />
+          ) : null}
         </div>
         <div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
           <Meta label={copy.candidate} value={item.candidate_id} />
           <Meta label={copy.version} value={item.proposed_version} />
           <Meta label={copy.proposedBy} value={item.requesting_actor} />
           <Meta label={copy.schema} value={item.validation_status?.schema} />
-          <Meta label={copy.editor} value={item.validation_status?.editor_conformance} />
+          <Meta
+            label={copy.editor}
+            value={item.validation_status?.editor_conformance}
+          />
           <Meta label={copy.runtime} value={item.validation_status?.runtime} />
           <Meta
             label={copy.fixtures}
@@ -913,7 +1026,10 @@ function ActivePolicy({
       </div>
       <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-3">
         <Meta label={copy.version} value={policy.active_model_version} />
-        <Meta label={copy.modelRef} value={shortValue(policy.model_artifact_ref)} />
+        <Meta
+          label={copy.modelRef}
+          value={shortValue(policy.model_artifact_ref)}
+        />
         <Meta label={copy.jdmHash} value={shortValue(policy.model_hash)} />
         <Meta
           label={copy.ontologyHash}
@@ -955,7 +1071,10 @@ function ActivePolicy({
                     <div className="font-semibold">{eventType}</div>
                     <div className="mt-1 grid gap-1 text-muted-foreground sm:grid-cols-2">
                       <Meta label={copy.version} value={version} />
-                      <Meta label={copy.jdmHash} value={shortValue(modelHash)} />
+                      <Meta
+                        label={copy.jdmHash}
+                        value={shortValue(modelHash)}
+                      />
                     </div>
                   </div>
                   <Button
@@ -1011,7 +1130,9 @@ function Meta({
         {label}
       </div>
       <div className="mt-0.5 truncate font-medium text-foreground">
-        {value === undefined || value === null || value === '' ? 'unknown' : value}
+        {value === undefined || value === null || value === ''
+          ? 'unknown'
+          : value}
       </div>
     </div>
   )

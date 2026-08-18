@@ -1,3 +1,13 @@
+import { Link as DsLink } from '@/components/ui/link'
+
+import { Checkbox, Radio } from '@/components/ui/form-controls'
+
+import { Input } from '@/components/ui/input'
+
+import { Disclosure, DisclosureSummary } from '@/components/ui/disclosure'
+
+import { Textarea } from '@/components/ui/form-controls'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -20,6 +30,7 @@ import type {
   MissionHistoryWorkerDetail,
 } from './hooks/use-orchestrator-gateway'
 import { Button } from '@/components/ui/button'
+import { DialogSurface } from '@/components/ui/dialog-surface'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { cn } from '@/lib/utils'
 
@@ -166,7 +177,7 @@ function MissionCostSection({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-5 py-4">
-      <button
+      <Button
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
@@ -192,7 +203,7 @@ function MissionCostSection({
             )}
           />
         </span>
-      </button>
+      </Button>
 
       {expanded ? (
         <div className="mt-4 space-y-4">
@@ -713,7 +724,7 @@ function ModelSelectorDropdown({
         {label}
       </span>
       <div className="relative" ref={containerRef}>
-        <button
+        <Button
           type="button"
           onClick={() => {
             if (disabled) return
@@ -753,12 +764,12 @@ function ModelSelectorDropdown({
               open && 'rotate-180',
             )}
           />
-        </button>
+        </Button>
 
         {open ? (
           <div className="absolute left-0 top-[calc(100%+0.5rem)] z-[80] w-full overflow-hidden rounded-2xl border border-[var(--theme-border2)] bg-[var(--theme-card)] shadow-[0_24px_80px_var(--theme-shadow)]">
             <div className="max-h-80 overflow-y-auto p-2">
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   onChange('')
@@ -785,7 +796,7 @@ function ModelSelectorDropdown({
                 <span className="rounded-full border border-[var(--theme-border)] bg-[var(--theme-card2)] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[var(--theme-muted)]">
                   Auto
                 </span>
-              </button>
+              </Button>
 
               {groupedModels.map((group) => (
                 <div key={group.provider} className="mt-2 first:mt-3">
@@ -797,7 +808,7 @@ function ModelSelectorDropdown({
                       const modelId = model.id ?? ''
                       const active = modelId === value
                       return (
-                        <button
+                        <Button
                           key={`${group.provider}-${modelId}`}
                           type="button"
                           onClick={() => {
@@ -827,7 +838,7 @@ function ModelSelectorDropdown({
                           <span className="rounded-full border border-[var(--theme-border)] bg-[var(--theme-card2)] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[var(--theme-muted)]">
                             {group.provider}
                           </span>
-                        </button>
+                        </Button>
                       )
                     })}
                   </div>
@@ -1077,7 +1088,9 @@ export function orchestrator() {
 
     const continuationSummarySource =
       completeSummary ??
-      Object.values(orchestrator.workerOutputs).find((output) => output.trim()) ??
+      Object.values(orchestrator.workerOutputs).find((output) =>
+        output.trim(),
+      ) ??
       orchestrator.workers
         .map((worker) =>
           getLastAssistantMessage(
@@ -1104,7 +1117,10 @@ export function orchestrator() {
   const updateSettings = (
     patch: Partial<typeof orchestrator.orchestratorSettings>,
   ) => {
-    orchestrator.setorchestratorSettings({ ...orchestrator.orchestratorSettings, ...patch })
+    orchestrator.setorchestratorSettings({
+      ...orchestrator.orchestratorSettings,
+      ...patch,
+    })
   }
 
   const openDirectoryBrowser = () => {
@@ -1403,7 +1419,9 @@ export function orchestrator() {
   const continuationPreview = useMemo(() => {
     const summarySource =
       completeSummary ??
-      Object.values(orchestrator.workerOutputs).find((output) => output.trim()) ??
+      Object.values(orchestrator.workerOutputs).find((output) =>
+        output.trim(),
+      ) ??
       orchestrator.workers
         .map((worker) =>
           getLastAssistantMessage(
@@ -1424,7 +1442,8 @@ export function orchestrator() {
     [continuationPreview],
   )
   const hasMissionHistory = orchestrator.missionHistory.length > 0
-  const canResetSavedState = hasMissionHistory || orchestrator.hasPersistedMission
+  const canResetSavedState =
+    hasMissionHistory || orchestrator.hasPersistedMission
   const filteredHistory = (() => {
     const history = orchestrator.missionHistory
     if (activityFilter === 'all') return history
@@ -1494,13 +1513,13 @@ export function orchestrator() {
         >
           <main className="mx-auto flex min-h-0 w-full max-w-[720px] flex-1 flex-col px-4 py-4 pb-[calc(var(--tabbar-h,80px)+1rem)] md:px-6 md:py-8">
             <div className="space-y-6">
-              <button
+              <Button
                 type="button"
                 onClick={() => orchestrator.setSelectedHistoryEntry(null)}
                 className="inline-flex items-center gap-2 self-start rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 py-2 text-sm text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-border2)] hover:text-[var(--theme-text)]"
               >
                 <span aria-hidden="true">←</span> Back
-              </button>
+              </Button>
 
               <div className="overflow-hidden rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-6 shadow-[0_24px_80px_var(--theme-shadow)]">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1558,14 +1577,14 @@ export function orchestrator() {
                         {selectedHistoryOutputLabel}
                       </p>
                     </div>
-                    <a
+                    <DsLink
                       href={selectedHistoryPreviewUrl!}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-1.5 text-xs font-medium text-[var(--theme-text)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent)]"
                     >
                       Open in new tab ↗
-                    </a>
+                    </DsLink>
                   </div>
                   <div className="mt-4 overflow-auto rounded-2xl border border-[var(--theme-border)] bg-white">
                     <iframe
@@ -1666,16 +1685,16 @@ export function orchestrator() {
                 )}
                 {selectedHistoryEntry.streamText &&
                   selectedHistoryEntry.completeSummary && (
-                    <details className="mt-4 overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-5 py-4">
-                      <summary className="cursor-pointer text-xs font-medium text-[var(--theme-muted)]">
+                    <Disclosure className="mt-4 overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-5 py-4">
+                      <DisclosureSummary className="cursor-pointer text-xs font-medium text-[var(--theme-muted)]">
                         Raw Agent Output
-                      </summary>
+                      </DisclosureSummary>
                       <div className="mt-4 border-t border-[var(--theme-border)] pt-4">
                         <Markdown className="max-h-[400px] max-w-none overflow-auto text-sm text-[var(--theme-text)]">
                           {selectedHistoryEntry.streamText}
                         </Markdown>
                       </div>
-                    </details>
+                    </Disclosure>
                   )}
               </section>
 
@@ -1750,7 +1769,7 @@ export function orchestrator() {
                   <span className="size-2.5 rounded-full bg-emerald-400" />
                 </div>
                 <div className="absolute right-0 flex items-center gap-2">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setMissionModalOpen(true)}
                     className="inline-flex items-center justify-center rounded-xl bg-[var(--theme-accent)] p-2 text-white shadow-sm transition-colors hover:bg-[var(--theme-accent-strong)]"
@@ -1761,8 +1780,8 @@ export function orchestrator() {
                       size={18}
                       strokeWidth={1.7}
                     />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={() => setSettingsOpen(true)}
                     className="inline-flex items-center justify-center rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-2 text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent-strong)]"
@@ -1773,7 +1792,7 @@ export function orchestrator() {
                       size={18}
                       strokeWidth={1.7}
                     />
-                  </button>
+                  </Button>
                 </div>
               </div>
               <p className="text-sm text-[var(--theme-muted-2)]">
@@ -1806,7 +1825,7 @@ export function orchestrator() {
                       <span className="text-[10px] text-[var(--theme-muted-2)]">
                         {safeActivityPage + 1}/{activityTotalPages}
                       </span>
-                      <button
+                      <Button
                         type="button"
                         disabled={safeActivityPage === 0}
                         onClick={() =>
@@ -1815,8 +1834,8 @@ export function orchestrator() {
                         className="inline-flex size-6 items-center justify-center rounded-lg border border-[var(--theme-border)] text-xs text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] disabled:opacity-30"
                       >
                         ‹
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         disabled={safeActivityPage >= activityTotalPages - 1}
                         onClick={() =>
@@ -1827,13 +1846,13 @@ export function orchestrator() {
                         className="inline-flex size-6 items-center justify-center rounded-lg border border-[var(--theme-border)] text-xs text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] disabled:opacity-30"
                       >
                         ›
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
                 <div className="flex items-center gap-1">
                   {(['all', 'completed', 'failed'] as const).map((filter) => (
-                    <button
+                    <Button
                       key={filter}
                       type="button"
                       onClick={() => {
@@ -1848,7 +1867,7 @@ export function orchestrator() {
                       )}
                     >
                       {filter}
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 {visibleActivityItems.length > 0 ? (
@@ -1857,7 +1876,7 @@ export function orchestrator() {
                       ? visibleActivityItems.map((item) => {
                           const entry = item as MissionHistoryEntry
                           return (
-                            <button
+                            <Button
                               key={entry.id}
                               type="button"
                               onClick={() =>
@@ -1886,7 +1905,7 @@ export function orchestrator() {
                               <span className="w-[72px] shrink-0 text-right text-xs text-[var(--theme-muted)]">
                                 {entry.totalTokens.toLocaleString()} tok
                               </span>
-                            </button>
+                            </Button>
                           )
                         })
                       : visibleActivityItems.map((item) => {
@@ -1979,9 +1998,10 @@ export function orchestrator() {
           </div>
 
           {missionModalOpen ? (
-            <div
+            <DialogSurface
               className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--theme-bg)_48%,transparent)] px-4 py-6 backdrop-blur-md"
               onClick={() => setMissionModalOpen(false)}
+              onDismiss={() => setMissionModalOpen(false)}
             >
               <div
                 className="w-full max-w-2xl rounded-3xl border border-[var(--theme-border2)] bg-[var(--theme-card)] p-5 shadow-[0_24px_80px_var(--theme-shadow)] sm:p-6"
@@ -1996,14 +2016,14 @@ export function orchestrator() {
                       Describe the mission, constraints, and desired outcome.
                     </p>
                   </div>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setMissionModalOpen(false)}
                     className="inline-flex size-9 items-center justify-center rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] text-lg text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent-strong)]"
                     aria-label="Close new mission dialog"
                   >
                     ×
-                  </button>
+                  </Button>
                 </div>
 
                 <form
@@ -2015,7 +2035,7 @@ export function orchestrator() {
                 >
                   <div className="flex flex-wrap gap-2">
                     {QUICK_ACTIONS.map((action) => (
-                      <button
+                      <Button
                         key={action.id}
                         type="button"
                         onClick={() => handleQuickActionSelect(action)}
@@ -2032,11 +2052,11 @@ export function orchestrator() {
                           strokeWidth={1.7}
                         />
                         {action.label}
-                      </button>
+                      </Button>
                     ))}
                   </div>
 
-                  <textarea
+                  <Textarea
                     value={goalDraft}
                     onChange={(event) => setGoalDraft(event.target.value)}
                     placeholder={`${QUICK_ACTIONS.find((action) => action.id === selectedAction)?.label ?? 'Build'}: describe the mission, constraints, and desired outcome.`}
@@ -2051,7 +2071,9 @@ export function orchestrator() {
                       disabled={!goalDraft.trim() || orchestrator.isSending}
                       className="rounded-full bg-[var(--theme-accent)] px-5 text-white hover:bg-[var(--theme-accent-strong)]"
                     >
-                      {orchestrator.isSending ? 'Launching...' : 'Launch Mission'}
+                      {orchestrator.isSending
+                        ? 'Launching...'
+                        : 'Launch Mission'}
                       <HugeiconsIcon
                         icon={ArrowRight01Icon}
                         size={16}
@@ -2061,13 +2083,14 @@ export function orchestrator() {
                   </div>
                 </form>
               </div>
-            </div>
+            </DialogSurface>
           ) : null}
 
           {settingsOpen && (
-            <div
+            <DialogSurface
               className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--theme-bg)_55%,transparent)] px-4 py-6 backdrop-blur-md"
               onClick={() => setSettingsOpen(false)}
+              onDismiss={() => setSettingsOpen(false)}
             >
               <div
                 className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[var(--theme-border2)] bg-[var(--theme-card)] p-5 shadow-[0_24px_80px_var(--theme-shadow)] sm:p-6"
@@ -2086,14 +2109,14 @@ export function orchestrator() {
                       inherit.
                     </p>
                   </div>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setSettingsOpen(false)}
                     className="inline-flex size-10 items-center justify-center rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] text-lg text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent-strong)]"
                     aria-label="Close settings"
                   >
                     ×
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="mt-6 space-y-4">
@@ -2120,7 +2143,7 @@ export function orchestrator() {
                       Project Directory
                     </span>
                     <div className="flex gap-2">
-                      <input
+                      <Input
                         type="text"
                         value={orchestrator.orchestratorSettings.projectsDir}
                         onChange={(event) =>
@@ -2129,13 +2152,13 @@ export function orchestrator() {
                         placeholder="~/orchestrator-projects"
                         className="min-w-0 flex-1 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none transition-colors placeholder:text-[var(--theme-muted-2)] focus:border-[var(--theme-accent)]"
                       />
-                      <button
+                      <Button
                         type="button"
                         onClick={openDirectoryBrowser}
                         className="shrink-0 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] px-4 py-3 text-sm font-medium text-[var(--theme-text)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent-strong)]"
                       >
                         Browse
-                      </button>
+                      </Button>
                     </div>
                     <p className="text-xs text-[var(--theme-muted-2)]">
                       Type a path directly or choose a directory from the
@@ -2147,7 +2170,7 @@ export function orchestrator() {
                     <span className="text-sm font-medium text-[var(--theme-text)]">
                       Max Parallel Workers
                     </span>
-                    <input
+                    <Input
                       type="number"
                       min={1}
                       max={5}
@@ -2165,8 +2188,7 @@ export function orchestrator() {
                   </label>
 
                   <label className="flex items-start gap-3 rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-4">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={orchestrator.orchestratorSettings.supervised}
                       onChange={(event) =>
                         updateSettings({ supervised: event.target.checked })
@@ -2194,7 +2216,7 @@ export function orchestrator() {
                           mission state.
                         </p>
                       </div>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => {
                           setSettingsOpen(false)
@@ -2206,18 +2228,19 @@ export function orchestrator() {
                         className="text-xs text-[var(--theme-muted)] transition-colors hover:text-[var(--theme-accent)]"
                       >
                         Reset
-                      </button>
+                      </Button>
                     </div>
                   ) : null}
                 </div>
               </div>
-            </div>
+            </DialogSurface>
           )}
 
           {directoryBrowserOpen ? (
-            <div
+            <DialogSurface
               className="fixed inset-0 z-[70] flex items-center justify-center bg-[color-mix(in_srgb,var(--theme-bg)_55%,transparent)] px-4 py-6 backdrop-blur-md"
               onClick={closeDirectoryBrowser}
+              onDismiss={closeDirectoryBrowser}
             >
               <div
                 className="w-full max-w-2xl rounded-3xl border border-[var(--theme-border2)] bg-[var(--theme-card)] p-5 shadow-[0_24px_80px_var(--theme-shadow)] sm:p-6"
@@ -2236,19 +2259,19 @@ export function orchestrator() {
                       output.
                     </p>
                   </div>
-                  <button
+                  <Button
                     type="button"
                     onClick={closeDirectoryBrowser}
                     className="inline-flex size-10 items-center justify-center rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] text-lg text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent-strong)]"
                     aria-label="Close directory browser"
                   >
                     ×
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="mt-5 space-y-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
+                    <Button
                       type="button"
                       onClick={() =>
                         setDirectoryBrowserPath(
@@ -2270,7 +2293,7 @@ export function orchestrator() {
                       )}
                     >
                       Up
-                    </button>
+                    </Button>
                     <div className="min-w-0 flex-1 rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-2">
                       <div className="flex flex-wrap items-center gap-1 text-sm">
                         {directoryBreadcrumbs.map((crumb, index) => (
@@ -2283,7 +2306,7 @@ export function orchestrator() {
                                 /
                               </span>
                             ) : null}
-                            <button
+                            <Button
                               type="button"
                               onClick={() =>
                                 setDirectoryBrowserPath(crumb.path)
@@ -2296,7 +2319,7 @@ export function orchestrator() {
                               )}
                             >
                               {crumb.label}
-                            </button>
+                            </Button>
                           </div>
                         ))}
                       </div>
@@ -2344,7 +2367,7 @@ export function orchestrator() {
                       ) : directoryBrowserEntries.length > 0 ? (
                         <div className="space-y-1">
                           {directoryBrowserEntries.map((entry) => (
-                            <button
+                            <Button
                               key={entry.path}
                               type="button"
                               onClick={() =>
@@ -2359,7 +2382,7 @@ export function orchestrator() {
                               <span className="text-xs text-[var(--theme-muted)]">
                                 Open
                               </span>
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       ) : (
@@ -2376,27 +2399,27 @@ export function orchestrator() {
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {getDirectorySuggestions().map((pathOption) => (
-                        <button
+                        <Button
                           key={pathOption}
                           type="button"
                           onClick={() => setDirectoryBrowserPath(pathOption)}
                           className="rounded-full border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-1.5 text-xs font-medium text-[var(--theme-text)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent-strong)]"
                         >
                           {pathOption}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>
 
                   <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                    <button
+                    <Button
                       type="button"
                       onClick={closeDirectoryBrowser}
                       className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm font-medium text-[var(--theme-text)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent-strong)]"
                     >
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => {
                         updateSettings({ projectsDir: directoryBrowserPath })
@@ -2405,11 +2428,11 @@ export function orchestrator() {
                       className="rounded-xl bg-[var(--theme-accent)] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[var(--theme-accent-strong)]"
                     >
                       Select This Directory
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
-            </div>
+            </DialogSurface>
           ) : null}
         </main>
       </div>
@@ -2621,21 +2644,21 @@ export function orchestrator() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <a
+                    <DsLink
                       href={previewUrl!}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-1.5 text-xs font-medium text-[var(--theme-text)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent)]"
                     >
                       Open in new tab ↗
-                    </a>
-                    <button
+                    </DsLink>
+                    <Button
                       type="button"
                       onClick={() => setContinueModalOpen(true)}
                       className="inline-flex items-center gap-2 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-1.5 text-xs font-medium text-[var(--theme-text)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent)]"
                     >
                       Continue
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <div className="mt-4 overflow-auto rounded-2xl border border-[var(--theme-border)] bg-white">
@@ -2720,53 +2743,54 @@ export function orchestrator() {
                 )
               })()}
 
-            {orchestrator.tasks.length > 1 && completedTaskOutputs.length > 0 && (
-              <section className="overflow-hidden rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-6 shadow-[0_24px_80px_var(--theme-shadow)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--theme-muted)]">
-                      Task Outputs
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--theme-muted-2)]">
-                      Per-task output snapshots from completed workers.
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 space-y-3">
-                  {completedTaskOutputs.map((task) => (
-                    <div
-                      key={task.id}
-                      className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-4"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="size-2 rounded-full bg-emerald-400" />
-                            <p className="truncate text-sm font-medium text-[var(--theme-text)]">
-                              {task.title}
-                            </p>
-                          </div>
-                        </div>
-                        {task.previewUrl && (
-                          <a
-                            href={task.previewUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-1.5 text-xs font-medium text-[var(--theme-text)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent)]"
-                          >
-                            Preview
-                          </a>
-                        )}
-                      </div>
-                      <p className="mt-3 text-sm text-[var(--theme-muted)]">
-                        {task.previewText}
-                        {(task.output ?? '').trim().length > 200 ? '…' : ''}
+            {orchestrator.tasks.length > 1 &&
+              completedTaskOutputs.length > 0 && (
+                <section className="overflow-hidden rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-6 shadow-[0_24px_80px_var(--theme-shadow)]">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--theme-muted)]">
+                        Task Outputs
+                      </p>
+                      <p className="mt-1 text-xs text-[var(--theme-muted-2)]">
+                        Per-task output snapshots from completed workers.
                       </p>
                     </div>
-                  ))}
-                </div>
-              </section>
-            )}
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {completedTaskOutputs.map((task) => (
+                      <div
+                        key={task.id}
+                        className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-4"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="size-2 rounded-full bg-emerald-400" />
+                              <p className="truncate text-sm font-medium text-[var(--theme-text)]">
+                                {task.title}
+                              </p>
+                            </div>
+                          </div>
+                          {task.previewUrl && (
+                            <DsLink
+                              href={task.previewUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-1.5 text-xs font-medium text-[var(--theme-text)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent)]"
+                            >
+                              Preview
+                            </DsLink>
+                          )}
+                        </div>
+                        <p className="mt-3 text-sm text-[var(--theme-muted)]">
+                          {task.previewText}
+                          {(task.output ?? '').trim().length > 200 ? '…' : ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
             <section className="overflow-hidden rounded-3xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-6 shadow-[0_24px_80px_var(--theme-shadow)]">
               <div className="flex items-center justify-between gap-3">
@@ -2840,24 +2864,25 @@ export function orchestrator() {
                 </div>
               )}
               {orchestrator.streamText && completeSummary && (
-                <details className="mt-4 overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-5 py-4">
-                  <summary className="cursor-pointer text-xs font-medium text-[var(--theme-muted)]">
+                <Disclosure className="mt-4 overflow-hidden rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-5 py-4">
+                  <DisclosureSummary className="cursor-pointer text-xs font-medium text-[var(--theme-muted)]">
                     Raw Agent Output
-                  </summary>
+                  </DisclosureSummary>
                   <div className="mt-4 border-t border-[var(--theme-border)] pt-4">
                     <Markdown className="max-h-[400px] max-w-none overflow-auto text-sm text-[var(--theme-text)]">
                       {orchestrator.streamText}
                     </Markdown>
                   </div>
-                </details>
+                </Disclosure>
               )}
             </section>
           </div>
 
           {continueModalOpen ? (
-            <div
+            <DialogSurface
               className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--theme-bg)_48%,transparent)] px-4 py-6 backdrop-blur-md"
               onClick={() => setContinueModalOpen(false)}
+              onDismiss={() => setContinueModalOpen(false)}
             >
               <div
                 className="w-full max-w-md rounded-3xl border border-[var(--theme-border2)] bg-[var(--theme-card)] p-5 shadow-[0_24px_80px_var(--theme-shadow)] sm:p-6"
@@ -2869,14 +2894,14 @@ export function orchestrator() {
                       Continue Mission
                     </h2>
                   </div>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setContinueModalOpen(false)}
                     className="inline-flex size-9 items-center justify-center rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] text-lg text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-accent-strong)]"
                     aria-label="Close continue mission dialog"
                   >
                     ×
-                  </button>
+                  </Button>
                 </div>
 
                 {continuationModalPreview ? (
@@ -2897,7 +2922,7 @@ export function orchestrator() {
                     void handleContinueMission()
                   }}
                 >
-                  <input
+                  <Input
                     type="text"
                     value={continueDraft}
                     onChange={(event) => setContinueDraft(event.target.value)}
@@ -2906,7 +2931,7 @@ export function orchestrator() {
                     className="w-full rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-4 py-3 text-sm text-[var(--theme-text)] outline-none transition-colors placeholder:text-[var(--theme-muted-2)] focus:border-[var(--theme-accent)] disabled:cursor-not-allowed disabled:opacity-60"
                   />
                   <div className="flex justify-end">
-                    <button
+                    <Button
                       type="submit"
                       disabled={!continueDraft.trim() || orchestrator.isSending}
                       className={cn(
@@ -2922,11 +2947,11 @@ export function orchestrator() {
                         strokeWidth={1.8}
                       />
                       {orchestrator.isSending ? 'Sending' : 'Send'}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </div>
-            </div>
+            </DialogSurface>
           ) : null}
         </main>
       </div>
@@ -2981,14 +3006,14 @@ export function orchestrator() {
               />
             </div>
             <div className="mt-3 flex items-center justify-center gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={() => void orchestrator.stopMission()}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--theme-danger-border, color-mix(in srgb, var(--theme-danger) 35%, white))] bg-[var(--theme-danger-soft, color-mix(in srgb, var(--theme-danger) 12%, transparent))] px-3 py-1.5 text-xs font-medium text-[var(--theme-danger)] transition-colors hover:bg-[var(--theme-danger-soft-strong, color-mix(in srgb, var(--theme-danger) 18%, transparent))]"
               >
                 <span>■</span> Stop Mission
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 disabled={
                   !orchestrator.orchestratorSessionKey || orchestrator.isPausing
@@ -3019,7 +3044,7 @@ export function orchestrator() {
                   : orchestrator.isPaused
                     ? 'Resume'
                     : 'Pause'}
-              </button>
+              </Button>
             </div>
           </section>
           {orchestrator.timeoutWarning && (
@@ -3071,8 +3096,9 @@ export function orchestrator() {
                 <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--theme-muted)]">
                   Tasks (
                   {
-                    orchestrator.tasks.filter((task) => task.status === 'complete')
-                      .length
+                    orchestrator.tasks.filter(
+                      (task) => task.status === 'complete',
+                    ).length
                   }
                   /{orchestrator.tasks.length})
                 </h2>
@@ -3087,7 +3113,7 @@ export function orchestrator() {
                           ? 'bg-red-400'
                           : 'bg-zinc-500'
                   return (
-                    <button
+                    <Button
                       key={task.id}
                       type="button"
                       onClick={() =>
@@ -3111,7 +3137,7 @@ export function orchestrator() {
                           {task.title}
                         </span>
                       </div>
-                    </button>
+                    </Button>
                   )
                 })}
               </div>
@@ -3126,7 +3152,9 @@ export function orchestrator() {
                 ) : null}
                 {(() => {
                   const selectedTask = selectedTaskId
-                    ? orchestrator.tasks.find((task) => task.id === selectedTaskId)
+                    ? orchestrator.tasks.find(
+                        (task) => task.id === selectedTaskId,
+                      )
                     : null
                   const displayWorkers = selectedTask?.workerKey
                     ? orchestrator.workers.filter(

@@ -1,3 +1,7 @@
+import { Input } from '@/components/ui/input'
+
+import { Button } from '@/components/ui/button'
+
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Robot01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -1486,7 +1490,7 @@ function ChatMessageListComponent({
         <div className="w-full">
           {isMessageSearchOpen && (
             <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-primary-200 bg-primary-50/95 px-3 py-2 backdrop-blur-sm">
-              <input
+              <Input
                 ref={searchInputRef}
                 type="text"
                 value={messageSearchValue}
@@ -1502,7 +1506,7 @@ function ChatMessageListComponent({
                 </span>
               )}
               <div className="flex shrink-0 items-center gap-0.5">
-                <button
+                <Button
                   type="button"
                   onClick={jumpToPreviousMatch}
                   disabled={messageSearchMatches.length === 0}
@@ -1518,8 +1522,8 @@ function ChatMessageListComponent({
                       strokeLinejoin="round"
                     />
                   </svg>
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={jumpToNextMatch}
                   disabled={messageSearchMatches.length === 0}
@@ -1535,8 +1539,8 @@ function ChatMessageListComponent({
                       strokeLinejoin="round"
                     />
                   </svg>
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={closeMessageSearch}
                   className="rounded p-1 text-primary-500 dark:text-neutral-400 hover:bg-primary-200 dark:hover:bg-primary-800 hover:text-primary-700 dark:hover:text-neutral-200"
@@ -1550,7 +1554,7 @@ function ChatMessageListComponent({
                       strokeLinecap="round"
                     />
                   </svg>
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -1586,7 +1590,7 @@ function ChatMessageListComponent({
                       </p>
                     </div>
                   </div>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setExpandAllToolSections(true)}
                     disabled={expandAllToolSections}
@@ -1603,7 +1607,7 @@ function ChatMessageListComponent({
                     }
                   >
                     {expandAllToolSections ? '✓ Expanded' : 'Show All'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : null}

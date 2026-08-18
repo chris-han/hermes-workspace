@@ -2319,32 +2319,44 @@ export function ExtractMode({
     setAiGroundingPending(true)
     setError(null)
     try {
-      const response = await fetch(
-        `${KNOWLEDGE_BUILDER_API}/extraction-runs/${encodeURIComponent(selectedRun.extraction_run_id)}/ai-grounding-suggestions`,
-        {
+      const endpoint = `${KNOWLEDGE_BUILDER_API}/extraction-runs/${encodeURIComponent(selectedRun.extraction_run_id)}/ai-grounding-suggestions`
+      const candidateIds = candidates.map((candidate) => candidate.assertion_id)
+      const chunkSize = 1
+      const suggestionByAssertion: Record<string, AiGroundingSuggestion> = {}
+      for (let index = 0; index < candidateIds.length; index += chunkSize) {
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             schemaVersion: 'knowledge_builder_ai_grounding_request.v2',
             extractionRunId: selectedRun.extraction_run_id,
+            candidateIds: candidateIds.slice(index, index + chunkSize),
           }),
-        },
-      )
-      const payload = (await response.json()) as {
-        detail?: string
-        suggestions?: AiGroundingSuggestion[]
-      }
-      if (!response.ok)
-        throw new Error(payload.detail ?? `ai-grounding:${response.status}`)
-      const suggestionByAssertion = Object.fromEntries(
-        (payload.suggestions ?? []).map((suggestion) => {
+        })
+        const payload = (await response.json().catch(() => ({}))) as {
+          detail?: string
+          suggestions?: AiGroundingSuggestion[]
+        }
+        if (!response.ok)
+          throw new Error(payload.detail ?? `ai-grounding:${response.status}`)
+        for (const suggestion of payload.suggestions ?? []) {
           const normalized = normalizeAiSuggestion(suggestion, 'llm_structured')
-          return [normalized.assertion_id, normalized]
-        }),
-      )
+          suggestionByAssertion[normalized.assertion_id] = normalized
+        }
+        const partiallyGroundedCandidates = candidates.map((candidate) => ({
+          ...candidate,
+          ai_grounding_suggestion:
+            suggestionByAssertion[candidate.assertion_id] ??
+            candidate.ai_grounding_suggestion,
+        }))
+        setCandidates(partiallyGroundedCandidates)
+        onCandidates?.(partiallyGroundedCandidates)
+      }
       const groundedCandidates = candidates.map((candidate) => ({
         ...candidate,
-        ai_grounding_suggestion: suggestionByAssertion[candidate.assertion_id],
+        ai_grounding_suggestion:
+          suggestionByAssertion[candidate.assertion_id] ??
+          candidate.ai_grounding_suggestion,
       }))
       setCandidates(groundedCandidates)
       onCandidates?.(groundedCandidates)
@@ -3443,22 +3455,24 @@ export function GroundMode({
           ) : null}
           <AlertDialogRoot open={batchConfirmOpen} onOpenChange={setBatchConfirmOpen}>
             <AlertDialogContent>
-              <AlertDialogTitle>{zh ? '确认批量接受' : 'Confirm batch acceptance'}</AlertDialogTitle>
-              <AlertDialogDescription>
-                {zh
-                  ? `将记录 ${selectedIds.size} 项人工接受。此操作不会发布或激活图谱。`
-                  : `This records human acceptance for ${selectedIds.size} candidates. It does not release or activate the graph.`}
-              </AlertDialogDescription>
-              <div className="text-xs text-muted-foreground">
-                {Object.entries(selectedStatusCounts).map(([status, count]) => (
-                  <div key={status}>{status}: {count}</div>
-                ))}
-              </div>
-              <div className="flex justify-end gap-2">
-                <AlertDialogCancel disabled={batchPending}>{zh ? '取消' : 'Cancel'}</AlertDialogCancel>
-                <AlertDialogAction disabled={batchPending} onClick={() => void submitBatchAccept()}>
-                  {batchPending ? (zh ? '接受中…' : 'Accepting…') : (zh ? '确认接受' : 'Confirm Accept')}
-                </AlertDialogAction>
+              <div className="grid gap-3 p-5">
+                <AlertDialogTitle>{zh ? '确认批量接受' : 'Confirm batch acceptance'}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {zh
+                    ? `将记录 ${selectedIds.size} 项人工接受。此操作不会发布或激活图谱。`
+                    : `This records human acceptance for ${selectedIds.size} candidates. It does not release or activate the graph.`}
+                </AlertDialogDescription>
+                <div className="text-xs text-muted-foreground">
+                  {Object.entries(selectedStatusCounts).map(([status, count]) => (
+                    <div key={status}>{status}: {count}</div>
+                  ))}
+                </div>
+                <div className="mt-1 flex justify-end gap-2">
+                  <AlertDialogCancel disabled={batchPending}>{zh ? '取消' : 'Cancel'}</AlertDialogCancel>
+                  <AlertDialogAction disabled={batchPending} onClick={() => void submitBatchAccept()}>
+                    {batchPending ? (zh ? '接受中…' : 'Accepting…') : (zh ? '确认接受' : 'Confirm Accept')}
+                  </AlertDialogAction>
+                </div>
               </div>
             </AlertDialogContent>
           </AlertDialogRoot>
@@ -3676,27 +3690,27 @@ export function GraphMode({
             </div>
           </div>
         )}
-        <div className="absolute left-3 top-3 z-10 flex w-[min(340px,calc(100%_-_24px))] items-center gap-1.5 rounded-md border border-border bg-card px-2 shadow-sm">
+        <div className="absolute right-3 top-3 z-10 flex w-[min(340px,calc(100%_-_24px))] items-center rounded-md border border-border bg-card shadow-sm transition-[border-color,box-shadow] focus-within:border-[var(--theme-accent)] focus-within:shadow-[0_0_0_4px_var(--theme-accent-subtle)]">
           <HugeiconsIcon
             icon={Search01Icon}
             size={15}
             strokeWidth={1.7}
-            className="shrink-0 text-muted-foreground"
+            className="pointer-events-none absolute left-3 text-muted-foreground"
           />
-          <Input
+          <input
             value={graphSearch}
             onChange={(event) => setGraphSearch(event.target.value)}
             placeholder={
               zh ? '搜索标签或规范 ID…' : 'Search label or canonical ID…'
             }
-            className="h-8 min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+            className="h-8 min-w-0 flex-1 rounded-[inherit] border-0 bg-transparent pl-9 pr-3 text-xs font-medium leading-[1.5] outline-none placeholder:text-muted-foreground"
           />
         </div>
         {!sourceOpen ? (
           <Button
             type="button"
             onClick={() => setSourceOpen(true)}
-            className="absolute left-3 top-[54px] z-10 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] shadow-sm"
+            className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] shadow-sm"
           >
             <HugeiconsIcon icon={FileViewIcon} size={14} strokeWidth={1.7} />
             {zh ? '来源证据' : 'Source evidence'}
@@ -4831,7 +4845,7 @@ function Rail({
       type="button"
       title={title}
       onClick={onClick}
-      className="grid size-8 place-items-center rounded-md text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]"
+      className="grid size-8 place-items-center rounded-md bg-card2 text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-blue)]"
     >
       {children}
     </Button>

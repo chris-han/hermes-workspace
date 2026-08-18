@@ -1,5 +1,3 @@
-import { Button } from '@/components/ui/button'
-
 import { useEffect, useRef, useState } from 'react'
 
 const POLL_INTERVAL_MS = 10_000
@@ -202,14 +200,11 @@ export function HermesReconnectBanner({
       style={{ top: 'var(--titlebar-h, 0px)' }}
     >
       <div
-        className="mx-auto flex min-h-12 w-full max-w-5xl items-center justify-between gap-3 rounded-lg border px-4 py-3 shadow-lg"
-        style={{
-          background: 'var(--theme-card)',
-          borderColor: isDisconnected
-            ? 'var(--theme-danger)'
-            : 'var(--theme-border)',
-          color: isDisconnected ? 'var(--theme-danger)' : 'inherit',
-        }}
+        className={`mx-auto flex min-h-12 w-full max-w-5xl items-center justify-between gap-3 rounded-md border px-4 py-3 shadow-lg transition-[background-color,border-color,color] ${
+          isDisconnected
+            ? 'border-transparent bg-[var(--theme-card2)] text-[var(--theme-danger)]'
+            : 'border-border bg-[var(--theme-card)] text-foreground'
+        }`}
       >
         <div className="flex min-w-0 items-center gap-3">
           <span
@@ -232,30 +227,22 @@ export function HermesReconnectBanner({
 
         {isDisconnected ? (
           <div className="flex shrink-0 items-center gap-2">
-            <Button
+            <button
               type="button"
               onClick={() => void handleRetry()}
               disabled={isChecking || isStarting}
-              className="rounded-md border px-3 py-1.5 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-              style={{
-                borderColor: 'var(--theme-border)',
-                background: 'var(--theme-card)',
-                color: 'inherit',
-              }}
+              className="inline-flex items-center justify-center rounded-button border border-border bg-[var(--theme-card2)] px-[1.375rem] py-3 text-sm font-semibold leading-none transition-[background-color,border-color,transform] hover:bg-[var(--theme-card)] hover:border-border-strong active:scale-[0.96] disabled:pointer-events-none disabled:opacity-45"
             >
               {isChecking ? 'Retrying…' : 'Retry'}
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
               onClick={() => void handleStartAgent()}
               disabled={isStarting}
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-              style={{
-                background: 'var(--theme-danger)',
-              }}
+              className="inline-flex items-center justify-center rounded-button border border-transparent bg-[var(--theme-danger)] px-[1.375rem] py-3 text-sm font-semibold leading-none text-white transition-[background-color,transform] hover:opacity-90 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-45"
             >
               {isStarting ? 'Starting…' : 'Start Agent'}
-            </Button>
+            </button>
           </div>
         ) : null}
       </div>

@@ -741,7 +741,7 @@ export function ChatEmptyState({
                       type="button"
                       onClick={() => handleExampleSelect(example)}
                       disabled={example.action === 'seed_demo' && seedingDemo}
-                      className="block w-full cursor-pointer rounded-lg px-3 py-2.5 text-left transition-all theme-border-1"
+                      className="block h-auto w-full cursor-pointer whitespace-normal rounded-lg px-3 py-2.5 text-left leading-snug transition-all theme-border-1"
                       style={{
                         background: 'var(--theme-card)',
                       }}

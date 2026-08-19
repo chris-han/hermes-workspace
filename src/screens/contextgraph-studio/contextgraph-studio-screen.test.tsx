@@ -10,6 +10,7 @@ import {
   within,
 } from '@testing-library/react'
 
+import { MultiSelectDropdown } from '@/components/ui/selection-surfaces'
 import { useContextGraphStudioStore } from '@/stores/contextgraph-studio-store'
 import { useKnowledgeWorkbenchStore } from '@/stores/knowledge-workbench-store'
 import { useWorkspaceStore } from '@/stores/workspace-store'
@@ -427,10 +428,16 @@ describe('ContextGraphStudioScreen', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Extract tender.md' }))
     await waitFor(() =>
-      expect(fetchMock.mock.calls[5]?.[0]).toBe(
+      expect(fetchMock.mock.calls[4]?.[0]).toBe(
         '/api/semantier-proxy/api/knowledge/builder/extraction-runs',
       ),
     )
+    expect(JSON.parse(String((fetchMock.mock.calls[4]?.[1] as RequestInit).body))).toMatchObject({
+      schemaVersion: 'knowledge_builder_extraction_run_request.v2',
+      sourceId: 'source-1',
+      sourceRole: 'reference_sensitive_word_list',
+      workflowKind: 'reference_graph_build',
+    })
     expect(onNext).toHaveBeenCalledTimes(1)
   })
 
@@ -539,9 +546,15 @@ describe('ContextGraphStudioScreen', () => {
     fireEvent.click(batchButton)
 
     await waitFor(() => expect(onNext).toHaveBeenCalledTimes(1))
-    expect(fetchMock.mock.calls[4]?.[0]).toBe(
+    expect(fetchMock.mock.calls[3]?.[0]).toBe(
       '/api/semantier-proxy/api/knowledge/builder/extraction-runs',
     )
+    expect(JSON.parse(String((fetchMock.mock.calls[3]?.[1] as RequestInit).body))).toMatchObject({
+      schemaVersion: 'knowledge_builder_extraction_run_request.v2',
+      sourceId: 'source-1',
+      sourceRole: 'reference_sensitive_word_list',
+      workflowKind: 'reference_graph_build',
+    })
   })
 
   it('navigates to every Studio screen', () => {
@@ -692,6 +705,7 @@ describe('ContextGraphStudioScreen', () => {
     expect(JSON.parse(String((fetchMock.mock.calls[2]?.[1] as RequestInit).body))).toEqual({
       schemaVersion: 'knowledge_builder_ai_grounding_request.v2',
       extractionRunId: 'run-1',
+      candidateIds: ['assertion-1'],
     })
   })
 
@@ -759,10 +773,10 @@ describe('ContextGraphStudioScreen', () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
     expect(fetchMock.mock.calls[2]?.[0]).toBe(
-      '/api/semantier-proxy/api/knowledge/builder/assertion-candidates/assertion-1/grounding-events',
+      '/api/semantier-proxy/api/knowledge/builder/reference-concepts/assertion-1/grounding-events',
     )
     expect(fetchMock.mock.calls[3]?.[0]).toBe(
-      '/api/semantier-proxy/api/knowledge/builder/assertion-candidates/assertion-1/release',
+      '/api/semantier-proxy/api/knowledge/builder/reference-concepts/assertion-1/release',
     )
     const groundingBody = JSON.parse(
       String((fetchMock.mock.calls[2]?.[1] as RequestInit).body),
@@ -780,7 +794,7 @@ describe('ContextGraphStudioScreen', () => {
     expect(screen.getByText('grounded').getAttribute('data-slot')).toBe('badge')
   })
 
-  it('persists an edited assertion with GraphDelta and materializes its release', async () => {
+  it('persists an edited reference concept with GraphDelta and materializes its release', async () => {
     const candidate = {
       assertion_id: 'assertion-edit-1',
       candidate_graph_id: 'graph-1',
@@ -855,7 +869,7 @@ describe('ContextGraphStudioScreen', () => {
       graphDeltaPreviewHash: 'preview-hash-edit',
     })
     expect(fetchMock.mock.calls[3]?.[0]).toBe(
-      '/api/semantier-proxy/api/knowledge/builder/assertion-candidates/assertion-edit-1/release',
+      '/api/semantier-proxy/api/knowledge/builder/reference-concepts/assertion-edit-1/release',
     )
     expect(screen.getByText('grounded')).toBeTruthy()
   })
@@ -921,7 +935,7 @@ describe('ContextGraphStudioScreen', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy()
   })
 
-  it('selects table rows and batch accepts without releasing or activating', async () => {
+  it('selects table rows and batch accepts into a graph release without activating', async () => {
     const candidate = {
       assertion_id: 'assertion-batch', candidate_graph_id: 'graph-1', confidence: 0.8,
       grounding_state: 'unresolved',
@@ -937,7 +951,21 @@ describe('ContextGraphStudioScreen', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input)
       if (url.endsWith('/batch-grounding-events')) {
-        return { ok: true, json: async () => ({ acceptedCount: 1, authorityState: 'human_grounded_not_released' }) }
+        return {
+          ok: true,
+          json: async () => ({
+            acceptedCount: 1,
+            authorityState: 'accepted_graph_released',
+            graphRelease: {
+              graph_version: 'KG_v9',
+              candidate_graph_id: 'graph-1',
+              human_label_event_ids: ['human-event-1'],
+              nodes: [],
+              edges: [],
+              rules: [],
+            },
+          }),
+        }
       }
       if (url.endsWith('/graph-delta-preview')) {
         return { ok: true, json: async () => ({ available: false }) }
@@ -945,11 +973,20 @@ describe('ContextGraphStudioScreen', () => {
       return { ok: true, json: async () => ({ assertionCandidate: candidate, learningEvents: [] }) }
     })
     vi.stubGlobal('fetch', fetchMock)
-    render(<GroundMode zh={false} extractionRunId="run-batch" candidateGraphId="graph-1" assertionCandidates={[candidate]} />)
+    const onAcceptedRelease = vi.fn()
+    render(
+      <GroundMode
+        zh={false}
+        extractionRunId="run-batch"
+        candidateGraphId="graph-1"
+        assertionCandidates={[candidate]}
+        onAcceptedRelease={onAcceptedRelease}
+      />,
+    )
 
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Select Batch candidate' }))
     fireEvent.click(screen.getByRole('button', { name: 'Batch Accept' }))
-    expect(screen.getAllByText(/does not release or activate/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/creates one accepted graph release/i).length).toBeGreaterThan(0)
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Accept' }))
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/batch-grounding-events'))).toBe(true))
@@ -958,6 +995,8 @@ describe('ContextGraphStudioScreen', () => {
     expect(body.items).toEqual([{ assertionId: 'assertion-batch', evidenceAnchorRefs: ['anchor-1'] }])
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/release'))).toBe(false)
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('project-activate'))).toBe(false)
+    await waitFor(() => expect(onAcceptedRelease).toHaveBeenCalledWith(expect.objectContaining({ graph_version: 'KG_v9' })))
+    await waitFor(() => expect(screen.getByTestId('ground-accepted-release').textContent).toContain('KG_v9'))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Batch Accept' })).toBeNull())
   })
 
@@ -990,7 +1029,11 @@ describe('ContextGraphStudioScreen', () => {
         findings: [],
       }),
     )
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/tender-document-review')
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/tender-document-review/detections')
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toMatchObject({
+      fileRef: 'target.json',
+      requestedRuleFamilies: ['tender_compliance'],
+    })
   })
 
   it('keeps Compare guarded until two distinct released versions are selected', () => {
@@ -1021,5 +1064,24 @@ describe('ContextGraphStudioScreen', () => {
     expect(screen.getByTestId('evaluate-open-evaluation')).toBeTruthy()
     expect(screen.getByTestId('evaluate-decision-disclaimer')).toBeTruthy()
     expect(screen.getByTestId('evaluate-loop-decision')).toBeTruthy()
+  })
+})
+
+describe('MultiSelectDropdown', () => {
+  it('renders trigger label as "All" when every option is selected', () => {
+    render(
+      <MultiSelectDropdown
+        label="Status filter"
+        options={[
+          { value: 'grounded', label: 'grounded' },
+          { value: 'unresolved', label: 'unresolved' },
+        ]}
+        value={new Set(['grounded', 'unresolved'])}
+        onValueChange={() => {}}
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: 'Status filter' }),
+    ).toHaveTextContent('All')
   })
 })

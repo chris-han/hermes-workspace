@@ -1068,6 +1068,10 @@ describe('ContextGraphStudioScreen', () => {
 })
 
 describe('MultiSelectDropdown', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
   it('renders trigger label as "All" when every option is selected', () => {
     render(
       <MultiSelectDropdown
@@ -1083,5 +1087,78 @@ describe('MultiSelectDropdown', () => {
     expect(
       screen.getByRole('button', { name: 'Status filter' }).textContent,
     ).toBe('All')
+  })
+
+  it('renders "N / M selected" label when not every option is selected', () => {
+    render(
+      <MultiSelectDropdown
+        label="Status filter"
+        options={[
+          { value: 'grounded', label: 'grounded' },
+          { value: 'unresolved', label: 'unresolved' },
+        ]}
+        value={new Set(['grounded'])}
+        onValueChange={() => {}}
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: 'Status filter' }).textContent,
+    ).toBe('1 / 2 selected')
+  })
+
+  it('toggles a value when its row is clicked and reports the new Set', () => {
+    const onValueChange = vi.fn()
+    render(
+      <MultiSelectDropdown
+        label="Status filter"
+        options={[
+          { value: 'grounded', label: 'grounded' },
+          { value: 'rejected', label: 'rejected' },
+        ]}
+        value={new Set(['grounded'])}
+        onValueChange={onValueChange}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Status filter' }))
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: /rejected/ }))
+    expect(onValueChange).toHaveBeenCalledWith(new Set(['grounded', 'rejected']))
+  })
+
+  it('Clear button emits an empty Set', () => {
+    const onValueChange = vi.fn()
+    render(
+      <MultiSelectDropdown
+        label="Status filter"
+        options={[
+          { value: 'grounded', label: 'grounded' },
+          { value: 'rejected', label: 'rejected' },
+        ]}
+        value={new Set(['grounded'])}
+        onValueChange={onValueChange}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Status filter' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    expect(onValueChange).toHaveBeenCalledWith(new Set())
+  })
+
+  it('All button emits a Set containing every option value', () => {
+    const onValueChange = vi.fn()
+    render(
+      <MultiSelectDropdown
+        label="Status filter"
+        options={[
+          { value: 'grounded', label: 'grounded' },
+          { value: 'rejected', label: 'rejected' },
+        ]}
+        value={new Set(['grounded'])}
+        onValueChange={onValueChange}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Status filter' }))
+    fireEvent.click(screen.getByRole('button', { name: 'All' }))
+    expect(onValueChange).toHaveBeenCalledWith(
+      new Set(['grounded', 'rejected']),
+    )
   })
 })

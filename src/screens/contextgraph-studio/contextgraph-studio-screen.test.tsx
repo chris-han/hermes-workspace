@@ -1000,6 +1000,70 @@ describe('ContextGraphStudioScreen', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Batch Accept' })).toBeNull())
   })
 
+  it('filters the Ground candidate table by the Status filter dropdown', async () => {
+    const candidates = [
+      {
+        assertion_id: 'assertion-grounded',
+        candidate_graph_id: 'graph-1',
+        confidence: 0.9,
+        grounding_state: 'grounded',
+        evidence_refs: [{ evidence_ref: 'ev-g', selector_hash: 'sel-g' }],
+        normalized_assertion: { subject: { text: 'Grounded candidate' } },
+      },
+      {
+        assertion_id: 'assertion-unresolved',
+        candidate_graph_id: 'graph-1',
+        confidence: 0.7,
+        grounding_state: 'unresolved',
+        evidence_refs: [{ evidence_ref: 'ev-u', selector_hash: 'sel-u' }],
+        normalized_assertion: { subject: { text: 'Unresolved candidate' } },
+      },
+    ]
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/graph-delta-preview')) {
+        return { ok: true, json: async () => ({ available: false }) }
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          assertionCandidate: candidates[0],
+          learningEvents: [],
+        }),
+      }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <GroundMode
+        zh={false}
+        extractionRunId="run-status"
+        candidateGraphId="graph-1"
+        assertionCandidates={candidates}
+      />,
+    )
+
+    // Both rows visible at first (the candidate label appears in the table row
+    // and the right-side detail header).
+    expect(screen.getAllByText('Grounded candidate').length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByText('Unresolved candidate').length,
+    ).toBeGreaterThan(0)
+
+    // Open the Status filter and uncheck "grounded".
+    fireEvent.click(screen.getByRole('button', { name: 'Status filter' }))
+    fireEvent.click(
+      screen.getByRole('menuitemcheckbox', { name: /grounded/ }),
+    )
+
+    await waitFor(() =>
+      expect(screen.queryByText('Grounded candidate')).toBeNull(),
+    )
+    expect(
+      screen.getAllByText('Unresolved candidate').length,
+    ).toBeGreaterThan(0)
+  })
+
   it('runs Inspect against the tender review API', async () => {
     const onRun = vi.fn()
     const fetchMock = vi.fn().mockResolvedValue({

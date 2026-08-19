@@ -338,7 +338,12 @@ function MultiSelectDropdown({
   emptyLabel?: string
 }) {
   const [open, setOpen] = useState(false)
-  const allChecked = options.length === 0 || value.size === options.length
+  // "No filter" can be expressed as either an empty Set (consumer has not yet
+  // initialised) or a full Set (all options explicitly kept). The trigger
+  // collapses both into `emptyLabel` so the dropdown always reads "All" until
+  // the reviewer starts narrowing.
+  const allChecked =
+    options.length === 0 || value.size === 0 || value.size === options.length
   const triggerLabel = allChecked
     ? emptyLabel
     : `${value.size} / ${options.length} selected`

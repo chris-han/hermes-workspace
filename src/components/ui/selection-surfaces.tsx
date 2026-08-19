@@ -314,10 +314,140 @@ function ControlledSelect({
   )
 }
 
+export type MultiSelectOption = {
+  value: string
+  label: ReactNode
+  disabled?: boolean
+}
+
+function MultiSelectDropdown({
+  className,
+  label,
+  value,
+  options,
+  onValueChange,
+  compact = false,
+  emptyLabel = 'All',
+}: {
+  className?: string
+  label: string
+  value: Set<string>
+  options: MultiSelectOption[]
+  onValueChange: (next: Set<string>) => void
+  compact?: boolean
+  emptyLabel?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const allChecked = options.length === 0 || value.size === options.length
+  const triggerLabel = allChecked
+    ? emptyLabel
+    : `${value.size} / ${options.length} selected`
+
+  function toggle(optionValue: string) {
+    const next = new Set(value)
+    if (next.has(optionValue)) next.delete(optionValue)
+    else next.add(optionValue)
+    onValueChange(next)
+  }
+
+  return (
+    <div
+      className={cn('relative inline-block', className)}
+      data-slot="multi-select-dropdown"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setOpen(false)
+        }
+      }}
+    >
+      <button
+        type="button"
+        className={cn(
+          'flex w-full items-center justify-between gap-3 rounded-[0.75rem] border border-[var(--theme-border)] bg-[var(--theme-card)] text-left font-medium text-[var(--theme-text)] outline-none transition-[border-color,box-shadow] hover:border-[var(--theme-border-strong)] focus-visible:border-[var(--theme-accent)] focus-visible:ring-[4px] focus-visible:ring-[var(--theme-accent-subtle)] disabled:cursor-not-allowed disabled:opacity-60',
+          compact
+            ? 'h-8 min-w-32 px-2.5 text-xs'
+            : 'px-[0.9rem] py-[0.7rem] text-[0.9375rem]',
+        )}
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={options.length === 0}
+        onClick={() => setOpen((current) => !current)}
+        data-slot="multi-select-dropdown-trigger"
+      >
+        <span>{triggerLabel}</span>
+        <ChevronDown
+          aria-hidden="true"
+          data-slot="multi-select-dropdown-chevron"
+          className={cn(
+            'size-[1.0625rem] shrink-0 self-center text-[var(--theme-muted)] transition-transform',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+      {open && options.length > 0 ? (
+        <div
+          role="menu"
+          aria-label={label}
+          data-slot="multi-select-dropdown-popover"
+          className="absolute left-0 top-[calc(100%+0.4rem)] z-50 grid min-w-full gap-1 rounded-[0.75rem] border border-[var(--theme-border)] bg-[var(--theme-card)] p-[0.35rem] shadow-lg"
+        >
+          {options.map((option) => {
+            const checked = value.has(option.value)
+            return (
+              <label
+                key={option.value}
+                role="menuitemcheckbox"
+                aria-checked={checked}
+                aria-disabled={option.disabled || undefined}
+                className={cn(
+                  'flex w-full cursor-pointer items-center gap-2 rounded-md px-[0.7rem] py-[0.55rem] text-left text-xs font-medium text-[var(--theme-text)] outline-none hover:bg-[var(--theme-card2)]',
+                  option.disabled && 'cursor-not-allowed opacity-60',
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={option.disabled}
+                  onChange={() => toggle(option.value)}
+                  className="size-[0.9rem] shrink-0 accent-[var(--theme-accent)]"
+                  data-slot="multi-select-dropdown-checkbox"
+                />
+                <span className="flex-1 truncate">{option.label}</span>
+              </label>
+            )
+          })}
+          <div className="mt-1 flex items-center justify-between border-t border-[var(--theme-border)] px-[0.7rem] pt-[0.5rem] text-[11px]">
+            <button
+              type="button"
+              data-slot="multi-select-dropdown-all"
+              className="font-medium text-[var(--theme-accent)] hover:underline"
+              onClick={() =>
+                onValueChange(new Set(options.map((option) => option.value)))
+              }
+            >
+              All
+            </button>
+            <button
+              type="button"
+              data-slot="multi-select-dropdown-clear"
+              className="font-medium text-muted-foreground hover:underline"
+              onClick={() => onValueChange(new Set())}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export {
   ControlledSelect,
   Listbox,
   ListboxGroup,
   ListboxOption,
+  MultiSelectDropdown,
   SegmentedControl,
 }

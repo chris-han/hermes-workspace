@@ -1081,7 +1081,7 @@ describe('MultiSelectDropdown', () => {
       />,
     )
     expect(
-      screen.getByRole('button', { name: 'Status filter' }),
-    ).toHaveTextContent('All')
+      screen.getByRole('button', { name: 'Status filter' }).textContent,
+    ).toBe('All')
   })
 })

@@ -2599,13 +2599,13 @@ function MessageItemComponent({
             style={
               !isUser
                 ? {
-                    background: 'var(--chat-assistant-bg)',
-                    borderColor: 'var(--chat-assistant-border)',
+                    background: 'var(--theme-card2)',
+                    borderColor: 'var(--theme-border)',
                     color: 'var(--chat-assistant-foreground)',
                   }
                 : {
-                    background: 'var(--chat-user-bg)',
-                    borderColor: 'var(--chat-user-border)',
+                    background: 'var(--theme-card2)',
+                    borderColor: 'var(--theme-border)',
                     color: 'var(--chat-user-foreground)',
                   }
             }

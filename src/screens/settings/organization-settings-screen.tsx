@@ -1,6 +1,6 @@
 import { Table } from '@/components/ui/table'
 
-import { NativeSelect } from '@/components/ui/form-controls'
+import { SettingsSelect } from "@/components/ui/settings-select";
 
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
@@ -145,7 +145,7 @@ function entitlementTone(decision: EntitlementDecision): string {
   if (decision === 'allow_with_review') {
     return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300'
   }
-  return 'border-primary-200 bg-primary-100/80 text-primary-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300'
+  return 'border-(--theme-border) bg-(--theme-card2)/80 text-(--theme-text)'
 }
 
 function entitlementLabel(decision: EntitlementDecision): string {
@@ -161,7 +161,7 @@ function membershipTone(status: string): string {
   if (status === 'pending') {
     return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300'
   }
-  return 'border-primary-200 bg-primary-100/80 text-primary-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300'
+  return 'border-(--theme-border) bg-(--theme-card2)/80 text-(--theme-text)'
 }
 
 function organizationOptionTags(
@@ -231,27 +231,27 @@ function OrganizationMembershipCard({
   onActivate: (organizationId: string) => void
 }) {
   return (
-    <div className="rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70">
-      <div className="flex items-start justify-between gap-3">
+    <div className="rounded-md border border-(--theme-border) bg-(--theme-card2) p-4/70">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-primary-900 dark:text-neutral-100">
+          <div className="text-sm font-semibold text-(--theme-text)">
             {membership.organization_name || membership.organization_id}
           </div>
-          <div className="mt-1 text-xs text-primary-500 dark:text-neutral-400">
+          <div className="mt-1 text-xs text-(--theme-muted)">
             <span className="font-mono">{membership.organization_id}</span>
             {membership.member_role ? ` · ${membership.member_role}` : ''}
           </div>
         </div>
         <span
-          className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide ${membershipTone(
+          className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-medium uppercase tracking-wide ${membershipTone(
             membership.membership_status,
           )}`}
         >
           {active ? 'Active' : membership.membership_status}
         </span>
       </div>
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <p className="text-xs text-primary-600 dark:text-neutral-400">
+      <div className="mt-3 flex items-center justify-between gap-4">
+        <p className="text-xs text-(--theme-muted)">
           {active
             ? 'This organization is currently attached to your session context.'
             : 'Switching makes this organization the active default context for SMB dataset questions.'}
@@ -582,11 +582,11 @@ export function OrganizationSettingsScreen() {
   )
 
   return (
-    <div className="min-h-screen bg-surface text-primary-900">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <header className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex size-10 items-center justify-center rounded-2xl border border-primary-200 bg-primary-100/70 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="min-h-screen bg-surface text-(--theme-text)">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:px-8">
+        <header className="rounded-3xl border border-(--theme-border) bg-(--theme-card2) p-4  dark:bg-neutral-950/60">
+          <div className="flex items-start gap-4">
+            <span className="inline-flex size-10 items-center justify-center rounded-md border border-(--theme-border) bg-(--theme-card2)/70">
               <HugeiconsIcon
                 icon={Building02Icon}
                 size={20}
@@ -594,29 +594,29 @@ export function OrganizationSettingsScreen() {
               />
             </span>
             <div className="space-y-1">
-              <h1 className="text-xl font-semibold text-primary-900 dark:text-neutral-100">
+              <h1 className="text-xl font-semibold text-(--theme-text)">
                 {ORGANIZATION_SETTINGS_COPY.title}
               </h1>
-              <p className="max-w-3xl text-sm text-primary-600 dark:text-neutral-400">
+              <p className="max-w-3xl text-sm text-(--theme-muted)">
                 {ORGANIZATION_SETTINGS_COPY.subtitle}
               </p>
             </div>
           </div>
         </header>
 
-        <section className="rounded-3xl border border-primary-200 bg-white/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
+        <section className="rounded-3xl border border-(--theme-border) bg-(--theme-card2) p-4 /70">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+              <div className="text-xs font-semibold uppercase tracking-wide text-(--theme-muted)">
                 Active Company
               </div>
-              <h2 className="mt-1 text-lg font-semibold text-primary-900 dark:text-neutral-100">
+              <h2 className="mt-1 text-lg font-semibold text-(--theme-text)">
                 {organizationQuery.data?.organization?.organization_name ||
                   authQuery.data?.organization_name ||
                   'No organization selected'}
               </h2>
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-primary-200 px-2 py-1 font-mono dark:border-neutral-700">
+                <span className="rounded-full border border-(--theme-border) px-2 py-1 font-mono">
                   {organizationQuery.data?.organization?.organization_id ||
                     authQuery.data?.organization_id ||
                     'unassigned'}
@@ -629,14 +629,14 @@ export function OrganizationSettingsScreen() {
                         ? 'rounded-full border border-emerald-200 px-2 py-1 font-mono text-emerald-700 dark:border-emerald-900 dark:text-emerald-300'
                         : badge.tone === 'warning'
                           ? 'rounded-full border border-amber-200 px-2 py-1 font-semibold text-amber-700 dark:border-amber-900 dark:text-amber-300'
-                          : 'rounded-full border border-primary-200 px-2 py-1 font-semibold dark:border-neutral-700'
+                          : 'rounded-full border border-(--theme-border) px-2 py-1 font-semibold'
                     }
                   >
                     {badge.label}
                   </span>
                 ))}
               </div>
-              <p className="mt-2 max-w-2xl text-xs text-primary-600 dark:text-neutral-400">
+              <p className="mt-2 max-w-2xl text-xs text-(--theme-muted)">
                 Dataset state here is read-only compatibility context. Active
                 dataset binding is governed in Knowledge Base Dataset.
               </p>
@@ -654,14 +654,14 @@ export function OrganizationSettingsScreen() {
                 <Link
                   to="/knowledge-base"
                   search={{ tab: 'dataset' }}
-                  className="rounded-xl border border-primary-300 px-3 py-2 text-sm font-semibold text-primary-700 dark:border-neutral-700 dark:text-neutral-200"
+                  className="rounded-md border border-(--theme-border) px-3 py-2 text-sm font-semibold text-(--theme-text)"
                 >
                   Open Knowledge Base Dataset
                 </Link>
                 <Link
                   to="/settings/data-connections"
                   search={{ import: 'company-dataset' }}
-                  className="rounded-xl border border-primary-300 px-3 py-2 text-sm font-semibold text-primary-700 dark:border-neutral-700 dark:text-neutral-200"
+                  className="rounded-md border border-(--theme-border) px-3 py-2 text-sm font-semibold text-(--theme-text)"
                 >
                   Stage dataset candidate
                 </Link>
@@ -684,8 +684,8 @@ export function OrganizationSettingsScreen() {
           </div>
 
           {realCompanyOpen ? (
-            <div className="mt-5 grid gap-3 rounded-2xl border border-primary-200 bg-primary-50/70 p-4 dark:border-neutral-800 dark:bg-neutral-950/60 md:grid-cols-2">
-              <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+            <div className="mt-5 grid gap-4 rounded-md border border-(--theme-border) bg-(--theme-card)/70 p-4 dark:bg-neutral-950/60 md:grid-cols-2">
+              <label className="text-sm font-medium text-(--theme-text)">
                 Company display name
                 <Input
                   value={realCompanyName}
@@ -694,7 +694,7 @@ export function OrganizationSettingsScreen() {
                   className="mt-1"
                 />
               </label>
-              <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+              <label className="text-sm font-medium text-(--theme-text)">
                 Organization slug
                 <Input
                   value={realCompanySlug}
@@ -703,7 +703,7 @@ export function OrganizationSettingsScreen() {
                   className="mt-1"
                 />
               </label>
-              <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+              <label className="text-sm font-medium text-(--theme-text)">
                 Industry code
                 <Input
                   value={realCompanyIndustryCode}
@@ -714,8 +714,8 @@ export function OrganizationSettingsScreen() {
                   className="mt-1"
                 />
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+              <div className="grid grid-cols-2 gap-4">
+                <label className="text-sm font-medium text-(--theme-text)">
                   Fiscal month
                   <Input
                     type="number"
@@ -728,7 +728,7 @@ export function OrganizationSettingsScreen() {
                     className="mt-1"
                   />
                 </label>
-                <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                <label className="text-sm font-medium text-(--theme-text)">
                   Currency
                   <Input
                     value={realCompanyCurrency}
@@ -761,14 +761,14 @@ export function OrganizationSettingsScreen() {
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-          <div className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
-            <div className="mb-4 flex items-start gap-3">
+          <div className="rounded-3xl border border-(--theme-border) bg-(--theme-card2) p-4  dark:bg-neutral-950/60">
+            <div className="mb-4 flex items-start gap-4">
               <HugeiconsIcon icon={Plug01Icon} size={20} strokeWidth={1.5} />
               <div>
-                <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+                <h2 className="text-base font-semibold text-(--theme-text)">
                   Associate Organization
                 </h2>
-                <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+                <p className="mt-1 text-sm text-(--theme-muted)">
                   The active organization becomes the default organization_id
                   for governed chat and analytics context. Use the bootstrap
                   demo organization or connect a different organization
@@ -777,9 +777,9 @@ export function OrganizationSettingsScreen() {
               </div>
             </div>
 
-            <div className="mb-4 rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70">
+            <div className="mb-4 rounded-md border border-(--theme-border) bg-(--theme-card2) p-4/70">
               <label
-                className="text-sm font-medium text-primary-900 dark:text-neutral-100"
+                className="text-sm font-medium text-(--theme-text)"
                 htmlFor="organization-search"
               >
                 Search Organization Name
@@ -789,7 +789,7 @@ export function OrganizationSettingsScreen() {
                   icon={Search01Icon}
                   size={18}
                   strokeWidth={1.5}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-primary-500 dark:text-neutral-400"
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(--theme-muted)"
                 />
                 <Input
                   id="organization-search"
@@ -803,7 +803,7 @@ export function OrganizationSettingsScreen() {
               </div>
               <div className="mt-3 grid gap-2">
                 {demoProfilesQuery.isLoading || organizationQuery.isLoading ? (
-                  <div className="rounded-2xl border border-primary-100 bg-primary-50/70 px-3 py-3 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
+                  <div className="rounded-md border border-primary-100 bg-(--theme-card)/70 px-3 py-3 text-sm text-(--theme-muted) dark:bg-neutral-950">
                     Loading organizations...
                   </div>
                 ) : visibleOrganizationOptions.length > 0 ? (
@@ -815,39 +815,39 @@ export function OrganizationSettingsScreen() {
                       <Button
                         key={option.organization_id}
                         type="button"
-                        className={`flex w-full items-start justify-between gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+                        className={`flex w-full items-start justify-between gap-4 rounded-md border px-3 py-3 text-left transition ${
                           selected
-                            ? 'border-primary-400 bg-primary-100/80 dark:border-neutral-600 dark:bg-neutral-800'
-                            : 'border-primary-100 bg-primary-50/70 hover:border-primary-300 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600'
+                            ? 'border-primary-400 bg-(--theme-card2)/80 dark:border-neutral-600'
+                            : 'border-primary-100 bg-(--theme-card)/70 hover:border-(--theme-border) dark:bg-neutral-950 dark:hover:border-neutral-600'
                         }`}
                         onClick={() => handleSelectOrganization(option)}
                       >
                         <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                          <span className="block truncate text-sm font-semibold text-(--theme-text)">
                             {option.organization_name}
                           </span>
-                          <span className="mt-1 block truncate font-mono text-xs text-primary-500 dark:text-neutral-400">
+                          <span className="mt-1 block truncate font-mono text-xs text-(--theme-muted)">
                             {option.organization_id}
                           </span>
                           <span className="mt-2 flex flex-wrap gap-1.5">
                             {organizationOptionTags(option).map((tag) => (
                               <span
                                 key={tag}
-                                className="rounded-full border border-primary-200 bg-white/80 px-2 py-0.5 text-[11px] font-medium text-primary-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+                                className="rounded-full border border-(--theme-border) bg-(--theme-card2) px-2 py-0.5 text-[11px] font-medium text-(--theme-muted)"
                               >
                                 {tag}
                               </span>
                             ))}
                           </span>
                         </span>
-                        <span className="shrink-0 rounded-full border border-primary-200 bg-white px-2.5 py-1 text-xs font-medium text-primary-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
+                        <span className="shrink-0 rounded-full border border-(--theme-border) bg-white px-2 py-1 text-xs font-medium text-(--theme-text)">
                           {selected ? 'Selected' : 'Select'}
                         </span>
                       </Button>
                     )
                   })
                 ) : (
-                  <div className="rounded-2xl border border-primary-100 bg-primary-50/70 px-3 py-3 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
+                  <div className="rounded-md border border-primary-100 bg-(--theme-card)/70 px-3 py-3 text-sm text-(--theme-muted) dark:bg-neutral-950">
                     No governed organization profile matched this search. Enter
                     an organization ID and name below to request or create one.
                   </div>
@@ -858,7 +858,7 @@ export function OrganizationSettingsScreen() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label
-                  className="text-sm font-medium text-primary-900 dark:text-neutral-100"
+                  className="text-sm font-medium text-(--theme-text)"
                   htmlFor="organization-id"
                 >
                   Organization ID
@@ -872,14 +872,14 @@ export function OrganizationSettingsScreen() {
                   }}
                   placeholder={DEFAULT_SMB_ORGANIZATION_ID}
                 />
-                <p className="text-xs text-primary-500 dark:text-neutral-400">
+                <p className="text-xs text-(--theme-muted)">
                   `{DEFAULT_SMB_ORGANIZATION_ID}` is the seeded
                   北京索阳科技有限公司 bootstrap organization.
                 </p>
               </div>
               <div className="space-y-2">
                 <label
-                  className="text-sm font-medium text-primary-900 dark:text-neutral-100"
+                  className="text-sm font-medium text-(--theme-text)"
                   htmlFor="organization-name"
                 >
                   Organization Name
@@ -893,20 +893,20 @@ export function OrganizationSettingsScreen() {
                   }}
                   placeholder={DEFAULT_SMB_ORGANIZATION_NAME}
                 />
-                <p className="text-xs text-primary-500 dark:text-neutral-400">
+                <p className="text-xs text-(--theme-muted)">
                   Only used when you create an organization that does not exist
                   yet.
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70">
-              <div className="flex items-center justify-between gap-3">
+            <div className="mt-4 flex flex-col gap-4 rounded-md border border-(--theme-border) bg-(--theme-card2) p-4/70">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                  <div className="text-sm font-medium text-(--theme-text)">
                     Create if missing
                   </div>
-                  <p className="text-xs text-primary-600 dark:text-neutral-400">
+                  <p className="text-xs text-(--theme-muted)">
                     When enabled, Hermes will create the organization locally if
                     it is not already registered.
                   </p>
@@ -937,38 +937,38 @@ export function OrganizationSettingsScreen() {
                 <Link
                   to="/knowledge-base"
                   search={{ tab: 'dataset' }}
-                  className="text-sm text-primary-600 underline-offset-4 hover:underline dark:text-neutral-300"
+                  className="text-sm text-(--theme-muted) underline-offset-4 hover:underline"
                 >
                   Review Knowledge Base Dataset
                 </Link>
                 <Link
                   to="/settings/data-connections"
-                  className="text-sm text-primary-600 underline-offset-4 hover:underline dark:text-neutral-300"
+                  className="text-sm text-(--theme-muted) underline-offset-4 hover:underline"
                 >
                   Review data connections
                 </Link>
               </div>
 
               {errorMessage ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
                   {errorMessage}
                 </div>
               ) : null}
             </div>
           </div>
 
-          <div className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
-            <div className="mb-4 flex items-start gap-3">
+          <div className="rounded-3xl border border-(--theme-border) bg-(--theme-card2) p-4  dark:bg-neutral-950/60">
+            <div className="mb-4 flex items-start gap-4">
               <HugeiconsIcon
                 icon={CheckmarkCircle02Icon}
                 size={20}
                 strokeWidth={1.5}
               />
               <div>
-                <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+                <h2 className="text-base font-semibold text-(--theme-text)">
                   Current Session Context
                 </h2>
-                <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+                <p className="mt-1 text-sm text-(--theme-muted)">
                   This is the active organization attached to the authenticated
                   user.
                 </p>
@@ -976,37 +976,37 @@ export function OrganizationSettingsScreen() {
             </div>
 
             {authQuery.isLoading ? (
-              <div className="text-sm text-primary-600 dark:text-neutral-400">
+              <div className="text-sm text-(--theme-muted)">
                 Loading organization context...
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70">
-                  <div className="text-sm font-semibold text-primary-900 dark:text-neutral-100">
+              <div className="space-y-4">
+                <div className="rounded-md border border-(--theme-border) bg-(--theme-card2) p-4/70">
+                  <div className="text-sm font-semibold text-(--theme-text)">
                     {authQuery.data?.organization_name ||
                       'No organization selected'}
                   </div>
-                  <div className="mt-1 text-xs text-primary-500 dark:text-neutral-400">
+                  <div className="mt-1 text-xs text-(--theme-muted)">
                     <span className="font-mono">
                       {authQuery.data?.organization_id || 'unassigned'}
                     </span>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
                     <span
-                      className={`inline-flex rounded-full border px-2.5 py-1 font-medium uppercase tracking-wide ${membershipTone(
+                      className={`inline-flex rounded-full border px-2 py-1 font-medium uppercase tracking-wide ${membershipTone(
                         authQuery.data?.membership_status || 'unassigned',
                       )}`}
                     >
                       {authQuery.data?.membership_status || 'unassigned'}
                     </span>
                     {authQuery.data?.member_role ? (
-                      <span className="inline-flex rounded-full border border-primary-200 bg-primary-100/80 px-2.5 py-1 font-medium text-primary-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
+                      <span className="inline-flex rounded-full border border-(--theme-border) bg-(--theme-card2)/80 px-2 py-1 font-medium text-(--theme-text)">
                         {authQuery.data.member_role}
                       </span>
                     ) : null}
                   </div>
                 </div>
-                <p className="text-xs text-primary-600 dark:text-neutral-400">
+                <p className="text-xs text-(--theme-muted)">
                   If chat routing is org-aware, this active organization is the
                   context it should read first before asking for a company name.
                 </p>
@@ -1015,18 +1015,18 @@ export function OrganizationSettingsScreen() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
-          <div className="mb-4 flex items-start gap-3">
+        <section className="rounded-3xl border border-(--theme-border) bg-(--theme-card2) p-4  dark:bg-neutral-950/60">
+          <div className="mb-4 flex items-start gap-4">
             <HugeiconsIcon
               icon={CheckmarkCircle02Icon}
               size={20}
               strokeWidth={1.5}
             />
             <div>
-              <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+              <h2 className="text-base font-semibold text-(--theme-text)">
                 Materialization Governance
               </h2>
-              <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+              <p className="mt-1 text-sm text-(--theme-muted)">
                 Organization-level policy controls how T6 candidates route by
                 default. The default mode is auto-approve unless your policy
                 requires approval for specific claim classes.
@@ -1035,10 +1035,10 @@ export function OrganizationSettingsScreen() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <div className="rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70">
-              <div className="space-y-3">
+            <div className="rounded-md border border-(--theme-border) bg-(--theme-card2) p-4/70">
+              <div className="space-y-4">
                 {!canChangeSettings ? (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                  <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
                     Mode editing requires an active organization membership with
                     member role owner or admin. Current status: role=
                     {currentMemberRole || 'none'}, membership=
@@ -1047,10 +1047,10 @@ export function OrganizationSettingsScreen() {
                     governance permissions.
                   </div>
                 ) : null}
-                <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                <label className="text-sm font-medium text-(--theme-text)">
                   Default Mode
                 </label>
-                <NativeSelect
+                <SettingsSelect
                   value={policyDefaultMode}
                   onChange={(event) =>
                     setPolicyDefaultMode(
@@ -1058,14 +1058,14 @@ export function OrganizationSettingsScreen() {
                     )
                   }
                   disabled={!canChangeSettings || policyPending}
-                  className="h-10 w-full rounded-md border border-primary-200 bg-white px-3 text-sm text-primary-900 outline-none ring-primary-200 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                  className="h-10 w-full rounded-md border border-(--theme-border) bg-white px-3 text-sm text-(--theme-text) outline-none ring-primary-200 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <option value="AUTO">AUTO (Auto-approve)</option>
                   <option value="APPROVAL">APPROVAL (Human in the loop)</option>
-                </NativeSelect>
+                </SettingsSelect>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                  <label className="text-sm font-medium text-(--theme-text)">
                     Auto-Allowed Claim Classes
                   </label>
                   <Input
@@ -1079,7 +1079,7 @@ export function OrganizationSettingsScreen() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+                  <label className="text-sm font-medium text-(--theme-text)">
                     Approval-Required Claim Classes
                   </label>
                   <Input
@@ -1102,16 +1102,16 @@ export function OrganizationSettingsScreen() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70">
-              <div className="space-y-2 text-sm text-primary-700 dark:text-neutral-300">
+            <div className="rounded-md border border-(--theme-border) bg-(--theme-card2) p-4/70">
+              <div className="space-y-2 text-sm text-(--theme-text)">
                 <div>
-                  <span className="font-semibold text-primary-900 dark:text-neutral-100">
+                  <span className="font-semibold text-(--theme-text)">
                     Effective mode:
                   </span>{' '}
                   {policy?.default_mode || 'AUTO'}
                 </div>
                 <div className="break-all">
-                  <span className="font-semibold text-primary-900 dark:text-neutral-100">
+                  <span className="font-semibold text-(--theme-text)">
                     Policy hash:
                   </span>{' '}
                   <span className="font-mono text-xs">
@@ -1119,12 +1119,12 @@ export function OrganizationSettingsScreen() {
                   </span>
                 </div>
                 <div>
-                  <span className="font-semibold text-primary-900 dark:text-neutral-100">
+                  <span className="font-semibold text-(--theme-text)">
                     Updated at:
                   </span>{' '}
                   {policy?.updated_at || 'n/a'}
                 </div>
-                <p className="pt-2 text-xs text-primary-600 dark:text-neutral-400">
+                <p className="pt-2 text-xs text-(--theme-muted)">
                   Auto-approve applies first unless a claim class is explicitly
                   constrained by approval-required rules.
                 </p>
@@ -1133,18 +1133,18 @@ export function OrganizationSettingsScreen() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
-          <div className="mb-4 flex items-start gap-3">
+        <section className="rounded-3xl border border-(--theme-border) bg-(--theme-card2) p-4  dark:bg-neutral-950/60">
+          <div className="mb-4 flex items-start gap-4">
             <HugeiconsIcon
               icon={UserMultipleIcon}
               size={20}
               strokeWidth={1.5}
             />
             <div>
-              <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+              <h2 className="text-base font-semibold text-(--theme-text)">
                 Organization Roles
               </h2>
-              <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+              <p className="mt-1 text-sm text-(--theme-muted)">
                 Manage roles for members in this organization. Owners can assign
                 owner/member.
               </p>
@@ -1152,48 +1152,48 @@ export function OrganizationSettingsScreen() {
           </div>
 
           {organizationQuery.isLoading ? (
-            <div className="text-sm text-primary-600 dark:text-neutral-400">
+            <div className="text-sm text-(--theme-muted)">
               Loading members...
             </div>
           ) : members.length === 0 ? (
-            <div className="rounded-2xl border border-primary-200 bg-white/80 px-4 py-6 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400">
+            <div className="rounded-md border border-(--theme-border) bg-(--theme-card2) px-4 py-6 text-sm text-(--theme-muted)/70">
               No members found for the active organization.
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {adminContacts.length > 0 ? (
-                <div className="rounded-2xl border border-primary-200 bg-white/80 px-4 py-3 text-sm text-primary-700 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-300">
+                <div className="rounded-md border border-(--theme-border) bg-(--theme-card2) px-4 py-3 text-sm text-(--theme-text)/70">
                   Ask these org admins:{' '}
                   {adminContacts.map((member) => member.name).join(', ')}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
                   No active owner/admin is assigned yet. Any active member can
                   assign one owner.
                 </div>
               )}
 
               {!canEditRoles ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
                   Role editing requires active membership in the selected
                   organization.
                 </div>
               ) : null}
 
-              <div className="overflow-x-auto rounded-2xl border border-primary-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-900/70">
+              <div className="overflow-x-auto rounded-md border border-(--theme-border) bg-(--theme-card2)/70">
                 <Table className="min-w-full border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-primary-200 dark:border-neutral-800">
-                      <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                    <tr className="border-b border-(--theme-border)">
+                      <th className="px-4 py-3 text-left font-semibold text-(--theme-text)">
                         Member
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                      <th className="px-4 py-3 text-left font-semibold text-(--theme-text)">
                         Status
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                      <th className="px-4 py-3 text-left font-semibold text-(--theme-text)">
                         Role
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                      <th className="px-4 py-3 text-left font-semibold text-(--theme-text)">
                         Action
                       </th>
                     </tr>
@@ -1221,20 +1221,20 @@ export function OrganizationSettingsScreen() {
                       return (
                         <tr
                           key={member.user_id}
-                          className="border-b border-primary-100 last:border-b-0 dark:border-neutral-800"
+                          className="border-b border-primary-100 last:border-b-0"
                         >
                           <td className="px-4 py-3">
-                            <div className="text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                            <div className="text-sm font-semibold text-(--theme-text)">
                               {member.name}
                               {member.user_id === currentUserId ? ' (you)' : ''}
                             </div>
-                            <div className="mt-1 font-mono text-xs text-primary-500 dark:text-neutral-400">
+                            <div className="mt-1 font-mono text-xs text-(--theme-muted)">
                               {member.user_id}
                             </div>
                           </td>
                           <td className="px-4 py-3">
                             <span
-                              className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide ${membershipTone(
+                              className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-medium uppercase tracking-wide ${membershipTone(
                                 member.membership_status,
                               )}`}
                             >
@@ -1242,7 +1242,7 @@ export function OrganizationSettingsScreen() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <NativeSelect
+                            <SettingsSelect
                               value={draftRole}
                               onChange={(event) =>
                                 setMemberRoleDrafts((current) => ({
@@ -1256,14 +1256,14 @@ export function OrganizationSettingsScreen() {
                                 !canEditRoles ||
                                 rolePendingUserId === member.user_id
                               }
-                              className="h-9 w-full rounded-md border border-primary-200 bg-white px-2 text-sm text-primary-900 outline-none ring-primary-200 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                              className="h-9 w-full rounded-md border border-(--theme-border) bg-white px-2 text-sm text-(--theme-text) outline-none ring-primary-200 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {roleChoices.map((role) => (
                                 <option key={role} value={role}>
                                   {role}
                                 </option>
                               ))}
-                            </NativeSelect>
+                            </SettingsSelect>
                           </td>
                           <td className="px-4 py-3">
                             <Button
@@ -1293,18 +1293,18 @@ export function OrganizationSettingsScreen() {
           )}
         </section>
 
-        <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
-          <div className="mb-4 flex items-start gap-3">
+        <section className="rounded-3xl border border-(--theme-border) bg-(--theme-card2) p-4  dark:bg-neutral-950/60">
+          <div className="mb-4 flex items-start gap-4">
             <HugeiconsIcon
               icon={UserMultipleIcon}
               size={20}
               strokeWidth={1.5}
             />
             <div>
-              <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+              <h2 className="text-base font-semibold text-(--theme-text)">
                 Known Memberships
               </h2>
-              <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+              <p className="mt-1 text-sm text-(--theme-muted)">
                 Switch between active memberships without editing auth records
                 manually.
               </p>
@@ -1312,11 +1312,11 @@ export function OrganizationSettingsScreen() {
           </div>
 
           {organizationQuery.isLoading ? (
-            <div className="text-sm text-primary-600 dark:text-neutral-400">
+            <div className="text-sm text-(--theme-muted)">
               Loading memberships...
             </div>
           ) : organizationQuery.error instanceof Error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
               {organizationQuery.error.message}
             </div>
           ) : memberships.length > 0 ? (
@@ -1332,7 +1332,7 @@ export function OrganizationSettingsScreen() {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-primary-200 bg-white/80 px-4 py-6 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400">
+            <div className="rounded-md border border-(--theme-border) bg-(--theme-card2) px-4 py-6 text-sm text-(--theme-muted)/70">
               No organization memberships exist yet. Use the SMB demo
               organization to create `{DEFAULT_SMB_ORGANIZATION_ID}` locally and
               attach it to this user.
@@ -1340,18 +1340,18 @@ export function OrganizationSettingsScreen() {
           )}
         </section>
 
-        <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
-          <div className="mb-4 flex items-start gap-3">
+        <section className="rounded-3xl border border-(--theme-border) bg-(--theme-card2) p-4  dark:bg-neutral-950/60">
+          <div className="mb-4 flex items-start gap-4">
             <HugeiconsIcon
               icon={CheckmarkCircle02Icon}
               size={20}
               strokeWidth={1.5}
             />
             <div>
-              <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+              <h2 className="text-base font-semibold text-(--theme-text)">
                 Knowledge Access
               </h2>
-              <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+              <p className="mt-1 text-sm text-(--theme-muted)">
                 Live entitlement projection from the Semantier backend contract.
                 This page shows `view / propose / review` only and does not
                 expose direct activate or execute controls.
@@ -1360,11 +1360,11 @@ export function OrganizationSettingsScreen() {
           </div>
 
           {entitlementQuery.isLoading ? (
-            <div className="text-sm text-primary-600 dark:text-neutral-400">
+            <div className="text-sm text-(--theme-muted)">
               Loading knowledge access contract...
             </div>
           ) : entitlementQuery.error instanceof Error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
               {entitlementQuery.error.message}
             </div>
           ) : entitlementQuery.data ? (
@@ -1374,33 +1374,33 @@ export function OrganizationSettingsScreen() {
                   (bundle) => (
                     <span
                       key={bundle}
-                      className="inline-flex rounded-full border border-primary-200 bg-white/80 px-2.5 py-1 font-medium uppercase tracking-wide text-primary-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
+                      className="inline-flex rounded-full border border-(--theme-border) bg-(--theme-card2) px-2 py-1 font-medium uppercase tracking-wide text-(--theme-text)"
                     >
                       {bundle}
                     </span>
                   ),
                 )}
-                <span className="inline-flex rounded-full border border-primary-200 bg-white/80 px-2.5 py-1 text-primary-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+                <span className="inline-flex rounded-full border border-(--theme-border) bg-(--theme-card2) px-2 py-1 text-(--theme-muted)">
                   {entitlementQuery.data.organization_context
                     .official_display_name ||
                     entitlementQuery.data.organization_context.organization_id}
                 </span>
-                <span className="inline-flex rounded-full border border-primary-200 bg-white/80 px-2.5 py-1 text-primary-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+                <span className="inline-flex rounded-full border border-(--theme-border) bg-(--theme-card2) px-2 py-1 text-(--theme-muted)">
                   {entitlementQuery.data.schema_version}
                 </span>
               </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-primary-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-900/70">
+              <div className="overflow-x-auto rounded-md border border-(--theme-border) bg-(--theme-card2)/70">
                 <Table className="min-w-full border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-primary-200 dark:border-neutral-800">
-                      <th className="px-4 py-3 text-left font-semibold text-primary-900 dark:text-neutral-100">
+                    <tr className="border-b border-(--theme-border)">
+                      <th className="px-4 py-3 text-left font-semibold text-(--theme-text)">
                         Tier
                       </th>
                       {KNOWLEDGE_UI_ACTIONS.map((action) => (
                         <th
                           key={action}
-                          className="px-4 py-3 text-left font-semibold capitalize text-primary-900 dark:text-neutral-100"
+                          className="px-4 py-3 text-left font-semibold capitalize text-(--theme-text)"
                         >
                           {action}
                         </th>
@@ -1414,9 +1414,9 @@ export function OrganizationSettingsScreen() {
                       return (
                         <tr
                           key={tier}
-                          className="border-b border-primary-100 last:border-b-0 dark:border-neutral-800"
+                          className="border-b border-primary-100 last:border-b-0"
                         >
-                          <td className="px-4 py-3 font-mono text-xs text-primary-700 dark:text-neutral-300">
+                          <td className="px-4 py-3 font-mono text-xs text-(--theme-text)">
                             {tier}
                           </td>
                           {KNOWLEDGE_UI_ACTIONS.map((action) => {
@@ -1424,7 +1424,7 @@ export function OrganizationSettingsScreen() {
                             return (
                               <td key={action} className="px-4 py-3">
                                 <span
-                                  className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide ${entitlementTone(
+                                  className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-medium uppercase tracking-wide ${entitlementTone(
                                     decision,
                                   )}`}
                                 >
@@ -1440,23 +1440,23 @@ export function OrganizationSettingsScreen() {
                 </Table>
               </div>
 
-              <div className="grid gap-3 lg:grid-cols-3">
+              <div className="grid gap-4 lg:grid-cols-3">
                 {Object.entries(entitlementQuery.data.bundle_preview).map(
                   ([bundle, preview]) => (
                     <div
                       key={bundle}
-                      className="rounded-2xl border border-primary-200 bg-white/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/70"
+                      className="rounded-md border border-(--theme-border) bg-(--theme-card2) p-4/70"
                     >
-                      <div className="text-sm font-semibold uppercase tracking-wide text-primary-900 dark:text-neutral-100">
+                      <div className="text-sm font-semibold uppercase tracking-wide text-(--theme-text)">
                         {bundle}
                       </div>
                       <div className="mt-3 space-y-2">
                         {KNOWLEDGE_TIERS.map((tier) => (
                           <div
                             key={tier}
-                            className="flex items-center justify-between gap-3 text-xs"
+                            className="flex items-center justify-between gap-4 text-xs"
                           >
-                            <span className="font-mono text-primary-600 dark:text-neutral-400">
+                            <span className="font-mono text-(--theme-muted)">
                               {tier}
                             </span>
                             <div className="flex items-center gap-1.5">
@@ -1480,7 +1480,7 @@ export function OrganizationSettingsScreen() {
                 )}
               </div>
 
-              <p className="text-xs text-primary-600 dark:text-neutral-400">
+              <p className="text-xs text-(--theme-muted)">
                 `allow_with_review` means you may initiate the path but cannot
                 complete it alone. Final authority still depends on governance
                 conditions in the backend contract.

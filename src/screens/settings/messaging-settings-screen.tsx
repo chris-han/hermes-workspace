@@ -1,6 +1,6 @@
 import { Link as DsLink } from '@/components/ui/link'
 
-import { NativeSelect } from '@/components/ui/form-controls'
+import { SettingsSelect } from "@/components/ui/settings-select";
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
@@ -309,7 +309,7 @@ function StatusBadge({ configured }: { configured: boolean }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide',
+        'inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-wide',
         configured
           ? 'bg-emerald-200/70 text-success'
           : 'theme-card2 theme-text',
@@ -330,8 +330,8 @@ function PageShell({
   children: ReactNode
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 pt-6 pb-10 sm:px-6">
-      <header className="rounded-card border theme-border theme-card2 p-5 shadow-sm">
+    <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-8 px-4 py-8 sm:px-6">
+      <header className="rounded-md border theme-border theme-card2 p-4 ">
         <h1 className="text-xl font-semibold theme-text">{title}</h1>
         <p className="mt-1 text-sm theme-text">{description}</p>
       </header>
@@ -350,7 +350,7 @@ function SectionCard({
   children: ReactNode
 }) {
   return (
-    <section className="rounded-card border theme-border theme-card2 p-5 shadow-sm">
+    <section className="rounded-md border theme-border theme-card2 p-4 ">
       <div className="mb-4">
         <h2 className="text-base font-semibold theme-text">{title}</h2>
         <p className="text-sm theme-text">{description}</p>
@@ -370,7 +370,7 @@ function SettingsLink({
   return (
     <Link
       to={to}
-      className="inline-flex items-center rounded-button border theme-border px-3 py-2 text-sm font-medium theme-text transition-colors hover:bg-muted"
+      className="inline-flex items-center rounded-md border theme-border px-3 py-2 text-sm font-medium theme-text transition-colors hover:bg-muted"
     >
       {label}
     </Link>
@@ -1099,7 +1099,7 @@ function readOnlyValue(value: string): string {
 
 function LoadingState() {
   return (
-    <div className="rounded-card border theme-border theme-card2 p-5 text-sm theme-text">
+    <div className="rounded-md border theme-border theme-card2 p-4 text-sm theme-text">
       Loading messaging configuration...
     </div>
   )
@@ -1166,8 +1166,8 @@ function UserAccountCard({
       title="User Account"
       description="Manage the local username and password fallback for this Semantier user."
     >
-      <div className="grid gap-3 md:grid-cols-2">
-        <label className="space-y-1.5 md:col-span-2">
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="space-y-2 md:col-span-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Display Name
           </span>
@@ -1177,7 +1177,7 @@ function UserAccountCard({
             placeholder="Alice Zhang"
           />
         </label>
-        <label className="space-y-1.5 md:col-span-2">
+        <label className="space-y-2 md:col-span-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Username
           </span>
@@ -1189,7 +1189,7 @@ function UserAccountCard({
             autoCorrect="off"
           />
         </label>
-        <label className="space-y-1.5">
+        <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             New Password
           </span>
@@ -1200,7 +1200,7 @@ function UserAccountCard({
             placeholder="Leave blank to keep current password"
           />
         </label>
-        <label className="space-y-1.5">
+        <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Confirm Password
           </span>
@@ -1241,7 +1241,7 @@ function FeishuAccountLinkCard({
       title="Feishu Login"
       description="This is per-user Feishu sign-in pairing. It is only for login identity and is separate from bot configuration."
     >
-      <div className="rounded-md border theme-border theme-card p-3">
+      <div className="rounded-md border theme-border theme-card p-4">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -1321,7 +1321,7 @@ function FeishuGatewayPairingCodeForm({
   const botReady = model.platforms.feishu.configured || model.canValidateFeishu
 
   return (
-    <div className="mt-4 rounded-md border theme-border theme-card p-3">
+    <div className="mt-4 rounded-md border theme-border theme-card p-4">
       <div className="mb-3">
         <h3 className="text-sm font-medium theme-text">
           Feishu gateway pairing code
@@ -1377,7 +1377,7 @@ function FeishuHomeChannelCard({
   )
 
   return (
-    <div className="mt-4 rounded-md border theme-border theme-card p-3">
+    <div className="mt-4 rounded-md border theme-border theme-card p-4">
       <div className="mb-3">
         <h3 className="text-sm font-medium theme-text">Feishu home channel</h3>
         <p className="text-xs theme-muted">
@@ -1385,9 +1385,9 @@ function FeishuHomeChannelCard({
           delivery.
         </p>
       </div>
-      <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
         <div className="grid min-w-0 gap-2">
-          <NativeSelect
+          <SettingsSelect
             value={selectedKnownChannel ? model.feishu.homeChannel : ''}
             disabled={
               !model.platforms.feishu.configured || channels.length === 0
@@ -1413,7 +1413,7 @@ function FeishuHomeChannelCard({
                 {feishuChannelLabel(channel)}
               </option>
             ))}
-          </NativeSelect>
+          </SettingsSelect>
           <Input
             value={model.feishu.homeChannel}
             placeholder="oc_xxx"
@@ -1482,8 +1482,8 @@ function FeishuBotConfigCard({
         </DsLink>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <label className="space-y-1.5">
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             App ID
           </span>
@@ -1498,7 +1498,7 @@ function FeishuBotConfigCard({
             }
           />
         </label>
-        <label className="space-y-1.5">
+        <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             App Secret
           </span>
@@ -1514,11 +1514,11 @@ function FeishuBotConfigCard({
             }
           />
         </label>
-        <label className="space-y-1.5">
+        <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Domain
           </span>
-          <NativeSelect
+          <SettingsSelect
             value={model.feishu.domain}
             onChange={(event) =>
               model.setFeishu((current) => ({
@@ -1530,13 +1530,13 @@ function FeishuBotConfigCard({
           >
             <option value="feishu">Feishu</option>
             <option value="lark">Lark</option>
-          </NativeSelect>
+          </SettingsSelect>
         </label>
-        <label className="space-y-1.5">
+        <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Connection Mode
           </span>
-          <NativeSelect
+          <SettingsSelect
             value={model.feishu.connectionMode}
             onChange={(event) =>
               model.setFeishu((current) => ({
@@ -1548,7 +1548,7 @@ function FeishuBotConfigCard({
           >
             <option value="websocket">WebSocket</option>
             <option value="webhook">Webhook</option>
-          </NativeSelect>
+          </SettingsSelect>
         </label>
 
         {state.configured ? (
@@ -1654,7 +1654,7 @@ function WeixinReadOnlyCard({
       ) : null}
 
       {shouldShowPairing ? (
-        <div className="space-y-3 rounded-md border theme-border theme-card p-3">
+        <div className="space-y-4 rounded-md border theme-border theme-card p-4">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -1721,7 +1721,7 @@ function WeixinReadOnlyCard({
       ) : null}
 
       {reconnectOutcome ? (
-        <div className="mt-3 rounded-md border theme-border theme-card p-3 text-xs theme-text">
+        <div className="mt-3 rounded-md border theme-border theme-card p-4 text-xs theme-text">
           <div className="flex flex-wrap items-center gap-2">
             <span>Reconnect: {reconnectOutcome.auth_level}</span>
             <span>Reason: {reconnectOutcome.auth_reason}</span>
@@ -1741,7 +1741,7 @@ function WeixinReadOnlyCard({
       ) : null}
 
       {!shouldShowPairing ? (
-        <div className="mt-3 rounded-md border theme-border theme-card p-3">
+        <div className="mt-3 rounded-md border theme-border theme-card p-4">
           <p className="text-xs font-medium theme-text">
             Approve your own Weixin pairing code
           </p>
@@ -1773,8 +1773,8 @@ function WeixinReadOnlyCard({
         </div>
       ) : null}
 
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
-        <label className="space-y-1.5">
+      <div className="mt-3 grid gap-4 md:grid-cols-2">
+        <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Account ID
           </span>
@@ -1784,7 +1784,7 @@ function WeixinReadOnlyCard({
             disabled
           />
         </label>
-        <label className="space-y-1.5">
+        <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Token
           </span>
@@ -1813,7 +1813,7 @@ function WeixinReadOnlyCard({
             ) : null}
           </div>
         </label>
-        <label className="space-y-1.5 md:col-span-2">
+        <label className="space-y-2 md:col-span-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Base URL
           </span>
@@ -1823,7 +1823,7 @@ function WeixinReadOnlyCard({
             disabled
           />
         </label>
-        <label className="space-y-1.5">
+        <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             DM Policy
           </span>
@@ -1833,7 +1833,7 @@ function WeixinReadOnlyCard({
             disabled
           />
         </label>
-        <label className="space-y-1.5">
+        <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Group Policy
           </span>
@@ -1843,7 +1843,7 @@ function WeixinReadOnlyCard({
             disabled
           />
         </label>
-        <label className="space-y-1.5 md:col-span-2">
+        <label className="space-y-2 md:col-span-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Allowed Users (DM)
           </span>
@@ -1853,7 +1853,7 @@ function WeixinReadOnlyCard({
             disabled
           />
         </label>
-        <label className="space-y-1.5 md:col-span-2">
+        <label className="space-y-2 md:col-span-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Allowed Groups
           </span>
@@ -1865,7 +1865,7 @@ function WeixinReadOnlyCard({
             disabled
           />
         </label>
-        <label className="space-y-1.5 md:col-span-2">
+        <label className="space-y-2 md:col-span-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Home Channel
           </span>
@@ -1875,7 +1875,7 @@ function WeixinReadOnlyCard({
             disabled
           />
         </label>
-        <label className="space-y-1.5 md:col-span-2">
+        <label className="space-y-2 md:col-span-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             CDN Base URL
           </span>

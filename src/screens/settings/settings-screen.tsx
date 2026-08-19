@@ -23,7 +23,7 @@ import type { LocaleId } from '@/lib/i18n'
 import type { CSSProperties } from 'react'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { Button } from '@/components/ui/button'
-import { DropdownSelect } from '@/components/ui/dropdown-select'
+import { SettingsSelect } from '@/components/ui/settings-select'
 import { Switch } from '@/components/ui/switch'
 import { useSettings } from '@/hooks/use-settings'
 import { LOCALE_LABELS } from '@/lib/i18n'
@@ -198,10 +198,10 @@ function WorkspaceThemePicker() {
             variant="ghost"
             onClick={() => applyWorkspaceTheme(t.id)}
             className={cn(
-              'flex min-h-[112px] flex-col gap-2.5 rounded-xl border p-3.5 text-left transition-all',
+              'flex min-h-32 flex-col gap-2 rounded-md border p-4 text-left transition-colors',
               isActive
-                ? 'border-[var(--theme-accent)] bg-[var(--theme-accent-subtle)] text-[var(--theme-text)] shadow-sm'
-                : 'border-[var(--theme-border)] bg-[var(--theme-card)] text-[var(--theme-text)] hover:-translate-y-0.5 hover:bg-[var(--theme-card2)]',
+                ? 'border-[var(--theme-accent)] bg-[var(--theme-accent-subtle)] text-[var(--theme-text)]'
+                : 'border-[var(--theme-border)] bg-[var(--theme-card)] text-[var(--theme-text)] hover:bg-[var(--theme-card2)]',
             )}
           >
             <PageThemeSwatch colors={THEME_PREVIEWS[t.id]} />
@@ -415,56 +415,58 @@ export function SettingsScreen() {
 
   return (
     <AppPage>
-      <main className="relative mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pt-6 pb-24 sm:px-6 md:flex-row md:gap-6 md:pb-8 lg:pt-8">
+      <main className="relative mx-auto grid w-full max-w-5xl grid-cols-1 gap-6 px-4 pt-8 pb-8 sm:px-6 md:grid-cols-[12rem_1fr] md:gap-8">
         {/* Sidebar nav */}
-        <nav className="hidden w-48 shrink-0 md:block">
-          <div className="sticky top-8">
-            <h1 className="mb-4 px-3 text-lg font-semibold text-(--theme-text)">
-              Settings
-            </h1>
-            <div className="flex flex-col gap-0.5">
-              {SETTINGS_NAV_ITEMS.map((item) =>
-                item.to ? (
+        <nav className="hidden md:block md:sticky md:top-8 md:self-start" aria-label="Settings sections">
+          <h1 className="mb-4 px-2 text-sm font-semibold uppercase tracking-wide text-(--theme-muted)">
+            Settings
+          </h1>
+          <div className="flex flex-col gap-1">
+            {SETTINGS_NAV_ITEMS.map((item) => {
+              const isActive = !item.to && activeSection === item.id
+              if (item.to) {
+                return (
                   <Link
                     key={item.id}
                     to={item.to}
-                    className="rounded-[var(--radius-md)] px-3 py-2 text-left text-sm text-(--theme-muted) transition-colors hover:bg-(--theme-card2) hover:text-(--theme-text)"
+                    className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-(--theme-muted) transition-colors duration-150 hover:bg-(--theme-card2) hover:text-(--theme-text)"
                   >
                     {item.label}
                   </Link>
-                ) : (
-                  <Button
-                    key={item.id}
-                    type="button"
-                    variant="ghost"
-                    onClick={() =>
-                      setActiveSection(item.id as SettingsSectionId)
-                    }
-                    className={cn(
-                      'rounded-[var(--radius-md)] px-3 py-2 text-left text-sm transition-colors',
-                      activeSection === item.id
-                        ? 'bg-(--theme-accent-subtle) text-(--theme-accent) font-medium'
-                        : 'text-(--theme-muted) hover:bg-(--theme-card2) hover:text-(--theme-text)',
-                    )}
-                  >
-                    {item.label}
-                  </Button>
-                ),
-              )}
-            </div>
+                )
+              }
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() =>
+                    setActiveSection(item.id as SettingsSectionId)
+                  }
+                  aria-current={isActive ? 'page' : undefined}
+                  className={cn(
+                    'flex items-center gap-2 rounded-md border-l-2 px-2 py-2 text-left text-sm transition-colors duration-150',
+                    isActive
+                      ? 'border-l-(--theme-accent) bg-(--theme-card2) font-medium text-(--theme-text)'
+                      : 'border-l-transparent text-(--theme-muted) hover:bg-(--theme-card2) hover:text-(--theme-text)',
+                  )}
+                >
+                  {item.label}
+                </button>
+              )
+            })}
           </div>
         </nav>
 
         {/* Mobile header — intentionally omitted; MobilePageHeader above shows "Settings" */}
 
         {/* Mobile section pills */}
-        <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-none md:hidden">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none md:hidden">
           {SETTINGS_NAV_ITEMS.map((item) =>
             item.to ? (
               <Link
                 key={item.id}
                 to={item.to}
-                className="shrink-0 rounded-full bg-primary-100 px-3 py-1.5 text-xs font-medium text-primary-600 transition-colors"
+                className="shrink-0 rounded-full bg-(--theme-card2) px-3 py-2 text-xs font-medium text-(--theme-muted) transition-colors hover:bg-(--theme-card)"
               >
                 {item.label}
               </Link>
@@ -474,10 +476,10 @@ export function SettingsScreen() {
                 type="button"
                 onClick={() => setActiveSection(item.id as SettingsSectionId)}
                 className={cn(
-                  'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                  'shrink-0 rounded-full px-3 py-2 text-xs font-medium transition-colors',
                   activeSection === item.id
-                    ? 'bg-accent-500 text-white'
-                    : 'bg-primary-100 text-primary-600',
+                    ? 'bg-(--theme-accent) text-(--theme-accent-foreground)'
+                    : 'bg-(--theme-card2) text-(--theme-muted)',
                 )}
               >
                 {item.label}
@@ -487,24 +489,24 @@ export function SettingsScreen() {
         </div>
 
         {/* Content area */}
-        <div className="flex-1 min-w-0 flex flex-col gap-4">
-          <section className="rounded-2xl border border-primary-200 bg-white/80 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex flex-col gap-8">
+          <section className="rounded-md border border-(--theme-border) bg-(--theme-card2) p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <div className="text-xs font-semibold uppercase tracking-wide text-primary-500 dark:text-neutral-400">
+                <div className="text-xs font-semibold uppercase tracking-wide text-(--theme-muted)">
                   {REAL_COMPANY_SETTINGS_COPY.title}
                 </div>
-                <div className="mt-1 truncate text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                <div className="mt-1 truncate text-sm font-semibold text-(--theme-text)">
                   {organizationQuery.data?.organization?.organization_name ||
                     organizationQuery.data?.organization?.organization_id ||
                     'No active organization'}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-full border border-primary-200 px-2 py-1 font-semibold dark:border-neutral-700">
+                  <span className="rounded-full border border-(--theme-border) px-2 py-1 font-semibold">
                     {organizationQuery.data?.organization?.dataset_type ||
                       (organizationQuery.isLoading ? 'LOADING' : 'NO_DATASET')}
                   </span>
-                  <span className="rounded-full border border-primary-200 px-2 py-1 font-semibold dark:border-neutral-700">
+                  <span className="rounded-full border border-(--theme-border) px-2 py-1 font-semibold">
                     {organizationQuery.data?.organization?.authority_state ||
                       'REAL_EMPTY'}
                   </span>
@@ -517,12 +519,13 @@ export function SettingsScreen() {
                     variant="outline"
                     onClick={handleSwitchToDemoCompany}
                     disabled={companySwitchPending}
+                    className="!rounded-md !shadow-none"
                   >
                     {REAL_COMPANY_SETTINGS_COPY.switchDemoAction}
                   </Button>
                   <Link
                     to="/settings/data-connections"
-                    className="inline-flex items-center justify-center rounded-xl border border-primary-300 px-3 py-2 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                    className="inline-flex items-center justify-center rounded-md border border-(--theme-border) px-3 py-2 text-sm font-semibold text-(--theme-text) transition-colors hover:bg-(--theme-card)"
                   >
                     {REAL_COMPANY_SETTINGS_COPY.importAction}
                   </Link>
@@ -532,13 +535,14 @@ export function SettingsScreen() {
                   type="button"
                   onClick={handleSwitchToRealCompany}
                   disabled={companySwitchPending}
+                  className="!rounded-md !shadow-none"
                 >
                   {REAL_COMPANY_SETTINGS_COPY.switchAction}
                 </Button>
               ) : (
                 <Link
                   to="/settings/organization"
-                  className="inline-flex shrink-0 items-center justify-center rounded-xl bg-primary-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-200"
+                  className="inline-flex shrink-0 items-center justify-center rounded-md bg-(--theme-accent) px-3 py-2 text-sm font-semibold text-(--theme-accent-foreground) transition-colors hover:bg-(--theme-accent)/90"
                 >
                   {REAL_COMPANY_SETTINGS_COPY.switchAction}
                 </Link>
@@ -615,7 +619,7 @@ export function SettingsScreen() {
                     aria-valuemax={20}
                     aria-valuenow={settings.editorFontSize}
                   />
-                  <span className="w-12 text-right text-sm tabular-nums text-primary-700">
+                  <span className="w-12 text-right text-sm tabular-nums text-(--theme-text)">
                     {settings.editorFontSize}px
                   </span>
                 </div>
@@ -658,13 +662,13 @@ export function SettingsScreen() {
                 label="Interface Language"
                 description="Translates navigation, labels, and buttons. Content from the agent remains in the agent's language."
               >
-                <DropdownSelect
+                <SettingsSelect
                   value={settings.locale}
                   onChange={(e) => {
                     updateSettings({ locale: e.target.value as LocaleId })
                     window.location.reload()
                   }}
-                  className="h-9 w-full rounded-lg border border-primary-200 dark:border-gray-600 bg-primary-50 dark:bg-gray-800 px-3 text-sm text-primary-900 dark:text-gray-100 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 md:max-w-xs"
+                  className="h-9 w-full rounded-md border border-(--theme-border) dark:border-gray-600 bg-(--theme-card) dark:bg-gray-800 px-3 text-sm text-(--theme-text) dark:text-gray-100 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 md:max-w-xs"
                 >
                   {(
                     Object.entries(LOCALE_LABELS) as Array<[LocaleId, string]>
@@ -673,7 +677,7 @@ export function SettingsScreen() {
                       {label}
                     </option>
                   ))}
-                </DropdownSelect>
+                </SettingsSelect>
               </SettingsRow>
             </SettingsSection>
           )}
@@ -719,7 +723,7 @@ export function SettingsScreen() {
                       aria-valuemax={100}
                       aria-valuenow={settings.usageThreshold}
                     />
-                    <span className="w-12 text-right text-sm tabular-nums text-primary-700">
+                    <span className="w-12 text-right text-sm tabular-nums text-(--theme-text)">
                       {settings.usageThreshold}%
                     </span>
                   </div>
@@ -747,12 +751,12 @@ export function SettingsScreen() {
                   label="Preferred budget model"
                   description="Default model for cheaper suggestions (leave empty for auto-detect)."
                 >
-                  <DropdownSelect
+                  <SettingsSelect
                     value={settings.preferredBudgetModel}
                     onChange={(e) =>
                       updateSettings({ preferredBudgetModel: e.target.value })
                     }
-                    className="h-9 w-full rounded-lg border border-primary-200 dark:border-gray-600 bg-primary-50 dark:bg-gray-800 px-3 text-sm text-primary-900 dark:text-gray-100 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 dark:focus-visible:ring-primary-500 md:max-w-xs"
+                    className="h-9 w-full rounded-md border border-(--theme-border) dark:border-gray-600 bg-(--theme-card) dark:bg-gray-800 px-3 text-sm text-(--theme-text) dark:text-gray-100 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 dark:focus-visible:ring-primary-500 md:max-w-xs"
                     aria-label="Preferred budget model"
                   >
                     <option value="">Auto-detect</option>
@@ -764,18 +768,18 @@ export function SettingsScreen() {
                         {model.label}
                       </option>
                     ))}
-                  </DropdownSelect>
+                  </SettingsSelect>
                 </SettingsRow>
                 <SettingsRow
                   label="Preferred premium model"
                   description="Default model for upgrade suggestions (leave empty for auto-detect)."
                 >
-                  <DropdownSelect
+                  <SettingsSelect
                     value={settings.preferredPremiumModel}
                     onChange={(e) =>
                       updateSettings({ preferredPremiumModel: e.target.value })
                     }
-                    className="h-9 w-full rounded-lg border border-primary-200 dark:border-gray-600 bg-primary-50 dark:bg-gray-800 px-3 text-sm text-primary-900 dark:text-gray-100 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 dark:focus-visible:ring-primary-500 md:max-w-xs"
+                    className="h-9 w-full rounded-md border border-(--theme-border) dark:border-gray-600 bg-(--theme-card) dark:bg-gray-800 px-3 text-sm text-(--theme-text) dark:text-gray-100 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 dark:focus-visible:ring-primary-500 md:max-w-xs"
                     aria-label="Preferred premium model"
                   >
                     <option value="">Auto-detect</option>
@@ -787,7 +791,7 @@ export function SettingsScreen() {
                         {model.label}
                       </option>
                     ))}
-                  </DropdownSelect>
+                  </SettingsSelect>
                 </SettingsRow>
                 <SettingsRow
                   label="Only suggest cheaper models"
@@ -805,8 +809,8 @@ export function SettingsScreen() {
             </>
           )}
 
-          <footer className="mt-auto pt-4">
-            <div className="flex items-center gap-2 rounded-2xl border border-primary-200 bg-primary-50/70 p-3 text-sm text-primary-600 backdrop-blur-sm">
+          <footer className="mt-auto pt-8">
+            <div className="flex items-center gap-4 rounded-md border border-(--theme-border) bg-(--theme-card2) p-4 text-sm text-(--theme-muted)">
               <HugeiconsIcon
                 icon={Settings02Icon}
                 size={20}
@@ -902,8 +906,8 @@ function _ProfileSection() {
           alt={displayName}
         />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-primary-900">{displayName}</p>
-          <p className="text-xs text-primary-500">
+          <p className="text-sm font-medium text-(--theme-text)">{displayName}</p>
+          <p className="text-xs text-(--theme-muted)">
             Shown in the sidebar and chat messages.
           </p>
         </div>
@@ -944,7 +948,7 @@ function _ProfileSection() {
                 onChange={handleAvatarUpload}
                 disabled={profileProcessing}
                 aria-label="Upload profile picture"
-                className="block w-full cursor-pointer text-xs text-primary-700 dark:text-gray-300 md:max-w-xs file:mr-2 file:cursor-pointer file:rounded-md file:border file:border-primary-200 dark:file:border-gray-600 file:bg-primary-100 dark:file:bg-gray-700 file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-primary-900 dark:file:text-gray-100 file:transition-colors hover:file:bg-primary-200 dark:hover:file:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="block w-full cursor-pointer text-xs text-(--theme-text) md:max-w-xs file:mr-2 file:cursor-pointer file:rounded-md file:border file:border-(--theme-border) file:bg-(--theme-card2) file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-(--theme-text) file:transition-colors hover:file:bg-primary-200 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </label>
             <Button
@@ -1048,7 +1052,7 @@ function LoaderPreview({ style }: { style: LoaderStyle }) {
       preset={preset}
       size={16}
       speed={120}
-      className="text-primary-500"
+      className="text-(--theme-muted)"
     />
   ) : (
     <ThreeDotsSpinner />
@@ -1074,10 +1078,10 @@ function _LoaderStyleSection() {
               type="button"
               onClick={() => updateChatSettings({ loaderStyle: option.value })}
               className={cn(
-                'flex min-h-16 flex-col items-center justify-center gap-2 rounded-xl border px-2 py-2 transition-colors',
+                'flex min-h-16 flex-col items-center justify-center gap-2 rounded-md border px-2 py-2 transition-colors',
                 active
-                  ? 'border-primary-500 bg-primary-200/60 text-primary-900'
-                  : 'border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100',
+                  ? 'border-(--theme-accent) bg-(--theme-accent-subtle) text-(--theme-text)'
+                  : 'border-(--theme-border) bg-(--theme-card) text-(--theme-text) hover:bg-(--theme-card2)',
               )}
               aria-pressed={active}
             >
@@ -1220,7 +1224,7 @@ function HermesConfigSection({
   }
 
   const selectClassName =
-    'h-9 w-full rounded-lg border border-primary-200 bg-primary-50 px-3 text-sm text-primary-900 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 md:max-w-sm'
+    'h-9 w-full rounded-md border border-(--theme-border) bg-(--theme-card) px-3 text-sm text-(--theme-text) outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 md:max-w-sm'
 
   const readNumber = (value: unknown, fallback: number) => {
     if (typeof value === 'number' && Number.isFinite(value)) return value
@@ -1253,7 +1257,7 @@ function HermesConfigSection({
         icon={Settings02Icon}
       >
         <div
-          className="h-20 animate-pulse rounded-lg"
+          className="h-20 animate-pulse rounded-md"
           style={{ backgroundColor: 'var(--theme-panel)' }}
         />
       </SettingsSection>
@@ -1307,7 +1311,7 @@ function HermesConfigSection({
         >
           <div className="flex w-full max-w-sm gap-2">
             {availableProviders.length > 0 ? (
-              <DropdownSelect
+              <SettingsSelect
                 value={providerInput}
                 onChange={(e) => {
                   const newProvider = e.target.value
@@ -1323,7 +1327,7 @@ function HermesConfigSection({
                     {p.authenticated ? ' ✓' : ''}
                   </option>
                 ))}
-              </DropdownSelect>
+              </SettingsSelect>
             ) : (
               <Input
                 aria-label="Provider"
@@ -1343,7 +1347,7 @@ function HermesConfigSection({
         >
           <div className="flex w-full max-w-sm gap-2">
             {availableModels.length > 0 ? (
-              <DropdownSelect
+              <SettingsSelect
                 value={modelInput}
                 onChange={(e) => setModelInput(e.target.value)}
                 className={`${selectClassName} font-mono`}
@@ -1358,7 +1362,7 @@ function HermesConfigSection({
                     {m.description ? ` — ${m.description}` : ''}
                   </option>
                 ))}
-              </DropdownSelect>
+              </SettingsSelect>
             ) : (
               <Input
                 aria-label="Model"
@@ -1557,37 +1561,37 @@ function HermesConfigSection({
       >
         <div className="space-y-3">
           {customProviders.length === 0 ? (
-            <div className="rounded-xl border border-primary-200 bg-primary-100/40 p-3 text-sm text-primary-600">
+            <div className="rounded-md border border-(--theme-border) bg-(--theme-card2)/40 p-3 text-sm text-(--theme-muted)">
               No custom providers configured.
             </div>
           ) : (
             customProviders.map((provider, index) => (
               <div
                 key={`${String(provider.name || provider.base_url || index)}`}
-                className="rounded-xl border border-primary-200 bg-primary-100/40 p-3"
+                className="rounded-md border border-(--theme-border) bg-(--theme-card2)/40 p-3"
               >
                 <div className="grid gap-2 text-sm md:grid-cols-3">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-primary-500">
+                    <p className="text-xs uppercase tracking-wide text-(--theme-muted)">
                       Name
                     </p>
-                    <p className="font-medium text-primary-900">
+                    <p className="font-medium text-(--theme-text)">
                       {String(provider.name || 'Unnamed')}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-primary-500">
+                    <p className="text-xs uppercase tracking-wide text-(--theme-muted)">
                       Base URL
                     </p>
-                    <p className="font-mono text-xs text-primary-700 break-all">
+                    <p className="font-mono text-xs text-(--theme-text) break-all">
                       {String(provider.base_url || 'Not set')}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-primary-500">
+                    <p className="text-xs uppercase tracking-wide text-(--theme-muted)">
                       Type
                     </p>
-                    <p className="text-primary-700">
+                    <p className="text-(--theme-text)">
                       {String(provider.type || provider.auth_type || 'Unknown')}
                     </p>
                   </div>
@@ -1595,8 +1599,8 @@ function HermesConfigSection({
               </div>
             ))
           )}
-          <div className="flex flex-col gap-3 rounded-xl border border-primary-200 bg-primary-100/40 p-3 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm text-primary-600">
+          <div className="flex flex-col gap-3 rounded-md border border-(--theme-border) bg-(--theme-card2)/40 p-3 md:flex-row md:items-center md:justify-between">
+            <p className="text-sm text-(--theme-muted)">
               Edit custom providers in config.yaml for security.
             </p>
             <Button
@@ -1684,7 +1688,7 @@ function HermesConfigSection({
         label="Tool use enforcement"
         description="Whether the agent must use tools when available."
       >
-        <DropdownSelect
+        <SettingsSelect
           value={(agentConfig.tool_use_enforcement as string) || 'auto'}
           onChange={(e) =>
             void saveConfig({
@@ -1696,7 +1700,7 @@ function HermesConfigSection({
           <option value="auto">auto</option>
           <option value="required">required</option>
           <option value="none">none</option>
-        </DropdownSelect>
+        </SettingsSelect>
       </SettingsRow>
     </SettingsSection>
   )
@@ -1724,7 +1728,7 @@ function HermesConfigSection({
         label="Cheap model"
         description="Model to use for simple queries."
       >
-        <DropdownSelect
+        <SettingsSelect
           value={(smartRouting.cheap_model as string) || ''}
           onChange={(e) =>
             void saveConfig({
@@ -1739,7 +1743,7 @@ function HermesConfigSection({
               {model.id}
             </option>
           ))}
-        </DropdownSelect>
+        </SettingsSelect>
       </SettingsRow>
       <SettingsRow
         label="Max simple chars"
@@ -1793,7 +1797,7 @@ function HermesConfigSection({
           label="TTS provider"
           description="Which TTS engine to use."
         >
-          <DropdownSelect
+          <SettingsSelect
             value={ttsProvider}
             onChange={(e) =>
               void saveConfig({ config: { tts: { provider: e.target.value } } })
@@ -1804,7 +1808,7 @@ function HermesConfigSection({
             <option value="elevenlabs">ElevenLabs</option>
             <option value="openai">OpenAI TTS</option>
             <option value="neutts">NeuTTS</option>
-          </DropdownSelect>
+          </SettingsSelect>
         </SettingsRow>
 
         {ttsProvider === 'edge' && (
@@ -1857,7 +1861,7 @@ function HermesConfigSection({
               label="Voice"
               description="alloy, echo, fable, onyx, nova, shimmer"
             >
-              <DropdownSelect
+              <SettingsSelect
                 value={(ttsOpenAi.voice as string) || 'alloy'}
                 onChange={(e) =>
                   void saveConfig({
@@ -1873,7 +1877,7 @@ function HermesConfigSection({
                     </option>
                   ),
                 )}
-              </DropdownSelect>
+              </SettingsSelect>
             </SettingsRow>
             <SettingsRow label="Model" description="OpenAI TTS model.">
               <Input
@@ -1908,7 +1912,7 @@ function HermesConfigSection({
           label="STT provider"
           description="Which speech engine to use."
         >
-          <DropdownSelect
+          <SettingsSelect
             value={sttProvider}
             onChange={(e) =>
               void saveConfig({ config: { stt: { provider: e.target.value } } })
@@ -1917,14 +1921,14 @@ function HermesConfigSection({
           >
             <option value="local">Local (Whisper)</option>
             <option value="openai">OpenAI Whisper API</option>
-          </DropdownSelect>
+          </SettingsSelect>
         </SettingsRow>
         {sttProvider === 'local' && (
           <SettingsRow
             label="Model size"
             description="tiny, base, small, medium, large"
           >
-            <DropdownSelect
+            <SettingsSelect
               value={(sttLocal.model_size as string) || 'base'}
               onChange={(e) =>
                 void saveConfig({
@@ -1938,7 +1942,7 @@ function HermesConfigSection({
                   {size}
                 </option>
               ))}
-            </DropdownSelect>
+            </SettingsSelect>
           </SettingsRow>
         )}
       </SettingsSection>
@@ -1952,7 +1956,7 @@ function HermesConfigSection({
       icon={PaintBoardIcon}
     >
       <SettingsRow label="Personality" description="Agent response style.">
-        <DropdownSelect
+        <SettingsSelect
           value={(displayConfig.personality as string) || 'default'}
           onChange={(e) =>
             void saveConfig({
@@ -1966,7 +1970,7 @@ function HermesConfigSection({
               {value}
             </option>
           ))}
-        </DropdownSelect>
+        </SettingsSelect>
       </SettingsRow>
       <SettingsRow
         label="Streaming"
@@ -2031,7 +2035,7 @@ function HermesConfigSection({
     <>
       {saveMessage && (
         <div
-          className="rounded-lg px-3 py-2 text-sm font-medium"
+          className="rounded-md px-3 py-2 text-sm font-medium"
           style={{
             backgroundColor: saveMessage.includes('Failed')
               ? 'rgba(239,68,68,0.15)'

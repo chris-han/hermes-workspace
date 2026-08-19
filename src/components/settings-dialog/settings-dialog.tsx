@@ -4,7 +4,7 @@ import { Link as DsLink } from '@/components/ui/link'
 
 import { Checkbox, Radio } from '@/components/ui/form-controls'
 
-import { NativeSelect } from '@/components/ui/form-controls'
+import { SettingsSelect } from "@/components/ui/settings-select";
 
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -139,13 +139,13 @@ function SectionHeader({
 }) {
   return (
     <div className="mb-2">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-(--theme-muted)">
         Settings
       </p>
-      <h3 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+      <h3 className="text-base font-semibold text-(--theme-text)">
         {title}
       </h3>
-      <p className="text-xs text-primary-500 dark:text-neutral-400">
+      <p className="text-xs text-(--theme-muted)">
         {description}
       </p>
     </div>
@@ -164,11 +164,11 @@ function Row({
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 py-1.5">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+        <p className="text-sm font-medium text-(--theme-text)">
           {label}
         </p>
         {description && (
-          <p className="text-xs text-primary-500 dark:text-neutral-400">
+          <p className="text-xs text-(--theme-muted)">
             {description}
           </p>
         )}
@@ -178,7 +178,7 @@ function Row({
   )
 }
 
-const SETTINGS_CARD_CLASS = 'rounded-xl px-4 py-3'
+const SETTINGS_CARD_CLASS = 'rounded-md border border-(--theme-border) bg-(--theme-card2) p-4'
 
 const getCardStyle = (): React.CSSProperties => ({
   border: '1px solid var(--theme-border)',
@@ -514,7 +514,7 @@ function HermesContent() {
       {msg && (
         <div
           className={cn(
-            'rounded-lg px-3 py-2 text-sm font-medium',
+            'rounded-md px-3 py-2 text-sm font-medium',
             msg.includes('Failed')
               ? 'bg-red-500/15 text-red-400'
               : 'bg-green-500/15 text-green-400',
@@ -535,7 +535,7 @@ function HermesContent() {
         <p className="mb-3 text-[11px]" style={mutedStyle}>
           Select your AI provider. OAuth providers authenticate via browser.
         </p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {PROVIDER_CARDS.map((p) => {
             const isActive = activeProvider === p.id
             const hasKey =
@@ -543,46 +543,38 @@ function HermesContent() {
               p.authType === 'oauth' ||
               (p.envKey ? !!configuredKeys[p.envKey] : false)
             return (
-              <Button
+              <button
                 key={p.id}
                 type="button"
                 onClick={() => {
                   if (hasKey) selectProvider(p.id)
                 }}
+                aria-pressed={isActive}
                 className={cn(
-                  'flex flex-col items-start gap-1 rounded-xl px-3 py-2.5 text-left transition-all',
+                  'flex min-w-0 flex-col items-start gap-2 rounded-md border bg-(--theme-card2) p-3 text-left transition-colors',
                   isActive
-                    ? 'ring-2 ring-accent-500 shadow-md'
-                    : 'hover:brightness-110',
+                    ? 'border-(--theme-accent) bg-(--theme-accent-subtle)'
+                    : 'border-(--theme-border) hover:bg-(--theme-card)',
                   !hasKey && p.authType === 'api_key' && 'opacity-60',
                 )}
                 style={cardStyle}
               >
-                <div className="flex w-full items-center justify-between">
-                  <ProviderLogo provider={p.id} size={32} />
-                  {isActive && (
-                    <span className="size-2 rounded-full bg-green-500" />
-                  )}
-                  {!isActive && hasKey && (
-                    <span className="size-2 rounded-full bg-green-500/40" />
-                  )}
-                  {!hasKey && p.authType === 'api_key' && (
-                    <span className="size-2 rounded-full bg-red-500/60" />
-                  )}
-                </div>
-                <span className="text-xs font-semibold mt-1">{p.name}</span>
-                <span className="text-[9px]" style={mutedStyle}>
+                <ProviderLogo provider={p.id} size={28} />
+                <span className="w-full min-w-0 truncate text-xs font-semibold leading-tight text-(--theme-text)">
+                  {p.name}
+                </span>
+                <span className="w-full min-w-0 truncate text-[10px] leading-tight text-(--theme-muted)">
                   {(() => {
                     const disc = localDiscovery?.providers.find(
                       (lp) => lp.id === p.id,
                     )
-                    if (disc?.online) return '🟢 Detected'
+                    if (disc?.online) return 'Detected'
                     if (p.authType === 'oauth') return 'OAuth'
                     if (p.authType === 'none') return 'Local'
                     return hasKey ? 'Key set' : 'Key required'
                   })()}
                 </span>
-              </Button>
+              </button>
             )
           })}
         </div>
@@ -615,10 +607,10 @@ function HermesContent() {
                 type="button"
                 onClick={() => selectProvider(activeProvider, model)}
                 className={cn(
-                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+                  'rounded-md px-2 py-1 text-xs font-medium transition-colors',
                   activeModel === model
-                    ? 'ring-2 ring-accent-500'
-                    : 'hover:brightness-110',
+                    ? 'ring-2 ring-(--theme-accent)'
+                    : 'hover:bg-(--theme-card)',
                 )}
                 style={cardStyle}
               >
@@ -641,22 +633,16 @@ function HermesContent() {
           Used for vision, web extraction, and compression helper calls.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <NativeSelect
+          <SettingsSelect
+            className="flex-1"
+            ariaLabel="Auxiliary model provider"
             value={auxiliaryProvider}
-            onChange={(e) => selectAuxiliaryProvider(e.target.value)}
-            className="min-h-10 flex-1 rounded-lg border px-3 text-sm outline-none"
-            style={{
-              ...cardStyle,
-              backgroundColor: 'var(--theme-card)',
-            }}
-          >
-            <option value="">Select provider</option>
-            {PROVIDER_CARDS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </NativeSelect>
+            onValueChange={selectAuxiliaryProvider}
+            placeholder="Select provider"
+            options={[
+              ...PROVIDER_CARDS.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+          />
           <Input
             value={auxiliaryModel}
             onChange={(e) => setAuxiliaryModel(e.target.value)}
@@ -673,7 +659,7 @@ function HermesContent() {
               }
             }}
             placeholder="Auxiliary model"
-            className="min-h-10 flex-1"
+            className="h-8 flex-1"
             style={cardStyle}
           />
         </div>
@@ -698,10 +684,10 @@ function HermesContent() {
                   selectAuxiliaryProvider(auxiliaryProvider, model)
                 }
                 className={cn(
-                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+                  'rounded-md px-2 py-1 text-xs font-medium transition-colors',
                   auxiliaryModel === model
-                    ? 'ring-2 ring-accent-500'
-                    : 'hover:brightness-110',
+                    ? 'ring-2 ring-(--theme-accent)'
+                    : 'hover:bg-(--theme-card)',
                 )}
                 style={cardStyle}
               >
@@ -718,7 +704,7 @@ function HermesContent() {
         )
         if (!disc || !disc.needsRestart) return null
         return (
-          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-200">
+          <div className="rounded-md border border-(--theme-border) border-l-2 border-l-amber-400 bg-(--theme-card2) px-3 py-2 text-xs text-(--theme-text)">
             ⚠️ Gateway restart needed to use {disc.name}. Run{' '}
             <code className="rounded bg-black/30 px-1">
               hermes gateway restart
@@ -736,7 +722,7 @@ function HermesContent() {
         >
           API Keys
         </p>
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {PROVIDER_CARDS.filter((p) => p.envKey).map((p) => {
             const key = p.envKey!
             const hasKey = !!configuredKeys[key]
@@ -744,7 +730,7 @@ function HermesContent() {
             return (
               <div
                 key={p.id}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+                className="flex items-center gap-3 rounded-md border border-(--theme-border) bg-(--theme-card2) px-3 py-2"
                 style={cardStyle}
               >
                 <ProviderLogo
@@ -801,7 +787,11 @@ function HermesContent() {
                           setEditingKey(null)
                           setKeyInput('')
                         }}
-                        className="rounded-lg px-2 py-1 text-[11px] font-medium bg-accent-500 text-white"
+                        className="!rounded-md !shadow-none rounded-md px-2 py-1 text-[11px] font-medium"
+                        style={{
+                          backgroundColor: 'var(--theme-accent)',
+                          color: 'var(--theme-accent-foreground)',
+                        }}
                       >
                         Save
                       </Button>
@@ -811,7 +801,7 @@ function HermesContent() {
                           setEditingKey(null)
                           setKeyInput('')
                         }}
-                        className="rounded-lg px-2 py-1 text-[11px] font-medium"
+                        className="!rounded-md !shadow-none rounded-md px-2 py-1 text-[11px] font-medium"
                         style={{ color: 'var(--theme-muted)' }}
                       >
                         Cancel
@@ -820,14 +810,12 @@ function HermesContent() {
                   ) : (
                     <Button
                       type="button"
+                      variant="outline"
                       onClick={() => {
                         setEditingKey(key)
                         setKeyInput('')
                       }}
-                      className="rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-accent-500/10"
-                      style={{
-                        color: 'var(--theme-accent, var(--theme-text))',
-                      }}
+                      className="!rounded-md !shadow-none rounded-md border-(--theme-accent) px-2 py-1 text-[11px] font-medium text-(--theme-accent) transition-colors hover:bg-(--theme-accent-subtle)"
                     >
                       {hasKey ? 'Update' : 'Add'}
                     </Button>
@@ -849,7 +837,7 @@ function HermesContent() {
         </p>
         <div className="space-y-1.5">
           <div
-            className="flex items-center justify-between rounded-xl px-3 py-2.5"
+            className="flex items-center justify-between rounded-md px-3 py-2.5"
             style={cardStyle}
           >
             <div>
@@ -867,7 +855,7 @@ function HermesContent() {
             />
           </div>
           <div
-            className="flex items-center justify-between rounded-xl px-3 py-2.5"
+            className="flex items-center justify-between rounded-md px-3 py-2.5"
             style={cardStyle}
           >
             <div>
@@ -888,7 +876,7 @@ function HermesContent() {
       </div>
 
       {/* Runtime Info */}
-      <div className="rounded-xl px-3 py-2.5" style={cardStyle}>
+      <div className="rounded-md px-3 py-2.5" style={cardStyle}>
         <div className="flex items-center gap-2 mb-2">
           <span className="size-2 rounded-full bg-green-500 animate-pulse" />
           <span
@@ -999,10 +987,10 @@ function _ProfileContent() {
         <div className="flex items-center gap-3">
           <UserAvatar size={44} src={cs.avatarDataUrl} alt={displayName} />
           <div>
-            <p className="text-sm font-medium text-primary-900 dark:text-neutral-100">
+            <p className="text-sm font-medium text-(--theme-text)">
               {displayName}
             </p>
-            <p className="text-xs text-primary-500 dark:text-neutral-400">
+            <p className="text-xs text-(--theme-muted)">
               No email connected
             </p>
           </div>
@@ -1015,7 +1003,7 @@ function _ProfileContent() {
               value={cs.displayName}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="User"
-              className="h-8 w-full rounded-lg border-primary-200 text-sm"
+              className="h-8 w-full rounded-md border-(--theme-border) text-sm"
               maxLength={50}
               aria-label="Display name"
               aria-invalid={!!nameError}
@@ -1041,7 +1029,7 @@ function _ProfileContent() {
                 onChange={handleAvatarUpload}
                 disabled={processing}
                 aria-label="Upload profile picture"
-                className="block max-w-[13rem] cursor-pointer text-xs text-primary-700 dark:text-neutral-300 file:mr-2 file:cursor-pointer file:rounded-lg file:border file:border-primary-200 file:bg-primary-100 file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-primary-900 file:transition-colors hover:file:bg-primary-200 disabled:cursor-not-allowed disabled:opacity-50"
+                className="block max-w-[13rem] cursor-pointer text-xs text-(--theme-text) file:mr-2 file:cursor-pointer file:rounded-md file:border file:border-(--theme-border) file:bg-(--theme-card2) file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-(--theme-text) file:transition-colors hover:file:bg-(--theme-card) disabled:cursor-not-allowed disabled:opacity-50"
               />
             </label>
             <Button
@@ -1049,7 +1037,7 @@ function _ProfileContent() {
               size="sm"
               onClick={() => updateCS({ avatarDataUrl: null })}
               disabled={!cs.avatarDataUrl || processing}
-              className="h-8 rounded-lg border-primary-200 px-3"
+              className="h-8 rounded-md border-(--theme-border) px-3"
             >
               Remove
             </Button>
@@ -1098,10 +1086,10 @@ function AppearanceContent() {
         description="Theme and color accents."
       />
       <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-(--theme-muted)">
           Theme Mode
         </p>
-        <div className="inline-flex rounded-lg border border-primary-200 p-1">
+        <div className="inline-flex rounded-md border border-(--theme-border) p-1">
           {[
             { value: 'light', label: 'Light', icon: Sun01Icon },
             { value: 'dark', label: 'Dark', icon: Moon01Icon },
@@ -1115,7 +1103,7 @@ function AppearanceContent() {
                 'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                 settings.theme === option.value
                   ? 'bg-accent-500 text-white'
-                  : 'text-primary-600 hover:bg-primary-100',
+                  : 'text-(--theme-muted) hover:bg-(--theme-card2)',
               )}
             >
               <HugeiconsIcon icon={option.icon} size={16} strokeWidth={1.5} />
@@ -1126,7 +1114,7 @@ function AppearanceContent() {
       </div>
       {/* Accent color removed — themes control accent */}
       <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-(--theme-muted)">
           Enterprise Theme
         </p>
         <EnterpriseThemePicker />
@@ -1315,12 +1303,12 @@ function EnterpriseThemePicker() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between rounded-lg border border-primary-200 px-3 py-2">
+      <div className="flex items-center justify-between rounded-md border border-(--theme-border) px-3 py-2">
         <div>
-          <p className="text-xs font-semibold text-primary-900 dark:text-neutral-100">
+          <p className="text-xs font-semibold text-(--theme-text)">
             {currentMode === 'dark' ? 'Dark mode' : 'Light mode'}
           </p>
-          <p className="text-[11px] text-primary-500 dark:text-neutral-400">
+          <p className="text-[11px] text-(--theme-muted)">
             Toggle the current theme family between paired light and dark
             variants.
           </p>
@@ -1328,7 +1316,7 @@ function EnterpriseThemePicker() {
         <Button
           type="button"
           onClick={toggleEnterpriseThemeMode}
-          className="inline-flex items-center gap-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-medium text-primary-900 transition-colors hover:bg-primary-100"
+          className="inline-flex items-center gap-2 rounded-md border border-(--theme-border) bg-(--theme-card) px-3 py-1.5 text-xs font-medium text-(--theme-text) transition-colors hover:bg-(--theme-card2)"
           aria-label={
             currentMode === 'dark'
               ? 'Switch enterprise theme to light mode'
@@ -1352,16 +1340,16 @@ function EnterpriseThemePicker() {
               type="button"
               onClick={() => applyEnterpriseTheme(t.id)}
               className={cn(
-                'flex flex-col gap-1.5 rounded-lg border p-2 text-left transition-colors',
+                'flex flex-col gap-1.5 rounded-md border p-2 text-left transition-colors',
                 isActive
                   ? 'border-accent-500 bg-accent-50 text-accent-700'
-                  : 'border-primary-200 bg-primary-50/80 hover:bg-primary-100',
+                  : 'border-(--theme-border) bg-(--theme-card2) hover:bg-(--theme-card2)',
               )}
             >
               <ThemeSwatch colors={t.preview} />
               <div className="flex items-center gap-1">
                 <span className="text-xs">{t.icon}</span>
-                <span className="text-xs font-semibold text-primary-900 dark:text-neutral-100">
+                <span className="text-xs font-semibold text-(--theme-text)">
                   {t.label}
                 </span>
                 {isActive && (
@@ -1370,7 +1358,7 @@ function EnterpriseThemePicker() {
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-primary-500 dark:text-neutral-400 leading-tight">
+              <p className="text-[10px] text-(--theme-muted) leading-tight">
                 {t.desc}
               </p>
             </Button>
@@ -1414,7 +1402,7 @@ function _LoaderContent() {
         preset={p}
         size={16}
         speed={120}
-        className="text-primary-500"
+        className="text-(--theme-muted)"
       />
     ) : (
       <ThreeDotsSpinner />
@@ -1422,7 +1410,7 @@ function _LoaderContent() {
   }
   return (
     <div>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-(--theme-muted)">
         Loading animation
       </p>
       <div className="grid grid-cols-4 gap-2">
@@ -1432,10 +1420,10 @@ function _LoaderContent() {
             type="button"
             onClick={() => updateCS({ loaderStyle: o.value })}
             className={cn(
-              'flex min-h-14 flex-col items-center justify-center gap-1.5 rounded-lg border px-1.5 py-1.5 transition-colors',
+              'flex min-h-14 flex-col items-center justify-center gap-1.5 rounded-md border px-1.5 py-1.5 transition-colors',
               cs.loaderStyle === o.value
                 ? 'border-accent-500 bg-accent-50 text-accent-700'
-                : 'border-primary-200 bg-primary-50/80 text-primary-700 hover:bg-primary-100',
+                : 'border-(--theme-border) bg-(--theme-card2) text-(--theme-text) hover:bg-(--theme-card2)',
             )}
             aria-pressed={cs.loaderStyle === o.value}
           >
@@ -1518,7 +1506,7 @@ function NotificationsContent() {
               aria-valuemax={100}
               aria-valuenow={settings.usageThreshold}
             />
-            <span className="w-10 text-right text-sm tabular-nums text-primary-700 dark:text-neutral-300">
+            <span className="w-10 text-right text-sm tabular-nums text-(--theme-text)">
               {settings.usageThreshold}%
             </span>
           </div>
@@ -1576,7 +1564,7 @@ function _AdvancedContent() {
               placeholder="https://api.hermesworkspace.app"
               value={settings.hermesUrl}
               onChange={(e) => validateAndUpdateUrl(e.target.value)}
-              className="h-8 w-full rounded-lg border-primary-200 text-sm"
+              className="h-8 w-full rounded-md border-(--theme-border) text-sm"
               aria-label="Hermes URL"
               aria-invalid={!!urlError}
               aria-describedby={urlError ? urlErrorId : undefined}
@@ -1603,7 +1591,7 @@ function _AdvancedContent() {
               connectionStatus === 'testing' &&
                 'border-accent-500/35 bg-accent-500/10 text-accent-600',
               connectionStatus === 'idle' &&
-                'border-primary-300 bg-primary-100 text-primary-700',
+                'border-(--theme-border) bg-(--theme-card2) text-(--theme-text)',
             )}
           >
             {connectionStatus === 'idle'
@@ -1619,7 +1607,7 @@ function _AdvancedContent() {
             size="sm"
             onClick={() => void testConnection()}
             disabled={connectionStatus === 'testing' || !!urlError}
-            className="h-8 rounded-lg border-primary-200 px-3"
+            className="h-8 rounded-md border-(--theme-border) px-3"
           >
             <HugeiconsIcon
               icon={CheckmarkCircle02Icon}
@@ -1656,7 +1644,7 @@ class SettingsErrorBoundary extends Component<
             </p>
             <Button
               onClick={() => this.setState({ error: null })}
-              className="text-xs text-primary-600 underline hover:text-primary-900"
+              className="text-xs text-(--theme-muted) underline hover:text-(--theme-text)"
             >
               Try again
             </Button>
@@ -1708,7 +1696,7 @@ function AgentBehaviorContent() {
       {msg && (
         <div
           className={cn(
-            'rounded-lg px-3 py-1.5 text-xs font-medium',
+            'rounded-md px-3 py-1.5 text-xs font-medium',
             msg === 'Saved'
               ? 'bg-green-500/15 text-green-400'
               : 'bg-red-500/15 text-red-400',
@@ -1728,7 +1716,7 @@ function AgentBehaviorContent() {
             max={100}
             value={Number(config.max_turns) || 50}
             onChange={(e) => save('max_turns', Number(e.target.value))}
-            className="h-8 w-20 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-center text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            className="h-8 w-20 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-center text-(--theme-text) outline-none"
           />
         </Row>
         <Row label="Gateway timeout" description="Seconds before timeout">
@@ -1738,19 +1726,19 @@ function AgentBehaviorContent() {
             max={600}
             value={Number(config.gateway_timeout) || 120}
             onChange={(e) => save('gateway_timeout', Number(e.target.value))}
-            className="h-8 w-20 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-center text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            className="h-8 w-20 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-center text-(--theme-text) outline-none"
           />
         </Row>
         <Row label="Tool enforcement" description="When agent must use tools">
-          <NativeSelect
+          <SettingsSelect
             value={String(config.tool_use_enforcement || 'auto')}
             onChange={(e) => save('tool_use_enforcement', e.target.value)}
-            className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
           >
             <option value="auto">Auto</option>
             <option value="required">Required</option>
             <option value="none">None</option>
-          </NativeSelect>
+          </SettingsSelect>
         </Row>
       </div>
     </div>
@@ -1870,7 +1858,7 @@ function AccessControlContent() {
       {msg && (
         <div
           className={cn(
-            'rounded-lg px-3 py-1.5 text-xs font-medium',
+            'rounded-md px-3 py-1.5 text-xs font-medium',
             msg === 'Saved'
               ? 'bg-green-500/15 text-green-400'
               : 'bg-red-500/15 text-red-400',
@@ -2097,7 +2085,7 @@ function SmartRoutingContent() {
       {msg && (
         <div
           className={cn(
-            'rounded-lg px-3 py-1.5 text-xs font-medium',
+            'rounded-md px-3 py-1.5 text-xs font-medium',
             msg === 'Saved'
               ? 'bg-green-500/15 text-green-400'
               : 'bg-red-500/15 text-red-400',
@@ -2117,10 +2105,10 @@ function SmartRoutingContent() {
           />
         </Row>
         <Row label="Cheap model" description="Model for simple queries">
-          <NativeSelect
+          <SettingsSelect
             value={String(config.cheap_model || '')}
             onChange={(e) => save('cheap_model', e.target.value)}
-            className="h-8 max-w-[12rem] rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            className="h-8 max-w-[12rem] rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
           >
             <option value="">Auto</option>
             {models.map((m) => (
@@ -2128,7 +2116,7 @@ function SmartRoutingContent() {
                 {m.name || m.id}
               </option>
             ))}
-          </NativeSelect>
+          </SettingsSelect>
         </Row>
         <Row label="Max chars" description="Messages shorter use cheap model">
           <Input
@@ -2137,7 +2125,7 @@ function SmartRoutingContent() {
             max={2000}
             value={Number(config.max_simple_chars) || 200}
             onChange={(e) => save('max_simple_chars', Number(e.target.value))}
-            className="h-8 w-20 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-center text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            className="h-8 w-20 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-center text-(--theme-text) outline-none"
           />
         </Row>
         <Row
@@ -2150,7 +2138,7 @@ function SmartRoutingContent() {
             max={500}
             value={Number(config.max_simple_words) || 30}
             onChange={(e) => save('max_simple_words', Number(e.target.value))}
-            className="h-8 w-20 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-center text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            className="h-8 w-20 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-center text-(--theme-text) outline-none"
           />
         </Row>
       </div>
@@ -2218,7 +2206,7 @@ function VoiceContent() {
       {msg && (
         <div
           className={cn(
-            'rounded-lg px-3 py-1.5 text-xs font-medium',
+            'rounded-md px-3 py-1.5 text-xs font-medium',
             msg === 'Saved'
               ? 'bg-green-500/15 text-green-400'
               : 'bg-red-500/15 text-red-400',
@@ -2228,24 +2216,24 @@ function VoiceContent() {
         </div>
       )}
       <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-(--theme-muted)">
           Text-to-Speech
         </p>
         <Row label="TTS Provider">
-          <NativeSelect
+          <SettingsSelect
             value={ttsProvider}
             onChange={(e) => saveTts('provider', e.target.value)}
-            className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
           >
             <option value="edge">Edge TTS</option>
             <option value="elevenlabs">ElevenLabs</option>
             <option value="openai">OpenAI TTS</option>
             <option value="neutts">NeuTTS</option>
-          </NativeSelect>
+          </SettingsSelect>
         </Row>
         {ttsProvider === 'openai' && (
           <Row label="Voice">
-            <NativeSelect
+            <SettingsSelect
               value={String(
                 (tts.openai as Record<string, unknown>)?.voice || 'nova',
               )}
@@ -2255,7 +2243,7 @@ function VoiceContent() {
                   voice: e.target.value,
                 })
               }
-              className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+              className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
             >
               {['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].map(
                 (v) => (
@@ -2264,12 +2252,12 @@ function VoiceContent() {
                   </option>
                 ),
               )}
-            </NativeSelect>
+            </SettingsSelect>
           </Row>
         )}
       </div>
       <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-(--theme-muted)">
           Speech-to-Text
         </p>
         <Row label="Enable STT">
@@ -2279,14 +2267,14 @@ function VoiceContent() {
           />
         </Row>
         <Row label="STT Provider">
-          <NativeSelect
+          <SettingsSelect
             value={String(stt.provider || 'local')}
             onChange={(e) => saveStt('provider', e.target.value)}
-            className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
           >
             <option value="local">Local (Whisper)</option>
             <option value="openai">OpenAI Whisper</option>
-          </NativeSelect>
+          </SettingsSelect>
         </Row>
       </div>
     </div>
@@ -2333,7 +2321,7 @@ function DisplayContent() {
       {msg && (
         <div
           className={cn(
-            'rounded-lg px-3 py-1.5 text-xs font-medium',
+            'rounded-md px-3 py-1.5 text-xs font-medium',
             msg === 'Saved'
               ? 'bg-green-500/15 text-green-400'
               : 'bg-red-500/15 text-red-400',
@@ -2344,16 +2332,16 @@ function DisplayContent() {
       )}
       <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <Row label="Personality" description="Agent response style">
-          <NativeSelect
+          <SettingsSelect
             value={String(config.personality || 'default')}
             onChange={(e) => save('personality', e.target.value)}
-            className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
           >
             <option value="default">Default</option>
             <option value="concise">Concise</option>
             <option value="verbose">Verbose</option>
             <option value="creative">Creative</option>
-          </NativeSelect>
+          </SettingsSelect>
         </Row>
         <Row label="Streaming" description="Stream responses in real-time">
           <Switch
@@ -2400,13 +2388,13 @@ function LanguageContent() {
         label="Interface Language"
         description="Translates navigation, labels, and buttons."
       >
-        <NativeSelect
+        <SettingsSelect
           value={settings.locale}
           onChange={(e) => {
             updateSettings({ locale: e.target.value as LocaleId })
             window.location.reload()
           }}
-          className="h-9 w-full rounded-lg border border-primary-200 dark:border-neutral-700 bg-primary-50 dark:bg-neutral-800 px-3 text-sm text-primary-900 dark:text-neutral-100 outline-none md:max-w-xs"
+          className="h-9 w-full rounded-md border border-(--theme-border) bg-(--theme-card) px-3 text-sm text-(--theme-text) outline-none md:max-w-xs"
         >
           {(Object.entries(LOCALE_LABELS) as Array<[LocaleId, string]>).map(
             ([id, label]) => (
@@ -2415,7 +2403,7 @@ function LanguageContent() {
               </option>
             ),
           )}
-        </NativeSelect>
+        </SettingsSelect>
       </Row>
     </div>
   )
@@ -2578,7 +2566,7 @@ function OrganizationContent() {
       />
 
       {ownerDisplacedNotifications.length > 0 ? (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
           Your owner role was transferred to another member. You are now a
           member of this organization.
         </div>
@@ -2587,7 +2575,7 @@ function OrganizationContent() {
       {msg ? (
         <div
           className={cn(
-            'rounded-lg px-3 py-2 text-xs font-medium',
+            'rounded-md px-3 py-2 text-xs font-medium',
             msg.includes('Failed')
               ? 'bg-red-500/15 text-red-400'
               : 'bg-green-500/15 text-green-400',
@@ -2602,7 +2590,7 @@ function OrganizationContent() {
           label="Current Membership"
           description="Role and status are resolved from your active organization membership."
         >
-          <div className="text-right text-xs text-primary-600 dark:text-neutral-300">
+          <div className="text-right text-xs text-(--theme-muted)">
             <div>role: {currentRole}</div>
             <div>status: {membershipStatus}</div>
           </div>
@@ -2615,7 +2603,7 @@ function OrganizationContent() {
           description="AUTO means auto-approve by default. APPROVAL means human-in-the-loop by default."
         >
           <div className="flex items-center gap-2">
-            <NativeSelect
+            <SettingsSelect
               value={policyMode}
               onChange={(e) =>
                 setPolicyMode(
@@ -2623,11 +2611,11 @@ function OrganizationContent() {
                 )
               }
               disabled={!canChangeSettings || modePending}
-              className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+              className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
             >
               <option value="AUTO">AUTO</option>
               <option value="APPROVAL">APPROVAL</option>
-            </NativeSelect>
+            </SettingsSelect>
             <Button
               type="button"
               size="sm"
@@ -2648,16 +2636,16 @@ function OrganizationContent() {
       </div>
 
       <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-500">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-(--theme-muted)">
           Organization Roles
         </p>
         {adminContacts.length > 0 ? (
-          <div className="mb-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
+          <div className="mb-2 rounded-md border border-(--theme-border) bg-(--theme-card) px-3 py-2 text-xs text-(--theme-text)">
             Ask these org admins:{' '}
             {adminContacts.map((member) => member.name).join(', ')}
           </div>
         ) : (
-          <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+          <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
             No active owner/admin assigned yet. Any active member can assign a
             single owner.
           </div>
@@ -2670,11 +2658,11 @@ function OrganizationContent() {
           </p>
         ) : null}
         {organizationQuery.isLoading ? (
-          <p className="text-sm text-primary-500 dark:text-neutral-400">
+          <p className="text-sm text-(--theme-muted)">
             Loading members...
           </p>
         ) : members.length === 0 ? (
-          <p className="text-sm text-primary-500 dark:text-neutral-400">
+          <p className="text-sm text-(--theme-muted)">
             No members in active organization.
           </p>
         ) : (
@@ -2688,18 +2676,18 @@ function OrganizationContent() {
               return (
                 <div
                   key={member.user_id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary-200 px-3 py-2 dark:border-neutral-700"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-(--theme-border) px-3 py-2"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-primary-900 dark:text-neutral-100">
+                    <p className="truncate text-sm font-medium text-(--theme-text)">
                       {member.name}
                     </p>
-                    <p className="truncate text-xs text-primary-500 dark:text-neutral-400">
+                    <p className="truncate text-xs text-(--theme-muted)">
                       {member.user_id}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <NativeSelect
+                    <SettingsSelect
                       value={currentMemberRole}
                       disabled={
                         !canEditRoles || rolePendingUserId === member.user_id
@@ -2710,11 +2698,11 @@ function OrganizationContent() {
                           e.target.value as 'owner' | 'member',
                         )
                       }
-                      className="h-8 rounded-lg border border-primary-200 bg-primary-50 px-2 text-sm text-primary-900 outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                      className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value="owner">owner</option>
                       <option value="member">member</option>
-                    </NativeSelect>
+                    </SettingsSelect>
                   </div>
                 </div>
               )
@@ -2726,7 +2714,7 @@ function OrganizationContent() {
       <div className={SETTINGS_CARD_CLASS} style={getCardStyle()}>
         <DsLink
           href="/settings/organization"
-          className="text-sm font-medium text-primary-700 underline underline-offset-2 hover:text-primary-900 dark:text-neutral-200 dark:hover:text-neutral-100"
+          className="text-sm font-medium text-(--theme-text) underline underline-offset-2 hover:text-(--theme-text)"
         >
           Open full Organization settings page →
         </DsLink>
@@ -2779,11 +2767,11 @@ export function SettingsDialog({
 
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="inset-0 h-full w-full max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-0 p-0 shadow-xl md:inset-auto md:left-1/2 md:top-1/2 md:h-[min(88dvh,740px)] md:min-h-[520px] md:w-full md:max-w-3xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:border md:border-primary-200 bg-[var(--theme-bg)]">
+      <DialogContent className="inset-0 h-full w-full max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-0 p-0 md:inset-auto md:left-1/2 md:top-1/2 md:h-[min(88dvh,720px)] md:min-h-[480px] md:w-full md:max-w-3xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-md md:border md:border-(--theme-border) bg-(--theme-card)">
         <div className="flex h-full min-h-0 flex-col">
-          <div className="flex items-center justify-between border-b border-primary-200 bg-primary-50/80 px-4 py-4 md:rounded-t-2xl md:px-5">
+          <div className="flex items-center justify-between border-b border-(--theme-border) bg-(--theme-card2) px-4 py-4 md:rounded-t-md md:px-4">
             <div>
-              <DialogTitle className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+              <DialogTitle className="text-base font-semibold text-(--theme-text)">
                 Settings
               </DialogTitle>
               <DialogDescription className="sr-only">
@@ -2795,7 +2783,7 @@ export function SettingsDialog({
                 <Button
                   size="icon-sm"
                   variant="ghost"
-                  className="rounded-full text-primary-500 hover:bg-primary-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                  className="rounded-full text-(--theme-muted) hover:bg-(--theme-card2)"
                   aria-label="Close"
                 >
                   <HugeiconsIcon
@@ -2812,45 +2800,50 @@ export function SettingsDialog({
             <div className="flex min-h-0 flex-1 flex-col md:flex-row">
               <aside
                 className={cn(
-                  'w-full bg-primary-50/60 p-2 md:w-44 md:shrink-0 md:border-r md:border-primary-200',
+                  'w-full p-4 md:w-48 md:shrink-0 md:border-r md:border-(--theme-border)',
                   mobileView === 'content' && 'hidden md:block',
                 )}
               >
-                <nav className="space-y-1">
-                  {SECTIONS.map((s) => (
-                    <Button
-                      key={s.id}
-                      type="button"
-                      onClick={() => handleSectionSelect(s.id)}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-primary-600 transition-colors hover:bg-primary-100',
-                        active === s.id &&
-                          'bg-accent-50 font-medium text-accent-700',
-                      )}
-                    >
-                      <HugeiconsIcon
-                        icon={s.icon}
-                        size={16}
-                        strokeWidth={1.5}
-                      />
-                      {s.label}
-                    </Button>
-                  ))}
+                <nav className="space-y-1" aria-label="Settings sections">
+                  {SECTIONS.map((s) => {
+                    const isActive = active === s.id
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => handleSectionSelect(s.id)}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={cn(
+                          'flex w-full items-center gap-2 rounded-md border-l-2 px-2 py-2 text-left text-sm transition-colors duration-150',
+                          isActive
+                            ? 'border-l-(--theme-accent) bg-(--theme-card2) font-medium text-(--theme-text)'
+                            : 'border-l-transparent text-(--theme-muted) hover:bg-(--theme-card2) hover:text-(--theme-text)',
+                        )}
+                      >
+                        <HugeiconsIcon
+                          icon={s.icon}
+                          size={16}
+                          strokeWidth={1.5}
+                        />
+                        {s.label}
+                      </button>
+                    )
+                  })}
                 </nav>
               </aside>
               <div
                 className={cn(
-                  'min-w-0 flex-1 overflow-y-auto p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] md:p-5 md:pb-5',
+                  'min-w-0 flex-1 overflow-y-auto p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] md:p-4 md:pb-4',
                   mobileView === 'nav' && 'hidden md:block',
                 )}
               >
-                <div className="mb-3 md:hidden">
+                <div className="mb-4 md:hidden">
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => setMobileView('nav')}
-                    className="h-8 gap-1.5 rounded-lg px-2 text-primary-600 hover:bg-primary-100"
+                    className="h-8 gap-2 rounded-md px-2 text-(--theme-muted) hover:bg-(--theme-card2) hover:text-(--theme-text)"
                   >
                     <HugeiconsIcon
                       icon={ArrowLeft01Icon}
@@ -2865,11 +2858,11 @@ export function SettingsDialog({
             </div>
           </SettingsErrorBoundary>
 
-          <div className="sticky bottom-0 z-10 border-t border-primary-200 bg-primary-50/60 px-4 py-3 text-xs text-primary-500 dark:text-neutral-400 md:rounded-b-2xl md:px-5">
+          <div className="sticky bottom-0 z-10 border-t border-(--theme-border) bg-(--theme-card2) px-4 py-2 text-xs text-(--theme-muted) md:rounded-b-md md:px-4">
             Changes saved automatically.{' '}
             <DsLink
               href="/settings"
-              className="ml-2 font-medium underline underline-offset-2 hover:text-primary-700 dark:hover:text-neutral-200"
+              className="ml-2 font-medium underline underline-offset-2 hover:text-(--theme-text)"
             >
               All settings →
             </DsLink>

@@ -227,7 +227,7 @@ function ServerDialog(props: {
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[min(720px,96vw)]">
-        <div className="space-y-5 p-5 md:p-6">
+        <div className="space-y-4 p-4 md:p-6">
           <div className="space-y-1">
             <DialogTitle>
               {editingName ? 'Edit MCP Server' : 'Add MCP Server'}
@@ -239,7 +239,7 @@ function ServerDialog(props: {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-1.5 md:col-span-2">
+            <label className="space-y-2 md:col-span-2">
               <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                 Name
               </span>
@@ -265,12 +265,12 @@ function ServerDialog(props: {
                   }))
                 }
               >
-                <TabsList className="rounded-xl border theme-border theme-card2 p-1">
+                <TabsList className="rounded-md border theme-border theme-card2 p-1">
                   <TabsTrigger value="stdio">Stdio</TabsTrigger>
                   <TabsTrigger value="http">HTTP</TabsTrigger>
                 </TabsList>
                 <TabsContent value="stdio" className="mt-4 space-y-4">
-                  <label className="space-y-1.5">
+                  <label className="space-y-2">
                     <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                       Command
                     </span>
@@ -285,7 +285,7 @@ function ServerDialog(props: {
                       }
                     />
                   </label>
-                  <label className="space-y-1.5">
+                  <label className="space-y-2">
                     <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                       Args
                     </span>
@@ -300,7 +300,7 @@ function ServerDialog(props: {
                       }
                     />
                   </label>
-                  <label className="space-y-1.5">
+                  <label className="space-y-2">
                     <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                       Env Vars
                     </span>
@@ -308,7 +308,7 @@ function ServerDialog(props: {
                       value={draft.envText}
                       rows={4}
                       placeholder={'API_KEY=${MCP_API_KEY}\nLOG_LEVEL=debug'}
-                      className="min-h-[108px] w-full rounded-lg border theme-border theme-card px-3 py-2 text-sm theme-text outline-none placeholder:theme-muted"
+                      className="min-h-[108px] w-full rounded-md border theme-border theme-card px-3 py-2 text-sm theme-text outline-none placeholder:theme-muted"
                       onChange={(event) =>
                         setDraft((current) => ({
                           ...current,
@@ -319,7 +319,7 @@ function ServerDialog(props: {
                   </label>
                 </TabsContent>
                 <TabsContent value="http" className="mt-4 space-y-4">
-                  <label className="space-y-1.5">
+                  <label className="space-y-2">
                     <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                       URL
                     </span>
@@ -334,7 +334,7 @@ function ServerDialog(props: {
                       }
                     />
                   </label>
-                  <label className="space-y-1.5">
+                  <label className="space-y-2">
                     <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                       Headers
                     </span>
@@ -344,7 +344,7 @@ function ServerDialog(props: {
                       placeholder={
                         'Authorization=Bearer ${GITHUB_TOKEN}\nX-Workspace=hermes'
                       }
-                      className="min-h-[108px] w-full rounded-lg border theme-border theme-card px-3 py-2 text-sm theme-text outline-none placeholder:theme-muted"
+                      className="min-h-[108px] w-full rounded-md border theme-border theme-card px-3 py-2 text-sm theme-text outline-none placeholder:theme-muted"
                       onChange={(event) =>
                         setDraft((current) => ({
                           ...current,
@@ -357,7 +357,7 @@ function ServerDialog(props: {
               </Tabs>
             </div>
 
-            <label className="space-y-1.5 md:col-span-2">
+            <label className="space-y-2 md:col-span-2">
               <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                 Timeout (seconds)
               </span>
@@ -525,9 +525,9 @@ export function McpSettingsScreen() {
 
   return (
     <div className="min-h-full theme-card">
-      <main className="mx-auto w-full max-w-5xl px-4 py-6 theme-text md:px-6 md:py-8">
-        <div className="space-y-5">
-          <header className="rounded-2xl border theme-border theme-card2 p-5 shadow-sm">
+      <main className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-8 px-4 py-8 theme-text md:px-6">
+        <div className="space-y-4">
+          <header className="rounded-md border theme-border theme-card2 p-4 ">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="space-y-2">
                 <Button
@@ -567,13 +567,13 @@ export function McpSettingsScreen() {
           </header>
 
           {notice ? (
-            <div className="rounded-2xl border theme-border theme-card px-4 py-3 text-sm theme-muted shadow-sm">
+            <div className="rounded-md border theme-border theme-card px-4 py-3 text-sm theme-muted ">
               {notice}
             </div>
           ) : null}
 
           {isDirty ? (
-            <div className="rounded-2xl border theme-border bg-muted px-4 py-3 text-sm text-warning shadow-sm">
+            <div className="rounded-md border theme-border bg-muted px-4 py-3 text-sm text-warning ">
               You have unsaved changes. Copy the YAML below and paste it into
               your{' '}
               <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
@@ -583,8 +583,8 @@ export function McpSettingsScreen() {
             </div>
           ) : null}
 
-          <section className="rounded-2xl border theme-border theme-card2 p-4 shadow-sm md:p-5">
-            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <section className="rounded-md border theme-border theme-card2 p-4  md:p-5">
+            <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-base font-medium theme-text">
                   Configured Servers
@@ -619,26 +619,26 @@ export function McpSettingsScreen() {
             </div>
 
             {loading ? (
-              <div className="rounded-xl border theme-border theme-card px-4 py-3 text-sm theme-muted">
+              <div className="rounded-md border theme-border theme-card px-4 py-3 text-sm theme-muted">
                 Loading MCP servers...
               </div>
             ) : null}
 
             {!loading && servers.length === 0 ? (
-              <div className="rounded-xl border border-dashed theme-border theme-card px-4 py-8 text-center text-sm theme-muted">
+              <div className="rounded-md border border-dashed theme-border theme-card px-4 py-8 text-center text-sm theme-muted">
                 No MCP servers found yet. Add one to generate a starter config
                 snippet.
               </div>
             ) : null}
 
             {servers.length > 0 ? (
-              <div className="grid gap-3">
+              <div className="grid gap-4">
                 {servers.map((server) => (
                   <article
                     key={server.name}
-                    className="rounded-2xl border theme-border theme-card p-4 shadow-sm"
+                    className="rounded-md border theme-border theme-card p-4 "
                   >
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0 space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <HugeiconsIcon
@@ -714,8 +714,8 @@ export function McpSettingsScreen() {
             ) : null}
           </section>
 
-          <section className="rounded-2xl border theme-border theme-card2 p-4 shadow-sm md:p-5">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <section className="rounded-md border theme-border theme-card2 p-4  md:p-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="text-base font-medium theme-text">
                   Generated YAML
@@ -738,7 +738,7 @@ export function McpSettingsScreen() {
               </Button>
             </div>
 
-            <pre className="mt-4 overflow-x-auto rounded-2xl border theme-border theme-card p-4 text-xs leading-6 theme-text">
+            <pre className="mt-4 overflow-x-auto rounded-md border theme-border theme-card p-4 text-xs leading-6 theme-text">
               <code>{yamlSnippet}</code>
             </pre>
           </section>

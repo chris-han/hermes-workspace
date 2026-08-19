@@ -119,13 +119,14 @@ function ThemeToggleMini() {
         applyTheme(nextMode)
         updateSettings({ theme: nextMode })
       }}
-      className="shrink-0 rounded-lg p-1.5 transition-colors hover:opacity-80"
-      style={{ color: 'var(--theme-muted)' }}
+      className="shrink-0 rounded-md text-(--theme-muted) hover:bg-(--theme-card2) hover:text-(--theme-text) transition-colors"
+      variant="ghost"
+      size="icon-sm"
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       <HugeiconsIcon
         icon={isDark ? Sun02Icon : Moon02Icon}
-        size={16}
+        size={14}
         strokeWidth={1.5}
       />
     </Button>
@@ -412,16 +413,18 @@ function SectionLabel({
         )}
         <Button
           type="button"
+          variant="ghost"
+          size="icon-sm"
           onClick={onToggle}
-          className="ml-auto p-0.5 rounded hover:bg-primary-200 dark:hover:bg-primary-800 transition-colors"
+          className="ml-auto rounded-md text-(--theme-muted) hover:bg-(--theme-card2) hover:text-(--theme-text) transition-colors"
           aria-label={expanded ? `Collapse ${label}` : `Expand ${label}`}
         >
           <HugeiconsIcon
             icon={ArrowDown01Icon}
-            size={12}
+            size={14}
             strokeWidth={2}
             className={cn(
-              'text-primary-500 transition-transform duration-150',
+              'transition-transform duration-150',
               expanded ? 'rotate-0' : '-rotate-90',
             )}
           />
@@ -1314,12 +1317,12 @@ function ChatSidebarComponent({
 
       {/* ── Footer with User Menu ─────────────────────────────────── */}
       {/* shrink-0 keeps footer always visible; scroll content above it creates the overflow-toward-footer effect */}
-      <div className="px-2 py-2.5 border-t shrink-0 theme-border theme-panel">
+      <div className="px-2 py-1.5 border-t shrink-0 border-(--theme-border)">
         {/* User card + actions */}
         <div
           className={cn(
-            'flex items-center rounded-lg transition-colors',
-            isVisuallyCollapsed ? 'flex-col gap-2 py-2' : 'gap-2.5 px-2 py-1.5',
+            'flex items-center rounded-md transition-colors',
+            isVisuallyCollapsed ? 'flex-col gap-1 py-1.5' : 'gap-1.5 px-1 py-0.5',
           )}
         >
           {/* User menu trigger */}
@@ -1327,12 +1330,12 @@ function ChatSidebarComponent({
             <MenuTrigger
               data-tour="settings"
               className={cn(
-                'flex items-center gap-2.5 rounded-lg py-1 transition-colors hover:bg-primary-200 dark:hover:bg-neutral-800 flex-1 min-w-0',
+                'flex items-center gap-2 rounded-md py-0.5 transition-colors hover:bg-(--theme-card2) flex-1 min-w-0',
                 isVisuallyCollapsed ? 'justify-center px-0' : 'px-1.5',
               )}
             >
               <UserAvatar
-                size={28}
+                size={24}
                 src={profileAvatarUrl}
                 alt={profileDisplayName}
               />
@@ -1395,7 +1398,9 @@ function ChatSidebarComponent({
                                 // ignore
                               }
                             }}
-                            className="shrink-0 inline-flex items-center justify-center rounded p-0.5 hover:bg-primary-100 dark:hover:bg-neutral-800 transition-colors"
+                            className="shrink-0 inline-flex size-6 items-center justify-center rounded-md text-(--theme-muted) hover:bg-(--theme-card2) hover:text-(--theme-text) transition-colors"
+                            variant="ghost"
+                            size="icon-sm"
                             title="Copy workspace ID"
                           >
                             <HugeiconsIcon
@@ -1456,13 +1461,15 @@ function ChatSidebarComponent({
             <div className="flex items-center gap-0.5">
               <Button
                 type="button"
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => handleOpenSettings('hermes')}
-                className="shrink-0 rounded-lg p-1.5 text-primary-400 hover:bg-primary-200 dark:hover:bg-neutral-800 hover:text-primary-600 dark:hover:text-neutral-300 transition-colors"
+                className="shrink-0 rounded-md text-(--theme-muted) hover:bg-(--theme-card2) hover:text-(--theme-text) transition-colors"
                 aria-label="Settings"
               >
                 <HugeiconsIcon
                   icon={Settings01Icon}
-                  size={16}
+                  size={14}
                   strokeWidth={1.5}
                 />
               </Button>

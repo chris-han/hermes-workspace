@@ -1,4 +1,4 @@
-import { NativeSelect } from '@/components/ui/form-controls'
+import { SettingsSelect } from "@/components/ui/settings-select";
 
 import { Textarea } from '@/components/ui/form-controls'
 
@@ -619,7 +619,7 @@ function SettingCard(props: {
   }
 
   return (
-    <article className="rounded-2xl border theme-border theme-card p-4 shadow-sm">
+    <article className="rounded-md border theme-border theme-card p-4 ">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -663,8 +663,8 @@ function SettingCard(props: {
           ) : null}
 
           {setting.kind === 'select' ? (
-            <NativeSelect
-              className="w-full rounded-lg border theme-border theme-card px-3 py-2 text-sm theme-text outline-none"
+            <SettingsSelect
+              className="w-full rounded-md border theme-border theme-card px-3 py-2 text-sm theme-text outline-none"
               value={coerceString(currentValue)}
               disabled={disabled}
               onChange={(event) => {
@@ -682,7 +682,7 @@ function SettingCard(props: {
                   {option.label}
                 </option>
               ))}
-            </NativeSelect>
+            </SettingsSelect>
           ) : null}
 
           {setting.kind === 'text' ? (
@@ -754,7 +754,7 @@ function SettingCard(props: {
 
           {setting.kind === 'multiline' ? (
             <Textarea
-              className="min-h-[88px] w-full rounded-lg border theme-border theme-card px-3 py-2 text-sm theme-text outline-none placeholder:theme-muted"
+              className="min-h-[88px] w-full rounded-md border theme-border theme-card px-3 py-2 text-sm theme-text outline-none placeholder:theme-muted"
               value={draftValue}
               disabled={disabled}
               rows={setting.rows ?? 4}
@@ -924,19 +924,19 @@ function ModelConfigSection(props: {
   } = props
 
   return (
-    <section className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-sm">
+    <section className="rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 ">
       <div className="space-y-1">
         <h3 className="text-sm font-semibold theme-text">{title}</h3>
         <p className="text-sm theme-muted">{description}</p>
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <label className="space-y-1.5">
+        <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Provider
           </span>
-          <NativeSelect
-            className="h-10 w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 text-sm theme-text outline-none"
+          <SettingsSelect
+            className="h-10 w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 text-sm theme-text outline-none"
             value={value.provider}
             onChange={(event) => {
               onChange({
@@ -950,10 +950,10 @@ function ModelConfigSection(props: {
                 {option.label}
               </option>
             ))}
-          </NativeSelect>
+          </SettingsSelect>
         </label>
 
-        <label className="space-y-1.5">
+        <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
             Model Name
           </span>
@@ -972,7 +972,7 @@ function ModelConfigSection(props: {
         </label>
       </div>
 
-      <label className="mt-4 block space-y-1.5">
+      <label className="mt-4 block space-y-2">
         <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
           Base URL
         </span>
@@ -1117,7 +1117,7 @@ function ActiveModelCard({
   }, [configQuery.data])
 
   return (
-    <section className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-sm md:p-5">
+    <section className="rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] p-4  md:p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
           <h3 className="text-base font-medium theme-text">
@@ -1158,8 +1158,8 @@ function ActiveModelCard({
             datalistId="settings-primary-model-options"
           />
 
-          <section className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-sm">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <section className="rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 ">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold theme-text">
                   Fallback Model
@@ -1196,7 +1196,7 @@ function ActiveModelCard({
             ) : null}
           </section>
 
-          <section className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 shadow-sm">
+          <section className="rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 ">
             <div className="space-y-1">
               <h3 className="text-sm font-semibold theme-text">
                 Performance
@@ -1208,7 +1208,7 @@ function ActiveModelCard({
             </div>
 
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <label className="space-y-1.5">
+              <label className="space-y-2">
                 <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                   Stream Stale Timeout
                 </span>
@@ -1227,7 +1227,7 @@ function ActiveModelCard({
                 <p className="text-xs theme-muted">Default: 90s</p>
               </label>
 
-              <label className="space-y-1.5">
+              <label className="space-y-2">
                 <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
                   Stream Read Timeout
                 </span>
@@ -1247,7 +1247,7 @@ function ActiveModelCard({
               </label>
             </div>
 
-            <p className="mt-4 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-2 text-sm theme-muted">
+            <p className="mt-4 rounded-md border border-[var(--theme-border)] bg-[var(--theme-card2)] px-3 py-2 text-sm theme-muted">
               Slow local runners such as Ollama and `llama-server` often need
               more headroom before Hermes decides a stream has stalled.
             </p>
@@ -1284,9 +1284,9 @@ function ProviderManagementSection(props: {
   } = props
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-col gap-4 rounded-xl border theme-border theme-card2 px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1.5">
+    <div className="space-y-4">
+      <header className="flex flex-col gap-4 rounded-md border theme-border theme-card2 px-5 py-4  md:flex-row md:items-center md:justify-between">
+        <div className="space-y-2">
           <h2 className="text-base font-semibold theme-text">
             Provider Setup
           </h2>
@@ -1301,7 +1301,7 @@ function ProviderManagementSection(props: {
         </Button>
       </header>
 
-      <section className="rounded-2xl border theme-border theme-card2 p-4 shadow-sm md:p-5">
+      <section className="rounded-md border theme-border theme-card2 p-4  md:p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-base font-medium theme-text">
@@ -1319,13 +1319,13 @@ function ProviderManagementSection(props: {
         </div>
 
         {modelsQuery.isPending ? (
-          <p className="rounded-xl border theme-border theme-card px-3 py-2 text-sm theme-muted">
+          <p className="rounded-md border theme-border theme-card px-3 py-2 text-sm theme-muted">
             Loading providers from Hermes...
           </p>
         ) : null}
 
         {modelsQuery.error ? (
-          <div className="rounded-xl border theme-border theme-card px-4 py-3">
+          <div className="rounded-md border theme-border theme-card px-4 py-3">
             <p className="mb-2 text-sm theme-text">
               Unable to load providers right now. Check your Hermes connection.
             </p>
@@ -1342,7 +1342,7 @@ function ProviderManagementSection(props: {
         {!modelsQuery.isPending &&
         !modelsQuery.error &&
         providerSummaries.length === 0 ? (
-          <div className="rounded-xl border theme-border theme-card px-4 py-4">
+          <div className="rounded-md border theme-border theme-card px-4 py-4">
             <p className="text-sm theme-text">
               No providers are configured yet. Use Add Provider to open setup
               instructions.
@@ -1351,18 +1351,18 @@ function ProviderManagementSection(props: {
         ) : null}
 
         {providerSummaries.length > 0 ? (
-          <div className={cn('grid gap-3', embedded ? '' : 'md:grid-cols-2')}>
+          <div className={cn('grid gap-4', embedded ? '' : 'md:grid-cols-2')}>
             {providerSummaries.map(function mapProvider(provider) {
               const isDeleting = deletingId === provider.id
 
               return (
                 <article
                   key={provider.id}
-                  className="rounded-2xl border theme-border theme-card p-3"
+                  className="rounded-md border theme-border theme-card p-4"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="flex min-w-0 items-start gap-2.5">
-                      <span className="inline-flex size-9 items-center justify-center rounded-xl border theme-border theme-card2">
+                      <span className="inline-flex size-9 items-center justify-center rounded-md border theme-border theme-card2">
                         <ProviderIcon providerId={provider.id} />
                       </span>
                       <div className="min-w-0">
@@ -1377,7 +1377,7 @@ function ProviderManagementSection(props: {
                     <ProviderStatusBadge status={provider.status} />
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between rounded-xl border theme-border theme-card2 px-2.5 py-2">
+                  <div className="mt-3 flex items-center justify-between rounded-md border theme-border theme-card2 px-2 py-2">
                     <span className="text-xs theme-muted">
                       Available models
                     </span>
@@ -1629,8 +1629,8 @@ export function ProvidersScreen({ embedded = false }: ProvidersScreenProps) {
           embedded && 'px-4 pb-6 pt-4 md:px-6 md:pb-6 md:pt-4',
         )}
       >
-        <section className="mx-auto w-full max-w-[1480px] space-y-5">
-          <header className="flex flex-col gap-4 rounded-xl border theme-border theme-card2 px-5 py-4 shadow-sm">
+        <section className="mx-auto grid w-full max-w-[1480px] grid-cols-1 gap-8 px-4 md:px-6">
+          <header className="flex flex-col gap-4 rounded-md border border-(--theme-border) bg-(--theme-card2) p-4">
             <div className="space-y-1">
               <h1 className="hidden md:block text-lg font-semibold theme-text">
                 Settings
@@ -1640,7 +1640,7 @@ export function ProvidersScreen({ embedded = false }: ProvidersScreenProps) {
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <label className="relative w-full md:max-w-md">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 theme-muted">
                   <HugeiconsIcon
@@ -1674,7 +1674,7 @@ export function ProvidersScreen({ embedded = false }: ProvidersScreenProps) {
           >
             <TabsList
               variant="underline"
-              className="w-full flex-nowrap overflow-x-auto justify-start gap-2 rounded-xl border theme-border theme-card px-3 py-2"
+              className="w-full flex-nowrap overflow-x-auto justify-start gap-2 rounded-md border theme-border theme-card px-3 py-2"
             >
               {TAB_ORDER.map((tab) => {
                 const count =
@@ -1685,7 +1685,7 @@ export function ProvidersScreen({ embedded = false }: ProvidersScreenProps) {
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
-                    className="rounded-lg px-3 py-2 text-sm"
+                    className="rounded-md px-3 py-2 text-sm"
                   >
                     {tab.label}
                     <span className="ml-1 rounded-full theme-card2 px-1.5 py-0.5 text-[11px] theme-text">
@@ -1696,7 +1696,7 @@ export function ProvidersScreen({ embedded = false }: ProvidersScreenProps) {
               })}
             </TabsList>
 
-            <TabsContent value="providers" className="space-y-5">
+            <TabsContent value="providers" className="space-y-4">
               <ActiveModelCard modelOptions={modelOptions} />
               <ProviderManagementSection
                 embedded={embedded}
@@ -1719,13 +1719,13 @@ export function ProvidersScreen({ embedded = false }: ProvidersScreenProps) {
               return (
                 <TabsContent key={tab.id} value={tab.id} className="space-y-4">
                   {configQuery.isPending ? (
-                    <div className="rounded-xl border theme-border theme-card2 px-4 py-3 text-sm theme-muted">
+                    <div className="rounded-md border theme-border theme-card2 px-4 py-3 text-sm theme-muted">
                       Loading current configuration...
                     </div>
                   ) : null}
 
                   {configQuery.error ? (
-                    <div className="rounded-xl border theme-border theme-card px-4 py-3">
+                    <div className="rounded-md border theme-border theme-card px-4 py-3">
                       <p className="text-sm theme-text">
                         Unable to load configuration right now.
                       </p>
@@ -1743,7 +1743,7 @@ export function ProvidersScreen({ embedded = false }: ProvidersScreenProps) {
                   {!configQuery.isPending &&
                   !configQuery.error &&
                   items.length === 0 ? (
-                    <div className="rounded-xl border theme-border theme-card2 px-4 py-4 text-sm theme-muted">
+                    <div className="rounded-md border theme-border theme-card2 px-4 py-4 text-sm theme-muted">
                       No settings in this tab match your current search.
                     </div>
                   ) : null}

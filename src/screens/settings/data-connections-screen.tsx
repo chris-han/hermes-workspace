@@ -251,18 +251,18 @@ export function DataConnectionsScreen() {
   const summary = summaryQuery.data?.summary
 
   return (
-    <div className="min-h-screen bg-surface text-primary-900">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-        <header className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex size-10 items-center justify-center rounded-2xl border border-primary-200 bg-primary-100/70 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="min-h-screen bg-surface text-(--theme-text)">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:px-8">
+        <header className="rounded-3xl border border-(--theme-border) bg-(--theme-card2) p-4  dark:bg-neutral-950/60">
+          <div className="flex items-start gap-4">
+            <span className="inline-flex size-10 items-center justify-center rounded-md border border-(--theme-border) bg-(--theme-card2)/70">
               <HugeiconsIcon icon={Plug01Icon} size={20} strokeWidth={1.5} />
             </span>
             <div className="space-y-1">
-              <h1 className="text-xl font-semibold text-primary-900 dark:text-neutral-100">
+              <h1 className="text-xl font-semibold text-(--theme-text)">
                 {DATA_CONNECTIONS_PAGE_COPY.title}
               </h1>
-              <p className="max-w-3xl text-sm text-primary-600 dark:text-neutral-400">
+              <p className="max-w-3xl text-sm text-(--theme-muted)">
                 {DATA_CONNECTIONS_PAGE_COPY.subtitle}
               </p>
             </div>
@@ -272,15 +272,15 @@ export function DataConnectionsScreen() {
         <section className="grid gap-4 lg:grid-cols-2">
           <Link
             to="/settings/providers"
-            className="rounded-2xl border border-primary-200 bg-primary-50/80 p-4 transition hover:-translate-y-0.5 hover:bg-primary-100/80 dark:border-neutral-800 dark:bg-neutral-950/60 dark:hover:bg-neutral-900/80"
+            className="rounded-md border border-(--theme-border) bg-(--theme-card2) p-4 transition hover:-translate-y-0.5 hover:bg-(--theme-card2)/80 dark:bg-neutral-950/60 dark:hover:bg-neutral-900/80"
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-4">
               <HugeiconsIcon icon={CloudIcon} size={20} strokeWidth={1.5} />
               <div>
-                <div className="text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                <div className="text-sm font-semibold text-(--theme-text)">
                   Providers
                 </div>
-                <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+                <p className="mt-1 text-sm text-(--theme-muted)">
                   Configure model providers and execution credentials used by
                   Hermes and Semantier workflows.
                 </p>
@@ -290,15 +290,15 @@ export function DataConnectionsScreen() {
 
           <Link
             to="/settings/mcp"
-            className="rounded-2xl border border-primary-200 bg-primary-50/80 p-4 transition hover:-translate-y-0.5 hover:bg-primary-100/80 dark:border-neutral-800 dark:bg-neutral-950/60 dark:hover:bg-neutral-900/80"
+            className="rounded-md border border-(--theme-border) bg-(--theme-card2) p-4 transition hover:-translate-y-0.5 hover:bg-(--theme-card2)/80 dark:bg-neutral-950/60 dark:hover:bg-neutral-900/80"
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-4">
               <HugeiconsIcon icon={SatelliteIcon} size={20} strokeWidth={1.5} />
               <div>
-                <div className="text-sm font-semibold text-primary-900 dark:text-neutral-100">
+                <div className="text-sm font-semibold text-(--theme-text)">
                   MCP Servers
                 </div>
-                <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+                <p className="mt-1 text-sm text-(--theme-muted)">
                   Manage read and tool connections that can extend workspace
                   capabilities without becoming semantic authority.
                 </p>
@@ -307,16 +307,16 @@ export function DataConnectionsScreen() {
           </Link>
         </section>
 
-        <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
-          <div className="mb-4 flex items-start gap-3">
-            <span className="inline-flex size-10 items-center justify-center rounded-2xl border border-primary-200 bg-primary-100/70 dark:border-neutral-800 dark:bg-neutral-900">
+        <section className="rounded-3xl border border-(--theme-border) bg-(--theme-card2) p-4  dark:bg-neutral-950/60">
+          <div className="mb-4 flex items-start gap-4">
+            <span className="inline-flex size-10 items-center justify-center rounded-md border border-(--theme-border) bg-(--theme-card2)/70">
               <HugeiconsIcon icon={DatabaseIcon} size={20} strokeWidth={1.5} />
             </span>
             <div>
-              <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+              <h2 className="text-base font-semibold text-(--theme-text)">
                 Governed Data Surfaces
               </h2>
-              <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+              <p className="mt-1 text-sm text-(--theme-muted)">
                 EOS remains authoritative. Lakehouse artifacts are derived
                 mirrors, and DuckDB mounts those persisted artifacts for
                 read-only analytics.
@@ -325,11 +325,11 @@ export function DataConnectionsScreen() {
           </div>
 
           {summaryQuery.isLoading ? (
-            <div className="rounded-2xl border border-primary-200 bg-white/80 px-4 py-6 text-sm text-primary-600 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-400">
+            <div className="rounded-md border border-(--theme-border) bg-(--theme-card2) px-4 py-6 text-sm text-(--theme-muted)/70">
               Loading data surface summary...
             </div>
           ) : summaryQuery.error instanceof Error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
               {summaryQuery.error.message}
             </div>
           ) : summary ? (
@@ -341,12 +341,12 @@ export function DataConnectionsScreen() {
           ) : null}
         </section>
 
-        <section className="rounded-3xl border border-primary-200 bg-primary-50/80 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
+        <section className="rounded-3xl border border-(--theme-border) bg-(--theme-card2) p-4  dark:bg-neutral-950/60">
           <div className="mb-4">
-            <h2 className="text-base font-semibold text-primary-900 dark:text-neutral-100">
+            <h2 className="text-base font-semibold text-(--theme-text)">
               Knowledge Source Connection
             </h2>
-            <p className="mt-1 text-sm text-primary-600 dark:text-neutral-400">
+            <p className="mt-1 text-sm text-(--theme-muted)">
               Configure where browsing content comes from. This connection
               supplies candidate source material and does not, by itself,
               activate governed knowledge.

@@ -113,9 +113,14 @@ export async function recordTenderFindingDisposition(
     disposition: 'accepted' | 'rejected' | 'edited' | 'deferred' | 'escalated'
     editedReplacement?: string
     rejectionRationale?: string
+    justification?: string
+    reasonCode?: string
   },
 ): Promise<Record<string, unknown>> {
-  const payload = await requestTenderReview<{ disposition: Record<string, unknown> }>(
+  const payload = await requestTenderReview<{
+    disposition: Record<string, unknown>
+    semantic_feedback_event?: Record<string, unknown> | null
+  }>(
     requestHeaders,
     `${TENDER_DOCUMENT_REVIEW_COMPATIBILITY_ROUTE}/runs/${encodeURIComponent(input.runId)}/findings/${encodeURIComponent(input.findingId)}/disposition`,
     {
@@ -124,10 +129,12 @@ export async function recordTenderFindingDisposition(
         disposition: input.disposition,
         editedReplacement: input.editedReplacement,
         rejectionRationale: input.rejectionRationale,
+        justification: input.justification,
+        reasonCode: input.reasonCode,
       }),
     },
   )
-  return payload.disposition
+  return payload
 }
 
 export async function recordTenderFindingFeedback(

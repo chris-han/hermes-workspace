@@ -96,6 +96,11 @@ import {
 import { projectStudioWorkbenchContext } from './contextgraph-workbench-context'
 import { LineagePanel } from './lineage/lineage-panel'
 import {
+  SourceEvidenceViewer,
+  type SourceEvidenceFinding,
+  type ViewerConfig,
+} from './source-viewer/source-evidence-viewer'
+import {
   buildTenderEvaluationDetectionRequest,
   TENDER_EVALUATION_DETECTION_ENDPOINT,
 } from './tender-evaluation-panel'
@@ -192,6 +197,17 @@ export function canonicalBodyFromCurationMarkdown(content: string): string {
 }
 
 const KNOWLEDGE_BUILDER_API = '/api/semantier-proxy/api/knowledge/builder'
+
+const VIEWER_UNAVAILABLE_CONFIG: ViewerConfig = {
+  configured: false,
+  diagnostic: {
+    code: 'viewer_unavailable',
+    provider: 'apryse',
+    missing: 'APRYSE_LICENSE_KEY',
+    message:
+      'Source evidence viewer requires APRYSE_LICENSE_KEY before DOCX/PDF rendering can be enabled.',
+  },
+}
 
 type KnowledgeUploadResult = {
   ok?: boolean
@@ -4186,6 +4202,9 @@ export function InspectMode({
   const [candidateDeltaRef, setCandidateDeltaRef] = useState<string | null>(
     null,
   )
+  const [semanticFeedbackEventRef, setSemanticFeedbackEventRef] = useState<
+    string | null
+  >(null)
   const [dispositionRecorded, setDispositionRecorded] = useState(false)
   const [dispositionKind, setDispositionKind] = useState<'accept' | 'reject'>(
     'accept',
@@ -4194,6 +4213,24 @@ export function InspectMode({
   const [sortKey, setSortKey] = useState<
     'decision_status' | 'detection_method' | 'semantic_relation' | 'confidence' | 'disposition'
   >('decision_status')
+  const [viewerConfig, setViewerConfig] = useState<ViewerConfig>(
+    VIEWER_UNAVAILABLE_CONFIG,
+  )
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/contextgraph-studio/source-evidence-viewer-config')
+      .then(async (response) => {
+        const payload = (await response.json()) as ViewerConfig
+        if (!response.ok) throw new Error('viewer-config-unavailable')
+        if (!cancelled) setViewerConfig(payload)
+      })
+      .catch(() => {
+        if (!cancelled) setViewerConfig(VIEWER_UNAVAILABLE_CONFIG)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
   const dispositionByFinding = useMemo(
     () =>
       Object.fromEntries(
@@ -4291,6 +4328,7 @@ export function InspectMode({
   }
   const disposition = async (
     value: 'accepted' | 'rejected' | 'edited' | 'deferred' | 'escalated',
+    justification = '',
   ) => {
     if (!run?.run_id || !selectedFinding?.finding_id) return
     const response = await fetch('/api/tender-document-review', {
@@ -4301,6 +4339,14 @@ export function InspectMode({
         runId: run.run_id,
         findingId: selectedFinding.finding_id,
         disposition: value,
+        rejectionRationale: value === 'rejected' ? justification : undefined,
+        editedReplacement:
+          value === 'edited'
+            ? justification ||
+              selectedFinding.suggested_replacement ||
+              selectedFinding.matched_text
+            : undefined,
+        justification: justification || undefined,
       }),
     })
     const payload = await response.json()
@@ -4310,6 +4356,9 @@ export function InspectMode({
         dispositions: [...(run.dispositions ?? []), payload.disposition],
       })
       setCandidateDeltaRef(null)
+      setSemanticFeedbackEventRef(
+        payload.semantic_feedback_event?.feedback_id ?? null,
+      )
       setDispositionRecorded(value === 'accepted' || value === 'rejected')
       setDispositionKind(value === 'rejected' ? 'reject' : 'accept')
     }
@@ -4574,6 +4623,30 @@ export function InspectMode({
             <div className="rounded-lg border border-border bg-card p-3">
               {selectedFinding ? (
                 <>
+                  <SourceEvidenceViewer
+                    zh={zh}
+                    documentName={run.tender_document_id ?? run.run_id}
+                    documentKind="docx"
+                    sourceDocumentHash={run.source_document_hash ?? null}
+                    viewerConfig={viewerConfig}
+                    findings={
+                      (run.findings ?? []) as Array<SourceEvidenceFinding>
+                    }
+                    selectedFindingId={selectedFinding.finding_id}
+                    onSelectFinding={(finding) =>
+                      selectFinding(finding as Record<string, any>)
+                    }
+                    onDecision={(kind, finding, justification) => {
+                      selectFinding(finding as Record<string, any>)
+                      const next =
+                        kind === 'confirm'
+                          ? 'accepted'
+                          : kind === 'change'
+                            ? 'edited'
+                            : 'rejected'
+                      void disposition(next, justification)
+                    }}
+                  />
                   <h3 className="font-semibold">
                     {selectedFinding.matched_text}
                   </h3>
@@ -4706,6 +4779,14 @@ export function InspectMode({
                       >
                         {candidateDeltaRef}
                       </DsLink>
+                    </div>
+                  ) : null}
+                  {semanticFeedbackEventRef ? (
+                    <div className="mt-3 rounded border border-success/30 bg-success/10 p-2 text-[11px]">
+                      semantic_feedback_event:{' '}
+                      <span className="font-mono">
+                        {semanticFeedbackEventRef}
+                      </span>
                     </div>
                   ) : null}
                   {artifactResult ? (

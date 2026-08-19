@@ -75,18 +75,28 @@ describe('tender-document-review server adapter', () => {
             disposition: 'edited',
             edited_replacement: 'Use performance criteria.',
           },
+          semantic_feedback_event: {
+            schema_version: 'semantic_feedback_event.v1',
+            feedback_id: 'sfe_1',
+            action: 'change',
+          },
         }),
         { status: 200 },
       )
     }
 
-    const disposition = await recordTenderFindingDisposition(new Headers(), {
+    const result = await recordTenderFindingDisposition(new Headers(), {
       runId: 'tdr_1',
       findingId: 'tdf_1',
       disposition: 'edited',
       editedReplacement: 'Use performance criteria.',
     })
-    expect(disposition.disposition).toBe('edited')
+    expect((result.disposition as Record<string, unknown>).disposition).toBe(
+      'edited',
+    )
+    expect(
+      (result.semantic_feedback_event as Record<string, unknown>).feedback_id,
+    ).toBe('sfe_1')
   })
 
   it('creates final reports through governed backend routes', async () => {

@@ -133,6 +133,7 @@ import { Route as ApiHermesTasksTaskIdRouteImport } from './routes/api/hermes-ta
 import { Route as ApiHermesProxySplatRouteImport } from './routes/api/hermes-proxy/$'
 import { Route as ApiHermesJobsJobIdRouteImport } from './routes/api/hermes-jobs.$jobId'
 import { Route as ApiDataConnectionsSummaryRouteImport } from './routes/api/data-connections/summary'
+import { Route as ApiContextgraphStudioSourceEvidenceViewerConfigRouteImport } from './routes/api/contextgraph-studio/source-evidence-viewer-config'
 import { Route as ApiTenderDocumentReviewRunsRunIdRouteImport } from './routes/api/tender-document-review/runs/$runId'
 import { Route as ApiSessionsSessionKeyStatusRouteImport } from './routes/api/sessions/$sessionKey.status'
 import { Route as ApiSessionsSessionKeyBranchesRouteImport } from './routes/api/sessions/$sessionKey.branches'
@@ -764,6 +765,12 @@ const ApiDataConnectionsSummaryRoute =
     path: '/api/data-connections/summary',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiContextgraphStudioSourceEvidenceViewerConfigRoute =
+  ApiContextgraphStudioSourceEvidenceViewerConfigRouteImport.update({
+    id: '/api/contextgraph-studio/source-evidence-viewer-config',
+    path: '/api/contextgraph-studio/source-evidence-viewer-config',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiTenderDocumentReviewRunsRunIdRoute =
   ApiTenderDocumentReviewRunsRunIdRouteImport.update({
     id: '/runs/$runId',
@@ -878,6 +885,7 @@ export interface FileRoutesByFullPath {
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/api/contextgraph-studio/source-evidence-viewer-config': typeof ApiContextgraphStudioSourceEvidenceViewerConfigRoute
   '/api/data-connections/summary': typeof ApiDataConnectionsSummaryRoute
   '/api/hermes-jobs/$jobId': typeof ApiHermesJobsJobIdRoute
   '/api/hermes-proxy/$': typeof ApiHermesProxySplatRoute
@@ -1008,6 +1016,7 @@ export interface FileRoutesByTo {
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat': typeof ChatIndexRoute
   '/settings': typeof SettingsIndexRoute
+  '/api/contextgraph-studio/source-evidence-viewer-config': typeof ApiContextgraphStudioSourceEvidenceViewerConfigRoute
   '/api/data-connections/summary': typeof ApiDataConnectionsSummaryRoute
   '/api/hermes-jobs/$jobId': typeof ApiHermesJobsJobIdRoute
   '/api/hermes-proxy/$': typeof ApiHermesProxySplatRoute
@@ -1140,6 +1149,7 @@ export interface FileRoutesById {
   '/settings/providers': typeof SettingsProvidersRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/api/contextgraph-studio/source-evidence-viewer-config': typeof ApiContextgraphStudioSourceEvidenceViewerConfigRoute
   '/api/data-connections/summary': typeof ApiDataConnectionsSummaryRoute
   '/api/hermes-jobs/$jobId': typeof ApiHermesJobsJobIdRoute
   '/api/hermes-proxy/$': typeof ApiHermesProxySplatRoute
@@ -1273,6 +1283,7 @@ export interface FileRouteTypes {
     | '/settings/providers'
     | '/chat/'
     | '/settings/'
+    | '/api/contextgraph-studio/source-evidence-viewer-config'
     | '/api/data-connections/summary'
     | '/api/hermes-jobs/$jobId'
     | '/api/hermes-proxy/$'
@@ -1403,6 +1414,7 @@ export interface FileRouteTypes {
     | '/settings/providers'
     | '/chat'
     | '/settings'
+    | '/api/contextgraph-studio/source-evidence-viewer-config'
     | '/api/data-connections/summary'
     | '/api/hermes-jobs/$jobId'
     | '/api/hermes-proxy/$'
@@ -1534,6 +1546,7 @@ export interface FileRouteTypes {
     | '/settings/providers'
     | '/chat/'
     | '/settings/'
+    | '/api/contextgraph-studio/source-evidence-viewer-config'
     | '/api/data-connections/summary'
     | '/api/hermes-jobs/$jobId'
     | '/api/hermes-proxy/$'
@@ -1658,6 +1671,7 @@ export interface RootRouteChildren {
   OrganizationsSplatRoute: typeof OrganizationsSplatRoute
   RunsRunIdRoute: typeof RunsRunIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
+  ApiContextgraphStudioSourceEvidenceViewerConfigRoute: typeof ApiContextgraphStudioSourceEvidenceViewerConfigRoute
   ApiDataConnectionsSummaryRoute: typeof ApiDataConnectionsSummaryRoute
   ApiHermesProxySplatRoute: typeof ApiHermesProxySplatRoute
   ApiKnowledgeBuilderRoute: typeof ApiKnowledgeBuilderRoute
@@ -2559,6 +2573,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDataConnectionsSummaryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/contextgraph-studio/source-evidence-viewer-config': {
+      id: '/api/contextgraph-studio/source-evidence-viewer-config'
+      path: '/api/contextgraph-studio/source-evidence-viewer-config'
+      fullPath: '/api/contextgraph-studio/source-evidence-viewer-config'
+      preLoaderRoute: typeof ApiContextgraphStudioSourceEvidenceViewerConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/tender-document-review/runs/$runId': {
       id: '/api/tender-document-review/runs/$runId'
       path: '/runs/$runId'
@@ -2821,6 +2842,8 @@ const rootRouteChildren: RootRouteChildren = {
   OrganizationsSplatRoute: OrganizationsSplatRoute,
   RunsRunIdRoute: RunsRunIdRoute,
   ChatIndexRoute: ChatIndexRoute,
+  ApiContextgraphStudioSourceEvidenceViewerConfigRoute:
+    ApiContextgraphStudioSourceEvidenceViewerConfigRoute,
   ApiDataConnectionsSummaryRoute: ApiDataConnectionsSummaryRoute,
   ApiHermesProxySplatRoute: ApiHermesProxySplatRoute,
   ApiKnowledgeBuilderRoute: ApiKnowledgeBuilderRoute,

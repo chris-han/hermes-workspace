@@ -25,11 +25,11 @@ export const Route = createUntypedFileRoute('/api/tender-document-review')({
           const body = (await request.json()) as Record<string, unknown>
           const action = String(body.action || 'detect')
           if (action === 'disposition') {
-            const disposition = await recordTenderFindingDisposition(
+            const result = await recordTenderFindingDisposition(
               request.headers,
               body as Parameters<typeof recordTenderFindingDisposition>[1],
             )
-            return json({ disposition })
+            return json(result)
           }
           if (action === 'report') {
             const report = await createTenderReport(

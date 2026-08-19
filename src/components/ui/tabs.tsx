@@ -31,10 +31,10 @@ function TabsList({
   return (
     <TabsPrimitive.List
       className={cn(
-        'relative z-0 flex w-fit items-center justify-center gap-x-0.5 text-primary-600 overflow-visible',
+        'relative z-0 flex w-fit items-center justify-center gap-x-0.5 overflow-visible text-(--theme-muted)',
         'data-[orientation=vertical]:flex-col',
         variant === 'default'
-          ? 'p-0.5 text-primary-600/80'
+          ? 'p-0.5 text-(--theme-muted)'
           : 'data-[orientation=vertical]:px-1 data-[orientation=horizontal]:py-1',
         className,
       )}
@@ -45,10 +45,10 @@ function TabsList({
       {children}
       <TabsPrimitive.Indicator
         className={cn(
-          '-translate-y-(--active-tab-bottom) absolute bottom-0 left-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) transition-[width,translate] duration-200 ease-in-out',
+          '-translate-y-(--active-tab-bottom) absolute bottom-0 left-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) transition-[width,translate] duration-(--motion-default) ease-in-out',
           variant === 'line' || variant === 'underline'
             ? 'data-[orientation=vertical]:-translate-x-px z-10 bg-current data-[orientation=horizontal]:h-0.5 data-[orientation=vertical]:w-0.5 data-[orientation=horizontal]:translate-y-px'
-            : 'z-0 rounded-md bg-primary-200',
+            : 'z-0 rounded-md bg-(--theme-accent)',
         )}
         data-slot="tab-indicator"
       />
@@ -88,7 +88,7 @@ function TabsTab({ className, onKeyDown, ...props }: TabsPrimitive.Tab.Props) {
   return (
     <TabsPrimitive.Tab
       className={cn(
-        '[&_svg]:-mx-0.5 relative z-10 flex h-[2.8125rem] shrink-0 grow cursor-pointer items-center justify-center gap-[0.4rem] whitespace-nowrap rounded-none px-1 py-3 text-sm leading-[1.5] font-semibold outline-none transition-[color,background-color,box-shadow] hover:text-primary-900 focus-visible:ring-2 focus-visible:ring-primary-400 data-disabled:pointer-events-none data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-active:text-primary-900 data-disabled:opacity-64 [&_svg:not([class*="size-"])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0',
+        '[&_svg]:-mx-0.5 relative z-10 flex h-[2.8125rem] shrink-0 grow cursor-pointer items-center justify-center gap-[0.4rem] whitespace-nowrap rounded-none px-1 py-3 text-sm leading-[1.5] font-semibold outline-none transition-[color,background-color,box-shadow] duration-(--motion-default) hover:text-(--theme-text) focus-visible:ring-2 focus-visible:ring-(--theme-focus) data-disabled:pointer-events-none data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-active:text-(--theme-text) data-disabled:opacity-64 [&_svg:not([class*="size-"])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0',
         className,
       )}
       data-slot="tabs-tab"

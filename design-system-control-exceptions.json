@@ -43,5 +43,14 @@
     "accessible_fallback": "The task title toggle receives keyboard activation and the expanded form uses canonical controls.",
     "replacement": "DraggableDisclosureCard primitive",
     "remove_by": "2026-10-01"
+  },
+  {
+    "path": "src/components/workspace-shell.tsx",
+    "allowed_kinds": ["a"],
+    "owner": "shell",
+    "rationale": "The shell renders the convergence v2 §4 Law 10 skip-to-main-content anchor as the first focusable interactive element. A native anchor is the correct semantic for an in-page skip link; wrapping it in a Button would force Enter/Space activation semantics that conflict with screen-reader skip-link conventions.",
+    "accessible_fallback": "The anchor is the first focusable element, visually hidden until focused, and jumps to the canonical id=main-content target. Keyboard, screen reader, and pointer paths are all supported.",
+    "replacement": null,
+    "remove_by": null
   }
 ]

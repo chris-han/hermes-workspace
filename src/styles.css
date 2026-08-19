@@ -43,6 +43,35 @@
   --theme-toggle-off-border: var(--theme-border);
   --theme-toggle-on-bg: var(--theme-accent);
   --theme-toggle-on-border: var(--theme-accent);
+
+  /* Motion tokens (Wave 1 publication per convergence v2 §5.3) */
+  --motion-fast: 120ms;
+  --motion-default: 180ms;
+  --motion-slow: 240ms;
+  --motion-page: 260ms;
+  --motion-ease-standard: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --motion-ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-reduced-fast: 0ms;
+  --motion-reduced-default: 0ms;
+  --motion-reduced-slow: 0ms;
+
+  /* Z-index layering scale (Wave 1 publication per convergence v2 §5.4) */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-dropdown: 1000;
+  --z-overlay: 1100;
+  --z-modal: 1200;
+  --z-toast: 1300;
+  --z-tooltip: 1400;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: var(--motion-reduced-fast);
+    --motion-default: var(--motion-reduced-default);
+    --motion-slow: var(--motion-reduced-slow);
+    --motion-page: var(--motion-reduced-default);
+  }
 }
 
 /* Shared radius utilities for all screen pages */
@@ -826,15 +855,17 @@ code {
 }
 
 .page-transition {
-  animation: page-fade-in 0.15s ease-out;
+  animation: page-fade-in var(--motion-default) ease-out;
 }
 
 .page-transition.slide-enter-left {
-  animation: slide-in-from-left 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation: slide-in-from-left var(--motion-page)
+    var(--motion-ease-standard);
 }
 
 .page-transition.slide-enter-right {
-  animation: slide-in-from-right 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation: slide-in-from-right var(--motion-page)
+    var(--motion-ease-standard);
 }
 
 /* Chat panel: force all content to respect panel width */
@@ -1726,7 +1757,7 @@ code {
   clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
   content: '';
   transform: scale(0);
-  transition: transform 120ms ease;
+  transition: transform var(--motion-fast) var(--motion-ease-standard);
 }
 
 :is([data-theme='semantier'], [data-theme='semantier-light']) [data-slot='radio']::after {
@@ -1736,7 +1767,7 @@ code {
   background: var(--theme-accent-foreground);
   content: '';
   transform: scale(0);
-  transition: transform 120ms ease;
+  transition: transform var(--motion-fast) var(--motion-ease-standard);
 }
 
 :is([data-theme='semantier'], [data-theme='semantier-light']) :is([data-slot='checkbox'], [data-slot='radio']) {
@@ -1866,7 +1897,14 @@ code {
 /* ── Tailwind primary token remaps for dark themes ─────────────────────
    Maps bg-primary-50, text-primary-900, border-primary-200 etc.
    to theme-appropriate values so ALL existing Tailwind classes work.
-   Dark: 50=darkest surface, 950=lightest text (already set above) */
+   Dark: 50=darkest surface, 950=lightest text (already set above)
+
+   DEPRECATED: This block is migration machinery, not part of the canonical
+   visual contract (convergence v2 §5.2 / Wave 1). New `primary-*` usage is
+   an audit error. Each surviving consumer is tracked in
+   `design-system-compatibility.json`. The block is deleted when its last
+   consumer migrates, and no later than Wave 7.
+*/
 
 [data-theme='hermes-nous'],
 [data-theme='hermes-official'],
@@ -1893,7 +1931,10 @@ code {
 }
 
 /* ── Tailwind primary token remaps for light themes ────────────────────
-   Light: 50=lightest surface, 950=darkest text */
+   Light: 50=lightest surface, 950=darkest text
+
+   DEPRECATED: Same status as the dark-theme remap above.
+*/
 
 [data-theme='hermes-nous-light'],
 [data-theme='hermes-official-light'],
@@ -2211,7 +2252,7 @@ code {
   display: block !important;
 }
 [data-demo='true'] * {
-  transition-duration: 0.05s !important;
+  transition-duration: 50ms !important;
 }
 
 /* Mobile nav drawer — push content right + dim when open */

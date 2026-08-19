@@ -10,6 +10,7 @@ import {
 
 import {
   SourceEvidenceViewer,
+  inferSourceEvidenceDocumentKind,
   projectFindingsToHighlights,
   resolveSourceEvidenceDocumentAdapter,
 } from './source-evidence-viewer'
@@ -169,6 +170,25 @@ describe('SourceEvidenceViewer', () => {
       overlayStrategy: 'unavailable',
       diagnosticCode: 'viewer_unavailable',
     })
+  })
+
+  it('infers document kind from governed source refs and artifact refs', () => {
+    expect(
+      inferSourceEvidenceDocumentKind([
+        'workspaces/ws-1/uploads/runtime-source.pdf',
+      ]),
+    ).toBe('pdf')
+    expect(
+      inferSourceEvidenceDocumentKind([
+        'repo://docs/tender-source.docx?version=1',
+      ]),
+    ).toBe('docx')
+    expect(
+      inferSourceEvidenceDocumentKind([
+        'artifacts/document_extraction/runtime-source.json',
+      ]),
+    ).toBe('canonical_source_ir')
+    expect(inferSourceEvidenceDocumentKind([null, ''])).toBe('unknown')
   })
 
   it('renders configured DOCX/PDF adapter attributes for overlay E2E hooks', () => {

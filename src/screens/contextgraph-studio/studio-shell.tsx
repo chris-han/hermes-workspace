@@ -97,6 +97,7 @@ import { projectStudioWorkbenchContext } from './contextgraph-workbench-context'
 import { LineagePanel } from './lineage/lineage-panel'
 import {
   SourceEvidenceViewer,
+  inferSourceEvidenceDocumentKind,
   type SourceEvidenceFinding,
   type ViewerConfig,
 } from './source-viewer/source-evidence-viewer'
@@ -3948,7 +3949,7 @@ export function GraphMode({
             strokeWidth={1.7}
             className="pointer-events-none absolute left-3 text-muted-foreground"
           />
-          <input
+          <Input
             value={graphSearch}
             onChange={(event) => setGraphSearch(event.target.value)}
             placeholder={
@@ -4258,6 +4259,23 @@ export function InspectMode({
       return String(leftValue).localeCompare(String(rightValue))
     })
   }, [dispositionByFinding, run?.findings, sortKey])
+  const sourceEvidenceDocumentKind = useMemo(
+    () =>
+      inferSourceEvidenceDocumentKind([
+        fileRef,
+        run?.tender_document_id,
+        run?.source_document_ref,
+        run?.source_document_artifact_ref,
+        run?.normalized_document_artifact_ref,
+      ]),
+    [
+      fileRef,
+      run?.tender_document_id,
+      run?.source_document_ref,
+      run?.source_document_artifact_ref,
+      run?.normalized_document_artifact_ref,
+    ],
+  )
   const selectFinding = (finding: Record<string, any>) => {
     setSelectedFinding(finding)
     onFindingContext({
@@ -4485,6 +4503,7 @@ export function InspectMode({
               value={fileRef}
               onChange={(e) => setFileRef(e.target.value)}
               placeholder="artifacts/document_extraction/target.json"
+              data-testid="runtime-document-file-ref"
               className="h-8 min-w-[320px] flex-1 rounded-md border border-border bg-background px-2"
             />
             <StudioButton
@@ -4498,6 +4517,7 @@ export function InspectMode({
               value={runId}
               onChange={(e) => setRunId(e.target.value)}
               placeholder="tender_run_id"
+              data-testid="runtime-document-run-id"
               className="h-8 w-48 rounded-md border border-border bg-background px-2"
             />
             <StudioButton disabled={busy || !runId} onClick={() => void load()}>
@@ -4626,7 +4646,7 @@ export function InspectMode({
                   <SourceEvidenceViewer
                     zh={zh}
                     documentName={run.tender_document_id ?? run.run_id}
-                    documentKind="docx"
+                    documentKind={sourceEvidenceDocumentKind}
                     sourceDocumentHash={run.source_document_hash ?? null}
                     viewerConfig={viewerConfig}
                     findings={

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
+
 const POLL_INTERVAL_MS = 10_000
 const FLASH_DURATION_MS = 1_800
 
@@ -227,22 +229,22 @@ export function HermesReconnectBanner({
 
         {isDisconnected ? (
           <div className="flex shrink-0 items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => void handleRetry()}
               disabled={isChecking || isStarting}
-              className="inline-flex items-center justify-center rounded-button border border-border bg-[var(--theme-card2)] px-[1.375rem] py-3 text-sm font-semibold leading-none transition-[background-color,border-color,transform] hover:bg-[var(--theme-card)] hover:border-border-strong active:scale-[0.96] disabled:pointer-events-none disabled:opacity-45"
             >
               {isChecking ? 'Retrying…' : 'Retry'}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="destructive"
               onClick={() => void handleStartAgent()}
               disabled={isStarting}
-              className="inline-flex items-center justify-center rounded-button border border-transparent bg-[var(--theme-danger)] px-[1.375rem] py-3 text-sm font-semibold leading-none text-white transition-[background-color,transform] hover:opacity-90 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-45"
             >
               {isStarting ? 'Starting…' : 'Start Agent'}
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>

@@ -394,6 +394,14 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
           )}
         >
           {/* Activity ticker bar */}
+          {/* Skip-to-main-content link (convergence v2 §4 Law 10). First focusable. */}
+          <a
+            href="#main-content"
+            data-slot="skip-to-main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[var(--z-modal)] focus:rounded-[var(--radius-md)] focus:border focus:border-(--theme-accent) focus:bg-(--theme-accent) focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-(--theme-accent-foreground) focus:shadow-(--theme-shadow-2) focus:outline-none"
+          >
+            Skip to main content
+          </a>
           {/* Persistent sidebar */}
           {!isMobile && !hideChatSidebar && (
             <div className="relative z-30">
@@ -416,6 +424,8 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
 
           {/* Main content area — renders the matched route */}
           <main
+            id="main-content"
+            tabIndex={-1}
             onTouchStart={isMobile ? onTouchStart : undefined}
             onTouchMove={isMobile ? onTouchMove : undefined}
             onTouchEnd={isMobile ? onTouchEnd : undefined}

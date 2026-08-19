@@ -1,0 +1,68 @@
+{
+  "$schema": "design-system-subsystem-allowlist.schema.json",
+  "version": 1,
+  "recorded_at": "2026-08-19T21:30:00+08:00",
+  "plan": "docs/plans/2026-08-19-authenticated-workspace-design-system-convergence-v2.md",
+  "subsystems": [
+    {
+      "id": "graph-categorical",
+      "namespace": "--graph-*",
+      "owner": "graph-ui",
+      "allowed_consumer_paths": [
+        "src/screens/knowledge-base/graph/**"
+      ],
+      "light_dark_variants": "both",
+      "contrast_requirement": "WCAG AA on graph canvas surface",
+      "rationale": "Graph node/edge categorical colors must remain visually distinct to convey entity types; replacing with semantic app-state colors would conflate status with identity.",
+      "review_by": "2026-12-31"
+    },
+    {
+      "id": "chart-categorical",
+      "namespace": "--chart-*",
+      "owner": "charts-ui",
+      "allowed_consumer_paths": [
+        "src/components/charts/**"
+      ],
+      "light_dark_variants": "both",
+      "contrast_requirement": "WCAG AA on chart surface",
+      "rationale": "Chart series categorical palette is a bounded data-visualization subsystem; series colors carry data identity, not application state.",
+      "review_by": "2026-12-31"
+    },
+    {
+      "id": "terminal-ansi",
+      "namespace": "--terminal-ansi-*",
+      "owner": "workspace-terminal",
+      "allowed_consumer_paths": [
+        "src/components/terminal/**"
+      ],
+      "light_dark_variants": "both (xterm.js theme)",
+      "contrast_requirement": "ANSI standard; xterm owns rendering",
+      "rationale": "Terminal emulator colors follow the xterm.js / ANSI 16-color convention; replacing with semantic app-state colors would break user muscle memory.",
+      "review_by": "2026-12-31"
+    },
+    {
+      "id": "code-syntax",
+      "namespace": "--code-syntax-*",
+      "owner": "prompt-kit",
+      "allowed_consumer_paths": [
+        "src/components/prompt-kit/**",
+        "src/components/terminal/**"
+      ],
+      "light_dark_variants": "both (Shiki themes)",
+      "contrast_requirement": "Shiki default themes",
+      "rationale": "Code syntax highlighting uses Shiki themes; the Shiki theme is a single bounded subsystem and not a competing visual vocabulary.",
+      "review_by": "2026-12-31"
+    },
+    {
+      "id": "semantic-state",
+      "namespace": "--theme-success, --theme-warning, --theme-danger, --theme-info",
+      "owner": "theme-steward",
+      "allowed_consumer_paths": [
+        "**"
+      ],
+      "light_dark_variants": "both",
+      "contrast_requirement": "WCAG AA on --theme-card / --theme-card2",
+      "rationale": "Semantic state colors are the canonical error/success/warning/info signal vocabulary. They are not a competing palette — they ARE the canonical contract."
+    }
+  ]
+}

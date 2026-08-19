@@ -48,6 +48,11 @@ import { UserAvatar } from '@/components/avatars'
 import { Input } from '@/components/ui/input'
 import { LogoLoader } from '@/components/logo-loader'
 import { BrailleSpinner } from '@/components/ui/braille-spinner'
+import {
+  AppPage,
+  Row,
+  Section,
+} from '@/components/structural'
 import { ThreeDotsSpinner } from '@/components/ui/three-dots-spinner'
 // useWorkspaceStore removed — hamburger eliminated on mobile
 
@@ -228,44 +233,29 @@ type SectionProps = {
 
 function SettingsSection({ title, description, icon, children }: SectionProps) {
   return (
-    <section className="rounded-2xl border border-primary-200 bg-primary-50/80 p-4 shadow-sm backdrop-blur-xl md:p-5">
-      <div className="mb-4 flex items-start gap-3">
-        <span className="inline-flex size-9 items-center justify-center rounded-xl border border-primary-200 bg-primary-100/70">
-          <HugeiconsIcon icon={icon} size={20} strokeWidth={1.5} />
-        </span>
-        <div className="min-w-0">
-          <h2 className="text-base font-medium text-primary-900 text-balance">
-            {title}
-          </h2>
-          <p className="text-sm text-primary-600 text-pretty">{description}</p>
-        </div>
-      </div>
-      <div className="space-y-4">{children}</div>
-    </section>
+    <Section
+      title={title}
+      description={description}
+      icon={<HugeiconsIcon icon={icon} size={20} strokeWidth={1.5} />}
+    >
+      {children}
+    </Section>
   )
 }
 
-type RowProps = {
-  label: string
-  description?: string
+function SettingsRow({
+  label,
+  description,
+  children,
+}: {
+  label: React.ReactNode
+  description?: React.ReactNode
   children: React.ReactNode
-}
-
-function SettingsRow({ label, description, children }: RowProps) {
+}) {
   return (
-    <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-between">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-primary-900 text-balance">
-          {label}
-        </p>
-        {description ? (
-          <p className="text-xs text-primary-600 text-pretty">{description}</p>
-        ) : null}
-      </div>
-      <div className="flex w-full items-center gap-2 md:w-auto md:justify-end">
-        {children}
-      </div>
-    </div>
+    <Row label={label} description={description}>
+      {children}
+    </Row>
   )
 }
 
@@ -424,15 +414,12 @@ export function SettingsScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-surface text-primary-900">
-      <div className="pointer-events-none fixed inset-0 bg-radial from-primary-400/20 via-transparent to-transparent" />
-      <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-primary-100/25 via-transparent to-primary-300/20" />
-
+    <AppPage>
       <main className="relative mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pt-6 pb-24 sm:px-6 md:flex-row md:gap-6 md:pb-8 lg:pt-8">
         {/* Sidebar nav */}
         <nav className="hidden w-48 shrink-0 md:block">
           <div className="sticky top-8">
-            <h1 className="mb-4 text-lg font-semibold text-primary-900 px-3">
+            <h1 className="mb-4 px-3 text-lg font-semibold text-(--theme-text)">
               Settings
             </h1>
             <div className="flex flex-col gap-0.5">
@@ -441,7 +428,7 @@ export function SettingsScreen() {
                   <Link
                     key={item.id}
                     to={item.to}
-                    className="rounded-lg px-3 py-2 text-left text-sm text-primary-600 transition-colors hover:bg-primary-100 hover:text-primary-900"
+                    className="rounded-[var(--radius-md)] px-3 py-2 text-left text-sm text-(--theme-muted) transition-colors hover:bg-(--theme-card2) hover:text-(--theme-text)"
                   >
                     {item.label}
                   </Link>
@@ -454,10 +441,10 @@ export function SettingsScreen() {
                       setActiveSection(item.id as SettingsSectionId)
                     }
                     className={cn(
-                      'rounded-lg px-3 py-2 text-left text-sm transition-colors',
+                      'rounded-[var(--radius-md)] px-3 py-2 text-left text-sm transition-colors',
                       activeSection === item.id
-                        ? 'bg-accent-500/10 text-accent-600 font-medium'
-                        : 'text-primary-600 hover:bg-primary-100 hover:text-primary-900',
+                        ? 'bg-(--theme-accent-subtle) text-(--theme-accent) font-medium'
+                        : 'text-(--theme-muted) hover:bg-(--theme-card2) hover:text-(--theme-text)',
                     )}
                   >
                     {item.label}
@@ -832,7 +819,7 @@ export function SettingsScreen() {
           </footer>
         </div>
       </main>
-    </div>
+    </AppPage>
   )
 }
 

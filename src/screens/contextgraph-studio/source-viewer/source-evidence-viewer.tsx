@@ -55,10 +55,12 @@ type SourceEvidenceDocumentAdapter = {
 
 type DecisionKind = 'confirm' | 'change' | 'dismiss'
 
+type SourceEvidenceDocumentKind = 'docx' | 'pdf' | 'canonical_source_ir' | 'unknown'
+
 type SourceEvidenceViewerProps = {
   zh: boolean
   documentName?: string | null
-  documentKind?: 'docx' | 'pdf' | 'canonical_source_ir' | 'unknown'
+  documentKind?: SourceEvidenceDocumentKind
   sourceDocumentHash?: string | null
   viewerConfig: ViewerConfig
   findings: SourceEvidenceFinding[]
@@ -131,6 +133,22 @@ function projectFindingsToHighlights(
       relation: finding.semantic_relation ?? 'relation:unknown',
     }))
     .filter((highlight) => highlight.findingId && highlight.label)
+}
+
+function inferSourceEvidenceDocumentKind(
+  refs: Array<string | null | undefined>,
+): SourceEvidenceDocumentKind {
+  for (const ref of refs) {
+    const value = ref?.trim().toLowerCase()
+    if (!value) continue
+    if (/\.(pdf)(?:$|[?#])/.test(value)) return 'pdf'
+    if (/\.(docx?|docm)(?:$|[?#])/.test(value)) return 'docx'
+    if (value.includes('canonical_source_ir')) return 'canonical_source_ir'
+    if (value.includes('document_extraction') || value.endsWith('.json')) {
+      return 'canonical_source_ir'
+    }
+  }
+  return 'unknown'
 }
 
 function resolveSourceEvidenceDocumentAdapter(
@@ -262,11 +280,13 @@ export function SourceEvidenceViewer({
                   const selected =
                     selectedFinding?.finding_id === highlight.findingId
                   return (
-                    <button
+                    <Button
                       key={highlight.findingId}
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       className={cn(
-                        'rounded border border-transparent bg-[var(--theme-accent)] px-1 text-left text-[var(--theme-accent-foreground,#163300)]',
+                        'border border-transparent bg-[var(--theme-accent)] px-1 text-left text-[var(--theme-accent-foreground,#163300)]',
                         selected &&
                           'border-[var(--dark-green,#163300)] shadow-[0_0_0_2px_var(--theme-accent-subtle)]',
                       )}
@@ -281,7 +301,7 @@ export function SourceEvidenceViewer({
                       <mark className="bg-transparent text-inherit">
                         {highlight.label}
                       </mark>
-                    </button>
+                    </Button>
                   )
                 })}
               </div>
@@ -391,7 +411,9 @@ export function SourceEvidenceViewer({
 
 export { projectFindingsToHighlights }
 export { resolveSourceEvidenceDocumentAdapter }
+export { inferSourceEvidenceDocumentKind }
 export type {
+  SourceEvidenceDocumentKind,
   SourceEvidenceDocumentAdapter,
   SourceEvidenceFinding,
   SourceEvidenceHighlight,

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { HTMLAttributes, KeyboardEvent, ReactNode } from 'react'
-import { Check, ChevronDown } from 'lucide-react'
+import { HugeiconsIcon } from '@hugeicons/react'
+import { Tick01Icon, ArrowDown01Icon } from '@hugeicons/core-free-icons'
 
 import { Button } from './button'
 import { cn } from '@/lib/utils'
@@ -264,7 +265,8 @@ function ControlledSelect({
         data-slot="controlled-select-trigger"
       >
         <span>{selected?.label}</span>
-        <ChevronDown
+        <HugeiconsIcon
+          icon={ArrowDown01Icon}
           aria-hidden="true"
           data-slot="controlled-select-chevron"
           className={cn(
@@ -299,7 +301,8 @@ function ControlledSelect({
               >
                 <span>{option.label}</span>
                 {option.value === value ? (
-                  <Check
+                  <HugeiconsIcon
+                    icon={Tick01Icon}
                     aria-hidden="true"
                     data-slot="controlled-select-check"
                     className="size-[0.9375rem] shrink-0"
@@ -381,7 +384,8 @@ function MultiSelectDropdown({
         data-slot="multi-select-dropdown-trigger"
       >
         <span>{triggerLabel}</span>
-        <ChevronDown
+        <HugeiconsIcon
+          icon={ArrowDown01Icon}
           aria-hidden="true"
           data-slot="multi-select-dropdown-chevron"
           className={cn(

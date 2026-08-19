@@ -1572,6 +1572,35 @@ code {
   box-shadow: 0 0 0 4px var(--theme-accent-subtle);
 }
 
+/*
+ * Borderless textarea: opt-out from the global form styling.
+ *
+ * Use this slot when a textarea lives inside an already-active container
+ * (chat composer, command palette, inline editor) where the default accent
+ * focus indicator is visual noise. We give the textarea its own data-slot
+ * so the global `[data-slot='textarea']` rule above never matches, then opt
+ * back into the styling we want with the same theme selector at equal
+ * specificity.
+ *
+ * Pattern: dedicated data-slot > `!important` chain.
+ */
+:is([data-theme='semantier'], [data-theme='semantier-light']) [data-slot='borderless-textarea'] {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  outline: none;
+  font-weight: inherit;
+}
+
+:is([data-theme='semantier'], [data-theme='semantier-light']) [data-slot='borderless-textarea']:focus,
+:is([data-theme='semantier'], [data-theme='semantier-light']) [data-slot='borderless-textarea']:focus-visible {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+
 :is([data-theme='semantier'], [data-theme='semantier-light']) input[type='range'] {
   appearance: none;
   height: 1.5rem;

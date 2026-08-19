@@ -29,6 +29,8 @@ import { ChatPanel } from '@/components/chat-panel'
 import { UploadDropzone } from '@/components/ui/upload-dropzone'
 import {
   ControlledSelect,
+  MultiSelectDropdown,
+  type MultiSelectOption,
 } from '@/components/ui/selection-surfaces'
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 
@@ -93,6 +95,10 @@ import {
 } from './contextgraph-deep-link'
 import { projectStudioWorkbenchContext } from './contextgraph-workbench-context'
 import { LineagePanel } from './lineage/lineage-panel'
+import {
+  buildTenderEvaluationDetectionRequest,
+  TENDER_EVALUATION_DETECTION_ENDPOINT,
+} from './tender-evaluation-panel'
 
 const ContextGraphSigmaViewer = lazy(() =>
   import('./graph/contextgraph-sigma-viewer').then((module) => ({
@@ -152,6 +158,7 @@ type AssertionCandidate = {
 }
 
 type SourceRow = [string, string, string, string, string, string]
+type SourceWorkflow = 'reference_graph_build' | 'runtime_tender_evaluation'
 
 type SourceInspectorContext = {
   name: string
@@ -356,6 +363,76 @@ export function StudioShell() {
   const [viewModel, setViewModel] =
     useState<Awaited<RuntimeFetchResult> | null>(null)
 
+  const applyRuntimeProjection = useCallback(
+    (result: RuntimeFetchResult) => {
+      if (!result.ok) {
+        // CF-E18: surface a visible error instead of displaying an
+        // invented graph identity.
+        setViewModel(null)
+        setRuntimeProjectionError(result.error)
+        return
+      }
+      setRuntimeProjectionError(null)
+      const vm = result.viewModel
+      // `vm` is the parsed GraphViewModel.v2 — the only raw transport
+      // access happens inside the adapter helper above (CF-E03).
+      const identity: StudioIdentity = {
+        graphRef: vm.graphRef ?? '',
+        graphVersion: vm.graphVersion ?? '',
+        graphHash: vm.graphHash ?? '',
+        authorityState: vm.authorityState ?? 'candidate',
+        semanticaCommit: null,
+      }
+      setViewModel({ ok: true, viewModel: vm })
+      setRuntimeIdentity(identity)
+      invalidateSelectionForIdentity(identity)
+      setLastIdentity(identity)
+      applyLargeGraphPerformance(vm.nodes.length, vm.edges.length)
+      // CF-E24: populate persisted MVL summary from the canonical
+      // runtime projection when present.  In this preview the
+      // adapter carries the refs directly on the GraphViewModel
+      // properties bag — when the canonical MVL bundle exposes a
+      // dedicated summary field, this is the only site that needs
+      // to be updated to read it.
+      const props = vm as unknown as {
+        properties?: {
+          mvlV0RunRef?: string
+          mvlV1RunRef?: string
+          mvlEvaluationRunId?: string
+          mvlLearningDecision?: 'GO' | 'STOP_REVISE' | 'SPLIT_FIX'
+        }
+      }
+      const p = props.properties ?? {}
+      if (
+        p.mvlV0RunRef ||
+        p.mvlV1RunRef ||
+        p.mvlEvaluationRunId ||
+        p.mvlLearningDecision
+      ) {
+        setMvlWorkflowSummary({
+          v0RunRef: p.mvlV0RunRef ?? null,
+          v1RunRef: p.mvlV1RunRef ?? null,
+          evaluationRunId: p.mvlEvaluationRunId ?? null,
+          learningDecision: p.mvlLearningDecision ?? null,
+        })
+      }
+    },
+    [
+      applyLargeGraphPerformance,
+      invalidateSelectionForIdentity,
+      setLastIdentity,
+      setMvlWorkflowSummary,
+    ],
+  )
+
+  const refreshRuntimeProjection = useCallback(
+    async (endpoint: string) => {
+      const result = await fetchAndAdaptRuntimeProjection(fetch, endpoint)
+      applyRuntimeProjection(result)
+    },
+    [applyRuntimeProjection],
+  )
+
   useEffect(() => {
     let cancelled = false
     const params = new URLSearchParams(
@@ -372,67 +449,14 @@ export function StudioShell() {
     void fetchAndAdaptRuntimeProjection(fetch, endpoint)
       .then((result) => {
         if (cancelled) return
-        if (!result.ok) {
-          // CF-E18: surface a visible error instead of displaying an
-          // invented graph identity.
-          setViewModel(null)
-          setRuntimeProjectionError(result.error)
-          return
-        }
-        setRuntimeProjectionError(null)
-        const vm = result.viewModel
-        // `vm` is the parsed GraphViewModel.v2 — the only raw transport
-        // access happens inside the adapter helper above (CF-E03).
-        const identity: StudioIdentity = {
-          graphRef: vm.graphRef ?? '',
-          graphVersion: vm.graphVersion ?? '',
-          graphHash: vm.graphHash ?? '',
-          authorityState: vm.authorityState ?? 'candidate',
-          semanticaCommit: null,
-        }
-        setViewModel({ ok: true, viewModel: vm })
-        setRuntimeIdentity(identity)
-        invalidateSelectionForIdentity(identity)
-        setLastIdentity(identity)
-        applyLargeGraphPerformance(vm.nodes.length, vm.edges.length)
-        // CF-E24: populate persisted MVL summary from the canonical
-        // runtime projection when present.  In this preview the
-        // adapter carries the refs directly on the GraphViewModel
-        // properties bag — when the canonical MVL bundle exposes a
-        // dedicated summary field, this is the only site that needs
-        // to be updated to read it.
-        const props = vm as unknown as {
-          properties?: {
-            mvlV0RunRef?: string
-            mvlV1RunRef?: string
-            mvlEvaluationRunId?: string
-            mvlLearningDecision?: 'GO' | 'STOP_REVISE' | 'SPLIT_FIX'
-          }
-        }
-        const p = props.properties ?? {}
-        if (
-          p.mvlV0RunRef ||
-          p.mvlV1RunRef ||
-          p.mvlEvaluationRunId ||
-          p.mvlLearningDecision
-        ) {
-          setMvlWorkflowSummary({
-            v0RunRef: p.mvlV0RunRef ?? null,
-            v1RunRef: p.mvlV1RunRef ?? null,
-            evaluationRunId: p.mvlEvaluationRunId ?? null,
-            learningDecision: p.mvlLearningDecision ?? null,
-          })
-        }
+        applyRuntimeProjection(result)
       })
       .catch(() => undefined)
     return () => {
       cancelled = true
     }
   }, [
-    invalidateSelectionForIdentity,
-    setLastIdentity,
-    applyLargeGraphPerformance,
-    setMvlWorkflowSummary,
+    applyRuntimeProjection,
   ])
 
   // CF-E25: deep-link restoration.  Hints from the route query are
@@ -628,11 +652,11 @@ export function StudioShell() {
         [
           extractionRunId
             ? zh
-              ? `增加 ${candidates.length} 个断言候选、置信度与证据引用`
-              : `${candidates.length} assertion candidates, confidence, and evidence references added`
+              ? `增加 ${candidates.length} 个参考概念、规范表达与证据引用`
+              : `${candidates.length} reference concepts, canonical expressions, and evidence references added`
             : zh
-              ? '将增加断言候选、置信度与证据引用'
-              : 'Will add assertion candidates, confidence, and evidence references',
+              ? '将增加参考概念、规范表达与证据引用'
+              : 'Will add reference concepts, canonical expressions, and evidence references',
         ],
         [extractionRunId, candidateGraphId],
         Boolean(extractionRunId),
@@ -810,15 +834,38 @@ export function StudioShell() {
             }
             className="h-full w-max justify-start gap-3 bg-transparent px-0 py-0 text-muted-foreground"
           >
+            <span className="flex h-full items-center pr-1 text-[10px] font-semibold uppercase tracking-[.1em] text-muted-foreground">
+              {zh ? '参考图谱' : 'Reference Graph'}
+            </span>
             {(
               [
-              ['sources', zh ? '来源' : 'Sources'],
-              ['extract', zh ? '抽取' : 'Extract'],
-              ['ground', zh ? '校准' : 'Ground'],
-              ['graph', zh ? '图谱' : 'Graph'],
-              ['inspect', zh ? '检查' : 'Inspect'],
-              ['compare', zh ? '比较' : 'Compare'],
-              ['evaluate', zh ? '评估' : 'Evaluate'],
+                ['sources', zh ? '来源' : 'Sources'],
+                ['extract', zh ? '抽取' : 'Extract'],
+                ['ground', zh ? '校准' : 'Ground'],
+                ['graph', zh ? '图谱' : 'Graph'],
+              ] as const
+            ).map(([item, itemLabel]) => (
+              <TabsTab
+                key={item}
+                value={item}
+                aria-current={mode === item ? 'page' : undefined}
+                className="h-full px-1 text-xs text-muted-foreground data-active:text-foreground"
+              >
+                {itemLabel}
+              </TabsTab>
+            ))}
+            <span
+              aria-hidden="true"
+              className="mx-1 h-5 w-px bg-border"
+            />
+            <span className="flex h-full items-center pr-1 text-[10px] font-semibold uppercase tracking-[.1em] text-muted-foreground">
+              {zh ? '标书评估' : 'Tender Evaluation'}
+            </span>
+            {(
+              [
+                ['inspect', zh ? '检查' : 'Inspect'],
+                ['compare', zh ? '比较' : 'Compare'],
+                ['evaluate', zh ? '评估' : 'Evaluate'],
               ] as const
             ).map(([item, itemLabel]) => (
               <TabsTab
@@ -865,12 +912,21 @@ export function StudioShell() {
                 extractionRunId={extractionRunId}
                 candidateGraphId={candidateGraphId}
                 assertionCandidates={candidates}
+                onAcceptedRelease={(release) => {
+                  const graphVersion = release.graph_version
+                  if (typeof graphVersion === 'string' && graphVersion) {
+                    void refreshRuntimeProjection(
+                      `/api/contextgraph/runtime?accepted_release_id=${encodeURIComponent(graphVersion)}`,
+                    )
+                  }
+                }}
               />
             ) : null}
             {mode === 'inspect' ? (
               <InspectMode
                 zh={zh}
                 run={inspectRun}
+                runtimeIdentity={runtimeIdentity}
                 onRun={setInspectRun}
                 onFindingContext={setInspectFindingContext}
                 onOpenGraph={(finding) => {
@@ -1126,6 +1182,38 @@ export function StudioShell() {
                       ))}
                     </ol>
                   </>
+                ) : inspectFindingContext ? (
+                  <>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <StatusPill tone="candidate">
+                        {zh ? '标书发现项' : 'Tender finding'}
+                      </StatusPill>
+                      <StatusPill>{mode}</StatusPill>
+                    </div>
+                    <MiniLabel>{zh ? '目标锚点' : 'Tender source anchor'}</MiniLabel>
+                    <div className="break-all font-mono text-[10px]">
+                      {inspectFindingContext.targetEvidenceRef ?? '—'}
+                    </div>
+                    <MiniLabel>{zh ? '匹配的受管概念' : 'Matched governed concept'}</MiniLabel>
+                    <div className="break-all font-mono text-[10px]">
+                      {inspectFindingContext.graphRuleId ??
+                        inspectFindingContext.activeRuleVersionId ??
+                        '—'}
+                    </div>
+                    <MiniLabel>{zh ? '决策与反馈谱系' : 'Decision and feedback lineage'}</MiniLabel>
+                    <div className="space-y-1 break-all font-mono text-[10px] text-muted-foreground">
+                      <div>
+                        rule_version:{' '}
+                        {inspectFindingContext.activeRuleVersionId ?? '—'}
+                      </div>
+                      <div>
+                        origin:{' '}
+                        {inspectFindingContext.originEvidenceRef ?? '—'}
+                      </div>
+                      <div>disposition: stored on TenderDetectionRunStore</div>
+                      <div>learning: accepted feedback projects ObservedExpression</div>
+                    </div>
+                  </>
                 ) : inspectorNode || inspectorEdge ? (
                   <>
                     <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1232,6 +1320,9 @@ export function SourcesMode({
     'loading',
   )
   const [statusFilter, setStatusFilter] = useState('all')
+  const [sourceWorkflow, setSourceWorkflow] = useState<SourceWorkflow>(
+    'reference_graph_build',
+  )
   const [uploading, setUploading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -1545,8 +1636,8 @@ export function SourcesMode({
             label: zh ? '语义抽取' : 'Semantic extraction',
             contextAdded: [
               zh
-                ? '增加断言候选、置信度与证据引用'
-                : 'Assertion candidates, confidence, and evidence references added',
+                ? '增加参考概念、规范表达与证据引用'
+                : 'Reference concepts, canonical expressions, and evidence references added',
             ],
             refs: [extractionRunId],
           })
@@ -1554,11 +1645,11 @@ export function SourcesMode({
         if (candidateGraphId) {
           lineage.push({
             id: 'candidate-graph',
-            label: zh ? '候选图投影' : 'Candidate graph projection',
+            label: zh ? '参考图投影' : 'Reference graph projection',
             contextAdded: [
               zh
-                ? '增加候选节点、关系与图身份'
-                : 'Candidate nodes, relationships, and graph identity added',
+                ? '增加参考概念、关系与图身份'
+                : 'Reference concepts, relationships, and graph identity added',
             ],
             refs: [candidateGraphId],
           })
@@ -1646,6 +1737,15 @@ export function SourcesMode({
 
   const extractSource = useCallback(
     async (row: SourceRow) => {
+      if (sourceWorkflow === 'runtime_tender_evaluation') {
+        await inspectSourceContext(row)
+        setUploadError(
+          zh
+            ? '推理输入已送入检查上下文，不会写入受管参考图谱。'
+            : 'Inference input is available in Inspect and was not written to the governed reference graph.',
+        )
+        return
+      }
       const path = sourcePaths[row[0]]
       if (!path)
         throw new Error(
@@ -1699,54 +1799,20 @@ export function SourcesMode({
         )
       }
 
-      const packageResponse = await fetch(
-        `${KNOWLEDGE_BUILDER_API}/tender-packages`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            schemaVersion: 'knowledge_builder_tender_package_request.v1',
-            discoveryRunId: discoveryPayload.run.discovery_run_id,
-            documents: [
-              {
-                sourceId: discoveryPayload.run.source_id,
-                documentId: row[0],
-                role: 'main_tender',
-              },
-            ],
-          }),
-        },
-      )
-      const packagePayload = (await packageResponse
-        .json()
-        .catch(() => ({}))) as {
-        tenderPackage?: { package_id?: string }
-        detail?: string
-        error?: string
-      }
-      if (!packageResponse.ok || !packagePayload.tenderPackage?.package_id) {
-        throw new Error(
-          packagePayload.detail ??
-            packagePayload.error ??
-            `package:${packageResponse.status}`,
-        )
-      }
-
       const extractionResponse = await fetch(
         `${KNOWLEDGE_BUILDER_API}/extraction-runs`,
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            schemaVersion: 'knowledge_builder_extraction_run_request.v1',
+            schemaVersion: 'knowledge_builder_extraction_run_request.v2',
             discoveryRunId: discoveryPayload.run.discovery_run_id,
-            tenderPackageId: packagePayload.tenderPackage.package_id,
-            sourceKind: 'text',
-            sourceRef: path,
-            sourceText: sourcePayload.content ?? '',
+            sourceId: discoveryPayload.run.source_id,
             documentId: row[0],
             provider: 'semantica',
-            profile: 'tender_sensitive_v1',
+            sourceRole: 'reference_sensitive_word_list',
+            workflowKind: 'reference_graph_build',
+            providerOptions: { sourceIntent: sourceWorkflow },
           }),
         },
       )
@@ -1760,7 +1826,7 @@ export function SourcesMode({
             `extraction:${extractionResponse.status}`,
         )
     },
-    [sourcePaths, zh],
+    [inspectSourceContext, sourcePaths, sourceWorkflow, zh],
   )
 
   const runBatchExtraction = useCallback(async () => {
@@ -1943,6 +2009,22 @@ export function SourcesMode({
             { value: 'pending', label: zh ? '等待导入' : 'Waiting for ingest' },
           ]}
         />
+        <ControlledSelect
+          compact
+          label={zh ? '来源用途' : 'Source use'}
+          value={sourceWorkflow}
+          onValueChange={(value) => setSourceWorkflow(value as SourceWorkflow)}
+          options={[
+            {
+              value: 'reference_graph_build',
+              label: zh ? '参考图谱来源' : 'Reference graph source',
+            },
+            {
+              value: 'runtime_tender_evaluation',
+              label: zh ? '推理输入' : 'Inference input',
+            },
+          ]}
+        />
         <div className="flex-1" />
         <StudioButton
           onClick={() => {
@@ -1964,8 +2046,8 @@ export function SourcesMode({
                 zh ? '文件 / 来源' : 'File / Source',
                 zh ? '类型' : 'Type',
                 zh ? '状态' : 'Status',
-                zh ? '候选' : 'Candidates',
-                zh ? '问题' : 'Issues',
+                zh ? '参考概念' : 'Reference concepts',
+                zh ? '规范表达' : 'Canonical expressions',
                 zh ? '最后运行' : 'Last run',
                 zh ? '操作' : 'Actions',
               ].map((h) => (
@@ -2076,8 +2158,24 @@ export function SourcesMode({
                           .finally(() => setExtracting(false))
                       }}
                       disabled={!sourcePaths[row[0]] || extracting}
-                      title={zh ? '抽取来源' : 'Extract source'}
-                      ariaLabel={zh ? '抽取来源' : `Extract ${row[0]}`}
+                      title={
+                        sourceWorkflow === 'reference_graph_build'
+                          ? zh
+                            ? '抽取来源'
+                            : 'Extract source'
+                          : zh
+                            ? '用于检查'
+                            : 'Use in Inspect'
+                      }
+                      ariaLabel={
+                        sourceWorkflow === 'reference_graph_build'
+                          ? zh
+                            ? '抽取来源'
+                            : `Extract ${row[0]}`
+                          : zh
+                            ? '用于检查'
+                            : `Use ${row[0]} in Inspect`
+                      }
                     >
                       <HugeiconsIcon
                         icon={AiScanIcon}
@@ -2197,7 +2295,15 @@ export function SourcesMode({
           primary
           onClick={() => void runBatchExtraction()}
           disabled={selectedSourceNames.length === 0 || extracting}
-          title={zh ? '批量抽取' : 'Batch extract'}
+          title={
+            sourceWorkflow === 'reference_graph_build'
+              ? zh
+                ? '批量抽取'
+                : 'Batch extract'
+              : zh
+                ? '用于检查'
+                : 'Use in Inspect'
+          }
         >
           <HugeiconsIcon
             icon={AiScanIcon}
@@ -2207,11 +2313,19 @@ export function SourcesMode({
           />
           {extracting
             ? zh
-              ? '正在抽取…'
-              : 'Extracting…'
-            : zh
-              ? '批量抽取'
-              : 'Batch extract'}
+              ? sourceWorkflow === 'reference_graph_build'
+                ? '正在抽取…'
+                : '正在载入…'
+              : sourceWorkflow === 'reference_graph_build'
+                ? 'Extracting…'
+                : 'Loading…'
+            : sourceWorkflow === 'reference_graph_build'
+              ? zh
+                ? '批量抽取'
+                : 'Batch extract'
+              : zh
+                ? '用于检查'
+                : 'Use in Inspect'}
         </StudioButton>
       </div>
     </div>
@@ -2253,7 +2367,7 @@ export function ExtractMode({
         const latest = nextRuns[0]
         if (latest) {
           const candidatesResponse = await fetch(
-            `${KNOWLEDGE_BUILDER_API}/assertion-candidates?extractionRunId=${encodeURIComponent(latest.extraction_run_id)}&limit=500`,
+            `${KNOWLEDGE_BUILDER_API}/reference-concepts?extractionRunId=${encodeURIComponent(latest.extraction_run_id)}&limit=500`,
           )
           if (!candidatesResponse.ok)
             throw new Error(
@@ -2261,6 +2375,7 @@ export function ExtractMode({
             )
           const candidatePayload = (await candidatesResponse.json()) as {
             assertionCandidates?: AssertionCandidate[]
+            referenceConcepts?: unknown[]
             aiGroundingSuggestions?: AiGroundingSuggestion[]
             aiGroundingAssessmentSource?: AiGroundingSuggestion['assessment_source']
           }
@@ -2444,7 +2559,7 @@ export function ExtractMode({
           <strong className="text-foreground">
             {loading ? '…' : candidates.length}
           </strong>{' '}
-          {zh ? '候选' : 'candidates'}
+          {zh ? '参考概念' : 'reference concepts'}
         </span>
         <span>{selectedRun?.profile_ref ?? 'tender_sensitive_v1'}</span>
         <div className="flex-1" />
@@ -2456,7 +2571,7 @@ export function ExtractMode({
             <thead className="sticky top-0 bg-muted text-[10px] uppercase tracking-wide text-muted-foreground">
               <tr>
                 {[
-                  zh ? '候选 / 值' : 'Candidate / value',
+                  zh ? '参考概念 / 规范表达' : 'Reference concept / expression',
                   zh ? '置信度' : 'Confidence',
                   zh ? '证据' : 'Evidence',
                   zh ? '状态' : 'State',
@@ -2509,7 +2624,7 @@ export function ExtractMode({
         <aside className="hidden min-h-0 overflow-auto bg-card p-4 md:block">
           <h2 className="text-sm font-semibold">
             {selectedRun?.candidate_graph_id ??
-              (zh ? '候选图待运行' : 'Candidate graph pending')}
+              (zh ? '参考图待运行' : 'Reference graph pending')}
           </h2>
           <div className="mt-2 flex gap-1.5">
             <StatusPill>{selectedRun?.provider_ref ?? 'semantica'}</StatusPill>
@@ -2625,11 +2740,13 @@ export function GroundMode({
   extractionRunId,
   candidateGraphId,
   assertionCandidates,
+  onAcceptedRelease,
 }: {
   zh: boolean
   extractionRunId: string | null
   candidateGraphId: string | null
   assertionCandidates: GroundCandidate[]
+  onAcceptedRelease?: (release: Record<string, any>) => void
 }) {
   const [candidateList, setCandidateList] =
     useState<GroundCandidate[]>(assertionCandidates)
@@ -2645,6 +2762,9 @@ export function GroundMode({
   )
   const [aiFocus, setAiFocus] = useState('all')
   const [aiSort, setAiSort] = useState('priority')
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(
+    () => new Set(),
+  )
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [batchConfirmOpen, setBatchConfirmOpen] = useState(false)
   const [batchPending, setBatchPending] = useState(false)
@@ -2674,6 +2794,41 @@ export function GroundMode({
 
   const current = candidateList[index] ?? null
 
+  const observedStatuses = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const candidate of candidateList) {
+      const status =
+        reviewStatuses[candidate.assertion_id] ?? candidate.grounding_state
+      counts.set(status, (counts.get(status) ?? 0) + 1)
+    }
+    const order = ['grounded', 'rejected', 'edited', 'uncertain', 'unresolved']
+    const known = order.filter((s) => counts.has(s))
+    const extras: string[] = []
+    for (const key of counts.keys()) {
+      if (!order.includes(key)) extras.push(key)
+    }
+    return [...known, ...extras].map((value) => ({
+      value,
+      count: counts.get(value) ?? 0,
+    }))
+  }, [candidateList, reviewStatuses])
+
+  const statusFilterOptions = useMemo<MultiSelectOption[]>(
+    () =>
+      observedStatuses.map(({ value, count }) => ({
+        value,
+        label: (
+          <span className="flex w-full items-center justify-between gap-2">
+            <span>{value}</span>
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {count}
+            </span>
+          </span>
+        ),
+      })),
+    [observedStatuses],
+  )
+
   const visibleCandidates = useMemo(() => {
     const priority: Record<string, number> = {
       provider_error: 0,
@@ -2685,10 +2840,19 @@ export function GroundMode({
       supported: 6,
       ready_for_review: 7,
     }
+    const observedCount = observedStatuses.length
     return candidateList
       .filter((candidate) => {
         const suggestion = aiSuggestions[candidate.assertion_id]
-        return aiFocus === 'all' || suggestion?.suggestion_status === aiFocus
+        const aiOk =
+          aiFocus === 'all' || suggestion?.suggestion_status === aiFocus
+        if (!aiOk) return false
+        const status =
+          reviewStatuses[candidate.assertion_id] ?? candidate.grounding_state
+        const allChecked =
+          statusFilter.size === 0 || statusFilter.size === observedCount
+        if (allChecked) return true
+        return statusFilter.has(status)
       })
       .sort((left, right) => {
         const leftSuggestion = aiSuggestions[left.assertion_id]
@@ -2703,7 +2867,15 @@ export function GroundMode({
           leftConfidence - rightConfidence
         )
       })
-  }, [aiFocus, aiSort, aiSuggestions, candidateList])
+  }, [
+    aiFocus,
+    aiSort,
+    aiSuggestions,
+    candidateList,
+    observedStatuses,
+    reviewStatuses,
+    statusFilter,
+  ])
 
   useEffect(() => {
     setCandidateList(assertionCandidates)
@@ -2716,6 +2888,52 @@ export function GroundMode({
     )
     setIndex((value) => Math.min(value, Math.max(assertionCandidates.length - 1, 0)))
   }, [assertionCandidates])
+
+  useEffect(() => {
+    if (assertionCandidates.length || !extractionRunId) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const response = await fetch(
+          `${KNOWLEDGE_BUILDER_API}/reference-concepts?extractionRunId=${encodeURIComponent(extractionRunId)}&limit=500`,
+        )
+        if (!response.ok) throw new Error(`reference-concepts:${response.status}`)
+        const payload = (await response.json()) as {
+          assertionCandidates?: GroundCandidate[]
+          aiGroundingSuggestions?: AiGroundingSuggestion[]
+          aiGroundingAssessmentSource?: AiGroundingSuggestion['assessment_source']
+        }
+        if (cancelled) return
+        const suggestionByAssertion = Object.fromEntries(
+          (payload.aiGroundingSuggestions ?? []).map((suggestion) => {
+            const normalized = normalizeAiSuggestion(
+              suggestion,
+              payload.aiGroundingAssessmentSource ?? 'legacy_threshold',
+            )
+            return [normalized.assertion_id, normalized]
+          }),
+        )
+        const nextCandidates = (payload.assertionCandidates ?? []).map(
+          (candidate) => ({
+            ...candidate,
+            ai_grounding_suggestion: suggestionByAssertion[candidate.assertion_id],
+          }),
+        )
+        setCandidateList(nextCandidates)
+        setAiSuggestions(suggestionByAssertion)
+        setIndex((value) => Math.min(value, Math.max(nextCandidates.length - 1, 0)))
+      } catch (error) {
+        if (!cancelled) {
+          setActionError(
+            error instanceof Error ? error.message : 'Unable to load reference concepts',
+          )
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [assertionCandidates.length, extractionRunId])
 
   useEffect(() => {
     setSelectedIds(new Set())
@@ -2756,12 +2974,12 @@ export function GroundMode({
       try {
         const [detailRes, previewRes] = await Promise.all([
           fetch(
-            `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}`,
+            `${KNOWLEDGE_BUILDER_API}/reference-concepts/${current.assertion_id}`,
           ).then((r) =>
             r.ok ? r.json() : Promise.reject(new Error(`detail:${r.status}`)),
           ),
           fetch(
-            `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}/graph-delta-preview`,
+            `${KNOWLEDGE_BUILDER_API}/reference-concepts/${current.assertion_id}/graph-delta-preview`,
           ).then((r) =>
             r.ok ? r.json() : Promise.reject(new Error(`preview:${r.status}`)),
           ),
@@ -2806,7 +3024,7 @@ export function GroundMode({
     setPreviewStale(false)
     try {
       const next = await fetch(
-        `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}/graph-delta-preview`,
+        `${KNOWLEDGE_BUILDER_API}/reference-concepts/${current.assertion_id}/graph-delta-preview`,
       ).then((r) =>
         r.ok ? r.json() : Promise.reject(new Error(`preview:${r.status}`)),
       )
@@ -2852,7 +3070,7 @@ export function GroundMode({
           body.editedAssertion = editedAssertion
         }
         const result = await fetch(
-          `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}/grounding-events`,
+          `${KNOWLEDGE_BUILDER_API}/reference-concepts/${current.assertion_id}/grounding-events`,
           {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
@@ -2878,7 +3096,7 @@ export function GroundMode({
           learningEventId
         ) {
           const releasePayload = (await fetch(
-            `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}/release`,
+            `${KNOWLEDGE_BUILDER_API}/reference-concepts/${current.assertion_id}/release`,
             {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
@@ -2892,6 +3110,7 @@ export function GroundMode({
           )) as { graphRelease?: Record<string, any> }
           setAcceptedRelease(releasePayload.graphRelease ?? null)
           setActivationProjection(null)
+          if (releasePayload.graphRelease) onAcceptedRelease?.(releasePayload.graphRelease)
           // R7-09: accepted release creation is separate from activation.
           // Learning-gate outcomes must never mutate the active snapshot.
         }
@@ -2915,7 +3134,7 @@ export function GroundMode({
         setActionPending(false)
       }
     },
-    [current?.assertion_id, preview],
+    [current?.assertion_id, onAcceptedRelease, preview],
   )
 
   const submitBatchAccept = useCallback(async () => {
@@ -2925,7 +3144,7 @@ export function GroundMode({
     setActionError(null)
     try {
       const response = await fetch(
-        `${KNOWLEDGE_BUILDER_API}/assertion-candidates/batch-grounding-events`,
+        `${KNOWLEDGE_BUILDER_API}/reference-concepts/batch-grounding-events`,
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -2943,15 +3162,23 @@ export function GroundMode({
           }),
         },
       )
-      const payload = (await response.json().catch(() => ({}))) as { detail?: string }
+      const payload = (await response.json().catch(() => ({}))) as {
+        detail?: string
+        graphRelease?: Record<string, any>
+      }
       if (!response.ok) throw new Error(payload.detail ?? `batch-grounding:${response.status}`)
+      if (payload.graphRelease) {
+        setAcceptedRelease(payload.graphRelease)
+        setActivationProjection(null)
+        onAcceptedRelease?.(payload.graphRelease)
+      }
       setReviewStatuses((statuses) => ({
         ...statuses,
-        ...Object.fromEntries(selected.map((candidate) => [candidate.assertion_id, 'accepted'])),
+        ...Object.fromEntries(selected.map((candidate) => [candidate.assertion_id, 'grounded'])),
       }))
       if (current && selectedIds.has(current.assertion_id)) {
         const refreshed = await fetch(
-          `${KNOWLEDGE_BUILDER_API}/assertion-candidates/${current.assertion_id}`,
+          `${KNOWLEDGE_BUILDER_API}/reference-concepts/${current.assertion_id}`,
         )
         if (refreshed.ok) setDetail((await refreshed.json()) as GroundDetail)
       }
@@ -2962,7 +3189,7 @@ export function GroundMode({
     } finally {
       setBatchPending(false)
     }
-  }, [candidateList, current, extractionRunId, selectedIds])
+  }, [candidateList, current, extractionRunId, onAcceptedRelease, selectedIds])
 
   const activateRelease = useCallback(async () => {
     const graphVersion = acceptedRelease?.graph_version
@@ -3039,8 +3266,8 @@ export function GroundMode({
     return (
       <div className="grid h-full place-items-center bg-card text-xs text-muted-foreground">
         {zh
-          ? '当前抽取运行下没有待校准的候选。'
-          : 'No pending candidates under the current extraction run.'}
+          ? '当前抽取运行下没有待校准的参考概念。'
+          : 'No pending reference concepts under the current extraction run.'}
       </div>
     )
   }
@@ -3063,7 +3290,7 @@ export function GroundMode({
     <div className="grid h-full grid-rows-[auto_1fr_auto] bg-card">
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-2.5 text-xs">
         <strong>
-          {zh ? '校准候选' : 'Grounding candidates'} {candidateList.length}
+          {zh ? '校准参考概念' : 'Grounding reference concepts'} {candidateList.length}
         </strong>
         <span className="font-mono text-[10px] text-muted-foreground">
           {current.assertion_id}
@@ -3086,9 +3313,17 @@ export function GroundMode({
             { value: 'ready_for_review', label: zh ? '可供复核' : 'Ready for review' },
           ]}
         />
+        <MultiSelectDropdown
+          compact
+          label={zh ? '状态筛选' : 'Status filter'}
+          options={statusFilterOptions}
+          value={statusFilter}
+          onValueChange={setStatusFilter}
+          emptyLabel={zh ? '全部' : 'All'}
+        />
         <ControlledSelect
           compact
-          label={zh ? '候选排序' : 'Candidate sort'}
+          label={zh ? '参考概念排序' : 'Reference concept sort'}
           value={aiSort}
           onValueChange={setAiSort}
           options={[
@@ -3118,7 +3353,7 @@ export function GroundMode({
       ) : null}
       <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
         <section
-          aria-label={zh ? '校准候选列表' : 'Grounding candidate list'}
+          aria-label={zh ? '校准参考概念列表' : 'Grounding candidate list'}
           className="min-h-0 overflow-auto border-r border-border bg-muted/20 p-3"
         >
           <Table className="min-w-[36rem] text-xs">
@@ -3140,7 +3375,7 @@ export function GroundMode({
                     })}
                   />
                 </TableHead>
-                <TableHead>{zh ? '候选' : 'Candidate'}</TableHead>
+                <TableHead>{zh ? '参考概念' : 'Reference concept'}</TableHead>
                 <TableHead>{zh ? '置信度' : 'Confidence'}</TableHead>
                 <TableHead>{zh ? '证据' : 'Evidence'}</TableHead>
                 <TableHead>{zh ? 'AI 校准' : 'AI Ground'}</TableHead>
@@ -3459,8 +3694,8 @@ export function GroundMode({
                 <AlertDialogTitle>{zh ? '确认批量接受' : 'Confirm batch acceptance'}</AlertDialogTitle>
                 <AlertDialogDescription>
                   {zh
-                    ? `将记录 ${selectedIds.size} 项人工接受。此操作不会发布或激活图谱。`
-                    : `This records human acceptance for ${selectedIds.size} candidates. It does not release or activate the graph.`}
+                    ? `将记录 ${selectedIds.size} 项人工接受并创建一个已接受图谱发布版本。此操作不会激活图谱。`
+                    : `This records human acceptance for ${selectedIds.size} candidates and creates one accepted graph release. It does not activate the graph.`}
                 </AlertDialogDescription>
                 <div className="text-xs text-muted-foreground">
                   {Object.entries(selectedStatusCounts).map(([status, count]) => (
@@ -3921,12 +4156,14 @@ type CompareDiff = {
 export function InspectMode({
   zh,
   run,
+  runtimeIdentity,
   onRun,
   onFindingContext,
   onOpenGraph,
 }: {
   zh: boolean
   run: Record<string, any> | null
+  runtimeIdentity?: StudioIdentity
   onRun: (run: Record<string, any>) => void
   onFindingContext: (context: Record<string, string | null> | null) => void
   onOpenGraph: (finding: Record<string, any>) => void
@@ -3954,6 +4191,36 @@ export function InspectMode({
     'accept',
   )
   const [actionBusy, setActionBusy] = useState(false)
+  const [sortKey, setSortKey] = useState<
+    'decision_status' | 'detection_method' | 'semantic_relation' | 'confidence' | 'disposition'
+  >('decision_status')
+  const dispositionByFinding = useMemo(
+    () =>
+      Object.fromEntries(
+        (run?.dispositions ?? []).map((item: Record<string, any>) => [
+          item.finding_id,
+          item.disposition,
+        ]),
+      ),
+    [run?.dispositions],
+  )
+  const sortedFindings = useMemo(() => {
+    const findings = [...(run?.findings ?? [])] as Record<string, any>[]
+    return findings.sort((left, right) => {
+      const leftValue =
+        sortKey === 'disposition'
+          ? dispositionByFinding[left.finding_id] ?? 'none'
+          : left[sortKey] ?? ''
+      const rightValue =
+        sortKey === 'disposition'
+          ? dispositionByFinding[right.finding_id] ?? 'none'
+          : right[sortKey] ?? ''
+      if (sortKey === 'confidence') {
+        return Number(rightValue || 0) - Number(leftValue || 0)
+      }
+      return String(leftValue).localeCompare(String(rightValue))
+    })
+  }, [dispositionByFinding, run?.findings, sortKey])
   const selectFinding = (finding: Record<string, any>) => {
     setSelectedFinding(finding)
     onFindingContext({
@@ -3993,20 +4260,25 @@ export function InspectMode({
     setBusy(true)
     setError('')
     try {
-      const response = await fetch('/api/tender-document-review', {
+      const response = await fetch(TENDER_EVALUATION_DETECTION_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'detect',
-          fileRef,
-          sessionId: 'knowledge-builder',
-          requestedRuleFamilies: ['tender_compliance'],
-        }),
+        body: JSON.stringify(
+          buildTenderEvaluationDetectionRequest({
+            fileRef,
+            graphVersion: runtimeIdentity?.graphVersion,
+          }),
+        ),
       })
       const payload = await response.json()
       if (!response.ok)
         throw new Error(
-          String(payload.detail || payload.error || 'Detection failed'),
+          String(
+            payload.error_code ||
+              payload.detail ||
+              payload.error ||
+              'Detection failed',
+          ),
         )
       onRun(payload.run)
       setRunId(payload.run.run_id)
@@ -4197,70 +4469,107 @@ export function InspectMode({
         </div>
         {run ? (
           <div className="grid min-h-0 gap-3 lg:grid-cols-[minmax(260px,0.8fr)_minmax(340px,1.2fr)]">
-            <div className="rounded-lg border border-border bg-card">
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
               <div className="border-b border-border p-3 font-medium">
                 Findings ({run.findings?.length ?? 0})
               </div>
-              {(run.findings ?? []).map((finding: Record<string, any>) => (
-                <div
-                  key={finding.finding_id}
-                  className={`border-b border-border p-3 hover:bg-muted/40 ${selectedFinding?.finding_id === finding.finding_id ? 'bg-primary/10' : ''}`}
-                >
-                  <Button
-                    type="button"
-                    onClick={() => selectFinding(finding)}
-                    className="block w-full text-left"
-                  >
-                    <div className="flex justify-between gap-2">
-                      <strong>{finding.issue_type}</strong>
-                      <StatusPill
-                        tone={
-                          finding.severity === 'high' ? 'warning' : 'neutral'
+              <div className="overflow-auto">
+                <Table className="min-w-[760px] text-xs">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{zh ? '发现项' : 'Finding'}</TableHead>
+                      {[
+                        ['decision_status', zh ? '决策' : 'Decision'],
+                        ['detection_method', zh ? '方法' : 'Method'],
+                        ['semantic_relation', zh ? '语义关系' : 'Relation'],
+                        ['confidence', zh ? '置信度' : 'Confidence'],
+                        ['disposition', zh ? '人工处置' : 'Disposition'],
+                      ].map(([key, label]) => (
+                        <TableHead key={key}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setSortKey(key as typeof sortKey)}
+                            className="h-auto p-0 text-[10px] font-semibold uppercase tracking-[.1em] hover:bg-transparent"
+                          >
+                            {label}
+                          </Button>
+                        </TableHead>
+                      ))}
+                      <TableHead>{zh ? '操作' : 'Actions'}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedFindings.map((finding) => (
+                      <TableRow
+                        key={finding.finding_id}
+                        aria-selected={
+                          selectedFinding?.finding_id === finding.finding_id
+                            ? 'true'
+                            : undefined
                         }
                       >
-                        {finding.severity}
-                      </StatusPill>
-                    </div>
-                    <div className="mt-1 font-mono text-[11px]">
-                      {finding.matched_text}
-                    </div>
-                    <div className="mt-1 text-muted-foreground">
-                      {finding.target_evidence_ref ?? 'no target EvidenceRef'}
-                    </div>
-                  </Button>
-                  <div className="mt-2 flex gap-1">
-                    <StudioButton
-                      disabled={!finding.source_graph_rule_id}
-                      onClick={() => {
-                        selectFinding(finding)
-                        void resolveGraphFocus(finding)
-                      }}
-                    >
-                      Open in Graph
-                    </StudioButton>
-                    <StudioButton
-                      disabled={!finding.target_evidence_ref}
-                      onClick={() => {
-                        selectFinding(finding)
-                        setLineageTrace(
-                          [
-                            finding.target_evidence_ref,
-                            finding.triggered_rule_version_id,
-                            finding.source_graph_release_hash,
-                            finding.source_graph_rule_id,
-                            finding.origin_evidence_ref ??
-                              finding.resolver_evidence_ref,
-                          ]
-                            .filter(Boolean)
-                            .map(String),
-                        )
-                      }}
-                    >
-                      Trace to origin
-                    </StudioButton>
-                  </div>
-                </div>
-              ))}
+                        <TableCell>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => selectFinding(finding)}
+                            className="h-auto max-w-[220px] justify-start p-0 text-left hover:bg-transparent"
+                          >
+                            <span>
+                              <strong className="block truncate">
+                                {finding.observed_expression ??
+                                  finding.matched_text}
+                              </strong>
+                              <span className="block truncate font-mono text-[10px] text-muted-foreground">
+                                {finding.finding_id}
+                              </span>
+                            </span>
+                          </Button>
+                        </TableCell>
+                        <TableCell>{finding.decision_status ?? 'candidate'}</TableCell>
+                        <TableCell>{finding.detection_method ?? 'exact'}</TableCell>
+                        <TableCell>{finding.semantic_relation ?? 'exact'}</TableCell>
+                        <TableCell>{Number(finding.confidence ?? 0).toFixed(2)}</TableCell>
+                        <TableCell>{dispositionByFinding[finding.finding_id] ?? 'none'}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <StudioButton
+                              disabled={!finding.source_graph_rule_id}
+                              onClick={() => {
+                                selectFinding(finding)
+                                void resolveGraphFocus(finding)
+                              }}
+                            >
+                              Open in Graph
+                            </StudioButton>
+                            <StudioButton
+                              disabled={!finding.target_evidence_ref}
+                              onClick={() => {
+                                selectFinding(finding)
+                                setLineageTrace(
+                                  [
+                                    finding.target_evidence_ref,
+                                    finding.triggered_rule_version_id,
+                                    finding.source_graph_release_hash,
+                                    finding.source_graph_rule_id,
+                                    finding.origin_evidence_ref ??
+                                      finding.resolver_evidence_ref,
+                                  ]
+                                    .filter(Boolean)
+                                    .map(String),
+                                )
+                              }}
+                            >
+                              Trace
+                            </StudioButton>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
             <div className="rounded-lg border border-border bg-card p-3">
               {selectedFinding ? (
@@ -4291,6 +4600,27 @@ export function InspectMode({
                       <span className="font-mono">
                         {selectedFinding.source_graph_release_hash ?? '—'} /{' '}
                         {selectedFinding.source_graph_rule_id ?? '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <MiniLabel>Decision context</MiniLabel>
+                      <span className="font-mono">
+                        {selectedFinding.decision_status ?? 'candidate'} ·{' '}
+                        {selectedFinding.detection_method ?? 'exact'} ·{' '}
+                        {selectedFinding.semantic_relation ?? 'exact'} ·{' '}
+                        {selectedFinding.decision_context?.rationale ?? '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <MiniLabel>Disposition / learning</MiniLabel>
+                      <span className="font-mono">
+                        {dispositionByFinding[selectedFinding.finding_id] ??
+                          'none'}{' '}
+                        ·{' '}
+                        {selectedFinding.precedent_refs?.length
+                          ? 'precedent linked'
+                          : 'no precedent'}{' '}
+                        · ObservedExpression candidate after accepted feedback
                       </span>
                     </div>
                     <div>

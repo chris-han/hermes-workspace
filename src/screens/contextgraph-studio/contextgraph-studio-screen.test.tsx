@@ -557,6 +557,59 @@ describe('ContextGraphStudioScreen', () => {
     })
   })
 
+  it('keeps inference inputs out of reference graph extraction', async () => {
+    const onInspectSource = vi.fn()
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          pages: [{ title: 'Tender input', path: 'uploads/tender.md' }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          content: [
+            '# Tender input',
+            '> Source file: wiki/uploads/tender.docx',
+            '> Parser method: docx_ooxml',
+          ].join('\n'),
+        }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <SourcesMode
+        zh={false}
+        onNext={vi.fn()}
+        onInspectSource={onInspectSource}
+      />,
+    )
+    fireEvent.click(await screen.findByRole('button', { name: 'Source use' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Inference input' }))
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Select tender.md' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Use in Inspect' }))
+
+    await waitFor(() => expect(onInspectSource).toHaveBeenCalledTimes(1))
+    expect(onInspectSource.mock.calls[0]?.[0]).toMatchObject({
+      name: 'tender.md',
+      kind: 'normalized',
+    })
+    expect(
+      fetchMock.mock.calls.some(([url]) =>
+        String(url).includes('/extraction-runs'),
+      ),
+    ).toBe(false)
+    expect(
+      screen.getByText(
+        'Inference input is available in Inspect and was not written to the governed reference graph.',
+      ),
+    ).toBeTruthy()
+  })
+
   it('navigates to every Studio screen', () => {
     render(<ContextGraphStudioScreen />)
     const nav = screen.getByRole('navigation', {
@@ -1050,17 +1103,18 @@ describe('ContextGraphStudioScreen', () => {
       screen.getAllByText('Unresolved candidate').length,
     ).toBeGreaterThan(0)
 
-    // Open the Status filter and uncheck "grounded".
+    // Open the Status filter and narrow to "unresolved".
     fireEvent.click(screen.getByRole('button', { name: 'Status filter' }))
     fireEvent.click(
-      screen.getByRole('menuitemcheckbox', { name: /grounded/ }),
+      screen.getByRole('menuitemcheckbox', { name: /^unresolved1$/ }),
     )
 
+    const candidateTable = screen.getByRole('table')
     await waitFor(() =>
-      expect(screen.queryByText('Grounded candidate')).toBeNull(),
+      expect(within(candidateTable).queryByText('Grounded candidate')).toBeNull(),
     )
     expect(
-      screen.getAllByText('Unresolved candidate').length,
+      within(candidateTable).getAllByText('Unresolved candidate').length,
     ).toBeGreaterThan(0)
   })
 

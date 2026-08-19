@@ -305,9 +305,10 @@ function PromptInputTextarea({
       onPaste={handlePaste}
       onPointerDown={handlePointerDown}
       className={cn(
-        'text-primary-950 min-h-[28px] w-full resize-none border-none bg-transparent shadow-none outline-none focus-visible:ring-0 pl-4 pr-1 py-2 md:py-0 text-base placeholder:text-primary-500',
+        'min-h-[28px] w-full resize-none pl-4 pr-1 py-2 md:py-0 text-base placeholder:text-primary-500',
         className,
       )}
+      data-slot="borderless-textarea"
       rows={1}
       enterKeyHint="send"
       readOnly={disabled}

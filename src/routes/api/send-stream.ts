@@ -59,6 +59,40 @@ function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function readContextIdentityField(
+  context: Record<string, unknown>,
+  camelKey: string,
+  snakeKey: string,
+): string {
+  return readString(context[camelKey] ?? context[snakeKey])
+}
+
+export function resolveKnowledgeWorkbenchContextForSemantier(
+  value: unknown,
+): Record<string, unknown> | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'object' || Array.isArray(value)) return undefined
+
+  const context = value as Record<string, unknown>
+  const graphRef = readContextIdentityField(context, 'graphRef', 'graph_ref')
+  const graphVersion = readContextIdentityField(
+    context,
+    'graphVersion',
+    'graph_version',
+  )
+  const graphHash = readContextIdentityField(context, 'graphHash', 'graph_hash')
+  const identityFieldCount = [graphRef, graphVersion, graphHash].filter(
+    Boolean,
+  ).length
+
+  if (identityFieldCount === 0) return undefined
+  if (identityFieldCount !== 3) {
+    throw new Error('graphRef, graphVersion, and graphHash are required')
+  }
+
+  return context
+}
+
 /** Extract a content delta without trimming internal whitespace.
  * Leading/trailing spaces in delta.content are significant — they act as
  * word separators between consecutive tokens. Using readString() (which
@@ -143,6 +177,16 @@ export const Route = createFileRoute('/api/send-stream')({
               400,
             )
           }
+          let knowledgeWorkbenchContext: Record<string, unknown> | undefined =
+            undefined
+          try {
+            knowledgeWorkbenchContext =
+              resolveKnowledgeWorkbenchContextForSemantier(
+                body.knowledgeWorkbenchContext,
+              )
+          } catch (error) {
+            return buildJsonError(asMessage(error), 400)
+          }
           const runId =
             (typeof body.idempotencyKey === 'string' &&
             body.idempotencyKey.trim().length > 0
@@ -220,14 +264,7 @@ export const Route = createFileRoute('/api/send-stream')({
                   {
                     model: requestedModel || undefined,
                     systemMessage: resolvedSystemMessage,
-                    knowledgeWorkbenchContext:
-                      body.knowledgeWorkbenchContext &&
-                      typeof body.knowledgeWorkbenchContext === 'object'
-                        ? (body.knowledgeWorkbenchContext as Record<
-                            string,
-                            unknown
-                          >)
-                        : undefined,
+                    knowledgeWorkbenchContext,
                     signal: abortController.signal,
                   },
                 )

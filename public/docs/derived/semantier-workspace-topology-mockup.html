@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
     rel="stylesheet"
   />
   <script>
@@ -16,7 +16,7 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['"Hanken Grotesk"', 'system-ui', 'sans-serif'],
+            sans: ['"Manrope"', 'system-ui', 'sans-serif'],
             mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
           },
           colors: {
@@ -39,21 +39,22 @@
   <style>
     :root {
       --radius-editorial-card: 6px;
+      --header-divider: 12px; /* matches graph-explorer's h-3 dividers */
     }
     html, body { height: 100%; }
-    body { background-color: var(--theme-bg, #f5f5f0); color: #221c17; font-family: 'Hanken Grotesk', system-ui, sans-serif; }
+    body { background-color: var(--theme-bg, #f5f5f0); color: #221c17; font-family: 'Manrope', system-ui, sans-serif; }
 
-    /* Mono caps base for the document-frame bands */
+    /* Mono caps base for the document-frame bands - matches graph-explorer chrome */
     .mono-caps {
       font-family: 'JetBrains Mono', monospace;
       text-transform: uppercase;
       letter-spacing: 0.18em;
-      font-weight: 500;
+      font-weight: 400;
     }
 
     /* Hanken caps for section tabs (top-level menu items) */
     .hk-caps {
-      font-family: 'Hanken Grotesk', sans-serif;
+      font-family: 'Manrope', sans-serif;
       text-transform: uppercase;
       font-weight: 600;
       letter-spacing: 0.06em;
@@ -71,16 +72,17 @@
 
     .hairline { border: 1px solid var(--theme-border, #e3d5c0); }
 
-    /* Active tab underline (brand) */
+    /* Active tab underline (brand) - thicker per design preference */
     .active-tab {
       position: relative;
     }
     .active-tab::after {
       content: '';
       position: absolute;
-      inset: auto 0 -1px 0;
-      height: 2px;
+      inset: auto 0 -2px 0;
+      height: 4px;
       background: var(--theme-accent, #9fe870);
+      border-radius: 2px;
     }
 
     /* Custom scrollbar */
@@ -97,90 +99,72 @@
   <!-- ============================================================== -->
   <header class="h-[52px] shrink-0 border-b border-border bg-card flex items-stretch">
 
-    <!-- Brand mark (left, 28 px monogram + wordmark) -->
-    <div class="flex items-center gap-3 pl-4 pr-6 border-r border-border">
-      <div class="size-7 flex items-center justify-center bg-text text-accent font-bold font-mono text-xs rounded-sm">
-        SG
-      </div>
-      <div class="leading-tight">
-        <div class="text-[15px] font-bold tracking-[-0.01em]">Semantier</div>
-        <div class="mono-caps text-[9.5px] text-muted">workbench · v2.4 · semantier/mvl stack</div>
-      </div>
-    </div>
-
-    <!-- Workspace meta (center, 3-col: workspace / lifecycle / run) -->
-    <div class="flex items-center gap-7 px-6 border-r border-border">
-      <div class="leading-tight">
-        <div class="mono-caps text-[9px] text-muted">Workspace</div>
-        <div class="text-[12px] font-[600] tracking-[-0.005em] font-mono">ws.prod-knowledge</div>
-      </div>
-      <div class="leading-tight">
-        <div class="mono-caps text-[9px] text-muted">Lifecycle</div>
-        <div class="flex items-center gap-1.5">
-          <span class="inline-block size-1.5 rounded-full" style="background:#9fe870;box-shadow:0 0 6px #9fe870"></span>
-          <span class="text-[12px] font-[600] tracking-[-0.005em] font-mono uppercase">accepted</span>
+    <!-- Brand mark (left, 28 px monogram + wordmark) - matches graph-explorer, NOT narrowed -->
+    <div class="flex items-center gap-3 pl-4 pr-6 min-w-0">
+      <img src="/logo.png" alt="Semantier logo" class="size-7 rounded-sm object-cover shrink-0" />
+      <div class="leading-tight min-w-0">
+        <div class="text-[14px] font-bold tracking-tight truncate">Semantier</div>
+        <div class="text-[10px] uppercase tracking-[0.18em] text-muted truncate" style="font-family:var(--font-mono-studio);font-weight:300;font-stretch:75%;transform:scaleX(0.85);transform-origin:center left">
+          workbench · v2.4 · semantier/mvl stack
         </div>
       </div>
     </div>
 
-    <!-- Section tabs (Hanken caps, the top-level menu) -->
-    <nav class="flex items-stretch flex-1" aria-label="Workspace sections">
-      <button data-route="#dashboard" class="hk-caps text-[12px] px-5 hover:text-text text-muted flex items-center" type="button">Dashboard</button>
-      <button data-route="#graph" class="hk-caps text-[12px] px-5 hover:text-text active-tab text-text flex items-center" type="button">Graph</button>
-      <button data-route="#schemas" class="hk-caps text-[12px] px-5 hover:text-text text-muted flex items-center" type="button">Schemas</button>
-      <button data-route="#evaluation" class="hk-caps text-[12px] px-5 hover:text-text text-muted flex items-center" type="button">Evaluation</button>
-      <button data-route="#governance" class="hk-caps text-[12px] px-5 hover:text-text text-muted flex items-center" type="button">Governance</button>
+    <span class="self-center h-8 w-px bg-border shrink-0" aria-hidden="true"></span>
+
+    <!-- Workspace meta (center, 3-col: workspace / lifecycle / run) - matches graph-explorer -->
+    <div class="flex items-center gap-7 px-6 min-w-0">
+      <div class="leading-tight min-w-0">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-muted truncate" style="font-family:var(--font-mono-studio);font-weight:300;font-stretch:75%;transform:scaleX(0.85);transform-origin:center left">Workspace</div>
+        <div class="text-xs font-medium uppercase tracking-[0.16em] truncate" style="font-family:var(--font-mono-studio);font-stretch:75%;transform:scaleX(0.85);transform-origin:center left">ws.prod-knowledge</div>
+      </div>
+      <div class="leading-tight min-w-0">
+        <div class="text-[10px] uppercase tracking-[0.18em] text-muted truncate" style="font-family:var(--font-mono-studio);font-weight:300;font-stretch:75%;transform:scaleX(0.85);transform-origin:center left">Lifecycle</div>
+        <div class="flex items-center gap-1.5 truncate">
+          <span class="inline-block size-1.5 rounded-full shrink-0" style="background:#9fe870;box-shadow:0 0 6px #9fe870"></span>
+          <span class="text-xs font-medium uppercase tracking-[0.16em] truncate" style="font-family:var(--font-mono-studio);font-stretch:75%;transform:scaleX(0.85);transform-origin:center left">accepted</span>
+        </div>
+      </div>
+    </div>
+
+    <span class="self-center h-8 w-px bg-border shrink-0" aria-hidden="true"></span>
+
+    <!-- Section tabs (uppercase + narrow manpro, the top-level menu) -->
+    <nav class="flex items-stretch flex-1 text-[11px] font-semibold tracking-[0.08em]" style="font-family:var(--font-mono-studio);text-transform:uppercase;font-stretch:75%;transform:scaleX(0.92);transform-origin:center left" aria-label="Workspace sections">
+      <button data-route="#dashboard" class="px-5 hover:text-text text-muted flex items-center" type="button">DASHBOARD</button>
+      <button data-route="#graph" class="px-5 hover:text-text active-tab text-text flex items-center" type="button">GRAPH</button>
+      <button data-route="#schemas" class="px-5 hover:text-text text-muted flex items-center" type="button">SCHEMAS</button>
+      <button data-route="#evaluation" class="px-5 hover:text-text text-muted flex items-center" type="button">EVALUATION</button>
+      <button data-route="#governance" class="px-5 hover:text-text text-muted flex items-center" type="button">GOVERNANCE</button>
     </nav>
 
-    <!-- Parent workspace marker + brand mark (right side, before profile row) -->
-    <div class="flex items-center gap-3 px-4 border-l border-border">
-      <div class="leading-tight text-right">
-        <div class="mono-caps text-[9px] text-muted">Parent workspace</div>
-      </div>
-      <div class="flex items-center gap-2 px-2.5 py-1.5 hairline rounded-sm bg-bg paper-press">
-        <span class="block size-3" style="background:#9fe870;clip-path:polygon(50% 0%, 100% 32%, 82% 100%, 18% 100%, 0% 32%)"></span>
-        <span class="text-[12.5px] font-extrabold tracking-[0.16em] uppercase font-mono">Semantier</span>
-      </div>
-    </div>
+    <!-- Right side cluster: parent workspace marker + settings + theme + user name + avatar (avatar at very right) -->
+    <div class="flex items-center gap-2 pr-4 min-w-0">
+      <div class="leading-tight text-right min-w-0">
+        
+        <div class="text-[10px] uppercase tracking-[0.18em] text-muted truncate" style="font-family:var(--font-mono-studio);font-weight:300;font-stretch:75%;transform:scaleX(0.85);transform-origin:center right">Parent workspace</div>
 
-    <!-- User profile row (far right): avatar + name + status dot + actions -->
-    <div class="flex items-center gap-3 px-4 border-l border-border">
-      <div class="flex items-center gap-2.5 pl-1">
-        <div class="size-7 rounded-full bg-card2 hairline flex items-center justify-center text-[12px] font-bold text-text">
-          C
-        </div>
-        <div class="text-[13px] font-medium tracking-[-0.005em] leading-tight">chris-han</div>
-        <span
-          class="inline-block size-2 rounded-full"
-          style="background:#9fe870;box-shadow:0 0 6px rgba(159,232,112,0.6)"
-          aria-label="online"
-        ></span>
+
       </div>
 
-      <div class="w-px h-5 bg-border"></div>
 
-      <button
-        type="button"
-        aria-label="Settings"
-        class="size-8 rounded-sm hover:bg-card2 text-muted hover:text-text flex items-center justify-center transition-colors"
-      >
-        <svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="128" cy="128" r="40" fill="none" stroke="currentColor" stroke-width="12"/>
-          <path d="M130.05 206.11h-4l-12.42 27.22a103.12 103.12 0 0 1-26.69-11.05l4.21-30a8 8 0 0 0-6.43-8.86l-29.85-5.26a103.84 103.84 0 0 1 0-34.41l29.85-5.27a8 8 0 0 0 6.43-8.86l-4.21-30a103.12 103.12 0 0 1 26.69-11L126 49.89h4l12.42-27.22a103.12 103.12 0 0 1 26.69 11.05l-4.21 30a8 8 0 0 0 6.43 8.86l29.85 5.27a103.84 103.84 0 0 1 0 34.41l-29.85 5.27a8 8 0 0 0-6.43 8.86l4.21 30a103.12 103.12 0 0 1-26.69 11l-12.42-22.28Z"/>
-        </svg>
-      </button>
+      <span class="self-center h-8 w-px bg-border shrink-0" aria-hidden="true"></span>
 
-      <button
-        type="button"
-        aria-label="Toggle theme"
-        class="size-8 rounded-sm hover:bg-card2 text-muted hover:text-text flex items-center justify-center transition-colors"
-      >
-        <svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M224 152 A80.07 80.07 0 0 1 104 32 a80.43 80.43 0 0 1 76.31 38.81 a8.18 8.18 0 0 1 4.1 12.65 a8 8 0 0 1-10.41 1.31 a64.06 64.06 0 0 0-43 100.86 a64.06 64.06 0 0 0 63.81 64.86 a64.06 64.06 0 0 0 64.93-43 a8 8 0 0 1 8.74-5.86 a8.18 8.18 0 0 1 6.46 4.1 A80.43 80.43 0 0 1 224 152 Z"/>
-        </svg>
-      </button>
+      <span class="text-[13px] font-medium tracking-[-0.005em] leading-tight truncate" style="font-family:var(--font-mono-studio);font-stretch:75%;transform:scaleX(0.92);transform-origin:center right">chris-han</span>
+
+      <span
+        class="inline-block size-2 rounded-full shrink-0"
+        style="background:#9fe870;box-shadow:0 0 6px rgba(159,232,112,0.6)"
+        aria-label="online"
+      ></span>
+
+      <div class="size-7 rounded-full bg-card2 hairline flex items-center justify-center text-[12px] font-bold text-text shrink-0">
+        C
+      </div>
     </div>
   </header>
+
+
 
   <!-- ============================================================== -->
   <!-- BODY BAND (flex row: left sidebar | center | right sidebar)    -->
@@ -419,7 +403,7 @@
   <!-- ============================================================== -->
   <!-- FOOTER BAND (full viewport width, 32 px)                      -->
   <!-- ============================================================== -->
-  <footer class="h-8 shrink-0 flex items-center justify-between px-4 border-t border-border bg-card2 mono-caps text-[10px] text-muted">
+  <footer class="h-8 shrink-0 flex items-center justify-between px-4 border-t border-border bg-card2 text-[10px] uppercase tracking-[0.14em] text-muted" style="font-family:var(--font-mono-studio)">
     <div class="flex items-center gap-3">
       <span>model <span class="font-bold text-text">ContextGraph@2.4</span></span>
       <span class="size-3 w-px h-3 bg-border"></span>

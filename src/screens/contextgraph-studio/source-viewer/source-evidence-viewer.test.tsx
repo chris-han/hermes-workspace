@@ -152,6 +152,8 @@ describe('SourceEvidenceViewer', () => {
   })
 
   it('infers document kind from governed source refs and artifact refs', () => {
+    expect(inferSourceEvidenceDocumentKind(['docx'])).toBe('docx')
+    expect(inferSourceEvidenceDocumentKind(['pdf'])).toBe('pdf')
     expect(
       inferSourceEvidenceDocumentKind([
         'workspaces/ws-1/uploads/runtime-source.pdf',

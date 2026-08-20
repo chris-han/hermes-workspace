@@ -88,7 +88,7 @@ async function authenticate(page: Page) {
   expect(identityFixture).not.toBeNull()
   const credentials = identityFixture as IdentityFixture
   await page.goto('/contextgraph-studio', {
-    waitUntil: 'domcontentloaded',
+    waitUntil: 'commit',
     timeout: 60_000,
   })
   const gatewayLogin = await page.request.post(
@@ -105,7 +105,7 @@ async function authenticate(page: Page) {
     workspaceLogin.ok() || workspaceLogin.status() === 400,
     await workspaceLogin.text(),
   ).toBeTruthy()
-  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.reload({ waitUntil: 'commit' })
   await expect(
     page.getByRole('heading', { name: /ContextGraph Studio/i }),
   ).toBeVisible()

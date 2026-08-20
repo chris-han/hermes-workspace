@@ -94,6 +94,7 @@ import { Route as ApiAuthRouteImport } from './routes/api/auth'
 import { Route as ApiUploadBatchRouteImport } from './routes/api/upload.batch'
 import { Route as ApiToolsToolsetsRouteImport } from './routes/api/tools/toolsets'
 import { Route as ApiTenderDocumentReviewGraphFocusRouteImport } from './routes/api/tender-document-review/graph-focus'
+import { Route as ApiTenderDocumentReviewDetectionsRouteImport } from './routes/api/tender-document-review/detections'
 import { Route as ApiSkillsUninstallRouteImport } from './routes/api/skills.uninstall'
 import { Route as ApiSkillsToggleRouteImport } from './routes/api/skills.toggle'
 import { Route as ApiSkillsInstallRouteImport } from './routes/api/skills.install'
@@ -568,6 +569,12 @@ const ApiTenderDocumentReviewGraphFocusRoute =
     path: '/graph-focus',
     getParentRoute: () => ApiTenderDocumentReviewRoute,
   } as any)
+const ApiTenderDocumentReviewDetectionsRoute =
+  ApiTenderDocumentReviewDetectionsRouteImport.update({
+    id: '/detections',
+    path: '/detections',
+    getParentRoute: () => ApiTenderDocumentReviewRoute,
+  } as any)
 const ApiSkillsUninstallRoute = ApiSkillsUninstallRouteImport.update({
   id: '/uninstall',
   path: '/uninstall',
@@ -925,6 +932,7 @@ export interface FileRoutesByFullPath {
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/toggle': typeof ApiSkillsToggleRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/tender-document-review/detections': typeof ApiTenderDocumentReviewDetectionsRoute
   '/api/tender-document-review/graph-focus': typeof ApiTenderDocumentReviewGraphFocusRoute
   '/api/tools/toolsets': typeof ApiToolsToolsetsRoute
   '/api/upload/batch': typeof ApiUploadBatchRoute
@@ -1056,6 +1064,7 @@ export interface FileRoutesByTo {
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/toggle': typeof ApiSkillsToggleRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/tender-document-review/detections': typeof ApiTenderDocumentReviewDetectionsRoute
   '/api/tender-document-review/graph-focus': typeof ApiTenderDocumentReviewGraphFocusRoute
   '/api/tools/toolsets': typeof ApiToolsToolsetsRoute
   '/api/upload/batch': typeof ApiUploadBatchRoute
@@ -1189,6 +1198,7 @@ export interface FileRoutesById {
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/toggle': typeof ApiSkillsToggleRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/tender-document-review/detections': typeof ApiTenderDocumentReviewDetectionsRoute
   '/api/tender-document-review/graph-focus': typeof ApiTenderDocumentReviewGraphFocusRoute
   '/api/tools/toolsets': typeof ApiToolsToolsetsRoute
   '/api/upload/batch': typeof ApiUploadBatchRoute
@@ -1323,6 +1333,7 @@ export interface FileRouteTypes {
     | '/api/skills/install'
     | '/api/skills/toggle'
     | '/api/skills/uninstall'
+    | '/api/tender-document-review/detections'
     | '/api/tender-document-review/graph-focus'
     | '/api/tools/toolsets'
     | '/api/upload/batch'
@@ -1454,6 +1465,7 @@ export interface FileRouteTypes {
     | '/api/skills/install'
     | '/api/skills/toggle'
     | '/api/skills/uninstall'
+    | '/api/tender-document-review/detections'
     | '/api/tender-document-review/graph-focus'
     | '/api/tools/toolsets'
     | '/api/upload/batch'
@@ -1586,6 +1598,7 @@ export interface FileRouteTypes {
     | '/api/skills/install'
     | '/api/skills/toggle'
     | '/api/skills/uninstall'
+    | '/api/tender-document-review/detections'
     | '/api/tender-document-review/graph-focus'
     | '/api/tools/toolsets'
     | '/api/upload/batch'
@@ -2300,6 +2313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTenderDocumentReviewGraphFocusRouteImport
       parentRoute: typeof ApiTenderDocumentReviewRoute
     }
+    '/api/tender-document-review/detections': {
+      id: '/api/tender-document-review/detections'
+      path: '/detections'
+      fullPath: '/api/tender-document-review/detections'
+      preLoaderRoute: typeof ApiTenderDocumentReviewDetectionsRouteImport
+      parentRoute: typeof ApiTenderDocumentReviewRoute
+    }
     '/api/skills/uninstall': {
       id: '/api/skills/uninstall'
       path: '/uninstall'
@@ -2738,12 +2758,15 @@ const ApiTenderDocumentReviewRunsRunIdRouteWithChildren =
   )
 
 interface ApiTenderDocumentReviewRouteChildren {
+  ApiTenderDocumentReviewDetectionsRoute: typeof ApiTenderDocumentReviewDetectionsRoute
   ApiTenderDocumentReviewGraphFocusRoute: typeof ApiTenderDocumentReviewGraphFocusRoute
   ApiTenderDocumentReviewRunsRunIdRoute: typeof ApiTenderDocumentReviewRunsRunIdRouteWithChildren
 }
 
 const ApiTenderDocumentReviewRouteChildren: ApiTenderDocumentReviewRouteChildren =
   {
+    ApiTenderDocumentReviewDetectionsRoute:
+      ApiTenderDocumentReviewDetectionsRoute,
     ApiTenderDocumentReviewGraphFocusRoute:
       ApiTenderDocumentReviewGraphFocusRoute,
     ApiTenderDocumentReviewRunsRunIdRoute:

@@ -4257,6 +4257,7 @@ export function InspectMode({
   const sourceEvidenceDocumentKind = useMemo(
     () =>
       inferSourceEvidenceDocumentKind([
+        run?.project_metadata?.document_kind,
         fileRef,
         run?.tender_document_id,
         run?.source_document_ref,
@@ -4265,6 +4266,7 @@ export function InspectMode({
       ]),
     [
       fileRef,
+      run?.project_metadata?.document_kind,
       run?.tender_document_id,
       run?.source_document_ref,
       run?.source_document_artifact_ref,

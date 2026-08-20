@@ -934,7 +934,7 @@ export function ContextGraphStudioScreenV2() {
                 className="text-[10px] font-medium uppercase tracking-[0.16em]"
                 style={mn}
               >
-                Co-pilot · NL to Cypher
+                Chat · NL to Cypher
               </span>
               <span
                 className="text-[9px] text-[var(--theme-muted)]"

@@ -60,7 +60,7 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
   })
 
   await page.goto('/contextgraph-studio', {
-    waitUntil: 'domcontentloaded',
+    waitUntil: 'commit',
     timeout: 60_000,
   })
   const gatewayLogin = await page.request.post(
@@ -73,7 +73,7 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
     data: { password: workspacePassword ?? credentials.password },
   })
   expect(workspaceLogin.ok() || workspaceLogin.status() === 400, await workspaceLogin.text()).toBeTruthy()
-  await page.reload()
+  await page.reload({ waitUntil: 'commit' })
 
   await expect(page.getByRole('heading', { name: /ContextGraph Studio/i })).toBeVisible()
   const uploadResponsePromise = page.waitForResponse((response) =>

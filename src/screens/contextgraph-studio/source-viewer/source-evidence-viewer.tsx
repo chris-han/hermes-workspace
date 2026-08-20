@@ -130,6 +130,8 @@ function inferSourceEvidenceDocumentKind(
   for (const ref of refs) {
     const value = ref?.trim().toLowerCase()
     if (!value) continue
+    if (value === 'pdf') return 'pdf'
+    if (value === 'docx' || value === 'doc' || value === 'docm') return 'docx'
     if (/\.(pdf)(?:$|[?#])/.test(value)) return 'pdf'
     if (/\.(docx?|docm)(?:$|[?#])/.test(value)) return 'docx'
     if (value.includes('canonical_source_ir')) return 'canonical_source_ir'

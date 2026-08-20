@@ -351,7 +351,7 @@ const config = defineConfig(({ mode, command }) => {
         // Phase1-001 ContextGraph browser projection and read-only graph
         // adapters. Keep these explicit so the workspace never proxies an
         // arbitrary browser-selected upstream path.
-        '/api/contextgraph': {
+        '/api/contextgraph/': {
           target: proxyTarget,
           changeOrigin: true,
         },

@@ -28,7 +28,7 @@ async function authenticate(page: Page) {
     await workspaceLogin.text(),
   ).toBeTruthy()
 
-  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.reload({ waitUntil: 'commit' })
   await expect(
     page.getByRole('heading', { name: /ContextGraph Studio/i }),
   ).toBeVisible()
@@ -42,7 +42,7 @@ test('reference discovery -> DOCX correction -> graph V1 -> skill S1 -> rediscov
   expect(referenceDocx).toBeTruthy()
   expect(runtimeDocx).toBeTruthy()
 
-  await page.goto('/contextgraph-studio', { waitUntil: 'domcontentloaded' })
+  await page.goto('/contextgraph-studio', { waitUntil: 'commit' })
   await authenticate(page)
 
   // A. Graph-schema discovery from the real reference source.

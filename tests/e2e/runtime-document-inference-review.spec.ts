@@ -109,10 +109,11 @@ async function authenticate(page: Page) {
   await expect(
     page.getByRole('heading', { name: /ContextGraph Studio/i }),
   ).toBeVisible()
-  await page
+  const inspectTab = page
     .getByRole('navigation', { name: 'ContextGraph Studio modes' })
     .getByRole('tab', { name: /^Inspect$/i })
-    .click()
+  await expect(inspectTab).toBeVisible()
+  await inspectTab.click({ force: true })
 }
 
 async function runDocument(page: Page, fileRef: string, kind: 'docx' | 'pdf') {

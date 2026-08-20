@@ -1,10 +1,38 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
-
+import type { Page } from '@playwright/test'
 
 test.setTimeout(600_000)
 
 const enabled = process.env.GRAPH_SCHEMA_LEARNING_LOOP_E2E === '1'
 test.skip(!enabled, 'Set GRAPH_SCHEMA_LEARNING_LOOP_E2E=1 in the F10/release job.')
+
+async function authenticate(page: Page) {
+  const repositoryRoot = join(process.cwd(), '..')
+  const credentials = JSON.parse(
+    readFileSync(join(process.env.F10_ROOT ?? repositoryRoot, 'credentials.json'), 'utf8'),
+  ) as { login: string; password: string }
+
+  const gatewayLogin = await page.request.post(
+    `${process.env.HERMES_API_URL ?? ''}/auth/password/login`,
+    { data: { login: credentials.login, password: credentials.password } },
+  )
+  expect(gatewayLogin.ok(), await gatewayLogin.text()).toBeTruthy()
+
+  const workspaceLogin = await page.request.post('/api/auth', {
+    data: { password: credentials.password },
+  })
+  expect(
+    workspaceLogin.ok() || workspaceLogin.status() === 400,
+    await workspaceLogin.text(),
+  ).toBeTruthy()
+
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await expect(
+    page.getByRole('heading', { name: /ContextGraph Studio/i }),
+  ).toBeVisible()
+}
 
 test('reference discovery -> DOCX correction -> graph V1 -> skill S1 -> rediscovery closes the learning loop', async ({ page }) => {
   // Environment/bootstrap helpers may provision authenticated identity and source fixtures,
@@ -15,11 +43,13 @@ test('reference discovery -> DOCX correction -> graph V1 -> skill S1 -> rediscov
   expect(runtimeDocx).toBeTruthy()
 
   await page.goto('/contextgraph-studio', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { name: /ContextGraph Studio/i })).toBeVisible()
+  await authenticate(page)
 
   // A. Graph-schema discovery from the real reference source.
-  await page.getByRole('navigation', { name: 'ContextGraph Studio modes' })
-    .getByRole('tab', { name: /^Sources$/i }).click()
+  const sourcesTab = page.getByRole('navigation', { name: 'ContextGraph Studio modes' })
+    .getByRole('tab', { name: /^Sources$/i })
+  await expect(sourcesTab).toBeVisible()
+  await sourcesTab.click({ force: true })
   await page.getByTestId('source-file-input').setInputFiles(referenceDocx)
   await page.getByTestId('graph-schema-discovery-run').click()
   await expect(page.getByTestId('semantic-discovery-decision').first()).toBeVisible({ timeout: 120_000 })
@@ -31,8 +61,10 @@ test('reference discovery -> DOCX correction -> graph V1 -> skill S1 -> rediscov
   expect(graphV0).toBeTruthy()
 
   // B. Run real runtime DOCX and open an inline finding highlight.
-  await page.getByRole('navigation', { name: 'ContextGraph Studio modes' })
-    .getByRole('tab', { name: /^Inspect$/i }).click()
+  const inspectTab = page.getByRole('navigation', { name: 'ContextGraph Studio modes' })
+    .getByRole('tab', { name: /^Inspect$/i })
+  await expect(inspectTab).toBeVisible()
+  await inspectTab.click({ force: true })
   await page.getByTestId('runtime-document-file-input').setInputFiles(runtimeDocx)
   await page.getByRole('button', { name: /^Run inspection$/i }).click()
 
@@ -108,8 +140,8 @@ test('reference discovery -> DOCX correction -> graph V1 -> skill S1 -> rediscov
   expect(skillS1).not.toBe(skillS0)
 
   // I. A fresh discovery run must demonstrate the learned generic procedure and cite its learning precedent.
-  await page.getByRole('navigation', { name: 'ContextGraph Studio modes' })
-    .getByRole('tab', { name: /^Sources$/i }).click()
+  await expect(sourcesTab).toBeVisible()
+  await sourcesTab.click({ force: true })
   await page.getByTestId('graph-schema-discovery-reset').click()
   await page.getByTestId('graph-schema-discovery-run').click()
   await expect(page.getByTestId('semantic-discovery-decision').first()).toBeVisible({ timeout: 120_000 })

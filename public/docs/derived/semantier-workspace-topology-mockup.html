@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workspace Topology Mockup · Semantier Neo-Functionalism</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Hanken Grotesk"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+          },
+          colors: {
+            // semantier-light palette - the paper workspace
+            bg: '#f5f5f0',
+            card: '#fdfbf7',
+            card2: '#efe6d6',
+            border: '#e3d5c0',
+            'border-strong': '#cdb99e',
+            text: '#221c17',
+            muted: '#5b4d43',
+            accent: '#9fe870',
+            'accent-fg': '#163300',
+            'accent-subtle': 'rgba(159,232,112,0.14)',
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    :root {
+      --radius-editorial-card: 6px;
+    }
+    html, body { height: 100%; }
+    body { background-color: var(--theme-bg, #f5f5f0); color: #221c17; font-family: 'Hanken Grotesk', system-ui, sans-serif; }
+
+    /* Mono caps base for the document-frame bands */
+    .mono-caps {
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-weight: 500;
+    }
+
+    /* Hanken caps for section tabs (top-level menu items) */
+    .hk-caps {
+      font-family: 'Hanken Grotesk', sans-serif;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+    }
+
+    /* Subtle inset top highlight for raised surfaces (paper-press) */
+    .paper-press {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4),
+                  inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+    }
+    .paper-press-dark {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07),
+                  inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+    }
+
+    .hairline { border: 1px solid var(--theme-border, #e3d5c0); }
+
+    /* Active tab underline (brand) */
+    .active-tab {
+      position: relative;
+    }
+    .active-tab::after {
+      content: '';
+      position: absolute;
+      inset: auto 0 -1px 0;
+      height: 2px;
+      background: var(--theme-accent, #9fe870);
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cdb99e; border-radius: 2px; }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col overflow-hidden">
+
+  <!-- ============================================================== -->
+  <!-- HEADER BAND (full viewport width, 52 px)                      -->
+  <!-- ============================================================== -->
+  <header class="h-[52px] shrink-0 border-b border-border bg-card flex items-stretch">
+
+    <!-- Brand mark (left, 28 px monogram + wordmark) -->
+    <div class="flex items-center gap-3 pl-4 pr-6 border-r border-border">
+      <div class="size-7 flex items-center justify-center bg-text text-accent font-bold font-mono text-xs rounded-sm">
+        SG
+      </div>
+      <div class="leading-tight">
+        <div class="text-[15px] font-bold tracking-[-0.01em]">Semantier</div>
+        <div class="mono-caps text-[9.5px] text-muted">workbench · v2.4 · semantier/mvl stack</div>
+      </div>
+    </div>
+
+    <!-- Workspace meta (center, 3-col: workspace / lifecycle / run) -->
+    <div class="flex items-center gap-7 px-6 border-r border-border">
+      <div class="leading-tight">
+        <div class="mono-caps text-[9px] text-muted">Workspace</div>
+        <div class="text-[12px] font-[600] tracking-[-0.005em] font-mono">ws.prod-knowledge</div>
+      </div>
+      <div class="leading-tight">
+        <div class="mono-caps text-[9px] text-muted">Lifecycle</div>
+        <div class="flex items-center gap-1.5">
+          <span class="inline-block size-1.5 rounded-full" style="background:#9fe870;box-shadow:0 0 6px #9fe870"></span>
+          <span class="text-[12px] font-[600] tracking-[-0.005em] font-mono uppercase">accepted</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section tabs (Hanken caps, the top-level menu) -->
+    <nav class="flex items-stretch flex-1" aria-label="Workspace sections">
+      <button data-route="#dashboard" class="hk-caps text-[12px] px-5 hover:text-text text-muted flex items-center" type="button">Dashboard</button>
+      <button data-route="#graph" class="hk-caps text-[12px] px-5 hover:text-text active-tab text-text flex items-center" type="button">Graph</button>
+      <button data-route="#schemas" class="hk-caps text-[12px] px-5 hover:text-text text-muted flex items-center" type="button">Schemas</button>
+      <button data-route="#evaluation" class="hk-caps text-[12px] px-5 hover:text-text text-muted flex items-center" type="button">Evaluation</button>
+      <button data-route="#governance" class="hk-caps text-[12px] px-5 hover:text-text text-muted flex items-center" type="button">Governance</button>
+    </nav>
+
+    <!-- Parent workspace marker + brand mark (right side, before profile row) -->
+    <div class="flex items-center gap-3 px-4 border-l border-border">
+      <div class="leading-tight text-right">
+        <div class="mono-caps text-[9px] text-muted">Parent workspace</div>
+      </div>
+      <div class="flex items-center gap-2 px-2.5 py-1.5 hairline rounded-sm bg-bg paper-press">
+        <span class="block size-3" style="background:#9fe870;clip-path:polygon(50% 0%, 100% 32%, 82% 100%, 18% 100%, 0% 32%)"></span>
+        <span class="text-[12.5px] font-extrabold tracking-[0.16em] uppercase font-mono">Semantier</span>
+      </div>
+    </div>
+
+    <!-- User profile row (far right): avatar + name + status dot + actions -->
+    <div class="flex items-center gap-3 px-4 border-l border-border">
+      <div class="flex items-center gap-2.5 pl-1">
+        <div class="size-7 rounded-full bg-card2 hairline flex items-center justify-center text-[12px] font-bold text-text">
+          C
+        </div>
+        <div class="text-[13px] font-medium tracking-[-0.005em] leading-tight">chris-han</div>
+        <span
+          class="inline-block size-2 rounded-full"
+          style="background:#9fe870;box-shadow:0 0 6px rgba(159,232,112,0.6)"
+          aria-label="online"
+        ></span>
+      </div>
+
+      <div class="w-px h-5 bg-border"></div>
+
+      <button
+        type="button"
+        aria-label="Settings"
+        class="size-8 rounded-sm hover:bg-card2 text-muted hover:text-text flex items-center justify-center transition-colors"
+      >
+        <svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="128" cy="128" r="40" fill="none" stroke="currentColor" stroke-width="12"/>
+          <path d="M130.05 206.11h-4l-12.42 27.22a103.12 103.12 0 0 1-26.69-11.05l4.21-30a8 8 0 0 0-6.43-8.86l-29.85-5.26a103.84 103.84 0 0 1 0-34.41l29.85-5.27a8 8 0 0 0 6.43-8.86l-4.21-30a103.12 103.12 0 0 1 26.69-11L126 49.89h4l12.42-27.22a103.12 103.12 0 0 1 26.69 11.05l-4.21 30a8 8 0 0 0 6.43 8.86l29.85 5.27a103.84 103.84 0 0 1 0 34.41l-29.85 5.27a8 8 0 0 0-6.43 8.86l4.21 30a103.12 103.12 0 0 1-26.69 11l-12.42-22.28Z"/>
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        aria-label="Toggle theme"
+        class="size-8 rounded-sm hover:bg-card2 text-muted hover:text-text flex items-center justify-center transition-colors"
+      >
+        <svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M224 152 A80.07 80.07 0 0 1 104 32 a80.43 80.43 0 0 1 76.31 38.81 a8.18 8.18 0 0 1 4.1 12.65 a8 8 0 0 1-10.41 1.31 a64.06 64.06 0 0 0-43 100.86 a64.06 64.06 0 0 0 63.81 64.86 a64.06 64.06 0 0 0 64.93-43 a8 8 0 0 1 8.74-5.86 a8.18 8.18 0 0 1 6.46 4.1 A80.43 80.43 0 0 1 224 152 Z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============================================================== -->
+  <!-- BODY BAND (flex row: left sidebar | center | right sidebar)    -->
+  <!-- ============================================================== -->
+  <main class="flex flex-1 min-h-0 overflow-hidden">
+
+    <!-- ============================================ -->
+    <!-- LEFT SIDEBAR (288 px, anchored to Dashboard)  -->
+    <!-- ============================================ -->
+    <aside id="bodyLeft" class="w-[288px] shrink-0 border-r border-border bg-card overflow-y-auto">
+
+      <div class="p-3 space-y-3">
+
+        <!-- Workspace summary card -->
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card2 p-3">
+          <header class="flex items-start justify-between mb-2">
+            <span class="mono-caps text-[10px] text-muted">Workspace summary</span>
+            <span class="mono-caps text-[9px] px-1.5 py-0.5 rounded-sm" style="background:var(--accent-subtle);color:var(--accent-fg)">Synced</span>
+          </header>
+          <h2 class="text-lg font-bold tracking-[-0.01em] mb-3 font-mono">prod-knowledge</h2>
+          <dl class="space-y-1.5">
+            <div class="flex justify-between text-[11px] font-mono"><dt class="text-muted">schemas</dt><dd class="font-bold">17</dd></div>
+            <div class="flex justify-between text-[11px] font-mono"><dt class="text-muted">nodes</dt><dd class="font-bold">3,428</dd></div>
+            <div class="flex justify-between text-[11px] font-mono"><dt class="text-muted">edges</dt><dd class="font-bold">28,914</dd></div>
+            <div class="flex justify-between text-[11px] font-mono"><dt class="text-muted">evidence</dt><dd class="font-bold">9,612</dd></div>
+            <div class="flex justify-between text-[11px] font-mono"><dt class="text-muted">last sync</dt><dd class="font-bold">T-00:04:12</dd></div>
+          </dl>
+        </section>
+
+        <!-- Schema classes -->
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card flex flex-col min-h-0 p-3">
+          <header class="flex items-center justify-between mb-2 border-b border-border pb-2">
+            <span class="mono-caps text-[10px]">Schema classes</span>
+            <span class="mono-caps text-[9px] text-muted">17 schemas</span>
+          </header>
+          <ul class="flex-1 space-y-1.5">
+            <li class="flex items-center gap-2 rounded-sm hairline bg-card2 px-2 py-1.5">
+              <span class="block size-2 rounded-sm" style="background:var(--accent)"></span>
+              <span class="text-xs font-bold uppercase font-mono">Class · Art-Fact</span>
+              <span class="ml-auto text-[10px] font-mono text-muted">428</span>
+            </li>
+            <li class="flex items-center gap-2 rounded-sm border-l-2 hairline px-2 py-1.5" style="border-left-color:#9fe870">
+              <span class="block size-2 rounded-sm bg-text"></span>
+              <span class="text-xs font-bold uppercase font-mono">Class · Assertion</span>
+              <span class="ml-auto text-[10px] font-mono text-muted">1,204</span>
+            </li>
+            <li class="flex items-center gap-2 rounded-sm hairline bg-card2 px-2 py-1.5">
+              <span class="block size-2 rounded-sm bg-text"></span>
+              <span class="text-xs font-bold uppercase font-mono">Class · Evidence</span>
+              <span class="ml-auto text-[10px] font-mono text-muted">9,612</span>
+            </li>
+            <li class="flex items-center gap-2 rounded-sm hairline bg-card2 px-2 py-1.5">
+              <span class="block size-2 rounded-sm bg-muted"></span>
+              <span class="text-xs font-bold uppercase font-mono">Class · Source</span>
+              <span class="ml-auto text-[10px] font-mono text-muted">112</span>
+            </li>
+          </ul>
+        </section>
+
+        <!-- Domain filter -->
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3">
+          <header class="flex items-center justify-between mb-2">
+            <span class="mono-caps text-[10px] text-muted">Domain filter</span>
+            <span class="mono-caps text-[9px] text-muted">5 active</span>
+          </header>
+          <ul class="space-y-1.5">
+            <li class="flex items-center justify-between text-[11px] font-mono">
+              <span class="flex items-center gap-2"><span class="block size-2 rounded-sm" style="background:var(--accent)"></span>tender.regulatory</span>
+              <span class="text-muted">2,418</span>
+            </li>
+            <li class="flex items-center justify-between text-[11px] font-mono">
+              <span class="flex items-center gap-2"><span class="block size-2 rounded-sm bg-text"></span>artifact.spec</span>
+              <span class="text-muted">812</span>
+            </li>
+            <li class="flex items-center justify-between text-[11px] font-mono">
+              <span class="flex items-center gap-2"><span class="block size-2 rounded-sm bg-text"></span>evidence.compiled</span>
+              <span class="text-muted">198</span>
+            </li>
+          </ul>
+        </section>
+      </div>
+    </aside>
+
+    <!-- ============================================ -->
+    <!-- CENTER (flex-1, the active route content)  -->
+    <!-- ============================================ -->
+    <section id="bodyCenter" class="flex-1 min-w-0 bg-bg overflow-y-auto p-8">
+      <div class="max-w-4xl mx-auto">
+
+        <header class="mb-8">
+          <div class="mono-caps text-[11px] text-muted mb-2">Workspace dashboard · v2.4</div>
+          <h1 class="text-[44px] font-bold tracking-[-0.02em] leading-tight mb-3">
+            Knowledge workbench for the
+            <span class="text-accent">Semantier</span> MVL stack.
+          </h1>
+          <p class="text-[16px] text-muted max-w-[60ch] leading-relaxed">
+            Workspace, schemas, evidence, and evaluation live here. The header is your document frame; the side rails are your tools. Pick a section above to switch the center; pick a sidebar item to drill into a specific record.
+          </p>
+        </header>
+
+        <!-- Center KPI strip -->
+        <div class="grid grid-cols-4 gap-3 mb-8">
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3 paper-press">
+            <div class="mono-caps text-[10px] text-muted mb-1">Schemas</div>
+            <div class="flex items-baseline gap-1">
+              <span class="text-2xl font-bold font-mono">17</span>
+              <span class="text-[10px] font-mono text-muted">classes</span>
+            </div>
+          </div>
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3 paper-press">
+            <div class="mono-caps text-[10px] text-muted mb-1">Nodes</div>
+            <div class="flex items-baseline gap-1">
+              <span class="text-2xl font-bold font-mono">3,428</span>
+              <span class="text-[10px] font-mono text-muted">in graph</span>
+            </div>
+          </div>
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3 paper-press">
+            <div class="mono-caps text-[10px] text-muted mb-1">Evidence</div>
+            <div class="flex items-baseline gap-1">
+              <span class="text-2xl font-bold font-mono">9,612</span>
+              <span class="text-[10px] font-mono text-muted">items</span>
+            </div>
+          </div>
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3 paper-press">
+            <div class="mono-caps text-[10px] text-muted mb-1">Edge Conf.</div>
+            <div class="flex items-baseline gap-1">
+              <span class="text-2xl font-bold font-mono">0.83</span>
+              <span class="text-[10px] font-mono text-muted">avg</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center content area placeholder -->
+        <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-6 paper-press">
+          <div class="mono-caps text-[10px] text-muted mb-3">Recent evidence · last 24h</div>
+          <ul class="space-y-2">
+            <li class="flex items-center gap-3 py-1.5 border-b border-border/60">
+              <span class="mono-caps text-[10px] text-muted shrink-0">T-04:12</span>
+              <span class="font-mono text-[12px] truncate flex-1">EX-0e15267 · source.tender/POI-074.docx</span>
+              <span class="font-mono text-[10px] text-muted">conf 0.91</span>
+            </li>
+            <li class="flex items-center gap-3 py-1.5 border-b border-border/60">
+              <span class="mono-caps text-[10px] text-muted shrink-0">T-02:48</span>
+              <span class="font-mono text-[12px] truncate flex-1">EX-0e15b22 · source.tender/POI-072.docx</span>
+              <span class="font-mono text-[10px] text-muted">conf 0.84</span>
+            </li>
+            <li class="flex items-center gap-3 py-1.5 border-b border-border/60">
+              <span class="mono-caps text-[10px] text-muted shrink-0">T-01:30</span>
+              <span class="font-mono text-[12px] truncate flex-1">EX-0e15c0c · artifact.spec/BOM-014.json</span>
+              <span class="font-mono text-[10px] text-muted">conf 0.77</span>
+            </li>
+            <li class="flex items-center gap-3 py-1.5">
+              <span class="mono-caps text-[10px] text-muted shrink-0">T-00:42</span>
+              <span class="font-mono text-[12px] truncate flex-1">EX-0e15c81 · derived.inferred/scope-coverage</span>
+              <span class="font-mono text-[10px] text-muted">conf 0.62</span>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- RIGHT SIDEBAR (420 px, chat / inspector panel) -->
+    <!-- ============================================ -->
+    <aside class="w-[420px] shrink-0 border-l border-border bg-card flex flex-col">
+
+      <!-- Right sidebar: MODE TOGGLE (Hanken caps, top-level menu items) -->
+      <div class="h-9 shrink-0 flex items-stretch border-b border-border bg-card2">
+        <button class="flex-1 hk-caps text-[12px] flex items-center justify-center text-muted hover:text-text border-b-2 border-transparent" type="button">Inspector</button>
+        <button class="flex-1 hk-caps text-[12px] flex items-center justify-center text-text active-tab border-b-2" type="button">Chat</button>
+      </div>
+
+      <!-- Right sidebar: CHAT MODE header (sub-tab "Chats") -->
+      <div class="h-9 shrink-0 flex items-center gap-2 border-b border-border bg-card pr-3">
+        <span class="text-[13px] font-normal tracking-[0.04em] text-muted pl-3">Chats</span>
+        <div class="flex-1 self-stretch px-3 text-left text-[13px] text-muted hover:bg-card2 cursor-pointer truncate flex items-center font-mono">
+          Main Session
+        </div>
+        <button aria-label="New chat" class="text-muted hover:text-text size-6 rounded-sm flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16">
+            <path d="M92 216 L48 216 L48 72 a8 8 0 0 1 8 -8 L160 64 L160 32 a8 8 0 0 1 8 8 L168 156 L168 216 a8 8 0 0 1 -8 8 L92 216 Z" transform="rotate(45 108 124)"/>
+          </svg>
+        </button>
+        <button aria-label="Full view" class="text-muted hover:text-text size-6 rounded-sm flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="12">
+            <polyline points="60 152 60 196 196 196 196 60 152 60"/>
+            <polyline points="92 92 60 60 92 28"/>
+            <polyline points="164 228 196 196 164 164"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Right sidebar: CHAT BODY (existing ChatScreen placeholder) -->
+      <div class="flex-1 min-h-0 bg-card flex flex-col">
+        <div class="flex-1 overflow-y-auto p-3 space-y-3">
+          <!-- Empty state messages -->
+          <div class="flex flex-col gap-1">
+            <span class="mono-caps text-[9px] text-muted">user · 14:08:42</span>
+            <div class="rounded-sm border border-border bg-card2 p-2 text-[11px] font-mono">
+              Find every Assertion under schema Class-Assertion with confidence below 0.6 from the tender.regulatory domain.
+            </div>
+          </div>
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center gap-2">
+              <span class="mono-caps text-[9px] font-bold text-text">system · 14:08:43</span>
+              <span class="mono-caps text-[9px] text-muted">matched · 7</span>
+            </div>
+            <div class="border-l-2 p-2 text-[11px] font-mono" style="border-color:var(--accent);background:var(--accent-subtle)">
+              7 assertions below 0.6 confidence. Top: <span class="font-bold">ART-0741 · 0.41</span>, <span class="font-bold">ART-0818 · 0.48</span>.
+            </div>
+          </div>
+        </div>
+
+        <!-- Composer -->
+        <form class="border-t border-border bg-card2 p-2 flex gap-2 items-center">
+          <input
+            class="flex-1 bg-card border border-border rounded-sm px-2 py-1.5 text-[11px] font-mono focus:outline-none focus:border-accent focus:border-2 focus:ring-2 focus:ring-accent/30"
+            type="text"
+            placeholder="Ask the graph · NL or cypher"
+            autofocus
+          />
+          <button
+            type="submit"
+            class="rounded-sm border border-transparent px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] font-mono hover:brightness-95 active:brightness-90 transition-[filter]"
+            style="background:var(--accent);color:var(--accent-fg)"
+          >
+            Send
+          </button>
+        </form>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- FOOTER BAND (full viewport width, 32 px)                      -->
+  <!-- ============================================================== -->
+  <footer class="h-8 shrink-0 flex items-center justify-between px-4 border-t border-border bg-card2 mono-caps text-[10px] text-muted">
+    <div class="flex items-center gap-3">
+      <span>model <span class="font-bold text-text">ContextGraph@2.4</span></span>
+      <span class="size-3 w-px h-3 bg-border"></span>
+      <span>run <span class="font-bold text-text">r-0e15267</span></span>
+      <span class="size-3 w-px h-3 bg-border"></span>
+      <span>lifecycle <span class="font-bold text-text">accepted</span></span>
+      <span class="size-3 w-px h-3 bg-border"></span>
+      <span>mvl <span class="font-bold text-text">closure-ready</span></span>
+      <span class="size-3 w-px h-3 bg-border"></span>
+      <span>build <span class="font-bold text-text">0xa1c2f3d4…</span></span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span>render.fps <span class="font-bold text-text">60</span></span>
+      <span class="size-3 w-px h-3 bg-border"></span>
+      <span>eval.queue <span class="font-bold text-text">14</span></span>
+      <span class="size-3 w-px h-3 bg-border"></span>
+      <span>reviewers <span class="font-bold text-text">3</span></span>
+      <span class="size-3 w-px h-3 bg-border"></span>
+      <span class="font-bold text-text">sg-ws-0e15267</span>
+    </div>
+  </footer>
+
+  <!-- ============================================================== -->
+  <!-- ROUTING: hash-based client-side nav                            -->
+  <!-- Header / right sidebar / footer stay constant. The body-left   -->
+  <!-- (#bodyLeft) and body-center (#bodyCenter) slots swap innerHTML -->
+  <!-- per route. Default is #graph. Active tab gets active-tab class.  -->
+  <!-- ============================================================== -->
+  <script>
+  (function () {
+    // === ROUTE DATA =================================================
+    // Each route has: left (left sidebar HTML), center (center HTML).
+    // Header / right sidebar / footer are static across routes.
+
+    const routeLeftDashboard = `
+      <div class="p-3 space-y-3">
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card2 p-3">
+          <header class="flex items-start justify-between mb-2">
+            <span class="mono-caps text-[10px] text-muted">Workspace summary</span>
+            <span class="mono-caps text-[9px] px-1.5 py-0.5 rounded-sm" style="background:var(--accent-subtle);color:var(--accent-fg)">Synced</span>
+          </header>
+          <h2 class="text-lg font-bold tracking-[-0.01em] mb-3 font-mono">prod-knowledge</h2>
+          <dl class="space-y-1.5">
+            <div class="flex justify-between text-[11px] font-mono"><dt class="text-muted">schemas</dt><dd class="font-bold">17</dd></div>
+            <div class="flex justify-between text-[11px] font-mono"><dt class="text-muted">nodes</dt><dd class="font-bold">3,428</dd></div>
+            <div class="flex justify-between text-[11px] font-mono"><dt class="text-muted">edges</dt><dd class="font-bold">28,914</dd></div>
+            <div class="flex justify-between text-[11px] font-mono"><dt class="text-muted">evidence</dt><dd class="font-bold">9,612</dd></div>
+            <div class="flex justify-between text-[11px] font-mono"><dt class="text-muted">last sync</dt><dd class="font-bold">T-00:04:12</dd></div>
+          </dl>
+        </section>
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card flex flex-col min-h-0 p-3">
+          <header class="flex items-center justify-between mb-2 border-b border-border pb-2">
+            <span class="mono-caps text-[10px]">Schema classes</span>
+            <span class="mono-caps text-[9px] text-muted">17 schemas</span>
+          </header>
+          <ul class="flex-1 space-y-1.5">
+            <li class="flex items-center gap-2 rounded-sm hairline bg-card2 px-2 py-1.5">
+              <span class="block size-2 rounded-sm" style="background:var(--accent)"></span>
+              <span class="text-xs font-bold uppercase font-mono">Class · Art-Fact</span>
+              <span class="ml-auto text-[10px] font-mono text-muted">428</span>
+            </li>
+            <li class="flex items-center gap-2 rounded-sm border-l-2 hairline px-2 py-1.5" style="border-left-color:#9fe870">
+              <span class="block size-2 rounded-sm bg-text"></span>
+              <span class="text-xs font-bold uppercase font-mono">Class · Assertion</span>
+              <span class="ml-auto text-[10px] font-mono text-muted">1,204</span>
+            </li>
+            <li class="flex items-center gap-2 rounded-sm hairline bg-card2 px-2 py-1.5">
+              <span class="block size-2 rounded-sm bg-text"></span>
+              <span class="text-xs font-bold uppercase font-mono">Class · Evidence</span>
+              <span class="ml-auto text-[10px] font-mono text-muted">9,612</span>
+            </li>
+            <li class="flex items-center gap-2 rounded-sm hairline bg-card2 px-2 py-1.5">
+              <span class="block size-2 rounded-sm bg-muted"></span>
+              <span class="text-xs font-bold uppercase font-mono">Class · Source</span>
+              <span class="ml-auto text-[10px] font-mono text-muted">112</span>
+            </li>
+          </ul>
+        </section>
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3">
+          <header class="flex items-center justify-between mb-2">
+            <span class="mono-caps text-[10px] text-muted">Domain filter</span>
+            <span class="mono-caps text-[9px] text-muted">5 active</span>
+          </header>
+          <ul class="space-y-1.5">
+            <li class="flex items-center justify-between text-[11px] font-mono">
+              <span class="flex items-center gap-2"><span class="block size-2 rounded-sm" style="background:var(--accent)"></span>tender.regulatory</span>
+              <span class="text-muted">2,418</span>
+            </li>
+            <li class="flex items-center justify-between text-[11px] font-mono">
+              <span class="flex items-center gap-2"><span class="block size-2 rounded-sm bg-text"></span>artifact.spec</span>
+              <span class="text-muted">812</span>
+            </li>
+            <li class="flex items-center justify-between text-[11px] font-mono">
+              <span class="flex items-center gap-2"><span class="block size-2 rounded-sm bg-text"></span>evidence.compiled</span>
+              <span class="text-muted">198</span>
+            </li>
+          </ul>
+        </section>
+      </div>`;
+
+    const routeCenterDashboard = `
+      <div class="max-w-4xl mx-auto">
+        <header class="mb-8">
+          <div class="mono-caps text-[11px] text-muted mb-2">Workspace dashboard · v2.4</div>
+          <h1 class="text-[44px] font-bold tracking-[-0.02em] leading-tight mb-3">
+            Knowledge workbench for the
+            <span class="text-accent">Semantier</span> MVL stack.
+          </h1>
+          <p class="text-[16px] text-muted max-w-[60ch] leading-relaxed">
+            Workspace, schemas, evidence, and evaluation live here. The header is your document frame; the side rails are your tools. Pick a section above to switch the center; pick a sidebar item to drill into a specific record.
+          </p>
+        </header>
+        <div class="grid grid-cols-4 gap-3 mb-8">
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3 paper-press">
+            <div class="mono-caps text-[10px] text-muted mb-1">Schemas</div>
+            <div class="flex items-baseline gap-1"><span class="text-2xl font-bold font-mono">17</span><span class="text-[10px] font-mono text-muted">classes</span></div>
+          </div>
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3 paper-press">
+            <div class="mono-caps text-[10px] text-muted mb-1">Nodes</div>
+            <div class="flex items-baseline gap-1"><span class="text-2xl font-bold font-mono">3,428</span><span class="text-[10px] font-mono text-muted">in graph</span></div>
+          </div>
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3 paper-press">
+            <div class="mono-caps text-[10px] text-muted mb-1">Evidence</div>
+            <div class="flex items-baseline gap-1"><span class="text-2xl font-bold font-mono">9,612</span><span class="text-[10px] font-mono text-muted">items</span></div>
+          </div>
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3 paper-press">
+            <div class="mono-caps text-[10px] text-muted mb-1">Edge Conf.</div>
+            <div class="flex items-baseline gap-1"><span class="text-2xl font-bold font-mono">0.83</span><span class="text-[10px] font-mono text-muted">avg</span></div>
+          </div>
+        </div>
+        <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-6 paper-press">
+          <div class="mono-caps text-[10px] text-muted mb-3">Recent evidence · last 24h</div>
+          <ul class="space-y-2">
+            <li class="flex items-center gap-3 py-1.5 border-b border-border/60">
+              <span class="mono-caps text-[10px] text-muted shrink-0">T-04:12</span>
+              <span class="font-mono text-[12px] truncate flex-1">EX-0e15267 · source.tender/POI-074.docx</span>
+              <span class="font-mono text-[10px] text-muted">conf 0.91</span>
+            </li>
+            <li class="flex items-center gap-3 py-1.5 border-b border-border/60">
+              <span class="mono-caps text-[10px] text-muted shrink-0">T-02:48</span>
+              <span class="font-mono text-[12px] truncate flex-1">EX-0e15b22 · source.tender/POI-072.docx</span>
+              <span class="font-mono text-[10px] text-muted">conf 0.84</span>
+            </li>
+            <li class="flex items-center gap-3 py-1.5 border-b border-border/60">
+              <span class="mono-caps text-[10px] text-muted shrink-0">T-01:30</span>
+              <span class="font-mono text-[12px] truncate flex-1">EX-0e15c0c · artifact.spec/BOM-014.json</span>
+              <span class="font-mono text-[10px] text-muted">conf 0.77</span>
+            </li>
+            <li class="flex items-center gap-3 py-1.5">
+              <span class="mono-caps text-[10px] text-muted shrink-0">T-00:42</span>
+              <span class="font-mono text-[12px] truncate flex-1">EX-0e15c81 · derived.inferred/scope-coverage</span>
+              <span class="font-mono text-[10px] text-muted">conf 0.62</span>
+            </li>
+          </ul>
+        </div>
+      </div>`;
+
+    const routeLeftGraph = `
+      <div class="p-3 space-y-3">
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3">
+          <header class="flex items-center justify-between mb-2">
+            <span class="mono-caps text-[10px] text-muted">Workbench tools</span>
+            <span class="mono-caps text-[9px] text-muted">4 active</span>
+          </header>
+          <ul class="space-y-1">
+            <li>
+              <div class="flex items-center justify-between mb-1"><span class="mono-caps text-[10px]">Layout</span></div>
+              <div class="grid grid-cols-2 gap-1 text-[10px] font-mono">
+                <button class="hairline rounded-sm bg-card2 px-2 py-1 text-left text-text">Force</button>
+                <button class="hairline rounded-sm bg-card px-2 py-1 text-left text-muted">Hierarchical</button>
+                <button class="hairline rounded-sm bg-card px-2 py-1 text-left text-muted">Radial</button>
+                <button class="hairline rounded-sm bg-card px-2 py-1 text-left text-muted">Sankey</button>
+              </div>
+            </li>
+            <li>
+              <div class="flex items-center justify-between mb-1 mt-2"><span class="mono-caps text-[10px]">View mode</span></div>
+              <div class="grid grid-cols-3 gap-1 text-[10px] font-mono">
+                <button class="hairline rounded-sm bg-card2 px-2 py-1 text-left text-text">View</button>
+                <button class="hairline rounded-sm bg-card px-2 py-1 text-left text-muted">Select</button>
+                <button class="hairline rounded-sm bg-card px-2 py-1 text-left text-muted">Path</button>
+              </div>
+            </li>
+            <li class="mt-2">
+              <div class="flex items-center justify-between mb-1"><span class="mono-caps text-[10px]">Selection</span></div>
+              <div class="text-[11px] font-mono p-2 hairline rounded-sm bg-card2 text-text">EX-0e15267</div>
+            </li>
+            <li class="mt-2">
+              <div class="flex items-center justify-between mb-1"><span class="mono-caps text-[10px]">Zoom</span></div>
+              <div class="flex items-center gap-1 text-[10px] font-mono">
+                <button class="hairline rounded-sm bg-card2 px-2 py-1 text-text">-</button>
+                <span class="flex-1 text-center text-text">1.0x</span>
+                <button class="hairline rounded-sm bg-card2 px-2 py-1 text-text">+</button>
+              </div>
+            </li>
+          </ul>
+        </section>
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3">
+          <header class="mb-2"><span class="mono-caps text-[10px] text-muted">Visible classes</span></header>
+          <ul class="space-y-1.5 text-[11px] font-mono">
+            <li class="flex items-center gap-2"><span class="block size-2 rounded-sm" style="background:var(--accent)"></span>Class · Art-Fact <span class="ml-auto text-muted">428</span></li>
+            <li class="flex items-center gap-2"><span class="block size-2 rounded-sm bg-text"></span>Class · Assertion <span class="ml-auto text-muted">1,204</span></li>
+            <li class="flex items-center gap-2"><span class="block size-2 rounded-sm bg-muted"></span>Class · Evidence <span class="ml-auto text-muted">9,612</span></li>
+            <li class="flex items-center gap-2"><span class="block size-2 rounded-sm bg-muted"></span>Class · Source <span class="ml-auto text-muted">112</span></li>
+          </ul>
+        </section>
+      </div>`;
+
+    const routeCenterGraph = `
+      <div class="h-full flex flex-col">
+        <header class="mb-3 px-2">
+          <div class="mono-caps text-[11px] text-muted mb-1">Graph workbench · v2.4</div>
+          <h1 class="text-2xl font-bold tracking-[-0.01em]">Workspace knowledge graph</h1>
+        </header>
+        <div class="rounded-[var(--radius-editorial-card)] hairline bg-card flex-1 p-6 paper-press relative overflow-hidden">
+          <div class="absolute top-2 left-2 mono-caps text-[9px] text-muted">SOURCES · 112  ·  CLASSES · 17  ·  NODES · 3,428  ·  EDGES · 28,914</div>
+          <div class="absolute bottom-2 right-2 mono-caps text-[9px] text-muted">frame 60 fps · pinned 1</div>
+          <svg viewBox="0 0 600 280" class="w-full h-full max-h-[60vh]">
+            <line x1="300" y1="140" x2="170" y2="60" stroke="currentColor" class="text-border" stroke-width="1.5" stroke-dasharray="3 4" opacity="0.7"/>
+            <line x1="300" y1="140" x2="430" y2="60" stroke="currentColor" class="text-border" stroke-width="1.5" opacity="0.7"/>
+            <line x1="300" y1="140" x2="170" y2="220" stroke="currentColor" class="text-border" stroke-width="1.5" opacity="0.7"/>
+            <line x1="300" y1="140" x2="430" y2="220" stroke="currentColor" class="text-border" stroke-width="1.5" opacity="0.7"/>
+            <line x1="170" y1="60" x2="100" y2="120" stroke="currentColor" class="text-border" stroke-width="1.5" opacity="0.5"/>
+            <line x1="430" y1="60" x2="500" y2="120" stroke="currentColor" class="text-border" stroke-width="1.5" opacity="0.5"/>
+            <circle cx="300" cy="140" r="22" fill="#9fe870" stroke="#163300" stroke-width="2"/>
+            <text x="300" y="144" text-anchor="middle" class="font-mono" font-size="9" font-weight="700" fill="#163300">SCHEMA</text>
+            <circle cx="170" cy="60" r="16" fill="#221c17"/>
+            <text x="170" y="64" text-anchor="middle" class="font-mono" font-size="8" font-weight="700" fill="#f5f5f0">EX</text>
+            <circle cx="430" cy="60" r="16" fill="#221c17"/>
+            <text x="430" y="64" text-anchor="middle" class="font-mono" font-size="8" font-weight="700" fill="#f5f5f0">SRC</text>
+            <circle cx="170" cy="220" r="14" fill="#5b4d43"/>
+            <circle cx="430" cy="220" r="14" fill="#5b4d43"/>
+            <circle cx="100" cy="120" r="10" fill="#5b4d43"/>
+            <circle cx="500" cy="120" r="10" fill="#5b4d43"/>
+          </svg>
+          <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-mono text-text bg-bg/80 px-2 py-0.5 rounded-sm border border-border">schema · Class-Assertion</div>
+        </div>
+      </div>`;
+
+    const routeLeftSchemas = `
+      <div class="p-3 space-y-3">
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card flex flex-col min-h-0 p-3">
+          <header class="flex items-center justify-between mb-2 border-b border-border pb-2">
+            <span class="mono-caps text-[10px]">All schemas</span>
+            <span class="mono-caps text-[9px] text-muted">17</span>
+          </header>
+          <ul class="flex-1 space-y-1 overflow-y-auto">
+            <li class="flex items-center gap-2 rounded-sm hairline bg-card2 px-2 py-1.5"><span class="block size-2 rounded-sm" style="background:var(--accent)"></span><span class="text-xs font-bold uppercase font-mono">Class · Art-Fact</span><span class="ml-auto text-[10px] font-mono text-muted">428</span></li>
+            <li class="flex items-center gap-2 rounded-sm border-l-2 hairline px-2 py-1.5" style="border-left-color:#9fe870;background:#fdfbf7"><span class="block size-2 rounded-sm bg-text"></span><span class="text-xs font-bold uppercase font-mono">Class · Assertion</span><span class="ml-auto text-[10px] font-mono text-muted">1,204</span></li>
+            <li class="flex items-center gap-2 rounded-sm hairline bg-card2 px-2 py-1.5"><span class="block size-2 rounded-sm bg-text"></span><span class="text-xs font-bold uppercase font-mono">Class · Evidence</span><span class="ml-auto text-[10px] font-mono text-muted">9,612</span></li>
+            <li class="flex items-center gap-2 rounded-sm hairline bg-card2 px-2 py-1.5"><span class="block size-2 rounded-sm bg-muted"></span><span class="text-xs font-bold uppercase font-mono">Class · Source</span><span class="ml-auto text-[10px] font-mono text-muted">112</span></li>
+            <li class="flex items-center gap-2 rounded-sm hairline bg-card2 px-2 py-1.5"><span class="block size-2 rounded-sm bg-muted"></span><span class="text-xs font-bold uppercase font-mono">Class · Lifecycle</span><span class="ml-auto text-[10px] font-mono text-muted">31</span></li>
+            <li class="flex items-center gap-2 rounded-sm hairline bg-card2 px-2 py-1.5"><span class="block size-2 rounded-sm bg-muted"></span><span class="text-xs font-bold uppercase font-mono">Class · Provider</span><span class="ml-auto text-[10px] font-mono text-muted">6</span></li>
+            <li class="flex items-center gap-2 rounded-sm hairline bg-card2 px-2 py-1.5"><span class="block size-2 rounded-sm bg-muted"></span><span class="text-xs font-bold uppercase font-mono">Class · Run</span><span class="ml-auto text-[10px] font-mono text-muted">42</span></li>
+          </ul>
+        </section>
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3">
+          <header class="mb-2"><span class="mono-caps text-[10px] text-muted">Filter</span></header>
+          <input class="w-full hairline rounded-sm bg-card2 px-2 py-1.5 text-[11px] font-mono focus:outline-none focus:border-accent" placeholder="search schemas..." />
+        </section>
+      </div>`;
+
+    const routeCenterSchemas = `
+      <div class="max-w-4xl mx-auto">
+        <header class="mb-5">
+          <div class="mono-caps text-[11px] text-muted mb-1">Schema · 1 of 17 · selected</div>
+          <h1 class="text-3xl font-bold tracking-[-0.01em] mb-2 font-mono">Class · Assertion</h1>
+          <p class="text-[14px] text-muted max-w-[60ch]">Governed class for evidence-backed assertions in the prod-knowledge workspace.</p>
+        </header>
+        <div class="grid grid-cols-2 gap-3 mb-5">
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3 paper-press">
+            <div class="mono-caps text-[10px] text-muted mb-1">In-degree</div>
+            <div class="flex items-baseline gap-1"><span class="text-2xl font-bold font-mono">312</span><span class="text-[10px] font-mono text-muted">edges</span></div>
+          </div>
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3 paper-press">
+            <div class="mono-caps text-[10px] text-muted mb-1">Out-degree</div>
+            <div class="flex items-baseline gap-1"><span class="text-2xl font-bold font-mono">47</span><span class="text-[10px] font-mono text-muted">edges</span></div>
+          </div>
+        </div>
+        <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-5 paper-press mb-4">
+          <div class="flex items-center justify-between mb-2"><span class="mono-caps text-[10px]">Properties · 6 keys</span><span class="mono-caps text-[9px] text-muted">6 of 6</span></div>
+          <table class="w-full text-[11px] font-mono">
+            <tbody>
+              <tr class="border-b border-border/40"><td class="py-1.5 px-2 text-muted">workspace_id</td><td class="py-1.5 px-2 text-right">ws.prod-knowledge</td></tr>
+              <tr class="border-b border-border/40 bg-card2/40"><td class="py-1.5 px-2 text-muted">skill_ref</td><td class="py-1.5 px-2 text-right">graph-schema-discovery@1</td></tr>
+              <tr class="border-b border-border/40"><td class="py-1.5 px-2 text-muted">schema_version</td><td class="py-1.5 px-2 text-right">graph_schema_discovery_brief.v1</td></tr>
+              <tr class="border-b border-border/40 bg-card2/40"><td class="py-1.5 px-2 text-muted">run_id</td><td class="py-1.5 px-2 text-right">r-0e15267</td></tr>
+              <tr class="border-b border-border/40"><td class="py-1.5 px-2 text-muted">confidence</td><td class="py-1.5 px-2 text-right font-bold" style="color:var(--accent-fg)">0.83</td></tr>
+              <tr><td class="py-1.5 px-2 text-muted">lifecycle</td><td class="py-1.5 px-2 text-right font-bold">accepted</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-5 paper-press">
+          <div class="mono-caps text-[10px] mb-3">Relations · outgoing</div>
+          <ul class="space-y-2 text-[12px] font-mono">
+            <li class="flex items-center gap-2"><span class="block size-2 rounded-sm bg-muted"></span><span class="text-muted">[:SOURCED_FROM]→</span><span class="text-text">Class · Source</span><span class="ml-auto text-muted">22</span></li>
+            <li class="flex items-center gap-2"><span class="block size-2 rounded-sm bg-muted"></span><span class="text-muted">[:SUPPORTED_BY]→</span><span class="text-text">Class · Evidence</span><span class="ml-auto text-muted">18</span></li>
+            <li class="flex items-center gap-2"><span class="block size-2 rounded-sm bg-muted"></span><span class="text-muted">[:EVALUATED_IN]→</span><span class="text-text">Class · Run</span><span class="ml-auto text-muted">7</span></li>
+          </ul>
+        </div>
+      </div>`;
+
+    const routeLeftEvaluation = `
+      <div class="p-3 space-y-3">
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3">
+          <header class="flex items-center justify-between mb-2">
+            <span class="mono-caps text-[10px] text-muted">Eval queue</span>
+            <span class="mono-caps text-[9px] text-muted">14 pending</span>
+          </header>
+          <ul class="space-y-1.5">
+            <li class="flex items-center gap-2 hairline rounded-sm bg-card2 px-2 py-1.5">
+              <span class="block size-1.5 rounded-full" style="background:#9fe870"></span>
+              <span class="font-mono text-[11px] truncate">r-0e15267 · v1</span>
+              <span class="ml-auto mono-caps text-[9px] text-muted">live</span>
+            </li>
+            <li class="flex items-center gap-2 hairline rounded-sm bg-card px-2 py-1.5">
+              <span class="block size-1.5 rounded-full bg-muted"></span>
+              <span class="font-mono text-[11px] truncate">r-0e15b22</span>
+              <span class="ml-auto mono-caps text-[9px] text-muted">queued</span>
+            </li>
+            <li class="flex items-center gap-2 hairline rounded-sm bg-card px-2 py-1.5">
+              <span class="block size-1.5 rounded-full bg-muted"></span>
+              <span class="font-mono text-[11px] truncate">r-0e15b41</span>
+              <span class="ml-auto mono-caps text-[9px] text-muted">queued</span>
+            </li>
+            <li class="flex items-center gap-2 hairline rounded-sm bg-card px-2 py-1.5">
+              <span class="block size-1.5 rounded-full bg-muted"></span>
+              <span class="font-mono text-[11px] truncate">r-0e15b62</span>
+              <span class="ml-auto mono-caps text-[9px] text-muted">queued</span>
+            </li>
+            <li class="flex items-center gap-2 hairline rounded-sm bg-card px-2 py-1.5">
+              <span class="block size-1.5 rounded-full bg-muted"></span>
+              <span class="font-mono text-[11px] truncate">r-0e15b88</span>
+              <span class="ml-auto mono-caps text-[9px] text-muted">queued</span>
+            </li>
+          </ul>
+        </section>
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3">
+          <header class="mb-2"><span class="mono-caps text-[10px] text-muted">Loops</span></header>
+          <div class="grid grid-cols-3 gap-1 text-[10px] font-mono">
+            <button class="hairline rounded-sm bg-card2 px-2 py-1 text-left text-text">3 active</button>
+            <button class="hairline rounded-sm bg-card px-2 py-1 text-left text-muted">9 held</button>
+            <button class="hairline rounded-sm bg-card px-2 py-1 text-left text-muted">2 test</button>
+          </div>
+        </section>
+      </div>`;
+
+    const routeCenterEvaluation = `
+      <div class="max-w-4xl mx-auto">
+        <header class="mb-5">
+          <div class="mono-caps text-[11px] text-muted mb-1">Evaluation · live run</div>
+          <h1 class="text-3xl font-bold tracking-[-0.01em] mb-2 font-mono">r-0e15267 · Class-Assertion v1</h1>
+          <p class="text-[14px] text-muted">Live MVL evaluation. The four learning loops are running concurrently; human review queue is empty.</p>
+        </header>
+        <div class="space-y-3">
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-4 paper-press">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2"><span class="block size-2 rounded-full" style="background:#9fe870"></span><span class="mono-caps text-[10px]">Extraction loop</span></div>
+              <span class="font-mono text-[10px] text-muted">42 / 42 docs</span>
+            </div>
+            <div class="h-1 rounded-full overflow-hidden" style="background:var(--accent-subtle)"><div class="h-full" style="background:var(--accent);width:100%"></div></div>
+          </div>
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-4 paper-press">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2"><span class="block size-2 rounded-full" style="background:#9fe870"></span><span class="mono-caps text-[10px]">Grounding loop</span></div>
+              <span class="font-mono text-[10px] text-muted">9,612 / 9,612 evidence</span>
+            </div>
+            <div class="h-1 rounded-full overflow-hidden" style="background:var(--accent-subtle)"><div class="h-full" style="background:var(--accent);width:100%"></div></div>
+          </div>
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-4 paper-press">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2"><span class="block size-2 rounded-full" style="background:#9fe870"></span><span class="mono-caps text-[10px]">Evaluation loop</span></div>
+              <span class="font-mono text-[10px] text-muted">14 / 14 candidates</span>
+            </div>
+            <div class="h-1 rounded-full overflow-hidden" style="background:var(--accent-subtle)"><div class="h-full" style="background:var(--accent);width:100%"></div></div>
+          </div>
+          <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-4 paper-press">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2"><span class="block size-2 rounded-full bg-muted"></span><span class="mono-caps text-[10px]">Decision loop · awaiting human review</span></div>
+              <span class="font-mono text-[10px] text-muted">0 / 3 sign-offs</span>
+            </div>
+            <div class="h-1 rounded-full overflow-hidden" style="background:#e3d5c0"><div class="h-full" style="background:#5b4d43;width:33%"></div></div>
+          </div>
+        </div>
+        <div class="mt-4 flex gap-2">
+          <button class="rounded-sm border border-transparent px-4 py-2 text-[10px] font-bold uppercase tracking-[0.16em] font-mono" style="background:var(--accent);color:var(--accent-fg)">Run decision</button>
+          <button class="rounded-sm hairline bg-card px-4 py-2 text-[10px] font-bold uppercase tracking-[0.16em] font-mono text-text">Pause loop</button>
+        </div>
+      </div>`;
+
+    const routeLeftGovernance = `
+      <div class="p-3 space-y-3">
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3">
+          <header class="mb-2"><span class="mono-caps text-[10px] text-muted">State machine</span></header>
+          <ol class="space-y-1.5 text-[11px] font-mono">
+            <li class="flex items-center gap-2"><span class="block size-1.5 rounded-full" style="background:var(--accent)"></span>discovered<span class="ml-auto mono-caps text-[9px] text-muted">done</span></li>
+            <li class="flex items-center gap-2"><span class="block size-1.5 rounded-full" style="background:var(--accent)"></span>proposed<span class="ml-auto mono-caps text-[9px] text-muted">done</span></li>
+            <li class="flex items-center gap-2"><span class="block size-1.5 rounded-full" style="background:var(--accent)"></span>human_reviewed<span class="ml-auto mono-caps text-[9px] text-muted">done</span></li>
+            <li class="flex items-center gap-2"><span class="block size-1.5 rounded-full" style="background:#cdb99e"></span>accepted<span class="ml-auto mono-caps text-[9px] font-bold" style="color:#5b4d43">current</span></li>
+            <li class="flex items-center gap-2 opacity-50"><span class="block size-1.5 rounded-full bg-muted"></span>frozen<span class="ml-auto mono-caps text-[9px] text-muted">upcoming</span></li>
+          </ol>
+        </section>
+        <section class="rounded-[var(--radius-editorial-card)] hairline bg-card p-3">
+          <header class="mb-2"><span class="mono-caps text-[10px] text-muted">Reviewers</span></header>
+          <ul class="space-y-1.5 text-[11px] font-mono">
+            <li class="flex items-center gap-2"><span class="size-5 rounded-full bg-card2 hairline flex items-center justify-center text-[10px] font-bold">C</span>chris-han<span class="ml-auto mono-caps text-[9px] text-muted">primary</span></li>
+            <li class="flex items-center gap-2"><span class="size-5 rounded-full bg-card2 hairline flex items-center justify-center text-[10px] font-bold">A</span>alice<span class="ml-auto mono-caps text-[9px] text-muted">sign-off</span></li>
+            <li class="flex items-center gap-2"><span class="size-5 rounded-full bg-card2 hairline flex items-center justify-center text-[10px] font-bold">B</span>bob<span class="ml-auto mono-caps text-[9px] text-muted">sign-off</span></li>
+          </ul>
+        </section>
+      </div>`;
+
+    const routeCenterGovernance = `
+      <div class="max-w-4xl mx-auto">
+        <header class="mb-5">
+          <div class="mono-caps text-[11px] text-muted mb-1">Governance · current state · accepted</div>
+          <h1 class="text-3xl font-bold tracking-[-0.01em] mb-2 font-mono">prod-knowledge workspace</h1>
+          <p class="text-[14px] text-muted">MVL closure-ready. The four loops completed. The decision loop awaits human sign-off. Below is the audit trail for the active state.</p>
+        </header>
+        <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-5 paper-press mb-4">
+          <div class="flex items-center justify-between mb-2"><span class="mono-caps text-[10px]">Audit trail</span><span class="mono-caps text-[9px] text-muted">last 24h</span></div>
+          <ol class="space-y-2 text-[11px] font-mono">
+            <li class="flex items-start gap-3 py-1.5 border-b border-border/40">
+              <span class="mono-caps text-[9px] text-muted shrink-0 w-12">T-04:12</span>
+              <span>state → human_reviewed · reviewer=chris-han</span>
+            </li>
+            <li class="flex items-start gap-3 py-1.5 border-b border-border/40">
+              <span class="mono-caps text-[9px] text-muted shrink-0 w-12">T-04:30</span>
+              <span>state → proposed · by=claude@anthropic</span>
+            </li>
+            <li class="flex items-start gap-3 py-1.5 border-b border-border/40">
+              <span class="mono-caps text-[9px] text-muted shrink-0 w-12">T-05:00</span>
+              <span>state → discovered · by=scraper@probe</span>
+            </li>
+            <li class="flex items-start gap-3 py-1.5">
+              <span class="mono-caps text-[9px] text-muted shrink-0 w-12">T-05:18</span>
+              <span>workspace created · owner=chris-han</span>
+            </li>
+          </ol>
+        </div>
+        <div class="rounded-[var(--radius-editorial-card)] hairline bg-card p-5 paper-press">
+          <div class="flex items-center justify-between mb-2"><span class="mono-caps text-[10px]">Pending human actions</span><span class="mono-caps text-[9px] text-muted">3 sign-offs</span></div>
+          <ul class="space-y-2 text-[12px]">
+            <li class="flex items-center gap-2 py-1.5">
+              <span class="block size-1.5 rounded-full bg-muted"></span>
+              <span class="font-mono">alice to sign off acceptance</span>
+              <span class="ml-auto mono-caps text-[9px] text-muted">awaiting</span>
+            </li>
+            <li class="flex items-center gap-2 py-1.5">
+              <span class="block size-1.5 rounded-full bg-muted"></span>
+              <span class="font-mono">bob to sign off acceptance</span>
+              <span class="ml-auto mono-caps text-[9px] text-muted">awaiting</span>
+            </li>
+            <li class="flex items-center gap-2 py-1.5">
+              <span class="block size-1.5 rounded-full bg-muted"></span>
+              <span class="font-mono">chris-han to freeze (optional)</span>
+              <span class="ml-auto mono-caps text-[9px] text-muted">optional</span>
+            </li>
+          </ul>
+          <div class="flex gap-2 mt-4">
+            <button class="rounded-sm hairline bg-card px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] font-mono text-text">Request review</button>
+            <button class="rounded-sm hairline bg-card px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] font-mono text-text">Export audit</button>
+          </div>
+        </div>
+      </div>`;
+
+    const routes = {
+      '#dashboard':   { left: routeLeftDashboard,   center: routeCenterDashboard   },
+      '#graph':       { left: routeLeftGraph,       center: routeCenterGraph       },
+      '#schemas':     { left: routeLeftSchemas,     center: routeCenterSchemas     },
+      '#evaluation':  { left: routeLeftEvaluation,  center: routeCenterEvaluation  },
+      '#governance':  { left: routeLeftGovernance,  center: routeCenterGovernance  },
+    };
+
+    // === RENDER ====================================================
+    const bodyLeft = document.getElementById('bodyLeft');
+    const bodyCenter = document.getElementById('bodyCenter');
+    const tabButtons = document.querySelectorAll('nav[aria-label="Workspace sections"] button[data-route]');
+
+    function applyActiveTab(hash) {
+      tabButtons.forEach((btn) => {
+        if (btn.dataset.route === hash) {
+          btn.classList.add('active-tab', 'text-text');
+          btn.classList.remove('text-muted');
+        } else {
+          btn.classList.remove('active-tab', 'text-text');
+          btn.classList.add('text-muted');
+        }
+      });
+    }
+
+    function render(hash) {
+      const route = routes[hash] || routes['#graph'];
+      bodyLeft.innerHTML = route.left;
+      bodyCenter.innerHTML = route.center;
+      applyActiveTab(hash);
+    }
+
+    tabButtons.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const hash = btn.dataset.route;
+        if (location.hash !== hash) {
+          location.hash = hash;
+        } else {
+          render(hash);
+        }
+      });
+    });
+
+    window.addEventListener('hashchange', () => {
+      render(location.hash || '#graph');
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      render(location.hash || '#graph');
+    });
+  })();
+  </script>
+</body>
+</html>

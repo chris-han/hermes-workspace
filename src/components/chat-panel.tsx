@@ -221,7 +221,7 @@ function ChatPanelContent({ embedded }: { embedded: boolean }) {
                     onClick={() => setRightPanelMode(mode)}
                     aria-current={active ? 'true' : undefined}
                     className={cn(
-                      'flex items-center px-4 text-[15px] tracking-[-0.01em] font-[500]',
+                      'flex items-center px-4 text-[12px] uppercase tracking-[0.06em] font-[600]',
                       active
                         ? 'border-b-2 border-[var(--theme-accent)] text-[var(--theme-text)]'
                         : 'text-[var(--theme-muted)] hover:text-[var(--theme-text)]',
@@ -265,7 +265,7 @@ function ChatPanelContent({ embedded }: { embedded: boolean }) {
                       setShowSessionList((v) => !v)
                     }
                   }}
-                  className="pl-5 flex-1 self-stretch px-3 text-left text-[13px] text-[var(--theme-muted)] hover:bg-[var(--theme-card2)] cursor-pointer truncate flex items-center"
+                  className="pl-4 flex-1 self-stretch px-3 text-left text-[13px] text-[var(--theme-muted)] hover:bg-[var(--theme-card2)] cursor-pointer truncate flex items-center"
                   title={panelTitle}
                 >
                   {panelTitle}

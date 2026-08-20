@@ -253,7 +253,10 @@ function NavItem({
           transition={transition}
           className="flex min-w-0 items-center gap-2"
         >
-          <span className="overflow-hidden whitespace-nowrap">
+          <span
+            className="overflow-hidden whitespace-nowrap text-[12px] uppercase tracking-[0.04em] font-[600]"
+            style={{ fontFamily: 'var(--font-hanken)' }}
+          >
             {item.label}
           </span>
           {item.badge && item.badge !== 'error-dot' ? (

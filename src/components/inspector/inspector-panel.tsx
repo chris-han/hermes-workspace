@@ -3,9 +3,13 @@ import { Link as DsLink } from '@/components/ui/link'
 import { Input } from '@/components/ui/input'
 
 import { NativeSelect } from '@/components/ui/form-controls'
+import { SettingsSelect } from '@/components/ui/settings-select'
 
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs'
+
+import { HugeiconsIcon } from '@hugeicons/react'
+import { Cancel01Icon, Refresh01Icon } from '@hugeicons/core-free-icons'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
@@ -659,7 +663,7 @@ function ArtifactsTab({ sessionKey }: { sessionKey: string | null }) {
             key={`${entry.kind}-${title}-${index}`}
             ref={isHighlighted ? highlightedArtifactRef : undefined}
             className={cn(
-              'rounded-lg px-3 py-2 text-xs leading-relaxed transition-colors',
+              'rounded-md px-3 py-2 text-xs leading-relaxed transition-colors',
               isHighlighted && 'ring-2',
             )}
             style={{
@@ -1319,11 +1323,11 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
             label: string
           }>
         ).map((item) => (
-          <Button
+          <button
             key={item.value}
             type="button"
             onClick={() => setActivityFilter(item.value)}
-            className="rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]"
+            className="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors hover:border-(--theme-accent)/50"
             style={{
               borderColor:
                 activityFilter === item.value
@@ -1335,77 +1339,62 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
                   : 'var(--theme-muted)',
               background:
                 activityFilter === item.value
-                  ? 'var(--theme-card)'
-                  : 'var(--theme-card2)',
+                  ? 'var(--theme-accent-subtle)'
+                  : 'var(--theme-card)',
             }}
           >
             {item.label}
-          </Button>
+          </button>
         ))}
       </div>
       <div className="mb-2 grid grid-cols-2 gap-1">
-        <NativeSelect
+        <SettingsSelect
           aria-label="State effect filter"
           value={semanticFilters.stateEffect}
-          onChange={(event) =>
+          onValueChange={(value) =>
             setSemanticFilters((current) => ({
               ...current,
-              stateEffect: event.target.value,
+              stateEffect: value,
             }))
           }
-          className="rounded border px-1 py-1 text-[10px]"
-          style={{
-            background: 'var(--theme-card2)',
-            borderColor: 'var(--theme-border)',
-            color: 'var(--theme-muted)',
-          }}
-        >
-          <option value="">All effects</option>
-          {[
-            'disclose',
-            'admit',
-            'activate',
-            'supersede',
-            'revoke',
-            'materialize',
-            'observe_only',
-          ].map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </NativeSelect>
-        <NativeSelect
+          options={[
+            { value: '', label: 'All effects' },
+            ...[
+              'disclose',
+              'admit',
+              'activate',
+              'supersede',
+              'revoke',
+              'materialize',
+              'observe_only',
+            ].map((value) => ({ value, label: value })),
+          ]}
+          triggerClassName="h-6 text-[11px] px-2"
+        />
+        <SettingsSelect
           aria-label="Source type filter"
           value={semanticFilters.sourceType}
-          onChange={(event) =>
+          onValueChange={(value) =>
             setSemanticFilters((current) => ({
               ...current,
-              sourceType: event.target.value,
+              sourceType: value,
             }))
           }
-          className="rounded border px-1 py-1 text-[10px]"
-          style={{
-            background: 'var(--theme-card2)',
-            borderColor: 'var(--theme-border)',
-            color: 'var(--theme-muted)',
-          }}
-        >
-          <option value="">All sources</option>
-          {[
-            'document_span',
-            'knowledge_item',
-            'database_result',
-            'artifact',
-            'memory_snapshot',
-            'skill',
-          ].map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </NativeSelect>
+          options={[
+            { value: '', label: 'All sources' },
+            ...[
+              'document_span',
+              'knowledge_item',
+              'database_result',
+              'artifact',
+              'memory_snapshot',
+              'skill',
+            ].map((value) => ({ value, label: value })),
+          ]}
+          triggerClassName="h-6 text-[11px] px-2"
+        />
         <Input
+          size="sm"
           aria-label="Actor filter"
           value={semanticFilters.actor}
           onChange={(event) =>
@@ -1415,15 +1404,11 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
             }))
           }
           placeholder="Actor"
-          className="rounded border px-1 py-1 text-[10px]"
-          style={{
-            background: 'var(--theme-card2)',
-            borderColor: 'var(--theme-border)',
-            color: 'var(--theme-text)',
-          }}
+          className="compact-input !h-6 !text-[11px] !px-2 rounded-md border border-(--theme-border) bg-(--theme-card) text-[11px] text-(--theme-text)"
         />
         <div className="grid grid-cols-2 gap-1">
           <Input
+            size="sm"
             aria-label="Sequence from"
             value={semanticFilters.sequenceFrom}
             onChange={(event) =>
@@ -1434,14 +1419,10 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
             }
             placeholder="From"
             inputMode="numeric"
-            className="rounded border px-1 py-1 text-[10px]"
-            style={{
-              background: 'var(--theme-card2)',
-              borderColor: 'var(--theme-border)',
-              color: 'var(--theme-text)',
-            }}
+            className="compact-input !h-6 !text-[11px] !px-2 rounded-md border border-(--theme-border) bg-(--theme-card) text-[11px] text-(--theme-text)"
           />
           <Input
+            size="sm"
             aria-label="Sequence to"
             value={semanticFilters.sequenceTo}
             onChange={(event) =>
@@ -1452,12 +1433,7 @@ function ActivityTab({ sessionKey }: { sessionKey: string | null }) {
             }
             placeholder="To"
             inputMode="numeric"
-            className="rounded border px-1 py-1 text-[10px]"
-            style={{
-              background: 'var(--theme-card2)',
-              borderColor: 'var(--theme-border)',
-              color: 'var(--theme-text)',
-            }}
+            className="compact-input !h-6 !text-[11px] !px-2 rounded-md border border-(--theme-border) bg-(--theme-card) text-[11px] text-(--theme-text)"
           />
         </div>
       </div>
@@ -1719,15 +1695,18 @@ function MemoryTab({ sessionKey }: { sessionKey: string | null }) {
         <div className="flex justify-end">
           <Button
             type="button"
+            size="icon-sm"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="rounded border px-2 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-            style={{
-              borderColor: 'var(--theme-border)',
-              color: 'var(--theme-accent)',
-            }}
+            className="border border-(--theme-border) bg-(--theme-card) text-(--theme-muted) hover:border-(--theme-accent) hover:text-(--theme-text) disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={copy.buttons.refresh}
           >
-            {refreshing ? copy.loading.memory : copy.buttons.refresh}
+            <HugeiconsIcon
+              icon={Refresh01Icon}
+              size={14}
+              strokeWidth={1.5}
+              className={refreshing ? 'animate-spin' : undefined}
+            />
           </Button>
         </div>
         <EmptyState text={copy.empty.noMemorySnapshotInjected} />
@@ -1742,21 +1721,24 @@ function MemoryTab({ sessionKey }: { sessionKey: string | null }) {
         </p>
         <Button
           type="button"
+          size="icon-sm"
           onClick={handleRefresh}
           disabled={refreshing}
-          className="rounded border px-2 py-1 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-          style={{
-            borderColor: 'var(--theme-border)',
-            color: 'var(--theme-accent)',
-          }}
+          className="border border-(--theme-border) bg-(--theme-card) text-(--theme-muted) hover:border-(--theme-accent) hover:text-(--theme-text) disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label={copy.buttons.refresh}
         >
-          {refreshing ? copy.loading.memory : copy.buttons.refresh}
+          <HugeiconsIcon
+            icon={Refresh01Icon}
+            size={14}
+            strokeWidth={1.5}
+            className={refreshing ? 'animate-spin' : undefined}
+          />
         </Button>
       </div>
       {snapshots.map((snapshot, index) => (
         <div
           key={`${snapshot.kind}-${index}`}
-          className="rounded-lg px-3 py-2 text-xs leading-relaxed"
+          className="rounded-md px-3 py-2 text-xs leading-relaxed"
           style={{
             backgroundColor: 'var(--theme-card)',
             border: '1px solid var(--theme-border)',
@@ -2590,7 +2572,7 @@ function LogsTab({ sessionKey }: { sessionKey: string | null }) {
           ) : (
             <>
               <div
-                className="rounded-lg px-3 py-2 text-xs leading-relaxed"
+                className="rounded-md px-3 py-2 text-xs leading-relaxed"
                 style={{
                   backgroundColor: 'var(--theme-card)',
                   border: '1px solid var(--theme-border)',
@@ -2826,36 +2808,41 @@ export function InspectorPanel({
   return (
     <div
       className={cn(
-        'fixed right-0 top-0 h-full z-40 flex flex-col overflow-hidden transition-[width] duration-200',
+        'fixed right-0 top-0 h-full z-40 flex flex-col overflow-hidden transition-[width] duration-(--motion-default)',
         isOpen ? 'w-[350px]' : 'w-0',
       )}
       style={{
-        background: 'var(--theme-panel)',
-        borderLeft: '2px solid var(--theme-border)',
-        boxShadow: '-4px 0 16px rgba(0, 0, 0, 0.2)',
+        background: 'var(--theme-bg)',
+        borderLeft: '1px solid var(--theme-border)',
       }}
     >
       {isOpen && (
         <>
           {/* Header */}
           <div
-            className="flex items-center justify-between px-4 py-3 shrink-0"
+            className="flex items-center justify-between px-5 py-4 shrink-0"
             style={{ borderBottom: '1px solid var(--theme-border)' }}
           >
-            <span
-              className="text-sm font-semibold"
-              style={{ color: 'var(--theme-text)' }}
-            >
-              {copy.title}
-            </span>
+            <div className="flex items-baseline gap-2">
+              <span
+                className="text-[10px] font-mono uppercase tracking-[0.12em] text-(--theme-muted)"
+              >
+                {copy.title}
+              </span>
+            </div>
             <Button
               type="button"
+              size="icon-sm"
+              variant="ghost"
               onClick={() => useInspectorStore.getState().setOpen(false)}
-              className="rounded p-1 text-xs hover:opacity-70 transition-opacity"
-              style={{ color: 'var(--theme-muted)' }}
+              className="rounded-md text-(--theme-muted) hover:bg-(--theme-card2) hover:text-(--theme-text) transition-colors"
               aria-label={copy.close}
             >
-              ✕
+              <HugeiconsIcon
+                icon={Cancel01Icon}
+                size={14}
+                strokeWidth={1.5}
+              />
             </Button>
           </div>
 
@@ -2868,7 +2855,7 @@ export function InspectorPanel({
             <TabsList
               variant="underline"
               aria-label={copy.title}
-              className="w-full shrink-0 justify-start overflow-x-auto border-b border-[var(--theme-border)] px-1 py-0"
+              className="w-full shrink-0 justify-start gap-0 overflow-x-auto border-b border-[var(--theme-border)] px-5 py-0"
             >
               {TABS.map((tab) => {
                 const available =
@@ -2883,7 +2870,7 @@ export function InspectorPanel({
                     key={tab.id}
                     value={tab.id}
                     disabled={!available}
-                    className="h-auto min-w-fit px-3 py-2 text-xs"
+                    className="h-9 min-w-fit px-3 text-[11px] font-medium tracking-tight"
                     title={
                       !available && tab.feature
                         ? getUnavailableReason(tab.feature)
@@ -2892,7 +2879,9 @@ export function InspectorPanel({
                   >
                     <span>{copy.tabs[tab.id]}</span>
                     {!available ? (
-                      <span className="rounded-full border border-amber-300 bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-amber-700">
+                      <span
+                        className="ml-1 inline-flex items-center rounded-sm border border-(--theme-warning)/30 bg-(--theme-warning)/10 px-1 text-[9px] font-mono uppercase tracking-[0.1em] text-(--theme-warning)"
+                      >
                         {copy.gate}
                       </span>
                     ) : null}
@@ -2901,7 +2890,7 @@ export function InspectorPanel({
               })}
             </TabsList>
 
-            <TabsPanel value={activeTab} className="min-h-0 overflow-auto">
+            <TabsPanel value={activeTab} className="min-h-0 overflow-auto px-5 py-4">
               {activeTab === 'context' && <ContextTab sessionKey={sessionKey} />}
               {activeTab === 'activity' && (
                 <ActivityTab sessionKey={sessionKey} />
@@ -2930,16 +2919,17 @@ export function InspectorToggleButton({ className }: { className?: string }) {
   return (
     <Button
       type="button"
+      size="icon-sm"
       variant="ghost"
       onClick={toggle}
       title={isOpen ? 'Close inspector' : 'Open inspector'}
       className={cn(
-        'flex items-center justify-center rounded-lg px-2 py-1.5 text-xs transition-colors',
-        isOpen ? 'opacity-100' : 'opacity-60 hover:opacity-90',
+        'flex items-center justify-center self-center rounded-md border border-(--theme-border) transition-colors',
+        isOpen ? 'opacity-100' : 'opacity-70 hover:opacity-90',
         className,
       )}
       style={{
-        background: isOpen ? 'var(--theme-card2)' : undefined,
+        background: isOpen ? 'var(--theme-accent-subtle)' : 'var(--theme-card2)',
         color: 'var(--theme-text)',
         border: '1px solid var(--theme-border)',
       }}

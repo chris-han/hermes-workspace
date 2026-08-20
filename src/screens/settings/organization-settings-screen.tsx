@@ -1052,17 +1052,16 @@ export function OrganizationSettingsScreen() {
                 </label>
                 <SettingsSelect
                   value={policyDefaultMode}
-                  onChange={(event) =>
-                    setPolicyDefaultMode(
-                      event.target.value as T6MaterializationMode,
-                    )
+                  onValueChange={(value) =>
+                    setPolicyDefaultMode(value as T6MaterializationMode)
                   }
                   disabled={!canChangeSettings || policyPending}
+                  options={[
+                    { value: 'AUTO', label: 'AUTO (Auto-approve)' },
+                    { value: 'APPROVAL', label: 'APPROVAL (Human in the loop)' },
+                  ]}
                   className="h-10 w-full rounded-md border border-(--theme-border) bg-white px-3 text-sm text-(--theme-text) outline-none ring-primary-200 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <option value="AUTO">AUTO (Auto-approve)</option>
-                  <option value="APPROVAL">APPROVAL (Human in the loop)</option>
-                </SettingsSelect>
+                />
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-(--theme-text)">
@@ -1244,10 +1243,10 @@ export function OrganizationSettingsScreen() {
                           <td className="px-4 py-3">
                             <SettingsSelect
                               value={draftRole}
-                              onChange={(event) =>
+                              onValueChange={(value) =>
                                 setMemberRoleDrafts((current) => ({
                                   ...current,
-                                  [member.user_id]: event.target.value as
+                                  [member.user_id]: value as
                                     | 'owner'
                                     | 'member',
                                 }))
@@ -1256,14 +1255,12 @@ export function OrganizationSettingsScreen() {
                                 !canEditRoles ||
                                 rolePendingUserId === member.user_id
                               }
+                              options={roleChoices.map((role) => ({
+                                value: role,
+                                label: role,
+                              }))}
                               className="h-9 w-full rounded-md border border-(--theme-border) bg-white px-2 text-sm text-(--theme-text) outline-none ring-primary-200 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {roleChoices.map((role) => (
-                                <option key={role} value={role}>
-                                  {role}
-                                </option>
-                              ))}
-                            </SettingsSelect>
+                            />
                           </td>
                           <td className="px-4 py-3">
                             <Button

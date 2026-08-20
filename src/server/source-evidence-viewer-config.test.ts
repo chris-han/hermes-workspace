@@ -3,26 +3,21 @@ import { describe, expect, it } from 'vitest'
 import { resolveSourceEvidenceViewerConfig } from './source-evidence-viewer-config'
 
 describe('resolveSourceEvidenceViewerConfig', () => {
-  it('returns a viewer_unavailable diagnostic when Apryse is not configured', () => {
+  it('reports the open-source unified viewer without requiring a license', () => {
     expect(resolveSourceEvidenceViewerConfig({})).toEqual({
-      configured: false,
-      diagnostic: {
-        code: 'viewer_unavailable',
-        provider: 'apryse',
-        missing: 'APRYSE_LICENSE_KEY',
-        message:
-          'Source evidence viewer requires APRYSE_LICENSE_KEY before DOCX/PDF rendering can be enabled.',
-      },
+      configured: true,
+      provider: 'open-source-unified',
+      engine: 'pdfjs-canonical-source-ir',
     })
   })
 
-  it('reports the configured provider without exposing the license value', () => {
+  it('ignores proprietary viewer license variables', () => {
     expect(
       resolveSourceEvidenceViewerConfig({ APRYSE_LICENSE_KEY: 'secret-key' }),
     ).toEqual({
       configured: true,
-      provider: 'apryse',
-      licenseSource: 'APRYSE_LICENSE_KEY',
+      provider: 'open-source-unified',
+      engine: 'pdfjs-canonical-source-ir',
     })
   })
 })

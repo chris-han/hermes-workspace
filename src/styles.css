@@ -3,6 +3,10 @@
 @import '@fontsource/eb-garamond/600.css';
 @import '@fontsource/eb-garamond/700.css';
 @import '@fontsource/eb-garamond/800.css';
+@import '@fontsource/hanken-grotesk/400.css';
+@import '@fontsource/hanken-grotesk/500.css';
+@import '@fontsource/hanken-grotesk/600.css';
+@import '@fontsource/hanken-grotesk/700.css';
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
 @import '@fontsource/manrope/300.css';
@@ -30,6 +34,14 @@
     'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB',
     system-ui, sans-serif;
   --font-report-ui: var(--font-sans);
+  /* ContextGraph Studio chrome: menu + titles */
+  --font-hanken:
+    'Hanken Grotesk', 'Manrope', 'Noto Sans SC', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, Arial, sans-serif;
+  /* ContextGraph Studio chrome: codes, IDs, spec rows, footer metadata */
+  --font-mono-studio:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
   /* Design-system radius tokens (theme-safe: does not override Tailwind base radius scale) */
   --radius-sm: 4px;
   --radius-md: 12px;
@@ -74,13 +86,27 @@
   }
 }
 
-/* Shared radius utilities for all screen pages */
+/* Compact input wrapper — applies to the inner <input> so it matches a
+   dense filter row. The Input primitive hardcodes py-2 + text-[0.8125rem]
+   in its `size="sm"` style; this rule tightens it for inspector-style
+   compact controls. */
+.compact-input input {
+  height: auto !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 11px !important;
+  line-height: 1.1 !important;
+}
+
+/* Shared radius utilities for all screen pages.
+   Note: no `!important` here — per-call `rounded-md`, `rounded-full`,
+   `rounded-card` classes must win so the design system can override. */
 .rounded-button {
-  border-radius: var(--radius-button, 999px) !important;
+  border-radius: var(--radius-button, 999px);
 }
 
 .rounded-card {
-  border-radius: var(--radius-card, 20px) !important;
+  border-radius: var(--radius-card, 20px);
 }
 
 .rounded-comfortable {

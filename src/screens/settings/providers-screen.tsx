@@ -667,22 +667,22 @@ function SettingCard(props: {
               className="w-full rounded-md border theme-border theme-card px-3 py-2 text-sm theme-text outline-none"
               value={coerceString(currentValue)}
               disabled={disabled}
-              onChange={(event) => {
+              onValueChange={(value) => {
                 if (!setting.path || setting.unsupported) return
                 void saveSetting({
                   path: setting.path,
-                  value: event.target.value,
+                  value,
                   label: setting.label,
                 })
               }}
-            >
-              <option value="">Select…</option>
-              {(setting.options ?? []).map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </SettingsSelect>
+              options={[
+                { value: '', label: 'Select…' },
+                ...(setting.options ?? []).map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                })),
+              ]}
+            />
           ) : null}
 
           {setting.kind === 'text' ? (
@@ -938,19 +938,17 @@ function ModelConfigSection(props: {
           <SettingsSelect
             className="h-10 w-full rounded-md border border-[var(--theme-border)] bg-[var(--theme-card)] px-3 text-sm theme-text outline-none"
             value={value.provider}
-            onChange={(event) => {
+            onValueChange={(next) => {
               onChange({
                 ...value,
-                provider: parseModelProvider(event.target.value),
+                provider: parseModelProvider(next),
               })
             }}
-          >
-            {MODEL_PROVIDER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </SettingsSelect>
+            options={MODEL_PROVIDER_OPTIONS.map((option) => ({
+              value: option.value,
+              label: option.label,
+            }))}
+          />
         </label>
 
         <label className="space-y-2">

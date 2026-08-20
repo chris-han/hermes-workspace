@@ -371,14 +371,14 @@ function ChatHeaderComponent({
               className="relative flex items-center gap-1"
               ref={sessionPopoverRef}
             >
-              <Button
+              <button
                 type="button"
                 onClick={() => setSessionPopoverOpen((p) => !p)}
-                className="min-w-0 truncate text-sm font-medium text-balance hover:text-accent-600 transition-colors rounded-sm text-left"
+                className="min-w-0 cursor-pointer truncate text-sm font-semibold text-left text-(--theme-text) hover:text-(--theme-accent) transition-colors"
                 title="Click to switch session"
               >
                 {activeTitle}
-              </Button>
+              </button>
               {canRenameTitle && !renamingTitle && (
                 <Button
                   type="button"
@@ -507,9 +507,10 @@ function ChatHeaderComponent({
                 render={
                   <Button
                     type="button"
+                    size="icon-sm"
                     aria-label={isStale ? 'Stale — click to sync' : 'Live'}
                     className={cn(
-                      'mr-2 inline-flex items-center justify-center rounded-full transition-colors',
+                      'mr-2 inline-flex items-center justify-center self-center rounded-full transition-colors',
                       isRefreshing && 'animate-pulse',
                       onRefresh
                         ? 'cursor-pointer hover:opacity-70'
@@ -518,8 +519,8 @@ function ChatHeaderComponent({
                   >
                     <span
                       className={cn(
-                        'block size-2 rounded-full transition-colors duration-500',
-                        isStale ? 'bg-amber-400' : 'bg-emerald-500',
+                        'block size-2.5 rounded-full transition-colors duration-500',
+                        isStale ? 'bg-amber-400' : 'bg-(--theme-accent)',
                       )}
                     />
                   </Button>

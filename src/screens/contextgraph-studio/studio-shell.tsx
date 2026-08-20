@@ -200,14 +200,9 @@ export function canonicalBodyFromCurationMarkdown(content: string): string {
 const KNOWLEDGE_BUILDER_API = '/api/semantier-proxy/api/knowledge/builder'
 
 const VIEWER_UNAVAILABLE_CONFIG: ViewerConfig = {
-  configured: false,
-  diagnostic: {
-    code: 'viewer_unavailable',
-    provider: 'apryse',
-    missing: 'APRYSE_LICENSE_KEY',
-    message:
-      'Source evidence viewer requires APRYSE_LICENSE_KEY before DOCX/PDF rendering can be enabled.',
-  },
+  configured: true,
+  provider: 'open-source-unified',
+  engine: 'pdfjs-canonical-source-ir',
 }
 
 type KnowledgeUploadResult = {

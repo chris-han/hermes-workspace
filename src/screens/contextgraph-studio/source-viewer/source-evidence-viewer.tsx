@@ -6,20 +6,11 @@ import { Badge } from '@/components/ui/status'
 import { cn } from '@/lib/utils'
 
 type ViewerConfig =
-  | {
-      configured: true
-      provider: 'apryse'
-      licenseSource: 'APRYSE_LICENSE_KEY'
-    }
-  | {
-      configured: false
-      diagnostic: {
-        code: 'viewer_unavailable'
-        provider: 'apryse'
-        missing: 'APRYSE_LICENSE_KEY'
-        message: string
-      }
-    }
+  {
+    configured: true
+    provider: 'open-source-unified'
+    engine: 'pdfjs-canonical-source-ir'
+  }
 
 type SourceEvidenceFinding = {
   finding_id: string
@@ -44,7 +35,7 @@ type SourceEvidenceHighlight = {
 
 type SourceEvidenceDocumentAdapter = {
   documentKind: NonNullable<SourceEvidenceViewerProps['documentKind']>
-  provider: 'apryse' | 'canonical_source_ir' | 'unavailable'
+  provider: 'open_source_unified' | 'canonical_source_ir' | 'unavailable'
   readOnly: true
   overlayStrategy:
     | 'document_coordinates'
@@ -165,18 +156,9 @@ function resolveSourceEvidenceDocumentAdapter(
     }
   }
   if (kind === 'docx' || kind === 'pdf') {
-    if (!viewerConfig.configured) {
-      return {
-        documentKind: kind,
-        provider: 'unavailable',
-        readOnly: true,
-        overlayStrategy: 'unavailable',
-        diagnosticCode: viewerConfig.diagnostic.code,
-      }
-    }
     return {
       documentKind: kind,
-      provider: 'apryse',
+      provider: 'open_source_unified',
       readOnly: true,
       overlayStrategy: 'document_coordinates',
     }
@@ -238,30 +220,18 @@ export function SourceEvidenceViewer({
             {documentKind}
           </Badge>
         </div>
-        {viewerConfig.configured ? (
-          <div
-            role="region"
-            aria-label={zh ? 'Apryse 文档画布' : 'Apryse document canvas'}
-            className="grid min-h-56 flex-1 place-items-center rounded-lg border border-dashed border-border bg-background p-4 text-center text-muted-foreground"
-            data-viewer-provider={viewerConfig.provider}
-            data-document-adapter-provider={adapter.provider}
-            data-overlay-strategy={adapter.overlayStrategy}
-          >
-            Apryse {documentKind.toUpperCase()} adapter configured through{' '}
-            {viewerConfig.licenseSource}
-          </div>
-        ) : (
-          <div
-            role="alert"
-            className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-warning"
-            data-diagnostic-code={viewerConfig.diagnostic.code}
-          >
-            <strong>{t.unavailable}</strong>
-            <span className="mt-1 block text-muted-foreground">
-              {viewerConfig.diagnostic.message}
-            </span>
-          </div>
-        )}
+        <div
+          role="region"
+          aria-label={zh ? '开源统一文档画布' : 'Open-source unified document canvas'}
+          className="grid min-h-56 flex-1 place-items-center rounded-lg border border-dashed border-border bg-background p-4 text-center text-muted-foreground"
+          data-viewer-provider={viewerConfig.provider}
+          data-viewer-engine={viewerConfig.engine}
+          data-document-adapter-provider={adapter.provider}
+          data-overlay-strategy={adapter.overlayStrategy}
+        >
+          Open-source {documentKind.toUpperCase()} adapter configured through{' '}
+          {viewerConfig.engine}
+        </div>
         <div className="rounded-lg border border-border bg-background p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <strong>{t.evidence}</strong>

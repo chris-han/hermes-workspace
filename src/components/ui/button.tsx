@@ -9,7 +9,7 @@ import type * as React from 'react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'relative inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-button leading-none font-semibold outline-none transition-[color,background-color,border-color,box-shadow,transform] duration-150 hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--theme-bg)] disabled:pointer-events-none disabled:opacity-60 disabled:hover:scale-100 disabled:active:scale-100 [&_svg]:pointer-events-none [&_svg]:shrink-0 select-none',
+  'relative inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md leading-none font-medium outline-none transition-[color,background-color,border-color,box-shadow,transform] duration-150 hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-[var(--theme-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--theme-bg)] disabled:pointer-events-none disabled:opacity-60 disabled:hover:scale-100 disabled:active:scale-100 [&_svg]:pointer-events-none [&_svg]:shrink-0 select-none',
   {
     defaultVariants: {
       size: 'default',

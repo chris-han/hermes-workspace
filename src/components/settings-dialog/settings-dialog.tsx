@@ -1732,13 +1732,14 @@ function AgentBehaviorContent() {
         <Row label="Tool enforcement" description="When agent must use tools">
           <SettingsSelect
             value={String(config.tool_use_enforcement || 'auto')}
-            onChange={(e) => save('tool_use_enforcement', e.target.value)}
+            onValueChange={(value) => save('tool_use_enforcement', value)}
+            options={[
+              { value: 'auto', label: 'Auto' },
+              { value: 'required', label: 'Required' },
+              { value: 'none', label: 'None' },
+            ]}
             className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
-          >
-            <option value="auto">Auto</option>
-            <option value="required">Required</option>
-            <option value="none">None</option>
-          </SettingsSelect>
+          />
         </Row>
       </div>
     </div>
@@ -2107,16 +2108,16 @@ function SmartRoutingContent() {
         <Row label="Cheap model" description="Model for simple queries">
           <SettingsSelect
             value={String(config.cheap_model || '')}
-            onChange={(e) => save('cheap_model', e.target.value)}
+            onValueChange={(value) => save('cheap_model', value)}
+            options={[
+              { value: '', label: 'Auto' },
+              ...models.map((m) => ({
+                value: m.id,
+                label: m.name || m.id,
+              })),
+            ]}
             className="h-8 max-w-[12rem] rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
-          >
-            <option value="">Auto</option>
-            {models.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name || m.id}
-              </option>
-            ))}
-          </SettingsSelect>
+          />
         </Row>
         <Row label="Max chars" description="Messages shorter use cheap model">
           <Input
@@ -2222,14 +2223,15 @@ function VoiceContent() {
         <Row label="TTS Provider">
           <SettingsSelect
             value={ttsProvider}
-            onChange={(e) => saveTts('provider', e.target.value)}
+            onValueChange={(value) => saveTts('provider', value)}
+            options={[
+              { value: 'edge', label: 'Edge TTS' },
+              { value: 'elevenlabs', label: 'ElevenLabs' },
+              { value: 'openai', label: 'OpenAI TTS' },
+              { value: 'neutts', label: 'NeuTTS' },
+            ]}
             className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
-          >
-            <option value="edge">Edge TTS</option>
-            <option value="elevenlabs">ElevenLabs</option>
-            <option value="openai">OpenAI TTS</option>
-            <option value="neutts">NeuTTS</option>
-          </SettingsSelect>
+          />
         </Row>
         {ttsProvider === 'openai' && (
           <Row label="Voice">
@@ -2237,22 +2239,17 @@ function VoiceContent() {
               value={String(
                 (tts.openai as Record<string, unknown>)?.voice || 'nova',
               )}
-              onChange={(e) =>
+              onValueChange={(value) =>
                 saveTts('openai', {
                   ...((tts.openai as Record<string, unknown>) || {}),
-                  voice: e.target.value,
+                  voice: value,
                 })
               }
-              className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
-            >
-              {['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].map(
-                (v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ),
+              options={['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].map(
+                (v) => ({ value: v, label: v }),
               )}
-            </SettingsSelect>
+              className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
+            />
           </Row>
         )}
       </div>
@@ -2269,12 +2266,13 @@ function VoiceContent() {
         <Row label="STT Provider">
           <SettingsSelect
             value={String(stt.provider || 'local')}
-            onChange={(e) => saveStt('provider', e.target.value)}
+            onValueChange={(value) => saveStt('provider', value)}
+            options={[
+              { value: 'local', label: 'Local (Whisper)' },
+              { value: 'openai', label: 'OpenAI Whisper' },
+            ]}
             className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
-          >
-            <option value="local">Local (Whisper)</option>
-            <option value="openai">OpenAI Whisper</option>
-          </SettingsSelect>
+          />
         </Row>
       </div>
     </div>
@@ -2334,14 +2332,15 @@ function DisplayContent() {
         <Row label="Personality" description="Agent response style">
           <SettingsSelect
             value={String(config.personality || 'default')}
-            onChange={(e) => save('personality', e.target.value)}
+            onValueChange={(value) => save('personality', value)}
+            options={[
+              { value: 'default', label: 'Default' },
+              { value: 'concise', label: 'Concise' },
+              { value: 'verbose', label: 'Verbose' },
+              { value: 'creative', label: 'Creative' },
+            ]}
             className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
-          >
-            <option value="default">Default</option>
-            <option value="concise">Concise</option>
-            <option value="verbose">Verbose</option>
-            <option value="creative">Creative</option>
-          </SettingsSelect>
+          />
         </Row>
         <Row label="Streaming" description="Stream responses in real-time">
           <Switch
@@ -2390,20 +2389,15 @@ function LanguageContent() {
       >
         <SettingsSelect
           value={settings.locale}
-          onChange={(e) => {
-            updateSettings({ locale: e.target.value as LocaleId })
+          onValueChange={(value) => {
+            updateSettings({ locale: value as LocaleId })
             window.location.reload()
           }}
-          className="h-9 w-full rounded-md border border-(--theme-border) bg-(--theme-card) px-3 text-sm text-(--theme-text) outline-none md:max-w-xs"
-        >
-          {(Object.entries(LOCALE_LABELS) as Array<[LocaleId, string]>).map(
-            ([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ),
+          options={(Object.entries(LOCALE_LABELS) as Array<[LocaleId, string]>).map(
+            ([id, label]) => ({ value: id, label }),
           )}
-        </SettingsSelect>
+          className="md:max-w-xs"
+        />
       </Row>
     </div>
   )
@@ -2605,17 +2599,18 @@ function OrganizationContent() {
           <div className="flex items-center gap-2">
             <SettingsSelect
               value={policyMode}
-              onChange={(e) =>
+              onValueChange={(value) =>
                 setPolicyMode(
-                  e.target.value === 'APPROVAL' ? 'APPROVAL' : 'AUTO',
+                  value === 'APPROVAL' ? 'APPROVAL' : 'AUTO',
                 )
               }
               disabled={!canChangeSettings || modePending}
+              options={[
+                { value: 'AUTO', label: 'AUTO' },
+                { value: 'APPROVAL', label: 'APPROVAL' },
+              ]}
               className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none"
-            >
-              <option value="AUTO">AUTO</option>
-              <option value="APPROVAL">APPROVAL</option>
-            </SettingsSelect>
+            />
             <Button
               type="button"
               size="sm"
@@ -2692,17 +2687,18 @@ function OrganizationContent() {
                       disabled={
                         !canEditRoles || rolePendingUserId === member.user_id
                       }
-                      onChange={(e) =>
+                      onValueChange={(value) =>
                         void handleRoleUpdate(
                           member.user_id,
-                          e.target.value as 'owner' | 'member',
+                          value as 'owner' | 'member',
                         )
                       }
+                      options={[
+                        { value: 'owner', label: 'owner' },
+                        { value: 'member', label: 'member' },
+                      ]}
                       className="h-8 rounded-md border border-(--theme-border) bg-(--theme-card) px-2 text-sm text-(--theme-text) outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <option value="owner">owner</option>
-                      <option value="member">member</option>
-                    </SettingsSelect>
+                    />
                   </div>
                 </div>
               )

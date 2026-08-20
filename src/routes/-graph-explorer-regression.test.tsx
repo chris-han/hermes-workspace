@@ -2,28 +2,24 @@
 import { describe, expect, it } from 'vitest'
 
 import { Route } from './graph-explorer'
+import { ContextGraphStudioScreenV2 } from '@/screens/contextgraph-studio/contextgraph-studio-screen-v2'
 
 /**
- * The legacy route is a compatibility shim. It must never mount the retired
- * Graph Explorer screen or expose a second knowledge-management surface.
+ * /graph-explorer now ships the redesigned ContextGraph Studio chrome
+ * (workspace rail + graph canvas + inspector + chat), not the legacy
+ * retirement redirect. The full MVL flow (Sources / Extract / Ground /
+ * Graph / Inspect / Compare / Evaluate) remains at /contextgraph-studio.
  */
-describe('graph-explorer retirement route', () => {
-  it('redirects legacy navigation to ContextGraph Studio', () => {
-    const beforeLoad = Route.options.beforeLoad
-    expect(typeof beforeLoad).toBe('function')
-    expect(Route.options.component).toBeTruthy()
+describe('graph-explorer studio v2 route', () => {
+  it('renders the Studio v2 chrome component', () => {
+    expect(Route.options.component).toBe(ContextGraphStudioScreenV2)
+  })
 
-    try {
-      beforeLoad?.({ search: { node_id: 'legacy-node' } } as never)
-      throw new Error('legacy route did not redirect')
-    } catch (error) {
-      expect(error).toMatchObject({
-        options: {
-          to: '/contextgraph-studio',
-          search: { node_id: 'legacy-node' },
-          replace: true,
-        },
-      })
-    }
+  it('does not redirect to /contextgraph-studio anymore', () => {
+    expect(Route.options.beforeLoad).toBeUndefined()
+  })
+
+  it('is client-rendered only (no SSR)', () => {
+    expect(Route.options.ssr).toBe(false)
   })
 })

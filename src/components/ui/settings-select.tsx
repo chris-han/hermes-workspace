@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useState } from 'react'
 import { Menu } from '@base-ui/react/menu'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowDown01Icon, Tick02Icon } from '@hugeicons/core-free-icons'
@@ -17,14 +17,10 @@ type SettingsSelectProps = {
   value?: string
   /** Uncontrolled initial value. */
   defaultValue?: string
-  /** New API: array of options. */
-  options?: Array<SettingsSelectOption>
-  /** Legacy API: <option> children (translated internally). */
-  children?: ReactNode
-  /** New API: callback receiving the next value. */
-  onValueChange?: (value: string) => void
-  /** Legacy API: receives a synthetic event with `target.value`. */
-  onChange?: (e: { target: { value: string } }) => void
+  /** Array of options to render. */
+  options: Array<SettingsSelectOption>
+  /** Fires when the selected value changes. */
+  onValueChange: (value: string) => void
   placeholder?: string
   disabled?: boolean
   className?: string
@@ -52,18 +48,12 @@ type SettingsSelectProps = {
  * Replaces `<select>` (and the older `DropdownSelect` wrapper) because
  * the OS-native popup ignores `!important` color overrides on
  * WebKit/Safari and renders an unthemable blue highlight.
- *
- * Accepts either the new `options` + `onValueChange` API or the legacy
- * `<option>` children + `onChange` API so each call site migrates by a
- * single token rename.
  */
 export function SettingsSelect({
   value,
   defaultValue,
   options,
-  children,
   onValueChange,
-  onChange,
   placeholder = 'Select an option',
   disabled = false,
   className,
@@ -73,56 +63,18 @@ export function SettingsSelect({
   name,
   required,
 }: SettingsSelectProps) {
-  // Translate <option> children into the options array when only
-  // children were supplied.
-  const finalOptions = useMemo<Array<SettingsSelectOption>>(() => {
-    if (options) return options
-    const out: Array<SettingsSelectOption> = []
-    for (const child of (children as Array<unknown> | null) ?? []) {
-      if (
-        child &&
-        typeof child === 'object' &&
-        'type' in (child as Record<string, unknown>) &&
-        (child as { type: unknown }).type === 'option'
-      ) {
-        const el = child as React.ReactElement<{
-          value?: string | number
-          children?: ReactNode
-          disabled?: boolean
-        }>
-        const v = el.props.value
-        const labelNode = el.props.children
-        const label =
-          typeof labelNode === 'string'
-            ? labelNode
-            : typeof labelNode === 'number'
-              ? String(labelNode)
-              : v != null
-                ? String(v)
-                : ''
-        out.push({
-          value: v == null ? '' : String(v),
-          label,
-          disabled: !!el.props.disabled,
-        })
-      }
-    }
-    return out
-  }, [options, children])
-
   const isControlled = value !== undefined
   const [internalValue, setInternalValue] = useState<string | undefined>(
     defaultValue ?? value,
   )
   const groupValue = isControlled ? value : internalValue
-  const current = finalOptions.find((o) => o.value === groupValue)
+  const current = options.find((o) => o.value === groupValue)
 
   function handleValueChange(next: string) {
     if (!isControlled) {
       setInternalValue(next)
     }
-    onValueChange?.(next)
-    onChange?.({ target: { value: next } })
+    onValueChange(next)
   }
 
   return (
@@ -156,6 +108,7 @@ export function SettingsSelect({
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="start" className="outline-none">
           <Menu.Popup
+            data-options-count={options.length}
             className={cn(
               'min-w-[var(--anchor-width)] overflow-hidden rounded-md border border-(--theme-border) py-1 text-sm',
               className,
@@ -172,7 +125,7 @@ export function SettingsSelect({
               onValueChange={handleValueChange}
               disabled={disabled}
             >
-              {finalOptions.map((opt) => (
+              {options.map((opt) => (
                 <Menu.RadioItem
                   key={opt.value}
                   value={opt.value}
@@ -214,6 +167,3 @@ export function SettingsSelect({
     </Menu.Root>
   )
 }
-
-// Re-export the change-event shape for consumers that want it typed.
-export type SettingsSelectChangeEvent = ChangeEvent<HTMLSelectElement>

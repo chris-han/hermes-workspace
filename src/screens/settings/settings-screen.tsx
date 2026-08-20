@@ -664,20 +664,15 @@ export function SettingsScreen() {
               >
                 <SettingsSelect
                   value={settings.locale}
-                  onChange={(e) => {
-                    updateSettings({ locale: e.target.value as LocaleId })
+                  onValueChange={(value) => {
+                    updateSettings({ locale: value as LocaleId })
                     window.location.reload()
                   }}
-                  className="h-9 w-full rounded-md border border-(--theme-border) dark:border-gray-600 bg-(--theme-card) dark:bg-gray-800 px-3 text-sm text-(--theme-text) dark:text-gray-100 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 md:max-w-xs"
-                >
-                  {(
+                  options={(
                     Object.entries(LOCALE_LABELS) as Array<[LocaleId, string]>
-                  ).map(([id, label]) => (
-                    <option key={id} value={id}>
-                      {label}
-                    </option>
-                  ))}
-                </SettingsSelect>
+                  ).map(([id, label]) => ({ value: id, label }))}
+                  className="md:max-w-xs"
+                />
               </SettingsRow>
             </SettingsSection>
           )}
@@ -753,22 +748,22 @@ export function SettingsScreen() {
                 >
                   <SettingsSelect
                     value={settings.preferredBudgetModel}
-                    onChange={(e) =>
-                      updateSettings({ preferredBudgetModel: e.target.value })
+                    onValueChange={(value) =>
+                      updateSettings({ preferredBudgetModel: value })
                     }
-                    className="h-9 w-full rounded-md border border-(--theme-border) dark:border-gray-600 bg-(--theme-card) dark:bg-gray-800 px-3 text-sm text-(--theme-text) dark:text-gray-100 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 dark:focus-visible:ring-primary-500 md:max-w-xs"
+                    options={[
+                      { value: '', label: 'Auto-detect' },
+                      ...(modelsError
+                        ? [{ value: '__failed', label: 'Failed to load models', disabled: true }]
+                        : []),
+                      ...availableModels.map((model) => ({
+                        value: model.id,
+                        label: model.label,
+                      })),
+                    ]}
+                    className="md:max-w-xs"
                     aria-label="Preferred budget model"
-                  >
-                    <option value="">Auto-detect</option>
-                    {modelsError && (
-                      <option disabled>Failed to load models</option>
-                    )}
-                    {availableModels.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.label}
-                      </option>
-                    ))}
-                  </SettingsSelect>
+                  />
                 </SettingsRow>
                 <SettingsRow
                   label="Preferred premium model"
@@ -776,22 +771,22 @@ export function SettingsScreen() {
                 >
                   <SettingsSelect
                     value={settings.preferredPremiumModel}
-                    onChange={(e) =>
-                      updateSettings({ preferredPremiumModel: e.target.value })
+                    onValueChange={(value) =>
+                      updateSettings({ preferredPremiumModel: value })
                     }
-                    className="h-9 w-full rounded-md border border-(--theme-border) dark:border-gray-600 bg-(--theme-card) dark:bg-gray-800 px-3 text-sm text-(--theme-text) dark:text-gray-100 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-400 dark:focus-visible:ring-primary-500 md:max-w-xs"
+                    options={[
+                      { value: '', label: 'Auto-detect' },
+                      ...(modelsError
+                        ? [{ value: '__failed', label: 'Failed to load models', disabled: true }]
+                        : []),
+                      ...availableModels.map((model) => ({
+                        value: model.id,
+                        label: model.label,
+                      })),
+                    ]}
+                    className="md:max-w-xs"
                     aria-label="Preferred premium model"
-                  >
-                    <option value="">Auto-detect</option>
-                    {modelsError && (
-                      <option disabled>Failed to load models</option>
-                    )}
-                    {availableModels.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.label}
-                      </option>
-                    ))}
-                  </SettingsSelect>
+                  />
                 </SettingsRow>
                 <SettingsRow
                   label="Only suggest cheaper models"
@@ -1313,21 +1308,17 @@ function HermesConfigSection({
             {availableProviders.length > 0 ? (
               <SettingsSelect
                 value={providerInput}
-                onChange={(e) => {
-                  const newProvider = e.target.value
+                onValueChange={(newProvider) => {
                   setProviderInput(newProvider)
                   setModelInput('')
                   void fetchModelsForProvider(newProvider)
                 }}
+                options={availableProviders.map((p) => ({
+                  value: p.id,
+                  label: `${p.label}${p.authenticated ? ' ✓' : ''}`,
+                }))}
                 className={selectClassName}
-              >
-                {availableProviders.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                    {p.authenticated ? ' ✓' : ''}
-                  </option>
-                ))}
-              </SettingsSelect>
+              />
             ) : (
               <Input
                 aria-label="Provider"
@@ -1349,20 +1340,19 @@ function HermesConfigSection({
             {availableModels.length > 0 ? (
               <SettingsSelect
                 value={modelInput}
-                onChange={(e) => setModelInput(e.target.value)}
+                onValueChange={(value) => setModelInput(value)}
+                options={[
+                  ...(modelInput &&
+                  !availableModels.some((m) => m.id === modelInput)
+                    ? [{ value: modelInput, label: `${modelInput} (current)` }]
+                    : []),
+                  ...availableModels.map((m) => ({
+                    value: m.id,
+                    label: `${m.id}${m.description ? ` — ${m.description}` : ''}`,
+                  })),
+                ]}
                 className={`${selectClassName} font-mono`}
-              >
-                {!availableModels.some((m) => m.id === modelInput) &&
-                  modelInput && (
-                    <option value={modelInput}>{modelInput} (current)</option>
-                  )}
-                {availableModels.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.id}
-                    {m.description ? ` — ${m.description}` : ''}
-                  </option>
-                ))}
-              </SettingsSelect>
+              />
             ) : (
               <Input
                 aria-label="Model"
@@ -1690,17 +1680,18 @@ function HermesConfigSection({
       >
         <SettingsSelect
           value={(agentConfig.tool_use_enforcement as string) || 'auto'}
-          onChange={(e) =>
+          onValueChange={(value) =>
             void saveConfig({
-              config: { agent: { tool_use_enforcement: e.target.value } },
+              config: { agent: { tool_use_enforcement: value } },
             })
           }
+          options={[
+            { value: 'auto', label: 'auto' },
+            { value: 'required', label: 'required' },
+            { value: 'none', label: 'none' },
+          ]}
           className={selectClassName}
-        >
-          <option value="auto">auto</option>
-          <option value="required">required</option>
-          <option value="none">none</option>
-        </SettingsSelect>
+        />
       </SettingsRow>
     </SettingsSection>
   )
@@ -1730,20 +1721,20 @@ function HermesConfigSection({
       >
         <SettingsSelect
           value={(smartRouting.cheap_model as string) || ''}
-          onChange={(e) =>
+          onValueChange={(value) =>
             void saveConfig({
-              config: { smart_model_routing: { cheap_model: e.target.value } },
+              config: { smart_model_routing: { cheap_model: value } },
             })
           }
+          options={[
+            { value: '', label: 'Select model' },
+            ...availableModels.map((model) => ({
+              value: model.id,
+              label: model.id,
+            })),
+          ]}
           className={selectClassName}
-        >
-          <option value="">Select model</option>
-          {availableModels.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.id}
-            </option>
-          ))}
-        </SettingsSelect>
+        />
       </SettingsRow>
       <SettingsRow
         label="Max simple chars"
@@ -1799,16 +1790,17 @@ function HermesConfigSection({
         >
           <SettingsSelect
             value={ttsProvider}
-            onChange={(e) =>
-              void saveConfig({ config: { tts: { provider: e.target.value } } })
+            onValueChange={(value) =>
+              void saveConfig({ config: { tts: { provider: value } } })
             }
+            options={[
+              { value: 'edge', label: 'Edge TTS (free)' },
+              { value: 'elevenlabs', label: 'ElevenLabs' },
+              { value: 'openai', label: 'OpenAI TTS' },
+              { value: 'neutts', label: 'NeuTTS' },
+            ]}
             className={selectClassName}
-          >
-            <option value="edge">Edge TTS (free)</option>
-            <option value="elevenlabs">ElevenLabs</option>
-            <option value="openai">OpenAI TTS</option>
-            <option value="neutts">NeuTTS</option>
-          </SettingsSelect>
+          />
         </SettingsRow>
 
         {ttsProvider === 'edge' && (
@@ -1863,21 +1855,16 @@ function HermesConfigSection({
             >
               <SettingsSelect
                 value={(ttsOpenAi.voice as string) || 'alloy'}
-                onChange={(e) =>
+                onValueChange={(value) =>
                   void saveConfig({
-                    config: { tts: { openai: { voice: e.target.value } } },
+                    config: { tts: { openai: { voice: value } } },
                   })
                 }
-                className={selectClassName}
-              >
-                {['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].map(
-                  (voice) => (
-                    <option key={voice} value={voice}>
-                      {voice}
-                    </option>
-                  ),
+                options={['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].map(
+                  (voice) => ({ value: voice, label: voice }),
                 )}
-              </SettingsSelect>
+                className={selectClassName}
+              />
             </SettingsRow>
             <SettingsRow label="Model" description="OpenAI TTS model.">
               <Input
@@ -1914,14 +1901,15 @@ function HermesConfigSection({
         >
           <SettingsSelect
             value={sttProvider}
-            onChange={(e) =>
-              void saveConfig({ config: { stt: { provider: e.target.value } } })
+            onValueChange={(value) =>
+              void saveConfig({ config: { stt: { provider: value } } })
             }
+            options={[
+              { value: 'local', label: 'Local (Whisper)' },
+              { value: 'openai', label: 'OpenAI Whisper API' },
+            ]}
             className={selectClassName}
-          >
-            <option value="local">Local (Whisper)</option>
-            <option value="openai">OpenAI Whisper API</option>
-          </SettingsSelect>
+          />
         </SettingsRow>
         {sttProvider === 'local' && (
           <SettingsRow
@@ -1930,19 +1918,17 @@ function HermesConfigSection({
           >
             <SettingsSelect
               value={(sttLocal.model_size as string) || 'base'}
-              onChange={(e) =>
+              onValueChange={(value) =>
                 void saveConfig({
-                  config: { stt: { local: { model_size: e.target.value } } },
+                  config: { stt: { local: { model_size: value } } },
                 })
               }
+              options={['tiny', 'base', 'small', 'medium', 'large'].map((size) => ({
+                value: size,
+                label: size,
+              }))}
               className={selectClassName}
-            >
-              {['tiny', 'base', 'small', 'medium', 'large'].map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </SettingsSelect>
+            />
           </SettingsRow>
         )}
       </SettingsSection>
@@ -1958,19 +1944,17 @@ function HermesConfigSection({
       <SettingsRow label="Personality" description="Agent response style.">
         <SettingsSelect
           value={(displayConfig.personality as string) || 'default'}
-          onChange={(e) =>
+          onValueChange={(value) =>
             void saveConfig({
-              config: { display: { personality: e.target.value } },
+              config: { display: { personality: value } },
             })
           }
+          options={['default', 'concise', 'verbose', 'creative'].map((value) => ({
+            value,
+            label: value,
+          }))}
           className={selectClassName}
-        >
-          {['default', 'concise', 'verbose', 'creative'].map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </SettingsSelect>
+        />
       </SettingsRow>
       <SettingsRow
         label="Streaming"

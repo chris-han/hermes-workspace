@@ -1392,28 +1392,26 @@ function FeishuHomeChannelCard({
             disabled={
               !model.platforms.feishu.configured || channels.length === 0
             }
-            onChange={(event) =>
+            onValueChange={(value) =>
               model.setFeishu((current) => ({
                 ...current,
-                homeChannel: event.target.value,
+                homeChannel: value,
               }))
             }
+            options={[
+              {
+                value: '',
+                label: channels.length
+                  ? 'Select a live Feishu chat'
+                  : 'No live chats yet',
+              },
+              ...channels.map((channel) => ({
+                value: channel.chat_id,
+                label: feishuChannelLabel(channel),
+              })),
+            ]}
             className="h-9 w-full min-w-0 max-w-full truncate rounded-md border theme-border theme-card px-3 text-sm theme-text"
-          >
-            <option value="">
-              {channels.length
-                ? 'Select a live Feishu chat'
-                : 'No live chats yet'}
-            </option>
-            {channels.map((channel) => (
-              <option
-                key={`${channel.chat_id}:${channel.thread_id || ''}`}
-                value={channel.chat_id}
-              >
-                {feishuChannelLabel(channel)}
-              </option>
-            ))}
-          </SettingsSelect>
+          />
           <Input
             value={model.feishu.homeChannel}
             placeholder="oc_xxx"
@@ -1520,17 +1518,18 @@ function FeishuBotConfigCard({
           </span>
           <SettingsSelect
             value={model.feishu.domain}
-            onChange={(event) =>
+            onValueChange={(value) =>
               model.setFeishu((current) => ({
                 ...current,
-                domain: event.target.value as 'feishu' | 'lark',
+                domain: value as 'feishu' | 'lark',
               }))
             }
+            options={[
+              { value: 'feishu', label: 'Feishu' },
+              { value: 'lark', label: 'Lark' },
+            ]}
             className="h-9 rounded-md border theme-border theme-card px-3 text-sm theme-text"
-          >
-            <option value="feishu">Feishu</option>
-            <option value="lark">Lark</option>
-          </SettingsSelect>
+          />
         </label>
         <label className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-[0.12em] theme-muted">
@@ -1538,17 +1537,18 @@ function FeishuBotConfigCard({
           </span>
           <SettingsSelect
             value={model.feishu.connectionMode}
-            onChange={(event) =>
+            onValueChange={(value) =>
               model.setFeishu((current) => ({
                 ...current,
-                connectionMode: event.target.value as 'websocket' | 'webhook',
+                connectionMode: value as 'websocket' | 'webhook',
               }))
             }
+            options={[
+              { value: 'websocket', label: 'WebSocket' },
+              { value: 'webhook', label: 'Webhook' },
+            ]}
             className="h-9 rounded-md border theme-border theme-card px-3 text-sm theme-text"
-          >
-            <option value="websocket">WebSocket</option>
-            <option value="webhook">Webhook</option>
-          </SettingsSelect>
+          />
         </label>
 
         {state.configured ? (

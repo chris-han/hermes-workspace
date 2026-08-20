@@ -463,11 +463,24 @@ export const Route = createFileRoute('/api/send-stream')({
                 if (!finished && !abortController.signal.aborted) {
                   if (hasAssistantOutput) {
                     await markRun('complete')
+                    push({
+                      event: 'done',
+                      data: { state: 'complete', runId },
+                    })
                   } else {
+                    const message = 'Run completed without assistant output'
                     await markRun(
                       'error',
-                      'Run completed without assistant output',
+                      message,
                     )
+                    push({
+                      event: 'done',
+                      data: {
+                        state: 'error',
+                        errorMessage: message,
+                        runId,
+                      },
+                    })
                   }
                 }
               } catch (error) {

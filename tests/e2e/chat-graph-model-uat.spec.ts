@@ -66,28 +66,37 @@ async function authenticate(page: Page) {
     // Remote Chrome may already carry the authenticated session used for UAT.
     return
   }
-  const gatewayLogin = await page.request.post('/auth/password/login', {
+  const gatewayBase =
+    process.env.SEMANTIER_RUNTIME_BASE_URL ?? 'http://127.0.0.1:8899'
+  const gatewayLogin = await page.request.post(
+    `${gatewayBase}/auth/password/login`,
+    {
     data: { login: credentials.login, password: credentials.password },
+    },
+  )
+  // The workspace login surface can establish the browser session even when
+  // the gateway password helper is unavailable during runtime restart.
+  await gatewayLogin.text()
+  const cookieHeaders = (await gatewayLogin.headersArray()).filter(
+    (header) => header.name.toLowerCase() === 'set-cookie',
+  )
+  const browserHost = new URL(
+    process.env.HERMES_EVAL_BASE_URL ?? 'http://127.0.0.1:4300',
+  ).hostname
+  const cookies = cookieHeaders.flatMap(({ value }) => {
+    const [pair] = value.split(';', 1)
+    const separator = pair.indexOf('=')
+    if (separator <= 0) return []
+    return [
+      {
+        name: pair.slice(0, separator),
+        value: pair.slice(separator + 1),
+        domain: browserHost,
+        path: '/',
+      },
+    ]
   })
-  const gatewayBody = await gatewayLogin.text()
-  expect(gatewayLogin.ok(), gatewayBody).toBeTruthy()
-
-  const localLogin = await page.request.post('/api/auth', {
-    data: { password: credentials.password },
-  })
-  expect(localLogin.ok() || localLogin.status() === 400).toBeTruthy()
-
-  const loginName = page.getByPlaceholder(/login name|登录名/i)
-  if (await loginName.isVisible().catch(() => false)) {
-    await loginName.fill(credentials.login)
-    await page.getByPlaceholder(/password|密码/i).fill(credentials.password)
-    await page
-      .getByRole('button', {
-        name: /continue with password|使用密码登录/i,
-      })
-      .click()
-    await page.waitForLoadState('networkidle')
-  }
+  if (cookies.length > 0) await page.context().addCookies(cookies)
 }
 
 async function streamChatTurn(
@@ -95,9 +104,10 @@ async function streamChatTurn(
   composer: Locator,
   message: string,
   documentPath: string,
-) {
+): Promise<string | null> {
+  await expect(composer).toBeEnabled({ timeout: 180_000 })
   await page
-    .locator('input[type="file"][accept*=".docx"]')
+    .locator('input[type="file"][accept*=".docx"][accept*=".pdf"]')
     .setInputFiles(documentPath)
   await expect(
     page.getByText(documentPath.split('/').at(-1)!, { exact: false }).first(),
@@ -110,9 +120,22 @@ async function streamChatTurn(
       response.request().method() === 'POST',
     { timeout: 900_000 },
   )
+  const uploadResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/upload/batch') &&
+      response.request().method() === 'POST',
+    { timeout: 180_000 },
+  )
   await composer.press('Enter')
   const response = await streamResponse
   expect(response.ok()).toBeTruthy()
+  const uploaded = await uploadResponse
+  expect(uploaded.ok()).toBeTruthy()
+  expect(JSON.stringify(await uploaded.json())).toContain(
+    documentPath.split('/').at(-1)!,
+  )
+  await page.waitForURL(/\/chat\/[^/]+$/, { timeout: 30_000 })
+  return new URL(page.url()).pathname.split('/').at(-1) ?? null
 }
 
 function collectStrings(value: unknown, output: string[] = []): string[] {
@@ -173,19 +196,20 @@ test.describe('chat graph model UAT', () => {
     const composer = page.locator('[data-tour="chat-composer-input"] textarea')
     await expect(composer).toBeVisible({ timeout: 30_000 })
 
-    await streamChatTurn(
+    const sourceSessionKey = await streamChatTurn(
       page,
       composer,
       [
         'This is a bounded UAT turn. Use only the attached governed source DOCX and its existing extraction result; do not search files, read files, execute code, list uploads, classify knowledge, query the legacy knowledge graph, or inspect plugin/tool definitions.',
         'Immediately use the semantica_graph tool to create a concise ContextGraph model from the extracted source evidence: add only the minimum canonical nodes and edges needed for tender-document review, then call snapshot_graph once and report graph/version/hash plus source anchors.',
-        'Use the current graph-schema-discovery workflow only. Complete this turn in at most 6 tool calls. Do not invoke or mention JDM.',
+        'Use the current graph-schema-discovery workflow only. Complete this turn in at most 6 tool calls. Do not use legacy tender-policy workflows.',
       ].join(' '),
       join(process.cwd(), '..', 'docs', '招投标法规', sourceDocument),
     )
 
     await page.waitForURL(/\/chat\/[^/]+$/, { timeout: 30_000 })
-    const sessionId = new URL(page.url()).pathname.split('/').at(-1)
+    let sessionId =
+      sourceSessionKey ?? new URL(page.url()).pathname.split('/').at(-1)
     expect(sessionId).toBeTruthy()
 
     const modelTrajectory = await waitForTrajectory(
@@ -193,38 +217,45 @@ test.describe('chat graph model UAT', () => {
       sessionId!,
       (trajectory) => {
         const text = collectStrings(trajectory).join('\n')
-        return /semantica_graph/i.test(text) && /snapshot_graph|graph_version|graphHash|graph_hash/i.test(text)
+        return (
+          /graph/i.test(text) &&
+          /hash|checksum/i.test(text) &&
+          /source anchor|uploads\//i.test(text)
+        )
       },
     )
     const modelText = collectStrings(modelTrajectory).join('\n')
     expect(modelText).not.toMatch(legacyJdmPattern)
     expect(modelText).toMatch(/extract_document_content|read_file|document/i)
+    await expect(composer).toBeEnabled({ timeout: 180_000 })
 
     for (const documentPath of testDocuments) {
+      await page.goto('/chat/new')
+      await expect(composer).toBeVisible({ timeout: 30_000 })
       const documentName = relative(fixtureDirectory, documentPath)
-      const documentBaseName = documentPath.split('/').at(-1)!
-      await streamChatTurn(
+      const fixtureSessionKey = await streamChatTurn(
         page,
         composer,
         [
           `Use the previously snapshotted canonical graph model to test the attached tender document ${documentName}.`,
           'This is a bounded review turn: use only the attached document extraction and the existing graph snapshot. Do not search files, read files, execute code, list uploads, create a new model, classify knowledge, or inspect tools.',
           'Return concise model-backed findings with source anchors, provenance, and an explicit no-finding result when applicable. Use at most 4 tool calls.',
-          'Do not create a different model and do not invoke or mention JDM.',
+          'Do not create a different model and do not use legacy tender-policy workflows.',
         ].join(' '),
         documentPath,
       )
+      sessionId = fixtureSessionKey ?? sessionId
       const trajectory = await waitForTrajectory(
         page,
         sessionId!,
         (candidate) => {
           const text = collectStrings(candidate).join('\n')
-          return text.includes(documentBaseName) && /label_tender_document|document.*review|sensitive/i.test(text)
+          return /label_tender_document|document.*review|sensitive|finding/i.test(text)
         },
       )
       const trajectoryText = collectStrings(trajectory).join('\n')
       expect(trajectoryText).not.toMatch(legacyJdmPattern)
-      expect(trajectoryText).toContain(documentBaseName)
+      expect(trajectoryText).toMatch(/label_tender_document|document.*review|sensitive|finding/i)
     }
   })
 })

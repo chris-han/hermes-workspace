@@ -3,6 +3,22 @@ import { defineConfig, devices } from '@playwright/test'
 const BASE_URL = process.env.HERMES_EVAL_BASE_URL ?? 'http://127.0.0.1:4300'
 const CHROMIUM_EX_PATH = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
   ?? '/usr/bin/google-chrome'
+const PLAYWRIGHT_CDP_WS_ENDPOINT = process.env.PLAYWRIGHT_CDP_WS_ENDPOINT
+  ?? process.env.HERMES_CDP_WS_ENDPOINT
+  ?? ''
+const USE_REMOTE_CDP = PLAYWRIGHT_CDP_WS_ENDPOINT.trim().length > 0
+
+const CHROMIUM_USE = USE_REMOTE_CDP
+  ? {
+      ...devices['Desktop Chrome'],
+    }
+  : {
+      ...devices['Desktop Chrome'],
+      launchOptions: {
+        executablePath: CHROMIUM_EX_PATH,
+        args: ['--disable-crash-reporter', '--disable-crashpad', '--disable-gpu'],
+      },
+    }
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -28,11 +44,14 @@ export default defineConfig({
     {
       name: 'chromium',
       use: {
-        ...devices['Desktop Chrome'],
-        launchOptions: {
-          executablePath: CHROMIUM_EX_PATH,
-          args: ['--disable-crash-reporter', '--disable-crashpad', '--disable-gpu'],
-        },
+        ...CHROMIUM_USE,
+        ...(USE_REMOTE_CDP
+          ? {
+              connectOptions: {
+                wsEndpoint: PLAYWRIGHT_CDP_WS_ENDPOINT,
+              },
+            }
+          : {}),
         locale: 'en-US',
       },
     },

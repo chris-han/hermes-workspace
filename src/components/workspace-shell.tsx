@@ -47,6 +47,7 @@ import { useMobileKeyboard } from '@/hooks/use-mobile-keyboard'
 // System metrics footer removed — not used in Hermes Workspace
 import { CommandPalette } from '@/components/command-palette'
 import { useSettings } from '@/hooks/use-settings'
+import { PhosphorRoot } from '@/components/ui/icon'
 // ActivityTicker moved to dashboard-only (too noisy for global header)
 
 const TerminalWorkspace = lazy(() =>
@@ -356,6 +357,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
 
   return (
     <>
+      <PhosphorRoot>
       <div
         className="relative overflow-hidden theme-bg theme-text"
         style={shellStyle}
@@ -505,6 +507,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
           <ConnectionStartupScreen onConnected={handleStartupConnected} />
         ) : null}
       </div>
+      </PhosphorRoot>
 
       <MobileHamburgerMenu />
       {/* System metrics footer removed */}

@@ -13,7 +13,7 @@ describe('resolveSourceEvidenceViewerConfig', () => {
 
   it('ignores proprietary viewer license variables', () => {
     expect(
-      resolveSourceEvidenceViewerConfig({ APRYSE_LICENSE_KEY: 'secret-key' }),
+      resolveSourceEvidenceViewerConfig({ PROPRIETARY_VIEWER_LICENSE: 'secret-key' }),
     ).toEqual({
       configured: true,
       provider: 'open-source-unified',

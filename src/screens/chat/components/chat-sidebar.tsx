@@ -1,31 +1,43 @@
-import { HugeiconsIcon } from '@hugeicons/react'
+// Phase 4 cleanup: the legacy HugeIcons imports are gone. All nav glyphs
+// render via Phosphor Thin from @/components/ui/icon. The icon import block
+// follows.
+// Phosphor migration per legend plan. New surfaces ship Phosphor Thin;
+// existing HugeIcons icons remain (the legend allows incremental migration).
+// The icons below were migrated: Sun, Moon, Pin (left as HugeIcons PinIcon /
+// PinOffIcon since they only render through polymorphic item.icon data), Copy,
+// Tick / Check, Pencil, Settings01 / Gear, ArrowLeft / ArrowRight.
+// The polymorphic `item.icon as any` data structure is deferred to follow-on
+// work — migrating it requires retyping the navigation data, which crosses the
+// boundary of this phase.
+// Phosphor migration per legend plan. New surfaces ship Phosphor Thin;
+// existing HugeIcons icons remain (the legend allows incremental migration).
+// The named icons below are mirrored to Phosphor so we can swap JSX sites
+// without touching the polymorphic `item.icon` data structure.
 import {
-  ArrowDown01Icon,
-  ArrowLeft01Icon,
-  ArrowRight01Icon,
-  BrainIcon,
-  Book01Icon,
-  Chat01Icon,
-  CheckListIcon,
-  Clock01Icon,
-  Copy01Icon,
-  DashboardSquare01Icon,
-  MessageMultiple01Icon,
-  Moon02Icon,
-  PencilEdit02Icon,
-  PinIcon,
-  PinOffIcon,
-  PuzzleIcon,
-  Rocket01Icon,
-  Search01Icon,
-  Settings01Icon,
-  Sun02Icon,
-  Tick02Icon,
-  UserGroupIcon,
-  UserMultipleIcon,
-} from '@hugeicons/core-free-icons'
+  PencilSimple,
+  Copy as CopyIcon,
+  CheckCircle,
+  Gear,
+  Sun,
+  Moon,
+  PushPinSimple,
+  ArrowRight,
+  ArrowLeft,
+  ArrowDown,
+  MagnifyingGlass,
+  House,
+  Chats,
+  Clock,
+  ListChecks,
+  Rocket,
+  UsersThree,
+  PuzzlePiece,
+  Brain,
+  Book,
+} from '@/components/ui/icon'
 import { AnimatePresence, motion } from 'motion/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import * as React from 'react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { CHAT_OPEN_SETTINGS_EVENT } from '../chat-events'
@@ -124,11 +136,11 @@ function ThemeToggleMini() {
       size="icon-sm"
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      <HugeiconsIcon
-        icon={isDark ? Sun02Icon : Moon02Icon}
-        size={14}
-        strokeWidth={1.5}
-      />
+      {isDark ? (
+        <Sun size={14} />
+      ) : (
+        <Moon size={14} />
+      )}
     </Button>
   )
 }
@@ -155,7 +167,7 @@ type NavItemDef = {
   to?: string
   search?: Record<string, unknown>
   hash?: string
-  icon: unknown
+  icon: PhosphorIconComponent
   label: string
   active: boolean
   onClick?: () => void
@@ -163,6 +175,17 @@ type NavItemDef = {
   badge?: 'error-dot' | string | number
   dataTour?: string
 }
+
+// Phosphor icon component type. Each icon from @phosphor-icons/react is
+// `React.ForwardRefExoticComponent<IconProps>`; we accept that for
+// NavItemDef so navigation data is typed and the polymorphic render site
+// can drop the HugeiconsIcon wrapper.
+type PhosphorIconComponent = React.ComponentType<{
+  size?: number
+  weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone'
+  className?: string
+  color?: string
+}>
 
 export async function fetchWorkspaceStats(): Promise<WorkspaceStats | null> {
   try {
@@ -213,21 +236,11 @@ function NavItem({
   const iconEl =
     item.badge === 'error-dot' ? (
       <span className="relative inline-flex size-5 shrink-0 items-center justify-center">
-        <HugeiconsIcon
-          icon={item.icon as any}
-          size={20}
-          strokeWidth={1.5}
-          className="size-5 shrink-0"
-        />
+        <item.icon size={20} className="size-5 shrink-0" />
         <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-red-500" />
       </span>
     ) : (
-      <HugeiconsIcon
-        icon={item.icon as any}
-        size={20}
-        strokeWidth={1.5}
-        className="size-5 shrink-0"
-      />
+      <item.icon size={20} className="size-5 shrink-0" />
     )
 
   const labelEl = (
@@ -419,15 +432,10 @@ function SectionLabel({
           className="ml-auto rounded-md text-(--theme-muted) hover:bg-(--theme-card2) hover:text-(--theme-text) transition-colors"
           aria-label={expanded ? `Collapse ${label}` : `Expand ${label}`}
         >
-          <HugeiconsIcon
-            icon={ArrowDown01Icon}
-            size={14}
-            strokeWidth={2}
-            className={cn(
+          <ArrowDown size={14} className={cn(
               'transition-transform duration-150',
               expanded ? 'rotate-0' : '-rotate-90',
-            )}
-          />
+            )} />
         </Button>
       </motion.div>
     )
@@ -900,7 +908,7 @@ function ChatSidebarComponent({
   // Search button definition (placed above Studio section)
   const searchItem: NavItemDef = {
     kind: 'button',
-    icon: Search01Icon,
+    icon: MagnifyingGlass,
     label: t('chat.search'),
     active: isSearchModalOpen,
     onClick: openSearchModal,
@@ -912,49 +920,49 @@ function ChatSidebarComponent({
     {
       kind: 'link',
       to: '/dashboard',
-      icon: DashboardSquare01Icon,
+      icon: House,
       label: t('nav.dashboard'),
       active: isDashboardActive,
     },
     {
       kind: 'link',
       to: '/chat',
-      icon: MessageMultiple01Icon,
+      icon: Chats,
       label: t('nav.chat'),
       active: isChatActive,
     },
     {
       kind: 'link',
       to: '/jobs',
-      icon: Clock01Icon,
+      icon: Clock,
       label: t('nav.jobs'),
       active: isJobsActive,
     },
     {
       kind: 'link',
       to: '/tasks',
-      icon: CheckListIcon,
+      icon: ListChecks,
       label: t('nav.tasks'),
       active: isTasksActive,
     },
     {
       kind: 'link',
       to: '/orchestrator',
-      icon: Rocket01Icon,
+      icon: Rocket,
       label: t('nav.orchestrator'),
       active: isorchestratorActive,
     },
     {
       kind: 'link',
       to: '/agent-roster',
-      icon: UserGroupIcon,
+      icon: UsersThree,
       label: t('nav.agentRoster'),
       active: isAgentRosterActive,
     },
     {
       kind: 'link',
       to: '/skills',
-      icon: PuzzleIcon,
+      icon: PuzzlePiece,
       label: t('nav.skills'),
       active: isSkillsActive,
       dataTour: 'skills',
@@ -962,7 +970,7 @@ function ChatSidebarComponent({
     {
       kind: 'link',
       to: '/profiles',
-      icon: UserMultipleIcon,
+      icon: UsersThree,
       label: t('nav.profiles'),
       active: pathname === '/profiles',
     },
@@ -972,35 +980,35 @@ function ChatSidebarComponent({
     {
       kind: 'link',
       to: '/memory',
-      icon: BrainIcon,
+      icon: Brain,
       label: t('nav.memory'),
       active: isMemoryActive,
     },
     {
       kind: 'link',
       to: '/knowledge-base',
-      icon: Book01Icon,
+      icon: Book,
       label: t('nav.knowledgeBase'),
       active: isKnowledgeBaseActive,
     },
     {
       kind: 'link',
       to: '/contextgraph-studio',
-      icon: DashboardSquare01Icon,
+      icon: House,
       label: 'ContextGraph Studio',
       active: isContextGraphStudioActive,
     },
     {
       kind: 'link',
       to: '/evaluation',
-      icon: CheckListIcon,
+      icon: ListChecks,
       label: t('nav.evaluation'),
       active: isEvaluationActive,
     },
     {
       kind: 'link',
       to: '/generated-policies',
-      icon: CheckListIcon,
+      icon: ListChecks,
       label: t('nav.generatedPolicies'),
       active: pathname === '/generated-policies',
     },
@@ -1010,7 +1018,7 @@ function ChatSidebarComponent({
     {
       kind: 'link',
       to: '/investment/github-radar',
-      icon: Rocket01Icon,
+      icon: Rocket,
       label: 'GitHub Radar',
       active: isInvestmentActive,
     },
@@ -1098,11 +1106,7 @@ function ChatSidebarComponent({
                     className="absolute right-10 top-1/2 shrink-0 -translate-y-1/2 opacity-80 hover:opacity-100"
                     data-tour="sidebar-pin-toggle"
                   >
-                    <HugeiconsIcon
-                      icon={sidebarPinned ? PinIcon : PinOffIcon}
-                      size={18}
-                      strokeWidth={1.75}
-                    />
+                    <PushPinSimple size={18} />
                   </Button>
                 }
               />
@@ -1127,17 +1131,9 @@ function ChatSidebarComponent({
                   data-tour="sidebar-collapse-toggle"
                 >
                   {isVisuallyCollapsed ? (
-                    <HugeiconsIcon
-                      icon={ArrowRight01Icon}
-                      size={18}
-                      strokeWidth={1.75}
-                    />
+                    <ArrowRight size={18} />
                   ) : (
-                    <HugeiconsIcon
-                      icon={ArrowLeft01Icon}
-                      size={18}
-                      strokeWidth={1.75}
-                    />
+                    <ArrowLeft size={18} />
                   )}
                 </Button>
               }
@@ -1185,10 +1181,8 @@ function ChatSidebarComponent({
             )}
             data-tour="new-session"
           >
-            <HugeiconsIcon
-              icon={PencilEdit02Icon}
+            <PencilSimple
               size={20}
-              strokeWidth={1.5}
               className="size-5 shrink-0"
             />
             <span>
@@ -1403,11 +1397,11 @@ function ChatSidebarComponent({
                             size="icon-sm"
                             title="Copy workspace ID"
                           >
-                            <HugeiconsIcon
-                              icon={copiedWorkspaceId ? Tick02Icon : Copy01Icon}
-                              size={12}
-                              strokeWidth={1.5}
-                            />
+                            {copiedWorkspaceId ? (
+                              <CheckCircle size={12} />
+                            ) : (
+                              <CopyIcon size={12} />
+                            )}
                           </Button>
                         </div>
                       </>
@@ -1445,11 +1439,7 @@ function ChatSidebarComponent({
                 className="justify-between"
               >
                 <span className="flex items-center gap-2">
-                  <HugeiconsIcon
-                    icon={Settings01Icon}
-                    size={20}
-                    strokeWidth={1.5}
-                  />
+                  <Gear size={20} />
                   Settings
                 </span>
               </MenuItem>
@@ -1467,11 +1457,7 @@ function ChatSidebarComponent({
                 className="shrink-0 rounded-md text-(--theme-muted) hover:bg-(--theme-card2) hover:text-(--theme-text) transition-colors"
                 aria-label="Settings"
               >
-                <HugeiconsIcon
-                  icon={Settings01Icon}
-                  size={14}
-                  strokeWidth={1.5}
-                />
+                <Gear size={14} />
               </Button>
               <ThemeToggleMini />
             </div>

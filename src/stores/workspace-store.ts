@@ -40,6 +40,11 @@ type WorkspaceState = {
   chatPanelOpen: boolean
   /** Session key for the chat panel (defaults to 'main') */
   chatPanelSessionKey: string
+  /** Right-panel mode (Inspector / Chat).
+   * Inspector is the default on workbench routes; Chat is the default elsewhere.
+   * Co-pilot was retired in the v1.3 amendment to the chrome rollout plan —
+   * Chat is the workbench co-pilot under one label. */
+  rightPanelMode: 'inspector' | 'chat'
   /** Mobile keyboard / composer focus — hides tab bar */
   mobileKeyboardOpen: boolean
   mobileKeyboardInset: number
@@ -56,6 +61,7 @@ type WorkspaceState = {
   toggleChatPanel: () => void
   setChatPanelOpen: (open: boolean) => void
   setChatPanelSessionKey: (key: string) => void
+  setRightPanelMode: (mode: 'inspector' | 'chat') => void
   setMobileKeyboardOpen: (open: boolean) => void
   setMobileKeyboardInset: (inset: number) => void
   setMobileComposerFocused: (focused: boolean) => void
@@ -72,6 +78,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       activeSubPage: null,
       chatPanelOpen: false,
       chatPanelSessionKey: 'main',
+      rightPanelMode: 'chat',
       mobileKeyboardOpen: false,
       mobileKeyboardInset: 0,
       mobileComposerFocused: false,
@@ -110,6 +117,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setMobileComposerFocused: (focused) =>
         set({ mobileComposerFocused: focused }),
       setChatPanelSessionKey: (key) => set({ chatPanelSessionKey: key }),
+      setRightPanelMode: (mode) => set({ rightPanelMode: mode }),
       setLegalCorpusChatContext: (context) =>
         set({ legalCorpusChatContext: context }),
     }),

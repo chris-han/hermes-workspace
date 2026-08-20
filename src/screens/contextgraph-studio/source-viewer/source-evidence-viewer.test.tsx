@@ -16,26 +16,15 @@ import {
 } from './source-evidence-viewer'
 
 const viewerConfig = {
-  configured: false,
-  diagnostic: {
-    code: 'viewer_unavailable',
-    provider: 'apryse',
-    missing: 'APRYSE_LICENSE_KEY',
-    message:
-      'Source evidence viewer requires APRYSE_LICENSE_KEY before DOCX/PDF rendering can be enabled.',
-  },
-} as const
-
-const configuredViewerConfig = {
   configured: true,
-  provider: 'apryse',
-  licenseSource: 'APRYSE_LICENSE_KEY',
+  provider: 'open-source-unified',
+  engine: 'pdfjs-canonical-source-ir',
 } as const
 
 describe('SourceEvidenceViewer', () => {
   afterEach(() => cleanup())
 
-  it('renders read-only evidence with a clear Apryse diagnostic', () => {
+  it('renders read-only evidence with the open-source viewer', () => {
     render(
       <SourceEvidenceViewer
         zh={false}
@@ -58,9 +47,6 @@ describe('SourceEvidenceViewer', () => {
       />,
     )
 
-    expect(screen.getByRole('alert').getAttribute('data-diagnostic-code')).toBe(
-      'viewer_unavailable',
-    )
     expect(screen.getByTestId('source-evidence-viewer').getAttribute('data-document-kind')).toBe(
       'docx',
     )
@@ -146,29 +132,22 @@ describe('SourceEvidenceViewer', () => {
     ])
   })
 
-  it('resolves DOCX and PDF to a read-only Apryse document-coordinate adapter when configured', () => {
+  it('resolves DOCX and PDF to a read-only open-source document-coordinate adapter', () => {
     expect(
-      resolveSourceEvidenceDocumentAdapter('docx', configuredViewerConfig),
+      resolveSourceEvidenceDocumentAdapter('docx', viewerConfig),
     ).toEqual({
       documentKind: 'docx',
-      provider: 'apryse',
+      provider: 'open_source_unified',
       readOnly: true,
       overlayStrategy: 'document_coordinates',
     })
     expect(
-      resolveSourceEvidenceDocumentAdapter('pdf', configuredViewerConfig),
+      resolveSourceEvidenceDocumentAdapter('pdf', viewerConfig),
     ).toEqual({
       documentKind: 'pdf',
-      provider: 'apryse',
+      provider: 'open_source_unified',
       readOnly: true,
       overlayStrategy: 'document_coordinates',
-    })
-    expect(resolveSourceEvidenceDocumentAdapter('docx', viewerConfig)).toEqual({
-      documentKind: 'docx',
-      provider: 'unavailable',
-      readOnly: true,
-      overlayStrategy: 'unavailable',
-      diagnosticCode: 'viewer_unavailable',
     })
   })
 
@@ -197,7 +176,7 @@ describe('SourceEvidenceViewer', () => {
         zh={false}
         documentName="target.pdf"
         documentKind="pdf"
-        viewerConfig={configuredViewerConfig}
+        viewerConfig={viewerConfig}
         findings={[
           {
             finding_id: 'finding-1',
@@ -210,11 +189,11 @@ describe('SourceEvidenceViewer', () => {
     )
 
     const viewer = screen.getByTestId('source-evidence-viewer')
-    expect(viewer.getAttribute('data-document-adapter-provider')).toBe('apryse')
+    expect(viewer.getAttribute('data-document-adapter-provider')).toBe('open_source_unified')
     expect(viewer.getAttribute('data-overlay-strategy')).toBe(
       'document_coordinates',
     )
-    expect(screen.getByText(/Apryse PDF adapter configured through/)).toBeTruthy()
+    expect(screen.getByText(/Open-source PDF adapter configured through/)).toBeTruthy()
   })
 
   it('requires structured justification before Confirm Change Dismiss actions', () => {

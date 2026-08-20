@@ -46,10 +46,6 @@ test.skip(
   'Set DOCUMENT_INFERENCE_REVIEW_E2E=1 in the F10/release job.',
 )
 test.skip(
-  enabled && !process.env.APRYSE_LICENSE_KEY,
-  'APRYSE_LICENSE_KEY is required for the licensed DOCX/PDF viewer gate.',
-)
-test.skip(
   enabled && (!docxRef || !pdfRef),
   'DOCUMENT_INFERENCE_E2E_DOCX_REF and DOCUMENT_INFERENCE_E2E_PDF_REF are required.',
 )
@@ -135,7 +131,7 @@ async function runDocument(page: Page, fileRef: string, kind: 'docx' | 'pdf') {
   await expect(viewer).toHaveAttribute('data-document-kind', kind)
   await expect(viewer).toHaveAttribute(
     'data-document-adapter-provider',
-    'apryse',
+    'open_source_unified',
   )
   await expect(viewer).toHaveAttribute(
     'data-overlay-strategy',
@@ -181,7 +177,7 @@ async function recordStructuredCorrection(page: Page) {
   ).toBeVisible()
 }
 
-test('licensed Apryse viewer renders DOCX runtime findings with document-coordinate overlays', async ({
+test('open-source unified viewer renders DOCX runtime findings with document-coordinate overlays', async ({
   page,
 }) => {
   await authenticate(page)
@@ -189,7 +185,7 @@ test('licensed Apryse viewer renders DOCX runtime findings with document-coordin
   await recordStructuredCorrection(page)
 })
 
-test('licensed Apryse viewer renders PDF runtime findings with document-coordinate overlays', async ({
+test('open-source unified viewer renders PDF runtime findings with document-coordinate overlays', async ({
   page,
 }) => {
   await authenticate(page)

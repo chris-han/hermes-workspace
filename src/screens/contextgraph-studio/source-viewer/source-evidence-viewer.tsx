@@ -41,7 +41,7 @@ type SourceEvidenceDocumentAdapter = {
     | 'document_coordinates'
     | 'canonical_anchor_projection'
     | 'unavailable'
-  diagnosticCode?: 'viewer_unavailable' | 'unsupported_document_kind'
+  diagnosticCode?: 'unsupported_document_kind'
 }
 
 type DecisionKind = 'confirm' | 'change' | 'dismiss'
@@ -68,7 +68,6 @@ const COPY = {
   en: {
     title: 'Source Evidence Viewer',
     readOnly: 'read-only source',
-    unavailable: 'viewer_unavailable',
     noFinding: 'Select a finding to review its exact source evidence.',
     evidence: 'Evidence',
     provenance: 'Provenance',
@@ -86,7 +85,6 @@ const COPY = {
   zh: {
     title: '来源证据查看器',
     readOnly: '只读来源',
-    unavailable: 'viewer_unavailable',
     noFinding: '选择发现项以审查精确来源证据。',
     evidence: '证据',
     provenance: '出处',

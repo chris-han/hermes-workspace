@@ -31,7 +31,7 @@
   --asimov-muted: #43474e;
   --asimov-quiet: #72787e;
 
-  --asimov-radius-control: 2px;
+  --asimov-radius-control: 3px;
   --asimov-radius-panel: 8px;
   --asimov-border: 1px solid var(--asimov-outline-variant);
 
@@ -616,6 +616,68 @@
   opacity: 0.45;
   cursor: default;
   pointer-events: none;
+}
+
+.semantica-showcase-reference .showcase-ref-edge-toggle {
+  position: relative;
+  width: 88px;
+  height: 34px;
+  padding: 4px;
+  border: 0;
+  border-radius: 999px !important;
+  background: #f1f2f3;
+  color: #43474e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: pointer;
+  font-family: 'Roboto Condensed', 'Arial Narrow', var(--font-ui), sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  box-sizing: border-box;
+  transition: background-color 160ms ease;
+}
+
+.semantica-showcase-reference .showcase-ref-edge-toggle[aria-checked='true'] {
+  background: #e8c92d;
+  color: #ffffff;
+}
+
+.semantica-showcase-reference .showcase-ref-edge-toggle-thumb {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #ffffff;
+  transform: translateY(-50%);
+  transition: transform 180ms ease;
+}
+
+.semantica-showcase-reference .showcase-ref-edge-toggle[aria-checked='true'] .showcase-ref-edge-toggle-thumb {
+  transform: translate(54px, -50%);
+}
+
+.semantica-showcase-reference .showcase-ref-edge-toggle-label {
+  position: absolute;
+  right: 12px;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+  transition: color 160ms ease, left 180ms ease, right 180ms ease;
+}
+
+.semantica-showcase-reference .showcase-ref-edge-toggle[aria-checked='true'] .showcase-ref-edge-toggle-label {
+  left: 10px;
+  right: auto;
+}
+
+.semantica-showcase-reference .showcase-ref-edge-toggle:focus-visible {
+  outline: 2px solid #1a1b1e;
+  outline-offset: 3px;
 }
 
 .semantica-showcase-reference .showcase-ref-canvas-separator {

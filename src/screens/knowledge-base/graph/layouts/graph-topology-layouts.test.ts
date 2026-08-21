@@ -84,4 +84,29 @@ describe('graph-topology-layouts', () => {
     expect(JSON.stringify(baseInput)).toBe(original)
     expect(result.positions.size).toBe(baseInput.nodes.length)
   })
+
+  it('separates disconnected root trees in hierarchical mode', () => {
+    const multiRootInput: GraphTopologyInput = {
+      nodes: [
+        { id: 'Entity', label: 'Entity' },
+        { id: 'Company', label: 'Company' },
+        { id: 'Person', label: 'Person' },
+        { id: 'Relationship', label: 'Relationship' },
+        { id: 'works_on', label: 'works_on' },
+      ],
+      edges: [
+        { id: 'E-C', source: 'Entity', target: 'Company' },
+        { id: 'E-P', source: 'Entity', target: 'Person' },
+        { id: 'R-W', source: 'Relationship', target: 'works_on' },
+      ],
+    }
+
+    const result = computeGraphTopology(multiRootInput, 'hierarchical')
+    const entity = result.positions.get('Entity')
+    const relationship = result.positions.get('Relationship')
+    expect(entity).toBeDefined()
+    expect(relationship).toBeDefined()
+    expect(entity?.y).toBe(relationship?.y)
+    expect(entity?.x).not.toBe(relationship?.x)
+  })
 })

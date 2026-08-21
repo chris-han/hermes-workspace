@@ -181,7 +181,7 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
   const batchResponse = await batchResponsePromise
   expect(batchResponse.ok(), await batchResponse.text()).toBeTruthy()
   const batchPayload = await batchResponse.json() as Record<string, any>
-  expect(batchPayload.authorityState).toBe('human_grounded_not_released')
+  expect(batchPayload.authorityState).toBe('accepted_graph_released')
 
   const releaseResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/api/knowledge/builder/reference-concepts/')

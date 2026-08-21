@@ -40,6 +40,7 @@ export type SigmaGraphReadonlySelection =
 export interface SigmaGraphReadonlyInput {
   nodes: SigmaGraphReadonlyNode[]
   edges: SigmaGraphReadonlyEdge[]
+  renderEdgeLabels?: boolean
   selection?: SigmaGraphReadonlySelection
   highlightedNodeIds?: string[]
   highlightedEdgeIds?: string[]
@@ -88,6 +89,34 @@ function buildReadonlyGraph(input: SigmaGraphReadonlyInput): Graph {
   return graph
 }
 
+function buildRendererSettings(
+  resolveLabelColor: () => string,
+  input: SigmaGraphReadonlyInput,
+) {
+  const showEdgeLabels = input.renderEdgeLabels ?? true
+  return {
+    // Core visibility
+    renderLabels: true,
+    renderEdgeLabels: showEdgeLabels,
+
+    // Label styling (node + edge)
+    labelColor: { color: resolveLabelColor() },
+    edgeLabelColor: { color: resolveLabelColor() },
+    labelSize: 12,
+    edgeLabelSize: 11,
+    labelWeight: '500',
+    edgeLabelWeight: '500',
+
+    // Readability thresholds tuned for dense showcase graphs
+    labelRenderedSizeThreshold: 8,
+    edgeLabelRenderedSizeThreshold: 1,
+
+    // Stable rendering behavior
+    zIndex: true,
+    allowInvalidContainer: true,
+  }
+}
+
 export function SigmaGraphReadonly({
   input,
   onSelect,
@@ -111,12 +140,7 @@ export function SigmaGraphReadonly({
       const themedColor = getComputedStyle(containerRef.current!).getPropertyValue('--asimov-text').trim()
       return themedColor || getComputedStyle(containerRef.current!).color || '#1a1b1e'
     }
-    const renderer = new Sigma(graph, containerRef.current, {
-      renderLabels: true,
-      labelColor: { color: resolveLabelColor() },
-      edgeLabelColor: { color: resolveLabelColor() },
-      allowInvalidContainer: true,
-    })
+    const renderer = new Sigma(graph, containerRef.current, buildRendererSettings(resolveLabelColor, input))
     const syncThemeColors = () => {
       const color = resolveLabelColor()
       renderer.setSetting('labelColor', { color })

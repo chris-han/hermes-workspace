@@ -14,10 +14,12 @@ export function EmbeddingShowcaseView({
   onSelect,
   positions,
   onViewportReady,
+  renderEdgeLabels = false,
 }: {
   input: ShowcaseEmbeddingRendererInput
   selectedItemId?: string
   onSelect: (itemId: string) => void
+  renderEdgeLabels?: boolean
 } & ShowcaseCanvasViewportProps) {
   const ordered = useMemo(
     () => [...input.items].sort((a, b) => a.label.localeCompare(b.label)),
@@ -32,6 +34,7 @@ export function EmbeddingShowcaseView({
           positions={positions ?? input.positions}
           selection={selectionForNode(selectedItemId)}
           ariaLabel="Embedding scatter plot"
+          renderEdgeLabels={renderEdgeLabels}
           onViewportReady={onViewportReady}
           onSelect={handleNodeSelection(onSelect)}
         />

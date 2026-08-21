@@ -115,6 +115,10 @@ export function SemanticaShowcaseScreen() {
   const [ontologyTopology, setOntologyTopology] = useState<GraphTopologyMode>('hierarchical')
   const [embeddingTopology, setEmbeddingTopology] = useState<GraphTopologyMode>('layout')
   const [snTopology, setSnTopology] = useState<GraphTopologyMode>('layout')
+  const [kgEdgeLabels, setKgEdgeLabels] = useState(true)
+  const [ontologyEdgeLabels, setOntologyEdgeLabels] = useState(true)
+  const [embeddingEdgeLabels, setEmbeddingEdgeLabels] = useState(false)
+  const [snEdgeLabels, setSnEdgeLabels] = useState(false)
   const [kgNudgeCount, setKgNudgeCount] = useState(0)
   const [ontologyNudgeCount, setOntologyNudgeCount] = useState(0)
   const [embeddingNudgeCount, setEmbeddingNudgeCount] = useState(0)
@@ -414,6 +418,30 @@ export function SemanticaShowcaseScreen() {
     : mode === 'ontology'
       ? ontologyZoomRatio
       : kgZoomRatio
+  const edgeLabelsEnabled = mode === 'semantic-network'
+    ? snEdgeLabels
+    : mode === 'embedding'
+      ? embeddingEdgeLabels
+      : mode === 'ontology'
+        ? ontologyEdgeLabels
+        : kgEdgeLabels
+  const handleToggleEdgeLabels = useCallback(() => {
+    if (mode === 'knowledge-graph') {
+      setKgEdgeLabels((value) => !value)
+      return
+    }
+    if (mode === 'ontology') {
+      setOntologyEdgeLabels((value) => !value)
+      return
+    }
+    if (mode === 'embedding') {
+      setEmbeddingEdgeLabels((value) => !value)
+      return
+    }
+    if (mode === 'semantic-network') {
+      setSnEdgeLabels((value) => !value)
+    }
+  }, [mode])
   const zoomEnabled = mode === 'knowledge-graph'
     ? Boolean(kgViewportRef.current)
     : mode === 'embedding'
@@ -558,12 +586,15 @@ export function SemanticaShowcaseScreen() {
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
               onFit={handleFit}
+              edgeLabelsEnabled={edgeLabelsEnabled}
+              onToggleEdgeLabels={handleToggleEdgeLabels}
             >
               <KgShowcaseView
                 input={kgAdapter.renderer}
                 onSelect={handleKgSelect}
                 positions={kgPositions}
                 onViewportReady={handleKgViewportReady}
+                renderEdgeLabels={kgEdgeLabels}
               />
             </CenterPanel>
             <RightRail
@@ -616,6 +647,8 @@ export function SemanticaShowcaseScreen() {
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
               onFit={handleFit}
+              edgeLabelsEnabled={edgeLabelsEnabled}
+              onToggleEdgeLabels={handleToggleEdgeLabels}
             >
               <OntologyShowcaseView
                 input={ontologyAdapter.renderer}
@@ -625,6 +658,7 @@ export function SemanticaShowcaseScreen() {
                 onSelect={setOntologySelection}
                 positions={ontologyPositions}
                 onViewportReady={handleOntologyViewportReady}
+                renderEdgeLabels={ontologyEdgeLabels}
               />
             </CenterPanel>
             <RightRail
@@ -676,6 +710,8 @@ export function SemanticaShowcaseScreen() {
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
               onFit={handleFit}
+              edgeLabelsEnabled={edgeLabelsEnabled}
+              onToggleEdgeLabels={handleToggleEdgeLabels}
             >
               <EmbeddingShowcaseView
                 input={embeddingAdapter.renderer}
@@ -683,6 +719,7 @@ export function SemanticaShowcaseScreen() {
                 selectedItemId={embeddingSelection}
                 onSelect={handleEmbeddingSelect}
                 onViewportReady={handleEmbeddingViewportReady}
+                renderEdgeLabels={embeddingEdgeLabels}
               />
             </CenterPanel>
             <RightRail
@@ -735,12 +772,15 @@ export function SemanticaShowcaseScreen() {
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
               onFit={handleFit}
+              edgeLabelsEnabled={edgeLabelsEnabled}
+              onToggleEdgeLabels={handleToggleEdgeLabels}
             >
               <SemanticNetworkShowcaseView
                 input={semanticNetworkAdapter.renderer}
                 onSelect={handleSnSelect}
                 positions={snPositions}
                 onViewportReady={handleSnViewportReady}
+                renderEdgeLabels={snEdgeLabels}
               />
             </CenterPanel>
             <RightRail
@@ -820,6 +860,8 @@ function CenterPanel({
   onZoomIn,
   onZoomOut,
   onFit,
+  edgeLabelsEnabled = true,
+  onToggleEdgeLabels,
 }: {
   children: React.ReactNode
   topology?: GraphTopologyMode
@@ -831,6 +873,8 @@ function CenterPanel({
   onZoomIn?: () => void
   onZoomOut?: () => void
   onFit?: () => void
+  edgeLabelsEnabled?: boolean
+  onToggleEdgeLabels?: () => void
 }) {
   const layoutModes: Array<{ value: GraphTopologyMode; label: string }> = [
     { value: 'force-directed', label: 'Force' },
@@ -874,6 +918,25 @@ function CenterPanel({
             <span className="showcase-ref-canvas-separator" aria-hidden="true" />
             <button type="button" className="is-caps" onClick={onFit} disabled={!zoomEnabled}>FIT</button>
             {onNudge ? <button type="button" className="is-caps" onClick={onNudge}>NUDGE</button> : null}
+            {onToggleEdgeLabels ? (
+              <>
+                <span className="showcase-ref-canvas-label">EDGES</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={edgeLabelsEnabled}
+                  aria-label="Toggle edge labels"
+                  className="showcase-ref-edge-toggle"
+                  onClick={onToggleEdgeLabels}
+                  data-testid="edge-label-toggle"
+                >
+                  <span className="showcase-ref-edge-toggle-thumb" aria-hidden="true" />
+                  <span className="showcase-ref-edge-toggle-label">
+                    {edgeLabelsEnabled ? 'ON' : 'OFF'}
+                  </span>
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}

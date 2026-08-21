@@ -8,9 +8,11 @@ export function SemanticNetworkShowcaseView({
   onSelect,
   positions,
   onViewportReady,
+  renderEdgeLabels = false,
 }: {
   input: ShowcaseSemanticNetworkRendererInput
   onSelect: (selection: SigmaGraphReadonlySelection) => void
+  renderEdgeLabels?: boolean
 } & ShowcaseCanvasViewportProps) {
   return (
     <div className="flex h-full w-full flex-col gap-3" data-testid="semantic-network-showcase-view">
@@ -19,6 +21,7 @@ export function SemanticNetworkShowcaseView({
         positions={positions}
         selection={null}
         ariaLabel="Semantic network showcase"
+        renderEdgeLabels={renderEdgeLabels}
         onSelect={onSelect}
         onViewportReady={onViewportReady}
       />

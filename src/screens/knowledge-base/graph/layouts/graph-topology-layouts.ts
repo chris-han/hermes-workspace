@@ -306,27 +306,83 @@ export function computeGraphTopology(
       })
     }
 
-    const maxDepth = Math.max(0, ...Array.from(layers.values()))
-    const columnMap = new Map<string, number>()
-    nodes.forEach((node) => {
-      const depth = layers.get(node.id) ?? 0
-      const countAtDepth = nodes.filter((candidate) => (layers.get(candidate.id) ?? 0) === depth).length
-      const columnIndex = nodes.filter((candidate) => {
-        const candidateDepth = layers.get(candidate.id) ?? 0
-        return candidateDepth === depth && sortById(candidate.id, node.id) <= 0
-      }).length
-      columnMap.set(node.id, columnIndex)
-      positions.set(node.id, {
-        x: 180 + (columnIndex % Math.max(1, Math.ceil(countAtDepth / 2))) * 180,
-        y: 120 + depth * 150,
-      })
-    })
-
     if (allRoots.length === 0) {
       cyclePolicyApplied = true
       nodes.forEach((node, index) => {
         positions.set(node.id, { x: 180 + (index % 3) * 200, y: 120 + Math.floor(index / 3) * 150 })
       })
+    } else {
+      const xGap = 180
+      const componentGap = 220
+      const paddingX = 120
+      const rootReach = new Map<string, Set<string>>()
+
+      for (const rootId of allRoots) {
+        const visited = new Set<string>([rootId])
+        const queue = [rootId]
+        while (queue.length > 0) {
+          const currentId = queue.shift()!
+          const children = [...(adjacency.get(currentId) ?? new Set())].sort(sortById)
+          for (const childId of children) {
+            if (visited.has(childId)) continue
+            visited.add(childId)
+            queue.push(childId)
+          }
+        }
+        rootReach.set(rootId, visited)
+      }
+
+      const assignedRoot = new Map<string, string>()
+      for (const node of nodes) {
+        const owner = allRoots.find((rootId) => rootReach.get(rootId)?.has(node.id))
+        assignedRoot.set(node.id, owner ?? node.id)
+      }
+
+      const componentRoots = [...allRoots]
+      for (const node of nodes) {
+        const owner = assignedRoot.get(node.id) ?? node.id
+        if (!componentRoots.includes(owner)) {
+          componentRoots.push(owner)
+        }
+      }
+
+      let cursorX = paddingX
+      for (const componentRootId of componentRoots) {
+        const componentNodes = nodes
+          .filter((node) => (assignedRoot.get(node.id) ?? node.id) === componentRootId)
+          .sort((left, right) => {
+            const depthDelta = (layers.get(left.id) ?? 0) - (layers.get(right.id) ?? 0)
+            if (depthDelta !== 0) return depthDelta
+            return sortById(left.id, right.id)
+          })
+        if (componentNodes.length === 0) continue
+
+        const depthBuckets = new Map<number, string[]>()
+        for (const node of componentNodes) {
+          const depth = layers.get(node.id) ?? 0
+          const list = depthBuckets.get(depth) ?? []
+          list.push(node.id)
+          depthBuckets.set(depth, list)
+        }
+
+        const maxBreadth = Math.max(1, ...Array.from(depthBuckets.values()).map((bucket) => bucket.length))
+        const componentWidth = Math.max(xGap, (maxBreadth - 1) * xGap + xGap)
+
+        const orderedDepths = [...depthBuckets.keys()].sort((left, right) => left - right)
+        for (const depth of orderedDepths) {
+          const bucket = [...(depthBuckets.get(depth) ?? [])].sort(sortById)
+          const rowWidth = Math.max(xGap, (bucket.length - 1) * xGap + xGap)
+          const rowStartX = cursorX + (componentWidth - rowWidth) / 2
+          bucket.forEach((nodeId, index) => {
+            positions.set(nodeId, {
+              x: rowStartX + index * xGap,
+              y: 120 + depth * 150,
+            })
+          })
+        }
+
+        cursorX += componentWidth + componentGap
+      }
     }
     coordinateOrigin = 'computed'
   }

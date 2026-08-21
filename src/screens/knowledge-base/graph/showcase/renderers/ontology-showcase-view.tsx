@@ -17,12 +17,14 @@ export function OntologyShowcaseView({
   onSelect,
   positions,
   onViewportReady,
+  renderEdgeLabels = true,
 }: {
   input: ShowcaseOntologyRendererInput
   hierarchy: OntologyHierarchyNode[]
   maxDepth: number
   selectedClassId?: string
   onSelect: (classId: string) => void
+  renderEdgeLabels?: boolean
 } & ShowcaseCanvasViewportProps) {
   const ordered = useMemo(() => sortHierarchy(hierarchy), [hierarchy])
   void maxDepth
@@ -34,6 +36,7 @@ export function OntologyShowcaseView({
         positions={positions ?? input.positions}
         selection={selectionForNode(selectedClassId)}
         ariaLabel="Ontology hierarchy showcase"
+        renderEdgeLabels={renderEdgeLabels}
         onViewportReady={onViewportReady}
         onSelect={handleNodeSelection(onSelect)}
       />

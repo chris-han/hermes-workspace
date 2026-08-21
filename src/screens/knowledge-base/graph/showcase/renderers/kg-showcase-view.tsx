@@ -9,9 +9,11 @@ export function KgShowcaseView({
   onSelect,
   positions,
   onViewportReady,
+  renderEdgeLabels = true,
 }: {
   input: ShowcaseKgRendererInput
   onSelect: (selection: SigmaGraphReadonlySelection) => void
+  renderEdgeLabels?: boolean
 } & ShowcaseCanvasViewportProps) {
   return (
     <div className="flex h-full w-full flex-col gap-3" data-testid="kg-showcase-view">
@@ -20,6 +22,7 @@ export function KgShowcaseView({
         positions={positions}
         selection={null}
         ariaLabel="Knowledge graph showcase"
+        renderEdgeLabels={renderEdgeLabels}
         onSelect={onSelect}
         onViewportReady={onViewportReady}
       />

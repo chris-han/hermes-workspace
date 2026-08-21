@@ -31,6 +31,7 @@ export function ShowcaseSigmaCanvas({
   positions,
   selection,
   ariaLabel,
+  renderEdgeLabels,
   onSelect,
   onViewportReady,
   className,
@@ -39,6 +40,7 @@ export function ShowcaseSigmaCanvas({
   positions?: ShowcaseCanvasPositions
   selection?: SigmaGraphReadonlySelection
   ariaLabel: string
+  renderEdgeLabels?: boolean
   onSelect?: (selection: SigmaGraphReadonlySelection) => void
   onViewportReady?: (controller: SigmaGraphReadonlyViewportController | null) => void
   className?: string
@@ -50,8 +52,9 @@ export function ShowcaseSigmaCanvas({
       positions,
       selection,
       ariaLabel,
+      renderEdgeLabels,
     }),
-    [ariaLabel, model.edges, model.nodes, positions, selection],
+    [ariaLabel, model.edges, model.nodes, positions, renderEdgeLabels, selection],
   )
 
   return (

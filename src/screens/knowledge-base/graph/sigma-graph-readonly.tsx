@@ -8,6 +8,7 @@
  */
 import { useEffect, useRef } from 'react'
 import Graph from 'graphology'
+import { EdgeCurvedArrowProgram, indexParallelEdgesIndex } from '@sigma/edge-curve'
 import Sigma from 'sigma'
 import { createEdgeArrowProgram } from 'sigma/rendering'
 
@@ -45,6 +46,7 @@ export interface SigmaGraphReadonlyInput {
   edges: SigmaGraphReadonlyEdge[]
   renderEdgeLabels?: boolean
   edgeArrows?: boolean
+  edgeCurved?: boolean
   selection?: SigmaGraphReadonlySelection
   highlightedNodeIds?: string[]
   highlightedEdgeIds?: string[]
@@ -85,11 +87,15 @@ function buildReadonlyGraph(input: SigmaGraphReadonlyInput): Graph {
       return
     }
     graph.addEdgeWithKey(edge.id, edge.source, edge.target, {
+      type: input.edgeCurved ? 'curved' : 'arrow',
       label: edge.label ?? '',
       size: edge.size ?? 1,
       color: edge.color ?? '#cbd5e1',
     })
   })
+  if (input.edgeCurved) {
+    indexParallelEdgesIndex(graph)
+  }
   return graph
 }
 
@@ -102,12 +108,16 @@ function buildRendererSettings(
     // Core visibility
     renderLabels: true,
     renderEdgeLabels: showEdgeLabels,
-    edgeProgramClasses: {
-      arrow: createEdgeArrowProgram({
-        lengthToThicknessRatio: 4.0,
-        widenessToThicknessRatio: 2.8,
-      }),
-    },
+    edgeProgramClasses: input.edgeCurved
+      ? {
+          curved: EdgeCurvedArrowProgram,
+        }
+      : {
+          arrow: createEdgeArrowProgram({
+            lengthToThicknessRatio: 4.0,
+            widenessToThicknessRatio: 2.8,
+          }),
+        },
 
     // Label styling (node + edge)
     labelColor: { color: resolveLabelColor() },
@@ -122,7 +132,7 @@ function buildRendererSettings(
     edgeLabelRenderedSizeThreshold: 1,
 
     // Edge direction presentation
-    defaultEdgeType: input.edgeArrows === false ? 'line' : 'arrow',
+    defaultEdgeType: input.edgeCurved ? 'curved' : input.edgeArrows === false ? 'line' : 'arrow',
 
     // Stable rendering behavior
     zIndex: true,
@@ -134,12 +144,14 @@ export function SigmaGraphReadonly({
   input,
   onSelect,
   onViewportReady,
+  onCameraChange,
   className,
   ariaLabel,
 }: {
   input: SigmaGraphReadonlyInput
   onSelect?: (selection: SigmaGraphReadonlySelection) => void
   onViewportReady?: (controller: SigmaGraphReadonlyViewportController | null) => void
+  onCameraChange?: (ratio: number) => void
   className?: string
   ariaLabel?: string
 }) {
@@ -169,14 +181,17 @@ export function SigmaGraphReadonly({
       renderer.on('clickNode', ({ node }) => onSelect({ type: 'node', id: node }))
       renderer.on('clickEdge', ({ edge }) => onSelect({ type: 'edge', id: edge }))
     }
+    const publishCameraRatio = () => onCameraChange?.(renderer.getCamera().getState().ratio)
     const hasCamera = typeof (renderer as { getCamera?: unknown }).getCamera === 'function'
     if (hasCamera) {
+      renderer.getCamera().on('updated', publishCameraRatio)
       onViewportReady?.({
         zoomIn: () => renderer.getCamera().animatedZoom({ duration: 180 }),
         zoomOut: () => renderer.getCamera().animatedUnzoom({ duration: 180 }),
         fit: () => renderer.getCamera().animatedReset({ duration: 220 }),
         getZoomRatio: () => renderer.getCamera().getState().ratio,
       })
+      publishCameraRatio()
     } else {
       onViewportReady?.(null)
     }

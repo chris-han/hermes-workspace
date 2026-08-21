@@ -10,6 +10,7 @@ export function SemanticNetworkShowcaseView({
   positions,
   sigmaControls,
   onViewportReady,
+  onCameraChange,
   renderEdgeLabels = false,
 }: {
   input: ShowcaseSemanticNetworkRendererInput
@@ -28,6 +29,7 @@ export function SemanticNetworkShowcaseView({
         renderEdgeLabels={renderEdgeLabels}
         onSelect={onSelect}
         onViewportReady={onViewportReady}
+        onCameraChange={onCameraChange}
       />
     </div>
   )

@@ -15,6 +15,7 @@ export function EmbeddingShowcaseView({
   positions,
   sigmaControls,
   onViewportReady,
+  onCameraChange,
   renderEdgeLabels = false,
 }: {
   input: ShowcaseEmbeddingRendererInput
@@ -38,6 +39,7 @@ export function EmbeddingShowcaseView({
           ariaLabel="Embedding scatter plot"
           renderEdgeLabels={renderEdgeLabels}
           onViewportReady={onViewportReady}
+          onCameraChange={onCameraChange}
           onSelect={handleNodeSelection(onSelect)}
         />
       </div>

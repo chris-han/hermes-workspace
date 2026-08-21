@@ -93,6 +93,7 @@ export interface SigmaControlState {
   nodeLabels: SigmaNodeLabelMode
   edgeLabels: SigmaEdgeLabelMode
   showProperties: boolean
+  edgeCurved: boolean
   edgeArrows: boolean
   scale: number
 }
@@ -109,6 +110,7 @@ export const DEFAULT_SIGMA_CONTROLS: SigmaControlState = {
   nodeLabels: 'all',
   edgeLabels: 'all',
   showProperties: false,
+  edgeCurved: false,
   edgeArrows: true,
   scale: 50,
 }

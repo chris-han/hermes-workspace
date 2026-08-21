@@ -340,7 +340,7 @@ export function SigmaControls({
                 title="Scale all edge widths proportionally. 50 preserves the source width; 100 doubles it."
               />
               <ToggleControl label="Arrows" checked={controls.edgeArrows} onChange={(value) => update('edgeArrows', value)} />
-              <ToggleControl label="Curved" checked={false} onChange={() => undefined} disabled title="Curved edge program is not registered in the readonly renderer." />
+              <ToggleControl label="Curved" checked={controls.edgeCurved} onChange={(value) => update('edgeCurved', value)} title="Render edges with curved routing on the Sigma canvas." />
             </section>
 
             <section className="sigma-controls-group">
@@ -369,7 +369,7 @@ export function SigmaControls({
                 ]}
               />
               <ToggleControl
-                label="Properties"
+                label="Node detail"
                 checked={controls.showProperties}
                 onChange={(value) => update('showProperties', value)}
                 title="Show node and edge properties directly on the Sigma canvas."

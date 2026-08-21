@@ -18,6 +18,7 @@ export function OntologyShowcaseView({
   positions,
   sigmaControls,
   onViewportReady,
+  onCameraChange,
   renderEdgeLabels = true,
 }: {
   input: ShowcaseOntologyRendererInput
@@ -40,6 +41,7 @@ export function OntologyShowcaseView({
         ariaLabel="Ontology hierarchy showcase"
         renderEdgeLabels={renderEdgeLabels}
         onViewportReady={onViewportReady}
+        onCameraChange={onCameraChange}
         onSelect={handleNodeSelection(onSelect)}
       />
       <div className="sr-only" data-testid="ontology-tree">

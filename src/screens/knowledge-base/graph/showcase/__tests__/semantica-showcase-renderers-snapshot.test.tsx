@@ -65,6 +65,16 @@ describe('KgShowcaseView — W0-03 DOM snapshot baseline', () => {
     expect(getByTestId('kg-showcase-view')).toBeDefined()
     expect(container).toMatchSnapshot()
   })
+
+  it('omits the summary when node detail is disabled', () => {
+    const dataset = introDataset()
+    expect(dataset.kg, 'intro kg payload missing').toBeDefined()
+    const adapter = adaptKgFixture(dataset.kg!)
+    const { queryByTestId } = render(
+      <KgShowcaseView input={adapter.renderer} onSelect={() => undefined} showNodeDetail={false} />,
+    )
+    expect(queryByTestId('kg-showcase-summary')).toBeNull()
+  })
 })
 
 describe('OntologyShowcaseView — W0-03 DOM snapshot baseline', () => {

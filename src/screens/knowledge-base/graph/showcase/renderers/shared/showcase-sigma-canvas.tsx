@@ -17,6 +17,7 @@ export interface ShowcaseCanvasViewportProps {
   positions?: ShowcaseCanvasPositions
   sigmaControls?: SigmaControlState
   onViewportReady?: (controller: SigmaGraphReadonlyViewportController | null) => void
+  onCameraChange?: (ratio: number) => void
 }
 
 export function selectionForNode(nodeId?: string): SigmaGraphReadonlySelection {
@@ -40,6 +41,7 @@ export function ShowcaseSigmaCanvas({
   sigmaControls,
   onSelect,
   onViewportReady,
+  onCameraChange,
   className,
 }: {
   model: ShowcaseGraphModel
@@ -50,6 +52,7 @@ export function ShowcaseSigmaCanvas({
   sigmaControls?: SigmaControlState
   onSelect?: (selection: SigmaGraphReadonlySelection) => void
   onViewportReady?: (controller: SigmaGraphReadonlyViewportController | null) => void
+  onCameraChange?: (ratio: number) => void
   className?: string
 }) {
   const controlledModel = useMemo(
@@ -66,6 +69,7 @@ export function ShowcaseSigmaCanvas({
       renderEdgeLabels:
         sigmaControls?.edgeLabels === 'none' ? false : renderEdgeLabels,
       edgeArrows: sigmaControls?.edgeArrows,
+      edgeCurved: sigmaControls?.edgeCurved,
     }),
     [
       ariaLabel,
@@ -74,17 +78,23 @@ export function ShowcaseSigmaCanvas({
       positions,
       renderEdgeLabels,
       selection,
+      sigmaControls?.showProperties,
+      sigmaControls?.edgeCurved,
       sigmaControls?.edgeArrows,
       sigmaControls?.edgeLabels,
     ],
   )
 
+  const canvasKey = sigmaControls ? `properties-${sigmaControls.showProperties ? 'on' : 'off'}` : 'properties-off'
+
   return (
     <SigmaGraphReadonly
+      key={canvasKey}
       input={readonlyInput}
       className={className ?? 'min-h-0 flex-1 w-full bg-transparent'}
       onSelect={onSelect}
       onViewportReady={onViewportReady}
+      onCameraChange={onCameraChange}
     />
   )
 }

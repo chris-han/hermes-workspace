@@ -11,12 +11,15 @@ export function KgShowcaseView({
   positions,
   sigmaControls,
   onViewportReady,
+  onCameraChange,
   renderEdgeLabels = true,
+  showNodeDetail = true,
 }: {
   input: ShowcaseKgRendererInput
   onSelect: (selection: SigmaGraphReadonlySelection) => void
   selection?: SigmaGraphReadonlySelection
   renderEdgeLabels?: boolean
+  showNodeDetail?: boolean
 } & ShowcaseCanvasViewportProps) {
   return (
     <div className="flex h-full w-full flex-col gap-3" data-testid="kg-showcase-view">
@@ -29,8 +32,9 @@ export function KgShowcaseView({
         renderEdgeLabels={renderEdgeLabels}
         onSelect={onSelect}
         onViewportReady={onViewportReady}
+        onCameraChange={onCameraChange}
       />
-      <InspectorSummary fields={input.inspector.fields} />
+      {showNodeDetail ? <InspectorSummary fields={input.inspector.fields} /> : null}
     </div>
   )
 }

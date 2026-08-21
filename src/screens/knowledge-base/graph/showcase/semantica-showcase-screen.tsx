@@ -337,9 +337,17 @@ export function SemanticaShowcaseScreen() {
     setKgZoomRatio(toDisplayZoom(controller?.getZoomRatio() ?? 1))
   }, [])
 
+  const handleKgCameraChange = useCallback((ratio: number) => {
+    setKgZoomRatio(toDisplayZoom(ratio))
+  }, [])
+
   const handleSnViewportReady = useCallback((controller: SigmaGraphReadonlyViewportController | null) => {
     snViewportRef.current = controller
     setSnZoomRatio(toDisplayZoom(controller?.getZoomRatio() ?? 1))
+  }, [])
+
+  const handleSnCameraChange = useCallback((ratio: number) => {
+    setSnZoomRatio(toDisplayZoom(ratio))
   }, [])
 
   const handleOntologyViewportReady = useCallback((controller: SigmaGraphReadonlyViewportController | null) => {
@@ -347,9 +355,17 @@ export function SemanticaShowcaseScreen() {
     setOntologyZoomRatio(toDisplayZoom(controller?.getZoomRatio() ?? 1))
   }, [])
 
+  const handleOntologyCameraChange = useCallback((ratio: number) => {
+    setOntologyZoomRatio(toDisplayZoom(ratio))
+  }, [])
+
   const handleEmbeddingViewportReady = useCallback((controller: SigmaGraphReadonlyViewportController | null) => {
     embeddingViewportRef.current = controller
     setEmbeddingZoomRatio(toDisplayZoom(controller?.getZoomRatio() ?? 1))
+  }, [])
+
+  const handleEmbeddingCameraChange = useCallback((ratio: number) => {
+    setEmbeddingZoomRatio(toDisplayZoom(ratio))
   }, [])
 
   const handleZoomIn = useCallback(() => {
@@ -629,7 +645,9 @@ export function SemanticaShowcaseScreen() {
                 positions={kgPositions}
                 sigmaControls={sigmaControls}
                 onViewportReady={handleKgViewportReady}
+                onCameraChange={handleKgCameraChange}
                 renderEdgeLabels={kgEdgeLabels}
+                showNodeDetail={sigmaControls.showProperties}
               />
             </CenterPanel>
             <RightRail
@@ -696,6 +714,7 @@ export function SemanticaShowcaseScreen() {
                 positions={ontologyPositions}
                 sigmaControls={sigmaControls}
                 onViewportReady={handleOntologyViewportReady}
+                onCameraChange={handleOntologyCameraChange}
                 renderEdgeLabels={ontologyEdgeLabels}
               />
             </CenterPanel>
@@ -760,6 +779,7 @@ export function SemanticaShowcaseScreen() {
                 selectedItemId={embeddingSelection}
                 onSelect={handleEmbeddingSelect}
                 onViewportReady={handleEmbeddingViewportReady}
+                onCameraChange={handleEmbeddingCameraChange}
                 renderEdgeLabels={embeddingEdgeLabels}
               />
             </CenterPanel>
@@ -825,6 +845,7 @@ export function SemanticaShowcaseScreen() {
                 positions={snPositions}
                 sigmaControls={sigmaControls}
                 onViewportReady={handleSnViewportReady}
+                onCameraChange={handleSnCameraChange}
                 renderEdgeLabels={snEdgeLabels}
               />
             </CenterPanel>

@@ -60,6 +60,12 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
     expect(metrics.textContent).toMatch(/Entity types/)
   })
 
+  it('keeps the side inspector visible when the canvas node-detail toggle is off', () => {
+    renderWithProviders(<SemanticaShowcaseScreen />)
+    const inspector = screen.getByTestId('inspector-fields')
+    expect(inspector.textContent).toMatch(/Selection/)
+  })
+
   it('switches to the Ontology view and renders class nodes', () => {
     renderWithProviders(<SemanticaShowcaseScreen />)
     fireEvent.click(screen.getByTestId('showcase-tab-ontology'))

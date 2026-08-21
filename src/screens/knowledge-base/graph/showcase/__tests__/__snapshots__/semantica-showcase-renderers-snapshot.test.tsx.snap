@@ -54,13 +54,17 @@ exports[`EmbeddingShowcaseView — W0-03 DOM snapshot baseline > renders the pin
 exports[`KgShowcaseView — W0-03 DOM snapshot baseline > renders the pinned intro fixture with the expected testids and summary 1`] = `
 <div>
   <div
-    class="relative h-full w-full"
+    class="relative flex h-full min-h-0 w-full"
     data-testid="kg-showcase-view"
   >
     <div
       aria-label="Knowledge graph showcase"
       class="min-h-0 flex-1 w-full bg-transparent"
       role="application"
+    />
+    <div
+      aria-hidden="true"
+      class="showcase-ref-floating-detail-wrap"
     />
   </div>
 </div>

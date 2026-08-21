@@ -22,7 +22,7 @@ export function KgShowcaseView({
   showNodeDetail?: boolean
 } & ShowcaseCanvasViewportProps) {
   return (
-    <div className="flex h-full w-full flex-col gap-3" data-testid="kg-showcase-view">
+    <div className="relative flex h-full min-h-0 w-full" data-testid="kg-showcase-view">
       <ShowcaseSigmaCanvas
         model={input.model}
         positions={positions}
@@ -34,7 +34,11 @@ export function KgShowcaseView({
         onViewportReady={onViewportReady}
         onCameraChange={onCameraChange}
       />
-      {showNodeDetail ? <InspectorSummary fields={input.inspector.fields} /> : null}
+      {showNodeDetail ? (
+        <div className="showcase-ref-floating-detail-wrap" aria-hidden="true">
+          <InspectorSummary fields={input.inspector.fields} />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -45,12 +49,13 @@ function InspectorSummary({ fields }: { fields: ShowcaseInspectorField[] }) {
   }
   return (
     <div
-      className="rounded-md border border-border bg-card/60 px-3 py-2 font-mono text-xs text-muted-foreground"
+      className="showcase-ref-floating-detail rounded-md border border-border bg-card/60 px-3 py-2 font-mono text-xs text-muted-foreground"
       data-testid="kg-showcase-summary"
     >
       {fields.map((field) => (
-        <div key={field.label}>
-          <span className="text-foreground/70">{field.label}:</span> {field.value}
+        <div key={field.label} className="showcase-ref-floating-detail-row">
+          <span className="showcase-ref-floating-detail-label">{field.label}</span>
+          <span className="showcase-ref-floating-detail-value">{field.value}</span>
         </div>
       ))}
     </div>

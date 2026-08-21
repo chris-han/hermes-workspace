@@ -1,0 +1,108 @@
+// @vitest-environment jsdom
+
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+// Mock the Sigma renderer so jsdom does not need to provide WebGL2. The
+// showcase shell contract is what we are verifying here, not the Sigma
+// rendering output (which is exercised by Playwright against a real browser).
+vi.mock('sigma', () => ({
+  default: class FakeSigma {
+    on() {
+      return this
+    }
+    kill() {
+      return this
+    }
+  },
+}))
+
+import { cleanup, render, screen, fireEvent, within } from '@testing-library/react'
+
+import { SemanticaShowcaseScreen } from '../semantica-showcase-screen'
+
+afterEach(() => {
+  cleanup()
+})
+
+describe('SemanticaShowcaseScreen — shell structure', () => {
+  it('renders the four visualization tabs with the expected labels', () => {
+    render(<SemanticaShowcaseScreen />)
+    const tablist = screen.getByTestId('semantica-showcase-screen')
+    expect(tablist).toBeDefined()
+    expect(screen.getByTestId('showcase-tab-knowledge-graph').textContent).toBe('Knowledge Graph')
+    expect(screen.getByTestId('showcase-tab-ontology').textContent).toBe('Ontology')
+    expect(screen.getByTestId('showcase-tab-embedding').textContent).toBe('Embedding')
+    expect(screen.getByTestId('showcase-tab-semantic-network').textContent).toBe('Semantic Network')
+  })
+
+  it('renders the Knowledge Graph view by default with the metric cards', () => {
+    render(<SemanticaShowcaseScreen />)
+    expect(screen.getByTestId('kg-showcase-view')).toBeDefined()
+    const metrics = screen.getByTestId('metric-cards')
+    expect(metrics.textContent).toMatch(/Nodes/)
+    expect(metrics.textContent).toMatch(/Edges/)
+    expect(metrics.textContent).toMatch(/Entity types/)
+  })
+
+  it('switches to the Ontology view and renders class nodes', () => {
+    render(<SemanticaShowcaseScreen />)
+    fireEvent.click(screen.getByTestId('showcase-tab-ontology'))
+    expect(screen.getByTestId('ontology-showcase-view')).toBeDefined()
+    expect(screen.getByTestId('ontology-class-Organization')).toBeDefined()
+    expect(screen.getByTestId('ontology-class-Relationship')).toBeDefined()
+  })
+
+  it('selects an ontology class and surfaces the class fields in the inspector', () => {
+    render(<SemanticaShowcaseScreen />)
+    fireEvent.click(screen.getByTestId('showcase-tab-ontology'))
+    fireEvent.click(screen.getByTestId('ontology-class-Organization'))
+    const inspector = screen.getByTestId('inspector-fields')
+    expect(inspector.textContent).toMatch(/Organization/)
+    expect(inspector.textContent).toMatch(/entity-type/)
+  })
+
+  it('switches to the Embedding view and renders the offline disclosure', () => {
+    render(<SemanticaShowcaseScreen />)
+    fireEvent.click(screen.getByTestId('showcase-tab-embedding'))
+    expect(screen.getByTestId('embedding-showcase-view')).toBeDefined()
+    const disclosure = screen.getByTestId('embedding-offline-disclosure')
+    expect(disclosure.textContent).toMatch(/frozen/i)
+    expect(screen.getByTestId('embedding-point-Apple')).toBeDefined()
+  })
+
+  it('selects an embedding point and surfaces label, source text, and coordinates', () => {
+    render(<SemanticaShowcaseScreen />)
+    fireEvent.click(screen.getByTestId('showcase-tab-embedding'))
+    fireEvent.click(screen.getByTestId('embedding-point-Apple'))
+    const inspector = screen.getByTestId('inspector-fields')
+    expect(inspector.textContent).toMatch(/Apple/)
+    expect(inspector.textContent).toMatch(/Apple Inc\./)
+    expect(inspector.textContent).toMatch(/\d+\.\d+/)
+  })
+
+  it('switches to the Semantic Network view and shows type distribution chips', () => {
+    render(<SemanticaShowcaseScreen />)
+    fireEvent.click(screen.getByTestId('showcase-tab-semantic-network'))
+    expect(screen.getByTestId('semantic-network-showcase-view')).toBeDefined()
+    expect(screen.getByTestId('sn-node-types').textContent).toMatch(/Language/)
+    expect(screen.getByTestId('sn-node-types').textContent).toMatch(/Concept/)
+    expect(screen.getByTestId('sn-edge-types').textContent).toMatch(/writes/)
+  })
+
+  it('exposes the dataset selector with the registered dataset id', () => {
+    render(<SemanticaShowcaseScreen />)
+    const selector = screen.getByTestId('dataset-selector') as HTMLSelectElement
+    expect(selector).toBeDefined()
+    const options = within(selector).getAllByRole('option')
+    expect(options.length).toBeGreaterThan(0)
+    expect(selector.value).toBe('intro-cookbook-kg')
+  })
+
+  it('renders the bottom status bar with the fixture provenance', () => {
+    render(<SemanticaShowcaseScreen />)
+    const status = screen.getByTestId('showcase-status-bar')
+    expect(status.textContent).toMatch(/intro-cookbook-kg/)
+    expect(status.textContent).toMatch(/semantica@/)
+    expect(status.textContent).toMatch(/offline/)
+  })
+})

@@ -14,6 +14,7 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SessionEventsRouteImport } from './routes/session-events'
+import { Route as SemanticaShowcaseRouteImport } from './routes/semantica-showcase'
 import { Route as ProfilesRouteImport } from './routes/profiles'
 import { Route as OrchestratorRouteImport } from './routes/orchestrator'
 import { Route as MemoryRouteImport } from './routes/memory'
@@ -164,6 +165,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const SessionEventsRoute = SessionEventsRouteImport.update({
   id: '/session-events',
   path: '/session-events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SemanticaShowcaseRoute = SemanticaShowcaseRouteImport.update({
+  id: '/semantica-showcase',
+  path: '/semantica-showcase',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfilesRoute = ProfilesRouteImport.update({
@@ -831,6 +837,7 @@ export interface FileRoutesByFullPath {
   '/memory': typeof MemoryRoute
   '/orchestrator': typeof OrchestratorRoute
   '/profiles': typeof ProfilesRoute
+  '/semantica-showcase': typeof SemanticaShowcaseRoute
   '/session-events': typeof SessionEventsRoute
   '/settings': typeof SettingsRouteWithChildren
   '/skills': typeof SkillsRoute
@@ -964,6 +971,7 @@ export interface FileRoutesByTo {
   '/memory': typeof MemoryRoute
   '/orchestrator': typeof OrchestratorRoute
   '/profiles': typeof ProfilesRoute
+  '/semantica-showcase': typeof SemanticaShowcaseRoute
   '/session-events': typeof SessionEventsRoute
   '/skills': typeof SkillsRoute
   '/tasks': typeof TasksRoute
@@ -1097,6 +1105,7 @@ export interface FileRoutesById {
   '/memory': typeof MemoryRoute
   '/orchestrator': typeof OrchestratorRoute
   '/profiles': typeof ProfilesRoute
+  '/semantica-showcase': typeof SemanticaShowcaseRoute
   '/session-events': typeof SessionEventsRoute
   '/settings': typeof SettingsRouteWithChildren
   '/skills': typeof SkillsRoute
@@ -1232,6 +1241,7 @@ export interface FileRouteTypes {
     | '/memory'
     | '/orchestrator'
     | '/profiles'
+    | '/semantica-showcase'
     | '/session-events'
     | '/settings'
     | '/skills'
@@ -1365,6 +1375,7 @@ export interface FileRouteTypes {
     | '/memory'
     | '/orchestrator'
     | '/profiles'
+    | '/semantica-showcase'
     | '/session-events'
     | '/skills'
     | '/tasks'
@@ -1497,6 +1508,7 @@ export interface FileRouteTypes {
     | '/memory'
     | '/orchestrator'
     | '/profiles'
+    | '/semantica-showcase'
     | '/session-events'
     | '/settings'
     | '/skills'
@@ -1631,6 +1643,7 @@ export interface RootRouteChildren {
   MemoryRoute: typeof MemoryRoute
   OrchestratorRoute: typeof OrchestratorRoute
   ProfilesRoute: typeof ProfilesRoute
+  SemanticaShowcaseRoute: typeof SemanticaShowcaseRoute
   SessionEventsRoute: typeof SessionEventsRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   SkillsRoute: typeof SkillsRoute
@@ -1751,6 +1764,13 @@ declare module '@tanstack/react-router' {
       path: '/session-events'
       fullPath: '/session-events'
       preLoaderRoute: typeof SessionEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/semantica-showcase': {
+      id: '/semantica-showcase'
+      path: '/semantica-showcase'
+      fullPath: '/semantica-showcase'
+      preLoaderRoute: typeof SemanticaShowcaseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profiles': {
@@ -2812,6 +2832,7 @@ const rootRouteChildren: RootRouteChildren = {
   MemoryRoute: MemoryRoute,
   OrchestratorRoute: OrchestratorRoute,
   ProfilesRoute: ProfilesRoute,
+  SemanticaShowcaseRoute: SemanticaShowcaseRoute,
   SessionEventsRoute: SessionEventsRoute,
   SettingsRoute: SettingsRouteWithChildren,
   SkillsRoute: SkillsRoute,

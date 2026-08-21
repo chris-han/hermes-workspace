@@ -1,0 +1,25 @@
+{
+  "items": [
+    {
+      "id": "emb-0",
+      "label": "Apple",
+      "text": "Apple Inc.",
+      "x": 0.960303,
+      "y": 0.146148
+    },
+    {
+      "id": "emb-1",
+      "label": "Microsoft",
+      "text": "Microsoft Corporation",
+      "x": 0.188103,
+      "y": -0.394286
+    },
+    {
+      "id": "emb-2",
+      "label": "Amazon",
+      "text": "Amazon",
+      "x": -0.172366,
+      "y": -0.878683
+    }
+  ]
+}

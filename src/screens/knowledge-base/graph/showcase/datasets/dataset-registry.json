@@ -1,0 +1,23 @@
+{
+  "datasets": [
+    {
+      "datasetId": "intro-cookbook-kg",
+      "description": "Apple Inc. / Tim Cook sample from Semantica introductory notebook Step 1.",
+      "displayName": "Semantica Intro · Knowledge Graph",
+      "files": {
+        "embedding.json": "437a45b49269eb27a0963e7e5377f0ca3008906abb8bbb95d761a52e0060baff",
+        "kg.json": "d2c7f70a4e80e23f713f98695f533a2d302b038d3b95f4b8389c9cc78d537d31",
+        "ontology.json": "ef92ecec54ee89c72008091207dc44114b1e2803f5016f434ba09ed39e228baa",
+        "semantic-network.json": "b6c843143108b4cd89f685d05cb966b185f19d8a5683421f33637cb8ba7d903f"
+      },
+      "fixturePath": "datasets/intro-cookbook-kg",
+      "manifestSha256": "08a9cade38d6f06577b15b9ad41121ff4997a1a76ff8cbc313bc65e9451be457"
+    }
+  ],
+  "generationToolVersion": "1.0.0",
+  "notebookPath": "third_party/semantica/cookbook/introduction/16_Visualization.ipynb",
+  "notebookSha256": "d678c0394ccc5c9f25b6c6c301dc321488beb93f2e8df231aa1953c9284b0c10",
+  "registrySha256": "17b33548829d163f9a000ab6a64875ee5b106fbf1d15d206885ec43df0458426",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "version": 1
+}

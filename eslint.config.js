@@ -101,5 +101,46 @@ export default [
       ],
     },
   },
+  // Semantica showcase subtree (W0–W6) MUST stay a read-only data path.
+  // Direct or transitive imports of the live graph client, governed
+  // projection stores/selectors, runtime graph hooks, or proxy clients
+  // are forbidden by ESLint in addition to the runtime Vitest guard.
+  {
+    files: [
+      'src/screens/knowledge-base/graph/showcase/**/*.ts',
+      'src/screens/knowledge-base/graph/showcase/**/*.tsx',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '../graph-api-client',
+              message:
+                'Showcase subtree must not import the live graph-api-client. Use showcase adapters/fixtures only.',
+            },
+            {
+              name: '../graph-types',
+              message:
+                'Showcase subtree must not import the live GovernedGraphProjection types. Use showcase/semantica-showcase-types.',
+            },
+            {
+              name: '../../graph-api-client',
+              message:
+                'Showcase subtree must not import the live graph-api-client.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@/routes/api/*', '@/api/*'],
+              message:
+                'Showcase subtree must not import live API clients. Stay offline.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   ...hermesConfig,
 ]

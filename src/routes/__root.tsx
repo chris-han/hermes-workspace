@@ -259,7 +259,8 @@ function RootLayout() {
   const isPublicSurface =
     pathname === '/' ||
     pathname === '/DesignSystemDemo' ||
-    pathname === '/DesignSystemGallery'
+    pathname === '/DesignSystemGallery' ||
+    pathname === '/semantica-showcase'
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(
     null,
   )

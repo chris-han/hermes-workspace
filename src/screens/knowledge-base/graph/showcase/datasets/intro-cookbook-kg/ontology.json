@@ -1,0 +1,53 @@
+{
+  "classes": [
+    {
+      "id": "class:Organization",
+      "instanceCount": 1,
+      "kind": "entity-type",
+      "label": "Organization",
+      "parent": "class:Entity"
+    },
+    {
+      "id": "class:Person",
+      "instanceCount": 1,
+      "kind": "entity-type",
+      "label": "Person",
+      "parent": "class:Entity"
+    },
+    {
+      "id": "class:Entity",
+      "instanceCount": 2,
+      "kind": "root",
+      "label": "Entity",
+      "parent": null
+    },
+    {
+      "id": "class:Relationship:CEO_of",
+      "instanceCount": 1,
+      "kind": "relationship-type",
+      "label": "CEO_of",
+      "parent": "class:Relationship"
+    },
+    {
+      "id": "class:Relationship",
+      "instanceCount": 1,
+      "kind": "root",
+      "label": "Relationship",
+      "parent": null
+    }
+  ],
+  "properties": [
+    {
+      "domain": "class:Relationship:CEO_of",
+      "id": "prop:CEO_of:domain",
+      "label": "domain",
+      "range": "class:Person"
+    },
+    {
+      "domain": "class:Relationship:CEO_of",
+      "id": "prop:CEO_of:range",
+      "label": "range",
+      "range": "class:Organization"
+    }
+  ]
+}

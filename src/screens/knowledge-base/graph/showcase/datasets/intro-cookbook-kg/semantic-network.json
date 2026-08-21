@@ -1,0 +1,22 @@
+{
+  "edges": [
+    {
+      "id": "sn-rel-n1-n2-writes",
+      "label": "writes",
+      "source": "n1",
+      "target": "n2"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n1",
+      "label": "Python",
+      "type": "Language"
+    },
+    {
+      "id": "n2",
+      "label": "Code",
+      "type": "Concept"
+    }
+  ]
+}

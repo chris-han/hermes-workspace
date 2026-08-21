@@ -1,0 +1,25 @@
+{
+  "entities": [
+    {
+      "id": "e1",
+      "name": "Apple Inc.",
+      "properties": {},
+      "type": "Organization"
+    },
+    {
+      "id": "e2",
+      "name": "Tim Cook",
+      "properties": {},
+      "type": "Person"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "kg-rel-e2-e1-ceo_of",
+      "properties": {},
+      "source": "e2",
+      "target": "e1",
+      "type": "CEO_of"
+    }
+  ]
+}

@@ -28,6 +28,7 @@ export default defineConfig({
       'src/routes/-knowledge-base.test.tsx',
     ],
     environment: 'node',
+    setupFiles: ['./test-setup/webgl2-stub.ts'],
     pool: 'threads',
     poolOptions: {
       threads: {

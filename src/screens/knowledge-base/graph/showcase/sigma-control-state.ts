@@ -5,10 +5,34 @@ import type { GraphTopologyMode } from '../layouts/graph-topology-layouts'
 export type SigmaDirection = 'LR' | 'RL' | 'TB' | 'BT'
 export type SigmaFocusMode = 'entire' | 'neighbors' | 'two-hop' | 'incoming' | 'outgoing'
 export type SigmaNodeSizeMode = 'degree' | 'uniform'
-export type SigmaNodeColorMode = 'semantic' | 'uniform'
+export type SigmaNodeColorMode = 'semantic' | 'asimov' | 'uniform'
 export type SigmaEdgeColorMode = 'semantic' | 'uniform'
 export type SigmaNodeLabelMode = 'all' | 'selected' | 'none'
 export type SigmaEdgeLabelMode = 'all' | 'selected' | 'neighborhood' | 'none'
+
+export const ASIMOV_VISUALIZATION_SWATCHES = [
+  '#ff4d00',
+  '#ff8040',
+  '#ff1a5e',
+  '#9fe870',
+  '#5fd43a',
+  '#d9b32d',
+  '#ffe566',
+  '#8fb8ff',
+  '#4a7fe8',
+  '#ffc5d7',
+  '#1c1a2e',
+  '#f7f3ed',
+] as const
+
+function stableNodeSwatch(nodeId: string): string {
+  let hash = 2166136261
+  for (let index = 0; index < nodeId.length; index += 1) {
+    hash ^= nodeId.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return ASIMOV_VISUALIZATION_SWATCHES[(hash >>> 0) % ASIMOV_VISUALIZATION_SWATCHES.length]
+}
 
 export interface SigmaControlState {
   direction: SigmaDirection
@@ -144,13 +168,19 @@ export function applySigmaModelControls(
   const nodes = visibleNodes.map((node) => {
     const showLabel = controls.nodeLabels === 'all'
       || (controls.nodeLabels === 'selected' && selectedNeighbors.has(node.id))
+    const color = controls.nodeColor === 'semantic'
+      ? node.color
+      : controls.nodeColor === 'asimov'
+        ? stableNodeSwatch(node.id)
+        : '#72787e'
+
     return {
       ...node,
       label: showLabel ? node.label : '',
       size: controls.nodeSize === 'uniform'
         ? 10
         : Math.min(20, 8 + Math.sqrt(degree.get(node.id) ?? 0) * 3),
-      color: controls.nodeColor === 'uniform' ? '#72787e' : node.color,
+      color,
     }
   })
 

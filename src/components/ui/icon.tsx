@@ -87,6 +87,10 @@ import {
   PuzzlePiece,
   UsersThree,
   List,
+  Link,
+  Camera,
+  CornersOut,
+  User,
 } from '@phosphor-icons/react'
 
 /**
@@ -177,4 +181,8 @@ export {
   PuzzlePiece,
   UsersThree,
   List,
+  Link,
+  Camera,
+  CornersOut,
+  User,
 }

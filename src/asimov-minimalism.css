@@ -1,0 +1,780 @@
+/*
+ * Asimov Minimalism
+ *
+ * Migration layer for the next authenticated-workspace visual system.
+ * Loaded after legacy styles.css so screens can opt in incrementally by adding
+ * `.asimov-minimalism` at their screen root. The Semantica showcase is the first
+ * adopter and the paired light/dark showcase HTML files are the initial visual
+ * ground truth for these tokens.
+ *
+ * Migration intent:
+ *   1. New/refactored screens opt into .asimov-minimalism.
+ *   2. Shared primitives migrate from legacy theme tokens to --asimov-* tokens.
+ *   3. When all authenticated screens are migrated, this file can become the
+ *      primary global stylesheet and the legacy global theme layer can retire.
+ */
+
+.asimov-minimalism {
+  --asimov-brand: #9fe870;
+  --asimov-brand-dim: rgba(159, 232, 112, 0.2);
+
+  --asimov-canvas: #f3f4f5;
+  --asimov-surface: #f8f9fa;
+  --asimov-panel: #ffffff;
+  --asimov-recessed: #ebebec;
+  --asimov-dim: #d9dadb;
+
+  --asimov-outline: #72787e;
+  --asimov-outline-variant: #c2c7ce;
+
+  --asimov-text: #1a1b1e;
+  --asimov-muted: #43474e;
+  --asimov-quiet: #72787e;
+
+  --asimov-radius-control: 4px;
+  --asimov-radius-panel: 8px;
+  --asimov-border: 1px solid var(--asimov-outline-variant);
+
+  background: var(--asimov-canvas);
+  color: var(--asimov-text);
+  font-family: var(--font-ui), Manrope, 'Noto Sans SC', sans-serif;
+  font-feature-settings: 'calt' 1;
+}
+
+[data-theme='semantier'] .asimov-minimalism,
+.dark .asimov-minimalism {
+  --asimov-canvas: #1a1b1e;
+  --asimov-surface: #191c1d;
+  --asimov-panel: #191c1d;
+  --asimov-recessed: #2e3132;
+  --asimov-dim: #2e3132;
+
+  --asimov-outline: #72787e;
+  --asimov-outline-variant: #43474e;
+
+  --asimov-text: #ffffff;
+  --asimov-muted: #c2c7ce;
+  --asimov-quiet: #72787e;
+}
+
+.asimov-minimalism .asimov-panel {
+  min-width: 0;
+  min-height: 0;
+  background: var(--asimov-panel);
+  color: var(--asimov-text);
+  border: var(--asimov-border);
+  border-radius: var(--asimov-radius-panel);
+  box-shadow: none !important;
+}
+
+.asimov-minimalism .asimov-recessed {
+  background: var(--asimov-recessed);
+  border: var(--asimov-border);
+  border-radius: var(--asimov-radius-control);
+  box-shadow: none !important;
+}
+
+.asimov-minimalism .asimov-machine-label {
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--asimov-muted);
+}
+
+.asimov-minimalism .asimov-machine-value {
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--asimov-text);
+}
+
+.asimov-minimalism :is(button, [role='button'], [role='tab']) {
+  box-shadow: none !important;
+}
+
+.asimov-minimalism ::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.asimov-minimalism ::-webkit-scrollbar-track { background: transparent; }
+.asimov-minimalism ::-webkit-scrollbar-thumb {
+  background: var(--asimov-outline-variant);
+  border-radius: 2px;
+}
+.asimov-minimalism ::-webkit-scrollbar-thumb:hover { background: var(--asimov-outline); }
+
+/* --------------------------------------------------------------------------
+ * Semantica Showcase — first Asimov Minimalism adopter.
+ * The paired reference HTML owns the visual composition, palette, density,
+ * panel geometry and chrome hierarchy. Renderer semantics remain Semantica's.
+ * ----------------------------------------------------------------------- */
+
+.semantica-showcase-reference {
+  background: var(--asimov-canvas);
+  color: var(--asimov-text);
+}
+
+.semantica-showcase-reference .showcase-ref-header {
+  flex: none;
+  min-height: 56px;
+  background: var(--asimov-panel);
+  border-bottom: var(--asimov-border);
+  color: var(--asimov-text);
+}
+
+.semantica-showcase-reference .showcase-ref-header h1 {
+  font-size: 14px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.semantica-showcase-reference .showcase-ref-header p {
+  color: var(--asimov-muted) !important;
+  font-size: 10px;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.semantica-showcase-reference .showcase-ref-tabs {
+  gap: 0;
+  min-height: 0;
+}
+
+.semantica-showcase-reference .showcase-ref-tabs-list {
+  width: 100%;
+  min-height: 40px;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0 16px;
+  background: var(--asimov-panel);
+  border-bottom: var(--asimov-border);
+  color: var(--asimov-muted);
+}
+
+.semantica-showcase-reference .showcase-ref-tabs-list [data-slot='tabs-tab'] {
+  height: 40px;
+  padding: 0 8px;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--asimov-muted);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.semantica-showcase-reference .showcase-ref-tabs-list [data-slot='tabs-tab'][data-active] {
+  color: var(--asimov-text);
+}
+
+.semantica-showcase-reference .showcase-ref-tabs-list [data-slot='tab-indicator'] {
+  height: 4px;
+  background: var(--asimov-brand);
+}
+
+.semantica-showcase-reference .showcase-ref-grid {
+  display: grid;
+  grid-template-columns: 288px minmax(0, 1fr) 320px;
+  gap: 8px;
+  min-height: 0;
+  padding: 8px;
+  background: var(--asimov-canvas);
+  overflow: hidden;
+}
+
+.semantica-showcase-reference .showcase-ref-panel {
+  min-width: 0;
+  min-height: 0;
+  background: var(--asimov-panel);
+  color: var(--asimov-text);
+  border: var(--asimov-border);
+  border-radius: var(--asimov-radius-panel);
+  box-shadow: none !important;
+}
+
+.semantica-showcase-reference .showcase-ref-center {
+  background: var(--asimov-recessed);
+  position: relative;
+  overflow: hidden;
+}
+
+.semantica-showcase-reference .showcase-ref-recessed {
+  background: var(--asimov-recessed);
+  border: var(--asimov-border);
+  border-radius: var(--asimov-radius-control);
+  box-shadow: none !important;
+}
+
+.semantica-showcase-reference .text-muted-foreground,
+.semantica-showcase-reference [class*='text-muted-foreground'] {
+  color: var(--asimov-muted) !important;
+}
+
+.semantica-showcase-reference .showcase-ref-dataset {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.semantica-showcase-reference .showcase-ref-dataset .theme-native-select {
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 28px 6px 8px;
+  border: var(--asimov-border);
+  border-radius: var(--asimov-radius-control);
+  background: var(--asimov-recessed);
+  color: var(--asimov-text);
+  box-shadow: none !important;
+  font-family: var(--font-ui), Manrope, 'Noto Sans SC', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.semantica-showcase-reference .showcase-ref-dataset .theme-native-select:focus {
+  border-color: var(--asimov-brand);
+  outline: 1px solid var(--asimov-brand);
+  outline-offset: 0;
+}
+
+.semantica-showcase-reference .showcase-ref-statusbar {
+  min-height: 32px;
+  flex: none;
+  background: var(--asimov-panel);
+  color: var(--asimov-muted);
+  border-top: var(--asimov-border);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 1180px) {
+  .semantica-showcase-reference .showcase-ref-grid {
+    grid-template-columns: 240px minmax(0, 1fr) 280px;
+  }
+}
+
+
+/* Exact showcase composition from the paired reference HTML. */
+.semantica-showcase-reference .showcase-ref-header .showcase-ref-tabs-list {
+  width: auto;
+  min-height: 56px;
+  height: 56px;
+  align-self: stretch;
+  gap: 8px;
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+}
+
+.semantica-showcase-reference .showcase-ref-header .showcase-ref-tabs-list [data-slot='tabs-tab'] {
+  height: 56px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.semantica-showcase-reference .showcase-ref-header .showcase-ref-tabs-list [data-slot='tab-indicator'] {
+  height: 4px;
+  bottom: 0;
+  background: var(--asimov-brand);
+}
+
+.semantica-showcase-reference .showcase-ref-divider {
+  width: 1px;
+  height: 32px;
+  flex: none;
+  background: var(--asimov-outline-variant);
+}
+
+.semantica-showcase-reference .showcase-ref-meta-block {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.semantica-showcase-reference .showcase-ref-meta-label,
+.semantica-showcase-reference .showcase-ref-panel-heading span,
+.semantica-showcase-reference .showcase-ref-mono-count,
+.semantica-showcase-reference .showcase-ref-inspector-header span,
+.semantica-showcase-reference .showcase-ref-subheading span {
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--asimov-muted);
+}
+
+.semantica-showcase-reference .showcase-ref-meta-value {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--asimov-text);
+}
+
+.semantica-showcase-reference .showcase-ref-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--asimov-brand);
+}
+
+.semantica-showcase-reference .showcase-ref-status i,
+.semantica-showcase-reference .showcase-ref-console-footer i {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--asimov-brand);
+}
+
+.semantica-showcase-reference .showcase-ref-left-rail { width: 288px; }
+.semantica-showcase-reference .showcase-ref-right-rail { width: 320px; }
+
+.semantica-showcase-reference .showcase-ref-section-title,
+.semantica-showcase-reference .showcase-ref-panel-heading h2,
+.semantica-showcase-reference .showcase-ref-inspector-header h2 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--asimov-text);
+}
+
+.semantica-showcase-reference .showcase-ref-section-title { color: var(--asimov-muted); }
+
+.semantica-showcase-reference .showcase-ref-sync-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--asimov-brand-dim);
+  color: var(--asimov-brand);
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.semantica-showcase-reference .showcase-ref-workspace-name {
+  margin-bottom: 8px;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.semantica-showcase-reference .showcase-ref-overview-meta {
+  font-size: 10px;
+  color: var(--asimov-muted);
+}
+
+.semantica-showcase-reference .showcase-ref-panel-heading,
+.semantica-showcase-reference .showcase-ref-inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: var(--asimov-border);
+}
+
+.semantica-showcase-reference .showcase-ref-inspector-header {
+  padding: 12px;
+  background: var(--asimov-surface);
+}
+
+.semantica-showcase-reference .showcase-ref-entity-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: var(--asimov-border);
+  border-radius: 4px;
+  background: var(--asimov-recessed);
+}
+
+.semantica-showcase-reference .showcase-ref-entity-card:hover { border-color: var(--asimov-brand); }
+
+.semantica-showcase-reference .showcase-ref-swatch-row { display: flex; gap: 2px; }
+.semantica-showcase-reference .showcase-ref-swatch-row i {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--asimov-text);
+}
+.semantica-showcase-reference .showcase-ref-swatch-row i:first-child { background: var(--asimov-brand); }
+
+.semantica-showcase-reference .showcase-ref-entity-meta {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--asimov-outline-variant);
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--asimov-muted);
+}
+
+.semantica-showcase-reference .showcase-ref-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.semantica-showcase-reference .showcase-ref-summary-row > span { display: flex; align-items: center; gap: 6px; }
+.semantica-showcase-reference .showcase-ref-summary-row i {
+  width: 8px; height: 8px; border-radius: 2px; background: var(--asimov-text);
+}
+.semantica-showcase-reference .showcase-ref-summary-row i.accent { background: var(--asimov-brand); }
+.semantica-showcase-reference .showcase-ref-summary-row strong {
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--asimov-muted);
+}
+
+.semantica-showcase-reference .showcase-ref-ruler {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 2;
+  height: 16px;
+  opacity: 0.3;
+  border-bottom: 1px solid var(--asimov-outline-variant);
+  background-image: repeating-linear-gradient(to right, var(--asimov-text) 0 1px, transparent 1px 24px);
+  background-size: 96px 8px;
+  background-repeat: repeat-x;
+  background-position: bottom left;
+  pointer-events: none;
+}
+
+.semantica-showcase-reference .showcase-ref-grid-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.08;
+  background-image: radial-gradient(var(--asimov-text) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+}
+
+.semantica-showcase-reference .showcase-ref-toolbar {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transform: translateX(-50%);
+  padding: 4px;
+  border: var(--asimov-border);
+  border-radius: 6px;
+  background: var(--asimov-panel);
+  white-space: nowrap;
+}
+
+.semantica-showcase-reference .showcase-ref-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: var(--asimov-border);
+  border-radius: 4px;
+  background: var(--asimov-recessed);
+}
+
+.semantica-showcase-reference .showcase-ref-toolbar button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--asimov-muted);
+}
+.semantica-showcase-reference .showcase-ref-toolbar button.is-active {
+  border: 1px solid rgba(159,232,112,.3);
+  background: var(--asimov-brand-dim);
+  color: var(--asimov-brand);
+}
+.semantica-showcase-reference .showcase-ref-toolbar-separator {
+  width: 1px; height: 24px; margin: 0 4px; background: var(--asimov-outline-variant);
+}
+.semantica-showcase-reference .showcase-ref-toolbar-text {
+  display: flex; align-items: center; gap: 4px; padding: 0 8px;
+  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--asimov-muted);
+}
+.semantica-showcase-reference .showcase-ref-toolbar-text > * { padding: 6px 8px; }
+.semantica-showcase-reference .showcase-ref-toolbar-text strong {
+  border-bottom: 2px solid var(--asimov-brand); color: var(--asimov-text); font-weight: 700;
+}
+
+.semantica-showcase-reference .showcase-ref-node-dot { width: 12px; height: 12px; border-radius: 2px; background: var(--asimov-brand); }
+.semantica-showcase-reference .showcase-ref-metric-card {
+  padding: 8px;
+  border: var(--asimov-border);
+  border-radius: 4px;
+  background: var(--asimov-recessed);
+}
+.semantica-showcase-reference .showcase-ref-metric-card dt {
+  margin-bottom: 4px; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--asimov-muted);
+}
+.semantica-showcase-reference .showcase-ref-metric-card dd { font-size: 18px; line-height: 1.1; font-weight: 700; color: var(--asimov-text); }
+.semantica-showcase-reference .showcase-ref-metric-card small { display:block; margin-top:4px; font-size:9px; color:var(--asimov-muted); }
+
+.semantica-showcase-reference .showcase-ref-subheading {
+  display:flex; align-items:flex-end; justify-content:space-between; gap:8px; margin-bottom:8px;
+}
+.semantica-showcase-reference .showcase-ref-subheading h4 { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+
+.semantica-showcase-reference .showcase-ref-property-table {
+  overflow:hidden;
+  border: var(--asimov-border);
+  border-radius:4px;
+  background:var(--asimov-recessed);
+}
+.semantica-showcase-reference .showcase-ref-property-table > div {
+  display:grid; grid-template-columns: 1fr 1.5fr; border-bottom:1px solid color-mix(in srgb, var(--asimov-outline-variant) 50%, transparent);
+  font-size:12px;
+}
+.semantica-showcase-reference .showcase-ref-property-table > div:last-child { border-bottom:0; }
+.semantica-showcase-reference .showcase-ref-property-table dt,
+.semantica-showcase-reference .showcase-ref-property-table dd { padding:6px 8px; }
+.semantica-showcase-reference .showcase-ref-property-table dt { color:var(--asimov-muted); border-right:var(--asimov-border); }
+.semantica-showcase-reference .showcase-ref-property-table dd { text-align:right; font-family:var(--font-mono-studio),'JetBrains Mono',monospace; }
+
+.semantica-showcase-reference .showcase-ref-console-header {
+  padding:8px; border-bottom:var(--asimov-border); background:var(--asimov-surface);
+  font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+}
+.semantica-showcase-reference .showcase-ref-console-body {
+  display:flex; height:calc(100% - 65px); flex-direction:column; justify-content:center; gap:10px; padding:10px; background:var(--asimov-panel);
+}
+.semantica-showcase-reference .showcase-ref-console-body > div { display:flex; justify-content:space-between; gap:8px; font-size:10px; }
+.semantica-showcase-reference .showcase-ref-console-body span { text-transform:uppercase; letter-spacing:.06em; color:var(--asimov-muted); }
+.semantica-showcase-reference .showcase-ref-console-body strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-mono-studio),'JetBrains Mono',monospace; font-weight:500; }
+.semantica-showcase-reference .showcase-ref-console-footer {
+  display:flex; align-items:center; gap:6px; height:32px; padding:0 8px; border-top:var(--asimov-border); background:var(--asimov-recessed);
+  font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--asimov-muted);
+}
+.semantica-showcase-reference .showcase-ref-console-footer span { margin-left:auto; font-family:var(--font-mono-studio),'JetBrains Mono',monospace; }
+
+.semantica-showcase-reference .showcase-ref-statusbar > span {
+  color: var(--asimov-muted);
+}
+.semantica-showcase-reference .showcase-ref-statusbar > span::first-letter { color: var(--asimov-text); }
+
+
+/* Header actions: exact sample sequence link / camera / corners-out / user. */
+.semantica-showcase-reference .showcase-ref-header-right {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  gap: 24px;
+}
+
+.semantica-showcase-reference .showcase-ref-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--asimov-muted);
+}
+
+.semantica-showcase-reference .showcase-ref-header-actions > button {
+  display: grid;
+  width: 20px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.semantica-showcase-reference .showcase-ref-header-actions > button:hover {
+  color: var(--asimov-text);
+}
+
+.semantica-showcase-reference .showcase-ref-header-actions svg {
+  width: 14px;
+  height: 14px;
+}
+
+.semantica-showcase-reference .showcase-ref-header-actions .showcase-ref-user-action {
+  width: 32px;
+  height: 32px;
+  margin-left: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.semantica-showcase-reference .showcase-ref-header-actions .showcase-ref-user-action > * {
+  flex: none;
+}
+
+/* Active Dataset — match the showcase reference HTML typography and control density. */
+.semantica-showcase-reference .showcase-ref-dataset-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--asimov-muted);
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.semantica-showcase-reference .showcase-ref-dataset-trigger {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: var(--asimov-border);
+  border-radius: 4px;
+  background: var(--asimov-recessed);
+  color: var(--asimov-text);
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  outline: none;
+}
+
+.semantica-showcase-reference .showcase-ref-dataset-trigger:hover {
+  border-color: var(--asimov-outline);
+}
+
+.semantica-showcase-reference .showcase-ref-dataset-trigger:focus-visible,
+.semantica-showcase-reference .showcase-ref-dataset-trigger[data-popup-open] {
+  border-color: var(--asimov-brand);
+  box-shadow: 0 0 0 1px var(--asimov-brand) !important;
+}
+
+.semantica-showcase-reference .showcase-ref-dataset-trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.semantica-showcase-reference .showcase-ref-dataset-trigger svg {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  color: var(--asimov-muted);
+  transition: transform 120ms ease;
+}
+
+.semantica-showcase-reference .showcase-ref-dataset-trigger[data-popup-open] svg {
+  transform: rotate(180deg);
+}
+
+.semantica-showcase-reference .showcase-ref-dataset-id {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--asimov-muted);
+}
+
+.semantica-showcase-reference .showcase-ref-dataset-id span { opacity: .6; }
+.semantica-showcase-reference .showcase-ref-dataset-id strong { font-weight: 400; }
+
+.showcase-ref-dataset-positioner {
+  z-index: 9999;
+  outline: none;
+}
+
+.showcase-ref-dataset-menu {
+  min-width: var(--anchor-width);
+  padding: 4px;
+  overflow: hidden;
+  border: 1px solid #c2c7ce;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1a1b1e;
+  box-shadow: none;
+  font-family: Manrope, 'Noto Sans SC', sans-serif;
+  font-size: 12px;
+}
+
+.dark .showcase-ref-dataset-menu,
+[data-theme='semantier'] .showcase-ref-dataset-menu {
+  border-color: #43474e;
+  background: #191c1d;
+  color: #ffffff;
+}
+
+.showcase-ref-dataset-option {
+  display: flex;
+  width: 100%;
+  min-height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.showcase-ref-dataset-option[data-highlighted] {
+  background: #ebebec;
+}
+
+.dark .showcase-ref-dataset-option[data-highlighted],
+[data-theme='semantier'] .showcase-ref-dataset-option[data-highlighted] {
+  background: #2e3132;
+}
+
+.showcase-ref-dataset-check {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  place-items: center;
+  color: #9fe870;
+}
+
+.showcase-ref-dataset-check svg {
+  width: 14px;
+  height: 14px;
+}

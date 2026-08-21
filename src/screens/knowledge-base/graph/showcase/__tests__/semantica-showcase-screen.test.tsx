@@ -16,7 +16,7 @@ vi.mock('sigma', () => ({
   },
 }))
 
-import { cleanup, render, screen, fireEvent, within } from '@testing-library/react'
+import { cleanup, render, screen, fireEvent } from '@testing-library/react'
 
 import { SemanticaShowcaseScreen } from '../semantica-showcase-screen'
 
@@ -89,13 +89,15 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
     expect(screen.getByTestId('sn-edge-types').textContent).toMatch(/writes/)
   })
 
-  it('exposes the dataset selector with the registered dataset id', () => {
+  it('exposes the controlled dataset selector with the registered dataset id', () => {
     render(<SemanticaShowcaseScreen />)
-    const selector = screen.getByTestId('dataset-selector') as HTMLSelectElement
+    const selector = screen.getByTestId('dataset-selector')
     expect(selector).toBeDefined()
-    const options = within(selector).getAllByRole('option')
-    expect(options.length).toBeGreaterThan(0)
-    expect(selector.value).toBe('intro-cookbook-kg')
+    expect(selector.textContent).toMatch(/Semantica Intro · Knowledge Graph/)
+    expect(screen.getByText('intro-cookbook-kg')).toBeDefined()
+
+    fireEvent.click(selector)
+    expect(screen.getAllByRole('menuitemradio').length).toBeGreaterThan(0)
   })
 
   it('renders the bottom status bar with the fixture provenance', () => {

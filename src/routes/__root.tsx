@@ -10,6 +10,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import appCss from '../styles.css?url'
+import asimovMinimalismCss from '../asimov-minimalism.css?url'
 import { getRootSurfaceState } from './-root-layout-state'
 import { getRootLayoutMode } from './-root-layout-utils'
 import {
@@ -211,6 +212,10 @@ export const Route = createRootRoute({
         href: appCss,
       },
       {
+        rel: 'stylesheet',
+        href: asimovMinimalismCss,
+      },
+      {
         rel: 'icon',
         type: 'image/png',
         href: '/logo.svg',
@@ -259,8 +264,7 @@ function RootLayout() {
   const isPublicSurface =
     pathname === '/' ||
     pathname === '/DesignSystemDemo' ||
-    pathname === '/DesignSystemGallery' ||
-    pathname === '/semantica-showcase'
+    pathname === '/DesignSystemGallery'
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(
     null,
   )

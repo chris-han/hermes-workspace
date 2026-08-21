@@ -34,6 +34,7 @@ import {
   PuzzlePiece,
   Brain,
   Book,
+  GraphIcon,
 } from '@/components/ui/icon'
 import { AnimatePresence, motion } from 'motion/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -639,6 +640,7 @@ function ChatSidebarComponent({
     pathname === '/database' ||
     pathname === '/effective-context'
   const isContextGraphStudioActive = pathname === '/contextgraph-studio'
+  const isSemanticaShowcaseActive = pathname === '/semantica-showcase'
   const isEvaluationActive = pathname.startsWith('/evaluation')
   const isTasksActive = pathname === '/tasks'
   const isorchestratorActive = pathname === '/orchestrator'
@@ -649,6 +651,7 @@ function ChatSidebarComponent({
     '/memory',
     '/knowledge-base',
     '/contextgraph-studio',
+    '/semantica-showcase',
     '/evaluation',
     '/generated-policies',
     '/legal-corpus',
@@ -1000,6 +1003,13 @@ function ChatSidebarComponent({
       icon: House,
       label: 'ContextGraph Studio',
       active: isContextGraphStudioActive,
+    },
+    {
+      kind: 'link',
+      to: '/semantica-showcase',
+      icon: GraphIcon,
+      label: 'Semantica Showcase',
+      active: isSemanticaShowcaseActive,
     },
     {
       kind: 'link',

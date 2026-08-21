@@ -18,6 +18,7 @@ export function KgShowcaseView({
           edges: input.model.edges,
           ariaLabel: 'Knowledge graph showcase',
         }}
+        className="min-h-0 flex-1 w-full bg-transparent"
         onSelect={onSelect}
       />
       <InspectorSummary fields={input.inspector.fields} />

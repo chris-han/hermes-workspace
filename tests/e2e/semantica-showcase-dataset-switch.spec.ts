@@ -18,8 +18,16 @@ test.describe('Semantica showcase — dataset switching (W7-15)', () => {
     expect(initialStatus).toMatch(/intro-cookbook-kg/)
     const selector = page.getByTestId('dataset-selector')
     await expect(selector).toBeVisible()
-    const options = await selector.locator('option').allInnerTexts()
-    expect(options.length).toBeGreaterThan(0)
+    await selector.click()
+    const menuItems = page.locator('[role="menuitemradio"]')
+    await expect(menuItems.first()).toBeVisible()
+    expect(await menuItems.count()).toBeGreaterThan(1)
+
+    const target = menuItems.nth(1)
+    const targetLabel = (await target.innerText()).trim()
+    await target.click()
+    await expect(selector).toContainText(targetLabel)
+    await expect(page.getByTestId('showcase-status-bar')).not.toHaveText(initialStatus)
   })
 })
 

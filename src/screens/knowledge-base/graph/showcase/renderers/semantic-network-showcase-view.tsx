@@ -22,6 +22,7 @@ export function SemanticNetworkShowcaseView({
           edges: input.model.edges,
           ariaLabel: 'Semantic network showcase',
         }}
+        className="min-h-0 flex-1 w-full bg-transparent"
         onSelect={onSelect}
       />
       <div className="grid grid-cols-2 gap-3 text-xs">

@@ -93,9 +93,26 @@ export function SigmaGraphReadonly({
   useEffect(() => {
     if (!containerRef.current) return
     const graph = buildReadonlyGraph(input)
+    const resolveLabelColor = () => {
+      const themedColor = getComputedStyle(containerRef.current!).getPropertyValue('--asimov-text').trim()
+      return themedColor || getComputedStyle(containerRef.current!).color || '#1a1b1e'
+    }
     const renderer = new Sigma(graph, containerRef.current, {
       renderLabels: true,
+      labelColor: { color: resolveLabelColor() },
+      edgeLabelColor: { color: resolveLabelColor() },
       allowInvalidContainer: true,
+    })
+    const syncThemeColors = () => {
+      const color = resolveLabelColor()
+      renderer.setSetting('labelColor', { color })
+      renderer.setSetting('edgeLabelColor', { color })
+      renderer.refresh()
+    }
+    const themeObserver = new MutationObserver(syncThemeColors)
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme'],
     })
     if (onSelect) {
       renderer.on('clickNode', ({ node }) => onSelect({ type: 'node', id: node }))
@@ -103,6 +120,7 @@ export function SigmaGraphReadonly({
     }
     sigmaRef.current = renderer
     return () => {
+      themeObserver.disconnect()
       renderer.kill()
       sigmaRef.current = null
     }

@@ -362,6 +362,12 @@ export function SigmaControls({
                   { value: 'none', label: 'None' },
                 ]}
               />
+              <ToggleControl
+                label="Properties"
+                checked={controls.showProperties}
+                onChange={(value) => update('showProperties', value)}
+                title="Show node and edge properties directly on the Sigma canvas."
+              />
               <SliderControl label="Confidence" value={25} onChange={() => undefined} disabled title="Current showcase fixtures do not carry edge confidence." />
               <details>
                 <summary>Advanced Layout</summary>

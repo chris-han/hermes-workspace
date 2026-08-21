@@ -216,6 +216,8 @@ export interface ShowcaseKgRendererInput {
 }
 
 export interface ShowcaseEmbeddingRendererInput {
+  model: ShowcaseGraphModel
+  positions?: Record<string, { x: number; y: number }>
   items: ShowcaseEmbeddingItem[]
   inspector: ShowcaseInspectorModel
   metrics: ShowcaseMetric[]
@@ -228,6 +230,8 @@ export interface ShowcaseSemanticNetworkRendererInput {
 }
 
 export interface ShowcaseOntologyRendererInput {
+  model: ShowcaseGraphModel
+  positions?: Record<string, { x: number; y: number }>
   classes: ShowcaseOntologyClass[]
   properties: ShowcaseOntologyProperty[]
   inspector: ShowcaseInspectorModel

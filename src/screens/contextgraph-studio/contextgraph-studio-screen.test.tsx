@@ -1053,6 +1053,93 @@ describe('ContextGraphStudioScreen', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Batch Accept' })).toBeNull())
   })
 
+  it('loads boundary review data and submits a split action', async () => {
+    const candidate = {
+      assertion_id: 'assertion-split',
+      candidate_graph_id: 'graph-1',
+      confidence: 0.74,
+      grounding_state: 'unresolved',
+      evidence_refs: [{ evidence_ref: 'ev-1', selector_hash: 'sel-1' }],
+      source_anchors: [{ anchor_id: 'anchor-1', exact_text: '大型企业、央企' }],
+      normalized_assertion: { subject: { text: 'Boundary candidate' } },
+    }
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/candidate-spans')) {
+        return {
+          ok: true,
+          json: async () => ({
+            candidateSpans: [{
+              candidate_span_id: 'assertion-split',
+              exact_text: '大型企业、央企',
+              semantic_role: 'term',
+              source_anchor_refs: ['anchor-1'],
+              grounding_state: 'candidate',
+              needs_boundary_review: true,
+            }],
+          }),
+        }
+      }
+      if (url.endsWith('/learning-events')) {
+        return { ok: true, json: async () => ({ learningEvents: [{ event_id: 'event-1', event_type: 'human_accept', actor_ref: 'user-1' }] }) }
+      }
+      if (url.endsWith('/graph-delta-preview')) {
+        return { ok: true, json: async () => ({ available: false }) }
+      }
+      if (url.endsWith('/boundary-actions')) {
+        return {
+          ok: true,
+          json: async () => ({
+            ok: true,
+            actionId: 'boundary_split_1',
+            storedEvent: { event_id: 'event-split-1' },
+            replacementSpanIds: ['ccs_v1_a', 'ccs_v1_b'],
+            newGraphVersion: 4,
+            refreshedDiagnostics: [],
+          }),
+        }
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          assertionCandidate: candidate,
+          learningEvents: [],
+        }),
+      }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <GroundMode
+        zh={false}
+        extractionRunId="run-split"
+        candidateGraphId="graph-1"
+        runtimeGraphVersion="KG_v3"
+        enableBoundaryReview
+        assertionCandidates={[candidate]}
+      />,
+    )
+
+    await screen.findByText('Boundary review')
+    expect(screen.getByText(/1 spans · 1 events/)).toBeTruthy()
+    fireEvent.change(screen.getByPlaceholderText('12,24'), {
+      target: { value: '5, 12' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Split current' }))
+
+    await waitFor(() => {
+      const boundaryCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/boundary-actions'))
+      expect(boundaryCall).toBeTruthy()
+      const body = JSON.parse(String((boundaryCall?.[1] as RequestInit).body))
+      expect(body).toMatchObject({
+        actionType: 'split',
+        sourceSpanIds: ['assertion-split'],
+        splitOffsetsAbsolute: [5, 12],
+        expectedGraphVersion: 3,
+      })
+    })
+  })
+
   it('filters the Ground candidate table by the Status filter dropdown', async () => {
     const candidates = [
       {
@@ -1147,8 +1234,11 @@ describe('ContextGraphStudioScreen', () => {
         findings: [],
       }),
     )
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/tender-document-review/detections')
-    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toMatchObject({
+    const inspectCall = fetchMock.mock.calls.find(([url]) =>
+      String(url).endsWith('/api/tender-document-review/detections'),
+    )
+    expect(inspectCall?.[0]).toBe('/api/tender-document-review/detections')
+    expect(JSON.parse(String((inspectCall?.[1] as RequestInit).body))).toMatchObject({
       fileRef: 'target.json',
       requestedRuleFamilies: ['tender_compliance'],
     })

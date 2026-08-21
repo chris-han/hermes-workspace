@@ -1,9 +1,8 @@
-import { useMemo } from 'react'
-import { SigmaGraphReadonly } from '../../sigma-graph-readonly'
 import type { ShowcaseKgRendererInput } from '../semantica-showcase-types'
 import type { SigmaGraphReadonlySelection } from '../../sigma-graph-readonly'
-import type { SigmaGraphReadonlyViewportController } from '../../sigma-graph-readonly'
 import type { ShowcaseInspectorField } from '../semantica-showcase-types'
+import { ShowcaseSigmaCanvas } from './shared/showcase-sigma-canvas'
+import type { ShowcaseCanvasViewportProps } from './shared/showcase-sigma-canvas'
 
 export function KgShowcaseView({
   input,
@@ -13,24 +12,14 @@ export function KgShowcaseView({
 }: {
   input: ShowcaseKgRendererInput
   onSelect: (selection: SigmaGraphReadonlySelection) => void
-  positions?: Record<string, { x: number; y: number }>
-  onViewportReady?: (controller: SigmaGraphReadonlyViewportController | null) => void
-}) {
-  const readonlyInput = useMemo(
-    () => ({
-      nodes: input.model.nodes,
-      edges: input.model.edges,
-      positions,
-      ariaLabel: 'Knowledge graph showcase',
-    }),
-    [input.model.edges, input.model.nodes, positions],
-  )
-
+} & ShowcaseCanvasViewportProps) {
   return (
     <div className="flex h-full w-full flex-col gap-3" data-testid="kg-showcase-view">
-      <SigmaGraphReadonly
-        input={readonlyInput}
-        className="min-h-0 flex-1 w-full bg-transparent"
+      <ShowcaseSigmaCanvas
+        model={input.model}
+        positions={positions}
+        selection={null}
+        ariaLabel="Knowledge graph showcase"
         onSelect={onSelect}
         onViewportReady={onViewportReady}
       />

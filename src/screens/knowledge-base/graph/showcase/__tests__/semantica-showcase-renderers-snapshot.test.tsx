@@ -68,7 +68,7 @@ describe('KgShowcaseView — W0-03 DOM snapshot baseline', () => {
 })
 
 describe('OntologyShowcaseView — W0-03 DOM snapshot baseline', () => {
-  it('renders the pinned intro fixture with the expected tree testids', () => {
+  it('renders the pinned intro fixture with the expected hierarchy canvas testids', () => {
     const dataset = introDataset()
     expect(dataset.ontology, 'intro ontology payload missing').toBeDefined()
     const adapter = adaptOntologyFixture(dataset.ontology!)
@@ -82,12 +82,13 @@ describe('OntologyShowcaseView — W0-03 DOM snapshot baseline', () => {
     )
     expect(getByTestId('ontology-showcase-view')).toBeDefined()
     expect(getByTestId('ontology-tree')).toBeDefined()
+    expect(getByTestId('ontology-class-Organization')).toBeDefined()
     expect(container).toMatchSnapshot()
   })
 })
 
 describe('EmbeddingShowcaseView — W0-03 DOM snapshot baseline', () => {
-  it('renders the pinned intro fixture with the expected SVG and offline disclosure', () => {
+  it('renders the pinned intro fixture with the expected readonly canvas and offline disclosure', () => {
     const dataset = introDataset()
     expect(dataset.embedding, 'intro embedding payload missing').toBeDefined()
     const adapter = adaptEmbeddingFixture(dataset.embedding!)

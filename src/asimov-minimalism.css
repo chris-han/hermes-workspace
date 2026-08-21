@@ -31,7 +31,7 @@
   --asimov-muted: #43474e;
   --asimov-quiet: #72787e;
 
-  --asimov-radius-control: 4px;
+  --asimov-radius-control: 2px;
   --asimov-radius-panel: 8px;
   --asimov-border: 1px solid var(--asimov-outline-variant);
 
@@ -92,6 +92,24 @@
 
 .asimov-minimalism :is(button, [role='button'], [role='tab']) {
   box-shadow: none !important;
+}
+
+/* Asimov rule: controls stay near-square; never exceed 2px radius. */
+.asimov-minimalism :is(
+  button,
+  [role='button'],
+  [role='tab'],
+  input,
+  select,
+  textarea,
+  [role='textbox'],
+  [role='combobox'],
+  [role='listbox'],
+  [role='switch'],
+  [role='checkbox'],
+  [role='radio']
+) {
+  border-radius: var(--asimov-radius-control) !important;
 }
 
 .asimov-minimalism ::-webkit-scrollbar {
@@ -285,6 +303,10 @@
 .semantica-showcase-reference .showcase-ref-status-item strong {
   color: var(--asimov-text);
   font-weight: 700;
+}
+
+.semantica-showcase-reference [data-testid='embedding-offline-disclosure'] {
+  border-radius: var(--asimov-radius-control) !important;
 }
 
 @media (max-width: 1180px) {

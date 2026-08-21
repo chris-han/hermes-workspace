@@ -924,6 +924,8 @@ export function StudioShell() {
                 extractionRunId={extractionRunId}
                 candidateGraphId={candidateGraphId}
                 assertionCandidates={candidates}
+                runtimeGraphVersion={runtimeIdentity.graphVersion}
+                enableBoundaryReview
                 onAcceptedRelease={(release) => {
                   const graphVersion = release.graph_version
                   if (typeof graphVersion === 'string' && graphVersion) {
@@ -2752,12 +2754,16 @@ export function GroundMode({
   extractionRunId,
   candidateGraphId,
   assertionCandidates,
+  runtimeGraphVersion,
+  enableBoundaryReview = false,
   onAcceptedRelease,
 }: {
   zh: boolean
   extractionRunId: string | null
   candidateGraphId: string | null
   assertionCandidates: GroundCandidate[]
+  runtimeGraphVersion?: string | null
+  enableBoundaryReview?: boolean
   onAcceptedRelease?: (release: Record<string, any>) => void
 }) {
   const [candidateList, setCandidateList] =
@@ -2787,6 +2793,24 @@ export function GroundMode({
   const [previewStale, setPreviewStale] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionPending, setActionPending] = useState(false)
+  const [boundaryReviewLoading, setBoundaryReviewLoading] = useState(false)
+  const [boundaryReviewError, setBoundaryReviewError] = useState<string | null>(null)
+  const [boundaryCandidateSpans, setBoundaryCandidateSpans] = useState<Array<{
+    candidate_span_id: string
+    exact_text: string
+    semantic_role: string | null
+    source_anchor_refs: string[]
+    grounding_state: string
+    needs_boundary_review: boolean
+  }>>([])
+  const [boundaryLearningEvents, setBoundaryLearningEvents] = useState<Array<{
+    event_id: string
+    event_type: string
+    actor_ref: string | null
+    occurred_at?: string
+  }>>([])
+  const [boundarySplitOffsets, setBoundarySplitOffsets] = useState('')
+  const [boundaryTargetRole, setBoundaryTargetRole] = useState('term')
   const [regroundOpen, setRegroundOpen] = useState(false)
   const [regroundBlockId, setRegroundBlockId] = useState('')
   const [editOpen, setEditOpen] = useState(false)
@@ -2805,6 +2829,66 @@ export function GroundMode({
   > | null>(null)
 
   const current = candidateList[index] ?? null
+  const expectedGraphVersion = useMemo(() => {
+    const value = runtimeGraphVersion ?? ''
+    const match = value.match(/KG_v(\d+)/)
+    return match ? Number(match[1]) : 0
+  }, [runtimeGraphVersion])
+
+  const loadBoundaryReview = useCallback(async () => {
+    if (!enableBoundaryReview || !extractionRunId) return
+    setBoundaryReviewLoading(true)
+    setBoundaryReviewError(null)
+    try {
+      const [spansResponse, eventsResponse] = await Promise.all([
+        fetch(`/api/contextgraph/extraction-runs/${encodeURIComponent(extractionRunId)}/candidate-spans`),
+        fetch(`/api/contextgraph/extraction-runs/${encodeURIComponent(extractionRunId)}/learning-events`),
+      ])
+      const spansPayload = (await spansResponse.json().catch(() => ({}))) as {
+        candidateSpans?: Array<{
+          candidate_span_id: string
+          exact_text?: string
+          semantic_role?: string | null
+          source_anchor_refs?: string[]
+          grounding_state?: string
+          needs_boundary_review?: boolean
+        }>
+        detail?: string
+      }
+      const eventsPayload = (await eventsResponse.json().catch(() => ({}))) as {
+        learningEvents?: Array<{
+          event_id: string
+          event_type: string
+          actor_ref: string | null
+          occurred_at?: string
+        }>
+        detail?: string
+      }
+      if (!spansResponse.ok) throw new Error(spansPayload.detail ?? `candidate-spans:${spansResponse.status}`)
+      if (!eventsResponse.ok) throw new Error(eventsPayload.detail ?? `learning-events:${eventsResponse.status}`)
+      setBoundaryCandidateSpans(
+        (spansPayload.candidateSpans ?? []).map((span) => ({
+          candidate_span_id: span.candidate_span_id,
+          exact_text: span.exact_text ?? '',
+          semantic_role: span.semantic_role ?? null,
+          source_anchor_refs: span.source_anchor_refs ?? [],
+          grounding_state: span.grounding_state ?? 'candidate',
+          needs_boundary_review: Boolean(span.needs_boundary_review),
+        })),
+      )
+      setBoundaryLearningEvents(eventsPayload.learningEvents ?? [])
+    } catch (error) {
+      setBoundaryReviewError(
+        error instanceof Error ? error.message : 'Unable to load boundary review data',
+      )
+    } finally {
+      setBoundaryReviewLoading(false)
+    }
+  }, [enableBoundaryReview, extractionRunId])
+
+  useEffect(() => {
+    void loadBoundaryReview()
+  }, [loadBoundaryReview])
 
   const observedStatuses = useMemo(() => {
     const counts = new Map<string, number>()
@@ -3274,6 +3358,63 @@ export function GroundMode({
     }
   }, [current, regroundBlockId])
 
+  const submitBoundaryAction = useCallback(
+    async (actionType: 'split' | 'merge' | 'edit_role' | 'accept' | 'reject') => {
+      if (!enableBoundaryReview || !extractionRunId) return
+      const sourceSpanIds =
+        actionType === 'merge'
+          ? [...selectedIds]
+          : current
+            ? [current.assertion_id]
+            : []
+      if (!sourceSpanIds.length) return
+      setActionPending(true)
+      setBoundaryReviewError(null)
+      try {
+        const payload: Record<string, unknown> = {
+          actionId: `boundary_${actionType}_${Date.now()}`,
+          actionType,
+          actorId: 'current-user',
+          expectedGraphVersion,
+          sourceSpanIds,
+          reasonCode: 'curator_boundary_correction',
+          comment: 'Recorded from ContextGraph Studio boundary review.',
+          clientTimestamp: new Date().toISOString(),
+        }
+        if (actionType === 'split') {
+          const offsets = boundarySplitOffsets
+            .split(',')
+            .map((value) => Number(value.trim()))
+            .filter((value) => Number.isInteger(value) && value > 0)
+          payload.splitOffsetsAbsolute = offsets
+        }
+        if (actionType === 'edit_role') {
+          payload.targetSemanticRole = boundaryTargetRole.trim()
+        }
+        const response = await fetch(
+          `/api/contextgraph/extraction-runs/${encodeURIComponent(extractionRunId)}/boundary-actions`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+          },
+        )
+        const result = (await response.json().catch(() => ({}))) as {
+          detail?: string
+        }
+        if (!response.ok) throw new Error(result.detail ?? `boundary-action:${response.status}`)
+        await loadBoundaryReview()
+      } catch (error) {
+        setBoundaryReviewError(
+          error instanceof Error ? error.message : 'Unable to record boundary action',
+        )
+      } finally {
+        setActionPending(false)
+      }
+    },
+    [boundarySplitOffsets, boundaryTargetRole, current, enableBoundaryReview, expectedGraphVersion, extractionRunId, loadBoundaryReview, selectedIds],
+  )
+
   if (!current) {
     return (
       <div className="grid h-full place-items-center bg-card text-xs text-muted-foreground">
@@ -3570,6 +3711,80 @@ export function GroundMode({
               <p className="font-mono text-[9px] text-muted-foreground">
                 {aiSuggestions[current.assertion_id]?.provider ?? '—'} / {aiSuggestions[current.assertion_id]?.model ?? '—'}
               </p>
+            </div>
+          ) : null}
+          {enableBoundaryReview ? (
+            <div className="mb-3 rounded border border-border bg-muted/30 p-3 text-[11px]">
+              <div className="mb-2 flex items-center gap-2">
+                <strong>{zh ? '边界复核' : 'Boundary review'}</strong>
+                <span className="text-muted-foreground">
+                  {boundaryReviewLoading
+                    ? zh
+                      ? '加载中…'
+                      : 'Loading…'
+                    : `${boundaryCandidateSpans.length} spans · ${boundaryLearningEvents.length} events`}
+                </span>
+              </div>
+              {boundaryReviewError ? (
+                <div role="alert" className="mb-2 text-destructive">
+                  {boundaryReviewError}
+                </div>
+              ) : null}
+              <div className="grid gap-2 md:grid-cols-2">
+                <label className="grid gap-1 text-[11px] font-semibold">
+                  {zh ? 'Split offsets' : 'Split offsets'}
+                  <Input
+                    value={boundarySplitOffsets}
+                    onChange={(event) => setBoundarySplitOffsets(event.target.value)}
+                    placeholder="12,24"
+                  />
+                </label>
+                <label className="grid gap-1 text-[11px] font-semibold">
+                  {zh ? 'Semantic role' : 'Semantic role'}
+                  <Input
+                    value={boundaryTargetRole}
+                    onChange={(event) => setBoundaryTargetRole(event.target.value)}
+                    placeholder="term"
+                  />
+                </label>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  disabled={actionPending || !current || !boundarySplitOffsets.trim()}
+                  onClick={() => void submitBoundaryAction('split')}
+                >
+                  {zh ? '拆分当前项' : 'Split current'}
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={actionPending || selectedIds.size < 2}
+                  onClick={() => void submitBoundaryAction('merge')}
+                >
+                  {zh ? '合并所选' : 'Merge selected'}
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={actionPending || !current || !boundaryTargetRole.trim()}
+                  onClick={() => void submitBoundaryAction('edit_role')}
+                >
+                  {zh ? '修改角色' : 'Edit role'}
+                </Button>
+              </div>
+              <div className="mt-3 grid gap-1">
+                {boundaryCandidateSpans.slice(0, 3).map((span) => (
+                  <div key={span.candidate_span_id} className="flex items-center justify-between gap-2 font-mono text-[10px] text-muted-foreground">
+                    <span className="truncate">{span.candidate_span_id} · {span.exact_text || '—'}</span>
+                    <span>{span.grounding_state}{span.needs_boundary_review ? ' · review' : ''}</span>
+                  </div>
+                ))}
+                {boundaryLearningEvents.slice(0, 2).map((event) => (
+                  <div key={event.event_id} className="flex items-center justify-between gap-2 font-mono text-[10px] text-muted-foreground">
+                    <span className="truncate">{event.event_id}</span>
+                    <span>{event.event_type}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : null}
           {editOpen ? (

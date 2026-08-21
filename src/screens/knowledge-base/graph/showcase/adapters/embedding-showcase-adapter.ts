@@ -13,6 +13,7 @@ import type {
   ShowcaseInspectorModel,
   ShowcaseMetric,
 } from '../semantica-showcase-types'
+import type { SigmaGraphReadonlyNode } from '../../sigma-graph-readonly'
 
 export interface EmbeddingAdapterResult {
   renderer: ShowcaseEmbeddingRendererInput
@@ -47,8 +48,26 @@ export function adaptEmbeddingFixture(
     },
   ]
 
+  const nodes: SigmaGraphReadonlyNode[] = items.map((item) => ({
+    id: item.id,
+    label: item.label,
+    group: 'embedding-item',
+    size: selectedItemId === item.id ? 12 : 9,
+    color: selectedItemId === item.id ? '#3f6f2f' : '#2f5d8f',
+    x: item.x,
+    y: item.y,
+  }))
+  const positions = Object.fromEntries(
+    items.map((item) => [item.id, { x: item.x, y: item.y }]),
+  )
+
   return {
     renderer: {
+      model: {
+        nodes,
+        edges: [],
+      },
+      positions,
       items,
       inspector: buildInspector(items, selectedItemId),
       metrics,

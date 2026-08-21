@@ -1,95 +1,45 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`EmbeddingShowcaseView — W0-03 DOM snapshot baseline > renders the pinned intro fixture with the expected SVG and offline disclosure 1`] = `
+exports[`EmbeddingShowcaseView — W0-03 DOM snapshot baseline > renders the pinned intro fixture with the expected readonly canvas and offline disclosure 1`] = `
 <div>
   <div
     class="flex h-full w-full flex-col gap-3"
     data-testid="embedding-showcase-view"
   >
     <div
-      class="relative flex-1 overflow-hidden rounded-md border border-border bg-card"
+      class="min-h-0 flex-1"
+      data-testid="embedding-scatter"
     >
-      <svg
+      <div
         aria-label="Embedding scatter plot"
-        class="h-full w-full"
-        data-testid="embedding-scatter"
-        role="img"
-        viewBox="0 0 600 400"
+        class="min-h-0 flex-1 w-full bg-transparent"
+        role="application"
+      />
+    </div>
+    <div
+      class="sr-only"
+    >
+      <button
+        aria-pressed="false"
+        data-testid="embedding-point-Amazon"
+        type="button"
       >
-        <rect
-          fill="transparent"
-          height="400"
-          width="600"
-          x="0"
-          y="0"
-        />
-        <g>
-          <circle
-            cx="568"
-            cy="32"
-            data-testid="embedding-point-Apple"
-            fill="#0ea5e9"
-            fill-opacity="0.85"
-            r="6"
-            stroke="#0f172a"
-            stroke-width="1"
-            style="cursor: pointer;"
-          />
-          <text
-            fill="#e2e8f0"
-            font-family="JetBrains Mono, monospace"
-            font-size="12"
-            x="578"
-            y="36"
-          >
-            Apple
-          </text>
-        </g>
-        <g>
-          <circle
-            cx="202.5806232888867"
-            cy="209.18611556441988"
-            data-testid="embedding-point-Microsoft"
-            fill="#0ea5e9"
-            fill-opacity="0.85"
-            r="6"
-            stroke="#0f172a"
-            stroke-width="1"
-            style="cursor: pointer;"
-          />
-          <text
-            fill="#e2e8f0"
-            font-family="JetBrains Mono, monospace"
-            font-size="12"
-            x="212.5806232888867"
-            y="213.18611556441988"
-          >
-            Microsoft
-          </text>
-        </g>
-        <g>
-          <circle
-            cx="32"
-            cy="368"
-            data-testid="embedding-point-Amazon"
-            fill="#0ea5e9"
-            fill-opacity="0.85"
-            r="6"
-            stroke="#0f172a"
-            stroke-width="1"
-            style="cursor: pointer;"
-          />
-          <text
-            fill="#e2e8f0"
-            font-family="JetBrains Mono, monospace"
-            font-size="12"
-            x="42"
-            y="372"
-          >
-            Amazon
-          </text>
-        </g>
-      </svg>
+        Amazon
+      </button>
+      <button
+        aria-pressed="false"
+        data-testid="embedding-point-Apple"
+        type="button"
+      >
+        Apple
+      </button>
+      <button
+        aria-pressed="false"
+        data-testid="embedding-point-Microsoft"
+        type="button"
+      >
+        Microsoft
+      </button>
     </div>
     <div
       class="rounded-md border border-border bg-card/60 px-3 py-2 text-xs text-muted-foreground"
@@ -116,135 +66,57 @@ exports[`KgShowcaseView — W0-03 DOM snapshot baseline > renders the pinned int
 </div>
 `;
 
-exports[`OntologyShowcaseView — W0-03 DOM snapshot baseline > renders the pinned intro fixture with the expected tree testids 1`] = `
+exports[`OntologyShowcaseView — W0-03 DOM snapshot baseline > renders the pinned intro fixture with the expected hierarchy canvas testids 1`] = `
 <div>
   <div
     class="flex h-full w-full flex-col gap-3"
     data-testid="ontology-showcase-view"
   >
     <div
-      class="rounded-md border border-border bg-card/60 px-3 py-2 text-xs text-muted-foreground"
-    >
-      Hierarchy depth: 
-      2
-       · Classes: 
-      5
-       · Properties:
-       
-      2
-    </div>
-    <ul
-      class="flex-1 overflow-auto rounded-md border border-border bg-card p-3 font-mono text-sm"
+      aria-label="Ontology hierarchy showcase"
+      class="min-h-0 flex-1 w-full bg-transparent"
+      role="application"
+    />
+    <div
+      class="sr-only"
       data-testid="ontology-tree"
-      role="tree"
     >
-      <li
-        aria-selected="false"
-        class="cursor-pointer rounded-sm px-2 py-1 hover:bg-muted"
+      <button
+        aria-pressed="false"
         data-testid="ontology-class-Entity"
-        role="treeitem"
-        style="padding-left: 8px;"
+        type="button"
       >
-        <span
-          class="text-foreground/80"
-        >
-          Entity
-        </span>
-        <span
-          class="ml-2 text-[11px] text-muted-foreground"
-        >
-          root
-           · 
-          2
-           instance
-          s
-        </span>
-      </li>
-      <li
-        aria-selected="false"
-        class="cursor-pointer rounded-sm px-2 py-1 hover:bg-muted"
+        Entity
+      </button>
+      <button
+        aria-pressed="false"
         data-testid="ontology-class-Organization"
-        role="treeitem"
-        style="padding-left: 24px;"
+        type="button"
       >
-        <span
-          class="text-foreground/80"
-        >
-          Organization
-        </span>
-        <span
-          class="ml-2 text-[11px] text-muted-foreground"
-        >
-          entity-type
-           · 
-          1
-           instance
-        </span>
-      </li>
-      <li
-        aria-selected="false"
-        class="cursor-pointer rounded-sm px-2 py-1 hover:bg-muted"
+        Organization
+      </button>
+      <button
+        aria-pressed="false"
         data-testid="ontology-class-Person"
-        role="treeitem"
-        style="padding-left: 24px;"
+        type="button"
       >
-        <span
-          class="text-foreground/80"
-        >
-          Person
-        </span>
-        <span
-          class="ml-2 text-[11px] text-muted-foreground"
-        >
-          entity-type
-           · 
-          1
-           instance
-        </span>
-      </li>
-      <li
-        aria-selected="false"
-        class="cursor-pointer rounded-sm px-2 py-1 hover:bg-muted"
+        Person
+      </button>
+      <button
+        aria-pressed="false"
         data-testid="ontology-class-Relationship"
-        role="treeitem"
-        style="padding-left: 8px;"
+        type="button"
       >
-        <span
-          class="text-foreground/80"
-        >
-          Relationship
-        </span>
-        <span
-          class="ml-2 text-[11px] text-muted-foreground"
-        >
-          root
-           · 
-          1
-           instance
-        </span>
-      </li>
-      <li
-        aria-selected="false"
-        class="cursor-pointer rounded-sm px-2 py-1 hover:bg-muted"
+        Relationship
+      </button>
+      <button
+        aria-pressed="false"
         data-testid="ontology-class-CEO_of"
-        role="treeitem"
-        style="padding-left: 24px;"
+        type="button"
       >
-        <span
-          class="text-foreground/80"
-        >
-          CEO_of
-        </span>
-        <span
-          class="ml-2 text-[11px] text-muted-foreground"
-        >
-          relationship-type
-           · 
-          1
-           instance
-        </span>
-      </li>
-    </ul>
+        CEO_of
+      </button>
+    </div>
   </div>
 </div>
 `;

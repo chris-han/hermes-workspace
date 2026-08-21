@@ -64,6 +64,7 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
     renderWithProviders(<SemanticaShowcaseScreen />)
     fireEvent.click(screen.getByTestId('showcase-tab-ontology'))
     expect(screen.getByTestId('ontology-showcase-view')).toBeDefined()
+    expect(screen.getByTestId('topology-hierarchical').getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('ontology-class-Organization')).toBeDefined()
     expect(screen.getByTestId('ontology-class-Relationship')).toBeDefined()
   })

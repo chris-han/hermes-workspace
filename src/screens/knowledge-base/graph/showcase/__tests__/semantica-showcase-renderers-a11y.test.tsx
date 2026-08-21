@@ -83,7 +83,7 @@ describe('KgShowcaseView — W0-03 a11y tree baseline', () => {
 })
 
 describe('OntologyShowcaseView — W0-03 a11y tree baseline', () => {
-  it('exposes a stable role=name tree with treeitem roles for classes', () => {
+  it('exposes a stable role=name tree with Sigma application role for ontology hierarchy', () => {
     const dataset = introDataset()
     expect(dataset.ontology, 'intro ontology payload missing').toBeDefined()
     const adapter = adaptOntologyFixture(dataset.ontology!)
@@ -96,20 +96,19 @@ describe('OntologyShowcaseView — W0-03 a11y tree baseline', () => {
       />,
     )
     const tree = rolesTree()
-    expect(tree.some((n) => n.role === 'tree')).toBe(true)
-    expect(tree.filter((n) => n.role === 'treeitem').length).toBeGreaterThan(0)
+    expect(tree.some((n) => n.role === 'application' && n.name === 'Ontology hierarchy showcase')).toBe(true)
     expect(tree).toMatchSnapshot()
   })
 })
 
 describe('EmbeddingShowcaseView — W0-03 a11y tree baseline', () => {
-  it('exposes a stable role/name tree with an img role for the scatter', () => {
+  it('exposes a stable role/name tree with Sigma application role for embedding scatter', () => {
     const dataset = introDataset()
     expect(dataset.embedding, 'intro embedding payload missing').toBeDefined()
     const adapter = adaptEmbeddingFixture(dataset.embedding!)
     render(<EmbeddingShowcaseView input={adapter.renderer} onSelect={() => undefined} />)
     const tree = rolesTree()
-    expect(tree.some((n) => n.role === 'img')).toBe(true)
+    expect(tree.some((n) => n.role === 'application' && n.name === 'Embedding scatter plot')).toBe(true)
     expect(tree).toMatchSnapshot()
   })
 })

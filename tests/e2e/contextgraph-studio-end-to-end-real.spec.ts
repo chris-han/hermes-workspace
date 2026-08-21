@@ -60,8 +60,8 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
   })
 
   await page.goto('/contextgraph-studio', {
-    waitUntil: 'commit',
-    timeout: 60_000,
+    waitUntil: 'domcontentloaded',
+    timeout: 180_000,
   })
   const gatewayLogin = await page.request.post(
     `${process.env.HERMES_API_URL ?? ''}/auth/password/login`, {

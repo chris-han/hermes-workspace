@@ -1,8 +1,7 @@
-import { useMemo } from 'react'
-import { SigmaGraphReadonly } from '../../sigma-graph-readonly'
 import type { SigmaGraphReadonlySelection } from '../../sigma-graph-readonly'
-import type { SigmaGraphReadonlyViewportController } from '../../sigma-graph-readonly'
 import type { ShowcaseSemanticNetworkRendererInput } from '../semantica-showcase-types'
+import { ShowcaseSigmaCanvas } from './shared/showcase-sigma-canvas'
+import type { ShowcaseCanvasViewportProps } from './shared/showcase-sigma-canvas'
 
 export function SemanticNetworkShowcaseView({
   input,
@@ -12,24 +11,14 @@ export function SemanticNetworkShowcaseView({
 }: {
   input: ShowcaseSemanticNetworkRendererInput
   onSelect: (selection: SigmaGraphReadonlySelection) => void
-  positions?: Record<string, { x: number; y: number }>
-  onViewportReady?: (controller: SigmaGraphReadonlyViewportController | null) => void
-}) {
-  const readonlyInput = useMemo(
-    () => ({
-      nodes: input.model.nodes,
-      edges: input.model.edges,
-      positions,
-      ariaLabel: 'Semantic network showcase',
-    }),
-    [input.model.edges, input.model.nodes, positions],
-  )
-
+} & ShowcaseCanvasViewportProps) {
   return (
     <div className="flex h-full w-full flex-col gap-3" data-testid="semantic-network-showcase-view">
-      <SigmaGraphReadonly
-        input={readonlyInput}
-        className="min-h-0 flex-1 w-full bg-transparent"
+      <ShowcaseSigmaCanvas
+        model={input.model}
+        positions={positions}
+        selection={null}
+        ariaLabel="Semantic network showcase"
         onSelect={onSelect}
         onViewportReady={onViewportReady}
       />

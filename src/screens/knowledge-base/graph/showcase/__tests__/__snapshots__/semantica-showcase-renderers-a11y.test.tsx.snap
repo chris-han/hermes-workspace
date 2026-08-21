@@ -1,20 +1,25 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`EmbeddingShowcaseView — W0-03 a11y tree baseline > exposes a stable role/name tree with an img role for the scatter 1`] = `
+exports[`EmbeddingShowcaseView — W0-03 a11y tree baseline > exposes a stable role/name tree with Sigma application role for embedding scatter 1`] = `
 [
   {
-    "name": "",
-    "role": "circle",
+    "name": "Embedding scatter plot",
+    "role": "application",
+    "testid": "",
+  },
+  {
+    "name": "Amazon",
+    "role": "button",
     "testid": "embedding-point-Amazon",
   },
   {
-    "name": "",
-    "role": "circle",
+    "name": "Apple",
+    "role": "button",
     "testid": "embedding-point-Apple",
   },
   {
-    "name": "",
-    "role": "circle",
+    "name": "Microsoft",
+    "role": "button",
     "testid": "embedding-point-Microsoft",
   },
   {
@@ -23,14 +28,14 @@ exports[`EmbeddingShowcaseView — W0-03 a11y tree baseline > exposes a stable r
     "testid": "embedding-offline-disclosure",
   },
   {
-    "name": "AppleMicrosoftAmazonSample coordinates frozen from Semantica visualization fixtu",
+    "name": "",
     "role": "div",
-    "testid": "embedding-showcase-view",
+    "testid": "embedding-scatter",
   },
   {
-    "name": "Embedding scatter plot",
-    "role": "img",
-    "testid": "embedding-scatter",
+    "name": "AmazonAppleMicrosoftSample coordinates frozen from Semantica visualization fixtu",
+    "role": "div",
+    "testid": "embedding-showcase-view",
   },
 ]
 `;
@@ -50,42 +55,47 @@ exports[`KgShowcaseView — W0-03 a11y tree baseline > exposes a stable role/nam
 ]
 `;
 
-exports[`OntologyShowcaseView — W0-03 a11y tree baseline > exposes a stable role=name tree with treeitem roles for classes 1`] = `
+exports[`OntologyShowcaseView — W0-03 a11y tree baseline > exposes a stable role=name tree with Sigma application role for ontology hierarchy 1`] = `
 [
   {
-    "name": "Hierarchy depth: 2 · Classes: 5 · Properties: 2Entityroot · 2 instancesOrganizat",
+    "name": "Ontology hierarchy showcase",
+    "role": "application",
+    "testid": "",
+  },
+  {
+    "name": "CEO_of",
+    "role": "button",
+    "testid": "ontology-class-CEO_of",
+  },
+  {
+    "name": "Entity",
+    "role": "button",
+    "testid": "ontology-class-Entity",
+  },
+  {
+    "name": "Organization",
+    "role": "button",
+    "testid": "ontology-class-Organization",
+  },
+  {
+    "name": "Person",
+    "role": "button",
+    "testid": "ontology-class-Person",
+  },
+  {
+    "name": "Relationship",
+    "role": "button",
+    "testid": "ontology-class-Relationship",
+  },
+  {
+    "name": "EntityOrganizationPersonRelationshipCEO_of",
     "role": "div",
     "testid": "ontology-showcase-view",
   },
   {
-    "name": "Entityroot · 2 instancesOrganizationentity-type · 1 instancePersonentity-type · ",
-    "role": "tree",
+    "name": "EntityOrganizationPersonRelationshipCEO_of",
+    "role": "div",
     "testid": "ontology-tree",
-  },
-  {
-    "name": "CEO_ofrelationship-type · 1 instance",
-    "role": "treeitem",
-    "testid": "ontology-class-CEO_of",
-  },
-  {
-    "name": "Entityroot · 2 instances",
-    "role": "treeitem",
-    "testid": "ontology-class-Entity",
-  },
-  {
-    "name": "Organizationentity-type · 1 instance",
-    "role": "treeitem",
-    "testid": "ontology-class-Organization",
-  },
-  {
-    "name": "Personentity-type · 1 instance",
-    "role": "treeitem",
-    "testid": "ontology-class-Person",
-  },
-  {
-    "name": "Relationshiproot · 1 instance",
-    "role": "treeitem",
-    "testid": "ontology-class-Relationship",
   },
 ]
 `;

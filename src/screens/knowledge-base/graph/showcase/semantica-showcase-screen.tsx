@@ -112,12 +112,20 @@ export function SemanticaShowcaseScreen() {
 
   const [mode, setMode] = useState<ShowcaseVisualizationMode>(initialMode)
   const [kgTopology, setKgTopology] = useState<GraphTopologyMode>('layout')
+  const [ontologyTopology, setOntologyTopology] = useState<GraphTopologyMode>('hierarchical')
+  const [embeddingTopology, setEmbeddingTopology] = useState<GraphTopologyMode>('layout')
   const [snTopology, setSnTopology] = useState<GraphTopologyMode>('layout')
   const [kgNudgeCount, setKgNudgeCount] = useState(0)
+  const [ontologyNudgeCount, setOntologyNudgeCount] = useState(0)
+  const [embeddingNudgeCount, setEmbeddingNudgeCount] = useState(0)
   const [snNudgeCount, setSnNudgeCount] = useState(0)
   const [kgZoomRatio, setKgZoomRatio] = useState(1)
+  const [ontologyZoomRatio, setOntologyZoomRatio] = useState(1)
+  const [embeddingZoomRatio, setEmbeddingZoomRatio] = useState(1)
   const [snZoomRatio, setSnZoomRatio] = useState(1)
   const kgViewportRef = useRef<SigmaGraphReadonlyViewportController | null>(null)
+  const ontologyViewportRef = useRef<SigmaGraphReadonlyViewportController | null>(null)
+  const embeddingViewportRef = useRef<SigmaGraphReadonlyViewportController | null>(null)
   const snViewportRef = useRef<SigmaGraphReadonlyViewportController | null>(null)
   const [kgSelection, setKgSelection] = useState<SigmaGraphReadonlySelection>(null)
   const [snSelection, setSnSelection] = useState<SigmaGraphReadonlySelection>(null)
@@ -174,7 +182,15 @@ export function SemanticaShowcaseScreen() {
   const provenance = useMemo(() => describeProvenance(dataset), [dataset])
   const stats = useMemo(() => deriveShowcaseStats(dataset), [dataset])
   const metrics = useMemo(() => statsToMetrics(stats), [stats])
-  const activeTopology = mode === 'knowledge-graph' ? kgTopology : mode === 'semantic-network' ? snTopology : 'layout'
+  const activeTopology = mode === 'knowledge-graph'
+    ? kgTopology
+    : mode === 'ontology'
+      ? ontologyTopology
+      : mode === 'embedding'
+        ? embeddingTopology
+      : mode === 'semantic-network'
+        ? snTopology
+        : 'layout'
   const labels = useMemo(() => rendererLabelsFor(mode, activeTopology), [mode, activeTopology])
   const kgGraphInput = useMemo(
     () => ({
@@ -190,6 +206,20 @@ export function SemanticaShowcaseScreen() {
     }),
     [dataset.semanticNetwork],
   )
+  const ontologyGraphInput = useMemo(
+    () => ({
+      nodes: ontologyAdapter?.renderer.model.nodes.map((node) => ({ id: node.id, label: node.label ?? node.id })) ?? [],
+      edges: ontologyAdapter?.renderer.model.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })) ?? [],
+    }),
+    [ontologyAdapter],
+  )
+  const embeddingGraphInput = useMemo(
+    () => ({
+      nodes: embeddingAdapter?.renderer.model.nodes.map((node) => ({ id: node.id, label: node.label ?? node.id })) ?? [],
+      edges: embeddingAdapter?.renderer.model.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })) ?? [],
+    }),
+    [embeddingAdapter],
+  )
   const kgPositions = useMemo(
     () => Object.fromEntries(Array.from(computeGraphTopology(kgGraphInput, kgTopology, {
       selectedRootId: kgSelection?.type === 'node' ? kgSelection.id : null,
@@ -203,6 +233,20 @@ export function SemanticaShowcaseScreen() {
       seed: `sn-${snTopology}-${snNudgeCount}`,
     }).positions.entries())),
     [snGraphInput, snTopology, snSelection, snNudgeCount],
+  )
+  const ontologyPositions = useMemo(
+    () => Object.fromEntries(Array.from(computeGraphTopology(ontologyGraphInput, ontologyTopology, {
+      selectedRootId: ontologySelection ?? null,
+      seed: `ontology-${ontologyTopology}-${ontologyNudgeCount}`,
+    }).positions.entries())),
+    [ontologyGraphInput, ontologyNudgeCount, ontologySelection, ontologyTopology],
+  )
+  const embeddingPositions = useMemo(
+    () => Object.fromEntries(Array.from(computeGraphTopology(embeddingGraphInput, embeddingTopology, {
+      selectedRootId: embeddingSelection ?? null,
+      seed: `embedding-${embeddingTopology}-${embeddingNudgeCount}`,
+    }).positions.entries())),
+    [embeddingGraphInput, embeddingNudgeCount, embeddingSelection, embeddingTopology],
   )
   const footerMeta = useMemo(
     () => {
@@ -233,6 +277,9 @@ export function SemanticaShowcaseScreen() {
   const handleSnSelect = useCallback((selection: SigmaGraphReadonlySelection) => {
     setSnSelection(selection)
   }, [])
+  const handleEmbeddingSelect = useCallback((itemId: string) => {
+    setEmbeddingSelection(itemId)
+  }, [])
 
   const nudgeKgTopology = useCallback(() => {
     setKgNudgeCount((value) => value + 1)
@@ -240,6 +287,14 @@ export function SemanticaShowcaseScreen() {
 
   const nudgeSnTopology = useCallback(() => {
     setSnNudgeCount((value) => value + 1)
+  }, [])
+
+  const nudgeOntologyTopology = useCallback(() => {
+    setOntologyNudgeCount((value) => value + 1)
+  }, [])
+
+  const nudgeEmbeddingTopology = useCallback(() => {
+    setEmbeddingNudgeCount((value) => value + 1)
   }, [])
 
   const handleKgViewportReady = useCallback((controller: SigmaGraphReadonlyViewportController | null) => {
@@ -250,6 +305,16 @@ export function SemanticaShowcaseScreen() {
   const handleSnViewportReady = useCallback((controller: SigmaGraphReadonlyViewportController | null) => {
     snViewportRef.current = controller
     setSnZoomRatio(toDisplayZoom(controller?.getZoomRatio() ?? 1))
+  }, [])
+
+  const handleOntologyViewportReady = useCallback((controller: SigmaGraphReadonlyViewportController | null) => {
+    ontologyViewportRef.current = controller
+    setOntologyZoomRatio(toDisplayZoom(controller?.getZoomRatio() ?? 1))
+  }, [])
+
+  const handleEmbeddingViewportReady = useCallback((controller: SigmaGraphReadonlyViewportController | null) => {
+    embeddingViewportRef.current = controller
+    setEmbeddingZoomRatio(toDisplayZoom(controller?.getZoomRatio() ?? 1))
   }, [])
 
   const handleZoomIn = useCallback(() => {
@@ -265,6 +330,20 @@ export function SemanticaShowcaseScreen() {
       if (!controller) return
       controller.zoomIn()
       window.setTimeout(() => setSnZoomRatio(toDisplayZoom(controller.getZoomRatio())), 220)
+      return
+    }
+    if (mode === 'ontology') {
+      const controller = ontologyViewportRef.current
+      if (!controller) return
+      controller.zoomIn()
+      window.setTimeout(() => setOntologyZoomRatio(toDisplayZoom(controller.getZoomRatio())), 220)
+      return
+    }
+    if (mode === 'embedding') {
+      const controller = embeddingViewportRef.current
+      if (!controller) return
+      controller.zoomIn()
+      window.setTimeout(() => setEmbeddingZoomRatio(toDisplayZoom(controller.getZoomRatio())), 220)
     }
   }, [mode])
 
@@ -281,6 +360,20 @@ export function SemanticaShowcaseScreen() {
       if (!controller) return
       controller.zoomOut()
       window.setTimeout(() => setSnZoomRatio(toDisplayZoom(controller.getZoomRatio())), 220)
+      return
+    }
+    if (mode === 'ontology') {
+      const controller = ontologyViewportRef.current
+      if (!controller) return
+      controller.zoomOut()
+      window.setTimeout(() => setOntologyZoomRatio(toDisplayZoom(controller.getZoomRatio())), 220)
+      return
+    }
+    if (mode === 'embedding') {
+      const controller = embeddingViewportRef.current
+      if (!controller) return
+      controller.zoomOut()
+      window.setTimeout(() => setEmbeddingZoomRatio(toDisplayZoom(controller.getZoomRatio())), 220)
     }
   }, [mode])
 
@@ -297,12 +390,36 @@ export function SemanticaShowcaseScreen() {
       if (!controller) return
       controller.fit()
       window.setTimeout(() => setSnZoomRatio(toDisplayZoom(controller.getZoomRatio())), 240)
+      return
+    }
+    if (mode === 'ontology') {
+      const controller = ontologyViewportRef.current
+      if (!controller) return
+      controller.fit()
+      window.setTimeout(() => setOntologyZoomRatio(toDisplayZoom(controller.getZoomRatio())), 240)
+      return
+    }
+    if (mode === 'embedding') {
+      const controller = embeddingViewportRef.current
+      if (!controller) return
+      controller.fit()
+      window.setTimeout(() => setEmbeddingZoomRatio(toDisplayZoom(controller.getZoomRatio())), 240)
     }
   }, [mode])
 
-  const activeZoomRatio = mode === 'semantic-network' ? snZoomRatio : kgZoomRatio
+  const activeZoomRatio = mode === 'semantic-network'
+    ? snZoomRatio
+    : mode === 'embedding'
+      ? embeddingZoomRatio
+    : mode === 'ontology'
+      ? ontologyZoomRatio
+      : kgZoomRatio
   const zoomEnabled = mode === 'knowledge-graph'
     ? Boolean(kgViewportRef.current)
+    : mode === 'embedding'
+      ? Boolean(embeddingViewportRef.current)
+    : mode === 'ontology'
+      ? Boolean(ontologyViewportRef.current)
     : mode === 'semantic-network'
       ? Boolean(snViewportRef.current)
       : false
@@ -489,13 +606,25 @@ export function SemanticaShowcaseScreen() {
                 { label: 'Selection', value: ontologySelection ?? '—' },
               ]}
             />
-            <CenterPanel>
+            <CenterPanel
+              topology={ontologyTopology}
+              onTopologyChange={setOntologyTopology}
+              supportsTopology={Boolean(dataset.ontology)}
+              onNudge={nudgeOntologyTopology}
+              zoomLabel={`${activeZoomRatio.toFixed(1)}x`}
+              zoomEnabled={zoomEnabled}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onFit={handleFit}
+            >
               <OntologyShowcaseView
                 input={ontologyAdapter.renderer}
                 hierarchy={ontologyAdapter.hierarchy}
                 maxDepth={ontologyAdapter.maxDepth}
                 selectedClassId={ontologySelection}
                 onSelect={setOntologySelection}
+                positions={ontologyPositions}
+                onViewportReady={handleOntologyViewportReady}
               />
             </CenterPanel>
             <RightRail
@@ -537,11 +666,23 @@ export function SemanticaShowcaseScreen() {
                 { label: 'Selection', value: embeddingSelection ?? '—' },
               ]}
             />
-            <CenterPanel>
+            <CenterPanel
+              topology={embeddingTopology}
+              onTopologyChange={setEmbeddingTopology}
+              supportsTopology={Boolean(dataset.embedding)}
+              onNudge={nudgeEmbeddingTopology}
+              zoomLabel={`${activeZoomRatio.toFixed(1)}x`}
+              zoomEnabled={zoomEnabled}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onFit={handleFit}
+            >
               <EmbeddingShowcaseView
                 input={embeddingAdapter.renderer}
+                positions={embeddingPositions}
                 selectedItemId={embeddingSelection}
-                onSelect={setEmbeddingSelection}
+                onSelect={handleEmbeddingSelect}
+                onViewportReady={handleEmbeddingViewportReady}
               />
             </CenterPanel>
             <RightRail

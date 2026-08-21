@@ -2,6 +2,12 @@ import { useMemo } from 'react'
 
 import type { OntologyHierarchyNode } from '../adapters/ontology-showcase-adapter'
 import type { ShowcaseOntologyRendererInput } from '../semantica-showcase-types'
+import {
+  handleNodeSelection,
+  selectionForNode,
+  ShowcaseSigmaCanvas,
+} from './shared/showcase-sigma-canvas'
+import type { ShowcaseCanvasViewportProps } from './shared/showcase-sigma-canvas'
 
 export function OntologyShowcaseView({
   input,
@@ -9,51 +15,41 @@ export function OntologyShowcaseView({
   maxDepth,
   selectedClassId,
   onSelect,
+  positions,
+  onViewportReady,
 }: {
   input: ShowcaseOntologyRendererInput
   hierarchy: OntologyHierarchyNode[]
   maxDepth: number
   selectedClassId?: string
   onSelect: (classId: string) => void
-}) {
+} & ShowcaseCanvasViewportProps) {
   const ordered = useMemo(() => sortHierarchy(hierarchy), [hierarchy])
+  void maxDepth
 
   return (
     <div className="flex h-full w-full flex-col gap-3" data-testid="ontology-showcase-view">
-      <div className="rounded-md border border-border bg-card/60 px-3 py-2 text-xs text-muted-foreground">
-        Hierarchy depth: {maxDepth + 1} · Classes: {input.classes.length} · Properties:{' '}
-        {input.properties.length}
-      </div>
-      <ul
-        className="flex-1 overflow-auto rounded-md border border-border bg-card p-3 font-mono text-sm"
-        data-testid="ontology-tree"
-        role="tree"
-      >
+      <ShowcaseSigmaCanvas
+        model={input.model}
+        positions={positions ?? input.positions}
+        selection={selectionForNode(selectedClassId)}
+        ariaLabel="Ontology hierarchy showcase"
+        onViewportReady={onViewportReady}
+        onSelect={handleNodeSelection(onSelect)}
+      />
+      <div className="sr-only" data-testid="ontology-tree">
         {ordered.map((node) => (
-          <li
+          <button
             key={node.id}
-            role="treeitem"
-            aria-selected={node.id === selectedClassId}
-            className="cursor-pointer rounded-sm px-2 py-1 hover:bg-muted"
-            style={{ paddingLeft: `${node.depth * 16 + 8}px` }}
-            onClick={() => onSelect(node.id)}
+            type="button"
             data-testid={`ontology-class-${node.label}`}
+            aria-pressed={selectedClassId === node.id}
+            onClick={() => onSelect(node.id)}
           >
-            <span
-              className={
-                node.id === selectedClassId
-                  ? 'text-foreground font-semibold'
-                  : 'text-foreground/80'
-              }
-            >
-              {node.label}
-            </span>
-            <span className="ml-2 text-[11px] text-muted-foreground">
-              {node.kind} · {node.instanceCount} instance{node.instanceCount === 1 ? '' : 's'}
-            </span>
-          </li>
+            {node.label}
+          </button>
         ))}
-      </ul>
+      </div>
     </div>
   )
 }

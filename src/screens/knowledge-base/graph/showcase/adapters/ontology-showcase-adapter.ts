@@ -14,6 +14,7 @@ import type {
   ShowcaseOntologyFixture,
   ShowcaseOntologyRendererInput,
 } from '../semantica-showcase-types'
+import type { SigmaGraphReadonlyEdge, SigmaGraphReadonlyNode } from '../../sigma-graph-readonly'
 
 export interface OntologyHierarchyNode {
   id: string
@@ -78,9 +79,34 @@ export function adaptOntologyFixture(
   ]
 
   const inspector = buildInspector(fixture, selectedClassId)
+  const positions = layoutHierarchyPositions(hierarchy)
+  const nodes: SigmaGraphReadonlyNode[] = hierarchy.map((node) => ({
+    id: node.id,
+    label: node.label,
+    group: node.kind,
+    size: node.kind === 'root' ? 13 : 10,
+    color: ontologyNodeColor(node.kind),
+    x: positions[node.id]?.x,
+    y: positions[node.id]?.y,
+  }))
+  const edges: SigmaGraphReadonlyEdge[] = hierarchy
+    .filter((node) => node.parentId)
+    .map((node) => ({
+      id: `ontology:${node.parentId}->${node.id}`,
+      source: node.parentId!,
+      target: node.id,
+      label: 'inherits',
+      size: 1,
+      color: '#b4b8be',
+    }))
 
   return {
     renderer: {
+      model: {
+        nodes,
+        edges,
+      },
+      positions,
       classes: fixture.classes,
       properties: fixture.properties,
       inspector,
@@ -91,6 +117,35 @@ export function adaptOntologyFixture(
     hierarchy,
     maxDepth,
   }
+}
+
+function ontologyNodeColor(kind: ShowcaseOntologyClass['kind']): string {
+  if (kind === 'root') return '#3f6f2f'
+  if (kind === 'entity-type') return '#2f5d8f'
+  return '#7f5f2f'
+}
+
+function layoutHierarchyPositions(
+  hierarchy: OntologyHierarchyNode[],
+): Record<string, { x: number; y: number }> {
+  const byDepth = new Map<number, OntologyHierarchyNode[]>()
+  for (const node of hierarchy) {
+    const list = byDepth.get(node.depth) ?? []
+    list.push(node)
+    byDepth.set(node.depth, list)
+  }
+  const positions: Record<string, { x: number; y: number }> = {}
+  for (const [depth, nodes] of byDepth.entries()) {
+    const spread = nodes.length - 1
+    nodes.forEach((node, index) => {
+      const centered = spread === 0 ? 0 : index - spread / 2
+      positions[node.id] = {
+        x: centered * 1.8,
+        y: depth * 1.7,
+      }
+    })
+  }
+  return positions
 }
 
 function buildInspector(

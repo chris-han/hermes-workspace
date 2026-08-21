@@ -21,7 +21,7 @@ export type AsimovVisualizationSwatch =
   | 'asimov-midnight'
   | 'asimov-ivory'
 export type SigmaNodeColorMode = 'semantic' | 'asimov' | 'uniform' | AsimovVisualizationSwatch
-export type SigmaEdgeColorMode = 'semantic' | 'uniform'
+export type SigmaEdgeColorMode = 'semantic' | 'asimov' | 'uniform' | AsimovVisualizationSwatch
 export type SigmaNodeLabelMode = 'all' | 'selected' | 'none'
 export type SigmaEdgeLabelMode = 'all' | 'selected' | 'neighborhood' | 'none'
 
@@ -50,11 +50,11 @@ function resolveAsimovSwatch(swatch: AsimovVisualizationSwatch): string {
   return getComputedStyle(scope).getPropertyValue(ASIMOV_VISUALIZATION_SWATCH_TOKENS[swatch]).trim() || '#72787e'
 }
 
-function stableNodeSwatch(nodeId: string): AsimovVisualizationSwatch {
+function stableAsimovSwatch(seed: string): AsimovVisualizationSwatch {
   const swatches = Object.keys(ASIMOV_VISUALIZATION_SWATCH_TOKENS) as AsimovVisualizationSwatch[]
   let hash = 2166136261
-  for (let index = 0; index < nodeId.length; index += 1) {
-    hash ^= nodeId.charCodeAt(index)
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index)
     hash = Math.imul(hash, 16777619)
   }
   return swatches[(hash >>> 0) % swatches.length]
@@ -197,7 +197,7 @@ export function applySigmaModelControls(
     const color = controls.nodeColor === 'semantic'
       ? node.color
       : controls.nodeColor === 'asimov'
-        ? resolveAsimovSwatch(stableNodeSwatch(node.id))
+        ? resolveAsimovSwatch(stableAsimovSwatch(node.id))
         : controls.nodeColor === 'uniform'
           ? '#72787e'
           : resolveAsimovSwatch(controls.nodeColor)
@@ -222,10 +222,18 @@ export function applySigmaModelControls(
     const showLabel = controls.edgeLabels === 'all'
       || (controls.edgeLabels === 'selected' && incidentToSelection)
       || (controls.edgeLabels === 'neighborhood' && neighborhoodEdge)
+    const color = controls.edgeColor === 'semantic'
+      ? edge.color
+      : controls.edgeColor === 'asimov'
+        ? resolveAsimovSwatch(stableAsimovSwatch(edge.id))
+        : controls.edgeColor === 'uniform'
+          ? '#c2c7ce'
+          : resolveAsimovSwatch(controls.edgeColor)
+
     return {
       ...edge,
       label: showLabel ? edge.label : '',
-      color: controls.edgeColor === 'uniform' ? '#c2c7ce' : edge.color,
+      color,
     }
   })
 

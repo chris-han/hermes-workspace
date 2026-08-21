@@ -60,6 +60,27 @@ function stableAsimovSwatch(seed: string): AsimovVisualizationSwatch {
   return swatches[(hash >>> 0) % swatches.length]
 }
 
+function formatPropertyValue(value: unknown): string {
+  let text: string
+  if (typeof value === 'string') {
+    text = value
+  } else {
+    try {
+      text = JSON.stringify(value)
+    } catch {
+      text = String(value)
+    }
+  }
+  return text.length > 40 ? `${text.slice(0, 37)}…` : text
+}
+
+function formatProperties(properties?: Record<string, unknown>): string {
+  if (!properties) return ''
+  return Object.entries(properties)
+    .map(([key, value]) => `${key}=${formatPropertyValue(value)}`)
+    .join(' · ')
+}
+
 export interface SigmaControlState {
   direction: SigmaDirection
   focus: SigmaFocusMode
@@ -70,6 +91,7 @@ export interface SigmaControlState {
   edgeColor: SigmaEdgeColorMode
   nodeLabels: SigmaNodeLabelMode
   edgeLabels: SigmaEdgeLabelMode
+  showProperties: boolean
   edgeArrows: boolean
   scale: number
 }
@@ -84,6 +106,7 @@ export const DEFAULT_SIGMA_CONTROLS: SigmaControlState = {
   edgeColor: 'semantic',
   nodeLabels: 'all',
   edgeLabels: 'all',
+  showProperties: false,
   edgeArrows: true,
   scale: 50,
 }
@@ -194,6 +217,8 @@ export function applySigmaModelControls(
   const nodes = visibleNodes.map((node) => {
     const showLabel = controls.nodeLabels === 'all'
       || (controls.nodeLabels === 'selected' && selectedNeighbors.has(node.id))
+    const propertiesLabel = controls.showProperties ? formatProperties(node.properties) : ''
+    const label = [showLabel ? node.label : '', propertiesLabel].filter(Boolean).join(' · ')
     const color = controls.nodeColor === 'semantic'
       ? node.color
       : controls.nodeColor === 'asimov'
@@ -204,7 +229,7 @@ export function applySigmaModelControls(
 
     return {
       ...node,
-      label: showLabel ? node.label : '',
+      label,
       size: controls.nodeSize === 'uniform'
         ? 10
         : Math.min(20, 8 + Math.sqrt(degree.get(node.id) ?? 0) * 3),
@@ -222,6 +247,8 @@ export function applySigmaModelControls(
     const showLabel = controls.edgeLabels === 'all'
       || (controls.edgeLabels === 'selected' && incidentToSelection)
       || (controls.edgeLabels === 'neighborhood' && neighborhoodEdge)
+    const propertiesLabel = controls.showProperties ? formatProperties(edge.properties) : ''
+    const label = [showLabel ? edge.label : '', propertiesLabel].filter(Boolean).join(' · ')
     const color = controls.edgeColor === 'semantic'
       ? edge.color
       : controls.edgeColor === 'asimov'
@@ -232,7 +259,7 @@ export function applySigmaModelControls(
 
     return {
       ...edge,
-      label: showLabel ? edge.label : '',
+      label,
       color,
     }
   })

@@ -7,37 +7,25 @@ export function KgShowcaseView({
   input,
   onSelect,
   positions,
-  onNudge,
 }: {
   input: ShowcaseKgRendererInput
   onSelect: (selection: SigmaGraphReadonlySelection) => void
   positions?: Record<string, { x: number; y: number }>
-  onNudge?: () => void
 }) {
   return (
-    <>
-      <button
-        type="button"
-        className="showcase-ref-variance-button self-start"
-        onClick={onNudge}
-        aria-label="Nudge"
-      >
-        <span>Nudge</span>
-      </button>
-      <div className="flex h-full w-full flex-col gap-3" data-testid="kg-showcase-view">
-        <SigmaGraphReadonly
-          input={{
-            nodes: input.model.nodes,
-            edges: input.model.edges,
-            positions,
-            ariaLabel: 'Knowledge graph showcase',
-          }}
-          className="min-h-0 flex-1 w-full bg-transparent"
-          onSelect={onSelect}
-        />
-        <InspectorSummary fields={input.inspector.fields} />
-      </div>
-    </>
+    <div className="flex h-full w-full flex-col gap-3" data-testid="kg-showcase-view">
+      <SigmaGraphReadonly
+        input={{
+          nodes: input.model.nodes,
+          edges: input.model.edges,
+          positions,
+          ariaLabel: 'Knowledge graph showcase',
+        }}
+        className="min-h-0 flex-1 w-full bg-transparent"
+        onSelect={onSelect}
+      />
+      <InspectorSummary fields={input.inspector.fields} />
+    </div>
   )
 }
 

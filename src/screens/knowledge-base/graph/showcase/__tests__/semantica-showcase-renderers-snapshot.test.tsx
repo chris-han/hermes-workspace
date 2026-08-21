@@ -31,7 +31,7 @@ vi.mock('sigma', () => ({
   },
 }))
 
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, render } from '@testing-library/react'
 
 import { KgShowcaseView } from '../renderers/kg-showcase-view'
 import { OntologyShowcaseView } from '../renderers/ontology-showcase-view'
@@ -64,19 +64,6 @@ describe('KgShowcaseView — W0-03 DOM snapshot baseline', () => {
     )
     expect(getByTestId('kg-showcase-view')).toBeDefined()
     expect(container).toMatchSnapshot()
-  })
-
-  it('fires a nudge action when the canvas control is pressed', () => {
-    const dataset = introDataset()
-    expect(dataset.kg, 'intro kg payload missing').toBeDefined()
-    const adapter = adaptKgFixture(dataset.kg!)
-    const onNudge = vi.fn()
-    const { getByRole } = render(
-      <KgShowcaseView input={adapter.renderer} onSelect={() => undefined} onNudge={onNudge} />,
-    )
-
-    fireEvent.click(getByRole('button', { name: 'Nudge' }))
-    expect(onNudge).toHaveBeenCalledTimes(1)
   })
 })
 

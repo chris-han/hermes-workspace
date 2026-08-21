@@ -18,7 +18,7 @@ import { OntologyShowcaseView } from './renderers/ontology-showcase-view'
 import { EmbeddingShowcaseView } from './renderers/embedding-showcase-view'
 import { SemanticNetworkShowcaseView } from './renderers/semantic-network-showcase-view'
 import { getDataset, getDatasetRegistry } from './semantica-showcase-dataset'
-import { describeProvenance, formatProvenanceLine, formatSourceLocation } from './semantica-showcase-provenance'
+import { describeProvenance, formatSourceLocation } from './semantica-showcase-provenance'
 import {
   deriveShowcaseStats,
   rendererLabelsFor,
@@ -194,19 +194,27 @@ export function SemanticaShowcaseScreen() {
     }).positions.entries())),
     [snGraphInput, snTopology, snSelection, snNudgeCount],
   )
-  const statusLine = useMemo(
+  const footerMeta = useMemo(
     () => {
-      const nodesEdges = kgAdapter
-        ? `nodes ${kgAdapter.renderer.model.nodes.length} · edges ${kgAdapter.renderer.model.edges.length}`
-        : `kg payload absent`
-      return [
-        formatProvenanceLine(dataset),
-        nodesEdges,
-        `dataset ${provenance.fixtureId}`,
-        `offline · ${provenance.source}`,
-      ]
+      const kgNodes = kgAdapter?.renderer.model.nodes.length ?? 0
+      const kgEdges = kgAdapter?.renderer.model.edges.length ?? 0
+      return {
+        left: [
+          { label: 'model', value: 'semantica@showcase' },
+          { label: 'run', value: provenance.manifestSha256.slice(0, 8) },
+          { label: 'lifecycle', value: 'offline' },
+          { label: 'source', value: provenance.source },
+          { label: 'dataset', value: `fixture:${dataset.datasetId}` },
+        ],
+        right: [
+          { label: 'nodes', value: String(kgNodes) },
+          { label: 'edges', value: String(kgEdges) },
+          { label: 'lenses', value: String(supportedLenses.length) },
+          { label: 'sha', value: provenance.manifestSha256.slice(0, 10) },
+        ],
+      }
     },
-    [dataset, provenance, kgAdapter],
+    [dataset.datasetId, kgAdapter, provenance, supportedLenses.length],
   )
 
   const handleKgSelect = useCallback((selection: SigmaGraphReadonlySelection) => {
@@ -352,12 +360,12 @@ export function SemanticaShowcaseScreen() {
               topology={kgTopology}
               onTopologyChange={setKgTopology}
               supportsTopology={Boolean(dataset.kg)}
+              onNudge={nudgeKgTopology}
             >
               <KgShowcaseView
                 input={kgAdapter.renderer}
                 onSelect={handleKgSelect}
                 positions={kgPositions}
-                onNudge={nudgeKgTopology}
               />
             </CenterPanel>
             <RightRail
@@ -499,6 +507,7 @@ export function SemanticaShowcaseScreen() {
               topology={snTopology}
               onTopologyChange={setSnTopology}
               supportsTopology={Boolean(dataset.semanticNetwork)}
+              onNudge={nudgeSnTopology}
             >
               <SemanticNetworkShowcaseView
                 input={semanticNetworkAdapter.renderer}
@@ -537,14 +546,21 @@ export function SemanticaShowcaseScreen() {
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} initialSection="hermes" />
 
-      <footer
-        className="showcase-ref-statusbar flex flex-wrap items-center justify-between gap-2 px-3 font-mono text-[11px]"
-        data-testid="showcase-status-bar"
-      >
-        <span>{statusLine[0]}</span>
-        <span>{statusLine[1]}</span>
-        <span>{statusLine[2]}</span>
-        <span>{statusLine[3]}</span>
+      <footer className="showcase-ref-statusbar" data-testid="showcase-status-bar">
+        <div className="showcase-ref-status-group">
+          {footerMeta.left.map((item) => (
+            <span key={item.label} className="showcase-ref-status-item">
+              {item.label} <strong>{item.value}</strong>
+            </span>
+          ))}
+        </div>
+        <div className="showcase-ref-status-group">
+          {footerMeta.right.map((item) => (
+            <span key={item.label} className="showcase-ref-status-item">
+              {item.label} <strong>{item.value}</strong>
+            </span>
+          ))}
+        </div>
       </footer>
     </section>
   )
@@ -571,18 +587,20 @@ function CenterPanel({
   topology = 'layout',
   onTopologyChange = () => undefined,
   supportsTopology = false,
+  onNudge,
 }: {
   children: React.ReactNode
   topology?: GraphTopologyMode
   onTopologyChange?: (next: GraphTopologyMode) => void
   supportsTopology?: boolean
+  onNudge?: () => void
 }) {
-  const modes: Array<{ value: GraphTopologyMode; label: string }> = [
-    { value: 'layout', label: 'LAYOUT' },
-    { value: 'force-directed', label: 'FORCE-DIRECTED' },
-    { value: 'hierarchical', label: 'HIERARCHICAL' },
-    { value: 'radial', label: 'RADIAL' },
+  const layoutModes: Array<{ value: GraphTopologyMode; label: string }> = [
+    { value: 'force-directed', label: 'Force' },
+    { value: 'hierarchical', label: 'Hierarchical' },
+    { value: 'radial', label: 'Radial' },
   ]
+  const activeLayout = topology === 'layout' ? 'force-directed' : topology
 
   return (
     <section className="showcase-ref-panel showcase-ref-center relative flex min-h-0 flex-col overflow-hidden">
@@ -590,20 +608,35 @@ function CenterPanel({
       <div className="showcase-ref-grid-canvas" aria-hidden="true" />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col p-3 pt-5">{children}</div>
       {supportsTopology ? (
-        <div className="showcase-ref-toolbar" aria-label="Visualization controls">
-          <div className="showcase-ref-toolbar-group" role="radiogroup" aria-label="Graph topology controls">
-            {modes.map((item) => (
+        <div className="showcase-ref-canvas-footer" aria-label="Visualization controls">
+          <div className="showcase-ref-canvas-group" role="radiogroup" aria-label="Graph topology controls">
+            <span className="showcase-ref-canvas-label">LAYOUT</span>
+            {layoutModes.map((item) => (
               <button
                 key={item.value}
                 type="button"
-                aria-pressed={topology === item.value}
-                className={topology === item.value ? 'is-active' : ''}
+                aria-pressed={activeLayout === item.value}
+                className={activeLayout === item.value ? 'is-active' : ''}
                 onClick={() => onTopologyChange(item.value)}
                 data-testid={`topology-${item.value}`}
               >
                 {item.label}
               </button>
             ))}
+          </div>
+          <div className="showcase-ref-canvas-group" aria-label="Canvas mode controls">
+            <span className="showcase-ref-canvas-label">MODE</span>
+            <button type="button" className="is-active" aria-pressed="true">View</button>
+            <button type="button">Select</button>
+            <button type="button">Path</button>
+            <span className="showcase-ref-canvas-separator" aria-hidden="true" />
+            <span className="showcase-ref-canvas-label">ZOOM</span>
+            <button type="button" className="showcase-ref-canvas-zoom">-</button>
+            <span className="showcase-ref-canvas-zoom-value">1.0x</span>
+            <button type="button" className="showcase-ref-canvas-zoom">+</button>
+            <span className="showcase-ref-canvas-separator" aria-hidden="true" />
+            <button type="button" className="is-caps">FIT</button>
+            {onNudge ? <button type="button" className="is-caps" onClick={onNudge}>NUDGE</button> : null}
           </div>
         </div>
       ) : null}

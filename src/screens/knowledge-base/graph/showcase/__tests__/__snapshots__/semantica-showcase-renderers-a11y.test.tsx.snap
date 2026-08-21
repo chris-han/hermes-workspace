@@ -43,11 +43,6 @@ exports[`KgShowcaseView — W0-03 a11y tree baseline > exposes a stable role/nam
     "testid": "",
   },
   {
-    "name": "Nudge",
-    "role": "button",
-    "testid": "",
-  },
-  {
     "name": "",
     "role": "div",
     "testid": "kg-showcase-view",

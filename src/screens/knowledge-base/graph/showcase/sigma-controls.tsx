@@ -7,8 +7,8 @@ import { CaretDown, CheckCircle, Gear } from '@/components/ui/icon'
 
 import type { GraphTopologyMode } from '../layouts/graph-topology-layouts'
 import {
-  ASIMOV_VISUALIZATION_SWATCHES,
-  ASIMOV_VISUALIZATION_SWATCH_COLORS,
+  ASIMOV_VISUALIZATION_SWATCH_VARS,
+  ASIMOV_VISUALIZATION_SWATCH_TOKENS,
   type AsimovVisualizationSwatch,
   type SigmaControlState,
 } from './sigma-control-state'
@@ -298,16 +298,16 @@ export function SigmaControls({
                 onChange={(value) => update('nodeColor', value as SigmaControlState['nodeColor'])}
                 options={[
                   { value: 'semantic', label: 'Semantica' },
-                  { value: 'asimov', label: 'Asimov', swatches: ASIMOV_VISUALIZATION_SWATCHES },
+                  { value: 'asimov', label: 'Asimov', swatches: ASIMOV_VISUALIZATION_SWATCH_VARS },
                   { value: 'uniform', label: 'Uniform' },
                   ...(
-                    Object.entries(ASIMOV_VISUALIZATION_SWATCH_COLORS) as Array<
+                    Object.entries(ASIMOV_VISUALIZATION_SWATCH_TOKENS) as Array<
                       [AsimovVisualizationSwatch, string]
                     >
-                  ).map(([value, swatch]) => ({
+                  ).map(([value, token]) => ({
                     value,
                     label: value.replace('asimov-', '').replace(/^./, (character) => character.toUpperCase()),
-                    swatch,
+                    swatch: `var(${token})`,
                   })),
                 ]}
               />

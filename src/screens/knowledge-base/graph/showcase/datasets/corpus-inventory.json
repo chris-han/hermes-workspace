@@ -1,0 +1,653 @@
+{
+  "captured_at": "2026-08-21T00:00:00Z",
+  "semantica_commit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "scope": "third_party/semantica/cookbook/{introduction,advanced,integrations}",
+  "extractor_families": [
+    "intro_visualizer_defaults",
+    "cookbook_graph",
+    "cookbook_ontology",
+    "cookbook_semantic_network",
+    "bundled_ttl"
+  ],
+  "entries": [
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/08_Your_First_Knowledge_Graph.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "11d9c5833a6b25dafabee90b4ab32321a341eff13c434a0e1cdfc5a7f187b92d",
+      "size_bytes": 11445,
+      "cell_count": 12,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded Apple sample KG: cell[8] defines expected_entities (6 typed: Organization/Person/Date/Location) + relationships_data (6 typed: founded_by, founded_in, located_in, ceo_of) with explicit source/target/type triple structure. Satisfies §3.3 'two typed entities and one typed relationship'.",
+      "declared_lenses": [
+        "knowledge-graph"
+      ],
+      "extractor": "cookbook_graph",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-kg"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/10_Graph_Analytics.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "0d3fe1cb68f8ab7a4e9129e78c9ca70783fe9be5e750fd27310394edb5af4ecc",
+      "size_bytes": 6095,
+      "cell_count": 10,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded typed KG: cell[2] defines 3 entities (Organization: Apple Inc., Person: Tim Cook, Location: Cupertino) and 2 typed relationships (CEO_of, located_in). Plan §3.1 marks this 'candidate-kg only; analytics visualizers remain out of scope' — eligible for knowledge-graph lens only.",
+      "declared_lenses": [
+        "knowledge-graph"
+      ],
+      "extractor": "cookbook_graph",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-kg"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/14_Ontology.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "a9df4e52cfbf0df6b62178e61c5b75eadf160d167915c507f89cc0ee261ae8b8",
+      "size_bytes": 19457,
+      "cell_count": 26,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded corporate ontology input: cell[4] defines 10 typed entities (Company: TechCorp, TechSolutions; Person: Alice, Bob, Charlie, Dave; Department: Engineering, Research; Project: Project Phoenix, Project Orion) + typed relationships (leads, manages, part_of, works_on). Notebook exports 'corporate_ontology.ttl' deterministically (cell[24]). Satisfies §3.3 ontology lens via W6-02 deterministic Semantica transformation.",
+      "declared_lenses": [
+        "ontology"
+      ],
+      "extractor": "cookbook_ontology",
+      "referenced_artifacts": [
+        "third_party/semantica/cookbook/introduction/corporate_ontology.ttl"
+      ],
+      "decision_route": "candidate-ontology"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/19_Context_Module.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "0115ba03bb6a446db430efc43a7cf8575dcfd3819d7ba8a9266170a6ff19419e",
+      "size_bytes": 12372,
+      "cell_count": 29,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded semantic-network sample: cell[14] defines 2 documents with typed nodes (PROGRAMMING_LANGUAGE: Python; CONCEPT: Machine Learning; FRAMEWORK: PyTorch) and non-structural typed relations (used_for, implements). Satisfies §3.3 'three typed semantic-network nodes with a non-structural typed relation' (Python, Machine Learning, PyTorch).",
+      "declared_lenses": [
+        "semantic-network"
+      ],
+      "extractor": "cookbook_semantic_network",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-semantic-network"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/02_Advanced_Graph_Analytics.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "66b6bdfb81fde0a60b8de443aa175cd78d639bc985abd8252ea663f15de6f879",
+      "size_bytes": 15155,
+      "cell_count": 22,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded Startup Ecosystem typed KG: cell[4] defines raw_entities (6 typed: Startup, Investor, Person) + raw_relationships (4 typed: FOUNDED, INVESTED_IN, ADVISED). Plan §3.1 marks 'candidate-kg only; analytics visualization excluded' — eligible for knowledge-graph lens only.",
+      "declared_lenses": [
+        "knowledge-graph"
+      ],
+      "extractor": "cookbook_graph",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-kg"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/03_Complete_Visualization_Suite.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "12240df51246970c60c34baf1319c496a0ff4f07ad8d32b66ee40fdcd9e9d560",
+      "size_bytes": 11709,
+      "cell_count": 12,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded typed KG: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Location: San Francisco) + 3 typed relationships (knows, works_for, located_in). Plan §3.1: 'candidate for existing four lenses'. Temporal/analytics lenses excluded per plan §3.1.",
+      "declared_lenses": [
+        "knowledge-graph"
+      ],
+      "extractor": "cookbook_graph",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-kg"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/05_Multi_Format_Export.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "3295381a7c2f9fb1973c5fad14325a6c6154d168782796b213580575d1b7cda7",
+      "size_bytes": 21342,
+      "cell_count": 30,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded typed KG: cell[4] defines 3 entities (Person: Alice/Bob; Organization: Tech Corp) + 2 typed relationships (knows, works_for). Plan §3.1: 'inspect checked-in graph/ontology exports' — eligible.",
+      "declared_lenses": [
+        "knowledge-graph"
+      ],
+      "extractor": "cookbook_graph",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-kg"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/08_Reasoning_and_Inference.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "5501684894512177f7d9729d7cf42dad27773c38003115d624a5b237584bb15a",
+      "size_bytes": 9911,
+      "cell_count": 22,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded family KG: cell[4] defines 5 entities (Person: Alice/Bob/Charlie; Location: San Francisco/California) + 4 typed relationships (parent_of, located_in, lives_in). Plan §3.1: 'inspect: include only explicit graph samples' — eligible.",
+      "declared_lenses": [
+        "knowledge-graph"
+      ],
+      "extractor": "cookbook_graph",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-kg"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/09_Semantic_Layer_Construction.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "66435d8af93384bdfb8846d52da0eb15784b5d240983a928f73b8f4de54b6a04",
+      "size_bytes": 6353,
+      "cell_count": 15,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded typed KG: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Project: Project Alpha) + 4 typed relationships (reports_to, works_for, works_on). Notebook constructs semantic layer with ontology derivation (cell[8]) + RDF export (cell[10]). Plan §3.1: 'candidate-ontology / candidate-semantic-network'. Hard-coded data is typed entities + structural relations, eligible via cookbook_graph extractor.",
+      "declared_lenses": [
+        "knowledge-graph"
+      ],
+      "extractor": "cookbook_graph",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-kg"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/10_Temporal_Knowledge_Graphs.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "6ccff48b0702aa2817441119f54b8ee6ca6149aa7e8236124c717a490b4f8cea",
+      "size_bytes": 15459,
+      "cell_count": 18,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded temporal typed KG: cell[4] defines 9 entities (Organization: TechCorp/InnovateInc/FutureSystems; Person: Alice/Bob/Charlie; Product: HomePC/SoftOS/SmartAI) + 9 typed relationships with timestamps (founded, ceo_of, cto_of, launched, acquired). Plan §3.1: 'candidate-kg only; temporal visualizer excluded' — eligible for knowledge-graph lens only (timestamp metadata dropped).",
+      "declared_lenses": [
+        "knowledge-graph"
+      ],
+      "extractor": "cookbook_graph",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-kg"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/11_Advanced_Context_Engineering.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "2c29e8b148d5c7c941c5c7edf28624c1cfeb2f338c0ae3d67e7974072d8356be",
+      "size_bytes": 16297,
+      "cell_count": 31,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded semantic-network sample: cell[19] defines 4 ontological-category typed nodes (PERSON: Alice; PROJECT: Project Apollo; TECH: Python/React) and 3 typed relations (MANAGES, USES_TECH x2). USES_TECH between PROJECT and TECH is a non-structural semantic relation per W6-04. Satisfies §3.3 'three typed semantic-network nodes with a non-structural typed relation'. Plan §3.1: 'inspect: candidate-semantic-network only if boundary is met' — boundary met.",
+      "declared_lenses": [
+        "semantic-network"
+      ],
+      "extractor": "cookbook_semantic_network",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-semantic-network"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/13_Manual_Ontology_Snowflake_Mapping.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "1f1f8fd08e64bf1d8b7cce0ef57e6c8d8517e0b46a55e718a922e43cfedda0c8",
+      "size_bytes": 23912,
+      "cell_count": 17,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hand-designed ontology dict: cell[4] declares 4 classes (Person, Organization, Role, EmploymentEvent) with full property schemas (datatype + object properties with domain/range/required). Plan §3.1: 'candidate-ontology; no live Snowflake' — cell[8] supplies hard-coded stub data when USE_LIVE_SNOWFLAKE != 'true', so it is service-independent. OntologyEngine produces OWL + SHACL deterministically (cell[12]). Satisfies §3.3 'real hierarchy/ontology'.",
+      "declared_lenses": [
+        "ontology"
+      ],
+      "extractor": "cookbook_ontology",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-ontology"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/14_Datalog_Style_Reasoning.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "1faefcd8db9b0081694031c51e11533f8549a6a0cda1b6489d5925f074f575c9",
+      "size_bytes": 35786,
+      "cell_count": 35,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Two hard-coded typed KGs: cell[9] software-dependency KG (6 entities: Component + 6 typed edges: depends_on) and cell[18] RBAC KG (11 entities: User/Role/Permission + 11 typed edges including role_inherits parent-child). Plan §3.1: 'inspect derived graph only when source semantics are explicit' — both KGs are explicit. RBAC role hierarchy also satisfies semantic-network lens via role_inherits relations.",
+      "declared_lenses": [
+        "knowledge-graph"
+      ],
+      "extractor": "cookbook_graph",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-kg",
+      "declared_lenses_amendment": "v1: semantic-network declared but data is in cg.add_node() runtime API call pattern, not literal. Re-declare when a runtime-API extractor lands."
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/integrations/agno_graphrag_context.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "f6586fd78c8db913d145c185a45d7190a1995029ee67b076edf2b781c54fc56d",
+      "size_bytes": 23067,
+      "cell_count": 28,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded regulatory typed KG: cell[18] defines 3 typed entities (REGULATOR: PRA; BANK: Barclays/HSBC) + 4 typed relationships (SUPERVISES, SUBJECT_TO). Plan §3.1: 'candidate-kg if self-contained and service-independent' — cell[18] is self-contained typed KG, eligible. (The other cells operate over REGULATORY_DOCS text corpus via NER pipeline at runtime, which is not used as fixture source.)",
+      "declared_lenses": [
+        "knowledge-graph"
+      ],
+      "extractor": "cookbook_graph",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-kg"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/integrations/agno_multi_agent_shared_context.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "aec658adff9a93c6a32527588a8595f0d08986f4d99e353df47d8ce3b2cc45f0",
+      "size_bytes": 27360,
+      "cell_count": 25,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Hard-coded semantic-network sample: cell[12] defines 5 ontological-category typed nodes (COMPANY: Competitor Beta/Microsoft Azure; PRODUCT: Azure Synapse Analytics; PERSON: Sarah Chen; EVENT: Gartner Data & Analytics Summit) + 3 typed relations (PARTNERSHIP_WITH, INTEGRATES_WITH, CEO_OF). PARTNERSHIP_WITH and INTEGRATES_WITH are non-structural semantic relations per W6-04. Satisfies §3.3 'three typed semantic-network nodes with a non-structural typed relation'.",
+      "declared_lenses": [
+        "semantic-network"
+      ],
+      "extractor": "cookbook_semantic_network",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-semantic-network"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/corporate_ontology.ttl",
+      "source_kind": "bundled-artifact",
+      "source_sha256": "4349377ea3e1eb2f528f3971de088fe54ef1caef53f0757707ebba0b440c1028",
+      "size_bytes": 2507,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Bundled OWL ontology artifact: 4 owl:Class definitions (Company, Person, Department, Project) and 6 owl:Property definitions (founded, leads, manages, name, partOf, role, worksOn) with rdfs:domain/rdfs:range constraints. Plan §3.1 lists this as a bundled artifact candidate, eligible via W6-02 'documented deterministic Semantica transformation'.",
+      "declared_lenses": [
+        "ontology"
+      ],
+      "extractor": "bundled_ttl",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-ontology"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/knowledge_graph.ttl",
+      "source_kind": "bundled-artifact",
+      "source_sha256": "d49068969f8149c9ba0619a440fe5c5047e81d47996eca1eabc49736beec5c3d",
+      "size_bytes": 398,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "include",
+      "include_reason": "Bundled typed KG artifact: 4 typed entities (e1, e2: Person; e3: Organization; e4: Project) + 4 typed relationships (reports_to, works_for, works_on). Satisfies §3.3 'two typed entities and one typed relationship'. Plan §3.1 lists this as a bundled artifact candidate.",
+      "declared_lenses": [
+        "knowledge-graph"
+      ],
+      "extractor": "bundled_ttl",
+      "referenced_artifacts": [],
+      "decision_route": "candidate-kg"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/01_Welcome_to_Semantica.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "b372110437000474fcd90319ef7a87bd7490b0162aba2a5d57cfa29c51d63d05",
+      "size_bytes": 30820,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — orientation notebook. No hard-coded typed entities or relationships; only introductory narrative.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/02_Data_Ingestion.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "fa685f397183e516228fd565c9a6e1b63b6073dfb5653cbe3e8082c3c4598f53",
+      "size_bytes": 18417,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — file/web/stream ingestion pipeline. No hard-coded typed entities/relationships; only live ingestion.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/03_Document_Parsing.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "f592be1db1d66511ec2981c1c9e49f31983e4e42642561f19620b1e95315dc52",
+      "size_bytes": 7752,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — document parsing pipeline. No hard-coded typed entities/relationships.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/04_Data_Normalization.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "962b44ccb01be0dfdfedf212d188bb139909ba3be1b17d767f934e01d6b2917a",
+      "size_bytes": 7183,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — entity normalization pipeline. Single normalize_entity() call; no typed KG.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/05_Entity_Extraction.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "b53b3d846d6a8b73f8342d59de7f84ab69ea65ab8a665392b66b983d3a5546e3",
+      "size_bytes": 25350,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — NER pipeline only. Sample texts fed into NER; no hard-coded typed entities/relationships.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/06_Relation_Extraction.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "8a58ec59b72592a88cc00458bbf6677f45155f00a342e9e631ba468fa313c48f",
+      "size_bytes": 24754,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — relation extraction pipeline. Sample texts fed into RelationExtractor; no hard-coded typed KG.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/07_Building_Knowledge_Graphs.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "a226760b346d83d74da0cb6a922a2383f59884b41303e5832b401c0131019a62",
+      "size_bytes": 5652,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — KG builder pipeline. entities_list/relationships_list produced by extractor simulation; no hard-coded typed KG.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/09_Graph_Store.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "eb913987bee1a8b66a454bb199f83d5842bbacc467a75b8b1622a02ea3f98615",
+      "size_bytes": 20677,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — service-dependent live Neo4j AuraDB connection. Plan §3.1: 'include only embedded, service-independent graph sample'. Hard-coded data relies on running store.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/11_Chunking_and_Splitting.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "903c3a4edf094c1bf6d5e7b54213db9e00ef1121e12a47daf52b467a55aa9dee",
+      "size_bytes": 28121,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — text chunking pipeline. No typed entities/relationships.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/12_Embedding_Generation.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "f35b6ac99b7402e62eee813e53e51b3b9f6f948186873db4fb7e8a783992b709",
+      "size_bytes": 4557,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — embedding generation via TextEmbedder/EmbeddingGenerator. Vectors are runtime outputs, not checked-in. Plan §3.1: 'not-eligible for embedding unless coordinates are checked in'.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/13_Vector_Store.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "f8ae30ddf0cdbb33de77e03a0061e0f886d671489b0228d75ad364c7bfd204bb",
+      "size_bytes": 17418,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — vector store pipeline. Vectors computed at runtime via TextEmbedder. Plan §3.1: 'include only checked-in vectors/coordinates'.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/15_Export.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "c3c42ea0c34489c837f690f6498ba24830de79af2d3d8d7fba5b88dd297ab730",
+      "size_bytes": 13448,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — toy export example. cell[2]: 1 entity + 0 relationships; cell[7]: 2 entities + 1 typed relationship — too small for meaningful source-faithful dataset.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/16_Visualization.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "d678c0394ccc5c9f25b6c6c301dc321488beb93f2e8df231aa1953c9284b0c10",
+      "size_bytes": 6277,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — existing intro-cookbook-kg source; its KG payload is the current intro bundle. W2 corrects the false provenance; new entry would duplicate intro-cookbook-kg. cell[2] sample (2 entities + 1 typed edge) is too small for a standalone dataset.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/17_Conflict_Detection_and_Resolution.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "daf473b60be7ebae09a0af02ea414ac3bd06ccc2d9ee7cd297aa9c6ff19bc8b3",
+      "size_bytes": 17561,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — conflict-resolution demonstration. cell[4] defines 3 records for the same id 'emp_001' (conflict-only); no typed KG.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/18_Deduplication.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "27360561667dcdd58278f794ad69aae08c0e73c43a26b00f98c8be364e9eafa1",
+      "size_bytes": 13388,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — entity deduplication demonstration. cell[3] defines 6 entities of type 'Company' but no separate typed relationships list (relationship fields embedded in entity properties reference untyped strings).",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/20_Triplet_Store.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "9dac368d53b12415d0a644ef55b0edd4a14ef5f65c3da5c33042aae105e4a536",
+      "size_bytes": 6526,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — RDF triplet store demo against live Blazegraph. cell[6]: 1 triplet (knows) is too small; remaining triplets runtime-only.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/21_Amazon_Neptune_Store.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "ddf648918d651252f756b6715f98b4a66caa02eae846988334e99a375614e95e",
+      "size_bytes": 24138,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — service-dependent live Amazon Neptune connection. Plan §3.1: 'inspect embedded graph only; never require Neptune'. Hard-coded entities depend on running store.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/01_Advanced_Extraction.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "dc036a5761ddd0017f4712daaa2dc6e18f1320b9d590f947f5f0954ded3b5fe7",
+      "size_bytes": 6785,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — extraction pipeline demo (EventDetector, CoreferenceResolver, etc.). No hard-coded typed entities/relationships.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/06_Multi_Source_Data_Integration.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "27f36f29c7cfc426f6c93a06058bcdd834ff7282d6d8d47f6d5e9797d6a79458",
+      "size_bytes": 66210,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — service-dependent multi-source ingestion (WebIngestor, RESTIngestor, GitHub API, MCPIngestor). Hard-coded entity shells reference live API responses for properties; not self-contained typed KG.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/12_Unstructured_to_Ontology.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "3137b27f0ebe4b06a667477bc422c68845396e2308f15f4d9fc085f8b97fb076",
+      "size_bytes": 10899,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — NLP/LLM ontology generation pipeline. text_corpus is hard-coded but entities/relationships are runtime NER outputs. Notebook exports 'quantum_ontology.ttl' at runtime but bundled advanced/quantum_ontology.ttl (3 classes only) is too weak for ontology lens.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/Advanced_Vector_Store_and_Search.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "0824a113e3ddb312fb49c859dfb4f1c67a7d45545842ad04bfb62bff6ca0a77c",
+      "size_bytes": 13630,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible for embedding lens — vectors are np.random.rand() random arrays, not checked-in real embedding coordinates. Plan §3.1: 'not-eligible for embedding unless checked-in vectors/coordinates exist'.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/integrations/agno_decision_intelligence.ipynb",
+      "source_kind": "notebook-cell",
+      "source_sha256": "6b96d2873a1dd7ad9b88f73788c61cb5fc3eb3b9303a97b22fcf58aac83fc346",
+      "size_bytes": 20203,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — decision-tracking demo. cell[5] hard-codes 5 historical_loans (decision records, no graph). Plan §3.1: 'not-eligible unless a self-contained graph sample exists'.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/quantum_ontology.ttl",
+      "source_kind": "bundled-artifact",
+      "source_sha256": "c4121a477c54246777441dd875fd4224bae2712fd529cee8c4e9964fc32d3a47",
+      "size_bytes": 671,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Not eligible — only 3 owl:Class definitions (Org, Person, Gpe) with zero properties and no rdfs:subClassOf edges. Fails §3.3 'at least one parent-child edge' and 'real hierarchy/ontology' thresholds. Weak ontology semantics insufficient for any lens.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "not-eligible"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/config.yaml",
+      "source_kind": "semantica-source",
+      "source_sha256": "ad7b1dd434cd680daf091d0fc28df9111505c5e2cdbc067ad1fa5ccc1549aac6",
+      "size_bytes": 196,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Operational configuration — top-level api_keys (openai, anthropic), embedding.provider/model/dimensions, knowledge_graph.backend. Plan §3.1: 'config.yaml, neptune-setup.yaml, and snowflake_ingestion_examples.py are operational configuration and excluded from fixture copying'.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "operational-config"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/neptune-setup.yaml",
+      "source_kind": "semantica-source",
+      "source_sha256": "9eafbb537bbcc371f8a95379461612140644db42c71d4bc4bfd403db273e85e2",
+      "size_bytes": 9814,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Operational AWS CloudFormation template — IAM policy, arn:aws:neptune-db:* resource ARNs, vpc-flow-logs.amazonaws.com service, neptune-db: IAM actions, IAM user least-privilege credentials scaffolding. Plan §3.1: 'likely contains AWS configuration'. Secret/PII scan confirms AWS endpoint + Neptune IAM action patterns. Excluded as operational-config + credential-bearer.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "operational-config"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/snowflake_ingestion_examples.py",
+      "source_kind": "semantica-source",
+      "source_sha256": "266023598b3197f96d29459dfd4bcfd43df6a849f3445e843d01d6a225e22a23",
+      "size_bytes": 11239,
+      "cell_count": 0,
+      "license": "MIT",
+      "decision": "exclude",
+      "exclude_reason": "Operational Snowflake ingestion example code — uses os.getenv('SNOWFLAKE_PASSWORD') and constructs SnowflakeIngestor with account/user/password/warehouse/database/schema parameters. Secret/PII scan confirms password field with value 'invalid_password'. Excluded as operational-config.",
+      "declared_lenses": [],
+      "extractor": "",
+      "referenced_artifacts": [],
+      "decision_route": "operational-config"
+    }
+  ]
+}

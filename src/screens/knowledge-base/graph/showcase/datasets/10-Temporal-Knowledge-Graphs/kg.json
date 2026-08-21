@@ -1,0 +1,173 @@
+{
+  "entities": [
+    {
+      "id": "org_1",
+      "name": "TechCorp",
+      "properties": {
+        "founded": "1980-01-01",
+        "industry": "Hardware"
+      },
+      "type": "Organization"
+    },
+    {
+      "id": "org_2",
+      "name": "InnovateInc",
+      "properties": {
+        "founded": "1995-06-15",
+        "industry": "Software"
+      },
+      "type": "Organization"
+    },
+    {
+      "id": "org_3",
+      "name": "FutureSystems",
+      "properties": {
+        "founded": "2010-03-10",
+        "industry": "AI"
+      },
+      "type": "Organization"
+    },
+    {
+      "id": "per_1",
+      "name": "Alice Founder",
+      "properties": {
+        "born": "1955-05-20"
+      },
+      "type": "Person"
+    },
+    {
+      "id": "per_2",
+      "name": "Bob Coder",
+      "properties": {
+        "born": "1970-08-12"
+      },
+      "type": "Person"
+    },
+    {
+      "id": "per_3",
+      "name": "Charlie CEO",
+      "properties": {
+        "born": "1980-02-28"
+      },
+      "type": "Person"
+    },
+    {
+      "id": "prod_1",
+      "name": "HomePC",
+      "properties": {
+        "released": "1985-11-20"
+      },
+      "type": "Product"
+    },
+    {
+      "id": "prod_2",
+      "name": "SoftOS",
+      "properties": {
+        "released": "1998-07-25"
+      },
+      "type": "Product"
+    },
+    {
+      "id": "prod_3",
+      "name": "SmartAI",
+      "properties": {
+        "released": "2015-01-10"
+      },
+      "type": "Product"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_0",
+      "properties": {
+        "timestamp": "1980-01-01"
+      },
+      "source": "per_1",
+      "target": "org_1",
+      "type": "founded"
+    },
+    {
+      "id": "rel_1",
+      "properties": {
+        "timestamp": "1995-06-15"
+      },
+      "source": "per_2",
+      "target": "org_2",
+      "type": "founded"
+    },
+    {
+      "id": "rel_2",
+      "properties": {
+        "role": "CEO"
+      },
+      "source": "per_1",
+      "target": "org_1",
+      "type": "ceo_of"
+    },
+    {
+      "id": "rel_3",
+      "properties": {
+        "role": "CEO"
+      },
+      "source": "per_3",
+      "target": "org_1",
+      "type": "ceo_of"
+    },
+    {
+      "id": "rel_4",
+      "properties": {
+        "role": "CTO"
+      },
+      "source": "per_2",
+      "target": "org_2",
+      "type": "cto_of"
+    },
+    {
+      "id": "rel_5",
+      "properties": {
+        "timestamp": "1985-11-20"
+      },
+      "source": "org_1",
+      "target": "prod_1",
+      "type": "launched"
+    },
+    {
+      "id": "rel_6",
+      "properties": {
+        "timestamp": "1998-07-25"
+      },
+      "source": "org_2",
+      "target": "prod_2",
+      "type": "launched"
+    },
+    {
+      "id": "rel_7",
+      "properties": {
+        "timestamp": "2015-01-10"
+      },
+      "source": "org_3",
+      "target": "prod_3",
+      "type": "launched"
+    },
+    {
+      "id": "rel_8",
+      "properties": {
+        "amount": "$5B",
+        "timestamp": "2010-05-01"
+      },
+      "source": "org_1",
+      "target": "org_2",
+      "type": "acquired"
+    },
+    {
+      "id": "rel_9",
+      "properties": {
+        "amount": "$100M",
+        "timestamp": "2012-08-15"
+      },
+      "source": "org_1",
+      "target": "org_3",
+      "type": "invested_in"
+    }
+  ]
+}

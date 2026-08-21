@@ -1,0 +1,87 @@
+{
+  "classes": [
+    {
+      "comment": "",
+      "id": "class:Company",
+      "instanceCount": 0,
+      "kind": "entity-type",
+      "label": "Company",
+      "parent": null
+    },
+    {
+      "comment": "",
+      "id": "class:Department",
+      "instanceCount": 0,
+      "kind": "entity-type",
+      "label": "Department",
+      "parent": null
+    },
+    {
+      "id": "class:Entity",
+      "instanceCount": 0,
+      "kind": "root",
+      "label": "Entity",
+      "parent": null
+    },
+    {
+      "comment": "",
+      "id": "class:Person",
+      "instanceCount": 0,
+      "kind": "entity-type",
+      "label": "Person",
+      "parent": null
+    },
+    {
+      "comment": "",
+      "id": "class:Project",
+      "instanceCount": 0,
+      "kind": "entity-type",
+      "label": "Project",
+      "parent": null
+    }
+  ],
+  "properties": [
+    {
+      "domain": "class:Entity",
+      "id": "prop:founded",
+      "label": "founded",
+      "range": "class:Entity"
+    },
+    {
+      "domain": "class:Entity",
+      "id": "prop:leads",
+      "label": "leads",
+      "range": "class:Entity"
+    },
+    {
+      "domain": "class:Entity",
+      "id": "prop:manages",
+      "label": "manages",
+      "range": "class:Entity"
+    },
+    {
+      "domain": "class:Entity",
+      "id": "prop:name",
+      "label": "name",
+      "range": "class:Entity"
+    },
+    {
+      "domain": "class:Entity",
+      "id": "prop:partOf",
+      "label": "partOf",
+      "range": "class:Entity"
+    },
+    {
+      "domain": "class:Entity",
+      "id": "prop:role",
+      "label": "role",
+      "range": "class:Entity"
+    },
+    {
+      "domain": "class:Entity",
+      "id": "prop:worksOn",
+      "label": "worksOn",
+      "range": "class:Entity"
+    }
+  ]
+}

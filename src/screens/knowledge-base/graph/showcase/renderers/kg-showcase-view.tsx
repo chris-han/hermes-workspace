@@ -6,23 +6,34 @@ import type { ShowcaseInspectorField } from '../semantica-showcase-types'
 export function KgShowcaseView({
   input,
   onSelect,
+  positions,
 }: {
   input: ShowcaseKgRendererInput
   onSelect: (selection: SigmaGraphReadonlySelection) => void
+  positions?: Record<string, { x: number; y: number }>
 }) {
   return (
-    <div className="flex h-full w-full flex-col gap-3" data-testid="kg-showcase-view">
-      <SigmaGraphReadonly
-        input={{
-          nodes: input.model.nodes,
-          edges: input.model.edges,
-          ariaLabel: 'Knowledge graph showcase',
-        }}
-        className="min-h-0 flex-1 w-full bg-transparent"
-        onSelect={onSelect}
-      />
-      <InspectorSummary fields={input.inspector.fields} />
-    </div>
+    <>
+      <button
+        type="button"
+        className="self-start rounded-md border border-border bg-card/60 px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition hover:bg-card"
+      >
+        Nudge
+      </button>
+      <div className="flex h-full w-full flex-col gap-3" data-testid="kg-showcase-view">
+        <SigmaGraphReadonly
+          input={{
+            nodes: input.model.nodes,
+            edges: input.model.edges,
+            positions,
+            ariaLabel: 'Knowledge graph showcase',
+          }}
+          className="min-h-0 flex-1 w-full bg-transparent"
+          onSelect={onSelect}
+        />
+        <InspectorSummary fields={input.inspector.fields} />
+      </div>
+    </>
   )
 }
 

@@ -1,0 +1,24 @@
+{
+  "datasetId": "09-Semantic-Layer-Construction",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hard-coded typed KG: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Project: Project Alpha) + 4 typed relationships (reports_to, works_for, works_on). Notebook constructs sema",
+  "displayName": "09 Semantic Layer Construction",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "dropped_edges": [],
+        "note": "typed entities + typed relationships transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/advanced/09_Semantic_Layer_Construction.ipynb"
+      },
+      "file": "kg.json",
+      "sha256": "a26ded11366f09975b4629a12d51ecee2f24df237b7e11ed7b8c6745deb1bcab"
+    }
+  ],
+  "fixtureSha256": "7d98c9d230bc071f6788acb3ffa506df827fbf4172b556465dc5d2b6808e2f9f",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "6a32a3ab1696e8217946aae93258e3a0d11f9828d0db9a43409699d1433d9032",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

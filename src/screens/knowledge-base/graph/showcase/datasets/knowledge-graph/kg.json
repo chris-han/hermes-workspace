@@ -1,0 +1,58 @@
+{
+  "entities": [
+    {
+      "id": "e1",
+      "name": "e1",
+      "properties": {},
+      "type": "Person"
+    },
+    {
+      "id": "e2",
+      "name": "e2",
+      "properties": {},
+      "type": "Person"
+    },
+    {
+      "id": "e3",
+      "name": "e3",
+      "properties": {},
+      "type": "Organization"
+    },
+    {
+      "id": "e4",
+      "name": "e4",
+      "properties": {},
+      "type": "Project"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "kg-rel-e1-e2-reports_to",
+      "properties": {},
+      "source": "e1",
+      "target": "e2",
+      "type": "reports_to"
+    },
+    {
+      "id": "kg-rel-e1-e3-works_for",
+      "properties": {},
+      "source": "e1",
+      "target": "e3",
+      "type": "works_for"
+    },
+    {
+      "id": "kg-rel-e1-e4-works_on",
+      "properties": {},
+      "source": "e1",
+      "target": "e4",
+      "type": "works_on"
+    },
+    {
+      "id": "kg-rel-e2-e3-works_for",
+      "properties": {},
+      "source": "e2",
+      "target": "e3",
+      "type": "works_for"
+    }
+  ]
+}

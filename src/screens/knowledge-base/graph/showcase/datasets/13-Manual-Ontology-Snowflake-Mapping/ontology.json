@@ -1,0 +1,107 @@
+{
+  "classes": [
+    {
+      "id": "class:Person",
+      "instanceCount": 0,
+      "kind": "entity-type",
+      "label": "Person",
+      "parent": null
+    },
+    {
+      "id": "class:Organization",
+      "instanceCount": 0,
+      "kind": "entity-type",
+      "label": "Organization",
+      "parent": null
+    },
+    {
+      "id": "class:Role",
+      "instanceCount": 0,
+      "kind": "entity-type",
+      "label": "Role",
+      "parent": null
+    },
+    {
+      "id": "class:EmploymentEvent",
+      "instanceCount": 0,
+      "kind": "entity-type",
+      "label": "EmploymentEvent",
+      "parent": null
+    },
+    {
+      "id": "class:Entity",
+      "instanceCount": 0,
+      "kind": "root",
+      "label": "Entity",
+      "parent": null
+    }
+  ],
+  "properties": [
+    {
+      "domain": "class:Person",
+      "id": "prop:name",
+      "label": "name",
+      "range": "string"
+    },
+    {
+      "domain": "class:Organization",
+      "id": "prop:legalName",
+      "label": "legalName",
+      "range": "string"
+    },
+    {
+      "domain": "class:Role",
+      "id": "prop:title",
+      "label": "title",
+      "range": "string"
+    },
+    {
+      "domain": "class:EmploymentEvent",
+      "id": "prop:startDate",
+      "label": "startDate",
+      "range": "date"
+    },
+    {
+      "domain": "class:EmploymentEvent",
+      "id": "prop:endDate",
+      "label": "endDate",
+      "range": "date"
+    },
+    {
+      "domain": "class:EmploymentEvent",
+      "id": "prop:salary",
+      "label": "salary",
+      "range": "decimal"
+    },
+    {
+      "domain": "class:EmploymentEvent",
+      "id": "prop:employee",
+      "label": "employee",
+      "range": "class:Person"
+    },
+    {
+      "domain": "class:EmploymentEvent",
+      "id": "prop:employer",
+      "label": "employer",
+      "range": "class:Organization"
+    },
+    {
+      "domain": "class:EmploymentEvent",
+      "id": "prop:role",
+      "label": "role",
+      "range": "class:Role"
+    },
+    {
+      "domain": "class:Person",
+      "id": "prop:worksFor",
+      "label": "worksFor",
+      "range": "class:Organization"
+    },
+    {
+      "domain": "class:Person",
+      "id": "prop:hasRole",
+      "label": "hasRole",
+      "range": "class:Role"
+    }
+  ]
+}

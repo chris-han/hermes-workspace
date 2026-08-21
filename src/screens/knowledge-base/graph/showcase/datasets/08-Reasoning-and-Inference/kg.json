@@ -1,0 +1,64 @@
+{
+  "entities": [
+    {
+      "id": "alice",
+      "name": "Alice",
+      "properties": {},
+      "type": "Person"
+    },
+    {
+      "id": "bob",
+      "name": "Bob",
+      "properties": {},
+      "type": "Person"
+    },
+    {
+      "id": "charlie",
+      "name": "Charlie",
+      "properties": {},
+      "type": "Person"
+    },
+    {
+      "id": "sf",
+      "name": "San Francisco",
+      "properties": {},
+      "type": "Location"
+    },
+    {
+      "id": "california",
+      "name": "California",
+      "properties": {},
+      "type": "Location"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_0",
+      "properties": {},
+      "source": "alice",
+      "target": "bob",
+      "type": "parent_of"
+    },
+    {
+      "id": "rel_1",
+      "properties": {},
+      "source": "bob",
+      "target": "charlie",
+      "type": "parent_of"
+    },
+    {
+      "id": "rel_2",
+      "properties": {},
+      "source": "sf",
+      "target": "california",
+      "type": "located_in"
+    },
+    {
+      "id": "rel_3",
+      "properties": {},
+      "source": "alice",
+      "target": "sf",
+      "type": "lives_in"
+    }
+  ]
+}

@@ -43,6 +43,7 @@ export interface SigmaGraphReadonlyInput {
   selection?: SigmaGraphReadonlySelection
   highlightedNodeIds?: string[]
   highlightedEdgeIds?: string[]
+  positions?: Record<string, { x: number; y: number }>
   /** Display label used by tests and accessibility text. */
   ariaLabel?: string
 }
@@ -52,10 +53,14 @@ function buildReadonlyGraph(input: SigmaGraphReadonlyInput): Graph {
   const total = input.nodes.length || 1
   input.nodes.forEach((node, index) => {
     const angle = (index / total) * Math.PI * 2
-    graph.addNode(node.id, {
-      label: node.label,
+    const resolvedPosition = input.positions?.[node.id] ?? {
       x: node['x'] ?? Math.cos(angle),
       y: node['y'] ?? Math.sin(angle),
+    }
+    graph.addNode(node.id, {
+      label: node.label,
+      x: resolvedPosition.x,
+      y: resolvedPosition.y,
       size:
         node.size ??
         (input.selection?.type === 'node' && input.selection.id === node.id ? 14 : 10),

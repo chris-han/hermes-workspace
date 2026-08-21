@@ -1,0 +1,23 @@
+{
+  "datasetId": "13-Manual-Ontology-Snowflake-Mapping",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hand-designed ontology dict: cell[4] declares 4 classes (Person, Organization, Role, EmploymentEvent) with full property schemas (datatype + object properties with domain/range/required). Plan §3.1: '",
+  "displayName": "13 Manual Ontology Snowflake Mapping",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "note": "ontology classes + properties transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/advanced/13_Manual_Ontology_Snowflake_Mapping.ipynb"
+      },
+      "file": "ontology.json",
+      "sha256": "567b180e82d5b47e2366ed03408d20c995f526ae49b4d4953d40d067e1f2dcfd"
+    }
+  ],
+  "fixtureSha256": "ed5afe06f37fb0852c21a469da8f8308857683bbc2977c1f82ffbbd3ed7de915",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "de976ba8f5f6c9c21bfb60123f3f2ca999a9534ddc39ac2f3c882b94a712ceec",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

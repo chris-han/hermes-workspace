@@ -1,0 +1,124 @@
+{
+  "classes": [
+    {
+      "id": "class:Company",
+      "instanceCount": 2,
+      "kind": "entity-type",
+      "label": "Company",
+      "parent": "class:Entity"
+    },
+    {
+      "id": "class:Department",
+      "instanceCount": 2,
+      "kind": "entity-type",
+      "label": "Department",
+      "parent": "class:Entity"
+    },
+    {
+      "id": "class:Person",
+      "instanceCount": 4,
+      "kind": "entity-type",
+      "label": "Person",
+      "parent": "class:Entity"
+    },
+    {
+      "id": "class:Project",
+      "instanceCount": 2,
+      "kind": "entity-type",
+      "label": "Project",
+      "parent": "class:Entity"
+    },
+    {
+      "id": "class:Entity",
+      "instanceCount": 10,
+      "kind": "root",
+      "label": "Entity",
+      "parent": null
+    },
+    {
+      "id": "class:Relationship:leads",
+      "instanceCount": 2,
+      "kind": "relationship-type",
+      "label": "leads",
+      "parent": "class:Relationship"
+    },
+    {
+      "id": "class:Relationship:manages",
+      "instanceCount": 2,
+      "kind": "relationship-type",
+      "label": "manages",
+      "parent": "class:Relationship"
+    },
+    {
+      "id": "class:Relationship:part_of",
+      "instanceCount": 2,
+      "kind": "relationship-type",
+      "label": "part_of",
+      "parent": "class:Relationship"
+    },
+    {
+      "id": "class:Relationship:works_on",
+      "instanceCount": 2,
+      "kind": "relationship-type",
+      "label": "works_on",
+      "parent": "class:Relationship"
+    },
+    {
+      "id": "class:Relationship",
+      "instanceCount": 8,
+      "kind": "root",
+      "label": "Relationship",
+      "parent": null
+    }
+  ],
+  "properties": [
+    {
+      "domain": "class:Person",
+      "id": "prop:leads:domain",
+      "label": "domain",
+      "range": "class:Person"
+    },
+    {
+      "domain": "class:Company",
+      "id": "prop:leads:range",
+      "label": "range",
+      "range": "class:Company"
+    },
+    {
+      "domain": "class:Person",
+      "id": "prop:manages:domain",
+      "label": "domain",
+      "range": "class:Person"
+    },
+    {
+      "domain": "class:Department",
+      "id": "prop:manages:range",
+      "label": "range",
+      "range": "class:Department"
+    },
+    {
+      "domain": "class:Department",
+      "id": "prop:part_of:domain",
+      "label": "domain",
+      "range": "class:Department"
+    },
+    {
+      "domain": "class:Company",
+      "id": "prop:part_of:range",
+      "label": "range",
+      "range": "class:Company"
+    },
+    {
+      "domain": "class:Person",
+      "id": "prop:works_on:domain",
+      "label": "domain",
+      "range": "class:Person"
+    },
+    {
+      "domain": "class:Project",
+      "id": "prop:works_on:range",
+      "label": "range",
+      "range": "class:Project"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "entities": [
+    {
+      "id": "PRA",
+      "name": "PRA",
+      "properties": {},
+      "type": "REGULATOR"
+    },
+    {
+      "id": "Barclays",
+      "name": "Barclays",
+      "properties": {},
+      "type": "BANK"
+    },
+    {
+      "id": "HSBC",
+      "name": "HSBC",
+      "properties": {},
+      "type": "BANK"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_0",
+      "properties": {},
+      "source": "PRA",
+      "target": "Barclays",
+      "type": "SUPERVISES"
+    },
+    {
+      "id": "rel_1",
+      "properties": {},
+      "source": "PRA",
+      "target": "HSBC",
+      "type": "SUPERVISES"
+    }
+  ]
+}

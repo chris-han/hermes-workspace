@@ -1,0 +1,44 @@
+{
+  "entities": [
+    {
+      "id": "e1",
+      "name": "Alice",
+      "properties": {
+        "age": 30
+      },
+      "type": "Person"
+    },
+    {
+      "id": "e2",
+      "name": "Bob",
+      "properties": {
+        "age": 35
+      },
+      "type": "Person"
+    },
+    {
+      "id": "e3",
+      "name": "Tech Corp",
+      "properties": {
+        "founded": 2010
+      },
+      "type": "Organization"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_0",
+      "properties": {},
+      "source": "e1",
+      "target": "e2",
+      "type": "knows"
+    },
+    {
+      "id": "rel_1",
+      "properties": {},
+      "source": "e1",
+      "target": "e3",
+      "type": "works_for"
+    }
+  ]
+}

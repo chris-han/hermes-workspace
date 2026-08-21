@@ -1,0 +1,303 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`EmbeddingShowcaseView — W0-03 DOM snapshot baseline > renders the pinned intro fixture with the expected SVG and offline disclosure 1`] = `
+<div>
+  <div
+    class="flex h-full w-full flex-col gap-3"
+    data-testid="embedding-showcase-view"
+  >
+    <div
+      class="relative flex-1 overflow-hidden rounded-md border border-border bg-card"
+    >
+      <svg
+        aria-label="Embedding scatter plot"
+        class="h-full w-full"
+        data-testid="embedding-scatter"
+        role="img"
+        viewBox="0 0 600 400"
+      >
+        <rect
+          fill="transparent"
+          height="400"
+          width="600"
+          x="0"
+          y="0"
+        />
+        <g>
+          <circle
+            cx="568"
+            cy="32"
+            data-testid="embedding-point-Apple"
+            fill="#0ea5e9"
+            fill-opacity="0.85"
+            r="6"
+            stroke="#0f172a"
+            stroke-width="1"
+            style="cursor: pointer;"
+          />
+          <text
+            fill="#e2e8f0"
+            font-family="JetBrains Mono, monospace"
+            font-size="12"
+            x="578"
+            y="36"
+          >
+            Apple
+          </text>
+        </g>
+        <g>
+          <circle
+            cx="202.5806232888867"
+            cy="209.18611556441988"
+            data-testid="embedding-point-Microsoft"
+            fill="#0ea5e9"
+            fill-opacity="0.85"
+            r="6"
+            stroke="#0f172a"
+            stroke-width="1"
+            style="cursor: pointer;"
+          />
+          <text
+            fill="#e2e8f0"
+            font-family="JetBrains Mono, monospace"
+            font-size="12"
+            x="212.5806232888867"
+            y="213.18611556441988"
+          >
+            Microsoft
+          </text>
+        </g>
+        <g>
+          <circle
+            cx="32"
+            cy="368"
+            data-testid="embedding-point-Amazon"
+            fill="#0ea5e9"
+            fill-opacity="0.85"
+            r="6"
+            stroke="#0f172a"
+            stroke-width="1"
+            style="cursor: pointer;"
+          />
+          <text
+            fill="#e2e8f0"
+            font-family="JetBrains Mono, monospace"
+            font-size="12"
+            x="42"
+            y="372"
+          >
+            Amazon
+          </text>
+        </g>
+      </svg>
+    </div>
+    <div
+      class="rounded-md border border-border bg-card/60 px-3 py-2 text-xs text-muted-foreground"
+      data-testid="embedding-offline-disclosure"
+    >
+      Sample coordinates frozen from Semantica visualization fixture; no live embedding provider used.
+    </div>
+  </div>
+</div>
+`;
+
+exports[`OntologyShowcaseView — W0-03 DOM snapshot baseline > renders the pinned intro fixture with the expected tree testids 1`] = `
+<div>
+  <div
+    class="flex h-full w-full flex-col gap-3"
+    data-testid="ontology-showcase-view"
+  >
+    <div
+      class="rounded-md border border-border bg-card/60 px-3 py-2 text-xs text-muted-foreground"
+    >
+      Hierarchy depth: 
+      2
+       · Classes: 
+      5
+       · Properties:
+       
+      2
+    </div>
+    <ul
+      class="flex-1 overflow-auto rounded-md border border-border bg-card p-3 font-mono text-sm"
+      data-testid="ontology-tree"
+      role="tree"
+    >
+      <li
+        aria-selected="false"
+        class="cursor-pointer rounded-sm px-2 py-1 hover:bg-muted"
+        data-testid="ontology-class-Entity"
+        role="treeitem"
+        style="padding-left: 8px;"
+      >
+        <span
+          class="text-foreground/80"
+        >
+          Entity
+        </span>
+        <span
+          class="ml-2 text-[11px] text-muted-foreground"
+        >
+          root
+           · 
+          2
+           instance
+          s
+        </span>
+      </li>
+      <li
+        aria-selected="false"
+        class="cursor-pointer rounded-sm px-2 py-1 hover:bg-muted"
+        data-testid="ontology-class-Organization"
+        role="treeitem"
+        style="padding-left: 24px;"
+      >
+        <span
+          class="text-foreground/80"
+        >
+          Organization
+        </span>
+        <span
+          class="ml-2 text-[11px] text-muted-foreground"
+        >
+          entity-type
+           · 
+          1
+           instance
+        </span>
+      </li>
+      <li
+        aria-selected="false"
+        class="cursor-pointer rounded-sm px-2 py-1 hover:bg-muted"
+        data-testid="ontology-class-Person"
+        role="treeitem"
+        style="padding-left: 24px;"
+      >
+        <span
+          class="text-foreground/80"
+        >
+          Person
+        </span>
+        <span
+          class="ml-2 text-[11px] text-muted-foreground"
+        >
+          entity-type
+           · 
+          1
+           instance
+        </span>
+      </li>
+      <li
+        aria-selected="false"
+        class="cursor-pointer rounded-sm px-2 py-1 hover:bg-muted"
+        data-testid="ontology-class-Relationship"
+        role="treeitem"
+        style="padding-left: 8px;"
+      >
+        <span
+          class="text-foreground/80"
+        >
+          Relationship
+        </span>
+        <span
+          class="ml-2 text-[11px] text-muted-foreground"
+        >
+          root
+           · 
+          1
+           instance
+        </span>
+      </li>
+      <li
+        aria-selected="false"
+        class="cursor-pointer rounded-sm px-2 py-1 hover:bg-muted"
+        data-testid="ontology-class-CEO_of"
+        role="treeitem"
+        style="padding-left: 24px;"
+      >
+        <span
+          class="text-foreground/80"
+        >
+          CEO_of
+        </span>
+        <span
+          class="ml-2 text-[11px] text-muted-foreground"
+        >
+          relationship-type
+           · 
+          1
+           instance
+        </span>
+      </li>
+    </ul>
+  </div>
+</div>
+`;
+
+exports[`SemanticNetworkShowcaseView — W0-03 DOM snapshot baseline > renders the pinned intro fixture with the expected distribution cards 1`] = `
+<div>
+  <div
+    class="flex h-full w-full flex-col gap-3"
+    data-testid="semantic-network-showcase-view"
+  >
+    <div
+      aria-label="Semantic network showcase"
+      class="min-h-0 flex-1 w-full bg-transparent"
+      role="application"
+    />
+    <div
+      class="grid grid-cols-2 gap-3 text-xs"
+    >
+      <div
+        class="rounded-md border border-border bg-card/60 px-3 py-2"
+        data-testid="sn-node-types"
+      >
+        <div
+          class="text-[11px] uppercase tracking-wide text-muted-foreground"
+        >
+          Node types
+        </div>
+        <div
+          class="mt-1 flex flex-wrap gap-2 font-mono"
+        >
+          <span
+            class="rounded-sm bg-muted px-2 py-0.5"
+          >
+            Language
+             · 
+            1
+          </span>
+          <span
+            class="rounded-sm bg-muted px-2 py-0.5"
+          >
+            Concept
+             · 
+            1
+          </span>
+        </div>
+      </div>
+      <div
+        class="rounded-md border border-border bg-card/60 px-3 py-2"
+        data-testid="sn-edge-types"
+      >
+        <div
+          class="text-[11px] uppercase tracking-wide text-muted-foreground"
+        >
+          Edge types
+        </div>
+        <div
+          class="mt-1 flex flex-wrap gap-2 font-mono"
+        >
+          <span
+            class="rounded-sm bg-muted px-2 py-0.5"
+          >
+            writes
+             · 
+            1
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;

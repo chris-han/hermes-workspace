@@ -1,0 +1,23 @@
+{
+  "datasetId": "corporate-ontology",
+  "derivationToolVersion": "1.0.0",
+  "description": "Bundled OWL ontology artifact: 4 owl:Class definitions (Company, Person, Department, Project) and 6 owl:Property definitions (founded, leads, manages, name, partOf, role, worksOn) with rdfs:domain/rdf",
+  "displayName": "corporate ontology",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "note": "verbatim OWL classes + properties extracted from the bundled TTL artifact",
+        "source": "third_party/semantica/cookbook/introduction/corporate_ontology.ttl"
+      },
+      "file": "ontology.json",
+      "sha256": "63ddf54f28507c7b31c316e1d423d3cfd886f036cf776372d616d4eef63fffd4"
+    }
+  ],
+  "fixtureSha256": "062e0f7b6585fa8f63a702cc68b1a9bcddd159492d0e1f8f7c4de43321de2c73",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "dbb26cd1aa2fea28e27bd9f6af9808f2e53c0005f49dc1c1305fb0a6394e2f49",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

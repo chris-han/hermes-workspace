@@ -1,0 +1,23 @@
+{
+  "datasetId": "14-Ontology",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hard-coded corporate ontology input: cell[4] defines 10 typed entities (Company: TechCorp, TechSolutions; Person: Alice, Bob, Charlie, Dave; Department: Engineering, Research; Project: Project Phoenix",
+  "displayName": "14 Ontology",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "note": "ontology classes + properties transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/introduction/14_Ontology.ipynb"
+      },
+      "file": "ontology.json",
+      "sha256": "c70264f7a7bd4c9da294a88ecbe39c843c44e6f16524d3309120eba276fac45e"
+    }
+  ],
+  "fixtureSha256": "7a604f7ce35b8705a8235258a5d861550e5d7d9b091b186e20dbf7d598305aa5",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "29495b7c71cc9eacb5657e3033d69f9683127973ad7f9406bc0045c2b48eb5ef",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

@@ -338,7 +338,7 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--asimov-brand);
+  color: #2d6a2d;
 }
 
 .semantica-showcase-reference .showcase-ref-status i,
@@ -347,7 +347,7 @@
   height: 8px;
   flex: none;
   border-radius: 999px;
-  background: var(--asimov-brand);
+  background: #2d6a2d;
 }
 
 .semantica-showcase-reference .showcase-ref-left-rail { width: 288px; }
@@ -369,7 +369,7 @@
   padding: 2px 6px;
   border-radius: 4px;
   background: var(--asimov-brand-dim);
-  color: var(--asimov-brand);
+  color: #2d6a2d;
   font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
   font-size: 10px;
   font-weight: 600;
@@ -509,19 +509,27 @@
 }
 
 .semantica-showcase-reference .showcase-ref-toolbar button {
-  display: grid;
-  width: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
   height: 32px;
-  place-items: center;
+  padding: 0 12px;
   border: 0;
   border-radius: 4px;
   background: transparent;
   color: var(--asimov-muted);
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 .semantica-showcase-reference .showcase-ref-toolbar button.is-active {
   border: 1px solid rgba(159,232,112,.3);
   background: var(--asimov-brand-dim);
-  color: var(--asimov-brand);
+  color: #2d6a2d;
 }
 .semantica-showcase-reference .showcase-ref-toolbar-separator {
   width: 1px; height: 24px; margin: 0 4px; background: var(--asimov-outline-variant);

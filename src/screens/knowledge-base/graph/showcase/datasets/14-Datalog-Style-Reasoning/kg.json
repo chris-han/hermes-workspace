@@ -1,0 +1,84 @@
+{
+  "entities": [
+    {
+      "id": "pythonsdk",
+      "name": "Python SDK",
+      "properties": {},
+      "type": "Component"
+    },
+    {
+      "id": "restapi",
+      "name": "REST API",
+      "properties": {},
+      "type": "Component"
+    },
+    {
+      "id": "authservice",
+      "name": "Auth Service",
+      "properties": {},
+      "type": "Component"
+    },
+    {
+      "id": "database",
+      "name": "Database",
+      "properties": {},
+      "type": "Component"
+    },
+    {
+      "id": "dashboard",
+      "name": "Dashboard",
+      "properties": {},
+      "type": "Component"
+    },
+    {
+      "id": "analytics",
+      "name": "Analytics",
+      "properties": {},
+      "type": "Component"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_0",
+      "properties": {},
+      "source": "pythonsdk",
+      "target": "restapi",
+      "type": "depends_on"
+    },
+    {
+      "id": "rel_1",
+      "properties": {},
+      "source": "restapi",
+      "target": "authservice",
+      "type": "depends_on"
+    },
+    {
+      "id": "rel_2",
+      "properties": {},
+      "source": "authservice",
+      "target": "database",
+      "type": "depends_on"
+    },
+    {
+      "id": "rel_3",
+      "properties": {},
+      "source": "dashboard",
+      "target": "restapi",
+      "type": "depends_on"
+    },
+    {
+      "id": "rel_4",
+      "properties": {},
+      "source": "dashboard",
+      "target": "analytics",
+      "type": "depends_on"
+    },
+    {
+      "id": "rel_5",
+      "properties": {},
+      "source": "analytics",
+      "target": "database",
+      "type": "depends_on"
+    }
+  ]
+}

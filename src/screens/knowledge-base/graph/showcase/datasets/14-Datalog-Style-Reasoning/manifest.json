@@ -1,0 +1,24 @@
+{
+  "datasetId": "14-Datalog-Style-Reasoning",
+  "derivationToolVersion": "1.0.0",
+  "description": "Two hard-coded typed KGs: cell[9] software-dependency KG (6 entities: Component + 6 typed edges: depends_on) and cell[18] RBAC KG (11 entities: User/Role/Permission + 11 typed edges including role_inh",
+  "displayName": "14 Datalog Style Reasoning",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "dropped_edges": [],
+        "note": "typed entities + typed relationships transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/advanced/14_Datalog_Style_Reasoning.ipynb"
+      },
+      "file": "kg.json",
+      "sha256": "137b141b87f457e880c41bf3331b27c9cfd9c4dcc8a0f1e17b90af39769d306a"
+    }
+  ],
+  "fixtureSha256": "b037e4d34afb9f660d8dd3826dc66e28b11fe1fcc57d9b247660807ab5f1fb46",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "266ddaed2948b73c6899d3718cb5a968338f34d3ea002c86a35d06c110761fd0",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

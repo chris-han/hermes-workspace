@@ -1,0 +1,90 @@
+{
+  "entities": [
+    {
+      "id": "Apple Inc.",
+      "name": "Apple Inc.",
+      "properties": {},
+      "type": "Organization"
+    },
+    {
+      "id": "Steve Jobs",
+      "name": "Steve Jobs",
+      "properties": {},
+      "type": "Person"
+    },
+    {
+      "id": "Steve Wozniak",
+      "name": "Steve Wozniak",
+      "properties": {},
+      "type": "Person"
+    },
+    {
+      "id": "Ronald Wayne",
+      "name": "Ronald Wayne",
+      "properties": {},
+      "type": "Person"
+    },
+    {
+      "id": "1976",
+      "name": "1976",
+      "properties": {},
+      "type": "Date"
+    },
+    {
+      "id": "Cupertino, California",
+      "name": "Cupertino, California",
+      "properties": {},
+      "type": "Location"
+    },
+    {
+      "id": "Tim Cook",
+      "name": "Tim Cook",
+      "properties": {},
+      "type": "Person"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_0",
+      "properties": {},
+      "source": "Apple Inc.",
+      "target": "Steve Jobs",
+      "type": "founded_by"
+    },
+    {
+      "id": "rel_1",
+      "properties": {},
+      "source": "Apple Inc.",
+      "target": "Steve Wozniak",
+      "type": "founded_by"
+    },
+    {
+      "id": "rel_2",
+      "properties": {},
+      "source": "Apple Inc.",
+      "target": "Ronald Wayne",
+      "type": "founded_by"
+    },
+    {
+      "id": "rel_3",
+      "properties": {},
+      "source": "Apple Inc.",
+      "target": "1976",
+      "type": "founded_in"
+    },
+    {
+      "id": "rel_4",
+      "properties": {},
+      "source": "Apple Inc.",
+      "target": "Cupertino, California",
+      "type": "located_in"
+    },
+    {
+      "id": "rel_5",
+      "properties": {},
+      "source": "Tim Cook",
+      "target": "Apple Inc.",
+      "type": "ceo_of"
+    }
+  ]
+}

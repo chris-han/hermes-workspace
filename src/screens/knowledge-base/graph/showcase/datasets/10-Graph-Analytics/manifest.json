@@ -1,0 +1,24 @@
+{
+  "datasetId": "10-Graph-Analytics",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hard-coded typed KG: cell[2] defines 3 entities (Organization: Apple Inc., Person: Tim Cook, Location: Cupertino) and 2 typed relationships (CEO_of, located_in). Plan §3.1 marks this 'candidate-kg onl",
+  "displayName": "10 Graph Analytics",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "dropped_edges": [],
+        "note": "typed entities + typed relationships transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/introduction/10_Graph_Analytics.ipynb"
+      },
+      "file": "kg.json",
+      "sha256": "f21f1c9c9a7dd4825e45551039ef9ef3a08484c63d950c5444bc7f9f16a0fa0c"
+    }
+  ],
+  "fixtureSha256": "bdef09f9012feb3523e64a96b6fc21757cf482ef493eb1c449badbd99616d3dc",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "b4a603a0371cb976e1cef4a621409714d0c23ee484a955a07093ad1ba86dd60f",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

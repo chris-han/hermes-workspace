@@ -1,0 +1,56 @@
+{
+  "version": 2,
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "datasets": [
+    {
+      "datasetId": "intro-cookbook-kg",
+      "displayName": "Semantica Intro · Knowledge Graph",
+      "description": "Apple Inc. / Tim Cook sample. The canonical KGVisualizer demonstration input.",
+      "license": "MIT",
+      "extractor": "intro_visualizer_defaults",
+      "decision": "include",
+      "sizeBytes": 0,
+      "declaredLenses": [
+        "knowledge-graph",
+        "ontology",
+        "embedding",
+        "semantic-network"
+      ],
+      "include_reason": "Canonical demonstration input for KGVisualizer + SemanticNetworkVisualizer + OntologyVisualizer + EmbeddingVisualizer. Two typed entities (Organization/Person), one structural typed relationship (CEO_of), three labelled embedding items, and a small derived ontology. Literal values are transcribed from Semantica's documented default example and recorded verbatim in the generator; the embedding payload is a deterministic synthetic projection explicitly labelled synthetic.",
+      "includedReason": "Canonical demonstration input for KGVisualizer + SemanticNetworkVisualizer + OntologyVisualizer + EmbeddingVisualizer. Two typed entities (Organization/Person), one structural typed relationship (CEO_of), three labelled embedding items, and a small derived ontology. Literal values are transcribed from Semantica's documented default example and recorded verbatim in the generator; the embedding payload is a deterministic synthetic projection explicitly labelled synthetic.",
+      "sourceKind": "semantica-source",
+      "sourcePath": "third_party/semantica/semantica/visualization/kg_visualizer.py",
+      "sourceSha256": "19844ff11aa4e2282ca67411b494d8b615f4fba34710fa578e1c5ed6166fd190",
+      "sources": [
+        {
+          "sourceKind": "semantica-source",
+          "sourcePath": "third_party/semantica/semantica/visualization/kg_visualizer.py",
+          "sourceSha256": "19844ff11aa4e2282ca67411b494d8b615f4fba34710fa578e1c5ed6166fd190",
+          "symbol": "KGVisualizer.visualize_network",
+          "lineRange": [187, 250]
+        },
+        {
+          "sourceKind": "semantica-source",
+          "sourcePath": "third_party/semantica/semantica/visualization/semantic_network_visualizer.py",
+          "sourceSha256": "2faf5d242b836aea0978c519ebfee348466393e3ef21767bd90cf203550618d1",
+          "symbol": "SemanticNetworkVisualizer.visualize_network",
+          "lineRange": [80, 150]
+        },
+        {
+          "sourceKind": "semantica-source",
+          "sourcePath": "third_party/semantica/semantica/visualization/ontology_visualizer.py",
+          "sourceSha256": "2298ef29dfa133f3b83bf549144ecb06d9097b99dd331a4fce128c3562a9f5f9",
+          "symbol": "OntologyVisualizer.visualize_hierarchy",
+          "lineRange": [118, 200]
+        },
+        {
+          "sourceKind": "semantica-source",
+          "sourcePath": "third_party/semantica/semantica/visualization/embedding_visualizer.py",
+          "sourceSha256": "84f5a4c5b75eb7aad5da6074a10d9791f7fed40197fb878dd062a85f096f7d8b",
+          "symbol": "EmbeddingVisualizer.visualize_2d_projection",
+          "lineRange": [105, 195]
+        }
+      ]
+    }
+  ]
+}

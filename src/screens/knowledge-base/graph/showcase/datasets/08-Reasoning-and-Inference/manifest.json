@@ -1,0 +1,24 @@
+{
+  "datasetId": "08-Reasoning-and-Inference",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hard-coded family KG: cell[4] defines 5 entities (Person: Alice/Bob/Charlie; Location: San Francisco/California) + 4 typed relationships (parent_of, located_in, lives_in). Plan §3.1: 'inspect: include",
+  "displayName": "08 Reasoning and Inference",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "dropped_edges": [],
+        "note": "typed entities + typed relationships transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/advanced/08_Reasoning_and_Inference.ipynb"
+      },
+      "file": "kg.json",
+      "sha256": "9cfd2405c350f5b2d27ae6a36887aa606dc0092932e1f284766dc3028275000e"
+    }
+  ],
+  "fixtureSha256": "4eafcb45b382bf32d71b53a519cd43ac0275b9911c9f18dc86c3b41ba11f02ca",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "945a7c4d46839b84abc4f9db5de0f79c912d57894527d2e4451b2db10970ece2",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

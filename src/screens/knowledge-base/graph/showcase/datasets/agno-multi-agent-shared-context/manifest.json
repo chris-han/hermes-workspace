@@ -1,0 +1,23 @@
+{
+  "datasetId": "agno-multi-agent-shared-context",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hard-coded semantic-network sample: cell[12] defines 5 ontological-category typed nodes (COMPANY: Competitor Beta/Microsoft Azure; PRODUCT: Azure Synapse Analytics; PERSON: Sarah Chen; EVENT: Gartner ",
+  "displayName": "agno multi agent shared context",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "note": "ontological-category typed nodes + non-structural semantic relations transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/integrations/agno_multi_agent_shared_context.ipynb"
+      },
+      "file": "semantic-network.json",
+      "sha256": "c6ac0239eec198acf10093c4562b4fc2f93f6e0d64e3d8c039d9e3c5cae236aa"
+    }
+  ],
+  "fixtureSha256": "41fa8f73621d143266a820f51f9aa5efb7886419e165e21103de8dfc24cc6fef",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "94f3e89e552e83b1fe5ec764f5da8fc3988c61ed026c71dbeada9ac169445127",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

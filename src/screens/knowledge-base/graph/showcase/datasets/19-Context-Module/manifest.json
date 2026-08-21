@@ -1,0 +1,23 @@
+{
+  "datasetId": "19-Context-Module",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hard-coded semantic-network sample: cell[14] defines 2 documents with typed nodes (PROGRAMMING_LANGUAGE: Python; CONCEPT: Machine Learning; FRAMEWORK: PyTorch) and non-structural typed relations (used",
+  "displayName": "19 Context Module",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "note": "ontological-category typed nodes + non-structural semantic relations transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/introduction/19_Context_Module.ipynb"
+      },
+      "file": "semantic-network.json",
+      "sha256": "c884a6ae8a3d24497dc90d73bae3ab4043639efeedaef167a434755caa53e4bb"
+    }
+  ],
+  "fixtureSha256": "cd7c7222683776a709a6f60d1c3fd69b4e33c340a2d0a3d2d6892b17a25cab35",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "8492738137cdf483a0c0ab3e172a20f979b025ab6e86dc31f6a9e4f909be2cff",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

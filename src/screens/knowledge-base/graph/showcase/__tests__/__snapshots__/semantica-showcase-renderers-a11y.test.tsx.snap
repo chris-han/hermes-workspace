@@ -1,0 +1,121 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`EmbeddingShowcaseView — W0-03 a11y tree baseline > exposes a stable role/name tree with an img role for the scatter 1`] = `
+[
+  {
+    "name": "",
+    "role": "circle",
+    "testid": "embedding-point-Amazon",
+  },
+  {
+    "name": "",
+    "role": "circle",
+    "testid": "embedding-point-Apple",
+  },
+  {
+    "name": "",
+    "role": "circle",
+    "testid": "embedding-point-Microsoft",
+  },
+  {
+    "name": "Sample coordinates frozen from Semantica visualization fixture; no live embeddin",
+    "role": "div",
+    "testid": "embedding-offline-disclosure",
+  },
+  {
+    "name": "AppleMicrosoftAmazonSample coordinates frozen from Semantica visualization fixtu",
+    "role": "div",
+    "testid": "embedding-showcase-view",
+  },
+  {
+    "name": "Embedding scatter plot",
+    "role": "img",
+    "testid": "embedding-scatter",
+  },
+]
+`;
+
+exports[`KgShowcaseView — W0-03 a11y tree baseline > exposes a stable role/name/testid tree for the intro fixture 1`] = `
+[
+  {
+    "name": "Knowledge graph showcase",
+    "role": "application",
+    "testid": "",
+  },
+  {
+    "name": "Nudge",
+    "role": "button",
+    "testid": "",
+  },
+  {
+    "name": "",
+    "role": "div",
+    "testid": "kg-showcase-view",
+  },
+]
+`;
+
+exports[`OntologyShowcaseView — W0-03 a11y tree baseline > exposes a stable role=name tree with treeitem roles for classes 1`] = `
+[
+  {
+    "name": "Hierarchy depth: 2 · Classes: 5 · Properties: 2Entityroot · 2 instancesOrganizat",
+    "role": "div",
+    "testid": "ontology-showcase-view",
+  },
+  {
+    "name": "Entityroot · 2 instancesOrganizationentity-type · 1 instancePersonentity-type · ",
+    "role": "tree",
+    "testid": "ontology-tree",
+  },
+  {
+    "name": "CEO_ofrelationship-type · 1 instance",
+    "role": "treeitem",
+    "testid": "ontology-class-CEO_of",
+  },
+  {
+    "name": "Entityroot · 2 instances",
+    "role": "treeitem",
+    "testid": "ontology-class-Entity",
+  },
+  {
+    "name": "Organizationentity-type · 1 instance",
+    "role": "treeitem",
+    "testid": "ontology-class-Organization",
+  },
+  {
+    "name": "Personentity-type · 1 instance",
+    "role": "treeitem",
+    "testid": "ontology-class-Person",
+  },
+  {
+    "name": "Relationshiproot · 1 instance",
+    "role": "treeitem",
+    "testid": "ontology-class-Relationship",
+  },
+]
+`;
+
+exports[`SemanticNetworkShowcaseView — W0-03 a11y tree baseline > exposes a stable role/name tree with the distribution card testids 1`] = `
+[
+  {
+    "name": "Semantic network showcase",
+    "role": "application",
+    "testid": "",
+  },
+  {
+    "name": "Node typesLanguage · 1Concept · 1Edge typeswrites · 1",
+    "role": "div",
+    "testid": "semantic-network-showcase-view",
+  },
+  {
+    "name": "Edge typeswrites · 1",
+    "role": "div",
+    "testid": "sn-edge-types",
+  },
+  {
+    "name": "Node typesLanguage · 1Concept · 1",
+    "role": "div",
+    "testid": "sn-node-types",
+  },
+]
+`;

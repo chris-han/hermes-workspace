@@ -1,0 +1,35 @@
+{
+  "datasetId": "03-Complete-Visualization-Suite",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hard-coded typed KG: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Location: San Francisco) + 3 typed relationships (knows, works_for, located_in). Plan §3.1: 'candidate for ",
+  "displayName": "03 Complete Visualization Suite",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "dropped_edges": [
+          "rel_0",
+          "rel_1",
+          "rel_2",
+          "rel_3",
+          "rel_4",
+          "rel_5",
+          "rel_6",
+          "rel_7",
+          "rel_8",
+          "rel_9"
+        ],
+        "note": "typed entities + typed relationships transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/advanced/03_Complete_Visualization_Suite.ipynb"
+      },
+      "file": "kg.json",
+      "sha256": "318e8b2309572c04e06f56d97565cb84d31004a331d809406795d7daec39a5be"
+    }
+  ],
+  "fixtureSha256": "ae9bd921af9648bdd7ae2861bf657055b7908fff95e171446648f0154db0bcce",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "030683ad03c8920bdf2bf62ee5465d66fec66d35c5ba32f54a45395041fe38d3",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

@@ -1,0 +1,23 @@
+{
+  "datasetId": "knowledge-graph",
+  "derivationToolVersion": "1.0.0",
+  "description": "Bundled typed KG artifact: 4 typed entities (e1, e2: Person; e3: Organization; e4: Project) + 4 typed relationships (reports_to, works_for, works_on). Satisfies §3.3 'two typed entities and one typed ",
+  "displayName": "knowledge graph",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "note": "verbatim typed entities + typed relationships extracted from the bundled TTL artifact",
+        "source": "third_party/semantica/cookbook/advanced/knowledge_graph.ttl"
+      },
+      "file": "kg.json",
+      "sha256": "86a9b2205c86db089d1fbbe8534a3d0aab7fb9046a6a17c5836b748f8ac5a271"
+    }
+  ],
+  "fixtureSha256": "f19853a8ca18eabce4303de0fe9ea85d2cb42ba45a8de1023ed94fb1be21607a",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "02c4bd0f694cdcd13610179cab3cebefddaea165610708c2a15dfe6081a6073c",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

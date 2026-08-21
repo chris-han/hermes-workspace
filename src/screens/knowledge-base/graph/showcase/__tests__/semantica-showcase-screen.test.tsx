@@ -16,9 +16,25 @@ vi.mock('sigma', () => ({
   },
 }))
 
+vi.mock('@/lib/semantier-auth', () => ({
+  fetchSemantierAuthStatus: () => Promise.resolve({ authenticated: false, profile: null }),
+  semantierAuthQueryKey: ['semantier-auth'],
+  useSemantierAuthStatus: () => ({ data: { authenticated: false, profile: null } }),
+}))
+
 import { cleanup, render, screen, fireEvent } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { SemanticaShowcaseScreen } from '../semantica-showcase-screen'
+
+function renderWithProviders(node: React.ReactNode) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return render(
+    <QueryClientProvider client={queryClient}>{node}</QueryClientProvider>,
+  )
+}
 
 afterEach(() => {
   cleanup()
@@ -26,7 +42,7 @@ afterEach(() => {
 
 describe('SemanticaShowcaseScreen — shell structure', () => {
   it('renders the four visualization tabs with the expected labels', () => {
-    render(<SemanticaShowcaseScreen />)
+    renderWithProviders(<SemanticaShowcaseScreen />)
     const tablist = screen.getByTestId('semantica-showcase-screen')
     expect(tablist).toBeDefined()
     expect(screen.getByTestId('showcase-tab-knowledge-graph').textContent).toBe('Knowledge Graph')
@@ -36,7 +52,7 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
   })
 
   it('renders the Knowledge Graph view by default with the metric cards', () => {
-    render(<SemanticaShowcaseScreen />)
+    renderWithProviders(<SemanticaShowcaseScreen />)
     expect(screen.getByTestId('kg-showcase-view')).toBeDefined()
     const metrics = screen.getByTestId('metric-cards')
     expect(metrics.textContent).toMatch(/Nodes/)
@@ -45,7 +61,7 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
   })
 
   it('switches to the Ontology view and renders class nodes', () => {
-    render(<SemanticaShowcaseScreen />)
+    renderWithProviders(<SemanticaShowcaseScreen />)
     fireEvent.click(screen.getByTestId('showcase-tab-ontology'))
     expect(screen.getByTestId('ontology-showcase-view')).toBeDefined()
     expect(screen.getByTestId('ontology-class-Organization')).toBeDefined()
@@ -53,7 +69,7 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
   })
 
   it('selects an ontology class and surfaces the class fields in the inspector', () => {
-    render(<SemanticaShowcaseScreen />)
+    renderWithProviders(<SemanticaShowcaseScreen />)
     fireEvent.click(screen.getByTestId('showcase-tab-ontology'))
     fireEvent.click(screen.getByTestId('ontology-class-Organization'))
     const inspector = screen.getByTestId('inspector-fields')
@@ -62,7 +78,7 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
   })
 
   it('switches to the Embedding view and renders the offline disclosure', () => {
-    render(<SemanticaShowcaseScreen />)
+    renderWithProviders(<SemanticaShowcaseScreen />)
     fireEvent.click(screen.getByTestId('showcase-tab-embedding'))
     expect(screen.getByTestId('embedding-showcase-view')).toBeDefined()
     const disclosure = screen.getByTestId('embedding-offline-disclosure')
@@ -71,7 +87,7 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
   })
 
   it('selects an embedding point and surfaces label, source text, and coordinates', () => {
-    render(<SemanticaShowcaseScreen />)
+    renderWithProviders(<SemanticaShowcaseScreen />)
     fireEvent.click(screen.getByTestId('showcase-tab-embedding'))
     fireEvent.click(screen.getByTestId('embedding-point-Apple'))
     const inspector = screen.getByTestId('inspector-fields')
@@ -81,7 +97,7 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
   })
 
   it('switches to the Semantic Network view and shows type distribution chips', () => {
-    render(<SemanticaShowcaseScreen />)
+    renderWithProviders(<SemanticaShowcaseScreen />)
     fireEvent.click(screen.getByTestId('showcase-tab-semantic-network'))
     expect(screen.getByTestId('semantic-network-showcase-view')).toBeDefined()
     expect(screen.getByTestId('sn-node-types').textContent).toMatch(/Language/)
@@ -90,7 +106,7 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
   })
 
   it('exposes the controlled dataset selector with the registered dataset id', () => {
-    render(<SemanticaShowcaseScreen />)
+    renderWithProviders(<SemanticaShowcaseScreen />)
     const selector = screen.getByTestId('dataset-selector')
     expect(selector).toBeDefined()
     expect(selector.textContent).toMatch(/Semantica Intro · Knowledge Graph/)
@@ -101,7 +117,7 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
   })
 
   it('renders the bottom status bar with the fixture provenance', () => {
-    render(<SemanticaShowcaseScreen />)
+    renderWithProviders(<SemanticaShowcaseScreen />)
     const status = screen.getByTestId('showcase-status-bar')
     expect(status.textContent).toMatch(/intro-cookbook-kg/)
     expect(status.textContent).toMatch(/semantica@/)

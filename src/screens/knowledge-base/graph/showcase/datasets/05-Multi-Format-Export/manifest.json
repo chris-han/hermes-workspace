@@ -1,0 +1,24 @@
+{
+  "datasetId": "05-Multi-Format-Export",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hard-coded typed KG: cell[4] defines 3 entities (Person: Alice/Bob; Organization: Tech Corp) + 2 typed relationships (knows, works_for). Plan §3.1: 'inspect checked-in graph/ontology exports' — eligib",
+  "displayName": "05 Multi Format Export",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "dropped_edges": [],
+        "note": "typed entities + typed relationships transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/advanced/05_Multi_Format_Export.ipynb"
+      },
+      "file": "kg.json",
+      "sha256": "5bb14d56d5249d7b8adc8c51ab68f41a5e71b34c065fb36d5f448c77fc0298d9"
+    }
+  ],
+  "fixtureSha256": "d2ce51abfd4e85ef7f246b175210b71e961f70dfe465a2c2e040057db2e0ef89",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "60dc23d97320cc35cef27bbded661bf9c1f6cf031f83947fe41080a2f10210b1",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

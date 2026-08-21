@@ -1,0 +1,27 @@
+{
+  "datasetId": "agno-graphrag-context",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hard-coded regulatory typed KG: cell[18] defines 3 typed entities (REGULATOR: PRA; BANK: Barclays/HSBC) + 4 typed relationships (SUPERVISES, SUBJECT_TO). Plan §3.1: 'candidate-kg if self-contained and",
+  "displayName": "agno graphrag context",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "dropped_edges": [
+          "rel_2",
+          "rel_3"
+        ],
+        "note": "typed entities + typed relationships transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/integrations/agno_graphrag_context.ipynb"
+      },
+      "file": "kg.json",
+      "sha256": "dc03471c385e518cbeba88c23feddf5adc1f353d1225f90f58088cfdf9512370"
+    }
+  ],
+  "fixtureSha256": "e1ad3624fd9f04495b24c34befb36193816d940dac04ad537be8d60b6d46bc83",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "3044c4df89339a7b43bf137a0c8767a39e3c0189c5f0b0e351d09034826327ae",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

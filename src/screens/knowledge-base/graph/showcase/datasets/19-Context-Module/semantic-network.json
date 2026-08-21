@@ -1,0 +1,33 @@
+{
+  "edges": [
+    {
+      "id": "sn-rel-e_python-e_ml-used_for",
+      "label": "used_for",
+      "source": "e_python",
+      "target": "e_ml"
+    },
+    {
+      "id": "sn-rel-e_pytorch-e_ml-implements",
+      "label": "implements",
+      "source": "e_pytorch",
+      "target": "e_ml"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "e_python",
+      "label": "Python",
+      "type": "PROGRAMMING_LANGUAGE"
+    },
+    {
+      "id": "e_ml",
+      "label": "Machine Learning",
+      "type": "CONCEPT"
+    },
+    {
+      "id": "e_pytorch",
+      "label": "PyTorch",
+      "type": "FRAMEWORK"
+    }
+  ]
+}

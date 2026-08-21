@@ -1,0 +1,56 @@
+{
+  "captured_at": "2026-08-21T00:00:00Z",
+  "semantica_commit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "entries": [
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/neptune-setup.yaml",
+      "reason": "operational-config",
+      "evidence": "AWS CloudFormation template: arn:aws:neptune-db:${AWS::Region}:${AWS::AccountId}:${ClusterResourceId}/* resource ARN pattern; vpc-flow-logs.amazonaws.com service endpoint; neptune-db: IAM action permissions; IAM least-privilege user scaffolding. Plan \u00a73.1 explicitly excludes as operational configuration."
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/neptune-setup.yaml",
+      "reason": "credential-bearer",
+      "evidence": "Heuristic match: matches Neptune endpoint pattern + arn:aws:neptune-db resource ARN format (W1-05 scan). IAM policy uses ClientCidr AllowedPattern for IPv4 CIDR; pairs with CloudFormation stack that produces AWS access keys."
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/snowflake_ingestion_examples.py",
+      "reason": "operational-config",
+      "evidence": "SnowflakeIngestor(account=os.getenv('SNOWFLAKE_ACCOUNT'), user=os.getenv('SNOWFLAKE_USER'), password=os.getenv('SNOWFLAKE_PASSWORD'), warehouse='COMPUTE_WH', database='SAMPLE_DB', schema='PUBLIC'). Plan \u00a73.1 explicitly excludes as operational configuration."
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/snowflake_ingestion_examples.py",
+      "reason": "credential-bearer",
+      "evidence": "Heuristic match: contains password= field with value 'invalid_password' (test fixture string). W1-05 scan flags Snowflake password handling."
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/config.yaml",
+      "reason": "operational-config",
+      "evidence": "Top-level api_keys section (openai: your_key_here, anthropic: your_key_here) plus embedding.provider/model/dimensions and knowledge_graph.backend runtime configuration. Plan \u00a73.1 explicitly excludes as operational configuration."
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/21_Amazon_Neptune_Store.ipynb",
+      "reason": "not-eligible",
+      "evidence": "Service-dependent: cell[4] sets os.environ['NEPTUNE_ENDPOINT']='your-cluster.us-east-1.neptune.amazonaws.com' (placeholder), cell[6]/[8] call neptune_store.connect() requiring live Amazon Neptune. Plan \u00a73.1: 'inspect embedded graph only; never require Neptune'. (W1-05 flagged the .amazonaws.com domain; the IPs 203.0.113.x are RFC 5737 documentation-only addresses, not real credentials.)"
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/introduction/09_Graph_Store.ipynb",
+      "reason": "not-eligible",
+      "evidence": "Service-dependent: cell[3] instantiates GraphStore(backend='neo4j', uri='Your URI', user='neo4j', password='Your Password') and calls store.connect(). Plan \u00a73.1: 'include only embedded, service-independent graph sample'. No embedded typed KG."
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/integrations/agno_multi_agent_shared_context.ipynb",
+      "reason": "not-eligible",
+      "evidence": "Snowflake references detected by W1-05 scan (4 occurrences). These appear in strategy decisions and decision_record entity references ('AWS Marketplace, Snowflake, LLM Analytics'). The cell[12] typed KG is included separately as candidate-semantic-network; no actual Snowflake credentials."
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/13_Manual_Ontology_Snowflake_Mapping.ipynb",
+      "reason": "not-eligible",
+      "evidence": "Snowflake references detected by W1-05 scan (6 occurrences). Plan \u00a73.1: 'candidate-ontology; no live Snowflake'. Notebook uses os.getenv('SNOWFLAKE_*') for optional live mode; cell[8] supplies hard-coded stub data otherwise. Cell[4] hand-designed ontology dict is the included source. No actual credentials."
+    },
+    {
+      "source_path": "third_party/semantica/cookbook/advanced/06_Multi_Source_Data_Integration.ipynb",
+      "reason": "not-eligible",
+      "evidence": "Service-dependent: cell[4] ingests live web sources (python.org, docs.python.org, peps.python.org, packaging.python.org), cell[6] calls RESTIngestor on PyPI JSON API, cell[8] fetches GitHub raw content + REST API, cell[10] uses SQLite + DBIngestor, cell[12] connects to local MCP servers. Plan \u00a73.1: 'include only embedded, service-independent graph sample'. (W1-05 flagged 127.0.0.1 localhost references \u2014 not credentials.)"
+    }
+  ]
+}

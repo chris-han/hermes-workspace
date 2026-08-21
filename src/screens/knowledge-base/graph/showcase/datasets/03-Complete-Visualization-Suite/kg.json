@@ -1,0 +1,37 @@
+{
+  "entities": [
+    {
+      "id": "e1",
+      "name": "Alice",
+      "properties": {
+        "age": 30
+      },
+      "type": "Person"
+    },
+    {
+      "id": "e2",
+      "name": "Bob",
+      "properties": {
+        "age": 35
+      },
+      "type": "Person"
+    },
+    {
+      "id": "e3",
+      "name": "Tech Corp",
+      "properties": {
+        "founded": 2010
+      },
+      "type": "Organization"
+    },
+    {
+      "id": "e4",
+      "name": "San Francisco",
+      "properties": {
+        "country": "USA"
+      },
+      "type": "Location"
+    }
+  ],
+  "relationships": []
+}

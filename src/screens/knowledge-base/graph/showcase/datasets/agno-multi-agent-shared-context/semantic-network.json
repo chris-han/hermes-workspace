@@ -1,0 +1,49 @@
+{
+  "edges": [
+    {
+      "id": "sn-rel-Competitor Beta-Microsoft Azure-PARTNERSHIP_WITH-0",
+      "label": "PARTNERSHIP_WITH",
+      "source": "Competitor Beta",
+      "target": "Microsoft Azure"
+    },
+    {
+      "id": "sn-rel-Competitor Beta-Azure Synapse Analytics-INTEGRATES_WITH-1",
+      "label": "INTEGRATES_WITH",
+      "source": "Competitor Beta",
+      "target": "Azure Synapse Analytics"
+    },
+    {
+      "id": "sn-rel-Sarah Chen-Competitor Beta-CEO_OF-2",
+      "label": "CEO_OF",
+      "source": "Sarah Chen",
+      "target": "Competitor Beta"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "Competitor Beta",
+      "label": "Competitor Beta",
+      "type": "COMPANY"
+    },
+    {
+      "id": "Microsoft Azure",
+      "label": "Microsoft Azure",
+      "type": "COMPANY"
+    },
+    {
+      "id": "Azure Synapse Analytics",
+      "label": "Azure Synapse Analytics",
+      "type": "PRODUCT"
+    },
+    {
+      "id": "Sarah Chen",
+      "label": "Sarah Chen",
+      "type": "PERSON"
+    },
+    {
+      "id": "Gartner Data & Analytics Summit",
+      "label": "Gartner Data & Analytics Summit",
+      "type": "EVENT"
+    }
+  ]
+}

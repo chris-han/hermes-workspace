@@ -1,0 +1,63 @@
+{
+  "entities": [
+    {
+      "id": "startup_1",
+      "name": "TechFlow AI",
+      "properties": {},
+      "type": "Startup"
+    },
+    {
+      "id": "startup_2",
+      "name": "GreenEnergy Co",
+      "properties": {},
+      "type": "Startup"
+    },
+    {
+      "id": "startup_1_dup",
+      "name": "TechFlow Inc.",
+      "properties": {},
+      "type": "Startup"
+    },
+    {
+      "id": "investor_1",
+      "name": "Venture Capital X",
+      "properties": {},
+      "type": "Investor"
+    },
+    {
+      "id": "founder_1",
+      "name": "Alice Chen",
+      "properties": {},
+      "type": "Person"
+    },
+    {
+      "id": "founder_2",
+      "name": "Bob Smith",
+      "properties": {},
+      "type": "Person"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_0",
+      "properties": {},
+      "source": "founder_1",
+      "target": "startup_1",
+      "type": "FOUNDED"
+    },
+    {
+      "id": "rel_1",
+      "properties": {},
+      "source": "investor_1",
+      "target": "startup_1",
+      "type": "INVESTED_IN"
+    },
+    {
+      "id": "rel_3",
+      "properties": {},
+      "source": "founder_1",
+      "target": "startup_2",
+      "type": "ADVISED"
+    }
+  ]
+}

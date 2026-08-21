@@ -1,0 +1,44 @@
+{
+  "edges": [
+    {
+      "id": "rel_0",
+      "label": "MANAGES",
+      "source": "alice",
+      "target": "project_apollo"
+    },
+    {
+      "id": "rel_1",
+      "label": "USES_TECH",
+      "source": "project_apollo",
+      "target": "python"
+    },
+    {
+      "id": "rel_2",
+      "label": "USES_TECH",
+      "source": "project_apollo",
+      "target": "react"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "alice",
+      "label": "Alice",
+      "type": "PERSON"
+    },
+    {
+      "id": "project_apollo",
+      "label": "Project Apollo",
+      "type": "PROJECT"
+    },
+    {
+      "id": "python",
+      "label": "Python",
+      "type": "TECH"
+    },
+    {
+      "id": "react",
+      "label": "React",
+      "type": "TECH"
+    }
+  ]
+}

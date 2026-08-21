@@ -2,22 +2,226 @@
   "datasets": [
     {
       "datasetId": "intro-cookbook-kg",
-      "description": "Apple Inc. / Tim Cook sample from Semantica introductory notebook Step 1.",
+      "description": "Apple Inc. / Tim Cook sample. The canonical KGVisualizer demonstration input.",
       "displayName": "Semantica Intro · Knowledge Graph",
-      "files": {
-        "embedding.json": "437a45b49269eb27a0963e7e5377f0ca3008906abb8bbb95d761a52e0060baff",
-        "kg.json": "d2c7f70a4e80e23f713f98695f533a2d302b038d3b95f4b8389c9cc78d537d31",
-        "ontology.json": "ef92ecec54ee89c72008091207dc44114b1e2803f5016f434ba09ed39e228baa",
-        "semantic-network.json": "b6c843143108b4cd89f685d05cb966b185f19d8a5683421f33637cb8ba7d903f"
-      },
-      "fixturePath": "datasets/intro-cookbook-kg",
-      "manifestSha256": "08a9cade38d6f06577b15b9ad41121ff4997a1a76ff8cbc313bc65e9451be457"
+      "fixtureSha256": "b2b07b730684d6cb6822030c0402f94d213e508bd803814607b5f7a6acfec4c3",
+      "manifestSha256": "2d8bdf8c562278c6b50dcb8fd276a11fc672422a38dab8e76924d63a395b6117",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "derived-deterministically",
+      "supportedLenses": [
+        "knowledge-graph",
+        "ontology",
+        "embedding",
+        "semantic-network"
+      ]
+    },
+    {
+      "datasetId": "08-Your-First-Knowledge-Graph",
+      "description": "Hard-coded Apple sample KG: cell[8] defines expected_entities (6 typed: Organization/Person/Date/Location) + relationships_data (6 typed: founded_by, founded_in, located_in, ceo_of) with explicit sour",
+      "displayName": "08 Your First Knowledge Graph",
+      "fixtureSha256": "6ecbfef905bce79dc46b275fde8d1b8a12e874e8a57b9f2020cffd8d4c1a4835",
+      "manifestSha256": "038e515f7f28539b962cd2ad49e1a1bc6169347257d910e81880367f1b24b45c",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "knowledge-graph"
+      ]
+    },
+    {
+      "datasetId": "10-Graph-Analytics",
+      "description": "Hard-coded typed KG: cell[2] defines 3 entities (Organization: Apple Inc., Person: Tim Cook, Location: Cupertino) and 2 typed relationships (CEO_of, located_in). Plan §3.1 marks this 'candidate-kg onl",
+      "displayName": "10 Graph Analytics",
+      "fixtureSha256": "bdef09f9012feb3523e64a96b6fc21757cf482ef493eb1c449badbd99616d3dc",
+      "manifestSha256": "b4a603a0371cb976e1cef4a621409714d0c23ee484a955a07093ad1ba86dd60f",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "knowledge-graph"
+      ]
+    },
+    {
+      "datasetId": "14-Ontology",
+      "description": "Hard-coded corporate ontology input: cell[4] defines 10 typed entities (Company: TechCorp, TechSolutions; Person: Alice, Bob, Charlie, Dave; Department: Engineering, Research; Project: Project Phoenix",
+      "displayName": "14 Ontology",
+      "fixtureSha256": "7a604f7ce35b8705a8235258a5d861550e5d7d9b091b186e20dbf7d598305aa5",
+      "manifestSha256": "29495b7c71cc9eacb5657e3033d69f9683127973ad7f9406bc0045c2b48eb5ef",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "ontology"
+      ]
+    },
+    {
+      "datasetId": "19-Context-Module",
+      "description": "Hard-coded semantic-network sample: cell[14] defines 2 documents with typed nodes (PROGRAMMING_LANGUAGE: Python; CONCEPT: Machine Learning; FRAMEWORK: PyTorch) and non-structural typed relations (used",
+      "displayName": "19 Context Module",
+      "fixtureSha256": "cd7c7222683776a709a6f60d1c3fd69b4e33c340a2d0a3d2d6892b17a25cab35",
+      "manifestSha256": "8492738137cdf483a0c0ab3e172a20f979b025ab6e86dc31f6a9e4f909be2cff",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "semantic-network"
+      ]
+    },
+    {
+      "datasetId": "02-Advanced-Graph-Analytics",
+      "description": "Hard-coded Startup Ecosystem typed KG: cell[4] defines raw_entities (6 typed: Startup, Investor, Person) + raw_relationships (4 typed: FOUNDED, INVESTED_IN, ADVISED). Plan §3.1 marks 'candidate-kg onl",
+      "displayName": "02 Advanced Graph Analytics",
+      "fixtureSha256": "b673b9e7bcf0e1e7c382c7734e9813794daeb3e9b3f8d5775ee3b2f29bfb814a",
+      "manifestSha256": "1c541fbef96478c2205880380cf78c522a84d0dfb83dafe2ff62849d69316dcf",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "knowledge-graph"
+      ]
+    },
+    {
+      "datasetId": "03-Complete-Visualization-Suite",
+      "description": "Hard-coded typed KG: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Location: San Francisco) + 3 typed relationships (knows, works_for, located_in). Plan §3.1: 'candidate for ",
+      "displayName": "03 Complete Visualization Suite",
+      "fixtureSha256": "ae9bd921af9648bdd7ae2861bf657055b7908fff95e171446648f0154db0bcce",
+      "manifestSha256": "030683ad03c8920bdf2bf62ee5465d66fec66d35c5ba32f54a45395041fe38d3",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "knowledge-graph"
+      ]
+    },
+    {
+      "datasetId": "05-Multi-Format-Export",
+      "description": "Hard-coded typed KG: cell[4] defines 3 entities (Person: Alice/Bob; Organization: Tech Corp) + 2 typed relationships (knows, works_for). Plan §3.1: 'inspect checked-in graph/ontology exports' — eligib",
+      "displayName": "05 Multi Format Export",
+      "fixtureSha256": "d2ce51abfd4e85ef7f246b175210b71e961f70dfe465a2c2e040057db2e0ef89",
+      "manifestSha256": "60dc23d97320cc35cef27bbded661bf9c1f6cf031f83947fe41080a2f10210b1",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "knowledge-graph"
+      ]
+    },
+    {
+      "datasetId": "08-Reasoning-and-Inference",
+      "description": "Hard-coded family KG: cell[4] defines 5 entities (Person: Alice/Bob/Charlie; Location: San Francisco/California) + 4 typed relationships (parent_of, located_in, lives_in). Plan §3.1: 'inspect: include",
+      "displayName": "08 Reasoning and Inference",
+      "fixtureSha256": "4eafcb45b382bf32d71b53a519cd43ac0275b9911c9f18dc86c3b41ba11f02ca",
+      "manifestSha256": "945a7c4d46839b84abc4f9db5de0f79c912d57894527d2e4451b2db10970ece2",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "knowledge-graph"
+      ]
+    },
+    {
+      "datasetId": "09-Semantic-Layer-Construction",
+      "description": "Hard-coded typed KG: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Project: Project Alpha) + 4 typed relationships (reports_to, works_for, works_on). Notebook constructs sema",
+      "displayName": "09 Semantic Layer Construction",
+      "fixtureSha256": "7d98c9d230bc071f6788acb3ffa506df827fbf4172b556465dc5d2b6808e2f9f",
+      "manifestSha256": "6a32a3ab1696e8217946aae93258e3a0d11f9828d0db9a43409699d1433d9032",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "knowledge-graph"
+      ]
+    },
+    {
+      "datasetId": "10-Temporal-Knowledge-Graphs",
+      "description": "Hard-coded temporal typed KG: cell[4] defines 9 entities (Organization: TechCorp/InnovateInc/FutureSystems; Person: Alice/Bob/Charlie; Product: HomePC/SoftOS/SmartAI) + 9 typed relationships with time",
+      "displayName": "10 Temporal Knowledge Graphs",
+      "fixtureSha256": "33ed3fe54514dbde87313d96bfafc5affb52bdec7f441baed4ee35c9bf3f65b9",
+      "manifestSha256": "28c3f3c4cc7d4e0b7ff25c5ebcb2baab1c8e4b57cff9705ae697c5edc4160d62",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "knowledge-graph"
+      ]
+    },
+    {
+      "datasetId": "11-Advanced-Context-Engineering",
+      "description": "Hard-coded semantic-network sample: cell[19] defines 4 ontological-category typed nodes (PERSON: Alice; PROJECT: Project Apollo; TECH: Python/React) and 3 typed relations (MANAGES, USES_TECH x2). USES",
+      "displayName": "11 Advanced Context Engineering",
+      "fixtureSha256": "18ff1d975cb1791b9eba691cc3232a3d57b8edc1b7a459dc49c7ca132d6d726b",
+      "manifestSha256": "e694e653051fb1f59ce52cd5ec6c57aaaa836871b06864ead469de32c5bf727e",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "semantic-network"
+      ]
+    },
+    {
+      "datasetId": "13-Manual-Ontology-Snowflake-Mapping",
+      "description": "Hand-designed ontology dict: cell[4] declares 4 classes (Person, Organization, Role, EmploymentEvent) with full property schemas (datatype + object properties with domain/range/required). Plan §3.1: '",
+      "displayName": "13 Manual Ontology Snowflake Mapping",
+      "fixtureSha256": "ed5afe06f37fb0852c21a469da8f8308857683bbc2977c1f82ffbbd3ed7de915",
+      "manifestSha256": "de976ba8f5f6c9c21bfb60123f3f2ca999a9534ddc39ac2f3c882b94a712ceec",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "ontology"
+      ]
+    },
+    {
+      "datasetId": "14-Datalog-Style-Reasoning",
+      "description": "Two hard-coded typed KGs: cell[9] software-dependency KG (6 entities: Component + 6 typed edges: depends_on) and cell[18] RBAC KG (11 entities: User/Role/Permission + 11 typed edges including role_inh",
+      "displayName": "14 Datalog Style Reasoning",
+      "fixtureSha256": "b037e4d34afb9f660d8dd3826dc66e28b11fe1fcc57d9b247660807ab5f1fb46",
+      "manifestSha256": "266ddaed2948b73c6899d3718cb5a968338f34d3ea002c86a35d06c110761fd0",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "knowledge-graph"
+      ]
+    },
+    {
+      "datasetId": "agno-graphrag-context",
+      "description": "Hard-coded regulatory typed KG: cell[18] defines 3 typed entities (REGULATOR: PRA; BANK: Barclays/HSBC) + 4 typed relationships (SUPERVISES, SUBJECT_TO). Plan §3.1: 'candidate-kg if self-contained and",
+      "displayName": "agno graphrag context",
+      "fixtureSha256": "e1ad3624fd9f04495b24c34befb36193816d940dac04ad537be8d60b6d46bc83",
+      "manifestSha256": "3044c4df89339a7b43bf137a0c8767a39e3c0189c5f0b0e351d09034826327ae",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "knowledge-graph"
+      ]
+    },
+    {
+      "datasetId": "agno-multi-agent-shared-context",
+      "description": "Hard-coded semantic-network sample: cell[12] defines 5 ontological-category typed nodes (COMPANY: Competitor Beta/Microsoft Azure; PRODUCT: Azure Synapse Analytics; PERSON: Sarah Chen; EVENT: Gartner ",
+      "displayName": "agno multi agent shared context",
+      "fixtureSha256": "41fa8f73621d143266a820f51f9aa5efb7886419e165e21103de8dfc24cc6fef",
+      "manifestSha256": "94f3e89e552e83b1fe5ec764f5da8fc3988c61ed026c71dbeada9ac169445127",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "semantic-network"
+      ]
+    },
+    {
+      "datasetId": "corporate-ontology",
+      "description": "Bundled OWL ontology artifact: 4 owl:Class definitions (Company, Person, Department, Project) and 6 owl:Property definitions (founded, leads, manages, name, partOf, role, worksOn) with rdfs:domain/rdf",
+      "displayName": "corporate ontology",
+      "fixtureSha256": "062e0f7b6585fa8f63a702cc68b1a9bcddd159492d0e1f8f7c4de43321de2c73",
+      "manifestSha256": "dbb26cd1aa2fea28e27bd9f6af9808f2e53c0005f49dc1c1305fb0a6394e2f49",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "ontology"
+      ]
+    },
+    {
+      "datasetId": "knowledge-graph",
+      "description": "Bundled typed KG artifact: 4 typed entities (e1, e2: Person; e3: Organization; e4: Project) + 4 typed relationships (reports_to, works_for, works_on). Satisfies §3.3 'two typed entities and one typed ",
+      "displayName": "knowledge graph",
+      "fixtureSha256": "f19853a8ca18eabce4303de0fe9ea85d2cb42ba45a8de1023ed94fb1be21607a",
+      "manifestSha256": "02c4bd0f694cdcd13610179cab3cebefddaea165610708c2a15dfe6081a6073c",
+      "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+      "sourceLabel": "verbatim",
+      "supportedLenses": [
+        "knowledge-graph"
+      ]
     }
   ],
   "generationToolVersion": "1.0.0",
-  "notebookPath": "third_party/semantica/cookbook/introduction/16_Visualization.ipynb",
-  "notebookSha256": "d678c0394ccc5c9f25b6c6c301dc321488beb93f2e8df231aa1953c9284b0c10",
-  "registrySha256": "17b33548829d163f9a000ab6a64875ee5b106fbf1d15d206885ec43df0458426",
+  "registrySha256": "b8729af2c6b0628c6f92720f1c6bc0111923c287eadc0459adfe0950f3b93d4b",
   "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
-  "version": 1
+  "version": 2
 }

@@ -5,13 +5,25 @@
  * Semantica's upstream sample shapes inside the fixture layer rather than
  * coercing them into the live governed-projection or candidate-graph
  * contracts (which are not imported by this subtree on purpose).
+ *
+ * Version: aligned with the All-Dataset Showcase Expansion v1 plan §5
+ * (`docs/plans/2026-08-21-semantica-all-dataset-showcase-expansion-v1.md`).
+ * Lens fields on `ShowcaseDatasetBundle` are optional; every dataset declares
+ * its `supportedLenses` in the manifest and registry.
  */
+
+export const SHOWCASE_REGISTRY_VERSION = 2 as const
 
 export type ShowcaseVisualizationMode =
   | 'knowledge-graph'
   | 'ontology'
   | 'embedding'
   | 'semantic-network'
+
+export type ShowcaseSourceKind =
+  | 'notebook-cell'
+  | 'semantica-source'
+  | 'bundled-artifact'
 
 export interface ShowcaseKgEntity {
   id: string
@@ -91,19 +103,24 @@ export interface ShowcaseFixtureFileManifest {
   derivationParameters: Record<string, unknown>
 }
 
-export interface ShowcaseSourceCellDigest {
-  file: ShowcaseFixtureFileManifest['file']
-  cellIndex: number
-  cellId: string | null
-  cellSha256: string
+export interface ShowcaseSourceRecord {
+  sourceKind: ShowcaseSourceKind
+  sourcePath: string
+  sourceSha256: string
+  cellIndex?: number
+  cellSha256?: string
+  symbol?: string
+  lineRange?: [number, number]
 }
 
 export interface ShowcaseDatasetManifest {
-  fixtureId: string
+  datasetId: string
+  displayName: string
+  description: string
   semanticaCommit: string
-  notebookPath: string
-  notebookSha256: string
-  sourceCells: ShowcaseSourceCellDigest[]
+  license: string
+  includedReason: string
+  sources: ShowcaseSourceRecord[]
   derivationToolVersion: string
   files: ShowcaseFixtureFileManifest[]
   manifestSha256: string
@@ -115,26 +132,30 @@ export interface ShowcaseDatasetBundle {
   displayName: string
   description: string
   manifest: ShowcaseDatasetManifest
-  kg: ShowcaseKgFixture
-  ontology: ShowcaseOntologyFixture
-  embedding: ShowcaseEmbeddingFixture
-  semanticNetwork: ShowcaseSemanticNetworkFixture
+  /** Each lens payload is present iff the dataset's supportedLenses includes it. */
+  kg?: ShowcaseKgFixture
+  ontology?: ShowcaseOntologyFixture
+  embedding?: ShowcaseEmbeddingFixture
+  semanticNetwork?: ShowcaseSemanticNetworkFixture
+}
+
+export interface ShowcaseDatasetRegistryEntry {
+  datasetId: string
+  displayName: string
+  description: string
+  manifestSha256: string
+  fixtureSha256: string
+  supportedLenses: ShowcaseVisualizationMode[]
+  semanticaCommit: string
+  /** Aggregate label derived from per-file `derivationKind`. */
+  sourceLabel: 'verbatim' | 'derived-deterministically'
 }
 
 export interface ShowcaseRegistry {
-  version: number
+  version: typeof SHOWCASE_REGISTRY_VERSION
   generationToolVersion: string
   semanticaCommit: string
-  notebookPath: string
-  notebookSha256: string
-  datasets: Array<{
-    datasetId: string
-    displayName: string
-    description: string
-    fixturePath: string
-    manifestSha256: string
-    files: Record<string, string>
-  }>
+  datasets: ShowcaseDatasetRegistryEntry[]
   registrySha256: string
 }
 

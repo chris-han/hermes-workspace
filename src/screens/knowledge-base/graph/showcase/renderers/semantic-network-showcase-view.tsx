@@ -6,6 +6,7 @@ export function SemanticNetworkShowcaseView({
   input,
   distribution,
   onSelect,
+  positions,
 }: {
   input: ShowcaseSemanticNetworkRendererInput
   distribution: {
@@ -13,6 +14,7 @@ export function SemanticNetworkShowcaseView({
     edgeTypes: Array<{ label: string; count: number }>
   }
   onSelect: (selection: SigmaGraphReadonlySelection) => void
+  positions?: Record<string, { x: number; y: number }>
 }) {
   return (
     <div className="flex h-full w-full flex-col gap-3" data-testid="semantic-network-showcase-view">
@@ -20,6 +22,7 @@ export function SemanticNetworkShowcaseView({
         input={{
           nodes: input.model.nodes,
           edges: input.model.edges,
+          positions,
           ariaLabel: 'Semantic network showcase',
         }}
         className="min-h-0 flex-1 w-full bg-transparent"

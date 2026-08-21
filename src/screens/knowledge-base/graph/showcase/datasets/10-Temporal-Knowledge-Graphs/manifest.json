@@ -1,0 +1,24 @@
+{
+  "datasetId": "10-Temporal-Knowledge-Graphs",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hard-coded temporal typed KG: cell[4] defines 9 entities (Organization: TechCorp/InnovateInc/FutureSystems; Person: Alice/Bob/Charlie; Product: HomePC/SoftOS/SmartAI) + 9 typed relationships with time",
+  "displayName": "10 Temporal Knowledge Graphs",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "dropped_edges": [],
+        "note": "typed entities + typed relationships transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/advanced/10_Temporal_Knowledge_Graphs.ipynb"
+      },
+      "file": "kg.json",
+      "sha256": "c89dc9b3d4f7f19f1f60e2f4586c26b0c399920aa6fef03d44a9cdca2220a0a1"
+    }
+  ],
+  "fixtureSha256": "33ed3fe54514dbde87313d96bfafc5affb52bdec7f441baed4ee35c9bf3f65b9",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "28c3f3c4cc7d4e0b7ff25c5ebcb2baab1c8e4b57cff9705ae697c5edc4160d62",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Menu } from '@base-ui/react/menu'
 
 import { UserAvatar } from '@/components/avatars'
@@ -18,14 +18,24 @@ import { OntologyShowcaseView } from './renderers/ontology-showcase-view'
 import { EmbeddingShowcaseView } from './renderers/embedding-showcase-view'
 import { SemanticNetworkShowcaseView } from './renderers/semantic-network-showcase-view'
 import { getDataset, getDatasetRegistry } from './semantica-showcase-dataset'
-import { describeProvenance, formatProvenanceLine } from './semantica-showcase-provenance'
+import { describeProvenance, formatProvenanceLine, formatSourceLocation } from './semantica-showcase-provenance'
+import {
+  deriveShowcaseStats,
+  rendererLabelsFor,
+  statsToMetrics,
+} from './showcase-stats'
 import type {
   ShowcaseInspectorField,
   ShowcaseInspectorModel,
   ShowcaseMetric,
+  ShowcaseProvenanceBadge,
   ShowcaseVisualizationMode,
 } from './semantica-showcase-types'
 import type { SigmaGraphReadonlySelection } from '../sigma-graph-readonly'
+import {
+  computeGraphTopology,
+  type GraphTopologyMode,
+} from '../layouts/graph-topology-layouts'
 
 const MODES: ReadonlyArray<{ mode: ShowcaseVisualizationMode; label: string }> = [
   { mode: 'knowledge-graph', label: 'Knowledge Graph' },
@@ -33,6 +43,41 @@ const MODES: ReadonlyArray<{ mode: ShowcaseVisualizationMode; label: string }> =
   { mode: 'embedding', label: 'Embedding' },
   { mode: 'semantic-network', label: 'Semantic Network' },
 ]
+
+/**
+ Stable fallback order for lens selection (plan §W5-05). When the active
+ dataset switches and the current lens becomes unsupported, the showcase
+ deterministically picks the first supported lens in this order. Empty
+ capability sets are a registry error.
+ */
+const LENS_FALLBACK_ORDER: ReadonlyArray<ShowcaseVisualizationMode> = [
+  'knowledge-graph',
+  'ontology',
+  'embedding',
+  'semantic-network',
+]
+
+function pickFirstSupported(
+  supported: ReadonlyArray<ShowcaseVisualizationMode>,
+): ShowcaseVisualizationMode {
+  for (const candidate of LENS_FALLBACK_ORDER) {
+    if (supported.includes(candidate)) return candidate
+  }
+  // Empty capability sets are a registry error; the loader rejects them but
+  // surface a clear runtime error if the invariant is violated.
+  throw new Error(
+    'Showcase dataset has empty supportedLenses; this is a registry error.',
+  )
+}
+
+/**
+ Format a short source-location string for the LeftInventory rows. Delegates
+ to `formatSourceLocation` in semantica-showcase-provenance.ts which reads
+ the v2 `sources[]` array and picks the most informative record.
+ */
+function formatSourceLine(provenance: ShowcaseProvenanceBadge): string {
+  return `semantica@${provenance.semanticaCommit.slice(0, 7)}`
+}
 
 const EMPTY_INSPECTOR: ShowcaseInspectorModel = {
   title: 'No selection',
@@ -42,8 +87,16 @@ const EMPTY_INSPECTOR: ShowcaseInspectorModel = {
 
 export function SemanticaShowcaseScreen() {
   const registry = useMemo(() => getDatasetRegistry(), [])
-  const [datasetId, setDatasetId] = useState<string>(registry.datasets[0]?.datasetId ?? '')
+  const initialDatasetId = registry.datasets[0]?.datasetId ?? ''
+  const [datasetId, setDatasetId] = useState<string>(initialDatasetId)
   const dataset = useMemo(() => getDataset(datasetId), [datasetId])
+  const registryEntry = useMemo(
+    () => registry.datasets.find((entry) => entry.datasetId === datasetId),
+    [registry, datasetId],
+  )
+  const supportedLenses = registryEntry?.supportedLenses ?? LENS_FALLBACK_ORDER
+  const initialMode = useMemo(() => pickFirstSupported(supportedLenses), [supportedLenses])
+
   const [settingsOpen, setSettingsOpen] = useState(false)
   const profileAvatarUrl = useResolvedAvatarUrl()
   const profileDisplayName = useResolvedDisplayName()
@@ -51,42 +104,100 @@ export function SemanticaShowcaseScreen() {
   const [activeTheme, setActiveTheme] = useState<ThemeId>(() => getTheme())
   const isDarkTheme = !activeTheme.endsWith('-light')
 
-  const [mode, setMode] = useState<ShowcaseVisualizationMode>('knowledge-graph')
+  const [mode, setMode] = useState<ShowcaseVisualizationMode>(initialMode)
+  const [kgTopology, setKgTopology] = useState<GraphTopologyMode>('layout')
+  const [snTopology, setSnTopology] = useState<GraphTopologyMode>('layout')
   const [kgSelection, setKgSelection] = useState<SigmaGraphReadonlySelection>(null)
   const [snSelection, setSnSelection] = useState<SigmaGraphReadonlySelection>(null)
   const [embeddingSelection, setEmbeddingSelection] = useState<string | undefined>(undefined)
   const [ontologySelection, setOntologySelection] = useState<string | undefined>(undefined)
 
-  const handleDatasetChange = useCallback((next: string) => {
-    setDatasetId(next)
-    setKgSelection(null)
-    setSnSelection(null)
-    setEmbeddingSelection(undefined)
-    setOntologySelection(undefined)
-  }, [])
+  const handleDatasetChange = useCallback(
+    (next: string) => {
+      setDatasetId(next)
+      setKgSelection(null)
+      setSnSelection(null)
+      setEmbeddingSelection(undefined)
+      setOntologySelection(undefined)
+      // Reset lens to the first supported lens of the new dataset. The
+      // picker runs after the state commit, so we recompute supportedLenses
+      // from the registry directly.
+      const nextEntry = registry.datasets.find((entry) => entry.datasetId === next)
+      const nextSupported = nextEntry?.supportedLenses ?? LENS_FALLBACK_ORDER
+      setMode(pickFirstSupported(nextSupported))
+    },
+    [registry],
+  )
 
-  const kgAdapter = useMemo(() => adaptKgFixture(dataset.kg, kgSelection), [dataset, kgSelection])
+  // W5-05: when the active dataset changes and the current mode is no longer
+  // supported, fall back to the first supported lens. useEffect runs after
+  // the commit so we observe the post-switch dataset.
+  useEffect(() => {
+    if (!supportedLenses.includes(mode)) {
+      setMode(pickFirstSupported(supportedLenses))
+    }
+  }, [supportedLenses, mode])
+
+  // W4-03: each adapter is only called when its payload is present. When
+  // unsupported, we keep an EMPTY_INSPECTOR + empty metrics + empty graph
+  // model so the conditional TabsPanel below can render an "unsupported"
+  // placeholder without crashing.
+  const kgAdapter = useMemo(
+    () => (dataset.kg ? adaptKgFixture(dataset.kg, kgSelection) : null),
+    [dataset.kg, kgSelection],
+  )
   const ontologyAdapter = useMemo(
-    () => adaptOntologyFixture(dataset.ontology, ontologySelection),
-    [dataset, ontologySelection],
+    () => (dataset.ontology ? adaptOntologyFixture(dataset.ontology, ontologySelection) : null),
+    [dataset.ontology, ontologySelection],
   )
   const embeddingAdapter = useMemo(
-    () => adaptEmbeddingFixture(dataset.embedding, embeddingSelection),
-    [dataset, embeddingSelection],
+    () => (dataset.embedding ? adaptEmbeddingFixture(dataset.embedding, embeddingSelection) : null),
+    [dataset.embedding, embeddingSelection],
   )
   const semanticNetworkAdapter = useMemo(
-    () => adaptSemanticNetworkFixture(dataset.semanticNetwork, snSelection),
-    [dataset, snSelection],
+    () => (dataset.semanticNetwork ? adaptSemanticNetworkFixture(dataset.semanticNetwork, snSelection) : null),
+    [dataset.semanticNetwork, snSelection],
   )
 
   const provenance = useMemo(() => describeProvenance(dataset), [dataset])
+  const stats = useMemo(() => deriveShowcaseStats(dataset), [dataset])
+  const metrics = useMemo(() => statsToMetrics(stats), [stats])
+  const activeTopology = mode === 'knowledge-graph' ? kgTopology : mode === 'semantic-network' ? snTopology : 'layout'
+  const labels = useMemo(() => rendererLabelsFor(mode, activeTopology), [mode, activeTopology])
+  const kgGraphInput = useMemo(
+    () => ({
+      nodes: dataset.kg?.entities.map((entity) => ({ id: entity.id, label: entity.name })) ?? [],
+      edges: dataset.kg?.relationships.map((relationship) => ({ id: relationship.id, source: relationship.source, target: relationship.target })) ?? [],
+    }),
+    [dataset.kg],
+  )
+  const snGraphInput = useMemo(
+    () => ({
+      nodes: dataset.semanticNetwork?.nodes.map((node) => ({ id: node.id, label: node.label })) ?? [],
+      edges: dataset.semanticNetwork?.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })) ?? [],
+    }),
+    [dataset.semanticNetwork],
+  )
+  const kgPositions = useMemo(
+    () => Object.fromEntries(Array.from(computeGraphTopology(kgGraphInput, kgTopology, { selectedRootId: kgSelection?.type === 'node' ? kgSelection.id : null }).positions.entries())),
+    [kgGraphInput, kgTopology, kgSelection],
+  )
+  const snPositions = useMemo(
+    () => Object.fromEntries(Array.from(computeGraphTopology(snGraphInput, snTopology, { selectedRootId: snSelection?.type === 'node' ? snSelection.id : null }).positions.entries())),
+    [snGraphInput, snTopology, snSelection],
+  )
   const statusLine = useMemo(
-    () => [
-      formatProvenanceLine(dataset),
-      `nodes ${kgAdapter.renderer.model.nodes.length} · edges ${kgAdapter.renderer.model.edges.length}`,
-      `dataset ${provenance.fixtureId}`,
-      `offline · ${provenance.source}`,
-    ],
+    () => {
+      const nodesEdges = kgAdapter
+        ? `nodes ${kgAdapter.renderer.model.nodes.length} · edges ${kgAdapter.renderer.model.edges.length}`
+        : `kg payload absent`
+      return [
+        formatProvenanceLine(dataset),
+        nodesEdges,
+        `dataset ${provenance.fixtureId}`,
+        `offline · ${provenance.source}`,
+      ]
+    },
     [dataset, provenance, kgAdapter],
   )
 
@@ -105,7 +216,13 @@ export function SemanticaShowcaseScreen() {
     >
       <Tabs
         value={mode}
-        onValueChange={(next: string) => setMode(next as ShowcaseVisualizationMode)}
+        onValueChange={(next: string) => {
+          // W5-04: refuse to switch to a lens the active dataset does not support
+          if (!supportedLenses.includes(next as ShowcaseVisualizationMode)) {
+            return
+          }
+          setMode(next as ShowcaseVisualizationMode)
+        }}
         className="showcase-ref-tabs flex-1 overflow-hidden"
       >
         <header className="showcase-ref-header flex h-14 shrink-0 items-center justify-between px-4">
@@ -130,11 +247,30 @@ export function SemanticaShowcaseScreen() {
           </div>
           <div className="showcase-ref-header-right">
             <TabsList variant="line" className="showcase-ref-tabs-list">
-              {MODES.map((m) => (
-                <TabsTab key={m.mode} value={m.mode} data-testid={`showcase-tab-${m.mode}`}>
-                  {m.label}
-                </TabsTab>
-              ))}
+              {MODES.map((m) => {
+                const supported = supportedLenses.includes(m.mode)
+                return (
+                  <TabsTab
+                    key={m.mode}
+                    value={m.mode}
+                    data-testid={`showcase-tab-${m.mode}`}
+                    disabled={!supported}
+                    aria-disabled={!supported}
+                    title={
+                      supported
+                        ? undefined
+                        : `Not supported by ${dataset.displayName}`
+                    }
+                    className={
+                      supported
+                        ? undefined
+                        : 'showcase-ref-tab-disabled opacity-50 cursor-not-allowed hover:bg-transparent'
+                    }
+                  >
+                    {m.label}
+                  </TabsTab>
+                )
+              })}
             </TabsList>
             <div className="showcase-ref-header-actions" aria-label="Workbench actions">
               <button type="button" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
@@ -166,184 +302,216 @@ export function SemanticaShowcaseScreen() {
           </div>
         </header>
 
-        <TabsPanel value="knowledge-graph" className="showcase-ref-grid">
-          <LeftInventory
-            title="Dataset"
-            datasetSelector={
-              <DatasetSelector
-                registry={registry}
-                value={datasetId}
-                onChange={handleDatasetChange}
-              />
-            }
-            rows={[
-              { label: 'name', value: dataset.displayName },
-              { label: 'source', value: '16_Visualization.ipynb' },
-              { label: 'semantica pin', value: provenance.semanticaCommit.slice(0, 7) },
-              { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
-            ]}
-            inventoryTitle="Entity types"
-            inventoryItems={Object.entries(
-              dataset.kg.entities.reduce<Record<string, number>>((acc, e) => {
-                acc[e.type] = (acc[e.type] ?? 0) + 1
-                return acc
-              }, {}),
-            ).map(([label, count]) => ({ label, count }))}
-            summary={[
-              { label: 'Layout', value: 'circular (semantic intent)' },
-              { label: 'Selection', value: kgSelection ? kgSelection.id : '—' },
-              { label: 'Renderer', value: 'Sigma/Graphology (readonly core)' },
-            ]}
-          />
-          <CenterPanel>
-            <KgShowcaseView input={kgAdapter.renderer} onSelect={handleKgSelect} />
-          </CenterPanel>
-          <RightRail
-            inspector={kgAdapter.inspector}
-            metrics={kgAdapter.metrics}
-            title="Knowledge Graph"
-            statusRows={[
-              { label: 'provenance', value: provenance.source },
-              { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
-            ]}
-          />
-        </TabsPanel>
-
-        <TabsPanel value="ontology" className="showcase-ref-grid">
-          <LeftInventory
-            title="Ontology"
-            datasetSelector={
-              <DatasetSelector
-                registry={registry}
-                value={datasetId}
-                onChange={handleDatasetChange}
-              />
-            }
-            rows={[
-              { label: 'name', value: dataset.displayName },
-              { label: 'source', value: '16_Visualization.ipynb · Step 2' },
-              { label: 'derivation', value: 'deterministic' },
-            ]}
-            inventoryTitle="Classes"
-            inventoryItems={dataset.ontology.classes.map((c) => ({
-              label: c.label,
-              hint: c.kind,
-              count: c.instanceCount,
-            }))}
-            summary={[
-              { label: 'Hierarchy depth', value: String(ontologyAdapter.maxDepth + 1) },
-              { label: 'Properties', value: String(dataset.ontology.properties.length) },
-              { label: 'Selection', value: ontologySelection ?? '—' },
-            ]}
-          />
-          <CenterPanel>
-            <OntologyShowcaseView
-              input={ontologyAdapter.renderer}
-              hierarchy={ontologyAdapter.hierarchy}
-              maxDepth={ontologyAdapter.maxDepth}
-              selectedClassId={ontologySelection}
-              onSelect={setOntologySelection}
+        {kgAdapter && (
+          <TabsPanel value="knowledge-graph" className="showcase-ref-grid">
+            <LeftInventory
+              title="Dataset"
+              datasetSelector={
+                <DatasetSelector
+                  registry={registry}
+                  value={datasetId}
+                  onChange={handleDatasetChange}
+                />
+              }
+              rows={[
+                { label: 'name', value: dataset.displayName },
+                { label: 'source', value: formatSourceLocation(dataset) },
+                { label: 'semantica pin', value: provenance.semanticaCommit.slice(0, 7) },
+                { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
+              ]}
+              inventoryTitle="Entity types"
+              inventoryItems={Object.entries(
+                (dataset.kg?.entities ?? []).reduce<Record<string, number>>((acc, e) => {
+                  acc[e.type] = (acc[e.type] ?? 0) + 1
+                  return acc
+                }, {}),
+              ).map(([label, count]) => ({ label, count }))}
+              summary={[
+                { label: 'Layout', value: labels.layout },
+                { label: 'Selection', value: kgSelection ? kgSelection.id : '—' },
+                { label: 'Renderer', value: labels.renderer },
+              ]}
             />
-          </CenterPanel>
-          <RightRail
-            inspector={ontologyAdapter.inspector}
-            metrics={ontologyAdapter.metrics}
-            title="Ontology"
-            statusRows={[
-              { label: 'provenance', value: provenance.source },
-              { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
-            ]}
-          />
-        </TabsPanel>
-
-        <TabsPanel value="embedding" className="showcase-ref-grid">
-          <LeftInventory
-            title="Embedding"
-            datasetSelector={
-              <DatasetSelector
-                registry={registry}
-                value={datasetId}
-                onChange={handleDatasetChange}
-              />
-            }
-            rows={[
-              { label: 'name', value: dataset.displayName },
-              { label: 'source', value: '16_Visualization.ipynb · Step 3' },
-              { label: 'projection', value: 'deterministic 2D hash' },
-            ]}
-            inventoryTitle="Items"
-            inventoryItems={dataset.embedding.items.map((item) => ({
-              label: item.label,
-              hint: item.text,
-            }))}
-            summary={[
-              { label: 'Dimension', value: '2D' },
-              { label: 'Method', value: 'deterministic hash' },
-              { label: 'Selection', value: embeddingSelection ?? '—' },
-            ]}
-          />
-          <CenterPanel>
-            <EmbeddingShowcaseView
-              input={embeddingAdapter.renderer}
-              selectedItemId={embeddingSelection}
-              onSelect={setEmbeddingSelection}
+            <CenterPanel
+              topology={kgTopology}
+              onTopologyChange={setKgTopology}
+              supportsTopology={Boolean(dataset.kg)}
+            >
+              <KgShowcaseView input={kgAdapter.renderer} onSelect={handleKgSelect} positions={kgPositions} />
+            </CenterPanel>
+            <RightRail
+              inspector={kgAdapter.inspector}
+              metrics={kgAdapter.metrics}
+              title="Knowledge Graph"
+              statusRows={[
+                { label: 'provenance', value: provenance.source },
+                { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
+              ]}
             />
-          </CenterPanel>
-          <RightRail
-            inspector={embeddingAdapter.inspector}
-            metrics={embeddingAdapter.metrics}
-            title="Embedding"
-            statusRows={[
-              { label: 'provenance', value: provenance.source },
-              { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
-              { label: 'live provider', value: 'none' },
-            ]}
-          />
-        </TabsPanel>
+          </TabsPanel>
+        )}
 
-        <TabsPanel value="semantic-network" className="showcase-ref-grid">
-          <LeftInventory
-            title="Semantic Network"
-            datasetSelector={
-              <DatasetSelector
-                registry={registry}
-                value={datasetId}
-                onChange={handleDatasetChange}
-              />
-            }
-            rows={[
-              { label: 'name', value: dataset.displayName },
-              { label: 'source', value: '16_Visualization.ipynb · Step 4' },
-              { label: 'renderer', value: 'Sigma/Graphology (readonly core)' },
-            ]}
-            inventoryTitle="Node types"
-            inventoryItems={semanticNetworkAdapter.distribution.nodeTypes.map((item) => ({
-              label: item.label,
-              count: item.count,
-            }))}
-            summary={[
-              { label: 'Layout', value: 'circular (semantic intent)' },
-              { label: 'Edge types', value: String(semanticNetworkAdapter.distribution.edgeTypes.length) },
-              { label: 'Selection', value: snSelection ? snSelection.id : '—' },
-            ]}
-          />
-          <CenterPanel>
-            <SemanticNetworkShowcaseView
-              input={semanticNetworkAdapter.renderer}
-              distribution={semanticNetworkAdapter.distribution}
-              onSelect={handleSnSelect}
+        {ontologyAdapter && (
+          <TabsPanel value="ontology" className="showcase-ref-grid">
+            <LeftInventory
+              title="Ontology"
+              datasetSelector={
+                <DatasetSelector
+                  registry={registry}
+                  value={datasetId}
+                  onChange={handleDatasetChange}
+                />
+              }
+              rows={[
+                { label: 'name', value: dataset.displayName },
+                { label: 'source', value: formatSourceLocation(dataset) },
+                { label: 'derivation', value: 'deterministic' },
+              ]}
+              inventoryTitle="Classes"
+              inventoryItems={(dataset.ontology?.classes ?? []).map((c) => ({
+                label: c.label,
+                hint: c.kind,
+                count: c.instanceCount,
+              }))}
+              summary={[
+                { label: 'Hierarchy depth', value: String(ontologyAdapter.maxDepth + 1) },
+                { label: 'Properties', value: String(dataset.ontology?.properties.length ?? 0) },
+                { label: 'Selection', value: ontologySelection ?? '—' },
+              ]}
             />
-          </CenterPanel>
-          <RightRail
-            inspector={semanticNetworkAdapter.inspector}
-            metrics={semanticNetworkAdapter.metrics}
-            title="Semantic Network"
-            statusRows={[
-              { label: 'provenance', value: provenance.source },
-              { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
-            ]}
-          />
-        </TabsPanel>
+            <CenterPanel>
+              <OntologyShowcaseView
+                input={ontologyAdapter.renderer}
+                hierarchy={ontologyAdapter.hierarchy}
+                maxDepth={ontologyAdapter.maxDepth}
+                selectedClassId={ontologySelection}
+                onSelect={setOntologySelection}
+              />
+            </CenterPanel>
+            <RightRail
+              inspector={ontologyAdapter.inspector}
+              metrics={ontologyAdapter.metrics}
+              title="Ontology"
+              statusRows={[
+                { label: 'provenance', value: provenance.source },
+                { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
+              ]}
+            />
+          </TabsPanel>
+        )}
+
+        {embeddingAdapter && (
+          <TabsPanel value="embedding" className="showcase-ref-grid">
+            <LeftInventory
+              title="Embedding"
+              datasetSelector={
+                <DatasetSelector
+                  registry={registry}
+                  value={datasetId}
+                  onChange={handleDatasetChange}
+                />
+              }
+              rows={[
+                { label: 'name', value: dataset.displayName },
+                { label: 'source', value: formatSourceLocation(dataset) },
+                { label: 'projection', value: 'deterministic 2D hash' },
+              ]}
+              inventoryTitle="Items"
+              inventoryItems={(dataset.embedding?.items ?? []).map((item) => ({
+                label: item.label,
+                hint: item.text,
+              }))}
+              summary={[
+                { label: 'Dimension', value: '2D' },
+                { label: 'Method', value: 'deterministic hash' },
+                { label: 'Selection', value: embeddingSelection ?? '—' },
+              ]}
+            />
+            <CenterPanel>
+              <EmbeddingShowcaseView
+                input={embeddingAdapter.renderer}
+                selectedItemId={embeddingSelection}
+                onSelect={setEmbeddingSelection}
+              />
+            </CenterPanel>
+            <RightRail
+              inspector={embeddingAdapter.inspector}
+              metrics={embeddingAdapter.metrics}
+              title="Embedding"
+              statusRows={[
+                { label: 'provenance', value: provenance.source },
+                { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
+                { label: 'live provider', value: 'none' },
+              ]}
+            />
+          </TabsPanel>
+        )}
+
+        {semanticNetworkAdapter && (
+          <TabsPanel value="semantic-network" className="showcase-ref-grid">
+            <LeftInventory
+              title="Semantic Network"
+              datasetSelector={
+                <DatasetSelector
+                  registry={registry}
+                  value={datasetId}
+                  onChange={handleDatasetChange}
+                />
+              }
+              rows={[
+                { label: 'name', value: dataset.displayName },
+                { label: 'source', value: formatSourceLocation(dataset) },
+                { label: 'renderer', value: 'Sigma/Graphology (readonly core)' },
+              ]}
+              inventoryTitle="Node types"
+              inventoryItems={semanticNetworkAdapter.distribution.nodeTypes.map((item) => ({
+                label: item.label,
+                count: item.count,
+              }))}
+              summary={[
+                { label: 'Layout', value: labels.layout },
+                { label: 'Edge types', value: String(semanticNetworkAdapter.distribution.edgeTypes.length) },
+                { label: 'Selection', value: snSelection ? snSelection.id : '—' },
+              ]}
+            />
+            <CenterPanel
+              topology={snTopology}
+              onTopologyChange={setSnTopology}
+              supportsTopology={Boolean(dataset.semanticNetwork)}
+            >
+              <SemanticNetworkShowcaseView
+                input={semanticNetworkAdapter.renderer}
+                distribution={semanticNetworkAdapter.distribution}
+                onSelect={handleSnSelect}
+                positions={snPositions}
+              />
+            </CenterPanel>
+            <RightRail
+              inspector={semanticNetworkAdapter.inspector}
+              metrics={semanticNetworkAdapter.metrics}
+              title="Semantic Network"
+              statusRows={[
+                { label: 'provenance', value: provenance.source },
+                { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
+              ]}
+            />
+          </TabsPanel>
+        )}
+
+        {/* W5-04 fallback: if no supported lens is active (impossible after
+            W5-05 fallback, but defensive), surface an "unsupported" panel. */}
+        {!kgAdapter && !ontologyAdapter && !embeddingAdapter && !semanticNetworkAdapter && (
+          <TabsPanel value={mode} className="showcase-ref-grid">
+            <CenterPanel>
+              <div
+                className="flex h-full items-center justify-center font-mono text-sm text-muted-foreground"
+                data-testid="showcase-unsupported-state"
+              >
+                No supported lenses for {dataset.displayName}.
+              </div>
+            </CenterPanel>
+          </TabsPanel>
+        )}
       </Tabs>
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} initialSection="hermes" />
@@ -377,23 +545,47 @@ function toggleTheme(theme: ThemeId): ThemeId {
   return pairs[theme]
 }
 
-function CenterPanel({ children }: { children: React.ReactNode }) {
+function CenterPanel({
+  children,
+  topology = 'layout',
+  onTopologyChange = () => undefined,
+  supportsTopology = false,
+}: {
+  children: React.ReactNode
+  topology?: GraphTopologyMode
+  onTopologyChange?: (next: GraphTopologyMode) => void
+  supportsTopology?: boolean
+}) {
+  const modes: Array<{ value: GraphTopologyMode; label: string }> = [
+    { value: 'layout', label: 'LAYOUT' },
+    { value: 'force-directed', label: 'FORCE-DIRECTED' },
+    { value: 'hierarchical', label: 'HIERARCHICAL' },
+    { value: 'radial', label: 'RADIAL' },
+  ]
+
   return (
     <section className="showcase-ref-panel showcase-ref-center relative flex min-h-0 flex-col overflow-hidden">
       <div className="showcase-ref-ruler" aria-hidden="true" />
       <div className="showcase-ref-grid-canvas" aria-hidden="true" />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col p-3 pt-5">{children}</div>
-      <div className="showcase-ref-toolbar" aria-label="Visualization controls">
-        <div className="showcase-ref-toolbar-group">
-          <button type="button" aria-label="Reset view">↶</button>
-          <button type="button" aria-label="Graph view" className="is-active">◇</button>
-          <button type="button" aria-label="Fit view">⌗</button>
+      {supportsTopology ? (
+        <div className="showcase-ref-toolbar" aria-label="Visualization controls">
+          <div className="showcase-ref-toolbar-group" role="radiogroup" aria-label="Graph topology controls">
+            {modes.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                aria-pressed={topology === item.value}
+                className={topology === item.value ? 'is-active' : ''}
+                onClick={() => onTopologyChange(item.value)}
+                data-testid={`topology-${item.value}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <span className="showcase-ref-toolbar-separator" />
-        <div className="showcase-ref-toolbar-text">
-          <span>Layout</span><strong>Force-Directed</strong><span>Hierarchical</span><span>Radial</span>
-        </div>
-      </div>
+      ) : null}
     </section>
   )
 }

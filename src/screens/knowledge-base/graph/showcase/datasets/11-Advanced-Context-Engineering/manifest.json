@@ -1,0 +1,23 @@
+{
+  "datasetId": "11-Advanced-Context-Engineering",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hard-coded semantic-network sample: cell[19] defines 4 ontological-category typed nodes (PERSON: Alice; PROJECT: Project Apollo; TECH: Python/React) and 3 typed relations (MANAGES, USES_TECH x2). USES",
+  "displayName": "11 Advanced Context Engineering",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "note": "ontological-category typed nodes + non-structural semantic relations transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/advanced/11_Advanced_Context_Engineering.ipynb"
+      },
+      "file": "semantic-network.json",
+      "sha256": "74b9e9807ef5f08e2130e2635c39801fcd5b935a811e9a40030153ce20f55ebd"
+    }
+  ],
+  "fixtureSha256": "18ff1d975cb1791b9eba691cc3232a3d57b8edc1b7a459dc49c7ca132d6d726b",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "e694e653051fb1f59ce52cd5ec6c57aaaa836871b06864ead469de32c5bf727e",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

@@ -1,0 +1,38 @@
+{
+  "entities": [
+    {
+      "id": "e1",
+      "name": "Apple Inc.",
+      "properties": {},
+      "type": "Organization"
+    },
+    {
+      "id": "e2",
+      "name": "Tim Cook",
+      "properties": {},
+      "type": "Person"
+    },
+    {
+      "id": "e3",
+      "name": "Cupertino",
+      "properties": {},
+      "type": "Location"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_0",
+      "properties": {},
+      "source": "e2",
+      "target": "e1",
+      "type": "CEO_of"
+    },
+    {
+      "id": "rel_1",
+      "properties": {},
+      "source": "e1",
+      "target": "e3",
+      "type": "located_in"
+    }
+  ]
+}

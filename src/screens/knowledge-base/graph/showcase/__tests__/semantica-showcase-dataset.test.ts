@@ -5,9 +5,8 @@ import { getDataset, getDatasetRegistry, listDatasetIds } from '../semantica-sho
 describe('semantica-showcase-dataset', () => {
   it('exposes a registry pinned to the expected Semantica commit', () => {
     const registry = getDatasetRegistry()
-    expect(registry.version).toBe(1)
+    expect(registry.version).toBe(2)
     expect(registry.semanticaCommit).toMatch(/^[0-9a-f]{40}$/)
-    expect(registry.notebookSha256).toMatch(/^[0-9a-f]{64}$/)
     expect(registry.datasets.length).toBeGreaterThan(0)
   })
 
@@ -17,12 +16,12 @@ describe('semantica-showcase-dataset', () => {
     for (const id of ids) {
       const bundle = getDataset(id)
       expect(bundle.manifest.fixtureSha256).toBe(bundle.manifest.manifestSha256)
-      expect(bundle.kg.entities.length).toBeGreaterThan(0)
-      expect(bundle.kg.relationships.length).toBeGreaterThan(0)
-      expect(bundle.ontology.classes.length).toBeGreaterThan(0)
-      expect(bundle.embedding.items.length).toBeGreaterThan(0)
-      expect(bundle.semanticNetwork.nodes.length).toBeGreaterThan(0)
-      expect(bundle.semanticNetwork.edges.length).toBeGreaterThan(0)
+      // v2: lens fields are optional; the intro dataset has all four,
+      // and any KG-only dataset still has at least kg populated.
+      expect(bundle.kg, `${id}: kg payload missing`).toBeDefined()
+      const kg = bundle.kg!
+      expect(kg.entities.length).toBeGreaterThan(0)
+      expect(kg.relationships.length).toBeGreaterThan(0)
     }
   })
 

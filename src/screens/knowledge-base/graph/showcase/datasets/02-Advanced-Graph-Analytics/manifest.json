@@ -1,0 +1,26 @@
+{
+  "datasetId": "02-Advanced-Graph-Analytics",
+  "derivationToolVersion": "1.0.0",
+  "description": "Hard-coded Startup Ecosystem typed KG: cell[4] defines raw_entities (6 typed: Startup, Investor, Person) + raw_relationships (4 typed: FOUNDED, INVESTED_IN, ADVISED). Plan §3.1 marks 'candidate-kg onl",
+  "displayName": "02 Advanced Graph Analytics",
+  "files": [
+    {
+      "derivationKind": "verbatim",
+      "derivationParameters": {
+        "dropped_edges": [
+          "rel_2"
+        ],
+        "note": "typed entities + typed relationships transcribed from notebook code-cell literals (no notebook execution)",
+        "source": "third_party/semantica/cookbook/advanced/02_Advanced_Graph_Analytics.ipynb"
+      },
+      "file": "kg.json",
+      "sha256": "5eb5af0af2ecbd19ec4b11bed94ce8f8f03810fb32356966edd6ca8900283f40"
+    }
+  ],
+  "fixtureSha256": "b673b9e7bcf0e1e7c382c7734e9813794daeb3e9b3f8d5775ee3b2f29bfb814a",
+  "includedReason": "",
+  "license": "MIT",
+  "manifestSha256": "1c541fbef96478c2205880380cf78c522a84d0dfb83dafe2ff62849d69316dcf",
+  "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
+  "sources": []
+}

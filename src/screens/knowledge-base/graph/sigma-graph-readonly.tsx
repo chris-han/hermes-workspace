@@ -19,6 +19,7 @@ export type SigmaGraphReadonlyNode = {
   group?: string
   size?: number
   color?: string
+  properties?: Record<string, unknown>
   /** Optional pre-computed coordinates. Falls back to a circular layout. */
   x?: number
   y?: number
@@ -31,6 +32,7 @@ export type SigmaGraphReadonlyEdge = {
   label?: string
   size?: number
   color?: string
+  properties?: Record<string, unknown>
 }
 
 export type SigmaGraphReadonlySelection =

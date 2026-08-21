@@ -18,6 +18,7 @@ import { OntologyShowcaseView } from './renderers/ontology-showcase-view'
 import { EmbeddingShowcaseView } from './renderers/embedding-showcase-view'
 import { SemanticNetworkShowcaseView } from './renderers/semantic-network-showcase-view'
 import { getDataset, getDatasetRegistry } from './semantica-showcase-dataset'
+import { SigmaControls } from './sigma-controls'
 import { describeProvenance, formatSourceLocation } from './semantica-showcase-provenance'
 import {
   deriveShowcaseStats,
@@ -938,6 +939,8 @@ function CenterPanel({
                 </button>
               </>
             ) : null}
+            <span className="showcase-ref-canvas-separator" aria-hidden="true" />
+            <SigmaControls topology={topology} onTopologyChange={onTopologyChange} />
           </div>
         </div>
       ) : null}

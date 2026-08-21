@@ -35,6 +35,14 @@
   --asimov-radius-panel: 8px;
   --asimov-border: 1px solid var(--asimov-outline-variant);
 
+  /* Typography role: values use compact mono tracking; labels keep wider UI tracking. */
+  --asimov-value-letter-spacing: -0.02em;
+
+  /* Interactive control accent used by Asimov switches/sliders. */
+  --asimov-control-yellow: #e8c92d;
+  --asimov-slider-track: var(--asimov-outline-variant);
+  --asimov-slider-thumb: #ffffff;
+
   background: var(--asimov-canvas);
   color: var(--asimov-text);
   font-family: var(--font-ui), Manrope, 'Noto Sans SC', sans-serif;
@@ -378,7 +386,7 @@
   font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0;
+  letter-spacing: var(--asimov-value-letter-spacing);
   text-transform: none;
   color: var(--asimov-text);
 }
@@ -387,10 +395,11 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: var(--asimov-value-letter-spacing);
+  text-transform: none;
   color: #2d6a2d;
 }
 
@@ -685,6 +694,455 @@
 .semantica-showcase-reference .showcase-ref-edge-toggle:focus-visible {
   outline: 2px solid #1a1b1e;
   outline-offset: 3px;
+}
+
+/*
+ * Asimov slider primitive.
+ *
+ * Apply `.asimov-slider` to a native input[type='range']. Set
+ * `--asimov-slider-progress` to a percentage matching the current value when a
+ * filled WebKit track is desired, e.g. style={{ '--asimov-slider-progress': '58%' }}.
+ * Firefox uses its native progress pseudo-element automatically.
+ */
+.asimov-minimalism input[type='range'].asimov-slider {
+  --asimov-slider-progress: 50%;
+  width: 100%;
+  height: 14px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+  accent-color: var(--asimov-control-yellow);
+}
+
+.asimov-minimalism input[type='range'].asimov-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--asimov-control-yellow) 0%,
+    var(--asimov-control-yellow) var(--asimov-slider-progress),
+    var(--asimov-slider-track) var(--asimov-slider-progress),
+    var(--asimov-slider-track) 100%
+  );
+}
+
+.asimov-minimalism input[type='range'].asimov-slider::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid var(--asimov-control-yellow);
+  border-radius: 50%;
+  background: var(--asimov-slider-thumb);
+}
+
+.asimov-minimalism input[type='range'].asimov-slider::-moz-range-track {
+  height: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--asimov-slider-track);
+}
+
+.asimov-minimalism input[type='range'].asimov-slider::-moz-range-progress {
+  height: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--asimov-control-yellow);
+}
+
+.asimov-minimalism input[type='range'].asimov-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--asimov-control-yellow);
+  border-radius: 50%;
+  background: var(--asimov-slider-thumb);
+}
+
+.asimov-minimalism input[type='range'].asimov-slider:focus-visible {
+  outline: 2px solid var(--asimov-text);
+  outline-offset: 3px;
+}
+
+.asimov-minimalism input[type='range'].asimov-slider:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Sigma Controls popover — canvas-scoped Asimov control surface. */
+.semantica-showcase-reference .sigma-controls-root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.semantica-showcase-reference button.showcase-ref-canvas-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  min-width: 24px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--asimov-muted);
+  cursor: pointer;
+}
+
+.semantica-showcase-reference button.showcase-ref-canvas-icon-button:hover,
+.semantica-showcase-reference button.showcase-ref-canvas-icon-button.is-active {
+  border-bottom-color: var(--asimov-control-yellow);
+  color: var(--asimov-text);
+}
+
+.semantica-showcase-reference .sigma-controls-popover {
+  position: absolute;
+  right: 0;
+  bottom: 34px;
+  z-index: 80;
+  width: min(900px, calc(100vw - 80px));
+  padding: 12px;
+  border: var(--asimov-border);
+  border-radius: var(--asimov-radius-panel);
+  background: #ffffff;
+  color: #1a1b1e;
+  box-shadow: 0 12px 30px rgba(26, 27, 30, 0.12);
+  white-space: normal;
+}
+
+.semantica-showcase-reference .sigma-controls-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #c2c7ce;
+}
+
+.semantica-showcase-reference .sigma-controls-title {
+  font-family: var(--font-ui), Manrope, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.semantica-showcase-reference .sigma-controls-group h3,
+.semantica-showcase-reference .sigma-controls-close {
+  font-family: var(--font-ui), Manrope, sans-serif;
+}
+
+.semantica-showcase-reference .sigma-controls-subtitle {
+  margin-top: 2px;
+  color: #72787e;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.semantica-showcase-reference .sigma-controls-close {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid #c2c7ce;
+  border-radius: var(--asimov-radius-control);
+  background: #ffffff;
+  color: #43474e;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.semantica-showcase-reference .sigma-controls-close:hover {
+  border-color: var(--asimov-control-yellow);
+  color: #1a1b1e;
+}
+
+.semantica-showcase-reference .sigma-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.semantica-showcase-reference .sigma-controls-group {
+  min-width: 0;
+  padding-right: 12px;
+  border-right: 1px solid #d9dadb;
+}
+
+.semantica-showcase-reference .sigma-controls-group:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.semantica-showcase-reference .sigma-controls-group h3 {
+  margin: 0 0 9px;
+  color: #1a1b1e;
+  font-family: var(--font-ui), Manrope, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.semantica-showcase-reference .sigma-control-row {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  margin-bottom: 5px;
+}
+
+.semantica-showcase-reference .sigma-control-label {
+  color: #43474e;
+  font-family: var(--font-ui), Manrope, sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.semantica-showcase-reference .sigma-control-segment button,
+.semantica-showcase-reference .sigma-control-toggle,
+.semantica-showcase-reference .sigma-controls-group summary,
+.semantica-showcase-reference .sigma-controls-subtitle {
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+}
+
+.semantica-showcase-reference .sigma-control-row select {
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  padding: 0 24px 0 7px;
+  border: 1px solid #c2c7ce;
+  border-radius: var(--asimov-radius-control);
+  background: #ffffff;
+  color: #1a1b1e;
+  font-family: var(--font-ui), Manrope, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.semantica-showcase-reference .sigma-control-row select:focus-visible {
+  outline: 2px solid var(--asimov-control-yellow);
+  outline-offset: 1px;
+}
+
+.semantica-showcase-reference .sigma-dropdown-trigger {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 7px;
+  border: 1px solid #c2c7ce;
+  border-radius: var(--asimov-radius-control);
+  background: #ffffff;
+  color: #1a1b1e;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: var(--asimov-value-letter-spacing);
+  outline: none;
+  cursor: pointer;
+}
+
+.semantica-showcase-reference .sigma-dropdown-trigger:hover {
+  border-color: #72787e;
+}
+
+.semantica-showcase-reference .sigma-dropdown-trigger:focus-visible,
+.semantica-showcase-reference .sigma-dropdown-trigger[data-popup-open] {
+  border-color: var(--asimov-control-yellow);
+  box-shadow: 0 0 0 1px var(--asimov-control-yellow);
+}
+
+.semantica-showcase-reference .sigma-dropdown-trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.semantica-showcase-reference .sigma-dropdown-trigger svg {
+  flex: none;
+  color: #72787e;
+  transition: transform 120ms ease;
+}
+
+.semantica-showcase-reference .sigma-dropdown-trigger[data-popup-open] svg {
+  transform: rotate(180deg);
+}
+
+.sigma-dropdown-positioner {
+  z-index: 10000;
+  outline: none;
+}
+
+.sigma-dropdown-menu {
+  min-width: var(--anchor-width);
+  padding: 4px;
+  border: 1px solid #c2c7ce;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1a1b1e;
+  box-shadow: none;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: var(--asimov-value-letter-spacing);
+}
+
+.sigma-dropdown-option {
+  display: flex;
+  width: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 7px;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.sigma-dropdown-option[data-highlighted] {
+  background: #ebebec;
+}
+
+.sigma-dropdown-option[data-checked] {
+  background: #f8f9fa;
+}
+
+.sigma-dropdown-check {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  place-items: center;
+  color: var(--asimov-control-yellow);
+}
+
+.semantica-showcase-reference .sigma-control-segment {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+}
+
+.semantica-showcase-reference .sigma-control-segment button {
+  height: 24px;
+  border: 1px solid #c2c7ce;
+  border-radius: var(--asimov-radius-control);
+  background: #ffffff;
+  color: #43474e;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.semantica-showcase-reference .sigma-control-segment button.is-active {
+  border-color: var(--asimov-control-yellow);
+  background: rgba(232, 201, 45, 0.18);
+  color: #1a1b1e;
+}
+
+.semantica-showcase-reference .sigma-control-row > button.sigma-control-toggle {
+  position: relative;
+  justify-self: start;
+  width: 40px;
+  height: 20px;
+  padding: 3px;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: #f1f2f3 !important;
+  color: #43474e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: pointer;
+  font-family: 'Roboto Condensed', 'Arial Narrow', var(--font-ui), sans-serif;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  transition: background-color 160ms ease;
+}
+
+.semantica-showcase-reference .sigma-control-row > button.sigma-control-toggle[aria-checked='true'] {
+  background: var(--asimov-control-yellow) !important;
+  color: #ffffff;
+}
+
+.semantica-showcase-reference .sigma-control-toggle .showcase-ref-edge-toggle-thumb {
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  transform: translateY(-50%);
+  transition: transform 180ms ease;
+}
+
+.semantica-showcase-reference .sigma-control-toggle[aria-checked='true'] .showcase-ref-edge-toggle-thumb {
+  transform: translate(20px, -50%);
+}
+
+.semantica-showcase-reference .sigma-control-toggle .showcase-ref-edge-toggle-label {
+  position: absolute;
+  right: 5px;
+  line-height: 1;
+  font-weight: 500;
+  pointer-events: none;
+  user-select: none;
+}
+
+.semantica-showcase-reference .sigma-control-toggle[aria-checked='true'] .showcase-ref-edge-toggle-label {
+  left: 5px;
+  right: auto;
+  font-weight: 700;
+}
+
+.semantica-showcase-reference .sigma-controls-group details {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #d9dadb;
+}
+
+.semantica-showcase-reference .sigma-controls-group summary {
+  color: #72787e;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.semantica-showcase-reference .sigma-controls-group summary:hover {
+  color: #1a1b1e;
+}
+
+.semantica-showcase-reference .sigma-controls-advanced {
+  margin-top: 8px;
+}
+
+@media (max-width: 1200px) {
+  .semantica-showcase-reference .sigma-controls-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .semantica-showcase-reference .sigma-controls-group:nth-child(2) {
+    border-right: 0;
+  }
 }
 
 .semantica-showcase-reference .showcase-ref-canvas-separator {

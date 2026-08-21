@@ -15,6 +15,7 @@ import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SessionEventsRouteImport } from './routes/session-events'
 import { Route as SemanticaShowcaseRouteImport } from './routes/semantica-showcase'
+import { Route as SemanticaGraphControlsRouteImport } from './routes/semantica-graph-controls'
 import { Route as ProfilesRouteImport } from './routes/profiles'
 import { Route as OrchestratorRouteImport } from './routes/orchestrator'
 import { Route as MemoryRouteImport } from './routes/memory'
@@ -170,6 +171,11 @@ const SessionEventsRoute = SessionEventsRouteImport.update({
 const SemanticaShowcaseRoute = SemanticaShowcaseRouteImport.update({
   id: '/semantica-showcase',
   path: '/semantica-showcase',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SemanticaGraphControlsRoute = SemanticaGraphControlsRouteImport.update({
+  id: '/semantica-graph-controls',
+  path: '/semantica-graph-controls',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfilesRoute = ProfilesRouteImport.update({
@@ -837,6 +843,7 @@ export interface FileRoutesByFullPath {
   '/memory': typeof MemoryRoute
   '/orchestrator': typeof OrchestratorRoute
   '/profiles': typeof ProfilesRoute
+  '/semantica-graph-controls': typeof SemanticaGraphControlsRoute
   '/semantica-showcase': typeof SemanticaShowcaseRoute
   '/session-events': typeof SessionEventsRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -971,6 +978,7 @@ export interface FileRoutesByTo {
   '/memory': typeof MemoryRoute
   '/orchestrator': typeof OrchestratorRoute
   '/profiles': typeof ProfilesRoute
+  '/semantica-graph-controls': typeof SemanticaGraphControlsRoute
   '/semantica-showcase': typeof SemanticaShowcaseRoute
   '/session-events': typeof SessionEventsRoute
   '/skills': typeof SkillsRoute
@@ -1105,6 +1113,7 @@ export interface FileRoutesById {
   '/memory': typeof MemoryRoute
   '/orchestrator': typeof OrchestratorRoute
   '/profiles': typeof ProfilesRoute
+  '/semantica-graph-controls': typeof SemanticaGraphControlsRoute
   '/semantica-showcase': typeof SemanticaShowcaseRoute
   '/session-events': typeof SessionEventsRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -1241,6 +1250,7 @@ export interface FileRouteTypes {
     | '/memory'
     | '/orchestrator'
     | '/profiles'
+    | '/semantica-graph-controls'
     | '/semantica-showcase'
     | '/session-events'
     | '/settings'
@@ -1375,6 +1385,7 @@ export interface FileRouteTypes {
     | '/memory'
     | '/orchestrator'
     | '/profiles'
+    | '/semantica-graph-controls'
     | '/semantica-showcase'
     | '/session-events'
     | '/skills'
@@ -1508,6 +1519,7 @@ export interface FileRouteTypes {
     | '/memory'
     | '/orchestrator'
     | '/profiles'
+    | '/semantica-graph-controls'
     | '/semantica-showcase'
     | '/session-events'
     | '/settings'
@@ -1643,6 +1655,7 @@ export interface RootRouteChildren {
   MemoryRoute: typeof MemoryRoute
   OrchestratorRoute: typeof OrchestratorRoute
   ProfilesRoute: typeof ProfilesRoute
+  SemanticaGraphControlsRoute: typeof SemanticaGraphControlsRoute
   SemanticaShowcaseRoute: typeof SemanticaShowcaseRoute
   SessionEventsRoute: typeof SessionEventsRoute
   SettingsRoute: typeof SettingsRouteWithChildren
@@ -1771,6 +1784,13 @@ declare module '@tanstack/react-router' {
       path: '/semantica-showcase'
       fullPath: '/semantica-showcase'
       preLoaderRoute: typeof SemanticaShowcaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/semantica-graph-controls': {
+      id: '/semantica-graph-controls'
+      path: '/semantica-graph-controls'
+      fullPath: '/semantica-graph-controls'
+      preLoaderRoute: typeof SemanticaGraphControlsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profiles': {
@@ -2832,6 +2852,7 @@ const rootRouteChildren: RootRouteChildren = {
   MemoryRoute: MemoryRoute,
   OrchestratorRoute: OrchestratorRoute,
   ProfilesRoute: ProfilesRoute,
+  SemanticaGraphControlsRoute: SemanticaGraphControlsRoute,
   SemanticaShowcaseRoute: SemanticaShowcaseRoute,
   SessionEventsRoute: SessionEventsRoute,
   SettingsRoute: SettingsRouteWithChildren,

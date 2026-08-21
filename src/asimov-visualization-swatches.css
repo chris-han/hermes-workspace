@@ -1,0 +1,22 @@
+/*
+ * Asimov visualization palette.
+ *
+ * Canonical 12-color swatch tokens for graph/data visualization. These tokens
+ * are scoped to `.asimov-minimalism` so they inherit the same design-system
+ * boundary as the rest of the authenticated workspace visual language.
+ */
+
+.asimov-minimalism {
+  --asimov-visualization-swatch-ember: #ff4d00;
+  --asimov-visualization-swatch-tangerine: #ff8040;
+  --asimov-visualization-swatch-crimson: #ff1a5e;
+  --asimov-visualization-swatch-lime: #9fe870;
+  --asimov-visualization-swatch-fern: #5fd43a;
+  --asimov-visualization-swatch-gold: #d9b32d;
+  --asimov-visualization-swatch-butter: #ffe566;
+  --asimov-visualization-swatch-periwinkle: #8fb8ff;
+  --asimov-visualization-swatch-cobalt: #4a7fe8;
+  --asimov-visualization-swatch-blush: #ffc5d7;
+  --asimov-visualization-swatch-midnight: #1c1a2e;
+  --asimov-visualization-swatch-ivory: #f7f3ed;
+}

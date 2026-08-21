@@ -6,7 +6,10 @@ import type { CSSProperties } from 'react'
 import { CaretDown, CheckCircle, Gear } from '@/components/ui/icon'
 
 import type { GraphTopologyMode } from '../layouts/graph-topology-layouts'
-import type { SigmaControlState } from './sigma-control-state'
+import {
+  ASIMOV_VISUALIZATION_SWATCHES,
+  type SigmaControlState,
+} from './sigma-control-state'
 
 type SliderControlProps = {
   label: string
@@ -31,7 +34,11 @@ type SigmaControlsProps = {
   onControlsChange: (next: SigmaControlState) => void
 }
 
-type DropdownOption = { value: string; label: string }
+type DropdownOption = {
+  value: string
+  label: string
+  swatches?: readonly string[]
+}
 
 type AsimovDropdownProps = {
   value: string
@@ -98,12 +105,37 @@ function ToggleControl({ label, checked, onChange, disabled, title }: ToggleCont
   )
 }
 
+function PaletteStrip({ colors }: { colors: readonly string[] }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{ display: 'inline-flex', gap: 2, alignItems: 'center', flex: 'none' }}
+    >
+      {colors.map((color) => (
+        <span
+          key={color}
+          style={{
+            width: 6,
+            height: 12,
+            borderRadius: 1,
+            backgroundColor: color,
+            border: '1px solid rgb(26 27 30 / 12%)',
+          }}
+        />
+      ))}
+    </span>
+  )
+}
+
 function AsimovDropdown({ value, options, onChange, ariaLabel }: AsimovDropdownProps) {
   const selected = options.find((option) => option.value === value)
   return (
     <Menu.Root>
       <Menu.Trigger className="sigma-dropdown-trigger" aria-label={ariaLabel}>
-        <span>{selected?.label ?? 'Select'}</span>
+        <span style={{ display: 'inline-flex', minWidth: 0, alignItems: 'center', gap: 7 }}>
+          {selected?.swatches ? <PaletteStrip colors={selected.swatches} /> : null}
+          <span>{selected?.label ?? 'Select'}</span>
+        </span>
         <CaretDown size={12} />
       </Menu.Trigger>
       <Menu.Portal>
@@ -112,7 +144,10 @@ function AsimovDropdown({ value, options, onChange, ariaLabel }: AsimovDropdownP
             <Menu.RadioGroup value={value} onValueChange={onChange}>
               {options.map((option) => (
                 <Menu.RadioItem key={option.value} value={option.value} className="sigma-dropdown-option">
-                  <span>{option.label}</span>
+                  <span style={{ display: 'inline-flex', minWidth: 0, alignItems: 'center', gap: 7 }}>
+                    {option.swatches ? <PaletteStrip colors={option.swatches} /> : null}
+                    <span>{option.label}</span>
+                  </span>
                   <Menu.RadioItemIndicator className="sigma-dropdown-check">
                     <CheckCircle size={12} />
                   </Menu.RadioItemIndicator>
@@ -246,6 +281,7 @@ export function SigmaControls({
                 onChange={(value) => update('nodeColor', value as SigmaControlState['nodeColor'])}
                 options={[
                   { value: 'semantic', label: 'Semantica' },
+                  { value: 'asimov', label: 'Asimov', swatches: ASIMOV_VISUALIZATION_SWATCHES },
                   { value: 'uniform', label: 'Uniform' },
                 ]}
               />

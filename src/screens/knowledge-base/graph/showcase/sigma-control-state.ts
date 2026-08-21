@@ -89,6 +89,7 @@ export interface SigmaControlState {
   nodeSize: SigmaNodeSizeMode
   nodeColor: SigmaNodeColorMode
   edgeColor: SigmaEdgeColorMode
+  edgeWidth: number
   nodeLabels: SigmaNodeLabelMode
   edgeLabels: SigmaEdgeLabelMode
   showProperties: boolean
@@ -104,6 +105,7 @@ export const DEFAULT_SIGMA_CONTROLS: SigmaControlState = {
   nodeSize: 'degree',
   nodeColor: 'semantic',
   edgeColor: 'semantic',
+  edgeWidth: 50,
   nodeLabels: 'all',
   edgeLabels: 'all',
   showProperties: false,
@@ -237,6 +239,7 @@ export function applySigmaModelControls(
     }
   })
 
+  const edgeWidthScale = Math.max(0.2, controls.edgeWidth / 50)
   const edges = visibleEdges.map((edge) => {
     const incidentToSelection = Boolean(
       selectedId && (edge.source === selectedId || edge.target === selectedId),
@@ -260,6 +263,7 @@ export function applySigmaModelControls(
     return {
       ...edge,
       label,
+      size: Math.max(0.2, (edge.size ?? 1) * edgeWidthScale),
       color,
     }
   })

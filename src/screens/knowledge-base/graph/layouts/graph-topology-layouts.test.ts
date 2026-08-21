@@ -60,6 +60,24 @@ describe('graph-topology-layouts', () => {
     }
   })
 
+  it('keeps force-directed layout deterministic for a seed and changes across seeds', () => {
+    const runA1 = computeGraphTopology(baseInput, 'force-directed', {
+      selectedRootId: 'A',
+      seed: 'nudge-1',
+    })
+    const runA2 = computeGraphTopology(baseInput, 'force-directed', {
+      selectedRootId: 'A',
+      seed: 'nudge-1',
+    })
+    const runB = computeGraphTopology(baseInput, 'force-directed', {
+      selectedRootId: 'A',
+      seed: 'nudge-2',
+    })
+
+    expect(runA1.positionHash).toBe(runA2.positionHash)
+    expect(runA1.positionHash).not.toBe(runB.positionHash)
+  })
+
   it('supports a stable-order mode test for layout without mutating input', () => {
     const original = JSON.stringify(baseInput)
     const result = computeGraphTopology(baseInput, 'layout')

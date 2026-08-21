@@ -7,18 +7,22 @@ export function KgShowcaseView({
   input,
   onSelect,
   positions,
+  onNudge,
 }: {
   input: ShowcaseKgRendererInput
   onSelect: (selection: SigmaGraphReadonlySelection) => void
   positions?: Record<string, { x: number; y: number }>
+  onNudge?: () => void
 }) {
   return (
     <>
       <button
         type="button"
-        className="self-start rounded-md border border-border bg-card/60 px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition hover:bg-card"
+        className="showcase-ref-variance-button self-start"
+        onClick={onNudge}
+        aria-label="Nudge"
       >
-        Nudge
+        <span>Nudge</span>
       </button>
       <div className="flex h-full w-full flex-col gap-3" data-testid="kg-showcase-view">
         <SigmaGraphReadonly

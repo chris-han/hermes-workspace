@@ -460,13 +460,13 @@
 
 .semantica-showcase-reference .showcase-ref-ruler {
   position: absolute;
-  inset: 0 0 auto 0;
+  inset: 10px 0 auto 0;
   z-index: 2;
-  height: 16px;
+  height: 8px;
   opacity: 0.3;
   border-bottom: 1px solid var(--asimov-outline-variant);
-  background-image: repeating-linear-gradient(to right, var(--asimov-text) 0 1px, transparent 1px 24px);
-  background-size: 96px 8px;
+  background-image: repeating-linear-gradient(to right, var(--asimov-text) 0 1px, transparent 1px 20px);
+  background-size: 20px 100%;
   background-repeat: repeat-x;
   background-position: bottom left;
   pointer-events: none;
@@ -541,6 +541,53 @@
 .semantica-showcase-reference .showcase-ref-toolbar-text > * { padding: 6px 8px; }
 .semantica-showcase-reference .showcase-ref-toolbar-text strong {
   border-bottom: 2px solid var(--asimov-brand); color: var(--asimov-text); font-weight: 700;
+}
+
+.semantica-showcase-reference .showcase-ref-variance-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  height: 44px;
+  padding: 0 12px;
+  border: 2px solid #262524;
+  border-radius: 12px;
+  background: #f1f3f4;
+  color: #1f1e1d;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  line-height: 1;
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.semantica-showcase-reference .showcase-ref-variance-button > span {
+  position: relative;
+  z-index: 1;
+}
+
+.semantica-showcase-reference .showcase-ref-variance-button:hover {
+  transform: translateY(-1px);
+  background: #f6f8f9;
+}
+
+.semantica-showcase-reference .showcase-ref-variance-button:active {
+  transform: translateY(0);
+}
+
+[data-theme='semantier'] .semantica-showcase-reference .showcase-ref-variance-button,
+.dark .semantica-showcase-reference .showcase-ref-variance-button {
+  border-color: #d6d0c2;
+  background: #282c2d;
+  color: #f3ede1;
+}
+
+[data-theme='semantier'] .semantica-showcase-reference .showcase-ref-variance-button:hover,
+.dark .semantica-showcase-reference .showcase-ref-variance-button:hover {
+  background: #303637;
 }
 
 .semantica-showcase-reference .showcase-ref-node-dot { width: 12px; height: 12px; border-radius: 2px; background: var(--asimov-brand); }

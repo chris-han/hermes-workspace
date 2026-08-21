@@ -107,6 +107,8 @@ export function SemanticaShowcaseScreen() {
   const [mode, setMode] = useState<ShowcaseVisualizationMode>(initialMode)
   const [kgTopology, setKgTopology] = useState<GraphTopologyMode>('layout')
   const [snTopology, setSnTopology] = useState<GraphTopologyMode>('layout')
+  const [kgNudgeCount, setKgNudgeCount] = useState(0)
+  const [snNudgeCount, setSnNudgeCount] = useState(0)
   const [kgSelection, setKgSelection] = useState<SigmaGraphReadonlySelection>(null)
   const [snSelection, setSnSelection] = useState<SigmaGraphReadonlySelection>(null)
   const [embeddingSelection, setEmbeddingSelection] = useState<string | undefined>(undefined)
@@ -179,12 +181,18 @@ export function SemanticaShowcaseScreen() {
     [dataset.semanticNetwork],
   )
   const kgPositions = useMemo(
-    () => Object.fromEntries(Array.from(computeGraphTopology(kgGraphInput, kgTopology, { selectedRootId: kgSelection?.type === 'node' ? kgSelection.id : null }).positions.entries())),
-    [kgGraphInput, kgTopology, kgSelection],
+    () => Object.fromEntries(Array.from(computeGraphTopology(kgGraphInput, kgTopology, {
+      selectedRootId: kgSelection?.type === 'node' ? kgSelection.id : null,
+      seed: `kg-${kgTopology}-${kgNudgeCount}`,
+    }).positions.entries())),
+    [kgGraphInput, kgTopology, kgSelection, kgNudgeCount],
   )
   const snPositions = useMemo(
-    () => Object.fromEntries(Array.from(computeGraphTopology(snGraphInput, snTopology, { selectedRootId: snSelection?.type === 'node' ? snSelection.id : null }).positions.entries())),
-    [snGraphInput, snTopology, snSelection],
+    () => Object.fromEntries(Array.from(computeGraphTopology(snGraphInput, snTopology, {
+      selectedRootId: snSelection?.type === 'node' ? snSelection.id : null,
+      seed: `sn-${snTopology}-${snNudgeCount}`,
+    }).positions.entries())),
+    [snGraphInput, snTopology, snSelection, snNudgeCount],
   )
   const statusLine = useMemo(
     () => {
@@ -206,6 +214,14 @@ export function SemanticaShowcaseScreen() {
   }, [])
   const handleSnSelect = useCallback((selection: SigmaGraphReadonlySelection) => {
     setSnSelection(selection)
+  }, [])
+
+  const nudgeKgTopology = useCallback(() => {
+    setKgNudgeCount((value) => value + 1)
+  }, [])
+
+  const nudgeSnTopology = useCallback(() => {
+    setSnNudgeCount((value) => value + 1)
   }, [])
 
   return (
@@ -337,7 +353,12 @@ export function SemanticaShowcaseScreen() {
               onTopologyChange={setKgTopology}
               supportsTopology={Boolean(dataset.kg)}
             >
-              <KgShowcaseView input={kgAdapter.renderer} onSelect={handleKgSelect} positions={kgPositions} />
+              <KgShowcaseView
+                input={kgAdapter.renderer}
+                onSelect={handleKgSelect}
+                positions={kgPositions}
+                onNudge={nudgeKgTopology}
+              />
             </CenterPanel>
             <RightRail
               inspector={kgAdapter.inspector}

@@ -68,6 +68,26 @@ function hashPositionMap(positions: Map<string, { x: number; y: number }>): stri
   return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
+function hashSeed(seed: string): number {
+  let hash = 2166136261
+  for (const char of seed) {
+    hash ^= char.charCodeAt(0)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function seedPhase(seed?: string): number {
+  if (!seed) return 0
+  return (hashSeed(seed) / 0xffffffff) * Math.PI * 2
+}
+
+function seedJitter(seed: string | undefined, key: string, amplitude: number): number {
+  if (!seed) return 0
+  const unit = hashSeed(`${seed}:${key}`) / 0xffffffff
+  return (unit * 2 - 1) * amplitude
+}
+
 function circularFallback(
   nodes: GraphTopologyNode[],
   options: GraphTopologyOptions,
@@ -77,11 +97,12 @@ function circularFallback(
   const centerX = width / 2
   const centerY = height / 2
   const radius = Math.max(80, Math.min(width, height) * 0.28)
+  const phase = seedPhase(options.seed)
   const sorted = [...nodes].sort((left, right) => sortById(left.id, right.id))
   const positions = new Map<string, { x: number; y: number }>()
 
   sorted.forEach((node, index) => {
-    const angle = (index / Math.max(1, sorted.length)) * Math.PI * 2
+    const angle = (index / Math.max(1, sorted.length)) * Math.PI * 2 + phase
     positions.set(node.id, {
       x: centerX + Math.cos(angle) * radius,
       y: centerY + Math.sin(angle) * radius,
@@ -228,6 +249,16 @@ export function computeGraphTopology(
       ? new Map(nodes.map((node) => [node.id, { x: toFiniteNumber(node.x, 0), y: toFiniteNumber(node.y, 0) }]))
       : circularFallback(nodes, options)
     initial.forEach((point, id) => positions.set(id, point))
+    if (options.seed) {
+      // Deterministic micro-jitter keyed by seed to support repeatable in-mode relayout.
+      const amplitude = 18
+      for (const [id, point] of positions.entries()) {
+        positions.set(id, {
+          x: point.x + seedJitter(options.seed, `${id}:x`, amplitude),
+          y: point.y + seedJitter(options.seed, `${id}:y`, amplitude),
+        })
+      }
+    }
     coordinateOrigin = initial.size > 0 && hasCompleteFixtureCoordinates(nodes) ? 'fixture' : 'deterministic'
     rootIds = [...nodes].map((node) => node.id)
   }

@@ -101,6 +101,30 @@ exports[`EmbeddingShowcaseView — W0-03 DOM snapshot baseline > renders the pin
 </div>
 `;
 
+exports[`KgShowcaseView — W0-03 DOM snapshot baseline > renders the pinned intro fixture with the expected testids and summary 1`] = `
+<div>
+  <button
+    aria-label="Nudge"
+    class="showcase-ref-variance-button self-start"
+    type="button"
+  >
+    <span>
+      Nudge
+    </span>
+  </button>
+  <div
+    class="flex h-full w-full flex-col gap-3"
+    data-testid="kg-showcase-view"
+  >
+    <div
+      aria-label="Knowledge graph showcase"
+      class="min-h-0 flex-1 w-full bg-transparent"
+      role="application"
+    />
+  </div>
+</div>
+`;
+
 exports[`OntologyShowcaseView — W0-03 DOM snapshot baseline > renders the pinned intro fixture with the expected tree testids 1`] = `
 <div>
   <div

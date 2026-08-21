@@ -109,4 +109,31 @@ describe('graph-topology-layouts', () => {
     expect(entity?.y).toBe(relationship?.y)
     expect(entity?.x).not.toBe(relationship?.x)
   })
+
+  it('places every node on a deterministic circular layout', () => {
+    const first = computeGraphTopology(baseInput, 'circular')
+    const second = computeGraphTopology(baseInput, 'circular')
+    expect(first.positions.size).toBe(baseInput.nodes.length)
+    expect(first.positionHash).toBe(second.positionHash)
+    expect(first.coordinateOrigin).toBe('computed')
+  })
+
+  it('clusters explicit node groups in communities mode', () => {
+    const groupedInput: GraphTopologyInput = {
+      nodes: [
+        { id: 'A1', group: 'A' },
+        { id: 'A2', group: 'A' },
+        { id: 'B1', group: 'B' },
+        { id: 'B2', group: 'B' },
+      ],
+      edges: [
+        { id: 'A', source: 'A1', target: 'A2' },
+        { id: 'B', source: 'B1', target: 'B2' },
+      ],
+    }
+    const result = computeGraphTopology(groupedInput, 'communities')
+    expect(result.positions.size).toBe(4)
+    expect(result.rootIds).toHaveLength(2)
+    expect(result.coordinateOrigin).toBe('computed')
+  })
 })

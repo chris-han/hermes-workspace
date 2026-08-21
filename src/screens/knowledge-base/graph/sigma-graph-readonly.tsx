@@ -41,6 +41,7 @@ export interface SigmaGraphReadonlyInput {
   nodes: SigmaGraphReadonlyNode[]
   edges: SigmaGraphReadonlyEdge[]
   renderEdgeLabels?: boolean
+  edgeArrows?: boolean
   selection?: SigmaGraphReadonlySelection
   highlightedNodeIds?: string[]
   highlightedEdgeIds?: string[]
@@ -80,9 +81,11 @@ function buildReadonlyGraph(input: SigmaGraphReadonlyInput): Graph {
     if (!graph.hasNode(edge.source) || !graph.hasNode(edge.target)) {
       return
     }
+    const targetNodeSize = Number(graph.getNodeAttribute(edge.target, 'size')) || 10
+    const scaledEdgeSize = Math.max(1.8, Math.min(5, targetNodeSize * 0.24))
     graph.addEdgeWithKey(edge.id, edge.source, edge.target, {
       label: edge.label ?? '',
-      size: edge.size ?? 1,
+      size: edge.size ?? scaledEdgeSize,
       color: edge.color ?? '#cbd5e1',
     })
   })
@@ -110,6 +113,9 @@ function buildRendererSettings(
     // Readability thresholds tuned for dense showcase graphs
     labelRenderedSizeThreshold: 8,
     edgeLabelRenderedSizeThreshold: 1,
+
+    // Edge direction presentation
+    defaultEdgeType: input.edgeArrows === false ? 'line' : 'arrow',
 
     // Stable rendering behavior
     zIndex: true,

@@ -6,11 +6,16 @@ import type {
   SigmaGraphReadonlyViewportController,
 } from '../../../sigma-graph-readonly'
 import type { ShowcaseGraphModel } from '../../semantica-showcase-types'
+import {
+  applySigmaModelControls,
+  type SigmaControlState,
+} from '../../sigma-control-state'
 
 export type ShowcaseCanvasPositions = Record<string, { x: number; y: number }>
 
 export interface ShowcaseCanvasViewportProps {
   positions?: ShowcaseCanvasPositions
+  sigmaControls?: SigmaControlState
   onViewportReady?: (controller: SigmaGraphReadonlyViewportController | null) => void
 }
 
@@ -32,6 +37,7 @@ export function ShowcaseSigmaCanvas({
   selection,
   ariaLabel,
   renderEdgeLabels,
+  sigmaControls,
   onSelect,
   onViewportReady,
   className,
@@ -41,20 +47,36 @@ export function ShowcaseSigmaCanvas({
   selection?: SigmaGraphReadonlySelection
   ariaLabel: string
   renderEdgeLabels?: boolean
+  sigmaControls?: SigmaControlState
   onSelect?: (selection: SigmaGraphReadonlySelection) => void
   onViewportReady?: (controller: SigmaGraphReadonlyViewportController | null) => void
   className?: string
 }) {
+  const controlledModel = useMemo(
+    () => (sigmaControls ? applySigmaModelControls(model, selection, sigmaControls) : model),
+    [model, selection, sigmaControls],
+  )
   const readonlyInput = useMemo(
     () => ({
-      nodes: model.nodes,
-      edges: model.edges,
+      nodes: controlledModel.nodes,
+      edges: controlledModel.edges,
       positions,
       selection,
       ariaLabel,
-      renderEdgeLabels,
+      renderEdgeLabels:
+        sigmaControls?.edgeLabels === 'none' ? false : renderEdgeLabels,
+      edgeArrows: sigmaControls?.edgeArrows,
     }),
-    [ariaLabel, model.edges, model.nodes, positions, renderEdgeLabels, selection],
+    [
+      ariaLabel,
+      controlledModel.edges,
+      controlledModel.nodes,
+      positions,
+      renderEdgeLabels,
+      selection,
+      sigmaControls?.edgeArrows,
+      sigmaControls?.edgeLabels,
+    ],
   )
 
   return (

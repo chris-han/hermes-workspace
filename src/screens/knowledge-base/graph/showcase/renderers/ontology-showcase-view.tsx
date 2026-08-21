@@ -16,6 +16,7 @@ export function OntologyShowcaseView({
   selectedClassId,
   onSelect,
   positions,
+  sigmaControls,
   onViewportReady,
   renderEdgeLabels = true,
 }: {
@@ -34,6 +35,7 @@ export function OntologyShowcaseView({
       <ShowcaseSigmaCanvas
         model={input.model}
         positions={positions ?? input.positions}
+        sigmaControls={sigmaControls}
         selection={selectionForNode(selectedClassId)}
         ariaLabel="Ontology hierarchy showcase"
         renderEdgeLabels={renderEdgeLabels}

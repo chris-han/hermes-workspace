@@ -365,7 +365,15 @@
   justify-content: center;
 }
 
-.semantica-showcase-reference .showcase-ref-meta-label,
+.semantica-showcase-reference .showcase-ref-meta-label {
+  font-family: var(--font-ui), Manrope, 'Noto Sans SC', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--asimov-muted);
+}
+
 .semantica-showcase-reference .showcase-ref-panel-heading span,
 .semantica-showcase-reference .showcase-ref-mono-count,
 .semantica-showcase-reference .showcase-ref-inspector-header span,
@@ -441,10 +449,11 @@
 
 .semantica-showcase-reference .showcase-ref-workspace-name {
   margin-bottom: 8px;
+  font-family: var(--font-mono-studio), 'JetBrains Mono', monospace;
   font-size: 20px;
   line-height: 1.2;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--asimov-value-letter-spacing);
 }
 
 .semantica-showcase-reference .showcase-ref-overview-meta {
@@ -615,7 +624,7 @@
 }
 
 .semantica-showcase-reference .showcase-ref-canvas-group > button.is-active {
-  border-bottom-color: var(--asimov-brand);
+  border-bottom-color: var(--asimov-control-yellow);
   color: var(--asimov-text);
 }
 

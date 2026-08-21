@@ -6,12 +6,15 @@ import type { ShowcaseCanvasViewportProps } from './shared/showcase-sigma-canvas
 export function SemanticNetworkShowcaseView({
   input,
   onSelect,
+  selection,
   positions,
+  sigmaControls,
   onViewportReady,
   renderEdgeLabels = false,
 }: {
   input: ShowcaseSemanticNetworkRendererInput
   onSelect: (selection: SigmaGraphReadonlySelection) => void
+  selection?: SigmaGraphReadonlySelection
   renderEdgeLabels?: boolean
 } & ShowcaseCanvasViewportProps) {
   return (
@@ -19,7 +22,8 @@ export function SemanticNetworkShowcaseView({
       <ShowcaseSigmaCanvas
         model={input.model}
         positions={positions}
-        selection={null}
+        sigmaControls={sigmaControls}
+        selection={selection}
         ariaLabel="Semantic network showcase"
         renderEdgeLabels={renderEdgeLabels}
         onSelect={onSelect}

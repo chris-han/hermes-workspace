@@ -7,12 +7,15 @@ import type { ShowcaseCanvasViewportProps } from './shared/showcase-sigma-canvas
 export function KgShowcaseView({
   input,
   onSelect,
+  selection,
   positions,
+  sigmaControls,
   onViewportReady,
   renderEdgeLabels = true,
 }: {
   input: ShowcaseKgRendererInput
   onSelect: (selection: SigmaGraphReadonlySelection) => void
+  selection?: SigmaGraphReadonlySelection
   renderEdgeLabels?: boolean
 } & ShowcaseCanvasViewportProps) {
   return (
@@ -20,7 +23,8 @@ export function KgShowcaseView({
       <ShowcaseSigmaCanvas
         model={input.model}
         positions={positions}
-        selection={null}
+        sigmaControls={sigmaControls}
+        selection={selection}
         ariaLabel="Knowledge graph showcase"
         renderEdgeLabels={renderEdgeLabels}
         onSelect={onSelect}

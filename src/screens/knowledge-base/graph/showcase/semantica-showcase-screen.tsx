@@ -19,6 +19,11 @@ import { EmbeddingShowcaseView } from './renderers/embedding-showcase-view'
 import { SemanticNetworkShowcaseView } from './renderers/semantic-network-showcase-view'
 import { getDataset, getDatasetRegistry } from './semantica-showcase-dataset'
 import { SigmaControls } from './sigma-controls'
+import {
+  DEFAULT_SIGMA_CONTROLS,
+  applySigmaPositionControls,
+  type SigmaControlState,
+} from './sigma-control-state'
 import { describeProvenance, formatSourceLocation } from './semantica-showcase-provenance'
 import {
   deriveShowcaseStats,
@@ -112,6 +117,7 @@ export function SemanticaShowcaseScreen() {
   const isDarkTheme = !activeTheme.endsWith('-light')
 
   const [mode, setMode] = useState<ShowcaseVisualizationMode>(initialMode)
+  const [sigmaControls, setSigmaControls] = useState<SigmaControlState>(DEFAULT_SIGMA_CONTROLS)
   const [kgTopology, setKgTopology] = useState<GraphTopologyMode>('layout')
   const [ontologyTopology, setOntologyTopology] = useState<GraphTopologyMode>('hierarchical')
   const [embeddingTopology, setEmbeddingTopology] = useState<GraphTopologyMode>('layout')
@@ -199,60 +205,84 @@ export function SemanticaShowcaseScreen() {
   const labels = useMemo(() => rendererLabelsFor(mode, activeTopology), [mode, activeTopology])
   const kgGraphInput = useMemo(
     () => ({
-      nodes: dataset.kg?.entities.map((entity) => ({ id: entity.id, label: entity.name })) ?? [],
-      edges: dataset.kg?.relationships.map((relationship) => ({ id: relationship.id, source: relationship.source, target: relationship.target })) ?? [],
+      nodes: kgAdapter?.renderer.model.nodes.map((node) => ({
+        id: node.id,
+        label: node.label,
+        group: node.group,
+      })) ?? [],
+      edges: kgAdapter?.renderer.model.edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+      })) ?? [],
     }),
-    [dataset.kg],
+    [kgAdapter],
   )
   const snGraphInput = useMemo(
     () => ({
-      nodes: dataset.semanticNetwork?.nodes.map((node) => ({ id: node.id, label: node.label })) ?? [],
-      edges: dataset.semanticNetwork?.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })) ?? [],
+      nodes: semanticNetworkAdapter?.renderer.model.nodes.map((node) => ({
+        id: node.id,
+        label: node.label,
+        group: node.group,
+      })) ?? [],
+      edges: semanticNetworkAdapter?.renderer.model.edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+      })) ?? [],
     }),
-    [dataset.semanticNetwork],
+    [semanticNetworkAdapter],
   )
   const ontologyGraphInput = useMemo(
     () => ({
-      nodes: ontologyAdapter?.renderer.model.nodes.map((node) => ({ id: node.id, label: node.label ?? node.id })) ?? [],
+      nodes: ontologyAdapter?.renderer.model.nodes.map((node) => ({
+        id: node.id,
+        label: node.label ?? node.id,
+        group: node.group,
+      })) ?? [],
       edges: ontologyAdapter?.renderer.model.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })) ?? [],
     }),
     [ontologyAdapter],
   )
   const embeddingGraphInput = useMemo(
     () => ({
-      nodes: embeddingAdapter?.renderer.model.nodes.map((node) => ({ id: node.id, label: node.label ?? node.id })) ?? [],
+      nodes: embeddingAdapter?.renderer.model.nodes.map((node) => ({
+        id: node.id,
+        label: node.label ?? node.id,
+        group: node.group,
+      })) ?? [],
       edges: embeddingAdapter?.renderer.model.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })) ?? [],
     }),
     [embeddingAdapter],
   )
-  const kgPositions = useMemo(
-    () => Object.fromEntries(Array.from(computeGraphTopology(kgGraphInput, kgTopology, {
+  const kgPositions = useMemo(() => {
+    const positions = Object.fromEntries(Array.from(computeGraphTopology(kgGraphInput, kgTopology, {
       selectedRootId: kgSelection?.type === 'node' ? kgSelection.id : null,
       seed: `kg-${kgTopology}-${kgNudgeCount}`,
-    }).positions.entries())),
-    [kgGraphInput, kgTopology, kgSelection, kgNudgeCount],
-  )
-  const snPositions = useMemo(
-    () => Object.fromEntries(Array.from(computeGraphTopology(snGraphInput, snTopology, {
+    }).positions.entries()))
+    return applySigmaPositionControls(positions, kgTopology, sigmaControls)
+  }, [kgGraphInput, kgTopology, kgSelection, kgNudgeCount, sigmaControls])
+  const snPositions = useMemo(() => {
+    const positions = Object.fromEntries(Array.from(computeGraphTopology(snGraphInput, snTopology, {
       selectedRootId: snSelection?.type === 'node' ? snSelection.id : null,
       seed: `sn-${snTopology}-${snNudgeCount}`,
-    }).positions.entries())),
-    [snGraphInput, snTopology, snSelection, snNudgeCount],
-  )
-  const ontologyPositions = useMemo(
-    () => Object.fromEntries(Array.from(computeGraphTopology(ontologyGraphInput, ontologyTopology, {
+    }).positions.entries()))
+    return applySigmaPositionControls(positions, snTopology, sigmaControls)
+  }, [snGraphInput, snTopology, snSelection, snNudgeCount, sigmaControls])
+  const ontologyPositions = useMemo(() => {
+    const positions = Object.fromEntries(Array.from(computeGraphTopology(ontologyGraphInput, ontologyTopology, {
       selectedRootId: ontologySelection ?? null,
       seed: `ontology-${ontologyTopology}-${ontologyNudgeCount}`,
-    }).positions.entries())),
-    [ontologyGraphInput, ontologyNudgeCount, ontologySelection, ontologyTopology],
-  )
-  const embeddingPositions = useMemo(
-    () => Object.fromEntries(Array.from(computeGraphTopology(embeddingGraphInput, embeddingTopology, {
+    }).positions.entries()))
+    return applySigmaPositionControls(positions, ontologyTopology, sigmaControls)
+  }, [ontologyGraphInput, ontologyNudgeCount, ontologySelection, ontologyTopology, sigmaControls])
+  const embeddingPositions = useMemo(() => {
+    const positions = Object.fromEntries(Array.from(computeGraphTopology(embeddingGraphInput, embeddingTopology, {
       selectedRootId: embeddingSelection ?? null,
       seed: `embedding-${embeddingTopology}-${embeddingNudgeCount}`,
-    }).positions.entries())),
-    [embeddingGraphInput, embeddingNudgeCount, embeddingSelection, embeddingTopology],
-  )
+    }).positions.entries()))
+    return applySigmaPositionControls(positions, embeddingTopology, sigmaControls)
+  }, [embeddingGraphInput, embeddingNudgeCount, embeddingSelection, embeddingTopology, sigmaControls])
   const footerMeta = useMemo(
     () => {
       const kgNodes = kgAdapter?.renderer.model.nodes.length ?? 0
@@ -589,11 +619,15 @@ export function SemanticaShowcaseScreen() {
               onFit={handleFit}
               edgeLabelsEnabled={edgeLabelsEnabled}
               onToggleEdgeLabels={handleToggleEdgeLabels}
+              sigmaControls={sigmaControls}
+              onSigmaControlsChange={setSigmaControls}
             >
               <KgShowcaseView
                 input={kgAdapter.renderer}
                 onSelect={handleKgSelect}
+                selection={kgSelection}
                 positions={kgPositions}
+                sigmaControls={sigmaControls}
                 onViewportReady={handleKgViewportReady}
                 renderEdgeLabels={kgEdgeLabels}
               />
@@ -650,6 +684,8 @@ export function SemanticaShowcaseScreen() {
               onFit={handleFit}
               edgeLabelsEnabled={edgeLabelsEnabled}
               onToggleEdgeLabels={handleToggleEdgeLabels}
+              sigmaControls={sigmaControls}
+              onSigmaControlsChange={setSigmaControls}
             >
               <OntologyShowcaseView
                 input={ontologyAdapter.renderer}
@@ -658,6 +694,7 @@ export function SemanticaShowcaseScreen() {
                 selectedClassId={ontologySelection}
                 onSelect={setOntologySelection}
                 positions={ontologyPositions}
+                sigmaControls={sigmaControls}
                 onViewportReady={handleOntologyViewportReady}
                 renderEdgeLabels={ontologyEdgeLabels}
               />
@@ -713,10 +750,13 @@ export function SemanticaShowcaseScreen() {
               onFit={handleFit}
               edgeLabelsEnabled={edgeLabelsEnabled}
               onToggleEdgeLabels={handleToggleEdgeLabels}
+              sigmaControls={sigmaControls}
+              onSigmaControlsChange={setSigmaControls}
             >
               <EmbeddingShowcaseView
                 input={embeddingAdapter.renderer}
                 positions={embeddingPositions}
+                sigmaControls={sigmaControls}
                 selectedItemId={embeddingSelection}
                 onSelect={handleEmbeddingSelect}
                 onViewportReady={handleEmbeddingViewportReady}
@@ -775,11 +815,15 @@ export function SemanticaShowcaseScreen() {
               onFit={handleFit}
               edgeLabelsEnabled={edgeLabelsEnabled}
               onToggleEdgeLabels={handleToggleEdgeLabels}
+              sigmaControls={sigmaControls}
+              onSigmaControlsChange={setSigmaControls}
             >
               <SemanticNetworkShowcaseView
                 input={semanticNetworkAdapter.renderer}
                 onSelect={handleSnSelect}
+                selection={snSelection}
                 positions={snPositions}
+                sigmaControls={sigmaControls}
                 onViewportReady={handleSnViewportReady}
                 renderEdgeLabels={snEdgeLabels}
               />
@@ -863,6 +907,8 @@ function CenterPanel({
   onFit,
   edgeLabelsEnabled = true,
   onToggleEdgeLabels,
+  sigmaControls = DEFAULT_SIGMA_CONTROLS,
+  onSigmaControlsChange = () => undefined,
 }: {
   children: React.ReactNode
   topology?: GraphTopologyMode
@@ -876,11 +922,15 @@ function CenterPanel({
   onFit?: () => void
   edgeLabelsEnabled?: boolean
   onToggleEdgeLabels?: () => void
+  sigmaControls?: SigmaControlState
+  onSigmaControlsChange?: (next: SigmaControlState) => void
 }) {
   const layoutModes: Array<{ value: GraphTopologyMode; label: string }> = [
     { value: 'force-directed', label: 'Force' },
     { value: 'hierarchical', label: 'Hierarchical' },
     { value: 'radial', label: 'Radial' },
+    { value: 'circular', label: 'Circular' },
+    { value: 'communities', label: 'Communities' },
   ]
   const activeLayout = topology === 'layout' ? 'force-directed' : topology
 
@@ -940,7 +990,12 @@ function CenterPanel({
               </>
             ) : null}
             <span className="showcase-ref-canvas-separator" aria-hidden="true" />
-            <SigmaControls topology={topology} onTopologyChange={onTopologyChange} />
+            <SigmaControls
+              topology={topology}
+              onTopologyChange={onTopologyChange}
+              controls={sigmaControls}
+              onControlsChange={onSigmaControlsChange}
+            />
           </div>
         </div>
       ) : null}

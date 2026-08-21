@@ -3,10 +3,13 @@ export type GraphTopologyMode =
   | 'force-directed'
   | 'hierarchical'
   | 'radial'
+  | 'circular'
+  | 'communities'
 
 export type GraphTopologyNode = {
   readonly id: string
   readonly label?: string
+  readonly group?: string
   readonly x?: number
   readonly y?: number
 }
@@ -125,6 +128,43 @@ function getAllNeighbours(edges: readonly GraphTopologyEdge[]) {
     adjacency.get(edge.target)!.add(edge.source)
   }
   return adjacency
+}
+
+function computeCommunityBuckets(
+  nodes: readonly GraphTopologyNode[],
+  edges: readonly GraphTopologyEdge[],
+): string[][] {
+  const explicitGroups = new Map<string, string[]>()
+  for (const node of nodes) {
+    if (!node.group) continue
+    const bucket = explicitGroups.get(node.group) ?? []
+    bucket.push(node.id)
+    explicitGroups.set(node.group, bucket)
+  }
+  if (explicitGroups.size > 1) {
+    return [...explicitGroups.values()].map((bucket) => bucket.sort(sortById))
+  }
+
+  const adjacency = getAllNeighbours(edges)
+  const unvisited = new Set(nodes.map((node) => node.id))
+  const buckets: string[][] = []
+  while (unvisited.size > 0) {
+    const seed = [...unvisited].sort(sortById)[0]
+    const queue = [seed]
+    const bucket: string[] = []
+    unvisited.delete(seed)
+    while (queue.length > 0) {
+      const current = queue.shift()!
+      bucket.push(current)
+      for (const neighbor of [...(adjacency.get(current) ?? [])].sort(sortById)) {
+        if (!unvisited.has(neighbor)) continue
+        unvisited.delete(neighbor)
+        queue.push(neighbor)
+      }
+    }
+    buckets.push(bucket.sort(sortById))
+  }
+  return buckets
 }
 
 function computeRoots(
@@ -384,6 +424,37 @@ export function computeGraphTopology(
         cursorX += componentWidth + componentGap
       }
     }
+    coordinateOrigin = 'computed'
+  }
+
+  if (mode === 'circular') {
+    const circular = circularFallback(nodes, options)
+    circular.forEach((point, id) => positions.set(id, point))
+    rootIds = [...nodes].map((node) => node.id).sort(sortById)
+    coordinateOrigin = 'computed'
+  }
+
+  if (mode === 'communities') {
+    const buckets = computeCommunityBuckets(nodes, edges)
+    const width = options.canvasWidth ?? DEFAULT_WIDTH
+    const height = options.canvasHeight ?? DEFAULT_HEIGHT
+    const centerX = width / 2
+    const centerY = height / 2
+    const orbit = Math.max(120, Math.min(width, height) * 0.28)
+    buckets.forEach((bucket, bucketIndex) => {
+      const clusterAngle = (bucketIndex / Math.max(1, buckets.length)) * Math.PI * 2
+      const clusterX = centerX + Math.cos(clusterAngle) * orbit
+      const clusterY = centerY + Math.sin(clusterAngle) * orbit
+      const localRadius = Math.max(36, Math.min(92, 18 + bucket.length * 8))
+      bucket.forEach((nodeId, nodeIndex) => {
+        const angle = (nodeIndex / Math.max(1, bucket.length)) * Math.PI * 2
+        positions.set(nodeId, {
+          x: clusterX + Math.cos(angle) * localRadius,
+          y: clusterY + Math.sin(angle) * localRadius,
+        })
+      })
+    })
+    rootIds = buckets.map((bucket) => bucket[0]).filter(Boolean)
     coordinateOrigin = 'computed'
   }
 

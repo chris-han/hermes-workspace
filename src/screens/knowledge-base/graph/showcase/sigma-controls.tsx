@@ -6,22 +6,29 @@ import type { CSSProperties } from 'react'
 import { CaretDown, CheckCircle, Gear } from '@/components/ui/icon'
 
 import type { GraphTopologyMode } from '../layouts/graph-topology-layouts'
+import type { SigmaControlState } from './sigma-control-state'
 
 type SliderControlProps = {
   label: string
   value: number
   onChange: (value: number) => void
+  disabled?: boolean
+  title?: string
 }
 
 type ToggleControlProps = {
   label: string
   checked: boolean
   onChange: (checked: boolean) => void
+  disabled?: boolean
+  title?: string
 }
 
 type SigmaControlsProps = {
   topology: GraphTopologyMode
   onTopologyChange: (next: GraphTopologyMode) => void
+  controls: SigmaControlState
+  onControlsChange: (next: SigmaControlState) => void
 }
 
 type DropdownOption = { value: string; label: string }
@@ -38,27 +45,32 @@ const TOPOLOGY_TO_LAYOUT: Record<GraphTopologyMode, string> = {
   'force-directed': 'force-directed',
   hierarchical: 'hierarchical',
   radial: 'radial',
+  circular: 'circular',
+  communities: 'communities',
 }
 
 const LAYOUT_TO_TOPOLOGY: Record<string, GraphTopologyMode> = {
   'force-directed': 'force-directed',
   hierarchical: 'hierarchical',
   radial: 'radial',
+  circular: 'circular',
+  communities: 'communities',
 }
 
 function sliderProgress(value: number): CSSProperties {
   return { '--asimov-slider-progress': `${value}%` } as CSSProperties
 }
 
-function SliderControl({ label, value, onChange }: SliderControlProps) {
+function SliderControl({ label, value, onChange, disabled, title }: SliderControlProps) {
   return (
-    <label className="sigma-control-row">
+    <label className="sigma-control-row" title={title}>
       <span className="sigma-control-label">{label}</span>
       <input
         type="range"
         min={0}
         max={100}
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
         className="asimov-slider"
         style={sliderProgress(value)}
@@ -67,14 +79,15 @@ function SliderControl({ label, value, onChange }: SliderControlProps) {
   )
 }
 
-function ToggleControl({ label, checked, onChange }: ToggleControlProps) {
+function ToggleControl({ label, checked, onChange, disabled, title }: ToggleControlProps) {
   return (
-    <div className="sigma-control-row">
+    <div className="sigma-control-row" title={title}>
       <span className="sigma-control-label">{label}</span>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
+        disabled={disabled}
         className="showcase-ref-edge-toggle sigma-control-toggle"
         onClick={() => onChange(!checked)}
       >
@@ -87,7 +100,6 @@ function ToggleControl({ label, checked, onChange }: ToggleControlProps) {
 
 function AsimovDropdown({ value, options, onChange, ariaLabel }: AsimovDropdownProps) {
   const selected = options.find((option) => option.value === value)
-
   return (
     <Menu.Root>
       <Menu.Trigger className="sigma-dropdown-trigger" aria-label={ariaLabel}>
@@ -99,11 +111,7 @@ function AsimovDropdown({ value, options, onChange, ariaLabel }: AsimovDropdownP
           <Menu.Popup className="sigma-dropdown-menu">
             <Menu.RadioGroup value={value} onValueChange={onChange}>
               {options.map((option) => (
-                <Menu.RadioItem
-                  key={option.value}
-                  value={option.value}
-                  className="sigma-dropdown-option"
-                >
+                <Menu.RadioItem key={option.value} value={option.value} className="sigma-dropdown-option">
                   <span>{option.label}</span>
                   <Menu.RadioItemIndicator className="sigma-dropdown-check">
                     <CheckCircle size={12} />
@@ -127,32 +135,20 @@ function DropdownRow(props: AsimovDropdownProps & { label: string }) {
   )
 }
 
-export function SigmaControls({ topology, onTopologyChange }: SigmaControlsProps) {
+export function SigmaControls({
+  topology,
+  onTopologyChange,
+  controls,
+  onControlsChange,
+}: SigmaControlsProps) {
   const [open, setOpen] = useState(false)
-  const [direction, setDirection] = useState('LR')
-  const [focus, setFocus] = useState('entire')
-  const [groupBy, setGroupBy] = useState('entity-type')
-  const [dragMode, setDragMode] = useState<'node' | 'branch'>('branch')
-  const [pinOnDrop, setPinOnDrop] = useState(true)
-  const [cameraRotate, setCameraRotate] = useState(false)
-  const [preventOverlap, setPreventOverlap] = useState(true)
-  const [spacing, setSpacing] = useState(58)
-  const [gravity, setGravity] = useState(36)
-  const [nodeColor, setNodeColor] = useState('entity-type')
-  const [nodeSize, setNodeSize] = useState('degree')
-  const [edgeColor, setEdgeColor] = useState('relation-type')
-  const [edgeArrows, setEdgeArrows] = useState(true)
-  const [curvedEdges, setCurvedEdges] = useState(false)
-  const [nodeLabels, setNodeLabels] = useState('auto')
-  const [edgeLabels, setEdgeLabels] = useState('selected')
-  const [confidence, setConfidence] = useState(25)
-  const [barnesHut, setBarnesHut] = useState(true)
-  const [scaling, setScaling] = useState(52)
-
   const selectedLayout = useMemo(
     () => TOPOLOGY_TO_LAYOUT[topology] ?? 'force-directed',
     [topology],
   )
+  const update = <K extends keyof SigmaControlState>(key: K, value: SigmaControlState[K]) => {
+    onControlsChange({ ...controls, [key]: value })
+  }
 
   return (
     <div className="sigma-controls-root">
@@ -194,13 +190,15 @@ export function SigmaControls({ topology, onTopologyChange }: SigmaControlsProps
                   { value: 'force-directed', label: 'Explore · Force' },
                   { value: 'hierarchical', label: 'Hierarchy' },
                   { value: 'radial', label: 'Radial Focus' },
+                  { value: 'circular', label: 'Circular' },
+                  { value: 'communities', label: 'Communities' },
                 ]}
               />
               <DropdownRow
                 label="Direction"
                 ariaLabel="Direction"
-                value={direction}
-                onChange={setDirection}
+                value={controls.direction}
+                onChange={(value) => update('direction', value as SigmaControlState['direction'])}
                 options={[
                   { value: 'LR', label: 'Left → Right' },
                   { value: 'RL', label: 'Right → Left' },
@@ -211,58 +209,32 @@ export function SigmaControls({ topology, onTopologyChange }: SigmaControlsProps
               <DropdownRow
                 label="Focus"
                 ariaLabel="Focus"
-                value={focus}
-                onChange={setFocus}
+                value={controls.focus}
+                onChange={(value) => update('focus', value as SigmaControlState['focus'])}
                 options={[
                   { value: 'entire', label: 'Entire graph' },
                   { value: 'neighbors', label: 'Direct neighbors' },
                   { value: 'two-hop', label: '2 hops' },
                   { value: 'incoming', label: 'Incoming' },
                   { value: 'outgoing', label: 'Outgoing' },
-                  { value: 'path', label: 'Shortest path' },
-                ]}
-              />
-              <DropdownRow
-                label="Group"
-                ariaLabel="Group by"
-                value={groupBy}
-                onChange={setGroupBy}
-                options={[
-                  { value: 'entity-type', label: 'Entity type' },
-                  { value: 'community', label: 'Community' },
-                  { value: 'semantic-tier', label: 'Semantic tier' },
-                  { value: 'source', label: 'Source' },
-                  { value: 'none', label: 'None' },
                 ]}
               />
             </section>
 
             <section className="sigma-controls-group">
               <h3>Interaction &amp; Layout</h3>
-              <div className="sigma-control-row">
+              <div className="sigma-control-row" title="The showcase renderer is readonly; node/branch dragging belongs to the interactive Studio renderer.">
                 <span className="sigma-control-label">Drag</span>
                 <div className="sigma-control-segment">
-                  <button
-                    type="button"
-                    className={dragMode === 'node' ? 'is-active' : ''}
-                    onClick={() => setDragMode('node')}
-                  >
-                    Node
-                  </button>
-                  <button
-                    type="button"
-                    className={dragMode === 'branch' ? 'is-active' : ''}
-                    onClick={() => setDragMode('branch')}
-                  >
-                    Branch
-                  </button>
+                  <button type="button" disabled>Node</button>
+                  <button type="button" disabled>Branch</button>
                 </div>
               </div>
-              <ToggleControl label="Pin drop" checked={pinOnDrop} onChange={setPinOnDrop} />
-              <ToggleControl label="Rotate" checked={cameraRotate} onChange={setCameraRotate} />
-              <SliderControl label="Spacing" value={spacing} onChange={setSpacing} />
-              <SliderControl label="Gravity" value={gravity} onChange={setGravity} />
-              <ToggleControl label="Overlap" checked={preventOverlap} onChange={setPreventOverlap} />
+              <ToggleControl label="Pin drop" checked={false} onChange={() => undefined} disabled title="Unavailable in readonly showcase renderer." />
+              <ToggleControl label="Rotate" checked={false} onChange={() => undefined} disabled title="Semantic direction is controlled by Direction, not camera rotation." />
+              <SliderControl label="Spacing" value={controls.spacing} onChange={(value) => update('spacing', value)} />
+              <SliderControl label="Gravity" value={controls.gravity} onChange={(value) => update('gravity', value)} />
+              <ToggleControl label="Overlap" checked={true} onChange={() => undefined} disabled title="Overlap prevention requires an interactive layout worker." />
             </section>
 
             <section className="sigma-controls-group">
@@ -270,40 +242,35 @@ export function SigmaControls({ topology, onTopologyChange }: SigmaControlsProps
               <DropdownRow
                 label="Node color"
                 ariaLabel="Node color"
-                value={nodeColor}
-                onChange={setNodeColor}
+                value={controls.nodeColor}
+                onChange={(value) => update('nodeColor', value as SigmaControlState['nodeColor'])}
                 options={[
-                  { value: 'entity-type', label: 'Entity type' },
-                  { value: 'community', label: 'Community' },
-                  { value: 'semantic-tier', label: 'Semantic tier' },
-                  { value: 'source', label: 'Source' },
+                  { value: 'semantic', label: 'Semantica' },
+                  { value: 'uniform', label: 'Uniform' },
                 ]}
               />
               <DropdownRow
                 label="Node size"
                 ariaLabel="Node size"
-                value={nodeSize}
-                onChange={setNodeSize}
+                value={controls.nodeSize}
+                onChange={(value) => update('nodeSize', value as SigmaControlState['nodeSize'])}
                 options={[
                   { value: 'degree', label: 'Degree' },
-                  { value: 'pagerank', label: 'PageRank' },
-                  { value: 'betweenness', label: 'Betweenness' },
                   { value: 'uniform', label: 'Uniform' },
                 ]}
               />
               <DropdownRow
                 label="Edge color"
                 ariaLabel="Edge color"
-                value={edgeColor}
-                onChange={setEdgeColor}
+                value={controls.edgeColor}
+                onChange={(value) => update('edgeColor', value as SigmaControlState['edgeColor'])}
                 options={[
-                  { value: 'relation-type', label: 'Relation type' },
-                  { value: 'source', label: 'Source' },
-                  { value: 'confidence', label: 'Confidence' },
+                  { value: 'semantic', label: 'Semantica' },
+                  { value: 'uniform', label: 'Uniform' },
                 ]}
               />
-              <ToggleControl label="Arrows" checked={edgeArrows} onChange={setEdgeArrows} />
-              <ToggleControl label="Curved" checked={curvedEdges} onChange={setCurvedEdges} />
+              <ToggleControl label="Arrows" checked={controls.edgeArrows} onChange={(value) => update('edgeArrows', value)} />
+              <ToggleControl label="Curved" checked={false} onChange={() => undefined} disabled title="Curved edge program is not registered in the readonly renderer." />
             </section>
 
             <section className="sigma-controls-group">
@@ -311,33 +278,32 @@ export function SigmaControls({ topology, onTopologyChange }: SigmaControlsProps
               <DropdownRow
                 label="Node labels"
                 ariaLabel="Node labels"
-                value={nodeLabels}
-                onChange={setNodeLabels}
+                value={controls.nodeLabels}
+                onChange={(value) => update('nodeLabels', value as SigmaControlState['nodeLabels'])}
                 options={[
-                  { value: 'auto', label: 'Auto' },
-                  { value: 'selected', label: 'Selected + neighbors' },
                   { value: 'all', label: 'All' },
+                  { value: 'selected', label: 'Selected + neighbors' },
                   { value: 'none', label: 'None' },
                 ]}
               />
               <DropdownRow
                 label="Edge labels"
                 ariaLabel="Edge labels"
-                value={edgeLabels}
-                onChange={setEdgeLabels}
+                value={controls.edgeLabels}
+                onChange={(value) => update('edgeLabels', value as SigmaControlState['edgeLabels'])}
                 options={[
+                  { value: 'all', label: 'All' },
                   { value: 'selected', label: 'Selected' },
                   { value: 'neighborhood', label: 'Neighborhood' },
-                  { value: 'all', label: 'All' },
                   { value: 'none', label: 'None' },
                 ]}
               />
-              <SliderControl label="Confidence" value={confidence} onChange={setConfidence} />
+              <SliderControl label="Confidence" value={25} onChange={() => undefined} disabled title="Current showcase fixtures do not carry edge confidence." />
               <details>
-                <summary>Advanced ForceAtlas2</summary>
+                <summary>Advanced Layout</summary>
                 <div className="sigma-controls-advanced">
-                  <SliderControl label="Scaling" value={scaling} onChange={setScaling} />
-                  <ToggleControl label="Barnes-Hut" checked={barnesHut} onChange={setBarnesHut} />
+                  <SliderControl label="Scale" value={controls.scale} onChange={(value) => update('scale', value)} />
+                  <ToggleControl label="Barnes-Hut" checked={false} onChange={() => undefined} disabled title="The showcase uses deterministic positions rather than a live ForceAtlas2 worker." />
                 </div>
               </details>
             </section>

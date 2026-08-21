@@ -13,6 +13,7 @@ export function EmbeddingShowcaseView({
   selectedItemId,
   onSelect,
   positions,
+  sigmaControls,
   onViewportReady,
   renderEdgeLabels = false,
 }: {
@@ -32,6 +33,7 @@ export function EmbeddingShowcaseView({
         <ShowcaseSigmaCanvas
           model={input.model}
           positions={positions ?? input.positions}
+          sigmaControls={sigmaControls}
           selection={selectionForNode(selectedItemId)}
           ariaLabel="Embedding scatter plot"
           renderEdgeLabels={renderEdgeLabels}

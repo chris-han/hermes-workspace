@@ -568,6 +568,10 @@
 }
 
 .semantica-showcase-reference .showcase-ref-canvas-label {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  line-height: 1;
   margin-right: 8px;
   color: var(--asimov-muted);
   text-transform: uppercase;
@@ -620,9 +624,9 @@
 
 .semantica-showcase-reference .showcase-ref-canvas-group > button.showcase-ref-edge-toggle {
   position: relative;
-  width: 60px;
-  height: 30px;
-  padding: 4px;
+  width: 40px;
+  height: 20px;
+  padding: 3px;
   border: 0 !important;
   border-bottom: 0 !important;
   border-radius: 999px !important;
@@ -633,7 +637,7 @@
   justify-content: flex-end;
   cursor: pointer;
   font-family: 'Roboto Condensed', 'Arial Narrow', var(--font-ui), sans-serif;
-  font-size: 11px;
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: none;
@@ -648,10 +652,10 @@
 
 .semantica-showcase-reference .showcase-ref-edge-toggle-thumb {
   position: absolute;
-  left: 4px;
+  left: 3px;
   top: 50%;
-  width: 22px;
-  height: 22px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: #ffffff;
   transform: translateY(-50%);
@@ -659,12 +663,12 @@
 }
 
 .semantica-showcase-reference .showcase-ref-edge-toggle[aria-checked='true'] .showcase-ref-edge-toggle-thumb {
-  transform: translate(30px, -50%);
+  transform: translate(20px, -50%);
 }
 
 .semantica-showcase-reference .showcase-ref-edge-toggle-label {
   position: absolute;
-  right: 8px;
+  right: 5px;
   line-height: 1;
   user-select: none;
   pointer-events: none;
@@ -672,7 +676,7 @@
 }
 
 .semantica-showcase-reference .showcase-ref-edge-toggle[aria-checked='true'] .showcase-ref-edge-toggle-label {
-  left: 8px;
+  left: 5px;
   right: auto;
 }
 
@@ -925,12 +929,16 @@
 .showcase-ref-dataset-positioner {
   z-index: 9999;
   outline: none;
+  max-height: calc(100dvh - 16px);
 }
 
 .showcase-ref-dataset-menu {
   min-width: var(--anchor-width);
+  max-height: min(320px, calc(100dvh - 24px));
   padding: 4px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid #c2c7ce;
   border-radius: 4px;
   background: #ffffff;

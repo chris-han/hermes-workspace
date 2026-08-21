@@ -920,6 +920,7 @@ function CenterPanel({
             {onNudge ? <button type="button" className="is-caps" onClick={onNudge}>NUDGE</button> : null}
             {onToggleEdgeLabels ? (
               <>
+                <span className="showcase-ref-canvas-separator" aria-hidden="true" />
                 <span className="showcase-ref-canvas-label">EDGES</span>
                 <button
                   type="button"

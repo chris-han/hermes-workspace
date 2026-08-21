@@ -670,6 +670,7 @@
   position: absolute;
   right: 5px;
   line-height: 1;
+  font-weight: 500;
   user-select: none;
   pointer-events: none;
   transition: color 160ms ease, left 180ms ease, right 180ms ease;
@@ -678,6 +679,7 @@
 .semantica-showcase-reference .showcase-ref-edge-toggle[aria-checked='true'] .showcase-ref-edge-toggle-label {
   left: 5px;
   right: auto;
+  font-weight: 700;
 }
 
 .semantica-showcase-reference .showcase-ref-edge-toggle:focus-visible {

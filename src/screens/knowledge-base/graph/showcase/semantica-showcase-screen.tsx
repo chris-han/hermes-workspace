@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Menu } from '@base-ui/react/menu'
 
 import { UserAvatar } from '@/components/avatars'
@@ -32,6 +32,7 @@ import type {
   ShowcaseVisualizationMode,
 } from './semantica-showcase-types'
 import type { SigmaGraphReadonlySelection } from '../sigma-graph-readonly'
+import type { SigmaGraphReadonlyViewportController } from '../sigma-graph-readonly'
 import {
   computeGraphTopology,
   type GraphTopologyMode,
@@ -85,6 +86,11 @@ const EMPTY_INSPECTOR: ShowcaseInspectorModel = {
   fields: [],
 }
 
+function toDisplayZoom(cameraRatio: number): number {
+  if (!Number.isFinite(cameraRatio) || cameraRatio <= 0) return 1
+  return 1 / cameraRatio
+}
+
 export function SemanticaShowcaseScreen() {
   const registry = useMemo(() => getDatasetRegistry(), [])
   const initialDatasetId = registry.datasets[0]?.datasetId ?? ''
@@ -109,6 +115,10 @@ export function SemanticaShowcaseScreen() {
   const [snTopology, setSnTopology] = useState<GraphTopologyMode>('layout')
   const [kgNudgeCount, setKgNudgeCount] = useState(0)
   const [snNudgeCount, setSnNudgeCount] = useState(0)
+  const [kgZoomRatio, setKgZoomRatio] = useState(1)
+  const [snZoomRatio, setSnZoomRatio] = useState(1)
+  const kgViewportRef = useRef<SigmaGraphReadonlyViewportController | null>(null)
+  const snViewportRef = useRef<SigmaGraphReadonlyViewportController | null>(null)
   const [kgSelection, setKgSelection] = useState<SigmaGraphReadonlySelection>(null)
   const [snSelection, setSnSelection] = useState<SigmaGraphReadonlySelection>(null)
   const [embeddingSelection, setEmbeddingSelection] = useState<string | undefined>(undefined)
@@ -231,6 +241,71 @@ export function SemanticaShowcaseScreen() {
   const nudgeSnTopology = useCallback(() => {
     setSnNudgeCount((value) => value + 1)
   }, [])
+
+  const handleKgViewportReady = useCallback((controller: SigmaGraphReadonlyViewportController | null) => {
+    kgViewportRef.current = controller
+    setKgZoomRatio(toDisplayZoom(controller?.getZoomRatio() ?? 1))
+  }, [])
+
+  const handleSnViewportReady = useCallback((controller: SigmaGraphReadonlyViewportController | null) => {
+    snViewportRef.current = controller
+    setSnZoomRatio(toDisplayZoom(controller?.getZoomRatio() ?? 1))
+  }, [])
+
+  const handleZoomIn = useCallback(() => {
+    if (mode === 'knowledge-graph') {
+      const controller = kgViewportRef.current
+      if (!controller) return
+      controller.zoomIn()
+      window.setTimeout(() => setKgZoomRatio(toDisplayZoom(controller.getZoomRatio())), 220)
+      return
+    }
+    if (mode === 'semantic-network') {
+      const controller = snViewportRef.current
+      if (!controller) return
+      controller.zoomIn()
+      window.setTimeout(() => setSnZoomRatio(toDisplayZoom(controller.getZoomRatio())), 220)
+    }
+  }, [mode])
+
+  const handleZoomOut = useCallback(() => {
+    if (mode === 'knowledge-graph') {
+      const controller = kgViewportRef.current
+      if (!controller) return
+      controller.zoomOut()
+      window.setTimeout(() => setKgZoomRatio(toDisplayZoom(controller.getZoomRatio())), 220)
+      return
+    }
+    if (mode === 'semantic-network') {
+      const controller = snViewportRef.current
+      if (!controller) return
+      controller.zoomOut()
+      window.setTimeout(() => setSnZoomRatio(toDisplayZoom(controller.getZoomRatio())), 220)
+    }
+  }, [mode])
+
+  const handleFit = useCallback(() => {
+    if (mode === 'knowledge-graph') {
+      const controller = kgViewportRef.current
+      if (!controller) return
+      controller.fit()
+      window.setTimeout(() => setKgZoomRatio(toDisplayZoom(controller.getZoomRatio())), 240)
+      return
+    }
+    if (mode === 'semantic-network') {
+      const controller = snViewportRef.current
+      if (!controller) return
+      controller.fit()
+      window.setTimeout(() => setSnZoomRatio(toDisplayZoom(controller.getZoomRatio())), 240)
+    }
+  }, [mode])
+
+  const activeZoomRatio = mode === 'semantic-network' ? snZoomRatio : kgZoomRatio
+  const zoomEnabled = mode === 'knowledge-graph'
+    ? Boolean(kgViewportRef.current)
+    : mode === 'semantic-network'
+      ? Boolean(snViewportRef.current)
+      : false
 
   return (
     <section
@@ -361,11 +436,17 @@ export function SemanticaShowcaseScreen() {
               onTopologyChange={setKgTopology}
               supportsTopology={Boolean(dataset.kg)}
               onNudge={nudgeKgTopology}
+              zoomLabel={`${activeZoomRatio.toFixed(1)}x`}
+              zoomEnabled={zoomEnabled}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onFit={handleFit}
             >
               <KgShowcaseView
                 input={kgAdapter.renderer}
                 onSelect={handleKgSelect}
                 positions={kgPositions}
+                onViewportReady={handleKgViewportReady}
               />
             </CenterPanel>
             <RightRail
@@ -508,12 +589,18 @@ export function SemanticaShowcaseScreen() {
               onTopologyChange={setSnTopology}
               supportsTopology={Boolean(dataset.semanticNetwork)}
               onNudge={nudgeSnTopology}
+              zoomLabel={`${activeZoomRatio.toFixed(1)}x`}
+              zoomEnabled={zoomEnabled}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onFit={handleFit}
             >
               <SemanticNetworkShowcaseView
                 input={semanticNetworkAdapter.renderer}
                 distribution={semanticNetworkAdapter.distribution}
                 onSelect={handleSnSelect}
                 positions={snPositions}
+                onViewportReady={handleSnViewportReady}
               />
             </CenterPanel>
             <RightRail
@@ -588,12 +675,22 @@ function CenterPanel({
   onTopologyChange = () => undefined,
   supportsTopology = false,
   onNudge,
+  zoomLabel = '1.0x',
+  zoomEnabled = false,
+  onZoomIn,
+  onZoomOut,
+  onFit,
 }: {
   children: React.ReactNode
   topology?: GraphTopologyMode
   onTopologyChange?: (next: GraphTopologyMode) => void
   supportsTopology?: boolean
   onNudge?: () => void
+  zoomLabel?: string
+  zoomEnabled?: boolean
+  onZoomIn?: () => void
+  onZoomOut?: () => void
+  onFit?: () => void
 }) {
   const layoutModes: Array<{ value: GraphTopologyMode; label: string }> = [
     { value: 'force-directed', label: 'Force' },
@@ -631,11 +728,11 @@ function CenterPanel({
             <button type="button">Path</button>
             <span className="showcase-ref-canvas-separator" aria-hidden="true" />
             <span className="showcase-ref-canvas-label">ZOOM</span>
-            <button type="button" className="showcase-ref-canvas-zoom">-</button>
-            <span className="showcase-ref-canvas-zoom-value">1.0x</span>
-            <button type="button" className="showcase-ref-canvas-zoom">+</button>
+            <button type="button" className="showcase-ref-canvas-zoom" onClick={onZoomOut} disabled={!zoomEnabled}>-</button>
+            <span className="showcase-ref-canvas-zoom-value">{zoomLabel}</span>
+            <button type="button" className="showcase-ref-canvas-zoom" onClick={onZoomIn} disabled={!zoomEnabled}>+</button>
             <span className="showcase-ref-canvas-separator" aria-hidden="true" />
-            <button type="button" className="is-caps">FIT</button>
+            <button type="button" className="is-caps" onClick={onFit} disabled={!zoomEnabled}>FIT</button>
             {onNudge ? <button type="button" className="is-caps" onClick={onNudge}>NUDGE</button> : null}
           </div>
         </div>

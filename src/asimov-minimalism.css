@@ -378,7 +378,7 @@
   height: 8px;
   flex: none;
   border-radius: 999px;
-  background: #2d6a2d;
+  background: var(--asimov-brand);
 }
 
 .semantica-showcase-reference .showcase-ref-left-rail { width: 288px; }
@@ -585,6 +585,12 @@
 }
 
 .semantica-showcase-reference .showcase-ref-canvas-group > button.is-disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+.semantica-showcase-reference .showcase-ref-canvas-group > button:disabled {
   opacity: 0.45;
   cursor: default;
   pointer-events: none;

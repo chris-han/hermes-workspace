@@ -48,6 +48,13 @@ export interface SigmaGraphReadonlyInput {
   ariaLabel?: string
 }
 
+export type SigmaGraphReadonlyViewportController = {
+  zoomIn: () => void
+  zoomOut: () => void
+  fit: () => void
+  getZoomRatio: () => number
+}
+
 function buildReadonlyGraph(input: SigmaGraphReadonlyInput): Graph {
   const graph = new Graph({ multi: true, type: 'directed' })
   const total = input.nodes.length || 1
@@ -84,11 +91,13 @@ function buildReadonlyGraph(input: SigmaGraphReadonlyInput): Graph {
 export function SigmaGraphReadonly({
   input,
   onSelect,
+  onViewportReady,
   className,
   ariaLabel,
 }: {
   input: SigmaGraphReadonlyInput
   onSelect?: (selection: SigmaGraphReadonlySelection) => void
+  onViewportReady?: (controller: SigmaGraphReadonlyViewportController | null) => void
   className?: string
   ariaLabel?: string
 }) {
@@ -123,13 +132,25 @@ export function SigmaGraphReadonly({
       renderer.on('clickNode', ({ node }) => onSelect({ type: 'node', id: node }))
       renderer.on('clickEdge', ({ edge }) => onSelect({ type: 'edge', id: edge }))
     }
+    const hasCamera = typeof (renderer as { getCamera?: unknown }).getCamera === 'function'
+    if (hasCamera) {
+      onViewportReady?.({
+        zoomIn: () => renderer.getCamera().animatedZoom({ duration: 180 }),
+        zoomOut: () => renderer.getCamera().animatedUnzoom({ duration: 180 }),
+        fit: () => renderer.getCamera().animatedReset({ duration: 220 }),
+        getZoomRatio: () => renderer.getCamera().getState().ratio,
+      })
+    } else {
+      onViewportReady?.(null)
+    }
     sigmaRef.current = renderer
     return () => {
       themeObserver.disconnect()
+      onViewportReady?.(null)
       renderer.kill()
       sigmaRef.current = null
     }
-  }, [input, onSelect])
+  }, [input, onSelect, onViewportReady])
 
   return (
     <div

@@ -239,7 +239,9 @@ export function applySigmaModelControls(
     }
   })
 
-  const edgeWidthScale = Math.max(0.2, controls.edgeWidth / 50)
+  const nodeRadiusById = new Map(nodes.map((node) => [node.id, node.size ?? 10]))
+  const edgeWidthRatio = 0.02 + (controls.edgeWidth / 100) * 0.18
+
   const edges = visibleEdges.map((edge) => {
     const incidentToSelection = Boolean(
       selectedId && (edge.source === selectedId || edge.target === selectedId),
@@ -259,11 +261,14 @@ export function applySigmaModelControls(
         : controls.edgeColor === 'uniform'
           ? '#c2c7ce'
           : resolveAsimovSwatch(controls.edgeColor)
+    const sourceDiameter = (nodeRadiusById.get(edge.source) ?? 10) * 2
+    const targetDiameter = (nodeRadiusById.get(edge.target) ?? 10) * 2
+    const averageNodeDiameter = (sourceDiameter + targetDiameter) / 2
 
     return {
       ...edge,
       label,
-      size: Math.max(0.2, (edge.size ?? 1) * edgeWidthScale),
+      size: Math.max(0.2, averageNodeDiameter * edgeWidthRatio),
       color,
     }
   })

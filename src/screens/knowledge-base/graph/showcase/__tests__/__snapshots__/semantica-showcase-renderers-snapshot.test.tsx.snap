@@ -54,7 +54,7 @@ exports[`EmbeddingShowcaseView — W0-03 DOM snapshot baseline > renders the pin
 exports[`KgShowcaseView — W0-03 DOM snapshot baseline > renders the pinned intro fixture with the expected testids and summary 1`] = `
 <div>
   <div
-    class="flex h-full w-full flex-col gap-3"
+    class="relative h-full w-full"
     data-testid="kg-showcase-view"
   >
     <div

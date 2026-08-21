@@ -5,25 +5,40 @@ import type { GraphTopologyMode } from '../layouts/graph-topology-layouts'
 export type SigmaDirection = 'LR' | 'RL' | 'TB' | 'BT'
 export type SigmaFocusMode = 'entire' | 'neighbors' | 'two-hop' | 'incoming' | 'outgoing'
 export type SigmaNodeSizeMode = 'degree' | 'uniform'
-export type SigmaNodeColorMode = 'semantic' | 'asimov' | 'uniform'
+export type AsimovVisualizationSwatch =
+  | 'asimov-ember'
+  | 'asimov-tangerine'
+  | 'asimov-crimson'
+  | 'asimov-lime'
+  | 'asimov-fern'
+  | 'asimov-gold'
+  | 'asimov-butter'
+  | 'asimov-periwinkle'
+  | 'asimov-cobalt'
+  | 'asimov-blush'
+  | 'asimov-midnight'
+  | 'asimov-ivory'
+export type SigmaNodeColorMode = 'semantic' | 'asimov' | 'uniform' | AsimovVisualizationSwatch
 export type SigmaEdgeColorMode = 'semantic' | 'uniform'
 export type SigmaNodeLabelMode = 'all' | 'selected' | 'none'
 export type SigmaEdgeLabelMode = 'all' | 'selected' | 'neighborhood' | 'none'
 
-export const ASIMOV_VISUALIZATION_SWATCHES = [
-  '#ff4d00',
-  '#ff8040',
-  '#ff1a5e',
-  '#9fe870',
-  '#5fd43a',
-  '#d9b32d',
-  '#ffe566',
-  '#8fb8ff',
-  '#4a7fe8',
-  '#ffc5d7',
-  '#1c1a2e',
-  '#f7f3ed',
-] as const
+export const ASIMOV_VISUALIZATION_SWATCH_COLORS: Record<AsimovVisualizationSwatch, string> = {
+  'asimov-ember': '#ff4d00',
+  'asimov-tangerine': '#ff8040',
+  'asimov-crimson': '#ff1a5e',
+  'asimov-lime': '#9fe870',
+  'asimov-fern': '#5fd43a',
+  'asimov-gold': '#d9b32d',
+  'asimov-butter': '#ffe566',
+  'asimov-periwinkle': '#8fb8ff',
+  'asimov-cobalt': '#4a7fe8',
+  'asimov-blush': '#ffc5d7',
+  'asimov-midnight': '#1c1a2e',
+  'asimov-ivory': '#f7f3ed',
+}
+
+export const ASIMOV_VISUALIZATION_SWATCHES = Object.values(ASIMOV_VISUALIZATION_SWATCH_COLORS)
 
 function stableNodeSwatch(nodeId: string): string {
   let hash = 2166136261
@@ -172,7 +187,9 @@ export function applySigmaModelControls(
       ? node.color
       : controls.nodeColor === 'asimov'
         ? stableNodeSwatch(node.id)
-        : '#72787e'
+        : controls.nodeColor === 'uniform'
+          ? '#72787e'
+          : ASIMOV_VISUALIZATION_SWATCH_COLORS[controls.nodeColor]
 
     return {
       ...node,

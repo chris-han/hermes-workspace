@@ -9,6 +9,7 @@
 import { useEffect, useRef } from 'react'
 import Graph from 'graphology'
 import Sigma from 'sigma'
+import { createEdgeArrowProgram } from 'sigma/rendering'
 
 import type { ShowcaseKgRendererInput, ShowcaseSemanticNetworkRendererInput } from './showcase/semantica-showcase-types'
 
@@ -81,11 +82,9 @@ function buildReadonlyGraph(input: SigmaGraphReadonlyInput): Graph {
     if (!graph.hasNode(edge.source) || !graph.hasNode(edge.target)) {
       return
     }
-    const targetNodeSize = Number(graph.getNodeAttribute(edge.target, 'size')) || 10
-    const scaledEdgeSize = Math.max(1.8, Math.min(5, targetNodeSize * 0.24))
     graph.addEdgeWithKey(edge.id, edge.source, edge.target, {
       label: edge.label ?? '',
-      size: edge.size ?? scaledEdgeSize,
+      size: edge.size ?? 1,
       color: edge.color ?? '#cbd5e1',
     })
   })
@@ -101,6 +100,12 @@ function buildRendererSettings(
     // Core visibility
     renderLabels: true,
     renderEdgeLabels: showEdgeLabels,
+    edgeProgramClasses: {
+      arrow: createEdgeArrowProgram({
+        lengthToThicknessRatio: 4.0,
+        widenessToThicknessRatio: 2.8,
+      }),
+    },
 
     // Label styling (node + edge)
     labelColor: { color: resolveLabelColor() },

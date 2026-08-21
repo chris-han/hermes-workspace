@@ -8,6 +8,8 @@ import { CaretDown, CheckCircle, Gear } from '@/components/ui/icon'
 import type { GraphTopologyMode } from '../layouts/graph-topology-layouts'
 import {
   ASIMOV_VISUALIZATION_SWATCHES,
+  ASIMOV_VISUALIZATION_SWATCH_COLORS,
+  type AsimovVisualizationSwatch,
   type SigmaControlState,
 } from './sigma-control-state'
 
@@ -38,6 +40,7 @@ type DropdownOption = {
   value: string
   label: string
   swatches?: readonly string[]
+  swatch?: string
 }
 
 type AsimovDropdownProps = {
@@ -134,6 +137,13 @@ function AsimovDropdown({ value, options, onChange, ariaLabel }: AsimovDropdownP
       <Menu.Trigger className="sigma-dropdown-trigger" aria-label={ariaLabel}>
         <span style={{ display: 'inline-flex', minWidth: 0, alignItems: 'center', gap: 7 }}>
           {selected?.swatches ? <PaletteStrip colors={selected.swatches} /> : null}
+          {!selected?.swatches && selected?.swatch ? (
+            <span
+              className="sigma-dropdown-swatch"
+              style={{ backgroundColor: selected.swatch }}
+              aria-hidden="true"
+            />
+          ) : null}
           <span>{selected?.label ?? 'Select'}</span>
         </span>
         <CaretDown size={12} />
@@ -146,6 +156,13 @@ function AsimovDropdown({ value, options, onChange, ariaLabel }: AsimovDropdownP
                 <Menu.RadioItem key={option.value} value={option.value} className="sigma-dropdown-option">
                   <span style={{ display: 'inline-flex', minWidth: 0, alignItems: 'center', gap: 7 }}>
                     {option.swatches ? <PaletteStrip colors={option.swatches} /> : null}
+                    {!option.swatches && option.swatch ? (
+                      <span
+                        className="sigma-dropdown-swatch"
+                        style={{ backgroundColor: option.swatch }}
+                        aria-hidden="true"
+                      />
+                    ) : null}
                     <span>{option.label}</span>
                   </span>
                   <Menu.RadioItemIndicator className="sigma-dropdown-check">
@@ -283,6 +300,15 @@ export function SigmaControls({
                   { value: 'semantic', label: 'Semantica' },
                   { value: 'asimov', label: 'Asimov', swatches: ASIMOV_VISUALIZATION_SWATCHES },
                   { value: 'uniform', label: 'Uniform' },
+                  ...(
+                    Object.entries(ASIMOV_VISUALIZATION_SWATCH_COLORS) as Array<
+                      [AsimovVisualizationSwatch, string]
+                    >
+                  ).map(([value, swatch]) => ({
+                    value,
+                    label: value.replace('asimov-', '').replace(/^./, (character) => character.toUpperCase()),
+                    swatch,
+                  })),
                 ]}
               />
               <DropdownRow

@@ -187,6 +187,23 @@ function DropdownRow(props: AsimovDropdownProps & { label: string }) {
   )
 }
 
+function visualizationColorOptions(): DropdownOption[] {
+  return [
+    { value: 'semantic', label: 'Semantica' },
+    { value: 'asimov', label: 'Asimov', swatches: ASIMOV_VISUALIZATION_SWATCH_VARS },
+    { value: 'uniform', label: 'Uniform' },
+    ...(
+      Object.entries(ASIMOV_VISUALIZATION_SWATCH_TOKENS) as Array<
+        [AsimovVisualizationSwatch, string]
+      >
+    ).map(([value, token]) => ({
+      value,
+      label: value.replace('asimov-', '').replace(/^./, (character) => character.toUpperCase()),
+      swatch: `var(${token})`,
+    })),
+  ]
+}
+
 export function SigmaControls({
   topology,
   onTopologyChange,
@@ -198,6 +215,7 @@ export function SigmaControls({
     () => TOPOLOGY_TO_LAYOUT[topology] ?? 'force-directed',
     [topology],
   )
+  const colorOptions = useMemo(() => visualizationColorOptions(), [])
   const update = <K extends keyof SigmaControlState>(key: K, value: SigmaControlState[K]) => {
     onControlsChange({ ...controls, [key]: value })
   }
@@ -296,20 +314,7 @@ export function SigmaControls({
                 ariaLabel="Node color"
                 value={controls.nodeColor}
                 onChange={(value) => update('nodeColor', value as SigmaControlState['nodeColor'])}
-                options={[
-                  { value: 'semantic', label: 'Semantica' },
-                  { value: 'asimov', label: 'Asimov', swatches: ASIMOV_VISUALIZATION_SWATCH_VARS },
-                  { value: 'uniform', label: 'Uniform' },
-                  ...(
-                    Object.entries(ASIMOV_VISUALIZATION_SWATCH_TOKENS) as Array<
-                      [AsimovVisualizationSwatch, string]
-                    >
-                  ).map(([value, token]) => ({
-                    value,
-                    label: value.replace('asimov-', '').replace(/^./, (character) => character.toUpperCase()),
-                    swatch: `var(${token})`,
-                  })),
-                ]}
+                options={colorOptions}
               />
               <DropdownRow
                 label="Node size"
@@ -326,10 +331,7 @@ export function SigmaControls({
                 ariaLabel="Edge color"
                 value={controls.edgeColor}
                 onChange={(value) => update('edgeColor', value as SigmaControlState['edgeColor'])}
-                options={[
-                  { value: 'semantic', label: 'Semantica' },
-                  { value: 'uniform', label: 'Uniform' },
-                ]}
+                options={colorOptions}
               />
               <ToggleControl label="Arrows" checked={controls.edgeArrows} onChange={(value) => update('edgeArrows', value)} />
               <ToggleControl label="Curved" checked={false} onChange={() => undefined} disabled title="Curved edge program is not registered in the readonly renderer." />

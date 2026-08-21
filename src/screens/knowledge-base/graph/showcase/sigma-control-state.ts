@@ -1,3 +1,5 @@
+import '@/asimov-visualization-swatches.css'
+
 import type { ShowcaseGraphModel } from './semantica-showcase-types'
 import type { SigmaGraphReadonlySelection } from '../sigma-graph-readonly'
 import type { GraphTopologyMode } from '../layouts/graph-topology-layouts'
@@ -23,30 +25,39 @@ export type SigmaEdgeColorMode = 'semantic' | 'uniform'
 export type SigmaNodeLabelMode = 'all' | 'selected' | 'none'
 export type SigmaEdgeLabelMode = 'all' | 'selected' | 'neighborhood' | 'none'
 
-export const ASIMOV_VISUALIZATION_SWATCH_COLORS: Record<AsimovVisualizationSwatch, string> = {
-  'asimov-ember': '#ff4d00',
-  'asimov-tangerine': '#ff8040',
-  'asimov-crimson': '#ff1a5e',
-  'asimov-lime': '#9fe870',
-  'asimov-fern': '#5fd43a',
-  'asimov-gold': '#d9b32d',
-  'asimov-butter': '#ffe566',
-  'asimov-periwinkle': '#8fb8ff',
-  'asimov-cobalt': '#4a7fe8',
-  'asimov-blush': '#ffc5d7',
-  'asimov-midnight': '#1c1a2e',
-  'asimov-ivory': '#f7f3ed',
+export const ASIMOV_VISUALIZATION_SWATCH_TOKENS: Record<AsimovVisualizationSwatch, string> = {
+  'asimov-ember': '--asimov-visualization-swatch-ember',
+  'asimov-tangerine': '--asimov-visualization-swatch-tangerine',
+  'asimov-crimson': '--asimov-visualization-swatch-crimson',
+  'asimov-lime': '--asimov-visualization-swatch-lime',
+  'asimov-fern': '--asimov-visualization-swatch-fern',
+  'asimov-gold': '--asimov-visualization-swatch-gold',
+  'asimov-butter': '--asimov-visualization-swatch-butter',
+  'asimov-periwinkle': '--asimov-visualization-swatch-periwinkle',
+  'asimov-cobalt': '--asimov-visualization-swatch-cobalt',
+  'asimov-blush': '--asimov-visualization-swatch-blush',
+  'asimov-midnight': '--asimov-visualization-swatch-midnight',
+  'asimov-ivory': '--asimov-visualization-swatch-ivory',
 }
 
-export const ASIMOV_VISUALIZATION_SWATCHES = Object.values(ASIMOV_VISUALIZATION_SWATCH_COLORS)
+export const ASIMOV_VISUALIZATION_SWATCH_VARS = Object.values(ASIMOV_VISUALIZATION_SWATCH_TOKENS)
+  .map((token) => `var(${token})`)
 
-function stableNodeSwatch(nodeId: string): string {
+function resolveAsimovSwatch(swatch: AsimovVisualizationSwatch): string {
+  if (typeof document === 'undefined') return '#72787e'
+  const scope = document.querySelector<HTMLElement>('.asimov-minimalism')
+  if (!scope) return '#72787e'
+  return getComputedStyle(scope).getPropertyValue(ASIMOV_VISUALIZATION_SWATCH_TOKENS[swatch]).trim() || '#72787e'
+}
+
+function stableNodeSwatch(nodeId: string): AsimovVisualizationSwatch {
+  const swatches = Object.keys(ASIMOV_VISUALIZATION_SWATCH_TOKENS) as AsimovVisualizationSwatch[]
   let hash = 2166136261
   for (let index = 0; index < nodeId.length; index += 1) {
     hash ^= nodeId.charCodeAt(index)
     hash = Math.imul(hash, 16777619)
   }
-  return ASIMOV_VISUALIZATION_SWATCHES[(hash >>> 0) % ASIMOV_VISUALIZATION_SWATCHES.length]
+  return swatches[(hash >>> 0) % swatches.length]
 }
 
 export interface SigmaControlState {
@@ -186,10 +197,10 @@ export function applySigmaModelControls(
     const color = controls.nodeColor === 'semantic'
       ? node.color
       : controls.nodeColor === 'asimov'
-        ? stableNodeSwatch(node.id)
+        ? resolveAsimovSwatch(stableNodeSwatch(node.id))
         : controls.nodeColor === 'uniform'
           ? '#72787e'
-          : ASIMOV_VISUALIZATION_SWATCH_COLORS[controls.nodeColor]
+          : resolveAsimovSwatch(controls.nodeColor)
 
     return {
       ...node,

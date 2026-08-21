@@ -115,19 +115,17 @@ describe('EmbeddingShowcaseView — W0-03 a11y tree baseline', () => {
 })
 
 describe('SemanticNetworkShowcaseView — W0-03 a11y tree baseline', () => {
-  it('exposes a stable role/name tree with the distribution card testids', () => {
+  it('exposes a stable role/name tree for the readonly semantic-network canvas', () => {
     const dataset = introDataset()
     expect(dataset.semanticNetwork, 'intro semantic-network payload missing').toBeDefined()
     const adapter = adaptSemanticNetworkFixture(dataset.semanticNetwork!)
     render(
       <SemanticNetworkShowcaseView
         input={adapter.renderer}
-        distribution={adapter.distribution}
         onSelect={() => undefined}
       />,
     )
-    expect(screen.getByTestId('sn-node-types')).toBeDefined()
-    expect(screen.getByTestId('sn-edge-types')).toBeDefined()
+      expect(screen.getByTestId('semantic-network-showcase-view')).toBeDefined()
     expect(rolesTree()).toMatchSnapshot()
   })
 })

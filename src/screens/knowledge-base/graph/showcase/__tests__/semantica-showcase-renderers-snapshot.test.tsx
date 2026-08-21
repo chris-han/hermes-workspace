@@ -102,20 +102,17 @@ describe('EmbeddingShowcaseView — W0-03 DOM snapshot baseline', () => {
 })
 
 describe('SemanticNetworkShowcaseView — W0-03 DOM snapshot baseline', () => {
-  it('renders the pinned intro fixture with the expected distribution cards', () => {
+  it('renders the pinned intro fixture with the expected readonly canvas surface', () => {
     const dataset = introDataset()
     expect(dataset.semanticNetwork, 'intro semantic-network payload missing').toBeDefined()
     const adapter = adaptSemanticNetworkFixture(dataset.semanticNetwork!)
     const { container, getByTestId } = render(
       <SemanticNetworkShowcaseView
         input={adapter.renderer}
-        distribution={adapter.distribution}
         onSelect={() => undefined}
       />,
     )
     expect(getByTestId('semantic-network-showcase-view')).toBeDefined()
-    expect(getByTestId('sn-node-types')).toBeDefined()
-    expect(getByTestId('sn-edge-types')).toBeDefined()
     expect(container).toMatchSnapshot()
   })
 })

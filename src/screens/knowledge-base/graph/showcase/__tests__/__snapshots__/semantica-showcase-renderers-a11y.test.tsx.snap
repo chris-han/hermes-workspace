@@ -90,7 +90,7 @@ exports[`OntologyShowcaseView — W0-03 a11y tree baseline > exposes a stable ro
 ]
 `;
 
-exports[`SemanticNetworkShowcaseView — W0-03 a11y tree baseline > exposes a stable role/name tree with the distribution card testids 1`] = `
+exports[`SemanticNetworkShowcaseView — W0-03 a11y tree baseline > exposes a stable role/name tree for the readonly semantic-network canvas 1`] = `
 [
   {
     "name": "Semantic network showcase",
@@ -98,19 +98,9 @@ exports[`SemanticNetworkShowcaseView — W0-03 a11y tree baseline > exposes a st
     "testid": "",
   },
   {
-    "name": "Node typesLanguage · 1Concept · 1Edge typeswrites · 1",
+    "name": "",
     "role": "div",
     "testid": "semantic-network-showcase-view",
-  },
-  {
-    "name": "Edge typeswrites · 1",
-    "role": "div",
-    "testid": "sn-edge-types",
-  },
-  {
-    "name": "Node typesLanguage · 1Concept · 1",
-    "role": "div",
-    "testid": "sn-node-types",
   },
 ]
 `;

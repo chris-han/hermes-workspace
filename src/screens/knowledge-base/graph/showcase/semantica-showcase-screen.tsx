@@ -597,7 +597,6 @@ export function SemanticaShowcaseScreen() {
             >
               <SemanticNetworkShowcaseView
                 input={semanticNetworkAdapter.renderer}
-                distribution={semanticNetworkAdapter.distribution}
                 onSelect={handleSnSelect}
                 positions={snPositions}
                 onViewportReady={handleSnViewportReady}

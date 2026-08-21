@@ -96,13 +96,13 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
     expect(inspector.textContent).toMatch(/\d+\.\d+/)
   })
 
-  it('switches to the Semantic Network view and shows type distribution chips', () => {
+  it('switches to the Semantic Network view and keeps type details in the left rail', () => {
     renderWithProviders(<SemanticaShowcaseScreen />)
     fireEvent.click(screen.getByTestId('showcase-tab-semantic-network'))
     expect(screen.getByTestId('semantic-network-showcase-view')).toBeDefined()
-    expect(screen.getByTestId('sn-node-types').textContent).toMatch(/Language/)
-    expect(screen.getByTestId('sn-node-types').textContent).toMatch(/Concept/)
-    expect(screen.getByTestId('sn-edge-types').textContent).toMatch(/writes/)
+    expect(screen.getByRole('heading', { name: 'Node types' })).toBeDefined()
+    expect(screen.getByText('Language')).toBeDefined()
+    expect(screen.getByText('Concept')).toBeDefined()
   })
 
   it('exposes the controlled dataset selector with the registered dataset id', () => {

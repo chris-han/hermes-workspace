@@ -36,73 +36,28 @@
   "relationships": [
     {
       "id": "rel_0",
-      "properties": {},
-      "source": "Dr_Smith",
-      "target": "Lab_Alpha",
-      "type": "WORKS_AT"
+      "properties": {
+        "since": 2020
+      },
+      "source": "e1",
+      "target": "e2",
+      "type": "knows"
     },
     {
       "id": "rel_1",
-      "properties": {},
-      "source": "Dr_Jones",
-      "target": "Lab_Alpha",
-      "type": "WORKS_AT"
+      "properties": {
+        "role": "Engineer"
+      },
+      "source": "e1",
+      "target": "e3",
+      "type": "works_for"
     },
     {
       "id": "rel_2",
       "properties": {},
-      "source": "Dr_Smith",
-      "target": "Paper_X",
-      "type": "AUTHORED"
-    },
-    {
-      "id": "rel_3",
-      "properties": {},
-      "source": "Dr_Jones",
-      "target": "Paper_X",
-      "type": "AUTHORED"
-    },
-    {
-      "id": "rel_4",
-      "properties": {},
-      "source": "Lab_Alpha",
-      "target": "Grant_A",
-      "type": "RECEIVED"
-    },
-    {
-      "id": "rel_5",
-      "properties": {},
-      "source": "Dr_Chen",
-      "target": "Lab_Alpha",
-      "type": "WORKS_AT"
-    },
-    {
-      "id": "rel_6",
-      "properties": {},
-      "source": "Dr_Chen",
-      "target": "Paper_Y",
-      "type": "AUTHORED"
-    },
-    {
-      "id": "rel_7",
-      "properties": {},
-      "source": "Dr_Smith",
-      "target": "Paper_Y",
-      "type": "AUTHORED"
-    },
-    {
-      "id": "rel_8",
-      "properties": {},
-      "source": "Lab_Alpha",
-      "target": "Startup_Beta",
-      "type": "SPUN_OFF"
-    },
-    {
-      "id": "rel_9",
-      "properties": {},
-      "source": "Dr_Jones",
-      "target": "Startup_Beta",
-      "type": "CTO"
+      "source": "e3",
+      "target": "e4",
+      "type": "located_in"
     }
   ]
 }

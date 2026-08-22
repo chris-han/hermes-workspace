@@ -34,15 +34,19 @@ import {
   rendererLabelsFor,
   statsToMetrics,
 } from './showcase-stats'
-import type {
-  ShowcaseInspectorField,
-  ShowcaseInspectorModel,
-  ShowcaseMetric,
-  ShowcaseProvenanceBadge,
-  ShowcaseVisualizationMode,
-  AnalyticsShowcaseSubmode,
-  TemporalShowcaseSubmode,
+import {
+  SHOWCASE_ANALYTICS_SUBMODE_ORDER,
+  SHOWCASE_LENS_ORDER,
+  SHOWCASE_TEMPORAL_SUBMODE_ORDER,
+  type ShowcaseInspectorField,
+  type ShowcaseInspectorModel,
+  type ShowcaseMetric,
+  type ShowcaseProvenanceBadge,
+  type ShowcaseVisualizationMode,
+  type AnalyticsShowcaseSubmode,
+  type TemporalShowcaseSubmode,
 } from './semantica-showcase-types'
+import { resolveShowcaseState } from './semantica-showcase-state'
 import type { SigmaGraphReadonlySelection } from '../sigma-graph-readonly'
 import type { SigmaGraphReadonlyViewportController } from '../sigma-graph-readonly'
 import {
@@ -60,62 +64,11 @@ const MODES: ReadonlyArray<{ mode: ShowcaseVisualizationMode; label: string }> =
 ]
 
 /**
- Stable fallback order for lens selection (plan §W5-05). When the active
- dataset switches and the current lens becomes unsupported, the showcase
- deterministically picks the first supported lens in this order. Empty
- capability sets are a registry error.
+ * §4.1.3 fallback: lens/submode ordering and state resolution live in
+ * `semantica-showcase-types.ts` (canonical orders) and
+ * `semantica-showcase-state.ts` (`resolveShowcaseState`). The screen must not
+ * define local fallback orders; empty capability sets are a registry error.
  */
-const LENS_FALLBACK_ORDER: ReadonlyArray<ShowcaseVisualizationMode> = [
-  'knowledge-graph',
-  'ontology',
-  'embedding',
-  'semantic-network',
-  'temporal',
-  'analytics',
-]
-
-const TEMPORAL_SUBMODE_ORDER: ReadonlyArray<TemporalShowcaseSubmode> = [
-  'timeline',
-  'version-history',
-  'temporal-dashboard',
-  'network-evolution',
-]
-
-const ANALYTICS_SUBMODE_ORDER: ReadonlyArray<AnalyticsShowcaseSubmode> = [
-  'centrality',
-  'communities',
-]
-
-function pickFirstSupported(
-  supported: ReadonlyArray<ShowcaseVisualizationMode>,
-): ShowcaseVisualizationMode {
-  for (const candidate of LENS_FALLBACK_ORDER) {
-    if (supported.includes(candidate)) return candidate
-  }
-  // Empty capability sets are a registry error; the loader rejects them but
-  // surface a clear runtime error if the invariant is violated.
-  throw new Error(
-    'Showcase dataset has empty supportedLenses; this is a registry error.',
-  )
-}
-
-function pickFirstSupportedTemporalSubmode(
-  supported: ReadonlyArray<TemporalShowcaseSubmode>,
-): TemporalShowcaseSubmode {
-  for (const candidate of TEMPORAL_SUBMODE_ORDER) {
-    if (supported.includes(candidate)) return candidate
-  }
-  return 'timeline'
-}
-
-function pickFirstSupportedAnalyticsSubmode(
-  supported: ReadonlyArray<AnalyticsShowcaseSubmode>,
-): AnalyticsShowcaseSubmode {
-  for (const candidate of ANALYTICS_SUBMODE_ORDER) {
-    if (supported.includes(candidate)) return candidate
-  }
-  return 'centrality'
-}
 
 /**
  Format a short source-location string for the LeftInventory rows. Delegates
@@ -146,18 +99,22 @@ export function SemanticaShowcaseScreen() {
     () => registry.datasets.find((entry) => entry.datasetId === datasetId),
     [registry, datasetId],
   )
-  const supportedLenses = registryEntry?.supportedLenses ?? LENS_FALLBACK_ORDER
+  const supportedLenses = registryEntry?.supportedLenses ?? SHOWCASE_LENS_ORDER
   const supportedTemporalSubmodes = registryEntry?.supportedSubmodes?.temporal ?? []
   const supportedAnalyticsSubmodes = registryEntry?.supportedSubmodes?.analytics ?? []
-  const initialMode = useMemo(() => pickFirstSupported(supportedLenses), [supportedLenses])
-  const initialTemporalSubmode = useMemo(
-    () => pickFirstSupportedTemporalSubmode(supportedTemporalSubmodes),
-    [supportedTemporalSubmodes],
+  const initialResolved = useMemo(
+    () =>
+      resolveShowcaseState({
+        supportedLenses,
+        supportedSubmodes: registryEntry?.supportedSubmodes,
+      }),
+    // Only the first render's resolution seeds the useState initializers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   )
-  const initialAnalyticsSubmode = useMemo(
-    () => pickFirstSupportedAnalyticsSubmode(supportedAnalyticsSubmodes),
-    [supportedAnalyticsSubmodes],
-  )
+  const initialMode = initialResolved.lens
+  const initialTemporalSubmode = initialResolved.temporalSubmode ?? 'timeline'
+  const initialAnalyticsSubmode = initialResolved.analyticsSubmode ?? 'centrality'
 
   const [settingsOpen, setSettingsOpen] = useState(false)
   const profileAvatarUrl = useResolvedAvatarUrl()
@@ -202,35 +159,45 @@ export function SemanticaShowcaseScreen() {
       setSnSelection(null)
       setEmbeddingSelection(undefined)
       setOntologySelection(undefined)
-      setTemporalSubmode('timeline')
-      setAnalyticsSubmode('centrality')
-      // Reset lens to the first supported lens of the new dataset. The
-      // picker runs after the state commit, so we recompute supportedLenses
-      // from the registry directly.
+      // §4.1.3: resolve lens/submode against the new dataset through the
+      // canonical state-resolution helper — preserve the current selection
+      // iff supported, otherwise fall back in canonical order. We recompute
+      // capabilities from the registry directly because the picker runs
+      // before the post-switch render commit.
       const nextEntry = registry.datasets.find((entry) => entry.datasetId === next)
-      const nextSupported = nextEntry?.supportedLenses ?? LENS_FALLBACK_ORDER
-      setMode(pickFirstSupported(nextSupported))
+      const resolved = resolveShowcaseState(
+        {
+          supportedLenses: nextEntry?.supportedLenses ?? SHOWCASE_LENS_ORDER,
+          supportedSubmodes: nextEntry?.supportedSubmodes,
+        },
+        { lens: mode, temporalSubmode, analyticsSubmode },
+      )
+      setMode(resolved.lens)
+      if (resolved.temporalSubmode) setTemporalSubmode(resolved.temporalSubmode)
+      if (resolved.analyticsSubmode) setAnalyticsSubmode(resolved.analyticsSubmode)
     },
-    [registry],
+    [analyticsSubmode, mode, registry, temporalSubmode],
   )
 
-  // W5-05: when the active dataset changes and the current mode is no longer
-  // supported, fall back to the first supported lens. useEffect runs after
-  // the commit so we observe the post-switch dataset.
+  // §4.1.3: when the active dataset changes and the current lens/submode is
+  // no longer supported, fall back through the canonical state resolution.
+  // The effect runs after the commit so we observe the post-switch dataset.
   useEffect(() => {
-    if (!supportedLenses.includes(mode)) {
-      setMode(pickFirstSupported(supportedLenses))
+    const resolved = resolveShowcaseState(
+      {
+        supportedLenses,
+        supportedSubmodes: registryEntry?.supportedSubmodes,
+      },
+      { lens: mode, temporalSubmode, analyticsSubmode },
+    )
+    if (resolved.lens !== mode) setMode(resolved.lens)
+    if (resolved.temporalSubmode && resolved.temporalSubmode !== temporalSubmode) {
+      setTemporalSubmode(resolved.temporalSubmode)
     }
-  }, [supportedLenses, mode])
-
-  useEffect(() => {
-    if (mode === 'temporal' && !supportedTemporalSubmodes.includes(temporalSubmode)) {
-      setTemporalSubmode(pickFirstSupportedTemporalSubmode(supportedTemporalSubmodes))
+    if (resolved.analyticsSubmode && resolved.analyticsSubmode !== analyticsSubmode) {
+      setAnalyticsSubmode(resolved.analyticsSubmode)
     }
-    if (mode === 'analytics' && !supportedAnalyticsSubmodes.includes(analyticsSubmode)) {
-      setAnalyticsSubmode(pickFirstSupportedAnalyticsSubmode(supportedAnalyticsSubmodes))
-    }
-  }, [analyticsSubmode, mode, supportedAnalyticsSubmodes, supportedTemporalSubmodes, temporalSubmode])
+  }, [analyticsSubmode, mode, registryEntry, supportedLenses, temporalSubmode])
 
   // W4-03: each adapter is only called when its payload is present. When
   // unsupported, we keep an EMPTY_INSPECTOR + empty metrics + empty graph
@@ -572,7 +539,7 @@ export function SemanticaShowcaseScreen() {
   }, [mode])
   const temporalSubmodeButtons = (
     <div className="flex flex-wrap gap-2 px-4 pb-2 pt-3">
-      {TEMPORAL_SUBMODE_ORDER.map((submode) => {
+      {SHOWCASE_TEMPORAL_SUBMODE_ORDER.map((submode) => {
         const supported = supportedTemporalSubmodes.includes(submode)
         return (
           <button
@@ -591,7 +558,7 @@ export function SemanticaShowcaseScreen() {
   )
   const analyticsSubmodeButtons = (
     <div className="flex flex-wrap gap-2 px-4 pb-2 pt-3">
-      {ANALYTICS_SUBMODE_ORDER.map((submode) => {
+      {SHOWCASE_ANALYTICS_SUBMODE_ORDER.map((submode) => {
         const supported = supportedAnalyticsSubmodes.includes(submode)
         return (
           <button

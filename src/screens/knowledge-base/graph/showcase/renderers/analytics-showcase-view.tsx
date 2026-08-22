@@ -40,9 +40,10 @@ export function AnalyticsShowcaseView({ adapter }: { adapter: AnalyticsShowcaseA
           </div>
         </section>
       ) : null}
-      <section className="showcase-ref-panel p-3">
+      <section className="showcase-ref-panel p-3" data-testid="analytics-coverage-disclosure">
         <div className="font-mono text-xs uppercase text-muted-foreground">Coverage</div>
         <div className="text-xs">Pinned Semantica notebook visualization cases</div>
+        <div className="text-xs text-muted-foreground">Source-only Semantica visualization methods are not included in this showcase.</div>
       </section>
     </div>
   )

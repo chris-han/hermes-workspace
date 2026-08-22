@@ -14,6 +14,32 @@
 
 export const SHOWCASE_REGISTRY_VERSION = 3 as const
 
+/**
+ * Canonical fallback orders (plan §4.1.3). This is the SINGLE authoritative
+ * definition: the loader consistency checks, the screen state resolution, and
+ * the tests must reference these constants instead of defining local orders.
+ */
+export const SHOWCASE_LENS_ORDER = [
+  'knowledge-graph',
+  'ontology',
+  'embedding',
+  'semantic-network',
+  'temporal',
+  'analytics',
+] as const
+
+export const SHOWCASE_TEMPORAL_SUBMODE_ORDER = [
+  'timeline',
+  'version-history',
+  'temporal-dashboard',
+  'network-evolution',
+] as const
+
+export const SHOWCASE_ANALYTICS_SUBMODE_ORDER = [
+  'centrality',
+  'communities',
+] as const
+
 export type ShowcaseVisualizationMode =
   | 'knowledge-graph'
   | 'ontology'
@@ -183,7 +209,13 @@ export interface ShowcaseDatasetRegistryEntry {
 }
 
 export interface ShowcaseRegistry {
-  version: typeof SHOWCASE_REGISTRY_VERSION
+  /**
+   * §4.1 migration contract: the loader accepts the frozen v2 registry
+   * (four-lens contract, no supportedSubmodes/temporal/analytics) and the v3
+   * registry emitted by the notebook-parity expansion. Any other version
+   * fails closed at load time.
+   */
+  version: 2 | typeof SHOWCASE_REGISTRY_VERSION
   generationToolVersion: string
   semanticaCommit: string
   datasets: ShowcaseDatasetRegistryEntry[]

@@ -92,12 +92,23 @@ export function adaptTemporalFixture(
   if (submode === 'temporal-dashboard') {
     const dashboard = fixture.dashboard ?? { entities: [], relationships: [], timestamps: {} }
     const metricsSeries = dashboard.metrics ?? []
+    // §8.1: dangling relationships are dropped deterministically and surfaced
+    // in diagnostics; adapters never fabricate endpoints.
+    const entityIds = new Set(dashboard.entities.map((entity) => entity.id))
+    const keptRelationships = dashboard.relationships.filter(
+      (relationship) => entityIds.has(relationship.source) && entityIds.has(relationship.target),
+    )
+    const droppedRelationshipIds = dashboard.relationships
+      .filter((relationship) => !entityIds.has(relationship.source) || !entityIds.has(relationship.target))
+      .map((relationship) => relationship.id)
+      .sort()
     return {
       kind: 'temporal-dashboard',
       entities: [...dashboard.entities].sort((left, right) => left.id.localeCompare(right.id)),
-      relationships: [...dashboard.relationships].sort((left, right) => left.id.localeCompare(right.id)),
+      relationships: [...keptRelationships].sort((left, right) => left.id.localeCompare(right.id)),
       timestamps: dashboard.timestamps,
       metricsSeries,
+      diagnostics: { droppedRelationshipIds },
       inspector: {
         title: 'Temporal Dashboard',
         subtitle: 'Lifecycle and metric overview',

@@ -18,13 +18,19 @@
  */
 
 import {
+  SHOWCASE_ANALYTICS_SUBMODE_ORDER,
+  SHOWCASE_LENS_ORDER,
   SHOWCASE_REGISTRY_VERSION,
+  SHOWCASE_TEMPORAL_SUBMODE_ORDER,
+  type AnalyticsShowcaseSubmode,
   type ShowcaseDatasetBundle,
   type ShowcaseDatasetRegistryEntry,
   type ShowcaseDatasetManifest,
   type ShowcaseFixtureFileManifest,
   type ShowcaseRegistry,
+  type ShowcaseTemporalFixture,
   type ShowcaseVisualizationMode,
+  type TemporalShowcaseSubmode,
 } from './semantica-showcase-types'
 import registryJson from './datasets/dataset-registry.json' with { type: 'json' }
 import introKg from './datasets/intro-cookbook-kg/kg.json' with { type: 'json' }
@@ -70,13 +76,16 @@ import sn11Manifest from './datasets/11-Advanced-Context-Engineering/manifest.js
 import snAgnoMultiAgent from './datasets/agno-multi-agent-shared-context/semantic-network.json' with { type: 'json' }
 import snAgnoMultiAgentManifest from './datasets/agno-multi-agent-shared-context/manifest.json' with { type: 'json' }
 
-const KNOWN_DATASETS: Record<
+/** Payload sections keyed by lens, plus the checked-in manifest. */
+export type ShowcaseKnownDatasets = Record<
   string,
   Pick<
     ShowcaseDatasetBundle,
     'kg' | 'ontology' | 'embedding' | 'semanticNetwork' | 'temporal' | 'analytics'
   > & { manifest: ShowcaseDatasetManifest }
-> = {
+>
+
+const KNOWN_DATASETS: ShowcaseKnownDatasets = {
   'intro-cookbook-kg': {
     manifest: introManifest as unknown as ShowcaseDatasetManifest,
     kg: introKg as ShowcaseDatasetBundle['kg'],
@@ -182,19 +191,51 @@ const LENS_TO_FILE: Record<ShowcaseVisualizationMode, ShowcaseFixtureFileManifes
 
 const ACCEPTED_REGISTRY_VERSIONS = new Set<number>([2, SHOWCASE_REGISTRY_VERSION])
 
-function ensureConsistency(): void {
+const TEMPORAL_SUBMODE_TO_SECTION: Record<
+  TemporalShowcaseSubmode,
+  keyof ShowcaseTemporalFixture
+> = {
+  timeline: 'timeline',
+  'version-history': 'versionHistory',
+  'temporal-dashboard': 'dashboard',
+  'network-evolution': 'networkEvolution',
+}
+
+const ANALYTICS_SUBMODE_TO_SECTION: Record<
+  AnalyticsShowcaseSubmode,
+  'centrality' | 'communities'
+> = {
+  centrality: 'centrality',
+  communities: 'communities',
+}
+
+/**
+ * §6.2 loader consistency invariants, extracted as a pure function so the
+ * contract can be exercised against synthetic registries in tests (W2-07).
+ * Throws on the first violation; module init calls this with the checked-in
+ * registry and bundles.
+ *
+ * Canonical lens/submode capability is derived from the actually available
+ * payloads (in §4.1.3 order); the registry declaration must match it exactly.
+ * A v2 entry therefore can never be upgraded in memory into six-lens support:
+ * declaring a lens/submode whose payload is absent fails closed.
+ */
+export function validateShowcaseRegistry(
+  registry: ShowcaseRegistry,
+  knownDatasets: ShowcaseKnownDatasets,
+): void {
   // (registry-version invariant) accept the frozen v2 registry during the
   // migration window and the new v3 registry once generated.
-  if (!ACCEPTED_REGISTRY_VERSIONS.has(REGISTRY.version)) {
+  if (!ACCEPTED_REGISTRY_VERSIONS.has(registry.version)) {
     throw new Error(
-      `Unsupported showcase registry version: ${REGISTRY.version} (expected ${SHOWCASE_REGISTRY_VERSION}).`,
+      `Unsupported showcase registry version: ${registry.version} (expected 2 or ${SHOWCASE_REGISTRY_VERSION}).`,
     )
   }
-  if (REGISTRY.datasets.length === 0) {
+  if (registry.datasets.length === 0) {
     throw new Error('Showcase registry contains zero datasets.')
   }
   const seenIds = new Set<string>()
-  for (const entry of REGISTRY.datasets) {
+  for (const entry of registry.datasets) {
     if (seenIds.has(entry.datasetId)) {
       throw new Error(
         `Duplicate dataset id in registry: "${entry.datasetId}".`,
@@ -202,7 +243,7 @@ function ensureConsistency(): void {
     }
     seenIds.add(entry.datasetId)
 
-    const known = KNOWN_DATASETS[entry.datasetId]
+    const known = knownDatasets[entry.datasetId]
     if (!known) {
       throw new Error(
         `Registry references unknown dataset "${entry.datasetId}"; checked-in bundle missing.`,
@@ -214,13 +255,12 @@ function ensureConsistency(): void {
       )
     }
 
+    // §6.2(1): supportedLenses exactly matches available top-level payloads,
+    // in the canonical §4.1.3 order.
     const canonicalSupportedLenses: ShowcaseVisualizationMode[] = []
-    if (known.kg) canonicalSupportedLenses.push('knowledge-graph')
-    if (known.ontology) canonicalSupportedLenses.push('ontology')
-    if (known.embedding) canonicalSupportedLenses.push('embedding')
-    if (known.semanticNetwork) canonicalSupportedLenses.push('semantic-network')
-    if (known.temporal) canonicalSupportedLenses.push('temporal')
-    if (known.analytics) canonicalSupportedLenses.push('analytics')
+    for (const lens of SHOWCASE_LENS_ORDER) {
+      if (known[LENS_TO_PAYLOAD_KEY[lens]]) canonicalSupportedLenses.push(lens)
+    }
     if (entry.supportedLenses.length !== canonicalSupportedLenses.length || entry.supportedLenses.some((lens, index) => lens !== canonicalSupportedLenses[index])) {
       throw new Error(
         `Registry supportedLenses for "${entry.datasetId}" do not match available payloads.`,
@@ -231,19 +271,38 @@ function ensureConsistency(): void {
     const temporalSubmodes = supportedSubmodes.temporal ?? []
     const analyticsSubmodes = supportedSubmodes.analytics ?? []
 
-    const canonicalTemporalSubmodes: string[] = []
-    if (known.temporal) {
-      if (known.temporal.timeline) canonicalTemporalSubmodes.push('timeline')
-      if (known.temporal.versionHistory) canonicalTemporalSubmodes.push('version-history')
-      if (known.temporal.dashboard) canonicalTemporalSubmodes.push('temporal-dashboard')
-      if (known.temporal.networkEvolution) canonicalTemporalSubmodes.push('network-evolution')
+    // §6.2(4): every declared submode is a valid versioned enum member.
+    for (const submode of temporalSubmodes) {
+      if (!(SHOWCASE_TEMPORAL_SUBMODE_ORDER as ReadonlyArray<string>).includes(submode)) {
+        throw new Error(
+          `Registry entry "${entry.datasetId}" declares invalid temporal submode "${submode}".`,
+        )
+      }
     }
-    const canonicalAnalyticsSubmodes: string[] = []
-    if (known.analytics) {
-      if (known.analytics.centrality) canonicalAnalyticsSubmodes.push('centrality')
-      if (known.analytics.communities) canonicalAnalyticsSubmodes.push('communities')
+    for (const submode of analyticsSubmodes) {
+      if (!(SHOWCASE_ANALYTICS_SUBMODE_ORDER as ReadonlyArray<string>).includes(submode)) {
+        throw new Error(
+          `Registry entry "${entry.datasetId}" declares invalid analytics submode "${submode}".`,
+        )
+      }
     }
 
+    // §6.2(6)/(9): declared-and-present submode sets, derived from payload
+    // sections in canonical §4.1.3 order.
+    const canonicalTemporalSubmodes: TemporalShowcaseSubmode[] = []
+    if (known.temporal) {
+      for (const submode of SHOWCASE_TEMPORAL_SUBMODE_ORDER) {
+        if (known.temporal[TEMPORAL_SUBMODE_TO_SECTION[submode]]) canonicalTemporalSubmodes.push(submode)
+      }
+    }
+    const canonicalAnalyticsSubmodes: AnalyticsShowcaseSubmode[] = []
+    if (known.analytics) {
+      for (const submode of SHOWCASE_ANALYTICS_SUBMODE_ORDER) {
+        if (known.analytics[ANALYTICS_SUBMODE_TO_SECTION[submode]]) canonicalAnalyticsSubmodes.push(submode)
+      }
+    }
+
+    // §6.2(3): a supportedSubmodes key requires the parent lens.
     if (temporalSubmodes.length > 0 && !entry.supportedLenses.includes('temporal')) {
       throw new Error(`Registry entry "${entry.datasetId}" declares temporal submodes without supporting the temporal lens.`)
     }
@@ -251,11 +310,14 @@ function ensureConsistency(): void {
       throw new Error(`Registry entry "${entry.datasetId}" declares analytics submodes without supporting the analytics lens.`)
     }
 
+    // §6.2(5): no duplicate submode declaration.
     const uniqueTemporal = Array.from(new Set(temporalSubmodes))
     const uniqueAnalytics = Array.from(new Set(analyticsSubmodes))
     if (uniqueTemporal.length !== temporalSubmodes.length || uniqueAnalytics.length !== analyticsSubmodes.length) {
       throw new Error(`Registry entry "${entry.datasetId}" declares duplicate submodes.`)
     }
+    // §6.2(6)/(7)/(8): declared submodes match the present payload sections
+    // exactly, in canonical order; undeclared payload sections are drift.
     if (temporalSubmodes.length !== canonicalTemporalSubmodes.length || temporalSubmodes.some((value, index) => value !== canonicalTemporalSubmodes[index])) {
       if (temporalSubmodes.length > 0 || canonicalTemporalSubmodes.length > 0) {
         throw new Error(`Registry entry "${entry.datasetId}" has temporal submodes that do not match the payload sections.`)
@@ -278,7 +340,7 @@ function ensureConsistency(): void {
         `Registry semanticaCommit for "${entry.datasetId}" disagrees with manifest.`,
       )
     }
-    // (b) every supported lens has a matching manifest file + payload
+    // (b)/(9) every supported lens has a matching manifest file + payload
     for (const lens of entry.supportedLenses) {
       const file = LENS_TO_FILE[lens]
       if (!known.manifest.files.some((f) => f.file === file)) {
@@ -304,6 +366,10 @@ function ensureConsistency(): void {
       }
     }
   }
+}
+
+function ensureConsistency(): void {
+  validateShowcaseRegistry(REGISTRY, KNOWN_DATASETS)
 }
 
 ensureConsistency()

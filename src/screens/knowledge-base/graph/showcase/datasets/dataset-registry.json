@@ -79,8 +79,8 @@
       "datasetId": "03-Complete-Visualization-Suite",
       "description": "Hard-coded typed KG + notebook visualization suite: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Location: San Francisco) + 3 typed relationships (knows, works_for, located_",
       "displayName": "03 Complete Visualization Suite",
-      "fixtureSha256": "7a0451698ed9f6dca7786cbe88de4bcfd1ce83a62ea29814c5d76cfdf356b841",
-      "manifestSha256": "632bd9911d34119490fe3b8100ac2d7544478d1f25648c1d0852c02cffe7d6a8",
+      "fixtureSha256": "8560b2edbb7e933eef89ab60b10fddc2cafc2611bc620edbf0dcc08e26876c05",
+      "manifestSha256": "f8f6e88009cefea127563954f0564ee0089e2641dd41844f0420c27913f519cb",
       "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
       "sourceLabel": "derived-deterministically",
       "supportedLenses": [
@@ -241,7 +241,7 @@
     }
   ],
   "generationToolVersion": "1.0.0",
-  "registrySha256": "8d4a28f01deb6fa1bac5d55bf867acca67198f72d681b88e2aad18b2fce310a9",
+  "registrySha256": "f66adf2d321b6966903f030648714c921ebf38045f18c05b7372c891cfb08aff",
   "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
   "version": 3
 }

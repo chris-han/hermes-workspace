@@ -10,13 +10,14 @@
         "centrality": "degree",
         "community_algorithm": "louvain-or-greedy-modularity",
         "source": "third_party/semantica/cookbook/advanced/03_Complete_Visualization_Suite.ipynb",
+        "source_behavior": "AnalyticsVisualizer.visualize_community_structure delegates to KGVisualizer.visualize_communities",
         "submodes": [
           "centrality",
           "communities"
         ]
       },
       "file": "analytics.json",
-      "sha256": "6b023cd88e7fd7b2daaa2795b5ae491ed94c9b11f9354ed7193998933441127f"
+      "sha256": "ae5fbb48cd9cc0cb53e1db9de403c36309e015b77a1e0e975b04b9a68460501a"
     },
     {
       "derivationKind": "verbatim",
@@ -25,7 +26,7 @@
         "source": "third_party/semantica/cookbook/advanced/03_Complete_Visualization_Suite.ipynb"
       },
       "file": "kg.json",
-      "sha256": "1a0a46c8e7b8975d63dbf2a667ab1e3491f2e31d2851964f250a2edf2f345aa9"
+      "sha256": "74cf266cb31a5cf08fa6e58258b76ef40e2b882d892783a06bfc6be35c07a4d5"
     },
     {
       "derivationKind": "temporal-normalized",
@@ -42,10 +43,10 @@
       "sha256": "c2b7adeba45fda395f297ae6b3ccae8aa9430b6657f23b6fde6d66131fb422d6"
     }
   ],
-  "fixtureSha256": "7a0451698ed9f6dca7786cbe88de4bcfd1ce83a62ea29814c5d76cfdf356b841",
+  "fixtureSha256": "8560b2edbb7e933eef89ab60b10fddc2cafc2611bc620edbf0dcc08e26876c05",
   "includedReason": "",
   "license": "MIT",
-  "manifestSha256": "632bd9911d34119490fe3b8100ac2d7544478d1f25648c1d0852c02cffe7d6a8",
+  "manifestSha256": "f8f6e88009cefea127563954f0564ee0089e2641dd41844f0420c27913f519cb",
   "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
   "sources": []
 }

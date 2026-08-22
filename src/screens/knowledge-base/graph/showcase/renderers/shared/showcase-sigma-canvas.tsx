@@ -66,6 +66,7 @@ export function ShowcaseSigmaCanvas({
       positions,
       selection,
       ariaLabel,
+      dragMode: sigmaControls?.dragMode,
       renderEdgeLabels:
         sigmaControls?.edgeLabels === 'none' ? false : renderEdgeLabels,
       edgeArrows: sigmaControls?.edgeArrows,
@@ -78,6 +79,7 @@ export function ShowcaseSigmaCanvas({
       positions,
       renderEdgeLabels,
       selection,
+      sigmaControls?.dragMode,
       sigmaControls?.showProperties,
       sigmaControls?.edgeCurved,
       sigmaControls?.edgeArrows,

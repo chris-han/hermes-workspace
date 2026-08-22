@@ -7,6 +7,7 @@ import type { GraphTopologyMode } from '../layouts/graph-topology-layouts'
 export type SigmaDirection = 'LR' | 'RL' | 'TB' | 'BT'
 export type SigmaFocusMode = 'entire' | 'neighbors' | 'two-hop' | 'incoming' | 'outgoing'
 export type SigmaNodeSizeMode = 'degree' | 'uniform'
+export type SigmaDragMode = 'node' | 'branch'
 export type AsimovVisualizationSwatch =
   | 'asimov-ember'
   | 'asimov-tangerine'
@@ -84,6 +85,10 @@ function formatProperties(properties?: Record<string, unknown>): string {
 export interface SigmaControlState {
   direction: SigmaDirection
   focus: SigmaFocusMode
+  dragMode: SigmaDragMode
+  pinDrop: boolean
+  rotate: boolean
+  overlap: boolean
   spacing: number
   gravity: number
   nodeSize: SigmaNodeSizeMode
@@ -93,6 +98,8 @@ export interface SigmaControlState {
   nodeLabels: SigmaNodeLabelMode
   edgeLabels: SigmaEdgeLabelMode
   showProperties: boolean
+  confidence: number
+  barnesHut: boolean
   edgeCurved: boolean
   edgeArrows: boolean
   scale: number
@@ -101,6 +108,10 @@ export interface SigmaControlState {
 export const DEFAULT_SIGMA_CONTROLS: SigmaControlState = {
   direction: 'LR',
   focus: 'entire',
+  dragMode: 'node',
+  pinDrop: false,
+  rotate: false,
+  overlap: true,
   spacing: 58,
   gravity: 36,
   nodeSize: 'degree',
@@ -110,40 +121,130 @@ export const DEFAULT_SIGMA_CONTROLS: SigmaControlState = {
   nodeLabels: 'all',
   edgeLabels: 'all',
   showProperties: false,
+  confidence: 0,
+  barnesHut: false,
   edgeCurved: false,
   edgeArrows: true,
   scale: 50,
+}
+
+function normalizeConfidenceValue(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  if (value > 1 && value <= 100) return value / 100
+  if (value > 100) return 1
+  if (value < 0) return 0
+  return value
+}
+
+function stableUnitValue(seed: string): number {
+  let hash = 2166136261
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return ((hash >>> 0) % 1000) / 1000
+}
+
+function edgeConfidence(edge: { id: string; properties?: Record<string, unknown> }): number {
+  const candidates = ['confidence', 'score', 'weight', 'probability'] as const
+  for (const key of candidates) {
+    const raw = edge.properties?.[key]
+    if (typeof raw === 'number') return normalizeConfidenceValue(raw)
+  }
+  return stableUnitValue(edge.id)
 }
 
 export function applySigmaPositionControls(
   positions: Record<string, { x: number; y: number }>,
   topology: GraphTopologyMode,
   controls: SigmaControlState,
+  selection?: SigmaGraphReadonlySelection,
 ): Record<string, { x: number; y: number }> {
   const entries = Object.entries(positions)
   if (entries.length === 0) return positions
 
   const centerX = entries.reduce((sum, [, point]) => sum + point.x, 0) / entries.length
   const centerY = entries.reduce((sum, [, point]) => sum + point.y, 0) / entries.length
-  const spacingScale = 0.55 + (controls.spacing / 100) * 1.15
-  const gravityScale = 1.35 - (controls.gravity / 100) * 0.7
+  const spacingScale = 0.35 + (controls.spacing / 100) * 2.1
+  const gravityScale = 1.2 - (controls.gravity / 100) * 0.95
   const advancedScale = 0.75 + (controls.scale / 100) * 0.5
   const scale = spacingScale * gravityScale * advancedScale
 
-  return Object.fromEntries(
-    entries.map(([id, point]) => {
-      let x = (point.x - centerX) * scale
-      let y = (point.y - centerY) * scale
+  const transformed = entries.map(([id, point]) => {
+    let x = (point.x - centerX) * scale
+    let y = (point.y - centerY) * scale
 
-      if (topology === 'hierarchical') {
-        if (controls.direction === 'LR') [x, y] = [y, x]
-        if (controls.direction === 'RL') [x, y] = [-y, x]
-        if (controls.direction === 'BT') y = -y
+    if (topology === 'hierarchical') {
+      if (controls.direction === 'LR') [x, y] = [y, x]
+      if (controls.direction === 'RL') [x, y] = [-y, x]
+      if (controls.direction === 'BT') y = -y
+    }
+
+    if (controls.rotate) {
+      [x, y] = [y, -x]
+    }
+
+    return [id, { x, y }] as const
+  })
+
+  const byId = Object.fromEntries(transformed)
+
+  if (controls.pinDrop && selection?.type === 'node' && byId[selection.id]) {
+    const anchor = byId[selection.id]
+    for (const [, point] of transformed) {
+      point.x -= anchor.x
+      point.y -= anchor.y
+    }
+  }
+
+  if (controls.overlap && transformed.length > 1) {
+    // Deterministic, lightweight collision pass to keep dense layouts legible.
+    const minDistance = 0.14 + (controls.spacing / 100) * 0.18
+    for (let pass = 0; pass < 2; pass += 1) {
+      for (let i = 0; i < transformed.length; i += 1) {
+        for (let j = i + 1; j < transformed.length; j += 1) {
+          const a = transformed[i][1]
+          const b = transformed[j][1]
+          const dx = b.x - a.x
+          const dy = b.y - a.y
+          const distance = Math.hypot(dx, dy)
+          if (distance >= minDistance) continue
+          const safeDistance = distance || 1e-4
+          const push = (minDistance - safeDistance) / 2
+          const ux = dx / safeDistance
+          const uy = dy / safeDistance
+          a.x -= ux * push
+          a.y -= uy * push
+          b.x += ux * push
+          b.y += uy * push
+        }
       }
+    }
+  }
 
-      return [id, { x, y }]
-    }),
-  )
+  if (controls.barnesHut && transformed.length > 2) {
+    // Deterministic force-relaxation pass approximating global repulsion.
+    const points = transformed.map(([, point]) => point)
+    const influence = 0.004 + (controls.spacing / 100) * 0.01
+    for (let i = 0; i < points.length; i += 1) {
+      const current = points[i]
+      let forceX = 0
+      let forceY = 0
+      for (let j = 0; j < points.length; j += 1) {
+        if (i === j) continue
+        const other = points[j]
+        const dx = current.x - other.x
+        const dy = current.y - other.y
+        const distanceSq = dx * dx + dy * dy + 0.01
+        forceX += dx / distanceSq
+        forceY += dy / distanceSq
+      }
+      current.x += forceX * influence
+      current.y += forceY * influence
+    }
+  }
+
+  return Object.fromEntries(transformed)
 }
 
 function buildAdjacency(model: ShowcaseGraphModel) {
@@ -197,8 +298,12 @@ export function applySigmaModelControls(
   const keep = focusedNodeIds(model, selection, controls.focus)
   const visibleNodes = keep ? model.nodes.filter((node) => keep.has(node.id)) : model.nodes
   const visibleIds = new Set(visibleNodes.map((node) => node.id))
+  const confidenceThreshold = controls.confidence / 100
   const visibleEdges = model.edges.filter(
-    (edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target),
+    (edge) =>
+      visibleIds.has(edge.source)
+      && visibleIds.has(edge.target)
+      && edgeConfidence(edge) >= confidenceThreshold,
   )
 
   const degree = new Map<string, number>()

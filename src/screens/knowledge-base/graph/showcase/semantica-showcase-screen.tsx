@@ -260,28 +260,38 @@ export function SemanticaShowcaseScreen() {
       selectedRootId: kgSelection?.type === 'node' ? kgSelection.id : null,
       seed: `kg-${kgTopology}-${kgNudgeCount}`,
     }).positions.entries()))
-    return applySigmaPositionControls(positions, kgTopology, sigmaControls)
+    return applySigmaPositionControls(positions, kgTopology, sigmaControls, kgSelection)
   }, [kgGraphInput, kgTopology, kgSelection, kgNudgeCount, sigmaControls])
   const snPositions = useMemo(() => {
     const positions = Object.fromEntries(Array.from(computeGraphTopology(snGraphInput, snTopology, {
       selectedRootId: snSelection?.type === 'node' ? snSelection.id : null,
       seed: `sn-${snTopology}-${snNudgeCount}`,
     }).positions.entries()))
-    return applySigmaPositionControls(positions, snTopology, sigmaControls)
+    return applySigmaPositionControls(positions, snTopology, sigmaControls, snSelection)
   }, [snGraphInput, snTopology, snSelection, snNudgeCount, sigmaControls])
   const ontologyPositions = useMemo(() => {
     const positions = Object.fromEntries(Array.from(computeGraphTopology(ontologyGraphInput, ontologyTopology, {
       selectedRootId: ontologySelection ?? null,
       seed: `ontology-${ontologyTopology}-${ontologyNudgeCount}`,
     }).positions.entries()))
-    return applySigmaPositionControls(positions, ontologyTopology, sigmaControls)
+    return applySigmaPositionControls(
+      positions,
+      ontologyTopology,
+      sigmaControls,
+      ontologySelection ? { type: 'node', id: ontologySelection } : null,
+    )
   }, [ontologyGraphInput, ontologyNudgeCount, ontologySelection, ontologyTopology, sigmaControls])
   const embeddingPositions = useMemo(() => {
     const positions = Object.fromEntries(Array.from(computeGraphTopology(embeddingGraphInput, embeddingTopology, {
       selectedRootId: embeddingSelection ?? null,
       seed: `embedding-${embeddingTopology}-${embeddingNudgeCount}`,
     }).positions.entries()))
-    return applySigmaPositionControls(positions, embeddingTopology, sigmaControls)
+    return applySigmaPositionControls(
+      positions,
+      embeddingTopology,
+      sigmaControls,
+      embeddingSelection ? { type: 'node', id: embeddingSelection } : null,
+    )
   }, [embeddingGraphInput, embeddingNudgeCount, embeddingSelection, embeddingTopology, sigmaControls])
   const footerMeta = useMemo(
     () => {

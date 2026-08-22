@@ -293,18 +293,47 @@ export function SigmaControls({
 
             <section className="sigma-controls-group">
               <h3>Interaction &amp; Layout</h3>
-              <div className="sigma-control-row" title="The showcase renderer is readonly; node/branch dragging belongs to the interactive Studio renderer.">
+              <div className="sigma-control-row" title="Select drag behavior for the readonly Sigma canvas.">
                 <span className="sigma-control-label">Drag</span>
                 <div className="sigma-control-segment">
-                  <button type="button" disabled>Node</button>
-                  <button type="button" disabled>Branch</button>
+                  <button
+                    type="button"
+                    className={controls.dragMode === 'node' ? 'is-active' : ''}
+                    aria-pressed={controls.dragMode === 'node'}
+                    onClick={() => update('dragMode', 'node')}
+                  >
+                    Node
+                  </button>
+                  <button
+                    type="button"
+                    className={controls.dragMode === 'branch' ? 'is-active' : ''}
+                    aria-pressed={controls.dragMode === 'branch'}
+                    onClick={() => update('dragMode', 'branch')}
+                  >
+                    Branch
+                  </button>
                 </div>
               </div>
-              <ToggleControl label="Pin drop" checked={false} onChange={() => undefined} disabled title="Unavailable in readonly showcase renderer." />
-              <ToggleControl label="Rotate" checked={false} onChange={() => undefined} disabled title="Semantic direction is controlled by Direction, not camera rotation." />
+              <ToggleControl
+                label="Pin drop"
+                checked={controls.pinDrop}
+                onChange={(value) => update('pinDrop', value)}
+                title="Pin selected node to center and shift the graph around it."
+              />
+              <ToggleControl
+                label="Rotate"
+                checked={controls.rotate}
+                onChange={(value) => update('rotate', value)}
+                title="Apply deterministic canvas-space rotation to the computed layout."
+              />
               <SliderControl label="Spacing" value={controls.spacing} onChange={(value) => update('spacing', value)} />
               <SliderControl label="Gravity" value={controls.gravity} onChange={(value) => update('gravity', value)} />
-              <ToggleControl label="Overlap" checked={true} onChange={() => undefined} disabled title="Overlap prevention requires an interactive layout worker." />
+              <ToggleControl
+                label="Overlap"
+                checked={controls.overlap}
+                onChange={(value) => update('overlap', value)}
+                title="Apply deterministic overlap reduction to dense node clusters."
+              />
             </section>
 
             <section className="sigma-controls-group">
@@ -374,12 +403,22 @@ export function SigmaControls({
                 onChange={(value) => update('showProperties', value)}
                 title="Show node and edge properties directly on the Sigma canvas."
               />
-              <SliderControl label="Confidence" value={25} onChange={() => undefined} disabled title="Current showcase fixtures do not carry edge confidence." />
+              <SliderControl
+                label="Confidence"
+                value={controls.confidence}
+                onChange={(value) => update('confidence', value)}
+                title="Filter edges by confidence-like score; if missing, a stable deterministic score is used."
+              />
               <details>
                 <summary>Advanced Layout</summary>
                 <div className="sigma-controls-advanced">
                   <SliderControl label="Scale" value={controls.scale} onChange={(value) => update('scale', value)} />
-                  <ToggleControl label="Barnes-Hut" checked={false} onChange={() => undefined} disabled title="The showcase uses deterministic positions rather than a live ForceAtlas2 worker." />
+                  <ToggleControl
+                    label="Barnes-Hut"
+                    checked={controls.barnesHut}
+                    onChange={(value) => update('barnesHut', value)}
+                    title="Enable deterministic force-relaxation to reduce clustering artifacts."
+                  />
                 </div>
               </details>
             </section>

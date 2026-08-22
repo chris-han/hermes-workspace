@@ -23,6 +23,7 @@ import {
   DEFAULT_VISUALIZATION_CONTROL_STATE,
   applyVisualizationControlPatch,
 } from '../visualization/visualization-control-state'
+import { collectVegaParams, latestVegaRender, latestVegaSpec, resetCapturedVega } from './vega-capture'
 
 vi.mock('sigma', () => ({
   default: class FakeSigma {
@@ -35,10 +36,24 @@ vi.mock('sigma', () => ({
   },
 }))
 
+// Vega-Lite engine: assert the deterministic compiled spec captured by the
+// react-vega double instead of renderer DOM marks (A12).
+vi.mock('react-vega', async () => {
+  const React = await import('react')
+  const capture = await import('./vega-capture')
+  return {
+    VegaEmbed: (props: Record<string, unknown>) => {
+      capture.captureVega(props)
+      return React.createElement('div', { 'data-testid': 'vega-embed-stub' })
+    },
+  }
+})
+
 const SUITE = '03-Complete-Visualization-Suite'
 
 afterEach(() => {
   cleanup()
+  resetCapturedVega()
 })
 
 function temporalAdapterFor(submode: 'timeline' | 'temporal-dashboard') {
@@ -97,61 +112,68 @@ describe('chart footer control parity — presence on every chart view', () => {
 })
 
 describe('chart footer control parity — zoom behavior', () => {
-  it('zoom-in increases the label and rescales timeline event X; FIT restores', () => {
+  it('zoom-in narrows the timeline Gantt initial x-domain; FIT restores', () => {
     const adapter = temporalAdapterFor('timeline')
     if (adapter.kind !== 'timeline') throw new Error('unexpected kind')
     render(<TemporalShowcaseView adapter={adapter} />)
-    const firstEvent = adapter.events[0]
-    const mark = () => screen.getByTestId(`temporal-timeline-item-${firstEvent.id}`)
-    const cxBefore = Number(mark().getAttribute('cx'))
+    const xScale = () =>
+      (latestVegaSpec() as { encoding: { x: { scale?: { domain?: string[] } } } }).encoding.x.scale
+    expect(xScale()?.domain).toBeUndefined()
 
     fireEvent.click(screen.getByTestId('chart-zoom-in'))
     expect(screen.getByTestId('chart-zoom-value').textContent).toBe('1.3x')
-    const cxZoomed = Number(mark().getAttribute('cx'))
-    expect(cxZoomed).not.toBe(cxBefore)
+    const domain = xScale()?.domain
+    expect(domain).toBeDefined()
+    const [min, max] = domain!.map((value) => Date.parse(value))
+    const fullSpan = Date.parse(adapter.timeBounds.end) - Date.parse(adapter.timeBounds.start)
+    expect(max - min).toBeLessThan(fullSpan)
 
     fireEvent.click(screen.getByTestId('chart-fit'))
     expect(screen.getByTestId('chart-zoom-value').textContent).toBe('1.0x')
-    expect(Number(mark().getAttribute('cx'))).toBe(cxBefore)
+    expect(xScale()?.domain).toBeUndefined()
   })
 
-  it('zoom-in rescales the versions ladder around the ladder center', () => {
+  it('zoom-in narrows the versions ladder x-domain', () => {
     const adapter = versionsAdapter()
     if (adapter.kind !== 'version-history') throw new Error('unexpected kind')
     render(<TemporalShowcaseView adapter={adapter} />)
-    const rung = () => screen.getByTestId(`temporal-version-rung-${adapter.versions[0].id}`)
-    const xBefore = Number(rung().querySelector('circle')!.getAttribute('cx'))
+    const domainOf = () =>
+      (latestVegaSpec() as { layer: Array<{ encoding: { x: { scale?: { domain?: string[] } } } }> })
+        .layer[1]!.encoding.x.scale?.domain
+    expect(domainOf()).toBeUndefined()
     fireEvent.click(screen.getByTestId('chart-zoom-in'))
-    expect(Number(rung().querySelector('circle')!.getAttribute('cx'))).not.toBe(xBefore)
+    expect(domainOf()).toBeDefined()
   })
 
-  it('zoom-in narrows the dashboard Recharts data window; FIT restores it', () => {
+  it('zoom-in narrows the dashboard shared x-domain; FIT restores it', () => {
     const adapter = temporalAdapterFor('temporal-dashboard')
     if (adapter.kind !== 'temporal-dashboard') throw new Error('unexpected kind')
     render(<TemporalShowcaseView adapter={adapter} />)
-    const curve = () =>
-      screen
-        .getByTestId('temporal-dashboard-activity')
-        .querySelector('.recharts-line-curve')!
-        .getAttribute('d')
-    const pathBefore = curve()
+    const domainOf = () =>
+      (latestVegaSpec() as { vconcat: Array<{ encoding: { x: { scale?: { domain?: string[] } } } }> })
+        .vconcat[0]!.encoding.x.scale?.domain
+    expect(domainOf()).toBeUndefined()
     fireEvent.click(screen.getByTestId('chart-zoom-in'))
     expect(screen.getByTestId('chart-zoom-value').textContent).toBe('1.3x')
-    expect(curve()).not.toBe(pathBefore)
+    expect(domainOf()).toBeDefined()
     fireEvent.click(screen.getByTestId('chart-fit'))
-    expect(curve()).toBe(pathBefore)
+    expect(domainOf()).toBeUndefined()
   })
 
-  it('zoom-in extends centrality bar widths against the narrowed domain', () => {
+  it('zoom-in narrows the centrality score domain; FIT restores it', () => {
     const adapter = centralityAdapter()
     if (adapter.kind !== 'centrality') throw new Error('unexpected kind')
     render(<AnalyticsShowcaseView adapter={adapter} />)
-    const bar = () => screen.getByTestId(`analytics-centrality-bar-${adapter.rankings[0].nodeId}`)
-    const widthBefore = Number(bar().getAttribute('width'))
+    const maxScore = adapter.rankings[0]!.score
+    const domainOf = () =>
+      (latestVegaSpec() as { encoding: { x: { scale: { domain: number[] } } } }).encoding.x.scale.domain
+    expect(domainOf()).toEqual([0, maxScore])
     fireEvent.click(screen.getByTestId('chart-zoom-in'))
-    expect(Number(bar().getAttribute('width'))).toBeGreaterThan(widthBefore)
+    const narrowed = domainOf()
+    expect(narrowed[0]).toBe(0)
+    expect(narrowed[1]).toBeLessThan(maxScore)
     fireEvent.click(screen.getByTestId('chart-fit'))
-    expect(Number(bar().getAttribute('width'))).toBe(widthBefore)
+    expect(domainOf()).toEqual([0, maxScore])
   })
 
   it('zoom-out is disabled at the full extent and zoom clamps at the maximum', () => {
@@ -166,7 +188,7 @@ describe('chart footer control parity — zoom behavior', () => {
 })
 
 describe('chart footer control parity — mode behavior', () => {
-  it('View (default) ignores mark clicks; Select enables click-to-inspect', () => {
+  it('View (default) compiles no pick param; Select compiles it and routes clicks to onSelect', () => {
     const adapter = temporalAdapterFor('timeline')
     if (adapter.kind !== 'timeline') throw new Error('unexpected kind')
     const selections: Array<string | null> = []
@@ -177,18 +199,22 @@ describe('chart footer control parity — mode behavior', () => {
         onSelect={(next) => selections.push(next)}
       />,
     )
-    // Default mode is View (hover only).
+    // Default mode is View (hover only): no click-select param, no listeners.
     expect(screen.getByTestId('chart-mode-view').getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(screen.getByTestId(`temporal-timeline-item-${adapter.events[0].id}`))
-    expect(selections).toHaveLength(0)
+    expect(collectVegaParams(latestVegaSpec()).some((param) => param.name === 'pick')).toBe(false)
+    expect(latestVegaRender().signalListeners).toBeUndefined()
 
     fireEvent.click(screen.getByTestId('chart-mode-select'))
     expect(screen.getByTestId('chart-mode-select').getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(screen.getByTestId(`temporal-timeline-item-${adapter.events[0].id}`))
-    expect(selections).toEqual([adapter.events[0].id])
+    expect(collectVegaParams(latestVegaSpec()).some((param) => param.name === 'pick')).toBe(true)
+    const listeners = latestVegaRender().signalListeners
+    expect(listeners?.pick).toBeDefined()
+    // Simulate the Vega runtime reporting a point selection on the first event.
+    listeners!.pick!('pick', { id: [adapter.events[0]!.id] })
+    expect(selections).toEqual([adapter.events[0]!.id])
   })
 
-  it('gates centrality bar clicks on the Select mode', () => {
+  it('gates centrality bar click selection on the Select mode', () => {
     const adapter = centralityAdapter()
     if (adapter.kind !== 'centrality') throw new Error('unexpected kind')
     const selections: Array<string | null> = []
@@ -199,11 +225,12 @@ describe('chart footer control parity — mode behavior', () => {
         onSelect={(next) => selections.push(next)}
       />,
     )
-    fireEvent.click(screen.getByTestId(`analytics-centrality-bar-${adapter.rankings[0].nodeId}`))
-    expect(selections).toHaveLength(0)
+    expect(collectVegaParams(latestVegaSpec()).some((param) => param.name === 'pick')).toBe(false)
     fireEvent.click(screen.getByTestId('chart-mode-select'))
-    fireEvent.click(screen.getByTestId(`analytics-centrality-bar-${adapter.rankings[0].nodeId}`))
-    expect(selections).toEqual([adapter.rankings[0].nodeId])
+    expect(collectVegaParams(latestVegaSpec()).some((param) => param.name === 'pick')).toBe(true)
+    const listeners = latestVegaRender().signalListeners
+    listeners!.pick!('pick', { id: [adapter.rankings[0]!.nodeId] })
+    expect(selections).toEqual([adapter.rankings[0]!.nodeId])
   })
 })
 

@@ -4,9 +4,11 @@
  *
  * `VisualizationControlState` is the ONLY product-level control surface: UI
  * (and later AI, deferred per §9.3/W6-04) patches this validated state, never
- * arbitrary Recharts props, SVG attributes, or Sigma internals (A9). The
- * chart engine is the documented §7.1 Recharts/SVG fallback, so the renderer
- * enum carries `'recharts-svg' | 'svg' | 'sigma'`.
+ * arbitrary Vega-Lite specs, renderer props, or Sigma internals (A9). The
+ * chart engine is Vega-Lite (plan
+ * `2026-08-22-semantica-vega-lite-chart-engine-v1`, which amends the parent
+ * plan's §7.1 Recharts/SVG fallback), so the renderer enum carries
+ * `'vega-svg' | 'sigma'`.
  *
  * Validation is fail-closed: unknown keys, wrong enum values, or out-of-range
  * numbers are rejected and the previous state is kept.
@@ -14,7 +16,7 @@
 
 import { ASIMOV_GRID_UNIT_PX } from './asimov-visualization-spatial'
 
-export type VisualizationRendererId = 'recharts-svg' | 'svg' | 'sigma'
+export type VisualizationRendererId = 'vega-svg' | 'sigma'
 
 export type VisualizationMarkType = 'point' | 'bar' | 'line' | 'rule'
 
@@ -54,7 +56,7 @@ export const CHART_ZOOM_MAX = 4
 export const CHART_ZOOM_STEP = 1.25
 
 export const DEFAULT_VISUALIZATION_CONTROL_STATE: VisualizationControlState = {
-  renderer: 'svg',
+  renderer: 'vega-svg',
   background: 'transparent',
   border: true,
   snapLayoutToGrid: true,
@@ -65,7 +67,7 @@ export const DEFAULT_VISUALIZATION_CONTROL_STATE: VisualizationControlState = {
   interaction: { hover: true, select: false, zoom: true, pan: true, zoomFactor: CHART_ZOOM_MIN, mode: 'view' },
 }
 
-const RENDERERS: readonly VisualizationRendererId[] = ['recharts-svg', 'svg', 'sigma']
+const RENDERERS: readonly VisualizationRendererId[] = ['vega-svg', 'sigma']
 const MARK_TYPES: readonly VisualizationMarkType[] = ['point', 'bar', 'line', 'rule']
 
 const TOP_LEVEL_KEYS = new Set([

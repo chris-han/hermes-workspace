@@ -1,6 +1,7 @@
 /**
  * W3/W6: renderer-neutral VisualizationControlState validation tests and
- * W6-03 deterministic compilation tests for the Recharts/SVG compiler.
+ * W6-03 deterministic compilation tests for the Vega-Lite compiler (plan
+ * `2026-08-22-semantica-vega-lite-chart-engine-v1`).
  */
 
 import { describe, expect, it } from 'vitest'
@@ -10,7 +11,11 @@ import {
   applyVisualizationControlPatch,
   validateVisualizationControlPatch,
 } from '../visualization/visualization-control-state'
-import { compileAsimovChartConfig } from '../visualization/recharts-svg/asimov-chart-compiler'
+import {
+  asimovVegaConfig,
+  buildCentralitySpec,
+} from '../visualization/vega-lite/asimov-vega-compiler'
+import { ASIMOV_VISUALIZATION_THEME } from '../visualization/asimov-visualization-theme'
 
 describe('visualization control state validation', () => {
   it('accepts the default state as a valid (empty) patch target', () => {
@@ -46,7 +51,7 @@ describe('visualization control state validation', () => {
 
   it('rejects invalid enum values', () => {
     for (const patch of [
-      { renderer: 'vega-svg' },
+      { renderer: 'recharts-svg' },
       { renderer: 'canvas' },
       { palette: 'tableau-10' },
       { background: 'white' },
@@ -81,43 +86,59 @@ describe('visualization control state validation', () => {
     }
   })
 
-  it('accepts the fallback-path renderer enum only', () => {
-    for (const renderer of ['recharts-svg', 'svg', 'sigma'] as const) {
+  it('accepts the Vega-Lite engine renderer enum only', () => {
+    for (const renderer of ['vega-svg', 'sigma'] as const) {
       expect(validateVisualizationControlPatch({ renderer }).ok).toBe(true)
     }
   })
 })
 
-describe('deterministic chart compilation (W6-03 / A12)', () => {
+describe('deterministic Vega-Lite compilation (W6-03 / A12)', () => {
   it('compiles the same control state to a deeply-equal config', () => {
-    const first = compileAsimovChartConfig(DEFAULT_VISUALIZATION_CONTROL_STATE)
-    const second = compileAsimovChartConfig(DEFAULT_VISUALIZATION_CONTROL_STATE)
+    const first = asimovVegaConfig({ controls: DEFAULT_VISUALIZATION_CONTROL_STATE })
+    const second = asimovVegaConfig({ controls: DEFAULT_VISUALIZATION_CONTROL_STATE })
     expect(second).toEqual(first)
   })
 
-  it('compiles control changes into renderer state deterministically', () => {
-    const base = compileAsimovChartConfig(DEFAULT_VISUALIZATION_CONTROL_STATE)
+  it('compiles control changes into the spec config deterministically', () => {
+    const base = asimovVegaConfig({ controls: DEFAULT_VISUALIZATION_CONTROL_STATE }) as {
+      background: string
+      axis: { grid: boolean }
+    }
     expect(base.background).toBe('transparent')
-    expect(base.border).toContain('var(--asimov-border)')
-    expect(base.axis.visibleX).toBe(true)
+    expect(base.axis.grid).toBe(true)
 
     const { state } = applyVisualizationControlPatch(DEFAULT_VISUALIZATION_CONTROL_STATE, {
-      border: false,
-      axes: { x: false },
+      axes: { guides: false },
       mark: { size: 9 },
     })
-    const compiled = compileAsimovChartConfig(state)
-    expect(compiled.border).toBe('none')
-    expect(compiled.axis.visibleX).toBe(false)
-    expect(compiled.mark.size).toBe(9)
-    expect(compileAsimovChartConfig(state)).toEqual(compiled)
+    const compiled = asimovVegaConfig({ controls: state }) as { axis: { grid: boolean } }
+    expect(compiled.axis.grid).toBe(false)
+    expect(asimovVegaConfig({ controls: state })).toEqual(compiled)
   })
 
-  it('sources categorical colors only from the canonical series range', () => {
-    const config = compileAsimovChartConfig(DEFAULT_VISUALIZATION_CONTROL_STATE)
-    expect(config.colors.categorical.length).toBe(10)
-    for (const color of config.colors.categorical) {
-      expect(color.startsWith('var(--asimov-visualization-swatch-')).toBe(true)
+  it('sources categorical colors only from the canonical series swatch values', () => {
+    const config = asimovVegaConfig({ controls: DEFAULT_VISUALIZATION_CONTROL_STATE }) as {
+      range: { category: string[] }
     }
+    expect(config.range.category).toEqual([...ASIMOV_VISUALIZATION_THEME.seriesValues])
+  })
+
+  it('narrows the centrality x-domain deterministically under zoom', () => {
+    const rankings = [
+      { nodeId: 'a', score: 4, rank: 1 },
+      { nodeId: 'b', score: 2, rank: 2 },
+    ]
+    const full = buildCentralitySpec(rankings, { controls: DEFAULT_VISUALIZATION_CONTROL_STATE }) as {
+      encoding: { x: { scale: { domain: number[] } } }
+    }
+    expect(full.encoding.x.scale.domain).toEqual([0, 4])
+    const { state } = applyVisualizationControlPatch(DEFAULT_VISUALIZATION_CONTROL_STATE, {
+      interaction: { zoomFactor: 2 },
+    })
+    const zoomed = buildCentralitySpec(rankings, { controls: state }) as {
+      encoding: { x: { scale: { domain: number[] } } }
+    }
+    expect(zoomed.encoding.x.scale.domain).toEqual([0, 2])
   })
 })

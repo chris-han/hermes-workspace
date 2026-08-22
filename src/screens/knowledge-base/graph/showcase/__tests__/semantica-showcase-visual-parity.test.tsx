@@ -32,6 +32,20 @@ vi.mock('sigma', () => ({
   },
 }))
 
+// Vega-Lite engine (plan `2026-08-22-semantica-vega-lite-chart-engine-v1`):
+// the Vega runtime is not rendered under jsdom; renderer/DOM assertions read
+// the deterministic compiled spec captured by this double (A12).
+vi.mock('react-vega', async () => {
+  const React = await import('react')
+  const capture = await import('./vega-capture')
+  return {
+    VegaEmbed: (props: Record<string, unknown>) => {
+      capture.captureVega(props)
+      return React.createElement('div', { 'data-testid': 'vega-embed-stub' })
+    },
+  }
+})
+
 vi.mock('@/lib/semantier-auth', () => ({
   fetchSemantierAuthStatus: () => Promise.resolve({ authenticated: false, profile: null }),
   semantierAuthQueryKey: ['semantier-auth'],
@@ -49,12 +63,14 @@ import { SemanticaShowcaseScreen } from '../semantica-showcase-screen'
 import { getDataset } from '../semantica-showcase-dataset'
 import { computeGraphTopology } from '../../layouts/graph-topology-layouts'
 import type { ShowcaseGraphModel } from '../semantica-showcase-types'
+import { latestVegaSpec, resetCapturedVega } from './vega-capture'
 
 const SUITE = '03-Complete-Visualization-Suite'
 const TEMPORAL_KG = '10-Temporal-Knowledge-Graphs'
 
 afterEach(() => {
   cleanup()
+  resetCapturedVega()
 })
 
 function suiteTemporal() {
@@ -278,17 +294,22 @@ describe('visual parity — analytics adapter model', () => {
 /* ------------------------------------------------------------------ */
 
 describe('visual parity — timeline renderer', () => {
-  it('mounts a timeline visualization with one lane per event type and items keyed by event id', () => {
+  it('mounts a Gantt visualization with one bar per event and lanes in adapter order', () => {
     const adapter = adaptTemporalFixture(suiteTemporal(), 'timeline')
     if (adapter.kind !== 'timeline') throw new Error('unexpected kind')
     render(<TemporalShowcaseView adapter={adapter} />)
     expect(screen.getByTestId('temporal-timeline-visualization')).toBeDefined()
-    const lanes = screen.getAllByTestId(/^temporal-timeline-lane-/)
-    expect(lanes.length).toBe(adapter.lanes.length)
-    expect(lanes.length).toBeGreaterThan(1)
-    for (const event of adapter.events) {
-      expect(screen.getByTestId(`temporal-timeline-item-${event.id}`)).toBeDefined()
+    const spec = latestVegaSpec() as {
+      mark: { type: string }
+      data: { values: Array<{ id: string; lane: string }> }
+      encoding: { y: { sort: string[] } }
     }
+    expect(spec.mark.type).toBe('bar')
+    expect(spec.data.values.length).toBe(adapter.events.length)
+    expect(spec.data.values.map((row) => row.id).sort()).toEqual(
+      adapter.events.map((event) => event.id).sort(),
+    )
+    expect(spec.encoding.y.sort).toEqual(adapter.lanes.map((lane) => lane.type))
   })
 })
 
@@ -300,36 +321,34 @@ describe('visual parity — versions renderer', () => {
     if (adapter.kind !== 'version-history') throw new Error('unexpected kind')
     render(<TemporalShowcaseView adapter={adapter} />)
     expect(screen.getByTestId('temporal-versions-visualization')).toBeDefined()
-    // Connected sequence: a connector joins the rungs along the date axis.
-    expect(screen.getByTestId('temporal-versions-connector')).toBeDefined()
-    const rungs = screen.getAllByTestId(/^temporal-version-rung-/)
-    expect(rungs.length).toBe(adapter.versions.length)
-    expect(rungs.map((rung) => rung.getAttribute('data-testid'))).toEqual(
-      adapter.versions.map((version) => `temporal-version-rung-${version.id}`),
+    // Connected sequence: a line layer joins the point marks along the date axis.
+    const spec = latestVegaSpec() as {
+      layer: Array<{ mark: { type: string }; data: { values: Array<{ id: string }> } }>
+    }
+    expect(spec.layer.map((layer) => layer.mark.type)).toEqual(['line', 'point'])
+    expect(spec.layer[1]!.data.values.map((row) => row.id)).toEqual(
+      adapter.versions.map((version) => version.id),
     )
   })
 })
 
 describe('visual parity — dashboard renderer', () => {
-  it('mounts lifecycle, dual-series activity, and metric-series visual regions', () => {
+  it('mounts lifecycle, dual-series activity, and metric-series panels', () => {
     const adapter = adaptTemporalFixture(suiteTemporal(), 'temporal-dashboard')
     if (adapter.kind !== 'temporal-dashboard') throw new Error('unexpected kind')
-    const { container } = render(<TemporalShowcaseView adapter={adapter} />)
-    expect(screen.getByTestId('temporal-dashboard-lifelines')).toBeDefined()
-    // One ranged bar per entity.
-    for (const lifeline of adapter.lifelines) {
-      expect(screen.getByTestId(`temporal-dashboard-lifeline-${lifeline.id}`)).toBeDefined()
+    render(<TemporalShowcaseView adapter={adapter} />)
+    const spec = latestVegaSpec() as {
+      vconcat: Array<{ mark: { type: string }; data: { values: unknown[] } }>
     }
-    expect(screen.getByTestId('temporal-dashboard-activity')).toBeDefined()
-    // Both upstream activity series rendered as line curves.
-    const activityRegion = screen.getByTestId('temporal-dashboard-activity')
-    expect(activityRegion.querySelectorAll('.recharts-line-curve').length).toBe(2)
-    expect(screen.getByTestId('temporal-dashboard-metrics')).toBeDefined()
-    const metricsRegion = screen.getByTestId('temporal-dashboard-metrics')
-    expect(metricsRegion.querySelectorAll('.recharts-line-curve').length).toBe(
-      adapter.metricsSeries?.length ?? 0,
-    )
-    expect(container.querySelectorAll('svg').length).toBeGreaterThan(0)
+    expect(spec.vconcat.length).toBe(3)
+    // One ranged bar per entity.
+    expect(spec.vconcat[0]!.mark.type).toBe('bar')
+    expect(spec.vconcat[0]!.data.values.length).toBe(adapter.lifelines.length)
+    // Both upstream activity series preserved.
+    expect(spec.vconcat[1]!.data.values.length).toBe(adapter.activity.length * 2)
+    // One row per metric point per series.
+    const metricPoints = (adapter.metricsSeries ?? []).reduce((sum, s) => sum + s.values.length, 0)
+    expect(spec.vconcat[2]!.data.values.length).toBe(metricPoints)
   })
 })
 
@@ -387,11 +406,16 @@ describe('visual parity — centrality renderer', () => {
     if (adapter.kind !== 'centrality') throw new Error('unexpected kind')
     render(<AnalyticsShowcaseView adapter={adapter} />)
     expect(screen.getByTestId('analytics-centrality-visualization')).toBeDefined()
-    const bars = screen.getAllByTestId(/^analytics-centrality-bar-/)
-    expect(bars.length).toBe(adapter.rankings.length)
-    expect(bars.map((bar) => bar.getAttribute('data-testid'))).toEqual(
-      adapter.rankings.map((ranking) => `analytics-centrality-bar-${ranking.nodeId}`),
+    const spec = latestVegaSpec() as {
+      mark: { type: string }
+      data: { values: Array<{ nodeId: string }> }
+      encoding: { y: { sort: string[] } }
+    }
+    expect(spec.mark.type).toBe('bar')
+    expect(spec.data.values.map((row) => row.nodeId)).toEqual(
+      adapter.rankings.map((ranking) => ranking.nodeId),
     )
+    expect(spec.encoding.y.sort).toEqual(adapter.rankings.map((ranking) => ranking.nodeId))
   })
 })
 

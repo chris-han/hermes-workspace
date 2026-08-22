@@ -193,10 +193,10 @@ export function DocumentRendererSlot({
         const reactSpecifier = '@file-viewer/react'
         const presetSpecifier = '@file-viewer/preset-office'
         const [reactMod, presetMod] = await Promise.all([
-          import(/* webpackChunkName: "flyfish-file-viewer" */ reactSpecifier).catch(
+          import(/* webpackChunkName: "flyfish-file-viewer" */ /* @vite-ignore */ reactSpecifier).catch(
             () => null,
           ),
-          import(/* webpackChunkName: "flyfish-preset-office" */ presetSpecifier).catch(
+          import(/* webpackChunkName: "flyfish-preset-office" */ /* @vite-ignore */ presetSpecifier).catch(
             () => null,
           ),
         ])

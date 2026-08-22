@@ -663,6 +663,14 @@
   background: transparent;
 }
 
+/* Vega embeds default to inline-block, which collapses container-relative
+   sizing to zero; the chart engine sizes to the viewport (width: 'container'
+   + fit-x), so the embed wrapper must be a full-width block. */
+.semantica-showcase-reference .showcase-viz-viewport .vega-embed {
+  display: block;
+  width: 100%;
+}
+
 /* Per-canvas footer: identical geometry/fill to the Sigma canvas footer
    (`showcase-ref-canvas-footer`) — opaque panel back-fill, natural height
    from the shared padding (8px 12px), border-top from the canonical token.

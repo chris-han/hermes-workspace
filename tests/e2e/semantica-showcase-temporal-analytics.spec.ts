@@ -65,17 +65,19 @@ test.describe('Semantica showcase — temporal/analytics notebook parity (§10.5
     await page.getByRole('button', { name: 'Dashboard' }).click()
     await expect(page.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByTestId('temporal-showcase-view')).toContainText('Dashboard')
-    // Canvas-level visualization: lifelines + dual-series activity + metric series.
-    await expect(page.getByTestId('temporal-dashboard-lifelines')).toBeVisible()
-    await expect(page.getByTestId('temporal-dashboard-lifeline-Lab_Alpha')).toBeVisible()
-    await expect(page.getByTestId('temporal-dashboard-activity')).toBeVisible()
+    // Canvas-level visualization: Vega-Lite vconcat panels (lifelines Gantt +
+    // dual-series activity + metric series) rendered as Vega scenegraph marks.
+    const dashboardPanels = page.getByTestId('temporal-dashboard-panels')
+    await expect(dashboardPanels).toBeVisible()
+    await expect(dashboardPanels.locator('[role="graphics-document"]')).toBeVisible()
     await expect(
-      page.getByTestId('temporal-dashboard-activity').locator('.recharts-line-curve'),
-    ).toHaveCount(2)
-    await expect(page.getByTestId('temporal-dashboard-metrics')).toBeVisible()
-    await expect(
-      page.getByTestId('temporal-dashboard-metrics').locator('.recharts-line-curve').first(),
+      dashboardPanels.locator('[role="graphics-symbol"][aria-roledescription="bar"]').first(),
     ).toBeVisible()
+    // One lifeline bar per entity.
+    const lifelineBars = dashboardPanels.locator(
+      '[role="graphics-symbol"][aria-roledescription="bar"]',
+    )
+    expect(await lifelineBars.count()).toBeGreaterThan(0)
 
     await page.getByRole('button', { name: 'Evolution' }).click()
     await expect(page.getByRole('button', { name: 'Evolution' })).toHaveAttribute('aria-pressed', 'true')
@@ -92,12 +94,15 @@ test.describe('Semantica showcase — temporal/analytics notebook parity (§10.5
     await slider.fill('12')
     await expect(frameLabel).not.toHaveText(firstFrame ?? '')
 
-    // Timeline: one lane per event type with time-positioned point items.
+    // Timeline: Vega-Lite Gantt — one bar per event, lanes on the Y axis.
     await page.getByRole('button', { name: 'Timeline' }).click()
     await expect(page.getByTestId('temporal-timeline-visualization')).toBeVisible()
-    await expect(page.getByTestId('temporal-timeline-lane-WORKS_AT')).toBeVisible()
-    await expect(page.getByTestId('temporal-timeline-lane-AUTHORED')).toBeVisible()
-    await expect(page.getByTestId('temporal-timeline-item-event-rel-0')).toBeVisible()
+    const gantt = page.getByTestId('temporal-timeline-gantt')
+    await expect(gantt).toBeVisible()
+    const ganttBars = gantt.locator('[role="graphics-symbol"][aria-roledescription="bar"]')
+    expect(await ganttBars.count()).toBe(10)
+    // Lane labels render as Vega axis text.
+    await expect(gantt.locator('.mark-text', { hasText: 'WORKS_AT' }).first()).toBeVisible()
     // The center canvas shows no duplicated left-rail inventory lists.
     const temporalCenter = page.locator('.showcase-ref-center')
     await expect(temporalCenter.locator('[data-testid="temporal-showcase-view"] ul')).toHaveCount(0)
@@ -120,25 +125,23 @@ test.describe('Semantica showcase — temporal/analytics notebook parity (§10.5
     // MODE Select enables mark click-to-inspect; View ignores mark clicks.
     await timelineFooter.getByTestId('chart-mode-select').click()
     await expect(timelineFooter.getByTestId('chart-mode-select')).toHaveAttribute('aria-pressed', 'true')
-    await page.getByTestId('temporal-timeline-item-event-rel-0').click()
+    await gantt.locator('[role="graphics-symbol"][aria-label*="event-rel-0"]').click()
     await expect(page.getByTestId('inspector-fields').locator('dt', { hasText: /^id$/ })).toBeVisible()
 
     // 3. Analytics segmented control: Centrality / Communities.
     await page.getByTestId('showcase-tab-analytics').click()
     await expect(page.getByTestId('analytics-showcase-view')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Centrality' })).toHaveAttribute('aria-pressed', 'true')
-    // Canvas-level visualization: ranked bar marks exist (score descending).
+    // Canvas-level visualization: Vega-Lite ranked bars (score descending).
     await expect(page.getByTestId('analytics-centrality-visualization')).toBeVisible()
-    await expect(page.getByTestId('analytics-centrality-bar-e1')).toBeVisible()
-    const barOrder = await page
-      .locator('[data-testid^="analytics-centrality-bar-"]')
-      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')))
-    expect(barOrder).toEqual([
-      'analytics-centrality-bar-e1',
-      'analytics-centrality-bar-e3',
-      'analytics-centrality-bar-e2',
-      'analytics-centrality-bar-e4',
-    ])
+    const centralityBars = page
+      .getByTestId('analytics-centrality-bars')
+      .locator('[role="graphics-symbol"][aria-roledescription="bar"]')
+    expect(await centralityBars.count()).toBe(4)
+    const barLabels = await centralityBars.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('aria-label') ?? ''),
+    )
+    expect(barLabels.map((label) => /nodeId: (\w+)/.exec(label)?.[1])).toEqual(['e1', 'e3', 'e2', 'e4'])
     // Centrality footer parity: MODE / ZOOM / FIT / gear with a working zoom.
     // The footer is portaled to the outer center panel card (Sigma parity),
     // not nested inside the shell.

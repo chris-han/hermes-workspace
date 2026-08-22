@@ -104,18 +104,14 @@ test.describe('Semantica showcase — Asimov visualization lattice (W7-03)', () 
     expect(footerStyle.paddingTop).toBe('8px')
     expect(footerStyle.paddingLeft).toBe('12px')
 
-    // Lane baselines snap to the lattice…
-    const laneCy = await page
-      .locator('[data-testid^="temporal-timeline-lane-"] circle')
-      .first()
-      .getAttribute('cy')
-    expect(Number(laneCy) % LATTICE).toBe(0)
-    // …while event mark X positions stay data-driven (not quantized).
-    const cxValues = await page
-      .locator('[data-testid^="temporal-timeline-item-"]')
-      .evaluateAll((nodes) => nodes.map((node) => Number(node.getAttribute('cx'))))
-    expect(cxValues.length).toBeGreaterThan(0)
-    expect(cxValues.some((cx) => cx % LATTICE !== 0)).toBe(true)
+    // Vega-Lite Gantt bars render as scenegraph rect marks whose X extents
+    // stay data-driven (continuous time scale, never lattice-quantized; A1).
+    const barWidths = await page
+      .getByTestId('temporal-timeline-gantt')
+      .locator('[role="graphics-symbol"][aria-roledescription="bar"]')
+      .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().width))
+    expect(barWidths.length).toBeGreaterThan(0)
+    expect(barWidths.some((width) => width % LATTICE !== 0)).toBe(true)
   })
 
   test('sigma submodes mount the shared shell/footer and keep the grid visible', async ({ page }) => {

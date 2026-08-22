@@ -20,7 +20,18 @@
 
 export interface CapturedVegaRender {
   spec: Record<string, unknown>
-  signalListeners?: Record<string, (name: string, value: unknown) => void>
+  onEmbed?: (result: unknown) => void
+}
+
+/** Fake vega-embed result: runs the captured `pick` listener synchronously. */
+export function fakeVegaEmbedResult(pickValue: unknown): { view: { addSignalListener: (n: string, fn: (n: string, v: unknown) => void) => void } } {
+  return {
+    view: {
+      addSignalListener: (name, fn) => {
+        if (name === 'pick') fn('pick', pickValue)
+      },
+    },
+  }
 }
 
 export const capturedVegaRenders: CapturedVegaRender[] = []
@@ -28,7 +39,7 @@ export const capturedVegaRenders: CapturedVegaRender[] = []
 export function captureVega(props: Record<string, unknown>): void {
   capturedVegaRenders.push({
     spec: props.spec as Record<string, unknown>,
-    signalListeners: props.signalListeners as CapturedVegaRender['signalListeners'],
+    onEmbed: props.onEmbed as CapturedVegaRender['onEmbed'],
   })
 }
 

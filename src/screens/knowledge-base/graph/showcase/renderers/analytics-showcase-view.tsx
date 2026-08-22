@@ -109,14 +109,22 @@ function CentralityBars({
           <VegaEmbed
             spec={spec}
             options={VEGA_EMBED_OPTIONS}
+            // react-vega v8 has no `signalListeners` prop; the Vega `pick`
+            // param listener attaches via `onEmbed` in Select mode only.
             {...(controls.interaction.mode === 'select' && onSelect
               ? {
-                  signalListeners: {
-                    pick: (_name: string, value: unknown) => {
+                  onEmbed: (result: unknown) => {
+                    const view = (
+                      result as {
+                        view: { addSignalListener: (n: string, fn: (n: string, v: unknown) => void) => void }
+                      } | null
+                    )?.view
+                    if (!view) return
+                    view.addSignalListener('pick', (_name: string, value: unknown) => {
                       const ids = (value as { id?: unknown[] })?.id
                       const next = Array.isArray(ids) && ids.length > 0 ? String(ids[0]) : null
                       onSelect(next === selection ? null : next)
-                    },
+                    })
                   },
                 }
               : {})}

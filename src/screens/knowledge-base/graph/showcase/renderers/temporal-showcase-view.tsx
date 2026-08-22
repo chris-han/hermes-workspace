@@ -39,20 +39,33 @@ export interface TemporalShowcaseSelectionProps {
   onSelect?: (selection: string | null) => void
 }
 
-/** Signal-listener props wiring the Vega `pick` param into the selection flow. */
-function pickSignalProps(
+interface VegaEmbedResultLike {
+  view: {
+    addSignalListener: (name: string, handler: (name: string, value: unknown) => void) => unknown
+  }
+}
+
+/**
+ * Wire the Vega `pick` param into the selection flow. react-vega v8 exposes
+ * no `signalListeners` prop, so the listener attaches via `onEmbed` (the
+ * embed re-runs whenever the compiled spec changes, keeping the closure
+ * fresh). Present only in Select mode (View = hover only).
+ */
+function pickEmbedProps(
   controls: VisualizationControlState,
   selection: string | null | undefined,
   onSelect: ((selection: string | null) => void) | undefined,
 ) {
   if (controls.interaction.mode !== 'select' || !onSelect) return {}
   return {
-    signalListeners: {
-      pick: (_name: string, value: unknown) => {
+    onEmbed: (result: unknown) => {
+      const view = (result as VegaEmbedResultLike | null)?.view
+      if (!view) return
+      view.addSignalListener('pick', (_name: string, value: unknown) => {
         const ids = (value as { id?: unknown[] })?.id
         const next = Array.isArray(ids) && ids.length > 0 ? String(ids[0]) : null
         onSelect(next === selection ? null : next)
-      },
+      })
     },
   }
 }
@@ -163,7 +176,7 @@ function TimelineGantt({
           <VegaEmbed
             spec={spec}
             options={VEGA_EMBED_OPTIONS}
-            {...pickSignalProps(controls, selection, onSelect)}
+            {...pickEmbedProps(controls, selection, onSelect)}
           />
         </div>
       </div>
@@ -201,7 +214,7 @@ function VersionsLadder({
           <VegaEmbed
             spec={spec}
             options={VEGA_EMBED_OPTIONS}
-            {...pickSignalProps(controls, selection, onSelect)}
+            {...pickEmbedProps(controls, selection, onSelect)}
           />
         </div>
       </div>
@@ -256,7 +269,7 @@ function DashboardCharts({
           <VegaEmbed
             spec={spec}
             options={VEGA_EMBED_OPTIONS}
-            {...pickSignalProps(controls, selection, onSelect)}
+            {...pickEmbedProps(controls, selection, onSelect)}
           />
         </div>
       </div>

@@ -23,7 +23,7 @@ import {
   DEFAULT_VISUALIZATION_CONTROL_STATE,
   applyVisualizationControlPatch,
 } from '../visualization/visualization-control-state'
-import { collectVegaParams, latestVegaRender, latestVegaSpec, resetCapturedVega } from './vega-capture'
+import { collectVegaParams, fakeVegaEmbedResult, latestVegaRender, latestVegaSpec, resetCapturedVega } from './vega-capture'
 
 vi.mock('sigma', () => ({
   default: class FakeSigma {
@@ -202,15 +202,15 @@ describe('chart footer control parity — mode behavior', () => {
     // Default mode is View (hover only): no click-select param, no listeners.
     expect(screen.getByTestId('chart-mode-view').getAttribute('aria-pressed')).toBe('true')
     expect(collectVegaParams(latestVegaSpec()).some((param) => param.name === 'pick')).toBe(false)
-    expect(latestVegaRender().signalListeners).toBeUndefined()
+    expect(latestVegaRender().onEmbed).toBeUndefined()
 
     fireEvent.click(screen.getByTestId('chart-mode-select'))
     expect(screen.getByTestId('chart-mode-select').getAttribute('aria-pressed')).toBe('true')
     expect(collectVegaParams(latestVegaSpec()).some((param) => param.name === 'pick')).toBe(true)
-    const listeners = latestVegaRender().signalListeners
-    expect(listeners?.pick).toBeDefined()
+    const onEmbed = latestVegaRender().onEmbed
+    expect(onEmbed).toBeDefined()
     // Simulate the Vega runtime reporting a point selection on the first event.
-    listeners!.pick!('pick', { id: [adapter.events[0]!.id] })
+    onEmbed!(fakeVegaEmbedResult({ id: [adapter.events[0]!.id] }))
     expect(selections).toEqual([adapter.events[0]!.id])
   })
 
@@ -228,8 +228,8 @@ describe('chart footer control parity — mode behavior', () => {
     expect(collectVegaParams(latestVegaSpec()).some((param) => param.name === 'pick')).toBe(false)
     fireEvent.click(screen.getByTestId('chart-mode-select'))
     expect(collectVegaParams(latestVegaSpec()).some((param) => param.name === 'pick')).toBe(true)
-    const listeners = latestVegaRender().signalListeners
-    listeners!.pick!('pick', { id: [adapter.rankings[0]!.nodeId] })
+    const onEmbed = latestVegaRender().onEmbed
+    onEmbed!(fakeVegaEmbedResult({ id: [adapter.rankings[0]!.nodeId] }))
     expect(selections).toEqual([adapter.rankings[0]!.nodeId])
   })
 })

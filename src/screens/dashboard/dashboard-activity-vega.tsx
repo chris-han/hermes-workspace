@@ -40,7 +40,7 @@ function buildActivitySpec(data: DashboardActivityDatum[]): VisualizationSpec {
 
   return {
     $schema: 'https://vega.github.io/schema/vega-lite/v6.json',
-    background: null,
+    background: 'transparent',
     autosize: { type: 'fit', contains: 'padding', resize: true },
     width: 'container',
     height: 176,

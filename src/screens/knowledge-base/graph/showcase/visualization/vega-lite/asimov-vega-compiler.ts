@@ -70,7 +70,11 @@ export function asimovVegaParams(controls: VisualizationControlState): PlainSpec
     })
   }
   if (controls.interaction.zoom || controls.interaction.pan) {
-    params.push({ name: 'grid', select: 'interval', bind: 'scales' })
+    params.push({
+      name: 'grid',
+      select: { type: 'interval', encodings: ['x'] },
+      bind: 'scales',
+    })
   }
   return params
 }
@@ -424,7 +428,7 @@ export function buildCentralitySpec(
       })),
     },
     params: asimovVegaParams(controls),
-    mark: { type: 'bar', tooltip: true, aria: true, height: { band: 0.6 }, cornerRadiusEnd: 2 },
+    mark: { type: 'bar', tooltip: true, aria: true, height: { band: 0.6 } },
     encoding: {
       y: {
         field: 'nodeId',

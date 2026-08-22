@@ -1,10 +1,10 @@
 import { chromium, expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { spawn } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
+
 
 test.setTimeout(240_000)
-
 
 type IdentityFixture = {
   fixtureToken: string
@@ -28,49 +28,16 @@ let identityFixture: IdentityFixture | null = null
 const remoteCdpEndpoint = process.env.PLAYWRIGHT_CDP_WS_ENDPOINT
   ?? process.env.HERMES_CDP_WS_ENDPOINT
   ?? ''
-
-function runIdentityFixture(args: string[]): Promise<{ stdout: string; code: number | null; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(fixturePython, [fixtureScript, ...args], { cwd: repositoryRoot })
-    let stdout = ''
-    let stderr = ''
-    child.stdout.setEncoding('utf8')
-    child.stderr.setEncoding('utf8')
-    child.stdout.on('data', (chunk: string) => { stdout += chunk })
-    child.stderr.on('data', (chunk: string) => { stderr += chunk })
-    child.on('error', reject)
-    child.on('close', (code) => resolve({ stdout, stderr, code }))
-  })
-}
-
-function teardownIdentityFixture(args: string[]): void {
-  // Teardown is best-effort: do not throw if it fails so an unrelated cleanup
-  // problem does not mask the real assertion failure above.
-  try {
-    const child = spawn(fixturePython, [fixtureScript, ...args], {
-      cwd: repositoryRoot,
-      stdio: 'ignore',
-    })
-    child.on('error', () => undefined)
-  } catch {
-    /* ignore */
-  }
-}
 let remoteBrowser: Awaited<ReturnType<typeof chromium.connectOverCDP>> | null = null
 let remotePage: import('@playwright/test').Page | null = null
 
 test.beforeAll(async () => {
-  const provisionResult = await runIdentityFixture([
-    '--auth-db-path', fixtureAuthDb, 'provision',
-  ])
-  if (provisionResult.code !== 0) {
-    throw new Error(
-      `identity fixture provision exited with code=${provisionResult.code}\n` +
-      `stderr=${provisionResult.stderr || '<empty>'}\n` +
-      `stdout=${provisionResult.stdout || '<empty>'}`,
-    )
-  }
-  identityFixture = JSON.parse(provisionResult.stdout) as IdentityFixture
+  identityFixture = JSON.parse(execFileSync(fixturePython, [
+    fixtureScript, '--auth-db-path', fixtureAuthDb, 'provision',
+  ], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  })) as IdentityFixture
   if (remoteCdpEndpoint.trim()) {
     remoteBrowser = await chromium.connectOverCDP(remoteCdpEndpoint, { timeout: 30_000 })
     const remoteContext = remoteBrowser.contexts()[0] ?? await remoteBrowser.newContext()
@@ -83,13 +50,14 @@ test.afterAll(async () => {
     await remoteBrowser.close()
   }
   if (!identityFixture) return
-  teardownIdentityFixture([
+  execFileSync(fixturePython, [
+    fixtureScript,
     '--auth-db-path', fixtureAuthDb,
     'teardown',
     '--fixture-token', identityFixture.fixtureToken,
     '--user-id', identityFixture.userId,
     '--organization-id', identityFixture.organizationId,
-  ])
+  ], { cwd: repositoryRoot, stdio: 'pipe' })
 })
 
 test('authenticated ContextGraph Studio exposes the real seven-screen MVL', async ({ page: runnerPage }) => {

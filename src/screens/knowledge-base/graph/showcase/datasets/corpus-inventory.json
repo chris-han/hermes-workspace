@@ -100,11 +100,13 @@
       "cell_count": 12,
       "license": "MIT",
       "decision": "include",
-      "include_reason": "Hard-coded typed KG: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Location: San Francisco) + 3 typed relationships (knows, works_for, located_in). Plan §3.1: 'candidate for existing four lenses'. Temporal/analytics lenses excluded per plan §3.1.",
+      "include_reason": "Hard-coded typed KG + notebook visualization suite: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Location: San Francisco) + 3 typed relationships (knows, works_for, located_in). Cell[14] defines the temporal evolution sample (entities, relationships, timestamps, metrics) and cell[3] computes centrality/communities for the analytics notebook cases. Source-derived notebook-parity coverage includes knowledge graph, temporal, and analytics lenses.",
       "declared_lenses": [
-        "knowledge-graph"
+        "knowledge-graph",
+        "temporal",
+        "analytics"
       ],
-      "extractor": "cookbook_graph",
+      "extractor": "cookbook_temporal",
       "referenced_artifacts": [],
       "decision_route": "candidate-kg"
     },
@@ -164,11 +166,12 @@
       "cell_count": 18,
       "license": "MIT",
       "decision": "include",
-      "include_reason": "Hard-coded temporal typed KG: cell[4] defines 9 entities (Organization: TechCorp/InnovateInc/FutureSystems; Person: Alice/Bob/Charlie; Product: HomePC/SoftOS/SmartAI) + 9 typed relationships with timestamps (founded, ceo_of, cto_of, launched, acquired). Plan §3.1: 'candidate-kg only; temporal visualizer excluded' — eligible for knowledge-graph lens only (timestamp metadata dropped).",
+      "include_reason": "Hard-coded temporal typed KG: cell[4] defines 9 entities (Organization: TechCorp/InnovateInc/FutureSystems; Person: Alice/Bob/Charlie; Product: HomePC/SoftOS/SmartAI) + 9 typed relationships with timestamps (founded, ceo_of, cto_of, launched, acquired). Cell[14] defines the timeline and version-history notebook outputs. Notebook-parity coverage includes knowledge graph and temporal lenses.",
       "declared_lenses": [
-        "knowledge-graph"
+        "knowledge-graph",
+        "temporal"
       ],
-      "extractor": "cookbook_graph",
+      "extractor": "cookbook_temporal",
       "referenced_artifacts": [],
       "decision_route": "candidate-kg"
     },

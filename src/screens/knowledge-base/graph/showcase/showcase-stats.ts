@@ -63,6 +63,16 @@ const DEFAULT_LABELS: Record<ShowcaseVisualizationMode, ShowcaseRendererLabels> 
     renderer: 'Sigma/Graphology (readonly core)',
     projection: 'n/a',
   },
+  temporal: {
+    layout: 'timeline',
+    renderer: 'native timeline',
+    projection: 'event ordering',
+  },
+  analytics: {
+    layout: 'ranking',
+    renderer: 'native analytics',
+    projection: 'deterministic scoring',
+  },
 }
 
 /**

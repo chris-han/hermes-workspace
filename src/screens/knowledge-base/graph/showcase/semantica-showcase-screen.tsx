@@ -10,12 +10,16 @@ import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
 import { getTheme, setTheme, type ThemeId } from '@/lib/theme'
 
 import { adaptKgFixture } from './adapters/kg-showcase-adapter'
+import { adaptAnalyticsFixture } from './adapters/analytics-showcase-adapter'
 import { adaptOntologyFixture } from './adapters/ontology-showcase-adapter'
 import { adaptEmbeddingFixture } from './adapters/embedding-showcase-adapter'
+import { adaptTemporalFixture } from './adapters/temporal-showcase-adapter'
 import { adaptSemanticNetworkFixture } from './adapters/semantic-network-showcase-adapter'
 import { KgShowcaseView } from './renderers/kg-showcase-view'
+import { AnalyticsShowcaseView } from './renderers/analytics-showcase-view'
 import { OntologyShowcaseView } from './renderers/ontology-showcase-view'
 import { EmbeddingShowcaseView } from './renderers/embedding-showcase-view'
+import { TemporalShowcaseView } from './renderers/temporal-showcase-view'
 import { SemanticNetworkShowcaseView } from './renderers/semantic-network-showcase-view'
 import { getDataset, getDatasetRegistry } from './semantica-showcase-dataset'
 import { SigmaControls } from './sigma-controls'
@@ -36,6 +40,8 @@ import type {
   ShowcaseMetric,
   ShowcaseProvenanceBadge,
   ShowcaseVisualizationMode,
+  AnalyticsShowcaseSubmode,
+  TemporalShowcaseSubmode,
 } from './semantica-showcase-types'
 import type { SigmaGraphReadonlySelection } from '../sigma-graph-readonly'
 import type { SigmaGraphReadonlyViewportController } from '../sigma-graph-readonly'
@@ -49,6 +55,8 @@ const MODES: ReadonlyArray<{ mode: ShowcaseVisualizationMode; label: string }> =
   { mode: 'ontology', label: 'Ontology' },
   { mode: 'embedding', label: 'Embedding' },
   { mode: 'semantic-network', label: 'Semantic Network' },
+  { mode: 'temporal', label: 'Temporal' },
+  { mode: 'analytics', label: 'Analytics' },
 ]
 
 /**
@@ -62,6 +70,20 @@ const LENS_FALLBACK_ORDER: ReadonlyArray<ShowcaseVisualizationMode> = [
   'ontology',
   'embedding',
   'semantic-network',
+  'temporal',
+  'analytics',
+]
+
+const TEMPORAL_SUBMODE_ORDER: ReadonlyArray<TemporalShowcaseSubmode> = [
+  'timeline',
+  'version-history',
+  'temporal-dashboard',
+  'network-evolution',
+]
+
+const ANALYTICS_SUBMODE_ORDER: ReadonlyArray<AnalyticsShowcaseSubmode> = [
+  'centrality',
+  'communities',
 ]
 
 function pickFirstSupported(
@@ -75,6 +97,24 @@ function pickFirstSupported(
   throw new Error(
     'Showcase dataset has empty supportedLenses; this is a registry error.',
   )
+}
+
+function pickFirstSupportedTemporalSubmode(
+  supported: ReadonlyArray<TemporalShowcaseSubmode>,
+): TemporalShowcaseSubmode {
+  for (const candidate of TEMPORAL_SUBMODE_ORDER) {
+    if (supported.includes(candidate)) return candidate
+  }
+  return 'timeline'
+}
+
+function pickFirstSupportedAnalyticsSubmode(
+  supported: ReadonlyArray<AnalyticsShowcaseSubmode>,
+): AnalyticsShowcaseSubmode {
+  for (const candidate of ANALYTICS_SUBMODE_ORDER) {
+    if (supported.includes(candidate)) return candidate
+  }
+  return 'centrality'
 }
 
 /**
@@ -107,7 +147,17 @@ export function SemanticaShowcaseScreen() {
     [registry, datasetId],
   )
   const supportedLenses = registryEntry?.supportedLenses ?? LENS_FALLBACK_ORDER
+  const supportedTemporalSubmodes = registryEntry?.supportedSubmodes?.temporal ?? []
+  const supportedAnalyticsSubmodes = registryEntry?.supportedSubmodes?.analytics ?? []
   const initialMode = useMemo(() => pickFirstSupported(supportedLenses), [supportedLenses])
+  const initialTemporalSubmode = useMemo(
+    () => pickFirstSupportedTemporalSubmode(supportedTemporalSubmodes),
+    [supportedTemporalSubmodes],
+  )
+  const initialAnalyticsSubmode = useMemo(
+    () => pickFirstSupportedAnalyticsSubmode(supportedAnalyticsSubmodes),
+    [supportedAnalyticsSubmodes],
+  )
 
   const [settingsOpen, setSettingsOpen] = useState(false)
   const profileAvatarUrl = useResolvedAvatarUrl()
@@ -117,6 +167,8 @@ export function SemanticaShowcaseScreen() {
   const isDarkTheme = !activeTheme.endsWith('-light')
 
   const [mode, setMode] = useState<ShowcaseVisualizationMode>(initialMode)
+  const [temporalSubmode, setTemporalSubmode] = useState<TemporalShowcaseSubmode>(initialTemporalSubmode)
+  const [analyticsSubmode, setAnalyticsSubmode] = useState<AnalyticsShowcaseSubmode>(initialAnalyticsSubmode)
   const [sigmaControls, setSigmaControls] = useState<SigmaControlState>(DEFAULT_SIGMA_CONTROLS)
   const [kgTopology, setKgTopology] = useState<GraphTopologyMode>('layout')
   const [ontologyTopology, setOntologyTopology] = useState<GraphTopologyMode>('hierarchical')
@@ -150,6 +202,8 @@ export function SemanticaShowcaseScreen() {
       setSnSelection(null)
       setEmbeddingSelection(undefined)
       setOntologySelection(undefined)
+      setTemporalSubmode('timeline')
+      setAnalyticsSubmode('centrality')
       // Reset lens to the first supported lens of the new dataset. The
       // picker runs after the state commit, so we recompute supportedLenses
       // from the registry directly.
@@ -168,6 +222,15 @@ export function SemanticaShowcaseScreen() {
       setMode(pickFirstSupported(supportedLenses))
     }
   }, [supportedLenses, mode])
+
+  useEffect(() => {
+    if (mode === 'temporal' && !supportedTemporalSubmodes.includes(temporalSubmode)) {
+      setTemporalSubmode(pickFirstSupportedTemporalSubmode(supportedTemporalSubmodes))
+    }
+    if (mode === 'analytics' && !supportedAnalyticsSubmodes.includes(analyticsSubmode)) {
+      setAnalyticsSubmode(pickFirstSupportedAnalyticsSubmode(supportedAnalyticsSubmodes))
+    }
+  }, [analyticsSubmode, mode, supportedAnalyticsSubmodes, supportedTemporalSubmodes, temporalSubmode])
 
   // W4-03: each adapter is only called when its payload is present. When
   // unsupported, we keep an EMPTY_INSPECTOR + empty metrics + empty graph
@@ -188,6 +251,14 @@ export function SemanticaShowcaseScreen() {
   const semanticNetworkAdapter = useMemo(
     () => (dataset.semanticNetwork ? adaptSemanticNetworkFixture(dataset.semanticNetwork, snSelection) : null),
     [dataset.semanticNetwork, snSelection],
+  )
+  const temporalAdapter = useMemo(
+    () => (dataset.temporal ? adaptTemporalFixture(dataset.temporal, temporalSubmode) : null),
+    [dataset.temporal, temporalSubmode],
+  )
+  const analyticsAdapter = useMemo(
+    () => (dataset.analytics ? adaptAnalyticsFixture(dataset.analytics, analyticsSubmode) : null),
+    [analyticsSubmode, dataset.analytics],
   )
 
   const provenance = useMemo(() => describeProvenance(dataset), [dataset])
@@ -499,6 +570,44 @@ export function SemanticaShowcaseScreen() {
       setSnEdgeLabels((value) => !value)
     }
   }, [mode])
+  const temporalSubmodeButtons = (
+    <div className="flex flex-wrap gap-2 px-4 pb-2 pt-3">
+      {TEMPORAL_SUBMODE_ORDER.map((submode) => {
+        const supported = supportedTemporalSubmodes.includes(submode)
+        return (
+          <button
+            key={submode}
+            type="button"
+            className={submode === temporalSubmode ? 'is-active' : ''}
+            aria-pressed={submode === temporalSubmode}
+            disabled={!supported}
+            onClick={() => setTemporalSubmode(submode)}
+          >
+            {submode === 'timeline' ? 'Timeline' : submode === 'version-history' ? 'Versions' : submode === 'temporal-dashboard' ? 'Dashboard' : 'Evolution'}
+          </button>
+        )
+      })}
+    </div>
+  )
+  const analyticsSubmodeButtons = (
+    <div className="flex flex-wrap gap-2 px-4 pb-2 pt-3">
+      {ANALYTICS_SUBMODE_ORDER.map((submode) => {
+        const supported = supportedAnalyticsSubmodes.includes(submode)
+        return (
+          <button
+            key={submode}
+            type="button"
+            className={submode === analyticsSubmode ? 'is-active' : ''}
+            aria-pressed={submode === analyticsSubmode}
+            disabled={!supported}
+            onClick={() => setAnalyticsSubmode(submode)}
+          >
+            {submode === 'centrality' ? 'Centrality' : 'Communities'}
+          </button>
+        )
+      })}
+    </div>
+  )
   const zoomEnabled = mode === 'knowledge-graph'
     ? Boolean(kgViewportRef.current)
     : mode === 'embedding'
@@ -871,9 +980,101 @@ export function SemanticaShowcaseScreen() {
           </TabsPanel>
         )}
 
+        {temporalAdapter && (
+          <TabsPanel value="temporal" className="showcase-ref-grid">
+            <LeftInventory
+              title="Temporal"
+              datasetSelector={
+                <DatasetSelector
+                  registry={registry}
+                  value={datasetId}
+                  onChange={handleDatasetChange}
+                />
+              }
+              rows={[
+                { label: 'name', value: dataset.displayName },
+                { label: 'source', value: formatSourceLocation(dataset) },
+                { label: 'mode', value: temporalSubmode },
+              ]}
+              inventoryTitle={temporalAdapter.kind === 'version-history' ? 'Versions' : 'Events'}
+              inventoryItems={
+                temporalAdapter.kind === 'timeline'
+                  ? temporalAdapter.events.map((event) => ({ label: event.label, hint: event.type }))
+                  : temporalAdapter.kind === 'version-history'
+                    ? temporalAdapter.versions.map((version) => ({ label: version.label, hint: version.changes }))
+                    : temporalAdapter.kind === 'temporal-dashboard'
+                      ? temporalAdapter.entities.map((entity) => ({ label: entity.label, hint: entity.type }))
+                      : temporalAdapter.nodes.map((node) => ({ label: node.label, hint: node.type }))
+              }
+              summary={
+                temporalAdapter.kind === 'timeline'
+                  ? temporalAdapter.metrics.map((metric) => ({ label: metric.label, value: metric.value }))
+                  : temporalAdapter.kind === 'version-history'
+                    ? temporalAdapter.metrics.map((metric) => ({ label: metric.label, value: metric.value }))
+                    : temporalAdapter.kind === 'temporal-dashboard'
+                      ? temporalAdapter.metrics.map((metric) => ({ label: metric.label, value: metric.value }))
+                      : temporalAdapter.metrics.map((metric) => ({ label: metric.label, value: metric.value }))
+              }
+            />
+            <CenterPanel supportsTopology={false}>
+              {temporalSubmodeButtons}
+              <TemporalShowcaseView adapter={temporalAdapter} />
+            </CenterPanel>
+            <RightRail
+              inspector={temporalAdapter.inspector}
+              metrics={temporalAdapter.metrics}
+              title="Temporal"
+              statusRows={[
+                { label: 'provenance', value: provenance.source },
+                { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
+              ]}
+            />
+          </TabsPanel>
+        )}
+
+        {analyticsAdapter && (
+          <TabsPanel value="analytics" className="showcase-ref-grid">
+            <LeftInventory
+              title="Analytics"
+              datasetSelector={
+                <DatasetSelector
+                  registry={registry}
+                  value={datasetId}
+                  onChange={handleDatasetChange}
+                />
+              }
+              rows={[
+                { label: 'name', value: dataset.displayName },
+                { label: 'source', value: formatSourceLocation(dataset) },
+                { label: 'mode', value: analyticsSubmode },
+              ]}
+              inventoryTitle={analyticsAdapter.kind === 'centrality' ? 'Ranked nodes' : 'Communities'}
+              inventoryItems={
+                analyticsAdapter.kind === 'centrality'
+                  ? analyticsAdapter.rankings.map((item) => ({ label: item.nodeId, hint: item.score.toFixed(3) }))
+                  : analyticsAdapter.communities.map((community) => ({ label: String(community.id), hint: community.nodeIds.join(', ') }))
+              }
+              summary={analyticsAdapter.metrics.map((metric) => ({ label: metric.label, value: metric.value }))}
+            />
+            <CenterPanel supportsTopology={false}>
+              {analyticsSubmodeButtons}
+              <AnalyticsShowcaseView adapter={analyticsAdapter} />
+            </CenterPanel>
+            <RightRail
+              inspector={analyticsAdapter.inspector}
+              metrics={analyticsAdapter.metrics}
+              title="Analytics"
+              statusRows={[
+                { label: 'provenance', value: provenance.source },
+                { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
+              ]}
+            />
+          </TabsPanel>
+        )}
+
         {/* W5-04 fallback: if no supported lens is active (impossible after
             W5-05 fallback, but defensive), surface an "unsupported" panel. */}
-        {!kgAdapter && !ontologyAdapter && !embeddingAdapter && !semanticNetworkAdapter && (
+        {!kgAdapter && !ontologyAdapter && !embeddingAdapter && !semanticNetworkAdapter && !temporalAdapter && !analyticsAdapter && (
           <TabsPanel value={mode} className="showcase-ref-grid">
             <CenterPanel>
               <div

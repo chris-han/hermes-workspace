@@ -1,0 +1,30 @@
+{
+  "timeline": {
+    "events": []
+  },
+  "versionHistory": {
+    "versions": [
+      {
+        "changes": "Founding Era",
+        "id": "v1.0",
+        "label": "v1.0",
+        "properties": {},
+        "timestamp": "1990-01-01"
+      },
+      {
+        "changes": "Expansion Era",
+        "id": "v2.0",
+        "label": "v2.0",
+        "properties": {},
+        "timestamp": "2010-01-01"
+      },
+      {
+        "changes": "AI Era",
+        "id": "v3.0",
+        "label": "v3.0",
+        "properties": {},
+        "timestamp": "2020-01-01"
+      }
+    ]
+  }
+}

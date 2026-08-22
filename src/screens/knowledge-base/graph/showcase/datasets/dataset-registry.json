@@ -77,15 +77,28 @@
     },
     {
       "datasetId": "03-Complete-Visualization-Suite",
-      "description": "Hard-coded typed KG: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Location: San Francisco) + 3 typed relationships (knows, works_for, located_in). Plan §3.1: 'candidate for ",
+      "description": "Hard-coded typed KG + notebook visualization suite: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Location: San Francisco) + 3 typed relationships (knows, works_for, located_",
       "displayName": "03 Complete Visualization Suite",
-      "fixtureSha256": "ae9bd921af9648bdd7ae2861bf657055b7908fff95e171446648f0154db0bcce",
-      "manifestSha256": "030683ad03c8920bdf2bf62ee5465d66fec66d35c5ba32f54a45395041fe38d3",
+      "fixtureSha256": "7a0451698ed9f6dca7786cbe88de4bcfd1ce83a62ea29814c5d76cfdf356b841",
+      "manifestSha256": "632bd9911d34119490fe3b8100ac2d7544478d1f25648c1d0852c02cffe7d6a8",
       "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
-      "sourceLabel": "verbatim",
+      "sourceLabel": "derived-deterministically",
       "supportedLenses": [
-        "knowledge-graph"
-      ]
+        "knowledge-graph",
+        "temporal",
+        "analytics"
+      ],
+      "supportedSubmodes": {
+        "analytics": [
+          "centrality",
+          "communities"
+        ],
+        "temporal": [
+          "timeline",
+          "temporal-dashboard",
+          "network-evolution"
+        ]
+      }
     },
     {
       "datasetId": "05-Multi-Format-Export",
@@ -127,13 +140,20 @@
       "datasetId": "10-Temporal-Knowledge-Graphs",
       "description": "Hard-coded temporal typed KG: cell[4] defines 9 entities (Organization: TechCorp/InnovateInc/FutureSystems; Person: Alice/Bob/Charlie; Product: HomePC/SoftOS/SmartAI) + 9 typed relationships with time",
       "displayName": "10 Temporal Knowledge Graphs",
-      "fixtureSha256": "33ed3fe54514dbde87313d96bfafc5affb52bdec7f441baed4ee35c9bf3f65b9",
-      "manifestSha256": "28c3f3c4cc7d4e0b7ff25c5ebcb2baab1c8e4b57cff9705ae697c5edc4160d62",
+      "fixtureSha256": "8ff243a80006c5d5e50a237d85f431a6a18fe4df665d999a2007ffda7216132f",
+      "manifestSha256": "f288f6cc42a8286deb8caa00297a33ddd3c764f2f33346109c2c6435ea8ecb2f",
       "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
-      "sourceLabel": "verbatim",
+      "sourceLabel": "derived-deterministically",
       "supportedLenses": [
-        "knowledge-graph"
-      ]
+        "knowledge-graph",
+        "temporal"
+      ],
+      "supportedSubmodes": {
+        "temporal": [
+          "timeline",
+          "version-history"
+        ]
+      }
     },
     {
       "datasetId": "11-Advanced-Context-Engineering",
@@ -221,7 +241,7 @@
     }
   ],
   "generationToolVersion": "1.0.0",
-  "registrySha256": "b8729af2c6b0628c6f92720f1c6bc0111923c287eadc0459adfe0950f3b93d4b",
+  "registrySha256": "8d4a28f01deb6fa1bac5d55bf867acca67198f72d681b88e2aad18b2fce310a9",
   "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
-  "version": 2
+  "version": 3
 }

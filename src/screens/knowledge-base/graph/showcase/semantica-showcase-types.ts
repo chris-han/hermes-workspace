@@ -12,13 +12,30 @@
  * its `supportedLenses` in the manifest and registry.
  */
 
-export const SHOWCASE_REGISTRY_VERSION = 2 as const
+export const SHOWCASE_REGISTRY_VERSION = 3 as const
 
 export type ShowcaseVisualizationMode =
   | 'knowledge-graph'
   | 'ontology'
   | 'embedding'
   | 'semantic-network'
+  | 'temporal'
+  | 'analytics'
+
+export type TemporalShowcaseSubmode =
+  | 'timeline'
+  | 'version-history'
+  | 'temporal-dashboard'
+  | 'network-evolution'
+
+export type AnalyticsShowcaseSubmode =
+  | 'centrality'
+  | 'communities'
+
+export type ShowcaseSupportedSubmodes = Partial<{
+  temporal: TemporalShowcaseSubmode[]
+  analytics: AnalyticsShowcaseSubmode[]
+}>
 
 export type ShowcaseSourceKind =
   | 'notebook-cell'
@@ -97,9 +114,20 @@ export interface ShowcaseSemanticNetworkFixture {
 }
 
 export interface ShowcaseFixtureFileManifest {
-  file: 'kg.json' | 'ontology.json' | 'embedding.json' | 'semantic-network.json'
+  file:
+    | 'kg.json'
+    | 'ontology.json'
+    | 'embedding.json'
+    | 'semantic-network.json'
+    | 'temporal.json'
+    | 'analytics.json'
   sha256: string
-  derivationKind: 'verbatim' | 'generated-ontology' | 'embedding-projection'
+  derivationKind:
+    | 'verbatim'
+    | 'generated-ontology'
+    | 'embedding-projection'
+    | 'temporal-normalized'
+    | 'analytics-normalized'
   derivationParameters: Record<string, unknown>
 }
 
@@ -137,6 +165,8 @@ export interface ShowcaseDatasetBundle {
   ontology?: ShowcaseOntologyFixture
   embedding?: ShowcaseEmbeddingFixture
   semanticNetwork?: ShowcaseSemanticNetworkFixture
+  temporal?: ShowcaseTemporalFixture
+  analytics?: ShowcaseAnalyticsFixture
 }
 
 export interface ShowcaseDatasetRegistryEntry {
@@ -146,6 +176,7 @@ export interface ShowcaseDatasetRegistryEntry {
   manifestSha256: string
   fixtureSha256: string
   supportedLenses: ShowcaseVisualizationMode[]
+  supportedSubmodes?: ShowcaseSupportedSubmodes
   semanticaCommit: string
   /** Aggregate label derived from per-file `derivationKind`. */
   sourceLabel: 'verbatim' | 'derived-deterministically'
@@ -244,4 +275,81 @@ export type ShowcaseProvenanceBadge = {
   manifestSha256: string
   offline: true
   source: 'verbatim' | 'derived-deterministically'
+}
+
+export interface ShowcaseTemporalEvent {
+  id: string
+  timestamp: string
+  type: string
+  label: string
+  entityId?: string
+  properties?: Record<string, unknown>
+}
+
+export interface ShowcaseTemporalVersion {
+  id: string
+  timestamp: string
+  label: string
+  changes?: string
+  properties?: Record<string, unknown>
+}
+
+export interface ShowcaseTemporalEntity {
+  id: string
+  type: string
+  label: string
+  start?: string
+  end?: string
+  properties?: Record<string, unknown>
+}
+
+export interface ShowcaseTemporalRelationship {
+  id: string
+  source: string
+  target: string
+  type: string
+  timestamp?: string
+  validFrom?: string
+  validTo?: string
+  properties?: Record<string, unknown>
+}
+
+export interface ShowcaseTemporalMetricSeries {
+  label: string
+  values: Array<{ timestamp: string; value: number }>
+}
+
+export interface ShowcaseTemporalFixture {
+  timeline?: {
+    events: ShowcaseTemporalEvent[]
+  }
+  versionHistory?: {
+    versions: ShowcaseTemporalVersion[]
+  }
+  dashboard?: {
+    entities: ShowcaseTemporalEntity[]
+    relationships: ShowcaseTemporalRelationship[]
+    timestamps: Record<string, string[]>
+    metrics?: ShowcaseTemporalMetricSeries[]
+  }
+  networkEvolution?: {
+    entities: ShowcaseTemporalEntity[]
+    relationships: ShowcaseTemporalRelationship[]
+    timestamps: Record<string, string[]>
+  }
+}
+
+export interface ShowcaseAnalyticsFixture {
+  graph: ShowcaseKgFixture
+  centrality?: {
+    measure: string
+    rankings: Array<{ nodeId: string; score: number }>
+  }
+  communities?: {
+    assignments: Record<string, string | number>
+    communities: Array<{
+      id: string | number
+      nodeIds: string[]
+    }>
+  }
 }

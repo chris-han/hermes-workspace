@@ -1,35 +1,51 @@
 {
   "datasetId": "03-Complete-Visualization-Suite",
   "derivationToolVersion": "1.0.0",
-  "description": "Hard-coded typed KG: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Location: San Francisco) + 3 typed relationships (knows, works_for, located_in). Plan §3.1: 'candidate for ",
+  "description": "Hard-coded typed KG + notebook visualization suite: cell[4] defines 4 entities (Person: Alice/Bob; Organization: Tech Corp; Location: San Francisco) + 3 typed relationships (knows, works_for, located_",
   "displayName": "03 Complete Visualization Suite",
   "files": [
     {
+      "derivationKind": "analytics-normalized",
+      "derivationParameters": {
+        "centrality": "degree",
+        "community_algorithm": "louvain-or-greedy-modularity",
+        "source": "third_party/semantica/cookbook/advanced/03_Complete_Visualization_Suite.ipynb",
+        "submodes": [
+          "centrality",
+          "communities"
+        ]
+      },
+      "file": "analytics.json",
+      "sha256": "6b023cd88e7fd7b2daaa2795b5ae491ed94c9b11f9354ed7193998933441127f"
+    },
+    {
       "derivationKind": "verbatim",
       "derivationParameters": {
-        "dropped_edges": [
-          "rel_0",
-          "rel_1",
-          "rel_2",
-          "rel_3",
-          "rel_4",
-          "rel_5",
-          "rel_6",
-          "rel_7",
-          "rel_8",
-          "rel_9"
-        ],
-        "note": "typed entities + typed relationships transcribed from notebook code-cell literals (no notebook execution)",
+        "cell": 4,
         "source": "third_party/semantica/cookbook/advanced/03_Complete_Visualization_Suite.ipynb"
       },
       "file": "kg.json",
-      "sha256": "318e8b2309572c04e06f56d97565cb84d31004a331d809406795d7daec39a5be"
+      "sha256": "1a0a46c8e7b8975d63dbf2a667ab1e3491f2e31d2851964f250a2edf2f345aa9"
+    },
+    {
+      "derivationKind": "temporal-normalized",
+      "derivationParameters": {
+        "metrics": "deterministic replacement for notebook runtime randomness",
+        "source": "third_party/semantica/cookbook/advanced/03_Complete_Visualization_Suite.ipynb",
+        "submodes": [
+          "timeline",
+          "temporal-dashboard",
+          "network-evolution"
+        ]
+      },
+      "file": "temporal.json",
+      "sha256": "c2b7adeba45fda395f297ae6b3ccae8aa9430b6657f23b6fde6d66131fb422d6"
     }
   ],
-  "fixtureSha256": "ae9bd921af9648bdd7ae2861bf657055b7908fff95e171446648f0154db0bcce",
+  "fixtureSha256": "7a0451698ed9f6dca7786cbe88de4bcfd1ce83a62ea29814c5d76cfdf356b841",
   "includedReason": "",
   "license": "MIT",
-  "manifestSha256": "030683ad03c8920bdf2bf62ee5465d66fec66d35c5ba32f54a45395041fe38d3",
+  "manifestSha256": "632bd9911d34119490fe3b8100ac2d7544478d1f25648c1d0852c02cffe7d6a8",
   "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
   "sources": []
 }

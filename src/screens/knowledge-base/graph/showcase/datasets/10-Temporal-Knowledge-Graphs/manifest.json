@@ -7,18 +7,29 @@
     {
       "derivationKind": "verbatim",
       "derivationParameters": {
-        "dropped_edges": [],
-        "note": "typed entities + typed relationships transcribed from notebook code-cell literals (no notebook execution)",
+        "cell": 4,
         "source": "third_party/semantica/cookbook/advanced/10_Temporal_Knowledge_Graphs.ipynb"
       },
       "file": "kg.json",
       "sha256": "c89dc9b3d4f7f19f1f60e2f4586c26b0c399920aa6fef03d44a9cdca2220a0a1"
+    },
+    {
+      "derivationKind": "temporal-normalized",
+      "derivationParameters": {
+        "source": "third_party/semantica/cookbook/advanced/10_Temporal_Knowledge_Graphs.ipynb",
+        "submodes": [
+          "timeline",
+          "version-history"
+        ]
+      },
+      "file": "temporal.json",
+      "sha256": "c19d250146182f68690f1d6e70299ce8f4dcf7abd41c1de9222968e069535705"
     }
   ],
-  "fixtureSha256": "33ed3fe54514dbde87313d96bfafc5affb52bdec7f441baed4ee35c9bf3f65b9",
+  "fixtureSha256": "8ff243a80006c5d5e50a237d85f431a6a18fe4df665d999a2007ffda7216132f",
   "includedReason": "",
   "license": "MIT",
-  "manifestSha256": "28c3f3c4cc7d4e0b7ff25c5ebcb2baab1c8e4b57cff9705ae697c5edc4160d62",
+  "manifestSha256": "f288f6cc42a8286deb8caa00297a33ddd3c764f2f33346109c2c6435ea8ecb2f",
   "semanticaCommit": "029c6c4fc9779d7b65fd29a54573b1cd3e135844",
   "sources": []
 }

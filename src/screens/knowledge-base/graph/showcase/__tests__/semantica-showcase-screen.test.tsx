@@ -41,14 +41,22 @@ afterEach(() => {
 })
 
 describe('SemanticaShowcaseScreen — shell structure', () => {
-  it('renders the four visualization tabs with the expected labels', () => {
+  function selectDataset(datasetDisplayName: string) {
+    fireEvent.click(screen.getByTestId('dataset-selector'))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: datasetDisplayName }))
+  }
+
+  it('renders the six visualization tabs with the expected labels on the notebook suite', () => {
     renderWithProviders(<SemanticaShowcaseScreen />)
+    selectDataset('03 Complete Visualization Suite')
     const tablist = screen.getByTestId('semantica-showcase-screen')
     expect(tablist).toBeDefined()
     expect(screen.getByTestId('showcase-tab-knowledge-graph').textContent).toBe('Knowledge Graph')
     expect(screen.getByTestId('showcase-tab-ontology').textContent).toBe('Ontology')
     expect(screen.getByTestId('showcase-tab-embedding').textContent).toBe('Embedding')
     expect(screen.getByTestId('showcase-tab-semantic-network').textContent).toBe('Semantic Network')
+    expect(screen.getByTestId('showcase-tab-temporal').textContent).toBe('Temporal')
+    expect(screen.getByTestId('showcase-tab-analytics').textContent).toBe('Analytics')
   })
 
   it('renders the Knowledge Graph view by default with the metric cards', () => {
@@ -110,6 +118,24 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
     expect(screen.getByRole('heading', { name: 'Node types' })).toBeDefined()
     expect(screen.getByText('Language')).toBeDefined()
     expect(screen.getByText('Concept')).toBeDefined()
+  })
+
+  it('switches to the Temporal view on the notebook suite', () => {
+    renderWithProviders(<SemanticaShowcaseScreen />)
+    selectDataset('03 Complete Visualization Suite')
+    fireEvent.click(screen.getByTestId('showcase-tab-temporal'))
+    expect(screen.getByTestId('temporal-showcase-view')).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Timeline', pressed: true })).toBeDefined()
+    expect(screen.getByText('Pinned Semantica notebook visualization cases')).toBeDefined()
+  })
+
+  it('switches to the Analytics view on the notebook suite', () => {
+    renderWithProviders(<SemanticaShowcaseScreen />)
+    selectDataset('03 Complete Visualization Suite')
+    fireEvent.click(screen.getByTestId('showcase-tab-analytics'))
+    expect(screen.getByTestId('analytics-showcase-view')).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Centrality', pressed: true })).toBeDefined()
+    expect(screen.getByText('Pinned Semantica notebook visualization cases')).toBeDefined()
   })
 
   it('exposes the controlled dataset selector with the registered dataset id', () => {

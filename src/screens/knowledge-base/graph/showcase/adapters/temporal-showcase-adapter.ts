@@ -28,6 +28,8 @@ export type TemporalShowcaseAdapterResult =
           ? Series
           : never
         : never
+      /** §8.1 diagnostics: relationships dropped because an endpoint is absent. */
+      diagnostics: { droppedRelationshipIds: string[] }
       inspector: ShowcaseInspectorModel
       metrics: ShowcaseMetric[]
     }
@@ -36,6 +38,8 @@ export type TemporalShowcaseAdapterResult =
       nodes: Array<{ id: string; label: string; type: string }>
       edges: Array<{ id: string; source: string; target: string; type: string }>
       timestamps: Record<string, string[]>
+      /** §8.1 diagnostics: relationships dropped because an endpoint is absent. */
+      diagnostics: { droppedRelationshipIds: string[] }
       inspector: ShowcaseInspectorModel
       metrics: ShowcaseMetric[]
     }
@@ -115,19 +119,28 @@ export function adaptTemporalFixture(
         emptyLabel: 'Dashboard rows are derived from the notebook sample',
         fields: [
           { label: 'entities', value: String(dashboard.entities.length) },
-          { label: 'relationships', value: String(dashboard.relationships.length) },
+          { label: 'relationships', value: String(keptRelationships.length) },
           { label: 'series', value: String(metricsSeries.length) },
+          { label: 'dropped', value: String(droppedRelationshipIds.length) },
         ],
       },
       metrics: [
         { label: 'Entities', value: String(dashboard.entities.length) },
-        { label: 'Relationships', value: String(dashboard.relationships.length) },
+        { label: 'Relationships', value: String(keptRelationships.length) },
         { label: 'Metric series', value: String(metricsSeries.length) },
       ],
     }
   }
 
   const evolution = fixture.networkEvolution ?? { entities: [], relationships: [], timestamps: {} }
+  const evolutionEntityIds = new Set(evolution.entities.map((entity) => entity.id))
+  const keptEvolutionRelationships = evolution.relationships.filter(
+    (relationship) => evolutionEntityIds.has(relationship.source) && evolutionEntityIds.has(relationship.target),
+  )
+  const droppedEvolutionRelationshipIds = evolution.relationships
+    .filter((relationship) => !evolutionEntityIds.has(relationship.source) || !evolutionEntityIds.has(relationship.target))
+    .map((relationship) => relationship.id)
+    .sort()
   return {
     kind: 'network-evolution',
     nodes: [...evolution.entities].sort((left, right) => left.id.localeCompare(right.id)).map((entity) => ({
@@ -135,13 +148,14 @@ export function adaptTemporalFixture(
       label: entity.label,
       type: entity.type,
     })),
-    edges: [...evolution.relationships].sort((left, right) => left.id.localeCompare(right.id)).map((relationship) => ({
+    edges: [...keptEvolutionRelationships].sort((left, right) => left.id.localeCompare(right.id)).map((relationship) => ({
       id: relationship.id,
       source: relationship.source,
       target: relationship.target,
       type: relationship.type,
     })),
     timestamps: evolution.timestamps,
+    diagnostics: { droppedRelationshipIds: droppedEvolutionRelationshipIds },
     inspector: {
       title: 'Network Evolution',
       subtitle: 'Temporal graph evolution sample',
@@ -149,12 +163,13 @@ export function adaptTemporalFixture(
       fields: [
         { label: 'frames', value: String(Object.keys(evolution.timestamps).length) },
         { label: 'nodes', value: String(evolution.entities.length) },
-        { label: 'edges', value: String(evolution.relationships.length) },
+        { label: 'edges', value: String(keptEvolutionRelationships.length) },
+        { label: 'dropped', value: String(droppedEvolutionRelationshipIds.length) },
       ],
     },
     metrics: [
       { label: 'Nodes', value: String(evolution.entities.length) },
-      { label: 'Edges', value: String(evolution.relationships.length) },
+      { label: 'Edges', value: String(keptEvolutionRelationships.length) },
     ],
   }
 }

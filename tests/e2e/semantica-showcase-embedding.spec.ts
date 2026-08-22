@@ -11,7 +11,9 @@ test.describe('Semantica showcase — embedding hover (W7-10)', () => {
     await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
     await page.getByTestId('showcase-tab-embedding').click()
     await expect(page.getByTestId('embedding-showcase-view')).toBeVisible()
-    await page.getByTestId('embedding-point-Apple').click()
+    // The point buttons live in an sr-only list overlapped by the Sigma canvas;
+    // dispatch the click directly instead of hit-testing the 1px target.
+    await page.getByTestId('embedding-point-Apple').dispatchEvent('click')
     await expect(page.getByTestId('inspector-fields')).toContainText('Apple')
     await expect(page.getByTestId('inspector-fields')).toContainText('Apple Inc.')
     await expect(page.getByTestId('inspector-fields')).toContainText(/\d+\.\d+/)

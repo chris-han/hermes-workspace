@@ -30,3 +30,21 @@ export const DocumentEnvelopeSchema = z.object({
 export type SourceIdentity = z.infer<typeof SourceIdentitySchema>
 export type DocumentSpan = z.infer<typeof SpanSchema>
 export type DocumentEnvelope = z.infer<typeof DocumentEnvelopeSchema>
+
+// C1: Governed presentation projection of an already-resolved SourceIdentity.
+// This is a presentation-shape only; it MUST NOT become a second authority schema.
+// The original SourceIdentity remains the authority-bearing object and is embedded
+// verbatim via the `source` field so identity/tenant/workspace/hash are not
+// duplicated or risk drift. `documentKind` is intentionally derived from
+// `source.mediaType` by the consumer, not re-encoded here.
+export const SourceDocumentPresentationSchema = z.object({
+  sourceIdentityRef: z.string().min(1),
+  documentName: z.string().min(1),
+  source: SourceIdentitySchema,
+  // contentUrl MUST be same-origin by construction; non-same-origin values are a
+  // contract violation and the viewer layer MUST refuse to load them.
+  contentUrl: z.string().min(1),
+  readOnly: z.literal(true),
+})
+
+export type SourceDocumentPresentation = z.infer<typeof SourceDocumentPresentationSchema>

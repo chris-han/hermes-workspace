@@ -199,10 +199,17 @@ export function canonicalBodyFromCurationMarkdown(content: string): string {
 
 const KNOWLEDGE_BUILDER_API = '/api/semantier-proxy/api/knowledge/builder'
 
+// VIEWER_UNAVAILABLE_CONFIG is the truthful pending-installation config
+// used when the studio shell cannot reach the source-evidence-viewer-config
+// route (or while Flyfish has not been installed). It MUST stay aligned
+// with `SourceEvidenceViewerConfig` `pending-installation` so the
+// `data-viewer-engine` selector remains auditable end-to-end.
 const VIEWER_UNAVAILABLE_CONFIG: ViewerConfig = {
   configured: true,
   provider: 'open-source-unified',
-  engine: 'pdfjs-canonical-source-ir',
+  state: 'pending-installation',
+  engine: 'placeholder-pending-flyfish-installation',
+  plannedRenderer: 'flyfish-preset-office',
 }
 
 type KnowledgeUploadResult = {

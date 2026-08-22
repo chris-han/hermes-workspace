@@ -1,16 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
+import type { SourceEvidenceViewerConfig } from '@/server/source-evidence-viewer-config'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/form-controls'
 import { Badge } from '@/components/ui/status'
 import { cn } from '@/lib/utils'
 
-type ViewerConfig =
-  {
-    configured: true
-    provider: 'open-source-unified'
-    engine: 'pdfjs-canonical-source-ir'
-  }
+import { DocumentRendererSlot } from './document-renderer-slot'
+import { FindingInspector } from './finding-inspector'
+
+// Re-export the server config type so callers can reuse the discriminated
+// union (`pending-installation` / `ready` / `fallback` / `rejected`).
+type ViewerConfig = SourceEvidenceViewerConfig
 
 type SourceEvidenceFinding = {
   finding_id: string
@@ -70,34 +70,12 @@ const COPY = {
     readOnly: 'read-only source',
     noFinding: 'Select a finding to review its exact source evidence.',
     evidence: 'Evidence',
-    provenance: 'Provenance',
-    inspector: 'Inspector',
-    concept: 'Concept',
-    classification: 'Classification',
-    applicability: 'Applicability',
-    action: 'Action',
-    path: 'Path',
-    justification: 'Structured justification',
-    confirm: 'Confirm',
-    change: 'Change',
-    dismiss: 'Dismiss',
   },
   zh: {
     title: '来源证据查看器',
     readOnly: '只读来源',
     noFinding: '选择发现项以审查精确来源证据。',
     evidence: '证据',
-    provenance: '出处',
-    inspector: '检查器',
-    concept: '概念',
-    classification: '分类',
-    applicability: '适用性',
-    action: '动作',
-    path: '路径',
-    justification: '结构化理由',
-    confirm: '确认',
-    change: '变更',
-    dismiss: '忽略',
   },
 }
 
@@ -142,6 +120,16 @@ function inferSourceEvidenceDocumentKind(
   return 'unknown'
 }
 
+function inferSourceMediaType(
+  documentKind: SourceEvidenceViewerProps['documentKind'],
+): 'application/pdf' | 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' | null {
+  if (documentKind === 'pdf') return 'application/pdf'
+  if (documentKind === 'docx') {
+    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  }
+  return null
+}
+
 function resolveSourceEvidenceDocumentAdapter(
   documentKind: SourceEvidenceViewerProps['documentKind'],
   viewerConfig: ViewerConfig,
@@ -184,7 +172,6 @@ export function SourceEvidenceViewer({
   onDecision,
 }: SourceEvidenceViewerProps) {
   const t = zh ? COPY.zh : COPY.en
-  const [justification, setJustification] = useState('')
   const selectedFinding = useMemo(
     () =>
       findings.find((finding) => finding.finding_id === selectedFindingId) ??
@@ -200,7 +187,29 @@ export function SourceEvidenceViewer({
     () => resolveSourceEvidenceDocumentAdapter(documentKind, viewerConfig),
     [documentKind, viewerConfig],
   )
-  const canRecord = Boolean(selectedFinding && justification.trim())
+  // SourceDocumentPresentation is the governed presentation projection
+  // (C1 contract). The viewer is read-only and consumes the same
+  // SourceIdentity that owns the bytes. When no presentation is available,
+  // the slot renders the truthful renderer-state placeholder.
+  const presentation = useMemo(() => {
+    if (!sourceDocumentHash) return null
+    const mediaType = inferSourceMediaType(documentKind)
+    if (!mediaType) return null
+    return {
+      sourceIdentityRef: sourceDocumentHash,
+      documentName: documentName ?? sourceDocumentHash,
+      source: {
+        sourceIdentityRef: sourceDocumentHash,
+        tenantId: 'derived-from-runtime-context',
+        workspaceId: 'derived-from-runtime-context',
+        sourceHash: 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
+        sourceVersion: null,
+        mediaType,
+      },
+      contentUrl: `/api/contextgraph/source-documents/${encodeURIComponent(sourceDocumentHash)}/content`,
+      readOnly: true as const,
+    }
+  }, [documentKind, documentName, sourceDocumentHash])
 
   return (
     <section
@@ -220,18 +229,13 @@ export function SourceEvidenceViewer({
             {documentKind}
           </Badge>
         </div>
-        <div
-          role="region"
-          aria-label={zh ? '开源统一文档画布' : 'Open-source unified document canvas'}
-          className="grid min-h-56 flex-1 place-items-center rounded-lg border border-dashed border-border bg-background p-4 text-center text-muted-foreground"
-          data-viewer-provider={viewerConfig.provider}
-          data-viewer-engine={viewerConfig.engine}
-          data-document-adapter-provider={adapter.provider}
-          data-overlay-strategy={adapter.overlayStrategy}
-        >
-          Open-source {documentKind.toUpperCase()} adapter configured through{' '}
-          {viewerConfig.engine}
-        </div>
+        <DocumentRendererSlot
+          zh={zh}
+          presentation={presentation}
+          viewerConfig={viewerConfig}
+          selectedEvidenceRef={selectedFinding?.target_evidence_ref ?? null}
+          selectedAnchorRef={selectedFinding?.target_anchor_ref ?? null}
+        />
         <div className="rounded-lg border border-border bg-background p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <strong>{t.evidence}</strong>
@@ -281,100 +285,14 @@ export function SourceEvidenceViewer({
           </div>
         </div>
       </div>
-      <aside
-        aria-label={t.inspector}
-        className="grid min-h-0 grid-rows-[auto_1fr_auto] gap-3 rounded-lg border border-border bg-background p-3"
-        data-testid="finding-inspector"
-      >
-        <div>
-          <strong>{t.inspector}</strong>
-          <div className="mt-2 flex flex-wrap gap-1">
-            {findings.map((finding) => (
-              <Button
-                key={finding.finding_id}
-                type="button"
-                variant="ghost"
-                onClick={() => onSelectFinding?.(finding)}
-                className={cn(
-                  'h-7 max-w-full rounded-md border border-border px-2 text-[11px]',
-                  selectedFinding?.finding_id === finding.finding_id &&
-                    'border-[var(--theme-accent)] bg-[var(--theme-accent-subtle)]',
-                )}
-              >
-                <span className="truncate">
-                  {selectedLabel(finding) || finding.finding_id}
-                </span>
-              </Button>
-            ))}
-          </div>
-        </div>
-        <dl className="min-h-0 space-y-2 overflow-auto text-[11px]">
-          {[
-            [t.concept, selectedLabel(selectedFinding)],
-            [t.classification, selectedFinding?.issue_type ?? 'unknown'],
-            [
-              t.applicability,
-              selectedFinding?.decision_status ?? 'applicability=unknown',
-            ],
-            [t.action, selectedFinding?.detection_method ?? 'review'],
-            [
-              t.path,
-              selectedFinding?.target_anchor_ref ??
-                selectedFinding?.target_evidence_ref ??
-                'unresolved',
-            ],
-            [
-              t.provenance,
-              `${sourceDocumentHash ?? 'hash:unavailable'} / ${
-                selectedFinding?.semantic_relation ?? 'relation:unknown'
-              }`,
-            ],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <dt className="font-semibold text-muted-foreground">{label}</dt>
-              <dd className="break-words font-mono text-foreground">
-                {value || '—'}
-              </dd>
-            </div>
-          ))}
-        </dl>
-        <div className="space-y-2">
-          <label className="grid gap-1">
-            <span className="font-semibold">{t.justification}</span>
-            <Textarea
-              value={justification}
-              onChange={(event) => setJustification(event.target.value)}
-              className="min-h-20 rounded-md border border-border bg-card p-2"
-              data-testid="finding-feedback-justification"
-            />
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {[
-              ['confirm', t.confirm],
-              ['change', t.change],
-              ['dismiss', t.dismiss],
-            ].map(([kind, label]) => (
-              <Button
-                key={kind}
-                type="button"
-                disabled={!canRecord}
-                data-testid={`finding-${kind}-action`}
-                onClick={() =>
-                  selectedFinding &&
-                  onDecision?.(
-                    kind as DecisionKind,
-                    selectedFinding,
-                    justification.trim(),
-                  )
-                }
-                className="h-8 rounded-md px-3 text-xs"
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </aside>
+      <FindingInspector
+        zh={zh}
+        findings={findings}
+        selectedFinding={selectedFinding}
+        sourceDocumentHash={sourceDocumentHash}
+        onSelectFinding={onSelectFinding}
+        onDecision={onDecision}
+      />
     </section>
   )
 }

@@ -184,7 +184,9 @@ export function applySigmaPositionControls(
       [x, y] = [y, -x]
     }
 
-    return [id, { x, y }] as const
+    // Note: no `as const` here — the pin-drop/overlap/force passes below
+    // deliberately mutate these points in place before the final assembly.
+    return [id, { x, y }] as [string, { x: number; y: number }]
   })
 
   const byId = Object.fromEntries(transformed)

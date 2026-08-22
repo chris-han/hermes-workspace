@@ -26,6 +26,13 @@ export default defineConfig({
       // top level, which is not available in jsdom. The failure pre-dates
       // this plan and is fixed in a separate test isolation follow-up.
       'src/routes/-knowledge-base.test.tsx',
+      // Not a test suite: `semantica-showcase-boundary-negative.test.ts` is an
+      // intentional tripwire probe (it imports a forbidden live-runtime module
+      // and defines no tests) that exists only so
+      // `semantica-showcase-boundary.test.ts` can prove the showcase import
+      // boundary rejects it. Vitest's include glob would otherwise pick it up
+      // and fail with "No test suite found".
+      'src/screens/knowledge-base/graph/showcase/__tests__/semantica-showcase-boundary-negative.test.ts',
     ],
     environment: 'node',
     setupFiles: ['./test-setup/webgl2-stub.ts'],

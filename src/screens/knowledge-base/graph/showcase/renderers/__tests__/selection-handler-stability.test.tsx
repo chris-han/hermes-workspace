@@ -48,7 +48,7 @@ const EMBEDDING_INPUT: ShowcaseEmbeddingRendererInput = {
     nodes: [{ id: 'item-1', label: 'Item 1' }],
     edges: [],
   },
-  items: [{ id: 'item-1', label: 'Item 1', x: 0, y: 0, sourceText: 'stub' }],
+  items: [{ id: 'item-1', label: 'Item 1', x: 0, y: 0, text: 'stub' }],
   inspector: EMPTY_INSPECTOR,
   metrics: [],
 }

@@ -15,7 +15,9 @@ test.describe('Semantica showcase — dataset switching (W7-15)', () => {
   test('switching the Active Dataset updates the dataset ID in the status bar', async ({ page }) => {
     await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
     const initialStatus = await page.getByTestId('showcase-status-bar').innerText()
-    expect(initialStatus).toMatch(/intro-cookbook-kg/)
+    // The status bar applies `text-transform: uppercase` (asimov-minimalism.css),
+    // so `innerText` is uppercased in Chromium; match case-insensitively.
+    expect(initialStatus).toMatch(/intro-cookbook-kg/i)
     const selector = page.getByTestId('dataset-selector')
     await expect(selector).toBeVisible()
     await selector.click()

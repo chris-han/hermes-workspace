@@ -157,3 +157,143 @@ describe('SemanticaShowcaseScreen — shell structure', () => {
     expect(status.textContent).toMatch(/offline/)
   })
 })
+
+describe('SemanticaShowcaseScreen — §10.4 temporal/analytics submodes', () => {
+  function selectDataset(datasetDisplayName: string) {
+    fireEvent.click(screen.getByTestId('dataset-selector'))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: datasetDisplayName }))
+  }
+
+  it('switches among all declared temporal submodes on the notebook suite', () => {
+    renderWithProviders(<SemanticaShowcaseScreen />)
+    selectDataset('03 Complete Visualization Suite')
+    fireEvent.click(screen.getByTestId('showcase-tab-temporal'))
+    const view = screen.getByTestId('temporal-showcase-view')
+    expect(screen.getByRole('button', { name: 'Timeline', pressed: true })).toBeDefined()
+    expect(view.textContent).toMatch(/Timeline/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }))
+    expect(screen.getByRole('button', { name: 'Dashboard', pressed: true })).toBeDefined()
+    expect(screen.getByTestId('temporal-showcase-view').textContent).toMatch(/Dashboard/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Evolution' }))
+    expect(screen.getByRole('button', { name: 'Evolution', pressed: true })).toBeDefined()
+    expect(screen.getByTestId('temporal-showcase-view').textContent).toMatch(/Network Evolution/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Timeline' }))
+    expect(screen.getByRole('button', { name: 'Timeline', pressed: true })).toBeDefined()
+  })
+
+  it('shows the Versions submode on the temporal-KG dataset', () => {
+    renderWithProviders(<SemanticaShowcaseScreen />)
+    selectDataset('10 Temporal Knowledge Graphs')
+    fireEvent.click(screen.getByTestId('showcase-tab-temporal'))
+    fireEvent.click(screen.getByRole('button', { name: 'Versions' }))
+    expect(screen.getByRole('button', { name: 'Versions', pressed: true })).toBeDefined()
+    expect(screen.getByTestId('temporal-showcase-view').textContent).toMatch(/Version History/)
+  })
+
+  it('switches between Centrality and Communities on the notebook suite', () => {
+    renderWithProviders(<SemanticaShowcaseScreen />)
+    selectDataset('03 Complete Visualization Suite')
+    fireEvent.click(screen.getByTestId('showcase-tab-analytics'))
+    expect(screen.getByRole('button', { name: 'Centrality', pressed: true })).toBeDefined()
+    expect(screen.getByTestId('analytics-showcase-view').textContent).toMatch(/Centrality/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Communities' }))
+    expect(screen.getByRole('button', { name: 'Communities', pressed: true })).toBeDefined()
+    expect(screen.getByTestId('analytics-showcase-view').textContent).toMatch(/Communities/)
+  })
+
+  it('disables unsupported temporal submodes on the temporal-KG dataset', () => {
+    renderWithProviders(<SemanticaShowcaseScreen />)
+    selectDataset('10 Temporal Knowledge Graphs')
+    fireEvent.click(screen.getByTestId('showcase-tab-temporal'))
+    expect(screen.getByRole('button', { name: 'Timeline' })).toHaveProperty('disabled', false)
+    expect(screen.getByRole('button', { name: 'Versions' })).toHaveProperty('disabled', false)
+    expect(screen.getByRole('button', { name: 'Dashboard' })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('button', { name: 'Evolution' })).toHaveProperty('disabled', true)
+    // Analytics lens is unsupported on this dataset: tab disabled.
+    expect(screen.getByTestId('showcase-tab-analytics').getAttribute('aria-disabled')).toBe('true')
+  })
+
+  it('falls back per §4.1.3 when a dataset switch loses the selected lens', () => {
+    renderWithProviders(<SemanticaShowcaseScreen />)
+    selectDataset('03 Complete Visualization Suite')
+    fireEvent.click(screen.getByTestId('showcase-tab-analytics'))
+    fireEvent.click(screen.getByRole('button', { name: 'Communities' }))
+    expect(screen.getByTestId('analytics-showcase-view')).toBeDefined()
+
+    // Switch to a KG-only dataset: analytics is unsupported, so the screen
+    // must land on knowledge-graph (first lens in canonical order) and must
+    // not render stale analytics content.
+    selectDataset('10 Graph Analytics')
+    expect(screen.getByTestId('kg-showcase-view')).toBeDefined()
+    expect(screen.queryByTestId('analytics-showcase-view')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Communities', pressed: true })).toBeNull()
+  })
+
+  it('keeps the temporal lens when the new dataset supports it, with canonical submode fallback', () => {
+    renderWithProviders(<SemanticaShowcaseScreen />)
+    selectDataset('03 Complete Visualization Suite')
+    fireEvent.click(screen.getByTestId('showcase-tab-temporal'))
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }))
+    expect(screen.getByRole('button', { name: 'Dashboard', pressed: true })).toBeDefined()
+
+    // 10 Temporal Knowledge Graphs supports temporal but not the dashboard
+    // submode: the lens is preserved and the submode falls back to the first
+    // declared submode in canonical order (timeline).
+    selectDataset('10 Temporal Knowledge Graphs')
+    expect(screen.getByTestId('temporal-showcase-view')).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Timeline', pressed: true })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Dashboard' })).toHaveProperty('disabled', true)
+  })
+
+  it('includes the §9.6 coverage disclosure for Temporal and Analytics', () => {
+    renderWithProviders(<SemanticaShowcaseScreen />)
+    selectDataset('03 Complete Visualization Suite')
+    fireEvent.click(screen.getByTestId('showcase-tab-temporal'))
+    const temporalDisclosure = screen.getByTestId('temporal-coverage-disclosure')
+    expect(temporalDisclosure.textContent).toMatch(/Pinned Semantica notebook visualization cases/)
+    expect(temporalDisclosure.textContent).toMatch(
+      /Source-only Semantica visualization methods are not included in this showcase\./,
+    )
+
+    fireEvent.click(screen.getByTestId('showcase-tab-analytics'))
+    const analyticsDisclosure = screen.getByTestId('analytics-coverage-disclosure')
+    expect(analyticsDisclosure.textContent).toMatch(/Pinned Semantica notebook visualization cases/)
+    expect(analyticsDisclosure.textContent).toMatch(
+      /Source-only Semantica visualization methods are not included in this showcase\./,
+    )
+  })
+
+  it('never claims full Semantica source-API parity in the screen copy', () => {
+    renderWithProviders(<SemanticaShowcaseScreen />)
+    selectDataset('03 Complete Visualization Suite')
+    const page = screen.getByTestId('semantica-showcase-screen')
+    expect(page.textContent).not.toMatch(/all Semantica visualizations/i)
+    expect(page.textContent).not.toMatch(/complete Semantica visualization API/i)
+  })
+
+  it('does not surface source-only methods as notebook-parity controls', () => {
+    renderWithProviders(<SemanticaShowcaseScreen />)
+    selectDataset('03 Complete Visualization Suite')
+    const page = screen.getByTestId('semantica-showcase-screen')
+    for (const forbidden of [
+      /temporal-patterns/i,
+      /snapshot-comparison/i,
+      /metrics-evolution/i,
+      /connectivity/i,
+      /degree-distribution/i,
+      /metrics-dashboard/i,
+      /centrality-comparison/i,
+      /Temporal Patterns/,
+      /Snapshot Comparison/,
+      /Metrics Evolution/,
+      /Degree Distribution/,
+      /Centrality Comparison/,
+    ]) {
+      expect(page.textContent).not.toMatch(forbidden)
+    }
+  })
+})

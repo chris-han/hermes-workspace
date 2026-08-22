@@ -18,7 +18,9 @@ import {
 const viewerConfig = {
   configured: true,
   provider: 'open-source-unified',
-  engine: 'pdfjs-canonical-source-ir',
+  state: 'pending-installation',
+  engine: 'placeholder-pending-flyfish-installation',
+  plannedRenderer: 'flyfish-preset-office',
 } as const
 
 describe('SourceEvidenceViewer', () => {
@@ -195,7 +197,7 @@ describe('SourceEvidenceViewer', () => {
     expect(viewer.getAttribute('data-overlay-strategy')).toBe(
       'document_coordinates',
     )
-    expect(screen.getByText(/Open-source PDF adapter configured through/)).toBeTruthy()
+    expect(screen.getByText(/Awaiting mount of flyfish-preset-office/)).toBeTruthy()
   })
 
   it('requires structured justification before Confirm Change Dismiss actions', () => {

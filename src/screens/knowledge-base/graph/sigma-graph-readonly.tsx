@@ -102,25 +102,28 @@ function buildReadonlyGraph(input: SigmaGraphReadonlyInput): Graph {
   return graph
 }
 
+type SigmaSettings = NonNullable<ConstructorParameters<typeof Sigma>[2]>
+
 function buildRendererSettings(
   resolveLabelColor: () => string,
   input: SigmaGraphReadonlyInput,
 ) {
   const showEdgeLabels = input.renderEdgeLabels ?? true
+  // Sigma v3 types `edgeProgramClasses` as an index signature; building the
+  // record conditionally keeps the union from leaking `undefined` members.
+  const edgeProgramClasses: SigmaSettings['edgeProgramClasses'] = input.edgeCurved
+    ? { curved: EdgeCurvedArrowProgram }
+    : {
+        arrow: createEdgeArrowProgram({
+          lengthToThicknessRatio: 4.0,
+          widenessToThicknessRatio: 2.8,
+        }),
+      }
   return {
     // Core visibility
     renderLabels: true,
     renderEdgeLabels: showEdgeLabels,
-    edgeProgramClasses: input.edgeCurved
-      ? {
-          curved: EdgeCurvedArrowProgram,
-        }
-      : {
-          arrow: createEdgeArrowProgram({
-            lengthToThicknessRatio: 4.0,
-            widenessToThicknessRatio: 2.8,
-          }),
-        },
+    edgeProgramClasses,
 
     // Label styling (node + edge)
     labelColor: { color: resolveLabelColor() },
@@ -202,12 +205,26 @@ export function SigmaGraphReadonly({
       let startGraphPoint: { x: number; y: number } | null = null
       let dragDistance = 0
       let isDragging = false
-      const previousEnableCamera = (() => {
+      // Sigma v3 split the v2 `enableCamera` flag into per-interaction
+      // settings; disable/restore all three so node drags never pan/zoom the
+      // camera underneath the pointer.
+      const CAMERA_INTERACTION_KEYS = [
+        'enableCameraPanning',
+        'enableCameraZooming',
+        'enableCameraRotation',
+      ] as const
+      const previousCameraInteraction = (() => {
+        const snapshot: Partial<Record<(typeof CAMERA_INTERACTION_KEYS)[number], boolean>> = {}
         if (typeof (renderer as { getSetting?: unknown }).getSetting !== 'function') {
-          return true
+          return snapshot
         }
-        const value = renderer.getSetting('enableCamera')
-        return typeof value === 'boolean' ? value : true
+        for (const key of CAMERA_INTERACTION_KEYS) {
+          const value = renderer.getSetting(key)
+          // Sigma defaults all three to true; restore to true when the
+          // previous value is unavailable or not boolean.
+          snapshot[key] = typeof value === 'boolean' ? value : true
+        }
+        return snapshot
       })()
       const startPositions = new Map<string, { x: number; y: number }>()
 
@@ -250,7 +267,9 @@ export function SigmaGraphReadonly({
         isDragging = true
         containerRef.current!.style.cursor = 'grabbing'
         if (typeof (renderer as { setSetting?: unknown }).setSetting === 'function') {
-          renderer.setSetting('enableCamera', false)
+          for (const key of CAMERA_INTERACTION_KEYS) {
+            renderer.setSetting(key, false)
+          }
         }
 
         startPositions.clear()
@@ -295,7 +314,10 @@ export function SigmaGraphReadonly({
           suppressClickUntil = Date.now() + 220
         }
         if (typeof (renderer as { setSetting?: unknown }).setSetting === 'function') {
-          renderer.setSetting('enableCamera', previousEnableCamera)
+          for (const key of CAMERA_INTERACTION_KEYS) {
+            const previous = previousCameraInteraction[key]
+            if (typeof previous === 'boolean') renderer.setSetting(key, previous)
+          }
         }
         startPositions.clear()
       }
@@ -347,7 +369,9 @@ export function SigmaGraphReadonly({
       renderer.on('leaveNode', handleLeaveNode)
       captor.on('mousemovebody', handleMove)
       captor.on('mouseup', handleUp)
-      captor.on('mouseupoutside', handleUp)
+      // Sigma v3 removed the captor-level `mouseupoutside` event; the
+      // window-level `mouseup` listener below covers releases outside the
+      // stage.
       window.addEventListener('mouseup', handleWindowMouseUp)
       window.addEventListener('pointerup', handleWindowPointerUp)
       window.addEventListener('touchend', handleWindowTouchEnd)
@@ -362,7 +386,6 @@ export function SigmaGraphReadonly({
         renderer.off('leaveNode', handleLeaveNode)
         captor.off('mousemovebody', handleMove)
         captor.off('mouseup', handleUp)
-        captor.off('mouseupoutside', handleUp)
         window.removeEventListener('mouseup', handleWindowMouseUp)
         window.removeEventListener('pointerup', handleWindowPointerUp)
         window.removeEventListener('touchend', handleWindowTouchEnd)

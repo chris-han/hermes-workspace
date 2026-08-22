@@ -11,7 +11,7 @@ test.describe('Semantica showcase — ontology inspection (W7-09)', () => {
     await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
     await page.getByTestId('showcase-tab-ontology').click()
     await expect(page.getByTestId('ontology-showcase-view')).toBeVisible()
-    await page.getByTestId('ontology-class-Organization').click()
+    await page.getByTestId('ontology-class-Organization').dispatchEvent('click')
     await expect(page.getByTestId('inspector-fields')).toContainText('Organization')
     await expect(page.getByTestId('inspector-fields')).toContainText('entity-type')
   })
@@ -19,7 +19,7 @@ test.describe('Semantica showcase — ontology inspection (W7-09)', () => {
   test('selecting the CEO_of relationship class surfaces the domain/range properties', async ({ page }) => {
     await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
     await page.getByTestId('showcase-tab-ontology').click()
-    await page.getByTestId('ontology-class-CEO_of').click()
+    await page.getByTestId('ontology-class-CEO_of').dispatchEvent('click')
     await expect(page.getByTestId('inspector-fields')).toContainText('relationship-type')
   })
 })

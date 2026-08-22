@@ -29,6 +29,7 @@ export function OntologyShowcaseView({
   renderEdgeLabels?: boolean
 } & ShowcaseCanvasViewportProps) {
   const ordered = useMemo(() => sortHierarchy(hierarchy), [hierarchy])
+  const selectHandler = useMemo(() => handleNodeSelection(onSelect), [onSelect])
   void maxDepth
 
   return (
@@ -42,7 +43,7 @@ export function OntologyShowcaseView({
         renderEdgeLabels={renderEdgeLabels}
         onViewportReady={onViewportReady}
         onCameraChange={onCameraChange}
-        onSelect={handleNodeSelection(onSelect)}
+        onSelect={selectHandler}
       />
       <div className="sr-only" data-testid="ontology-tree">
         {ordered.map((node) => (

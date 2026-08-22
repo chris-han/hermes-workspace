@@ -27,6 +27,7 @@ export function EmbeddingShowcaseView({
     () => [...input.items].sort((a, b) => a.label.localeCompare(b.label)),
     [input.items],
   )
+  const selectHandler = useMemo(() => handleNodeSelection(onSelect), [onSelect])
 
   return (
     <div className="flex h-full w-full flex-col gap-3" data-testid="embedding-showcase-view">
@@ -40,7 +41,7 @@ export function EmbeddingShowcaseView({
           renderEdgeLabels={renderEdgeLabels}
           onViewportReady={onViewportReady}
           onCameraChange={onCameraChange}
-          onSelect={handleNodeSelection(onSelect)}
+          onSelect={selectHandler}
         />
       </div>
       <div className="sr-only">

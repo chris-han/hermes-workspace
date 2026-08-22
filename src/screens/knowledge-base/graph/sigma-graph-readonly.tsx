@@ -202,9 +202,13 @@ export function SigmaGraphReadonly({
       let startGraphPoint: { x: number; y: number } | null = null
       let dragDistance = 0
       let isDragging = false
-      const previousEnableCamera = typeof (renderer as { getSetting?: unknown }).getSetting === 'function'
-        ? renderer.getSetting('enableCamera')
-        : true
+      const previousEnableCamera = (() => {
+        if (typeof (renderer as { getSetting?: unknown }).getSetting !== 'function') {
+          return true
+        }
+        const value = renderer.getSetting('enableCamera')
+        return typeof value === 'boolean' ? value : true
+      })()
       const startPositions = new Map<string, { x: number; y: number }>()
 
       const captor = renderer.getMouseCaptor()
@@ -279,7 +283,8 @@ export function SigmaGraphReadonly({
         event.original?.stopPropagation?.()
       }
 
-      const handleUp = () => {
+      const finishDrag = () => {
+        if (!isDragging && !draggingNode) return
         draggingNode = null
         draggingGroup = []
         startGraphPoint = null
@@ -293,6 +298,36 @@ export function SigmaGraphReadonly({
           renderer.setSetting('enableCamera', previousEnableCamera)
         }
         startPositions.clear()
+      }
+
+      const handleUp = () => {
+        finishDrag()
+      }
+
+      const handleWindowMouseUp = () => {
+        finishDrag()
+      }
+
+      const handleWindowPointerUp = () => {
+        finishDrag()
+      }
+
+      const handleWindowTouchEnd = () => {
+        finishDrag()
+      }
+
+      const handleWindowTouchCancel = () => {
+        finishDrag()
+      }
+
+      const handleWindowBlur = () => {
+        finishDrag()
+      }
+
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          finishDrag()
+        }
       }
 
       const handleEnterNode = () => {
@@ -313,14 +348,27 @@ export function SigmaGraphReadonly({
       captor.on('mousemovebody', handleMove)
       captor.on('mouseup', handleUp)
       captor.on('mouseupoutside', handleUp)
+      window.addEventListener('mouseup', handleWindowMouseUp)
+      window.addEventListener('pointerup', handleWindowPointerUp)
+      window.addEventListener('touchend', handleWindowTouchEnd)
+      window.addEventListener('touchcancel', handleWindowTouchCancel)
+      window.addEventListener('blur', handleWindowBlur)
+      document.addEventListener('visibilitychange', handleVisibilityChange)
 
       cleanupDragHandlers = () => {
+        finishDrag()
         renderer.off('downNode', handleDownNode)
         renderer.off('enterNode', handleEnterNode)
         renderer.off('leaveNode', handleLeaveNode)
         captor.off('mousemovebody', handleMove)
         captor.off('mouseup', handleUp)
         captor.off('mouseupoutside', handleUp)
+        window.removeEventListener('mouseup', handleWindowMouseUp)
+        window.removeEventListener('pointerup', handleWindowPointerUp)
+        window.removeEventListener('touchend', handleWindowTouchEnd)
+        window.removeEventListener('touchcancel', handleWindowTouchCancel)
+        window.removeEventListener('blur', handleWindowBlur)
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
       }
     }
     const publishCameraRatio = () => onCameraChange?.(renderer.getCamera().getState().ratio)

@@ -3180,22 +3180,6 @@ export function GroundMode({
   const [viewerConfig, setViewerConfig] = useState<ViewerConfig>(
     VIEWER_UNAVAILABLE_CONFIG,
   )
-  useEffect(() => {
-    let cancelled = false
-    fetch('/api/contextgraph-studio/source-evidence-viewer-config')
-      .then(async (response) => {
-        const payload = (await response.json()) as ViewerConfig
-        if (!response.ok) throw new Error('viewer-config-unavailable')
-        if (!cancelled) setViewerConfig(payload)
-      })
-      .catch(() => {
-        if (!cancelled) setViewerConfig(VIEWER_UNAVAILABLE_CONFIG)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
   // Derive `documentKind` from the governed SourceIdentity mediaType so we
   // never duplicate the kind as a second truth source.
   const sourceDocumentKind = useMemo<
@@ -3211,6 +3195,26 @@ export function GroundMode({
     return null
   }, [sourceDocumentPresentation])
 
+  // W4 - lazy viewer config: only fetch when a PDF/DOCX presentation is
+  // actually going to mount the shared viewer. When no presentation is
+  // provided we stay in VIEWER_UNAVAILABLE_CONFIG and do not consume a
+  // fetch slot that callers may need for detail/preview fetches.
+  useEffect(() => {
+    if (!sourceDocumentPresentation || !sourceDocumentKind) return
+    let cancelled = false
+    fetch('/api/contextgraph-studio/source-evidence-viewer-config')
+      .then(async (response) => {
+        const payload = (await response.json()) as ViewerConfig
+        if (!response.ok) throw new Error('viewer-config-unavailable')
+        if (!cancelled) setViewerConfig(payload)
+      })
+      .catch(() => {
+        if (!cancelled) setViewerConfig(VIEWER_UNAVAILABLE_CONFIG)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [sourceDocumentPresentation, sourceDocumentKind])
   // W4 — when the queue selection changes, reset the highlighted finding
   // to the current candidate's primary evidence_ref so the viewer focus
   // follows the queue.

@@ -362,7 +362,7 @@ describe('ContextGraphStudioScreen', () => {
     )
   })
 
-  it('opens the original source and extracts only from its normalized representation', async () => {
+  it('opens the original DOCX through the shared read-only viewer and extracts only from its normalized representation', async () => {
     const onNext = vi.fn()
     const fetchMock = vi
       .fn()
@@ -381,9 +381,16 @@ describe('ContextGraphStudioScreen', () => {
           ],
         }),
       })
+      // W6 - W6 lazy-loads the viewer config when a PDF/DOCX preview opens.
       .mockResolvedValueOnce({
         ok: true,
-        arrayBuffer: async () => new ArrayBuffer(8),
+        json: async () => ({
+          configured: true,
+          provider: 'open-source-unified',
+          state: 'pending-installation',
+          engine: 'placeholder-pending-flyfish-installation',
+          plannedRenderer: 'flyfish-preset-office',
+        }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -418,21 +425,37 @@ describe('ContextGraphStudioScreen', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'View Tender brief.docx' }),
     )
+    // W6 - DOCX originals now mount the shared read-only viewer (no
+    // mammoth call). The lineage header carries distinct Original vs
+    // Normalized labels so the original-vs-normalized distinction is
+    // auditable at runtime.
     await expect(
       screen.findByRole('dialog', { name: 'Source preview' }),
     ).resolves.toBeTruthy()
-    expect(screen.getByText('Original DOCX content')).toBeTruthy()
-    expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      '/api/files?action=download&path=wiki%2Fuploads%2Ftender.docx',
-    )
+    expect(screen.getByTestId('sources-preview-binary-viewer')).toBeTruthy()
+    expect(
+      screen.getByTestId('sources-preview-original-lineage'),
+    ).toBeTruthy()
+    expect(
+      screen.getByTestId('sources-preview-normalized-lineage'),
+    ).toBeTruthy()
+    expect(screen.queryByText('Original DOCX content')).toBeNull()
+    expect(
+      fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).startsWith(
+            '/api/files?action=download&path=wiki%2Fuploads%2Ftender.docx',
+          ) && ((init as RequestInit | undefined)?.method ?? 'GET') !== 'HEAD',
+      ),
+    ).toBeUndefined()
 
     fireEvent.click(screen.getByRole('button', { name: 'Extract tender.md' }))
     await waitFor(() =>
-      expect(fetchMock.mock.calls[4]?.[0]).toBe(
+      expect(fetchMock.mock.calls[5]?.[0]).toBe(
         '/api/semantier-proxy/api/knowledge/builder/extraction-runs',
       ),
     )
-    expect(JSON.parse(String((fetchMock.mock.calls[4]?.[1] as RequestInit).body))).toMatchObject({
+    expect(JSON.parse(String((fetchMock.mock.calls[5]?.[1] as RequestInit).body))).toMatchObject({
       schemaVersion: 'knowledge_builder_extraction_run_request.v2',
       sourceId: 'source-1',
       sourceRole: 'reference_sensitive_word_list',

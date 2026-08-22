@@ -13,9 +13,8 @@ function resolveThemeColor(token: string, fallback: string): string {
     .getPropertyValue(token)
     .trim()
   if (!value) return fallback
-  return value.startsWith('#') || value.startsWith('rgb') || value.startsWith('hsl')
-    ? value
-    : `hsl(${value})`
+  if (value.startsWith('#') || value.includes('(')) return value
+  return `hsl(${value})`
 }
 
 function buildActivitySpec(data: DashboardActivityDatum[]): VisualizationSpec {
@@ -23,8 +22,6 @@ function buildActivitySpec(data: DashboardActivityDatum[]): VisualizationSpec {
   const messagesColor = resolveThemeColor('--success', '#5f9f62')
   const borderColor = resolveThemeColor('--border', '#8b8b8b')
   const mutedColor = resolveThemeColor('--muted-foreground', '#737373')
-  const cardColor = resolveThemeColor('--card', '#ffffff')
-  const foregroundColor = resolveThemeColor('--foreground', '#171717')
 
   const sharedXAxis = {
     field: 'date',
@@ -56,15 +53,6 @@ function buildActivitySpec(data: DashboardActivityDatum[]): VisualizationSpec {
         gridOpacity: 0.32,
         gridDash: [2, 4],
         title: null,
-      },
-      tooltip: {
-        fill: cardColor,
-        stroke: borderColor,
-        strokeWidth: 1,
-        cornerRadius: 3,
-        color: foregroundColor,
-        font: 'JetBrains Mono',
-        fontSize: 11,
       },
     },
     layer: [

@@ -29,7 +29,7 @@ export function VisualizationFooter({
 }: {
   /** Mono caps renderer tag, e.g. `SVG` / `RECHARTS · SVG` / `SIGMA · WEBGL`. */
   rendererTag: string
-  /** Short mono summary, e.g. `Timeline · 5 lanes · 7 events`. */
+  /** Chart/layout type label, e.g. `Swimlane` / `Ranked bars` / `Force-directed`. */
   summary: string
   /** Optional chart interaction control group (MODE / ZOOM / FIT). */
   interactions?: ReactNode
@@ -56,10 +56,11 @@ export function VisualizationFooter({
 /**
  * Chart footer control parity with the Sigma canvas footer
  * (`semantica-showcase-screen.tsx` `showcase-ref-canvas-footer`): MODE
- * (View/Select), ZOOM (- / factor / +), FIT, and the gear opening the
- * validated Visualization Controls popover. Graph-only groups (LAYOUT, PATH,
- * NUDGE, EDGES) are absent, not disabled. Every mutation routes through the
- * fail-closed `VisualizationControlState` patch path (A9/W6).
+ * (View/Select), ZOOM (- / factor / +), FIT, and the gear all live together
+ * in the right-hand group, separated by dividers — exactly the Sigma layout.
+ * Graph-only groups (LAYOUT, PATH, NUDGE, EDGES) are absent, not disabled.
+ * Every mutation routes through the fail-closed `VisualizationControlState`
+ * patch path (A9/W6).
  */
 export function ChartVisualizationFooter({
   rendererTag,
@@ -85,8 +86,8 @@ export function ChartVisualizationFooter({
       rendererTag={rendererTag}
       summary={summary}
       testId={testId}
-      interactions={
-        <div className="showcase-ref-canvas-group" aria-label="Chart interaction controls">
+      controls={
+        <>
           <span className="showcase-ref-canvas-label">MODE</span>
           <button
             type="button"
@@ -139,9 +140,10 @@ export function ChartVisualizationFooter({
           >
             FIT
           </button>
-        </div>
+          <span className="showcase-ref-canvas-separator" aria-hidden="true" />
+          <VisualizationControls controls={controls} onControlsChange={onControlsChange} />
+        </>
       }
-      controls={<VisualizationControls controls={controls} onControlsChange={onControlsChange} />}
     />
   )
 }

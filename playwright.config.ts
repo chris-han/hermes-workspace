@@ -6,19 +6,14 @@ const CHROMIUM_EX_PATH = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
 const PLAYWRIGHT_CDP_WS_ENDPOINT = process.env.PLAYWRIGHT_CDP_WS_ENDPOINT
   ?? process.env.HERMES_CDP_WS_ENDPOINT
   ?? ''
-const USE_REMOTE_CDP = PLAYWRIGHT_CDP_WS_ENDPOINT.trim().length > 0
 
-const CHROMIUM_USE = USE_REMOTE_CDP
-  ? {
-      ...devices['Desktop Chrome'],
-    }
-  : {
-      ...devices['Desktop Chrome'],
-      launchOptions: {
-        executablePath: CHROMIUM_EX_PATH,
-        args: ['--disable-crash-reporter', '--disable-crashpad', '--disable-gpu'],
-      },
-    }
+const CHROMIUM_USE = {
+  ...devices['Desktop Chrome'],
+  launchOptions: {
+    executablePath: CHROMIUM_EX_PATH,
+    args: ['--disable-crash-reporter', '--disable-crashpad', '--disable-gpu'],
+  },
+}
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -45,13 +40,6 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...CHROMIUM_USE,
-        ...(USE_REMOTE_CDP
-          ? {
-              connectOptions: {
-                wsEndpoint: PLAYWRIGHT_CDP_WS_ENDPOINT,
-              },
-            }
-          : {}),
         locale: 'en-US',
       },
     },

@@ -63,8 +63,14 @@ export function AnalyticsShowcaseView({
           testId="analytics-communities-visualization"
           ariaLabel="Community structure visualization"
           className="min-h-0 flex-1"
+          footer={
+            <VisualizationFooter
+              rendererTag="SIGMA · WEBGL"
+              summary="Force-directed"
+            />
+          }
         >
-          <div className="flex min-h-0 flex-1 flex-col p-3">
+          <div className="flex min-h-0 flex-1 flex-col">
             <h3 className="font-mono text-sm font-semibold">Communities</h3>
             <div className="flex min-h-[360px] flex-1">
               <ShowcaseSigmaCanvas
@@ -75,10 +81,6 @@ export function AnalyticsShowcaseView({
               />
             </div>
           </div>
-          <VisualizationFooter
-            rendererTag="SIGMA · WEBGL"
-            summary={`Communities · ${adapter.communities.length} groups · ${adapter.graph.nodes.length} nodes`}
-          />
         </VisualizationShell>
       ) : null}
     </div>
@@ -114,8 +116,19 @@ function CentralityBars({
   const maxScore = adapter.rankings[0]?.score ?? 1
   const selectEnabled = config.interaction.select
   return (
-    <VisualizationShell testId="analytics-centrality-visualization" ariaLabel="Centrality visualization">
-      <div className="p-3">
+    <VisualizationShell
+      testId="analytics-centrality-visualization"
+      ariaLabel="Centrality visualization"
+      footer={
+        <ChartVisualizationFooter
+          rendererTag="RECHARTS · SVG"
+          summary="Ranked bars"
+          controls={controls}
+          onControlsChange={onControlsChange}
+        />
+      }
+    >
+      <div>
         <h3 className="font-mono text-sm font-semibold">Centrality</h3>
         <BarChart
           width={snapToAsimovGrid(720)}
@@ -163,12 +176,6 @@ function CentralityBars({
           />
         </BarChart>
       </div>
-      <ChartVisualizationFooter
-        rendererTag="RECHARTS · SVG"
-        summary={`Centrality · ${adapter.inspector.subtitle ?? 'degree'} · ${adapter.rankings.length} nodes`}
-        controls={controls}
-        onControlsChange={onControlsChange}
-      />
     </VisualizationShell>
   )
 }

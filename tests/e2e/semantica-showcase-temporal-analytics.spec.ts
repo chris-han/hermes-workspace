@@ -140,7 +140,9 @@ test.describe('Semantica showcase — temporal/analytics notebook parity (§10.5
       'analytics-centrality-bar-e4',
     ])
     // Centrality footer parity: MODE / ZOOM / FIT / gear with a working zoom.
-    const centralityFooter = page.getByTestId('analytics-centrality-visualization').getByTestId('visualization-footer')
+    // The footer is portaled to the outer center panel card (Sigma parity),
+    // not nested inside the shell.
+    const centralityFooter = page.getByTestId('visualization-footer')
     await expect(centralityFooter.getByTestId('chart-mode-view')).toHaveAttribute('aria-pressed', 'true')
     await expect(centralityFooter.getByTestId('chart-zoom-value')).toHaveText('1.0x')
     await centralityFooter.getByTestId('chart-zoom-in').click()

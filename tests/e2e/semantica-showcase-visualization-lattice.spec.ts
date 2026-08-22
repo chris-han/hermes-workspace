@@ -8,8 +8,12 @@
  *   - dot-grid background-size equals the 24px lattice unit;
  *   - visualization viewport background resolves transparent (grid shows
  *     through; A6);
- *   - the shell border resolves to the canonical 1px Asimov border token;
- *   - the per-canvas footer boundary/height is lattice-aligned;
+ *   - the shell is canvas-native like the Sigma center canvas: no inner card
+ *     border, no shadow, no back-fill (the outer center panel card owns the
+ *     chrome);
+ *   - the per-canvas footer matches the Sigma canvas footer geometry:
+ *     border-top from the canonical token, opaque panel back-fill, shared
+ *     8px/12px padding;
  *   - timeline lane baselines are lattice-aligned while event mark X stays
  *     data-driven (A1).
  */
@@ -29,7 +33,7 @@ async function selectDataset(page: import('@playwright/test').Page, displayName:
 }
 
 test.describe('Semantica showcase — Asimov visualization lattice (W7-03)', () => {
-  test('dot grid resolves to the 24px lattice and the chart viewport is transparent with the canonical border', async ({ page }) => {
+  test('dot grid resolves to the 24px lattice and the chart shell is canvas-native with Sigma footer parity', async ({ page }) => {
     await stubShowcaseAuth(page)
     await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
     await expect(page.getByTestId('semantica-showcase-screen')).toBeVisible()
@@ -43,22 +47,29 @@ test.describe('Semantica showcase — Asimov visualization lattice (W7-03)', () 
     )
     expect(gridSize).toBe('24px 24px')
 
-    // Transparent viewport + structural border from the canonical token.
+    // Canvas-native shell (Sigma parity): transparent, NO inner card border,
+    // no shadow — the outer center panel card owns the chrome.
     const shell = page.getByTestId('temporal-timeline-visualization')
     const shellStyle = await shell.evaluate((el) => {
       const style = getComputedStyle(el)
       return {
         background: style.backgroundColor,
         borderWidth: style.borderTopWidth,
-        borderStyle: style.borderTopStyle,
-        borderColor: style.borderTopColor,
         boxShadow: style.boxShadow,
       }
     })
     expect(shellStyle.background).toBe('rgba(0, 0, 0, 0)')
-    expect(shellStyle.borderWidth).toBe('1px')
-    expect(shellStyle.borderStyle).toBe('solid')
-    // Canonical border token: --asimov-border = 1px solid var(--asimov-outline-variant).
+    expect(shellStyle.borderWidth).toBe('0px')
+    // A7 flat depth: no shadow.
+    expect(shellStyle.boxShadow).toBe('none')
+
+    const viewport = shell.locator('.showcase-viz-viewport')
+    await expect(viewport).toHaveCount(1)
+    const viewportBackground = await viewport.evaluate((el) => getComputedStyle(el).backgroundColor)
+    expect(viewportBackground).toBe('rgba(0, 0, 0, 0)')
+
+    // Footer parity with the Sigma canvas footer: border-top from the
+    // canonical token, opaque panel back-fill, shared 8px/12px padding.
     const expectedRgb = await page.locator('.semantica-showcase-reference').evaluate((el) => {
       const probe = document.createElement('div')
       probe.style.color = getComputedStyle(el).getPropertyValue('--asimov-outline-variant').trim()
@@ -68,24 +79,30 @@ test.describe('Semantica showcase — Asimov visualization lattice (W7-03)', () 
       return resolved
     })
     expect(expectedRgb).not.toBe('')
-    expect(shellStyle.borderColor).toBe(expectedRgb)
-    // A7 flat depth: no shadow.
-    expect(shellStyle.boxShadow).toBe('none')
-
-    const viewport = shell.locator('.showcase-viz-viewport')
-    await expect(viewport).toHaveCount(1)
-    const viewportBackground = await viewport.evaluate((el) => getComputedStyle(el).backgroundColor)
-    expect(viewportBackground).toBe('rgba(0, 0, 0, 0)')
-
-    // Footer boundary lattice-aligned: snapped min-height 2 × 24px and a
-    // border-top from the canonical token.
-    const footer = shell.getByTestId('visualization-footer')
+    const panelRgb = await page.locator('.semantica-showcase-reference').evaluate((el) => {
+      const probe = document.createElement('div')
+      probe.style.backgroundColor = getComputedStyle(el).getPropertyValue('--asimov-panel').trim()
+      el.appendChild(probe)
+      const resolved = getComputedStyle(probe).backgroundColor
+      probe.remove()
+      return resolved
+    })
+    expect(panelRgb).not.toBe('')
+    const footer = page.getByTestId('visualization-footer')
     await expect(footer).toBeVisible()
-    const footerBox = await footer.boundingBox()
-    expect(footerBox).not.toBeNull()
-    expect(Math.round(footerBox!.height) % LATTICE).toBe(0)
-    const footerBorder = await footer.evaluate((el) => getComputedStyle(el).borderTopColor)
-    expect(footerBorder).toBe(expectedRgb)
+    const footerStyle = await footer.evaluate((el) => {
+      const style = getComputedStyle(el)
+      return {
+        borderTopColor: style.borderTopColor,
+        background: style.backgroundColor,
+        paddingTop: style.paddingTop,
+        paddingLeft: style.paddingLeft,
+      }
+    })
+    expect(footerStyle.borderTopColor).toBe(expectedRgb)
+    expect(footerStyle.background).toBe(panelRgb)
+    expect(footerStyle.paddingTop).toBe('8px')
+    expect(footerStyle.paddingLeft).toBe('12px')
 
     // Lane baselines snap to the lattice…
     const laneCy = await page
@@ -110,7 +127,9 @@ test.describe('Semantica showcase — Asimov visualization lattice (W7-03)', () 
     await page.getByRole('button', { name: 'Communities' }).click()
     const shell = page.getByTestId('analytics-communities-visualization')
     await expect(shell).toBeVisible()
-    await expect(shell.getByTestId('visualization-footer')).toBeVisible()
+    // Footer is portaled to the outer center panel card (Sigma parity), not
+    // nested inside the shell.
+    await expect(page.getByTestId('visualization-footer')).toBeVisible()
     const background = await shell.evaluate((el) => getComputedStyle(el).backgroundColor)
     expect(background).toBe('rgba(0, 0, 0, 0)')
     await expect(

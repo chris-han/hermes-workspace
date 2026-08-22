@@ -23,6 +23,7 @@ import { TemporalShowcaseView } from './renderers/temporal-showcase-view'
 import { SemanticNetworkShowcaseView } from './renderers/semantic-network-showcase-view'
 import { getDataset, getDatasetRegistry } from './semantica-showcase-dataset'
 import { SigmaControls } from './sigma-controls'
+import { VisualizationFooterPortalTarget } from './visualization/visualization-shell'
 import {
   DEFAULT_SIGMA_CONTROLS,
   applySigmaPositionControls,
@@ -1168,12 +1169,20 @@ function CenterPanel({
     { value: 'communities', label: 'Communities' },
   ]
   const activeLayout = topology === 'layout' ? 'force-directed' : topology
+  // Footer hoist target: shared visualization shells (Temporal/Analytics)
+  // portal their per-canvas footer here so it lands as a direct child of this
+  // outer card — flush at its bottom edge, exactly like the Sigma canvas
+  // footer below — instead of nesting inside the inner shell.
+  const [vizFooterTarget, setVizFooterTarget] = useState<HTMLDivElement | null>(null)
 
   return (
     <section className="showcase-ref-panel showcase-ref-center relative flex min-h-0 flex-col overflow-hidden">
       <div className="showcase-ref-ruler" aria-hidden="true" />
       <div className="showcase-ref-grid-canvas" aria-hidden="true" />
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col p-3 pt-5">{children}</div>
+      <VisualizationFooterPortalTarget.Provider value={vizFooterTarget}>
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col p-3 pt-5">{children}</div>
+      </VisualizationFooterPortalTarget.Provider>
+      <div ref={setVizFooterTarget} />
       {supportsTopology ? (
         <div className="showcase-ref-canvas-footer" aria-label="Visualization controls">
           <div className="showcase-ref-canvas-group" role="radiogroup" aria-label="Graph topology controls">

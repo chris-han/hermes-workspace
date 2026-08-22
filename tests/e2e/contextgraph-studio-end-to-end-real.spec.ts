@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { chromium, expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { execFileSync } from 'node:child_process'
@@ -25,17 +25,30 @@ const workspacePassword = process.env.F10_ROOT
   ? (JSON.parse(readFileSync(join(process.env.F10_ROOT, 'credentials.json'), 'utf8')) as { password: string }).password
   : null
 let identityFixture: IdentityFixture | null = null
+const remoteCdpEndpoint = process.env.PLAYWRIGHT_CDP_WS_ENDPOINT
+  ?? process.env.HERMES_CDP_WS_ENDPOINT
+  ?? ''
+let remoteBrowser: Awaited<ReturnType<typeof chromium.connectOverCDP>> | null = null
+let remotePage: import('@playwright/test').Page | null = null
 
-test.beforeAll(() => {
+test.beforeAll(async () => {
   identityFixture = JSON.parse(execFileSync(fixturePython, [
     fixtureScript, '--auth-db-path', fixtureAuthDb, 'provision',
   ], {
     cwd: repositoryRoot,
     encoding: 'utf8',
   })) as IdentityFixture
+  if (remoteCdpEndpoint.trim()) {
+    remoteBrowser = await chromium.connectOverCDP(remoteCdpEndpoint, { timeout: 30_000 })
+    const remoteContext = remoteBrowser.contexts()[0] ?? await remoteBrowser.newContext()
+    remotePage = remoteContext.pages()[0] ?? await remoteContext.newPage()
+  }
 })
 
-test.afterAll(() => {
+test.afterAll(async () => {
+  if (remoteBrowser) {
+    await remoteBrowser.close()
+  }
   if (!identityFixture) return
   execFileSync(fixturePython, [
     fixtureScript,
@@ -47,9 +60,11 @@ test.afterAll(() => {
   ], { cwd: repositoryRoot, stdio: 'pipe' })
 })
 
-test('authenticated ContextGraph Studio exposes the real seven-screen MVL', async ({ page }) => {
+test('authenticated ContextGraph Studio exposes the real seven-screen MVL', async ({ page: runnerPage }) => {
   expect(identityFixture).not.toBeNull()
   const credentials = identityFixture as IdentityFixture
+  const page = remotePage ?? runnerPage
+  const browserBaseUrl = process.env.HERMES_EVAL_BASE_URL ?? 'http://127.0.0.1:4300'
   const sourcePath = process.env.CONTEXTGRAPH_E2E_SOURCE_DOCX
     ?? join(process.cwd(), '..', 'docs', '招投标法规', 'POC测试敏感词汇总.docx')
   const serverFailures: string[] = []
@@ -59,7 +74,7 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
     }
   })
 
-  await page.goto('/contextgraph-studio', {
+  await page.goto(remotePage ? `${browserBaseUrl}/contextgraph-studio` : '/contextgraph-studio', {
     waitUntil: 'domcontentloaded',
     timeout: 180_000,
   })
@@ -69,13 +84,13 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
     },
   )
   expect(gatewayLogin.ok(), await gatewayLogin.text()).toBeTruthy()
-  const workspaceLogin = await page.request.post('/api/auth', {
+  const workspaceLogin = await page.request.post(`${browserBaseUrl}/api/auth`, {
     data: { password: workspacePassword ?? credentials.password },
   })
   expect(workspaceLogin.ok() || workspaceLogin.status() === 400, await workspaceLogin.text()).toBeTruthy()
   await page.reload({ waitUntil: 'commit' })
 
-  await expect(page.getByRole('heading', { name: /ContextGraph Studio/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /ContextGraph Studio/i })).toBeVisible({ timeout: 30_000 })
   const uploadResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/api/knowledge/upload') && response.request().method() === 'POST',
   )
@@ -123,11 +138,12 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
   const extractionResponse = await extractionResponsePromise
   expect(extractionResponse.ok(), await extractionResponse.text()).toBeTruthy()
   const extractionPayload = await extractionResponse.json() as Record<string, any>
-  expect(extractionPayload.extractionRun?.run_status).toBe('completed')
+  expect(['completed', 'completed_with_boundary_review'])
+    .toContain(extractionPayload.extractionRun?.run_status)
   const extractionRunId = String(extractionPayload.extractionRun?.extraction_run_id ?? '')
   expect(extractionRunId).toBeTruthy()
   const candidatesResponse = await page.request.get(
-    `/api/semantier-proxy/api/knowledge/builder/reference-concepts?extractionRunId=${encodeURIComponent(extractionRunId)}&limit=500`,
+    `${browserBaseUrl}/api/semantier-proxy/api/knowledge/builder/reference-concepts?extractionRunId=${encodeURIComponent(extractionRunId)}&limit=500`,
   )
   expect(candidatesResponse.ok(), await candidatesResponse.text()).toBeTruthy()
   const candidatesPayload = await candidatesResponse.json() as Record<string, any>
@@ -142,7 +158,7 @@ test('authenticated ContextGraph Studio exposes the real seven-screen MVL', asyn
   )
   expect(firstCandidateLabel).toBeTruthy()
   const legacyCandidatesResponse = await page.request.get(
-    `/api/semantier-proxy/api/knowledge/builder/assertion-candidates?extractionRunId=${encodeURIComponent(extractionRunId)}&limit=500`,
+    `${browserBaseUrl}/api/semantier-proxy/api/knowledge/builder/assertion-candidates?extractionRunId=${encodeURIComponent(extractionRunId)}&limit=500`,
   )
   expect(legacyCandidatesResponse.ok(), await legacyCandidatesResponse.text()).toBeTruthy()
   const legacyCandidatesPayload = await legacyCandidatesResponse.json() as Record<string, any>

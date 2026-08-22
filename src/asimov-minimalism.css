@@ -641,7 +641,9 @@
 
 /* Shared visualization shell (plan
    2026-08-22-asimov-visualization-layout-system-theme-refactor-v1, W3):
-   transparent viewport over the dot grid, structural 1px border, flat depth. */
+   canvas-native like the Sigma center canvas — NO inner card chrome. The
+   outer center panel card (ruler host) owns the border; the shell is a
+   transparent flex container so the dot grid shows through uninterrupted. */
 .semantica-showcase-reference .showcase-viz-shell {
   display: flex;
   min-width: 0;
@@ -650,8 +652,7 @@
   flex-direction: column;
   overflow: hidden;
   background: transparent;
-  border: var(--asimov-border);
-  border-radius: var(--asimov-radius-panel);
+  border: none;
   box-shadow: none !important;
 }
 
@@ -662,12 +663,12 @@
   background: transparent;
 }
 
-/* Per-canvas footer: existing canvas-footer geometry with a lattice-snapped
-   minimum height (2 × --asimov-grid-unit). */
+/* Per-canvas footer: identical geometry/fill to the Sigma canvas footer
+   (`showcase-ref-canvas-footer`) — opaque panel back-fill, natural height
+   from the shared padding (8px 12px), border-top from the canonical token.
+   No lattice-snapped min-height and no transparent override. */
 .semantica-showcase-reference .showcase-viz-footer {
   flex: none;
-  min-height: calc(var(--asimov-grid-unit) * 2);
-  background: transparent;
 }
 
 .semantica-showcase-reference .showcase-viz-footer-summary {

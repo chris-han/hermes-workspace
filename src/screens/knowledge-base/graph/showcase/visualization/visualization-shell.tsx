@@ -8,9 +8,25 @@
  * per-canvas footer. The shell owns geometry/chrome; the renderer owns marks
  * only. The screen-level dataset status bar (`showcase-ref-statusbar`) is a
  * separate surface and stays unchanged.
+ *
+ * Footer placement mirrors the Knowledge Graph tab's Sigma canvas: the footer
+ * is a direct child of the OUTER center panel card (the one hosting the
+ * ruler), flush at its bottom edge — not nested inside this inner shell.
+ * `CenterPanel` exposes a portal target via `VisualizationFooterPortalTarget`;
+ * when present, the shell portals its footer there. Without a provider (unit
+ * tests, standalone mounts) the footer renders inline after the viewport.
  */
 
+import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+
+/**
+ * Portal target for the per-canvas visualization footer, provided by the
+ * outer center panel card. `undefined` = no provider (render footer inline);
+ * `null` = provider mounted but the target node is not attached yet.
+ */
+export const VisualizationFooterPortalTarget = createContext<HTMLElement | null | undefined>(undefined)
 
 export function VisualizationShell({
   children,
@@ -25,6 +41,15 @@ export function VisualizationShell({
   ariaLabel?: string
   className?: string
 }) {
+  const portalTarget = useContext(VisualizationFooterPortalTarget)
+  const renderedFooter =
+    footer == null
+      ? null
+      : portalTarget === undefined
+        ? footer
+        : portalTarget === null
+          ? null
+          : createPortal(footer, portalTarget)
   return (
     <section
       className={`showcase-viz-shell${className ? ` ${className}` : ''}`}
@@ -32,7 +57,7 @@ export function VisualizationShell({
       aria-label={ariaLabel}
     >
       <div className="showcase-viz-viewport">{children}</div>
-      {footer}
+      {renderedFooter}
     </section>
   )
 }

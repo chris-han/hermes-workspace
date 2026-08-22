@@ -186,8 +186,19 @@ function TimelineSwimlane({
   const centerX = labelWidth + pad + chartWidth / 2
   const selectEnabled = config.interaction.select
   return (
-    <VisualizationShell testId="temporal-timeline-visualization" ariaLabel="Timeline visualization">
-      <div className="p-3">
+    <VisualizationShell
+      testId="temporal-timeline-visualization"
+      ariaLabel="Timeline visualization"
+      footer={
+        <ChartFooter
+          rendererTag="SVG"
+          summary="Swimlane"
+          controls={controls}
+          onControlsChange={onControlsChange}
+        />
+      }
+    >
+      <div>
         <h3 className="font-mono text-sm font-semibold">Timeline</h3>
         <svg
           role="img"
@@ -268,12 +279,6 @@ function TimelineSwimlane({
           ) : null}
         </svg>
       </div>
-      <ChartFooter
-        rendererTag="SVG"
-        summary={`Timeline · ${lanes.length} lanes · ${adapter.events.length} events`}
-        controls={controls}
-        onControlsChange={onControlsChange}
-      />
     </VisualizationShell>
   )
 }
@@ -304,8 +309,19 @@ function VersionsLadder({
     .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x},${rungY}`)
     .join(' ')
   return (
-    <VisualizationShell testId="temporal-versions-visualization" ariaLabel="Version history visualization">
-      <div className="p-3">
+    <VisualizationShell
+      testId="temporal-versions-visualization"
+      ariaLabel="Version history visualization"
+      footer={
+        <ChartFooter
+          rendererTag="SVG"
+          summary="Ladder"
+          controls={controls}
+          onControlsChange={onControlsChange}
+        />
+      }
+    >
+      <div>
         <h3 className="font-mono text-sm font-semibold">Version History</h3>
         <svg
           role="img"
@@ -360,12 +376,6 @@ function VersionsLadder({
           })}
         </svg>
       </div>
-      <ChartFooter
-        rendererTag="SVG"
-        summary={`Versions · ${adapter.versions.length} rungs`}
-        controls={controls}
-        onControlsChange={onControlsChange}
-      />
     </VisualizationShell>
   )
 }
@@ -407,8 +417,19 @@ function DashboardCharts({
     hide: !config.axis.visibleX,
   } as const
   return (
-    <VisualizationShell testId="temporal-dashboard-visualization" ariaLabel="Temporal dashboard visualization">
-      <div className="p-3">
+    <VisualizationShell
+      testId="temporal-dashboard-visualization"
+      ariaLabel="Temporal dashboard visualization"
+      footer={
+        <ChartFooter
+          rendererTag="RECHARTS · SVG"
+          summary="Small multiples"
+          controls={controls}
+          onControlsChange={onControlsChange}
+        />
+      }
+    >
+      <div>
         <h3 className="font-mono text-sm font-semibold">Dashboard</h3>
 
         <div className="mt-2" data-testid="temporal-dashboard-lifelines">
@@ -507,12 +528,6 @@ function DashboardCharts({
           </LineChart>
         </div>
       </div>
-      <ChartFooter
-        rendererTag="RECHARTS · SVG"
-        summary={`Dashboard · 3 panels · ${adapter.metricsSeries?.length ?? 0} series`}
-        controls={controls}
-        onControlsChange={onControlsChange}
-      />
     </VisualizationShell>
   )
 }
@@ -568,8 +583,14 @@ function EvolutionCanvas({
       testId="temporal-evolution-visualization"
       ariaLabel="Network evolution visualization"
       className="min-h-0 flex-1"
+      footer={
+        <VisualizationFooter
+          rendererTag="SIGMA · WEBGL"
+          summary="Force-directed"
+        />
+      }
     >
-      <div className="flex min-h-0 flex-1 flex-col p-3">
+      <div className="flex min-h-0 flex-1 flex-col">
         <h3 className="font-mono text-sm font-semibold">Network Evolution</h3>
         <div className="flex min-h-[360px] flex-1">
           <ShowcaseSigmaCanvas
@@ -597,10 +618,6 @@ function EvolutionCanvas({
           </span>
         </div>
       </div>
-      <VisualizationFooter
-        rendererTag="SIGMA · WEBGL"
-        summary={`Evolution · frame ${Math.min(frameIndex, adapter.frameTimes.length - 1) + 1}/${adapter.frameTimes.length}`}
-      />
     </VisualizationShell>
   )
 }

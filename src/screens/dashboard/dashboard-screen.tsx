@@ -3,15 +3,6 @@ import { Button } from '@/components/ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Moon02Icon,
@@ -38,6 +29,7 @@ import { cn } from '@/lib/utils'
 import { openHamburgerMenu } from '@/components/mobile-hamburger-menu'
 import { applyTheme, useSettingsStore } from '@/hooks/use-settings'
 import { useSemantierAuthStatus } from '@/lib/semantier-auth'
+import { DashboardActivityVega } from './dashboard-activity-vega'
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -657,99 +649,7 @@ function ActivityChart({ sessions }: { sessions: Array<HermesSession> }) {
       }
       className="h-full"
     >
-      <div className="h-[200px] w-full -ml-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
-            data={chartData}
-            margin={{ top: 8, right: 32, left: -16, bottom: 0 }}
-          >
-            <defs>
-              <linearGradient id="g-sessions" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="0%"
-                  stopColor="hsl(var(--primary))"
-                  stopOpacity={0.3}
-                />
-                <stop
-                  offset="100%"
-                  stopColor="hsl(var(--primary))"
-                  stopOpacity={0}
-                />
-              </linearGradient>
-              <linearGradient id="g-messages" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="0%"
-                  stopColor="hsl(var(--success))"
-                  stopOpacity={0.2}
-                />
-                <stop
-                  offset="100%"
-                  stopColor="hsl(var(--success))"
-                  stopOpacity={0}
-                />
-              </linearGradient>
-            </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="hsl(var(--border))"
-              opacity={0.45}
-            />
-            <XAxis
-              dataKey="date"
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              yAxisId="left"
-              tick={{ fill: 'hsl(var(--success))', fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-              width={28}
-            />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              tick={{ fill: 'hsl(var(--primary))', fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-              width={28}
-            />
-            <Tooltip
-              contentStyle={{
-                background: 'hsl(var(--card))',
-                border: `1px solid hsl(var(--border))`,
-                borderRadius: '12px',
-                fontSize: '11px',
-              }}
-              labelStyle={{
-                color: 'hsl(var(--muted-foreground))',
-                fontSize: '10px',
-              }}
-            />
-            <Area
-              yAxisId="left"
-              type="monotone"
-              dataKey="messages"
-              stroke="hsl(var(--success))"
-              fill="url(#g-messages)"
-              strokeWidth={1.5}
-              dot={false}
-            />
-            <Area
-              yAxisId="right"
-              type="monotone"
-              dataKey="sessions"
-              stroke="hsl(var(--primary))"
-              fill="url(#g-sessions)"
-              strokeWidth={2}
-              dot={false}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+      <DashboardActivityVega data={chartData} />
       <div className="mt-2 flex items-center gap-5 text-[10px] text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span className="size-2 rounded-full bg-primary" />

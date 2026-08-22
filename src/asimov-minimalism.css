@@ -38,6 +38,11 @@
   /* Typography role: values use compact mono tracking; labels keep wider UI tracking. */
   --asimov-value-letter-spacing: -0.02em;
 
+  /* Visualization lattice: 24px = 3 × the 8px authenticated base unit
+     (DESIGN.md §6). The dot grid and all visualization presentation geometry
+     derive from this token; data geometry is never snapped. */
+  --asimov-grid-unit: 24px;
+
   /* Interactive control accent used by Asimov switches/sliders. */
   --asimov-control-yellow: #e8c92d;
   --asimov-slider-track: var(--asimov-outline-variant);
@@ -618,7 +623,7 @@
   z-index: 0;
   opacity: 0.08;
   background-image: radial-gradient(var(--asimov-text) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-size: var(--asimov-grid-unit) var(--asimov-grid-unit);
   pointer-events: none;
 }
 
@@ -632,6 +637,48 @@
   border-top: var(--asimov-border);
   background: var(--asimov-panel);
   white-space: nowrap;
+}
+
+/* Shared visualization shell (plan
+   2026-08-22-asimov-visualization-layout-system-theme-refactor-v1, W3):
+   transparent viewport over the dot grid, structural 1px border, flat depth. */
+.semantica-showcase-reference .showcase-viz-shell {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  background: transparent;
+  border: var(--asimov-border);
+  border-radius: var(--asimov-radius-panel);
+  box-shadow: none !important;
+}
+
+.semantica-showcase-reference .showcase-viz-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: transparent;
+}
+
+/* Per-canvas footer: existing canvas-footer geometry with a lattice-snapped
+   minimum height (2 × --asimov-grid-unit). */
+.semantica-showcase-reference .showcase-viz-footer {
+  flex: none;
+  min-height: calc(var(--asimov-grid-unit) * 2);
+  background: transparent;
+}
+
+.semantica-showcase-reference .showcase-viz-footer-summary {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--asimov-text);
+  text-transform: none;
+  letter-spacing: 0.08em;
 }
 
 .semantica-showcase-reference .showcase-ref-canvas-group {

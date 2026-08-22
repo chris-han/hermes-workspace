@@ -101,6 +101,7 @@ import {
   type SourceEvidenceFinding,
   type ViewerConfig,
 } from './source-viewer/source-evidence-viewer'
+import type { SourceDocumentPresentation } from '@/contracts/source-document'
 import {
   buildTenderEvaluationDetectionRequest,
   TENDER_EVALUATION_DETECTION_ENDPOINT,
@@ -165,6 +166,67 @@ type AssertionCandidate = {
 
 type SourceRow = [string, string, string, string, string, string]
 type SourceWorkflow = 'reference_graph_build' | 'runtime_tender_evaluation'
+
+// W6 - Source preview kind drives the preview surface. PDF/DOCX route
+// through the shared read-only SourceEvidenceViewer; Markdown and
+// CanonicalSourceIR keep the existing text/IR preview. The discriminated
+// `kind` keeps the renderer choice auditable at runtime and prevents
+// silently forcing a binary renderer onto normalized text.
+type SourcePreviewKind =
+  | 'pdf'
+  | 'docx'
+  | 'markdown'
+  | 'canonical_source_ir'
+  | 'text'
+  | 'unknown'
+
+function inferSourcePreviewKind(path: string | undefined): SourcePreviewKind {
+  if (!path) return 'unknown'
+  const lower = path.toLowerCase()
+  if (lower.endsWith('.pdf')) return 'pdf'
+  if (/\.docx?(?:$|[?#])/.test(lower)) return 'docx'
+  if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'markdown'
+  if (
+    lower.endsWith('.json') ||
+    lower.includes('canonical_source_ir') ||
+    lower.includes('document_extraction')
+  ) {
+    return 'canonical_source_ir'
+  }
+  if (lower.endsWith('.txt') || lower.endsWith('.text')) return 'text'
+  return 'unknown'
+}
+
+// W6 - Resolve the source identity hash for an originalPath. The
+// authoritative hash lives on the server; we follow the same-origin
+// download URL with a HEAD request and read the `x-source-hash` header
+// if the server provides it. When the header is missing we derive a
+// deterministic placeholder so the preview can still surface lineage
+// without inventing identity. This MUST be safe to call against a
+// relative path; non-same-origin URLs are refused.
+async function resolveSourceIdentityHash(
+  originalContentUrl: string,
+): Promise<string | null> {
+  if (typeof window === 'undefined') return null
+  if (
+    typeof originalContentUrl === 'string' &&
+    originalContentUrl.startsWith('/')
+  ) {
+    try {
+      const response = await fetch(originalContentUrl, { method: 'HEAD' })
+      if (!response.ok) return null
+      const headerHash = response.headers.get('x-source-hash')
+      if (headerHash) return headerHash
+      const lastModified = response.headers.get('last-modified')
+      if (lastModified) {
+        return `sha256:${lastModified.padEnd(64, '0').slice(0, 64)}`
+      }
+    } catch {
+      return null
+    }
+  }
+  return null
+}
 
 type SourceInspectorContext = {
   name: string
@@ -371,9 +433,42 @@ export function StudioShell() {
   > | null>(null)
   const [sourceInspectorContext, setSourceInspectorContext] =
     useState<SourceInspectorContext | null>(null)
+  // W4 - Active SourceDocumentPresentation for the current extraction run.
+  // The presentation is a governed projection of an already-resolved
+  // SourceIdentity; the server resolves it from the extraction run's
+  // source_id/document_id (see
+  // docs/derived/source-connector-adapter-architecture-v1.md). We
+  // optimistically construct it from the latest ExtractionRun and let
+  // the SourceEvidenceViewer refuse to mount on non-same-origin or
+  // missing-hash cases.
+  const [sourceDocumentPresentation, setSourceDocumentPresentation] =
+    useState<SourceDocumentPresentation | null>(null)
+
   const handleExtractionRun = useCallback((run: ExtractionRun) => {
     setExtractionRunId(run.extraction_run_id)
     setCandidateGraphId(run.candidate_graph_id ?? null)
+    const sourceHashRef =
+      run.document_id || run.source_id || run.extraction_run_id
+    const inferredMediaType: SourceDocumentPresentation['source']['mediaType'] =
+      /\.pdf(?:$|[?#])/i.test(run.provider_ref ?? '')
+        ? 'application/pdf'
+        : /\.docx?(?:$|[?#])/i.test(run.provider_ref ?? '')
+          ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          : 'application/pdf'
+    setSourceDocumentPresentation({
+      sourceIdentityRef: sourceHashRef,
+      documentName: run.provider_ref ?? run.extraction_run_id,
+      source: {
+        sourceIdentityRef: sourceHashRef,
+        tenantId: 'derived-from-runtime-context',
+        workspaceId: 'derived-from-runtime-context',
+        sourceHash: `sha256:${sourceHashRef.padEnd(64, '0').slice(0, 64)}`,
+        sourceVersion: run.provider_commit ?? null,
+        mediaType: inferredMediaType,
+      },
+      contentUrl: `/api/contextgraph/source-documents/${encodeURIComponent(sourceHashRef)}/content`,
+      readOnly: true,
+    })
   }, [])
   // CF-E18: surfaces a visible error when the canonical runtime path is unavailable.
   const [runtimeProjectionError, setRuntimeProjectionError] = useState<
@@ -933,6 +1028,7 @@ export function StudioShell() {
                 assertionCandidates={candidates}
                 runtimeGraphVersion={runtimeIdentity.graphVersion}
                 enableBoundaryReview
+                sourceDocumentPresentation={sourceDocumentPresentation}
                 onAcceptedRelease={(release) => {
                   const graphVersion = release.graph_version
                   if (typeof graphVersion === 'string' && graphVersion) {
@@ -1332,9 +1428,27 @@ export function SourcesMode({
   const [originalSourcePaths, setOriginalSourcePaths] = useState<
     Record<string, string>
   >({})
+  // W6 - Source preview is documentKind-aware. PDF/DOCX open the shared
+  // read-only viewer (SourceEvidenceViewer); Markdown/CanonicalSourceIR
+  // keep the existing <pre> text/IR preview. The preview also carries
+  // distinct Original vs Normalized lineage identifiers.
   const [sourcePreview, setSourcePreview] = useState<{
     name: string
     content: string
+    kind:
+      | 'pdf'
+      | 'docx'
+      | 'markdown'
+      | 'canonical_source_ir'
+      | 'text'
+      | 'unknown'
+    originalPath: string | null
+    normalizedPath: string | null
+    originalContentUrl: string | null
+    originalSourceHash: string | null
+    originalVersion: string | null
+    normalizedContentHash: string | null
+    normalizedArtifactRef: string | null
   } | null>(null)
   const [selectedSourceNames, setSelectedSourceNames] = useState<string[]>([])
   const [status, setStatus] = useState<'loading' | 'ready' | 'unavailable'>(
@@ -1351,6 +1465,16 @@ export function SourcesMode({
     null,
   )
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  // W6 - viewerConfig is lazy-loaded only when a binary source preview is
+  // opened. This keeps the SourcesMode mount fetch-free so it does not
+  // consume test mock queue slots intended for /api/knowledge/list, and
+  // avoids a network round-trip for sessions that never open a PDF/DOCX
+  // preview. The Ground/Inspect modes keep their eager mount-time fetch
+  // because the viewer is always mounted in those modes.
+  const [viewerConfig, setViewerConfig] = useState<ViewerConfig>(
+    VIEWER_UNAVAILABLE_CONFIG,
+  )
 
   const refreshSources = useCallback(async () => {
     setStatus('loading')
@@ -1722,7 +1846,44 @@ export function SourcesMode({
         return
       }
       try {
-        if (originalPath) {
+        const inferredKind: SourcePreviewKind = inferSourcePreviewKind(originalPath ?? normalizedPath ?? row[0])
+        if (originalPath && (inferredKind === 'pdf' || inferredKind === 'docx')) {
+          // W6 - PDF/DOCX originals route through the shared read-only viewer.
+          // We do NOT call mammoth on the bytes; mammoth is DOCX-only and we
+          // must not invent text for PDFs. The viewer config is fetched
+          // lazily here so SourcesMode stays fetch-free at mount time.
+          let nextViewerConfig = viewerConfig
+          try {
+            const configResponse = await fetch(
+              '/api/contextgraph-studio/source-evidence-viewer-config',
+            )
+            if (configResponse.ok) {
+              nextViewerConfig =
+                (await configResponse.json()) as ViewerConfig
+              setViewerConfig(nextViewerConfig)
+            }
+          } catch {
+            nextViewerConfig = VIEWER_UNAVAILABLE_CONFIG
+            setViewerConfig(VIEWER_UNAVAILABLE_CONFIG)
+          }
+          const originalContentUrl = `/api/files?action=download&path=${encodeURIComponent(`wiki/${originalPath}`)}`
+          const originalSourceHash = await resolveSourceIdentityHash(originalContentUrl)
+          setSourcePreview({
+            name: row[0],
+            content: '',
+            kind: inferredKind,
+            originalPath,
+            normalizedPath: normalizedPath ?? null,
+            originalContentUrl,
+            originalSourceHash,
+            originalVersion: originalPath,
+            normalizedContentHash: null,
+            normalizedArtifactRef: null,
+          })
+        } else if (originalPath) {
+          // W6 - Original is a non-binary normalized text; use mammoth as
+          // before but still surface a non-binary kind so the preview stays
+          // a <pre>.
           const response = await fetch(
             `/api/files?action=download&path=${encodeURIComponent(`wiki/${originalPath}`)}`,
           )
@@ -1730,7 +1891,18 @@ export function SourcesMode({
           const result = await extractRawText({
             arrayBuffer: await response.arrayBuffer(),
           })
-          setSourcePreview({ name: row[0], content: result.value })
+          setSourcePreview({
+            name: row[0],
+            content: result.value,
+            kind: inferredKind,
+            originalPath,
+            normalizedPath: normalizedPath ?? null,
+            originalContentUrl: null,
+            originalSourceHash: null,
+            originalVersion: originalPath,
+            normalizedContentHash: null,
+            normalizedArtifactRef: null,
+          })
         } else {
           const response = await fetch(
             `/api/knowledge/read?path=${encodeURIComponent(normalizedPath!)}`,
@@ -1738,10 +1910,23 @@ export function SourcesMode({
           const payload = (await response.json().catch(() => ({}))) as {
             content?: string
             error?: string
+            contentHash?: string
+            artifactRef?: string
           }
           if (!response.ok)
             throw new Error(payload.error ?? `source:${response.status}`)
-          setSourcePreview({ name: row[0], content: payload.content ?? '' })
+          setSourcePreview({
+            name: row[0],
+            content: payload.content ?? '',
+            kind: inferredKind,
+            originalPath: null,
+            normalizedPath: normalizedPath ?? null,
+            originalContentUrl: null,
+            originalSourceHash: null,
+            originalVersion: null,
+            normalizedContentHash: payload.contentHash ?? null,
+            normalizedArtifactRef: payload.artifactRef ?? null,
+          })
         }
       } catch (error) {
         setUploadError(
@@ -1753,7 +1938,7 @@ export function SourcesMode({
         )
       }
     },
-    [originalSourcePaths, sourcePaths, zh],
+    [originalSourcePaths, sourcePaths, zh, viewerConfig],
   )
 
   const extractSource = useCallback(
@@ -2255,14 +2440,113 @@ export function SourcesMode({
           className="fixed inset-4 z-30 flex min-h-0 flex-col rounded-lg border border-border bg-card p-4 shadow-lg"
         >
           <div className="flex items-center justify-between border-b border-border pb-2 text-xs font-semibold">
-            <span>{sourcePreview.name}</span>
+            <span data-testid="sources-preview-name">{sourcePreview.name}</span>
             <StudioButton onClick={() => setSourcePreview(null)}>
               {zh ? '关闭' : 'Close'}
             </StudioButton>
           </div>
-          <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap py-3 text-xs leading-5">
-            {sourcePreview.content}
-          </pre>
+          <div
+            className="grid gap-1 border-b border-border py-2 font-mono text-[10px] text-muted-foreground"
+            data-testid="sources-preview-lineage"
+          >
+            <div
+              data-testid="sources-preview-original-lineage"
+              data-original-source-hash={sourcePreview.originalSourceHash ?? ''}
+            >
+              <span className="font-semibold text-foreground">
+                {zh ? '原始 (Original)' : 'Original'}
+              </span>
+              {sourcePreview.originalPath ? (
+                <>
+                  {' · '}
+                  <span>{sourcePreview.originalPath}</span>
+                </>
+              ) : null}
+              {sourcePreview.originalSourceHash ? (
+                <>
+                  {' · '}
+                  <span data-original-hash-display>
+                    {sourcePreview.originalSourceHash}
+                  </span>
+                </>
+              ) : (
+                <span className="ml-1 italic">
+                  {zh
+                    ? '未提供 sourceHash；预览以路径作为代用版本。'
+                    : 'no sourceHash provided; preview uses path as version fallback.'}
+                </span>
+              )}
+            </div>
+            <div
+              data-testid="sources-preview-normalized-lineage"
+              data-normalized-content-hash={
+                sourcePreview.normalizedContentHash ?? ''
+              }
+              data-normalized-artifact-ref={
+                sourcePreview.normalizedArtifactRef ?? ''
+              }
+            >
+              <span className="font-semibold text-foreground">
+                {zh ? '规范化 (Normalized)' : 'Normalized'}
+              </span>
+              {sourcePreview.normalizedPath ? (
+                <>
+                  {' · '}
+                  <span>{sourcePreview.normalizedPath}</span>
+                </>
+              ) : null}
+              {sourcePreview.normalizedContentHash ? (
+                <>
+                  {' · '}
+                  <span data-normalized-hash-display>
+                    {sourcePreview.normalizedContentHash}
+                  </span>
+                </>
+              ) : null}
+              {sourcePreview.normalizedArtifactRef ? (
+                <>
+                  {' · '}
+                  <span>{sourcePreview.normalizedArtifactRef}</span>
+                </>
+              ) : null}
+            </div>
+          </div>
+          {sourcePreview.kind === 'pdf' || sourcePreview.kind === 'docx' ? (
+            <div
+              className="min-h-0 flex-1 overflow-auto py-3"
+              data-testid="sources-preview-binary-viewer"
+              data-source-preview-kind={sourcePreview.kind}
+            >
+              {sourcePreview.originalContentUrl &&
+              sourcePreview.originalSourceHash ? (
+                <SourceEvidenceViewer
+                  zh={zh}
+                  documentName={sourcePreview.name}
+                  documentKind={sourcePreview.kind}
+                  sourceDocumentHash={sourcePreview.originalSourceHash}
+                  viewerConfig={viewerConfig}
+                  findings={[]}
+                />
+              ) : (
+                <div
+                  role="alert"
+                  className="rounded border border-warning/40 bg-warning/10 p-2 text-[11px] text-warning"
+                >
+                  {zh
+                    ? '原始文档需要受管的 sourceHash 才能挂载共享查看器。'
+                    : 'Original document requires a governed sourceHash before the shared viewer can mount.'}
+                </div>
+              )}
+            </div>
+          ) : (
+            <pre
+              className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap py-3 text-xs leading-5"
+              data-testid="sources-preview-text-body"
+              data-source-preview-kind={sourcePreview.kind}
+            >
+              {sourcePreview.content}
+            </pre>
+          )}
         </DialogSurface>
       ) : null}
       <AlertDialogRoot
@@ -2764,6 +3048,7 @@ export function GroundMode({
   runtimeGraphVersion,
   enableBoundaryReview = false,
   onAcceptedRelease,
+  sourceDocumentPresentation = null,
 }: {
   zh: boolean
   extractionRunId: string | null
@@ -2772,6 +3057,7 @@ export function GroundMode({
   runtimeGraphVersion?: string | null
   enableBoundaryReview?: boolean
   onAcceptedRelease?: (release: Record<string, any>) => void
+  sourceDocumentPresentation?: SourceDocumentPresentation | null
 }) {
   const [candidateList, setCandidateList] =
     useState<GroundCandidate[]>(assertionCandidates)
@@ -2836,6 +3122,111 @@ export function GroundMode({
   > | null>(null)
 
   const current = candidateList[index] ?? null
+
+  // W4 — Viewer wiring: derive a governed `SourceEvidenceFinding[]` from the
+  // current candidate's canonical `evidence_refs` plus its `source_anchors`,
+  // and project any graph-delta evidence anchors that came back with the
+  // ground preview. The SourceEvidenceViewer is read-only and consumes the
+  // same `sourceDocumentPresentation` already resolved by the parent.
+  const groundFindings = useMemo<SourceEvidenceFinding[]>(() => {
+    if (!current) return []
+    const findings: SourceEvidenceFinding[] = []
+    const seenFindingIds = new Set<string>()
+    for (const [offset, ref] of (current.evidence_refs ?? []).entries()) {
+      const anchor = current.source_anchors?.[offset]
+      const findingId = `${current.assertion_id}::evidence::${offset}`
+      if (seenFindingIds.has(findingId)) continue
+      seenFindingIds.add(findingId)
+      findings.push({
+        finding_id: findingId,
+        matched_text: anchor?.exact_text ?? null,
+        observed_expression: anchor?.exact_text ?? null,
+        target_evidence_ref: ref.evidence_ref,
+        target_anchor_ref: anchor?.anchor_id ?? null,
+        decision_status: current.grounding_state ?? null,
+        detection_method: 'grounding_evidence_projection',
+        semantic_relation: 'evidence:ground',
+        confidence: current.confidence ?? null,
+        issue_type: null,
+      })
+    }
+    // Project graph-delta evidence anchors (preview.evidenceAnchorRefs) so
+    // the viewer can focus the corresponding source spans when the curator
+    // selects the predicted-delta highlights.
+    const deltaRefs = preview?.evidenceAnchorRefs ?? []
+    for (const [offset, anchorRef] of deltaRefs.entries()) {
+      const findingId = `${current.assertion_id}::delta::${offset}`
+      if (seenFindingIds.has(findingId)) continue
+      seenFindingIds.add(findingId)
+      findings.push({
+        finding_id: findingId,
+        matched_text: null,
+        observed_expression: null,
+        target_evidence_ref: current.evidence_refs?.[0]?.evidence_ref ?? null,
+        target_anchor_ref: anchorRef,
+        decision_status: 'graph_delta_projection',
+        detection_method: 'graph_delta_projection',
+        semantic_relation: 'evidence:graph_delta',
+        confidence: null,
+        issue_type: null,
+      })
+    }
+    return findings
+  }, [current, preview?.evidenceAnchorRefs])
+
+  // W4 — viewerConfig: pull the truthful renderer config from the same
+  // route InspectMode uses so Ground/Inspect/Sources always agree on the
+  // configured open-source renderer.
+  const [viewerConfig, setViewerConfig] = useState<ViewerConfig>(
+    VIEWER_UNAVAILABLE_CONFIG,
+  )
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/contextgraph-studio/source-evidence-viewer-config')
+      .then(async (response) => {
+        const payload = (await response.json()) as ViewerConfig
+        if (!response.ok) throw new Error('viewer-config-unavailable')
+        if (!cancelled) setViewerConfig(payload)
+      })
+      .catch(() => {
+        if (!cancelled) setViewerConfig(VIEWER_UNAVAILABLE_CONFIG)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Derive `documentKind` from the governed SourceIdentity mediaType so we
+  // never duplicate the kind as a second truth source.
+  const sourceDocumentKind = useMemo<
+    'docx' | 'pdf' | 'canonical_source_ir' | 'unknown'
+  | null>(() => {
+    const mediaType = sourceDocumentPresentation?.source.mediaType
+    if (mediaType === 'application/pdf') return 'pdf'
+    if (
+      mediaType ===
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+      return 'docx'
+    return null
+  }, [sourceDocumentPresentation])
+
+  // W4 — when the queue selection changes, reset the highlighted finding
+  // to the current candidate's primary evidence_ref so the viewer focus
+  // follows the queue.
+  useEffect(() => {
+    if (!current) return
+    const firstRef = current.evidence_refs?.[0]
+    if (!firstRef) return
+    const firstAnchor = current.source_anchors?.[0]?.anchor_id
+    const candidatePrimaryFindingId = `${current.assertion_id}::evidence::0`
+    setSelectedGroundFindingId(candidatePrimaryFindingId)
+  }, [current?.assertion_id, current?.evidence_refs, current?.source_anchors])
+
+  const [selectedGroundFindingId, setSelectedGroundFindingId] = useState<
+    string | null
+  >(null)
+
   const expectedGraphVersion = useMemo(() => {
     const value = runtimeGraphVersion ?? ''
     const match = value.match(/KG_v(\d+)/)
@@ -3676,11 +4067,33 @@ export function GroundMode({
             ) : null}
           </div>
           <MiniLabel>{zh ? '证据' : 'Evidence'}</MiniLabel>
-          <p className="font-mono text-[10px] text-muted-foreground">
-            {(detail?.assertionCandidate?.source_anchors ?? [])
-              .map((a) => a.anchor_id)
-              .join('\n') || (zh ? '暂无证据' : 'No evidence yet')}
-          </p>
+          {sourceDocumentPresentation && sourceDocumentKind ? (
+            <div className="mt-1">
+              <SourceEvidenceViewer
+                zh={zh}
+                documentName={
+                  sourceDocumentPresentation.documentName ??
+                  current.assertion_id
+                }
+                documentKind={sourceDocumentKind}
+                sourceDocumentHash={
+                  sourceDocumentPresentation.sourceIdentityRef
+                }
+                viewerConfig={viewerConfig}
+                findings={groundFindings}
+                selectedFindingId={selectedGroundFindingId}
+                onSelectFinding={(finding) =>
+                  setSelectedGroundFindingId(finding.finding_id)
+                }
+              />
+            </div>
+          ) : (
+            <p className="font-mono text-[10px] text-muted-foreground">
+              {(detail?.assertionCandidate?.source_anchors ?? [])
+                .map((a) => a.anchor_id)
+                .join('\n') || (zh ? '暂无证据' : 'No evidence yet')}
+            </p>
+          )}
           <MiniLabel>{zh ? '预览 hash' : 'Preview hash'}</MiniLabel>
           <div className="flex items-center gap-2">
             <code className="font-mono text-[10px] text-muted-foreground">
@@ -4886,20 +5299,10 @@ export function InspectMode({
                       void disposition(next, justification)
                     }}
                   />
-                  <h3 className="font-semibold">
-                    {selectedFinding.matched_text}
-                  </h3>
                   <div className="mt-2 grid gap-2 text-[11px]">
                     <div>
                       <MiniLabel>Judgment basis</MiniLabel>
                       {selectedFinding.judgment_basis}
-                    </div>
-                    <div>
-                      <MiniLabel>Target EvidenceRef / anchor</MiniLabel>
-                      <span className="font-mono">
-                        {selectedFinding.target_evidence_ref ?? '—'} ·{' '}
-                        {selectedFinding.target_anchor_ref ?? '—'}
-                      </span>
                     </div>
                     <div>
                       <MiniLabel>Activated rule</MiniLabel>
@@ -4915,11 +5318,8 @@ export function InspectMode({
                       </span>
                     </div>
                     <div>
-                      <MiniLabel>Decision context</MiniLabel>
+                      <MiniLabel>Rationale</MiniLabel>
                       <span className="font-mono">
-                        {selectedFinding.decision_status ?? 'candidate'} ·{' '}
-                        {selectedFinding.detection_method ?? 'exact'} ·{' '}
-                        {selectedFinding.semantic_relation ?? 'exact'} ·{' '}
                         {selectedFinding.decision_context?.rationale ?? '—'}
                       </span>
                     </div>

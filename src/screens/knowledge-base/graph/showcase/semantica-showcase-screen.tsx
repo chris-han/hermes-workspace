@@ -998,7 +998,7 @@ export function SemanticaShowcaseScreen() {
             <CenterPanel supportsTopology={false}>
               {temporalSubmodeButtons}
               <TemporalShowcaseView
-                key={temporalSubmode}
+                key={`${datasetId}-${temporalSubmode}`}
                 adapter={temporalAdapter}
                 selection={temporalSelection}
                 onSelect={setTemporalSelection}
@@ -1050,7 +1050,7 @@ export function SemanticaShowcaseScreen() {
             <CenterPanel supportsTopology={false}>
               {analyticsSubmodeButtons}
               <AnalyticsShowcaseView
-                key={analyticsSubmode}
+                key={`${datasetId}-${analyticsSubmode}`}
                 adapter={analyticsAdapter}
                 selection={analyticsSelection}
                 onSelect={setAnalyticsSelection}

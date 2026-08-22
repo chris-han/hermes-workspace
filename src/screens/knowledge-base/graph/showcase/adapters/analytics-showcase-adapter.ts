@@ -1,43 +1,42 @@
-import { adaptKgFixture, type KgShowcaseAdapterResult } from './kg-showcase-adapter'
+import {
+  ASIMOV_CATEGORICAL_SERIES_ORDER,
+  ASIMOV_VISUALIZATION_SWATCH_VALUES,
+} from '../visualization/asimov-visualization-swatch-values'
 import type {
+  AnalyticsShowcaseSubmode,
   ShowcaseAnalyticsFixture,
   ShowcaseInspectorModel,
   ShowcaseMetric,
-  AnalyticsShowcaseSubmode,
 } from '../semantica-showcase-types'
+import {  adaptKgFixture } from './kg-showcase-adapter'
+import type {KgShowcaseAdapterResult} from './kg-showcase-adapter';
 
 /**
- * Deterministic Asimov categorical palette for community coloring. Values are
- * the pinned hex codes from `asimov-visualization-swatches.css`, ordered so a
- * sorted community-id list maps to a stable categorical sequence (the adapter
- * layer is DOM-free and cannot resolve CSS variables).
+ * Deterministic Asimov categorical palette for community coloring, REBOUND to
+ * the canonical token surface (`asimov-visualization-swatch-values.ts`, the
+ * DOM-free mirror of `asimov-visualization-swatches.css`) per the
+ * visualization theme refactor W2 — hex values no longer live in this
+ * adapter. Mapping policy (§6.2): the sorted community-id list indexes the
+ * canonical series range in order, so dataset/submode switches never recolor
+ * the same community identity.
  */
-export const ASIMOV_COMMUNITY_PALETTE = [
-  '#9fe870', // lime
-  '#4a7fe8', // cobalt
-  '#ff8040', // tangerine
-  '#ff1a5e', // crimson
-  '#8fb8ff', // periwinkle
-  '#d9b32d', // gold
-  '#5fd43a', // fern
-  '#ff4d00', // ember
-  '#ffe566', // butter
-  '#ffc5d7', // blush
-] as const
+export const ASIMOV_COMMUNITY_PALETTE: readonly string[] = ASIMOV_CATEGORICAL_SERIES_ORDER.map(
+  (swatch) => ASIMOV_VISUALIZATION_SWATCH_VALUES[swatch],
+)
 
 const UNASSIGNED_COMMUNITY_COLOR = '#64748b'
 
 export type AnalyticsShowcaseAdapterResult =
   | {
       kind: 'centrality'
-      rankings: Array<{ nodeId: string; score: number; rank: number }>
+      rankings: { nodeId: string; score: number; rank: number }[]
       inspector: ShowcaseInspectorModel
       metrics: ShowcaseMetric[]
     }
   | {
       kind: 'communities'
       graph: KgShowcaseAdapterResult['readonlyInput']
-      communities: Array<{ id: string | number; nodeIds: string[] }>
+      communities: { id: string | number; nodeIds: string[] }[]
       assignments: Record<string, string | number>
       /** Deterministic community-id → Asimov categorical color mapping. */
       communityColors: Record<string, string>

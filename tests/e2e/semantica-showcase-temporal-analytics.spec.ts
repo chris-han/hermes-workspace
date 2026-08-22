@@ -102,6 +102,27 @@ test.describe('Semantica showcase — temporal/analytics notebook parity (§10.5
     const temporalCenter = page.locator('.showcase-ref-center')
     await expect(temporalCenter.locator('[data-testid="temporal-showcase-view"] ul')).toHaveCount(0)
 
+    // Footer control parity: the chart footer speaks the Sigma footer
+    // language — MODE / ZOOM / FIT / gear — with working zoom.
+    const timelineFooter = page.getByTestId('visualization-footer')
+    await expect(timelineFooter.getByTestId('chart-mode-view')).toHaveAttribute('aria-pressed', 'true')
+    await expect(timelineFooter.getByTestId('chart-mode-select')).toBeVisible()
+    await expect(timelineFooter.getByTestId('chart-zoom-value')).toHaveText('1.0x')
+    await expect(timelineFooter.getByTestId('visualization-controls-toggle')).toBeVisible()
+    // Graph-only controls are absent from chart footers.
+    await expect(timelineFooter.getByText('LAYOUT')).toHaveCount(0)
+    await expect(timelineFooter.getByText('NUDGE')).toHaveCount(0)
+    await expect(timelineFooter.getByText('EDGES')).toHaveCount(0)
+    await timelineFooter.getByTestId('chart-zoom-in').click()
+    await expect(timelineFooter.getByTestId('chart-zoom-value')).toHaveText('1.3x')
+    await timelineFooter.getByTestId('chart-fit').click()
+    await expect(timelineFooter.getByTestId('chart-zoom-value')).toHaveText('1.0x')
+    // MODE Select enables mark click-to-inspect; View ignores mark clicks.
+    await timelineFooter.getByTestId('chart-mode-select').click()
+    await expect(timelineFooter.getByTestId('chart-mode-select')).toHaveAttribute('aria-pressed', 'true')
+    await page.getByTestId('temporal-timeline-item-event-rel-0').click()
+    await expect(page.getByTestId('inspector-fields').locator('dt', { hasText: /^id$/ })).toBeVisible()
+
     // 3. Analytics segmented control: Centrality / Communities.
     await page.getByTestId('showcase-tab-analytics').click()
     await expect(page.getByTestId('analytics-showcase-view')).toBeVisible()
@@ -118,6 +139,15 @@ test.describe('Semantica showcase — temporal/analytics notebook parity (§10.5
       'analytics-centrality-bar-e2',
       'analytics-centrality-bar-e4',
     ])
+    // Centrality footer parity: MODE / ZOOM / FIT / gear with a working zoom.
+    const centralityFooter = page.getByTestId('analytics-centrality-visualization').getByTestId('visualization-footer')
+    await expect(centralityFooter.getByTestId('chart-mode-view')).toHaveAttribute('aria-pressed', 'true')
+    await expect(centralityFooter.getByTestId('chart-zoom-value')).toHaveText('1.0x')
+    await centralityFooter.getByTestId('chart-zoom-in').click()
+    await expect(centralityFooter.getByTestId('chart-zoom-value')).toHaveText('1.3x')
+    await centralityFooter.getByTestId('chart-fit').click()
+    await expect(centralityFooter.getByTestId('chart-zoom-value')).toHaveText('1.0x')
+    await expect(centralityFooter.getByTestId('visualization-controls-toggle')).toBeVisible()
     await page.getByRole('button', { name: 'Communities' }).click()
     await expect(page.getByRole('button', { name: 'Communities' })).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByTestId('analytics-showcase-view')).toContainText('Communities')

@@ -10,6 +10,7 @@
  * structural parity check is what the plan calls out.
  */
 import { expect, test } from '@playwright/test'
+import { stubShowcaseAuth } from './semantica-showcase-auth-stub'
 
 const SHOWCASE_URL = process.env.SEMANTICA_SHOWCASE_URL
   ?? '/semantica-showcase'
@@ -32,7 +33,8 @@ test.describe('Semantica showcase — light/dark parity (W6-15)', () => {
             /* ignore */
           }
         }, theme)
-        await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
+        await stubShowcaseAuth(page)
+    await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
         await expect(page.getByTestId('semantica-showcase-screen')).toBeVisible()
         await page.getByTestId(`showcase-tab-${mode}`).click()
         await expect(page.getByTestId(testId)).toBeVisible()

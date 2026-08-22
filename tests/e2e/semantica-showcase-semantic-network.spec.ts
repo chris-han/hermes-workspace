@@ -6,12 +6,14 @@
  * rail "Node types" inventory; edge types surface as a metric count.
  */
 import { expect, test } from '@playwright/test'
+import { stubShowcaseAuth } from './semantica-showcase-auth-stub'
 
 const SHOWCASE_URL = process.env.SEMANTICA_SHOWCASE_URL
   ?? '/semantica-showcase'
 
 test.describe('Semantica showcase — semantic-network rendering (W7-11)', () => {
   test('semantic network shows node types Language/Concept and edge type count', async ({ page }) => {
+    await stubShowcaseAuth(page)
     await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
     await page.getByTestId('showcase-tab-semantic-network').click()
     await expect(page.getByTestId('semantic-network-showcase-view')).toBeVisible()

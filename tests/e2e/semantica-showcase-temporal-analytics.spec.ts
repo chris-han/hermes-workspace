@@ -10,38 +10,10 @@
  */
 import { expect, test, type Page } from '@playwright/test'
 
+import { stubShowcaseAuth } from './semantica-showcase-auth-stub'
+
 const SHOWCASE_URL = process.env.SEMANTICA_SHOWCASE_URL
   ?? '/semantica-showcase'
-
-/**
- * The workspace shell gates on `/auth/context`. When the suite runs against a
- * remote authenticated Chrome (CDP), that session answers for real; against a
- * bare dev server we stub the auth context so the showcase route renders.
- * The stub is test harness only — the offline-boundary assertions below still
- * fail on any /api/graph|ontology|embeddings|semantier-proxy call.
- */
-async function stubAuthContext(page: Page) {
-  await page.route('**/auth/context', (route) => {
-    void route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        authenticated: true,
-        feishu_oauth_enabled: false,
-        password_login_enabled: true,
-        profile_completed: true,
-        membership_status: 'active',
-        user: {
-          user_id: 'e2e-showcase',
-          name: 'E2E Showcase',
-          feishu_open_id: 'e2e-showcase',
-          workspace_slug: 'e2e',
-          profile_completed: true,
-        },
-      }),
-    })
-  })
-}
 
 async function selectDataset(page: Page, displayName: string | RegExp) {
   await page.getByTestId('dataset-selector').click()
@@ -72,7 +44,7 @@ function watchLiveRequests(page: Page): string[] {
 test.describe('Semantica showcase — temporal/analytics notebook parity (§10.5)', () => {
   test('six tabs visible and Temporal/Analytics submodes switch on the notebook suite', async ({ page }) => {
     const liveRequests = watchLiveRequests(page)
-    await stubAuthContext(page)
+    await stubShowcaseAuth(page)
     await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
     await expect(page.getByTestId('semantica-showcase-screen')).toBeVisible()
 
@@ -93,18 +65,72 @@ test.describe('Semantica showcase — temporal/analytics notebook parity (§10.5
     await page.getByRole('button', { name: 'Dashboard' }).click()
     await expect(page.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByTestId('temporal-showcase-view')).toContainText('Dashboard')
+    // Canvas-level visualization: lifelines + dual-series activity + metric series.
+    await expect(page.getByTestId('temporal-dashboard-lifelines')).toBeVisible()
+    await expect(page.getByTestId('temporal-dashboard-lifeline-Lab_Alpha')).toBeVisible()
+    await expect(page.getByTestId('temporal-dashboard-activity')).toBeVisible()
+    await expect(
+      page.getByTestId('temporal-dashboard-activity').locator('.recharts-line-curve'),
+    ).toHaveCount(2)
+    await expect(page.getByTestId('temporal-dashboard-metrics')).toBeVisible()
+    await expect(
+      page.getByTestId('temporal-dashboard-metrics').locator('.recharts-line-curve').first(),
+    ).toBeVisible()
 
     await page.getByRole('button', { name: 'Evolution' }).click()
     await expect(page.getByRole('button', { name: 'Evolution' })).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByTestId('temporal-showcase-view')).toContainText('Network Evolution')
+    // Canvas-level visualization: Sigma canvas + frame slider.
+    await expect(page.getByTestId('temporal-evolution-visualization')).toBeVisible()
+    await expect(
+      page.getByTestId('temporal-evolution-visualization').getByRole('application'),
+    ).toBeVisible()
+    const slider = page.getByTestId('temporal-evolution-slider')
+    await expect(slider).toBeVisible()
+    const frameLabel = page.getByTestId('temporal-evolution-frame-label')
+    const firstFrame = await frameLabel.textContent()
+    await slider.fill('12')
+    await expect(frameLabel).not.toHaveText(firstFrame ?? '')
+
+    // Timeline: one lane per event type with time-positioned point items.
+    await page.getByRole('button', { name: 'Timeline' }).click()
+    await expect(page.getByTestId('temporal-timeline-visualization')).toBeVisible()
+    await expect(page.getByTestId('temporal-timeline-lane-WORKS_AT')).toBeVisible()
+    await expect(page.getByTestId('temporal-timeline-lane-AUTHORED')).toBeVisible()
+    await expect(page.getByTestId('temporal-timeline-item-event-rel-0')).toBeVisible()
+    // The center canvas shows no duplicated left-rail inventory lists.
+    const temporalCenter = page.locator('.showcase-ref-center')
+    await expect(temporalCenter.locator('[data-testid="temporal-showcase-view"] ul')).toHaveCount(0)
 
     // 3. Analytics segmented control: Centrality / Communities.
     await page.getByTestId('showcase-tab-analytics').click()
     await expect(page.getByTestId('analytics-showcase-view')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Centrality' })).toHaveAttribute('aria-pressed', 'true')
+    // Canvas-level visualization: ranked bar marks exist (score descending).
+    await expect(page.getByTestId('analytics-centrality-visualization')).toBeVisible()
+    await expect(page.getByTestId('analytics-centrality-bar-e1')).toBeVisible()
+    const barOrder = await page
+      .locator('[data-testid^="analytics-centrality-bar-"]')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')))
+    expect(barOrder).toEqual([
+      'analytics-centrality-bar-e1',
+      'analytics-centrality-bar-e3',
+      'analytics-centrality-bar-e2',
+      'analytics-centrality-bar-e4',
+    ])
     await page.getByRole('button', { name: 'Communities' }).click()
     await expect(page.getByRole('button', { name: 'Communities' })).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByTestId('analytics-showcase-view')).toContainText('Communities')
+    // Canvas-level visualization: community-colored KG on the Sigma canvas;
+    // partition summary stays in the side rail, not the canvas.
+    await expect(page.getByTestId('analytics-communities-visualization')).toBeVisible()
+    await expect(
+      page.getByTestId('analytics-communities-visualization').getByRole('application'),
+    ).toBeVisible()
+    const analyticsCenter = page.locator('.showcase-ref-center')
+    await expect(analyticsCenter).not.toContainText('Partition')
+    await expect(analyticsCenter).not.toContainText('Assignments')
+    await expect(analyticsCenter.locator('[data-testid="analytics-showcase-view"] ul')).toHaveCount(0)
 
     // 8. §9.6 provenance disclosure: notebook parity, source-only excluded.
     const disclosure = page.getByTestId('analytics-coverage-disclosure')
@@ -118,7 +144,7 @@ test.describe('Semantica showcase — temporal/analytics notebook parity (§10.5
 
   test('capability disabling on 10 Temporal Knowledge Graphs and §4.1.3 fallback', async ({ page }) => {
     const liveRequests = watchLiveRequests(page)
-    await stubAuthContext(page)
+    await stubShowcaseAuth(page)
     await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
     await expect(page.getByTestId('semantica-showcase-screen')).toBeVisible()
 

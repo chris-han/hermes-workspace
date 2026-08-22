@@ -1,50 +1,100 @@
+import { Bar, BarChart, XAxis, YAxis } from 'recharts'
+
 import type { AnalyticsShowcaseAdapterResult } from '../adapters/analytics-showcase-adapter'
+import { ShowcaseSigmaCanvas } from './shared/showcase-sigma-canvas'
 
-export function AnalyticsShowcaseView({ adapter }: { adapter: AnalyticsShowcaseAdapterResult }) {
+/**
+ * Analytics showcase visual encodings (plan
+ * `2026-08-22-semantica-renderer-visual-parity-remediation-v1`):
+ * Centrality = ranked horizontal bar chart; Communities = community-colored
+ * KG on the readonly Sigma canvas (`node.color` carries the deterministic
+ * Asimov categorical community color; `group` retains the community id).
+ */
+
+export interface AnalyticsShowcaseSelectionProps {
+  selection?: string | null
+  onSelect?: (selection: string | null) => void
+}
+
+export function AnalyticsShowcaseView({
+  adapter,
+  selection,
+  onSelect,
+}: { adapter: AnalyticsShowcaseAdapterResult } & AnalyticsShowcaseSelectionProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3" data-testid="analytics-showcase-view">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto" data-testid="analytics-showcase-view">
       {adapter.kind === 'centrality' ? (
-        <section className="showcase-ref-panel p-3">
-          <h3 className="font-mono text-sm font-semibold">Centrality</h3>
-          <ul className="mt-2 space-y-1 text-xs">
-            {adapter.rankings.map((ranking) => (
-              <li key={ranking.nodeId} className="flex items-center justify-between gap-3">
-                <span>{ranking.nodeId}</span>
-                <span className="font-mono text-muted-foreground">{ranking.score.toFixed(3)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <CentralityBars adapter={adapter} selection={selection} onSelect={onSelect} />
       ) : null}
-
       {adapter.kind === 'communities' ? (
-        <section className="showcase-ref-panel p-3">
+        <section
+          className="showcase-ref-panel flex min-h-0 flex-1 flex-col p-3"
+          data-testid="analytics-communities-visualization"
+        >
           <h3 className="font-mono text-sm font-semibold">Communities</h3>
-          <div className="mt-2 grid gap-3 md:grid-cols-2">
-            <div>
-              <div className="mb-2 font-mono text-xs uppercase text-muted-foreground">Partition</div>
-              <ul className="space-y-1 text-xs">
-                {adapter.communities.map((community) => (
-                  <li key={community.id}>{String(community.id)}: {community.nodeIds.join(', ')}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <div className="mb-2 font-mono text-xs uppercase text-muted-foreground">Assignments</div>
-              <ul className="space-y-1 text-xs">
-                {Object.entries(adapter.assignments).map(([nodeId, communityId]) => (
-                  <li key={nodeId}>{nodeId} → {String(communityId)}</li>
-                ))}
-              </ul>
-            </div>
+          <div className="flex min-h-[360px] flex-1">
+            <ShowcaseSigmaCanvas
+              model={{ nodes: adapter.graph.nodes, edges: adapter.graph.edges }}
+              selection={selection ? { type: 'node', id: selection } : null}
+              ariaLabel="Community-colored knowledge graph canvas"
+              onSelect={(next) => onSelect?.(next?.type === 'node' ? next.id : null)}
+            />
           </div>
         </section>
       ) : null}
-      <section className="showcase-ref-panel p-3" data-testid="analytics-coverage-disclosure">
-        <div className="font-mono text-xs uppercase text-muted-foreground">Coverage</div>
-        <div className="text-xs">Pinned Semantica notebook visualization cases</div>
-        <div className="text-xs text-muted-foreground">Source-only Semantica visualization methods are not included in this showcase.</div>
-      </section>
     </div>
+  )
+}
+
+type CentralityBarShapeProps = {
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  payload?: { nodeId: string; score: number; rank: number }
+}
+
+function CentralityBars({
+  adapter,
+  selection,
+  onSelect,
+}: { adapter: Extract<AnalyticsShowcaseAdapterResult, { kind: 'centrality' }> } & AnalyticsShowcaseSelectionProps) {
+  return (
+    <section className="showcase-ref-panel p-3" data-testid="analytics-centrality-visualization">
+      <h3 className="font-mono text-sm font-semibold">Centrality</h3>
+      <BarChart
+        width={720}
+        height={Math.max(120, adapter.rankings.length * 44 + 24)}
+        data={adapter.rankings}
+        layout="vertical"
+        className="mt-2 w-full"
+      >
+        <XAxis type="number" tick={{ fontSize: 10 }} />
+        <YAxis type="category" dataKey="nodeId" tick={{ fontSize: 11 }} width={96} />
+        <Bar
+          dataKey="score"
+          isAnimationActive={false}
+          shape={(shapeProps: CentralityBarShapeProps) => {
+            const nodeId = shapeProps.payload?.nodeId ?? ''
+            const isSelected = selection === nodeId
+            return (
+              <rect
+                data-testid={`analytics-centrality-bar-${nodeId}`}
+                x={shapeProps.x ?? 0}
+                y={shapeProps.y ?? 0}
+                width={shapeProps.width ?? 0}
+                height={shapeProps.height ?? 0}
+                rx={2}
+                fill={isSelected ? 'var(--asimov-brand)' : 'var(--asimov-visualization-swatch-cobalt)'}
+                opacity={selection && !isSelected ? 0.45 : 0.9}
+                role="button"
+                aria-label={`${nodeId} · ${shapeProps.payload?.score.toFixed(3) ?? ''}`}
+                onClick={() => onSelect?.(isSelected ? null : nodeId)}
+              />
+            )
+          }}
+        />
+      </BarChart>
+    </section>
   )
 }

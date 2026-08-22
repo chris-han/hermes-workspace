@@ -7,12 +7,14 @@
  * W7-16: light/dark parity for dataset switching.
  */
 import { expect, test } from '@playwright/test'
+import { stubShowcaseAuth } from './semantica-showcase-auth-stub'
 
 const SHOWCASE_URL = process.env.SEMANTICA_SHOWCASE_URL
   ?? '/semantica-showcase'
 
 test.describe('Semantica showcase — dataset switching (W7-15)', () => {
   test('switching the Active Dataset updates the dataset ID in the status bar', async ({ page }) => {
+    await stubShowcaseAuth(page)
     await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
     const initialStatus = await page.getByTestId('showcase-status-bar').innerText()
     // The status bar applies `text-transform: uppercase` (asimov-minimalism.css),
@@ -43,7 +45,8 @@ test.describe('Semantica showcase — light/dark parity (W7-16)', () => {
           /* localStorage may be unavailable */
         }
       }, theme)
-      await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
+      await stubShowcaseAuth(page)
+    await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
       await expect(page.getByTestId('semantica-showcase-screen')).toBeVisible()
       await expect(page.getByTestId('dataset-selector')).toBeVisible()
       await expect(page.getByTestId('showcase-status-bar')).toBeVisible()

@@ -149,6 +149,8 @@ export function SemanticaShowcaseScreen() {
   const snViewportRef = useRef<SigmaGraphReadonlyViewportController | null>(null)
   const [kgSelection, setKgSelection] = useState<SigmaGraphReadonlySelection>(null)
   const [snSelection, setSnSelection] = useState<SigmaGraphReadonlySelection>(null)
+  const [temporalSelection, setTemporalSelection] = useState<string | null>(null)
+  const [analyticsSelection, setAnalyticsSelection] = useState<string | null>(null)
   const [embeddingSelection, setEmbeddingSelection] = useState<string | undefined>(undefined)
   const [ontologySelection, setOntologySelection] = useState<string | undefined>(undefined)
 
@@ -157,6 +159,8 @@ export function SemanticaShowcaseScreen() {
       setDatasetId(next)
       setKgSelection(null)
       setSnSelection(null)
+      setTemporalSelection(null)
+      setAnalyticsSelection(null)
       setEmbeddingSelection(undefined)
       setOntologySelection(undefined)
       // §4.1.3: resolve lens/submode against the new dataset through the
@@ -220,12 +224,12 @@ export function SemanticaShowcaseScreen() {
     [dataset.semanticNetwork, snSelection],
   )
   const temporalAdapter = useMemo(
-    () => (dataset.temporal ? adaptTemporalFixture(dataset.temporal, temporalSubmode) : null),
-    [dataset.temporal, temporalSubmode],
+    () => (dataset.temporal ? adaptTemporalFixture(dataset.temporal, temporalSubmode, temporalSelection) : null),
+    [dataset.temporal, temporalSubmode, temporalSelection],
   )
   const analyticsAdapter = useMemo(
-    () => (dataset.analytics ? adaptAnalyticsFixture(dataset.analytics, analyticsSubmode) : null),
-    [analyticsSubmode, dataset.analytics],
+    () => (dataset.analytics ? adaptAnalyticsFixture(dataset.analytics, analyticsSubmode, analyticsSelection) : null),
+    [analyticsSubmode, dataset.analytics, analyticsSelection],
   )
 
   const provenance = useMemo(() => describeProvenance(dataset), [dataset])
@@ -548,7 +552,11 @@ export function SemanticaShowcaseScreen() {
             className={submode === temporalSubmode ? 'is-active' : ''}
             aria-pressed={submode === temporalSubmode}
             disabled={!supported}
-            onClick={() => setTemporalSubmode(submode)}
+            onClick={() => {
+              setTemporalSubmode(submode)
+              // R8: selection is invalidated on submode change.
+              setTemporalSelection(null)
+            }}
           >
             {submode === 'timeline' ? 'Timeline' : submode === 'version-history' ? 'Versions' : submode === 'temporal-dashboard' ? 'Dashboard' : 'Evolution'}
           </button>
@@ -567,7 +575,11 @@ export function SemanticaShowcaseScreen() {
             className={submode === analyticsSubmode ? 'is-active' : ''}
             aria-pressed={submode === analyticsSubmode}
             disabled={!supported}
-            onClick={() => setAnalyticsSubmode(submode)}
+            onClick={() => {
+              setAnalyticsSubmode(submode)
+              // R8: selection is invalidated on submode change.
+              setAnalyticsSelection(null)
+            }}
           >
             {submode === 'centrality' ? 'Centrality' : 'Communities'}
           </button>
@@ -985,7 +997,12 @@ export function SemanticaShowcaseScreen() {
             />
             <CenterPanel supportsTopology={false}>
               {temporalSubmodeButtons}
-              <TemporalShowcaseView adapter={temporalAdapter} />
+              <TemporalShowcaseView
+                key={temporalSubmode}
+                adapter={temporalAdapter}
+                selection={temporalSelection}
+                onSelect={setTemporalSelection}
+              />
             </CenterPanel>
             <RightRail
               inspector={temporalAdapter.inspector}
@@ -995,6 +1012,13 @@ export function SemanticaShowcaseScreen() {
                 { label: 'provenance', value: provenance.source },
                 { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
               ]}
+              disclosure={
+                <section className="showcase-ref-panel p-3" data-testid="temporal-coverage-disclosure">
+                  <div className="font-mono text-xs uppercase text-muted-foreground">Coverage</div>
+                  <div className="text-xs">Pinned Semantica notebook visualization cases</div>
+                  <div className="text-xs text-muted-foreground">Source-only Semantica visualization methods are not included in this showcase.</div>
+                </section>
+              }
             />
           </TabsPanel>
         )}
@@ -1025,7 +1049,12 @@ export function SemanticaShowcaseScreen() {
             />
             <CenterPanel supportsTopology={false}>
               {analyticsSubmodeButtons}
-              <AnalyticsShowcaseView adapter={analyticsAdapter} />
+              <AnalyticsShowcaseView
+                key={analyticsSubmode}
+                adapter={analyticsAdapter}
+                selection={analyticsSelection}
+                onSelect={setAnalyticsSelection}
+              />
             </CenterPanel>
             <RightRail
               inspector={analyticsAdapter.inspector}
@@ -1035,6 +1064,13 @@ export function SemanticaShowcaseScreen() {
                 { label: 'provenance', value: provenance.source },
                 { label: 'fixture sha', value: provenance.manifestSha256.slice(0, 12) },
               ]}
+              disclosure={
+                <section className="showcase-ref-panel p-3" data-testid="analytics-coverage-disclosure">
+                  <div className="font-mono text-xs uppercase text-muted-foreground">Coverage</div>
+                  <div className="text-xs">Pinned Semantica notebook visualization cases</div>
+                  <div className="text-xs text-muted-foreground">Source-only Semantica visualization methods are not included in this showcase.</div>
+                </section>
+              }
             />
           </TabsPanel>
         )}
@@ -1279,11 +1315,14 @@ function RightRail({
   metrics,
   title,
   statusRows,
+  disclosure,
 }: {
   inspector: ShowcaseInspectorModel
   metrics: ShowcaseMetric[]
   title: string
   statusRows: Array<{ label: string; value: string }>
+  /** §9.6 coverage disclosure lives in the side rail, not the canvas (R6). */
+  disclosure?: React.ReactNode
 }) {
   const safeInspector: ShowcaseInspectorModel = inspector ?? EMPTY_INSPECTOR
   const fields: ShowcaseInspectorField[] = safeInspector.fields
@@ -1325,6 +1364,8 @@ function RightRail({
           </div>
         </div>
       </section>
+
+      {disclosure}
 
       <section className="showcase-ref-panel h-64 shrink-0 overflow-hidden">
         <div className="showcase-ref-console-header">Fixture Provenance</div>

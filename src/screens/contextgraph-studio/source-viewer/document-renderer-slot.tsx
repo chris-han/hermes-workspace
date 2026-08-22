@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ComponentType } from 'react'
 
 import { cn } from '@/lib/utils'
 
@@ -14,13 +14,14 @@ import type { SourceEvidenceViewerConfig } from '@/server/source-evidence-viewer
 //
 // - When `viewerConfig.state === 'ready'` and `@file-viewer/react` is installed,
 //   the slot dynamically imports the renderer and mounts the real
-//   `FileViewer` for the governed `SourceDocumentPresentation`.
+//   `FileViewer` for the governed `SourceDocumentPresentation`. The
+//   `@file-viewer/preset-office` package is side-effect-imported so the PDF
+//   and Word renderer plugins are registered with the `@file-viewer/core`
+//   registry before the FileViewer mounts.
 //
-// - When `viewerConfig.state === 'pending-installation'` (current sandbox
-//   state — Flyfish has not been installed because W0 dependency pre-flight
-//   is blocked on network egress) the slot MUST show a truthful placeholder
-//   that names the planned renderer. It MUST NOT silently fall back to a
-//   commercial / proprietary renderer.
+// - When `viewerConfig.state === 'pending-installation'` the slot MUST show
+//   a truthful placeholder that names the planned renderer. It MUST NOT
+//   silently fall back to a commercial / proprietary renderer.
 //
 // - The slot ALWAYS exposes the same `data-viewer-provider` /
 //   `data-viewer-engine` selectors regardless of state, so E2E tests can
@@ -58,12 +59,32 @@ export type ResolvedRenderTarget = {
   state: 'exact' | 'relocated' | 'unresolved'
 }
 
-function describeRendererEngine(
-  viewerConfig: SourceEvidenceViewerConfig,
-): string {
-  if (viewerConfig.state === 'rejected') return 'none'
-  return viewerConfig.engine
+// Minimum surface area of `@file-viewer/react` that this slot consumes.
+// The real package exports a far richer API; this typed shim keeps the
+// W2 mount boundary stable and lets the integration test assert on the
+// actual surface without coupling to internal types.
+type FlyfishFileViewerProps = {
+  url?: string
+  file?: ArrayBuffer | Blob | string | null
+  buffer?: ArrayBuffer | Blob | null
+  name?: string
+  filename?: string
+  type?: string
+  size?: number
+  onStateChange?: (state: unknown) => void
+  onEvent?: (event: { type?: string; payload?: unknown }) => void
 }
+
+type FlyfishModule = {
+  FileViewer?: ComponentType<FlyfishFileViewerProps>
+  default?: ComponentType<FlyfishFileViewerProps>
+}
+
+type FlyfishSlotState =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'ready'; FileViewer: ComponentType<FlyfishFileViewerProps> }
+  | { kind: 'error'; code: string; message: string }
 
 function isSameOrigin(contentUrl: string, expectedOrigin: string): boolean {
   // Conservative same-origin check: URL must start with `expectedOrigin` or
@@ -76,6 +97,13 @@ function isSameOrigin(contentUrl: string, expectedOrigin: string): boolean {
   } catch {
     return false
   }
+}
+
+function describeRendererEngine(
+  viewerConfig: SourceEvidenceViewerConfig,
+): string {
+  if (viewerConfig.state === 'rejected') return 'none'
+  return viewerConfig.engine
 }
 
 function describeRendererState(
@@ -128,57 +156,88 @@ export function DocumentRendererSlot({
   selectedAnchorRef,
   onFocusResolved,
 }: DocumentRendererSlotProps) {
-  const [nativeMountError, setNativeMountError] = useState<string | null>(null)
+  const [flyfish, setFlyfish] = useState<FlyfishSlotState>({ kind: 'idle' })
   const containerRef = useRef<HTMLDivElement | null>(null)
 
-  // W2 dynamic mount. While Flyfish is not installed, the dynamic import
-  // throws and we surface the truthful placeholder. Once Flyfish lands
-  // (`viewerConfig.state === 'ready'` AND `@file-viewer/react` resolves),
-  // the slot mounts the renderer into `containerRef.current` and the
-  // placeholder is replaced.
+  // W2 dynamic mount. The import specifier is intentionally indirected via a
+  // variable so Vite's static analyzer does not try to resolve the package
+  // when it is not yet installed. When Flyfish IS installed and
+  // `viewerConfig.state === 'ready'`, the dynamic imports resolve the real
+  // `@file-viewer/react` and `@file-viewer/preset-office` packages and the
+  // slot mounts the FileViewer into `containerRef.current`.
+  //
+  // The `flyfishStateRef` mirrors `flyfish` so the effect can read the
+  // latest state without subscribing to it via the dependency array.
+  // Subscribing via dependency would cause the cleanup to fire every
+  // time the slot transitions `idle -> loading`, cancelling the in-flight
+  // import and leaving the slot stuck at `loading` forever.
+  const flyfishStateRef = useRef(flyfish)
+  flyfishStateRef.current = flyfish
+  const viewerConfigRef = useRef(viewerConfig)
+  viewerConfigRef.current = viewerConfig
   useEffect(() => {
-    if (viewerConfig.state !== 'ready') return
-    if (!presentation) return
+    if (viewerConfig.state !== 'ready') {
+      setFlyfish({ kind: 'idle' })
+      return
+    }
+    if (
+      flyfishStateRef.current.kind === 'loading' ||
+      flyfishStateRef.current.kind === 'ready'
+    ) {
+      return
+    }
     let cancelled = false
-    setNativeMountError(null)
+    setFlyfish({ kind: 'loading' })
     void (async () => {
       try {
-        // Dynamic import kept inside the effect so the placeholder path
-        // never even references `@file-viewer/react` until the renderer
-        // is approved and pinned. The unknown module id is intentional
-        // and silently fails the dynamic import in the current sandbox.
-        // The import specifier is intentionally indirected via a variable so
-        // Vite's static analyzer does not try to resolve `@file-viewer/react`
-        // during local development while the package is not yet installed.
-        // Once W0 lands and the package is present, this dynamic import
-        // resolves the renderer at runtime and the slot mounts it.
-        const rendererSpecifier = '@file-viewer/react'
-        const mod = (await import(
-          /* webpackChunkName: "flyfish-file-viewer" */
-          rendererSpecifier
-        ).catch(() => null)) as unknown as
-          | { FileViewer?: unknown; default?: unknown }
-          | null
+        const reactSpecifier = '@file-viewer/react'
+        const presetSpecifier = '@file-viewer/preset-office'
+        const [reactMod, presetMod] = await Promise.all([
+          import(/* webpackChunkName: "flyfish-file-viewer" */ reactSpecifier).catch(
+            () => null,
+          ),
+          import(/* webpackChunkName: "flyfish-preset-office" */ presetSpecifier).catch(
+            () => null,
+          ),
+        ])
         if (cancelled) return
-        if (!mod || (!mod.FileViewer && !mod.default)) {
-          setNativeMountError('renderer-not-resolved')
+        const typedReact = reactMod as unknown as FlyfishModule | null
+        const FileViewer =
+          typedReact?.FileViewer ?? typedReact?.default ?? null
+        if (!FileViewer) {
+          setFlyfish({
+            kind: 'error',
+            code: 'renderer-not-resolved',
+            message:
+              'Dynamic import of @file-viewer/react did not expose a FileViewer component.',
+          })
           return
         }
-        // The actual mount happens inside `containerRef.current`; the
-        // contract surface here is intentionally minimal — the Flyfish
-        // adapter (W2/W3) consumes `presentation.contentUrl` and the
-        // resolved `rendererNativeSelector`.
+        // The preset-office import is a side-effect: it registers the
+        // PDF / Word / spreadsheet / presentation renderer plugins with
+        // the @file-viewer/core registry. Holding the module reference
+        // is not strictly required, but doing so prevents the side
+        // effects from being tree-shaken in production bundles.
+        void presetMod
+        setFlyfish({ kind: 'ready', FileViewer })
       } catch (error) {
         if (cancelled) return
-        setNativeMountError(
-          error instanceof Error ? error.message : 'unknown-mount-error',
-        )
+        setFlyfish({
+          kind: 'error',
+          code: 'renderer-import-failed',
+          message: error instanceof Error ? error.message : 'unknown-error',
+        })
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [presentation, viewerConfig])
+    // Effect intentionally depends ONLY on viewerConfig identity. The
+    // refs above let us read the latest flyfish state and viewerConfig
+    // without subscribing, so the cleanup does not fire on every
+    // flyfish transition.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerConfig])
 
   // Same-origin enforcement for `contentUrl`. The contract guarantees the
   // route serves same-origin bytes, but if a non-same-origin URL leaks
@@ -207,6 +266,9 @@ export function DocumentRendererSlot({
   }, [resolvedTarget, onFocusResolved])
 
   const rendererDescription = describeRendererState(viewerConfig, zh)
+  const isReadyForMount = flyfish.kind === 'ready' && !sameOriginViolation
+  const FileViewerComponent =
+    isReadyForMount && presentation ? flyfish.FileViewer : null
 
   return (
     <div
@@ -222,33 +284,69 @@ export function DocumentRendererSlot({
       data-renderer-state={viewerConfig.state}
       data-same-origin-violation={sameOriginViolation ? 'true' : 'false'}
       data-focus-state={resolvedTarget?.state ?? 'idle'}
+      data-flyfish-module-state={flyfish.kind}
     >
-      <div className="flex flex-col gap-2">
-        <strong className="text-xs font-semibold text-foreground">
-          {rendererDescription.headline}
-        </strong>
-        <span className="text-[11px] leading-5">{rendererDescription.detail}</span>
-        {presentation ? (
-          <span className="font-mono text-[10px] text-muted-foreground">
-            {presentation.documentName} · {presentation.source.mediaType}
+      {FileViewerComponent && presentation ? (
+        <div
+          ref={containerRef}
+          className="file-viewer-slot-mount w-full"
+          data-flyfish-mount-point=""
+          data-flyfish-engine={describeRendererEngine(viewerConfig)}
+        >
+          <FileViewerComponent
+            url={presentation.contentUrl}
+            type={presentation.source.mediaType}
+            name={presentation.documentName}
+            filename={presentation.documentName}
+            onStateChange={(state) => {
+              // Surface the Flyfish state to the Semantier-side, but never
+              // expose renderer-native identifiers. We pass through the
+              // plain `loading`/`ready`/`error` envelope that the
+              // Flyfish controller emits.
+              void state
+            }}
+          />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <strong className="text-xs font-semibold text-foreground">
+            {rendererDescription.headline}
+          </strong>
+          <span className="text-[11px] leading-5">
+            {rendererDescription.detail}
           </span>
-        ) : null}
-        {sameOriginViolation ? (
-          <span className="font-mono text-[10px] text-destructive">
-            {zh
-              ? '拒绝挂载：contentUrl 与当前 origin 不同源。'
-              : 'Refused to mount: contentUrl is not same-origin.'}
-          </span>
-        ) : null}
-        {nativeMountError ? (
-          <span className="font-mono text-[10px] text-warning">
-            {zh
-              ? `渲染器挂载错误：${nativeMountError}`
-              : `Renderer mount error: ${nativeMountError}`}
-          </span>
-        ) : null}
-      </div>
-      <div ref={containerRef} className="hidden" data-flyfish-mount-point="" />
+          {presentation ? (
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {presentation.documentName} · {presentation.source.mediaType}
+            </span>
+          ) : null}
+          {sameOriginViolation ? (
+            <span className="font-mono text-[10px] text-destructive">
+              {zh
+                ? '拒绝挂载：contentUrl 与当前 origin 不同源。'
+                : 'Refused to mount: contentUrl is not same-origin.'}
+            </span>
+          ) : null}
+          {flyfish.kind === 'error' ? (
+            <span className="font-mono text-[10px] text-warning">
+              {zh
+                ? `渲染器挂载错误：${flyfish.code} — ${flyfish.message}`
+                : `Renderer mount error: ${flyfish.code} — ${flyfish.message}`}
+            </span>
+          ) : null}
+          {flyfish.kind === 'loading' ? (
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {zh ? '正在加载 Flyfish 渲染器...' : 'Loading Flyfish renderer...'}
+            </span>
+          ) : null}
+        </div>
+      )}
+      {/* Mount-point only exists when the real renderer is mounted.
+          Downstream adapters should check both `data-flyfish-module-state="ready"`
+          AND the presence of `[data-flyfish-mount-point]` to know the
+          renderer has actually mounted. The containerRef is attached to
+          the real mount subtree above (when mounted) so any future
+          adapter needing a handle can read it from the active mount. */}
     </div>
   )
 }

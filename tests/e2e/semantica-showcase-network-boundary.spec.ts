@@ -6,6 +6,7 @@
  * runtime/network counterpart required by §12 enforcement.
  */
 import { expect, test } from '@playwright/test'
+import { stubShowcaseAuth } from './semantica-showcase-auth-stub'
 
 const SHOWCASE_URL = process.env.SEMANTICA_SHOWCASE_URL
   ?? '/semantica-showcase'
@@ -25,6 +26,7 @@ test.describe('Semantica showcase — full UAT (W7-17)', () => {
       }
     })
 
+    await stubShowcaseAuth(page)
     await page.goto(SHOWCASE_URL, { waitUntil: 'networkidle' })
     await expect(page.getByTestId('semantica-showcase-screen')).toBeVisible()
 
